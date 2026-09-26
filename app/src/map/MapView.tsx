@@ -188,22 +188,21 @@ export default function MapView() {
         if (hit.length) return
         const { lng, lat } = e.lngLat
         const el = document.createElement('div')
-        // the picked point's case: the Spots score and its reasons, when the
-        // scorer has conditions (a forecast and the habitat grid) to work with
+        // the picked point's case, progressively: the score and the day's
+        // headline first; "why" unfolds the reasons; "details" hands the
+        // point to the Spots tab as the probe, where the arithmetic and the
+        // knobs live. Only when the scorer has conditions and the grid.
         const sp = useSpotsStore.getState()
-        const why = sp.conditions && sp.heat ? explainPoint(sp.target, lng, lat, sp.conditions) : null
+        const why = sp.conditions && sp.heat ? explainPoint(sp.target, lng, lat, sp.conditions, sp.weights) : null
         const esc = (t: string) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] ?? c)
-        // the case for this point, as long as the Spots detail mode allows
-        const nReasons = sp.detail === 'brief' ? 0 : sp.detail === 'full' ? 6 : 3
+        const grade = (v: number) => (v >= 0.75 ? 'top' : v >= 0.55 ? 'good' : v >= 0.35 ? 'fair' : 'poor')
+        // Brief shows the score alone; the reasons wait behind "why"
+        const nReasons = sp.detail === 'brief' ? 3 : sp.detail === 'full' ? 8 : 4
         const whyHtml = why
-          ? `<div class="pp-why"><b>${Math.round(why.score * 100)}</b> for ${esc(TARGET_NAMES[sp.target])}${
-              nReasons
-                ? `<ul>${why.reasons
-                    .slice(0, nReasons)
-                    .map((r) => `<li>${esc(r)}</li>`)
-                    .join('')}</ul>`
-                : ''
-            }</div>`
+          ? `<div class="pp-why"><div class="pp-why-head"><b class="pp-score pp-${grade(why.score)}">${Math.round(why.score * 100)}</b><span>${esc(TARGET_NAMES[sp.target])} · ${esc(sp.result?.verdict.headline ?? '')}</span><button class="pp-why-btn linklike" type="button">why</button></div><ul class="pp-reasons" hidden>${why.reasons
+              .slice(0, nReasons)
+              .map((r) => `<li>${esc(r)}</li>`)
+              .join('')}<li><button class="pp-details linklike" type="button">the arithmetic and the knobs ▸</button></li></ul></div>`
           : ''
         el.innerHTML = `<button class="pp-close" aria-label="Close">×</button><div class="depth-popup-value">${fmtCoord(lng, lat)}</div><div class="depth-popup-wx"></div>${whyHtml}<div class="pp-acts"><button class="pp-save">Save</button></div>`
         const popup = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, offset: 8, maxWidth: '320px' }).setLngLat([lng, lat]).setDOMContent(el).addTo(m)
@@ -211,6 +210,18 @@ export default function MapView() {
         const stopWx = attachTapWeather(el.querySelector('.depth-popup-wx') as HTMLElement, lng, lat)
         popup.on('close', stopWx)
         el.querySelector('.pp-close')?.addEventListener('click', () => popup.remove())
+        el.querySelector('.pp-why-btn')?.addEventListener('click', (ev) => {
+          const ul = el.querySelector('.pp-reasons') as HTMLElement | null
+          if (!ul) return
+          ul.hidden = !ul.hidden
+          ;(ev.currentTarget as HTMLElement).textContent = ul.hidden ? 'why' : 'less'
+        })
+        el.querySelector('.pp-details')?.addEventListener('click', () => {
+          usePlacesStore.getState().select(null)
+          useSpotsStore.getState().setProbe({ lon: lng, lat, name: 'Tapped point' })
+          useAppStore.getState().setSheetTab('spots')
+          popup.remove()
+        })
         el.querySelector('.pp-save')?.addEventListener('click', () => {
           const p = usePlacesStore.getState().add({ name: 'Pin', lon: lng, lat, kind: 'stand' })
           usePlacesStore.getState().select(p.id)

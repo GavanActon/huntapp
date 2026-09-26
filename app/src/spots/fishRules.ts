@@ -379,4 +379,12 @@ export function describeFishCell(t: FishTarget, b: FishBands, h: Habitat, i: num
   const out: string[] = []
   const dq = b.depth[i]
   if (dq !== 255) out.push(`est. ${(dq * 0.25).toFixed(1)} m`)
-  else out.pu
+  else out.push(`${b.distShore[i] * 10} m from shore, depth unknown`)
+  const ctx = fishContext(c)
+  cellScore(t, b, h, i, lake, c, ctx, out)
+  const [lo, hi] = depthWindow(t, ctx.period, ctx.low, lake, ctx.postFront)
+  out.push(`${PERIOD_NAMES[ctx.period]}: ${lo.toFixed(0)}–${hi.toFixed(0)} m band`)
+  return out
+}
+
+export { COVER }

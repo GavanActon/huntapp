@@ -41,4 +41,13 @@ export interface Verdict {
   notes: string[]
 }
 
-export interface
+export interface Spot {
+  cell: number
+  lon: number
+  lat: number
+  score: number
+  title: string
+  reasons: string[]
+  /** for fishing: the lake */
+  lakeId?: number
+}

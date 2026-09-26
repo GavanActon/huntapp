@@ -394,4 +394,48 @@ export function siteParts(t: HuntTarget, b: HuntBands, h: Habitat, i: number, c:
   const dRoad = b.distRoad[i] * 20
   const dLake = b.distLake[i] * 10
   let access = dRoad <= 150 ? 0.85 : dRoad <= 2500 ? 1 : dRoad <= 4000 ? 0.8 : 0.5
-  if (dLake <= 120) access = Math.max(a
+  if (dLake <= 120) access = Math.max(access, 0.95) // by boat
+  if (t === 'grouse') access = dRoad <= 60 ? 1 : dRoad <= 800 ? 0.9 : 0.6
+  const accessLabel = dLake <= 120 && dRoad > 150 ? 'reachable by boat' : dRoad <= 150 ? 'right by a road' : dRoad <= 2500 ? `${dRoad < 1000 ? `${dRoad} m` : `${(dRoad / 1000).toFixed(1)} km`} from a road` : 'a long walk in'
+  return [
+    { key: 'scent', label: calm ? 'thermals' : 'wind against the feeding side', value: g, kind: 'mult' },
+    { key: 'visibility', label: openFrac >= 0.75 ? 'open downwind' : openFrac >= 0.4 ? 'partly open downwind' : 'thick downwind', value: vis, kind: 'mult' },
+    { key: 'access', label: accessLabel, value: access, kind: 'mult' },
+  ]
+}
+
+/** Words for a cell: what it is and why it scores. */
+export function describeCell(t: HuntTarget, b: HuntBands, h: Habitat, i: number, c: Conditions): string[] {
+  const out: string[] = []
+  const cover = b.cover[i]
+  const dist = b.disturb[i]
+  const age = b.age[i]
+  let what = h.coverNames[cover] ?? 'land'
+  if (dist < 255) what = `${dist}-year-old ${dist === b.age[i] && b.lead[i] === 0 ? 'cut or burn' : 'burn or cut'}`
+  else if (age > 0 && cover >= COVER.coniferDense && cover <= COVER.hardwood) what += `, about ${age} yr`
+  if (b.conifer[i] > 0 || b.hardwood[i] > 0) {
+    const lead = ['', 'black spruce', 'jack pine', 'white spruce', 'balsam fir', 'cedar', 'tamarack', 'aspen', 'birch'][b.lead[i]]
+    if (lead) what += `, ${lead}-led`
+  }
+  out.push(what)
+  const dCover = b.distCover[i] * 10
+  const dBrowse = b.distBrowse[i] * 10
+  if (cover === COVER.coniferDense || cover === COVER.treedWet) {
+    if (dBrowse <= 250) out.push(`cover ${dBrowse} m from browse`)
+  } else if (dCover <= 200) out.push(`${dCover <= 30 ? 'right on' : `${dCover} m from`} the conifer edge`)
+  const dLake = b.distLake[i] * 10
+  const dWet = b.distWetland[i] * 10
+  if (dLake <= 200) out.push(`${dLake <= 40 ? 'on' : `${dLake} m from`} a lake shore`)
+  else if (dWet <= 100) out.push('beside a wetland')
+  const lf = b.landform[i]
+  if (lf === LANDFORM.saddle) out.push('a saddle: a travel funnel')
+  else if (lf === LANDFORM.ridge) out.push('ridge line')
+  else if (lf === LANDFORM.bench) out.push('a bench: bedding ground')
+  else if (lf === LANDFORM.valley) out.push('a drainage: scent runs down it at dusk')
+  if (b.landFrac[i] / 255 < 0.5) out.push('a neck of land between waters')
+  const dRoad = b.distRoad[i] * 20
+  if (dRoad <= 60) out.push('on a bush road')
+  else if (dRoad < 5000) out.push(`${dRoad < 1000 ? `${dRoad} m` : `${(dRoad / 1000).toFixed(1)} km`} from a road`)
+  siteFactor(t, b, h, i, c, out)
+  return out
+}

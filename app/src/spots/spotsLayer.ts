@@ -6,6 +6,7 @@
  * forecast or the selected place changes; the scorer runs in well under a
  * frame for the whole grid.
  */
+import { dayPlans } from './dayPlan'
 import type { GeoJSONSource, ImageSource, Map as MlMap } from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
 import { inRegion, REGION, SPOTS_RADIUS_M } from '../config'
@@ -34,6 +35,9 @@ let timer: number | null = null
 function subject(): { lon: number; lat: number; name: string } {
   const sel = selectedPlace()
   if (sel) return sel
+  // a tapped point under examination stands in for a saved place
+  const probe = useSpotsStore.getState().probe
+  if (probe) return probe
   const fix = useGpsStore.getState().fix
   // a fix far from the region is the phone at home: the search stays at camp
   if (fix && inRegion(fix.lon, fix.lat)) return { lon: fix.lon, lat: fix.lat, name: 'here' }
@@ -367,7 +371,7 @@ function cone(m: MlMap, c: Conditions | null) {
   const src = m.getSource(CONE_SRC) as GeoJSONSource | undefined
   if (!src) return
   const s = useSpotsStore.getState()
-  const p = selectedPlace()
+  const p = selectedPlace() ?? s.probe
   const h = habitat()
   if (!s.scent || !c || !p || !h || isFish(s.target)) return src.setData(empty())
   let dir: number
@@ -430,9 +434,12 @@ async function recompute() {
   const c = deriveConditions(f, timeMs, recent)
   if (!c) return s.setResult(null, null, 'no-forecast')
   const t0 = performance.now()
-  const res = scoreTarget(s.target, c, subj)
+  const res = scoreTarget(s.target, c, subj, s.weights)
+  // the week's windows, from the same forecast
+  const lake = res?.lakeId ? h.lake(res.lakeId) ?? null : null
+  const plans = dayPlans(f, s.target, recent, lake, s.weights)
   devlog('spots', `${s.target} scored in ${(performance.now() - t0).toFixed(0)} ms · ${res?.spots.length ?? 0} spots · ${res?.verdict.headline ?? ''}`)
-  s.setResult(res, c, 'ready')
+  s.setResult(res, c, 'ready', plans)
   const mm = getMap()
   if (!mm || !mm.getSource(HEAT_SRC)) return
   const visible = s.heat && app.sheetTab === 'spots' ? 'visible' : s.heat ? 'visible' : 'none'
@@ -464,7 +471,7 @@ export function initSpotsLayer() {
   withMap(() => {
     onHabitat(() => schedule())
     useSpotsStore.subscribe((s, prev) => {
-      if (s.target !== prev.target || s.heat !== prev.heat || s.scent !== prev.scent) schedule()
+      if (s.target !== prev.target || s.heat !== prev.heat || s.scent !== prev.scent || s.weights !== prev.weights || s.probe !== prev.probe) schedule()
     })
     useAppStore.subscribe((s, prev) => {
       if (s.planTimeMs !== prev.planTimeMs || s.online !== prev.online) schedule()
