@@ -33,19 +33,19 @@ export interface LayerOpacity {
 
 export const DEFAULT_LAYERS: LayerVisibility = {
   topo: true,
-  hillshade: true,
+  hillshade: false,
   forest: false,
   bathy: true,
   historical: false,
-  satellite: false,
-  camps: true,
-  wmu: true,
+  satellite: true,
+  camps: false,
+  wmu: false,
   crown: false,
-  parks: true,
+  parks: false,
   fire: false,
-  roads: true,
+  roads: false,
   weather: false,
-  windFlow: false,
+  windFlow: true,
 }
 
 export const DEFAULT_OPACITY: LayerOpacity = {

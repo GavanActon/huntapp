@@ -22,6 +22,28 @@ two days are ECCC's HRDPS 2.5 km by name. The ruler on the map stack
 measures range and bearing leg by leg, with time on foot at a set pace. Where the pipeline has not baked a layer yet the app
 draws it from the live service instead; see [docs/DATA-SOURCES.md](docs/DATA-SOURCES.md).
 
+## Spots: progressive disclosure
+
+The rule for the whole app: the high level first, the detail one tap
+deeper, never all at once.
+
+- **Tap the map** in a target mode: a score and the day's headline. `why`
+  unfolds the reasons. `the arithmetic and the knobs` hands the point to
+  the Spots tab as a probe.
+- **Spots tab**: the week's morning and evening windows (one suggested),
+  the day's verdict at the planning time, the case for the pin or probe
+  (score → reasons → arithmetic: habitat parts, site parts, the day's
+  factors, each with its raw value and its weight), the best spots, and
+  the scoring knobs folded at the bottom.
+- **Knobs**: every component has a weight, 0 (off) to 2 (double), persisted.
+  Turn off `Roads and landings` to ignore roads. The heat map, the spots
+  and the week follow. The rules themselves are in `app/src/spots/` and
+  documented in `docs/HUNT-FISH-SCIENCE.md`.
+- **Windows and hours**: the week view scores legal-light windows (half an
+  hour before sunrise to three hours after; three hours before sunset to
+  half an hour after) and picks the best hour in each; the outlook strip
+  still plans any single hour.
+
 ## Layout
 
 - `app/` — the PWA (Vite + React + TypeScript, MapLibre GL, PMTiles)

@@ -176,13 +176,15 @@ export default function WeatherStrip() {
                 className={`wxday${d.start === selDayMs ? ' wxday-on' : ''}`}
                 onClick={() => setPlanTime(d.start === startOfDayMs(now) ? null : d.start + DAY_FROM_H * 3600_000)}
               >
-                <span>{d.label}</span>
+                <span className="wxday-name">
+                  {d.label}
+                  {d.pop != null && d.pop >= 30 && <em className="wxday-pop">{d.pop}%</em>}
+                </span>
                 <span className="wxday-wx">
                   <SkyGlyph code={d.code} />
                   <b>{temp(d.hi)}°</b>
                   <span>{temp(d.lo)}°</span>
                 </span>
-                {d.pop != null && d.pop >= 30 && <span className="wxday-marks">{d.pop}%</span>}
               </button>
             ))}
           </div>
