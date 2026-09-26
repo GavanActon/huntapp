@@ -1,0 +1,113 @@
+import { Fragment } from 'react'
+import { sourceModes } from '../../map/pmtilesRegistry'
+import { geoModes } from '../../map/MapView'
+import { LIVE_RASTER, LIVE_VECTOR } from '../../sources'
+import { useAppStore, type LayerOpacity, type LayerVisibility } from '../../state/appStore'
+
+interface LayerDef {
+  key: keyof LayerVisibility
+  name: string
+  desc: string
+  opacity?: keyof LayerOpacity
+  /** the pmtiles key this layer is baked into, for the status word */
+  data?: string
+  live?: keyof typeof LIVE_RASTER | keyof typeof LIVE_VECTOR
+}
+
+const GROUPS: { title: string; defs: LayerDef[] }[] = [
+  {
+    title: 'Terrain',
+    defs: [
+      { key: 'topo', name: 'Topographic', desc: 'Contour lines and spot elevations (NRCan Toporama)', opacity: 'topo', data: 'topo', live: 'topo' },
+      { key: 'hillshade', name: 'Hillshade', desc: 'Relief · 1 m LiDAR (2021) near camp, 30 m MRDEM around', opacity: 'hillshade', data: 'hillshade', live: 'hillshade' },
+      { key: 'satellite', name: 'Imagery', desc: 'Ontario orthophoto mosaic', opacity: 'satellite', data: 'satellite', live: 'satellite' },
+    ],
+  },
+  {
+    title: 'Bush & water',
+    defs: [
+      { key: 'forest', name: 'Forest cover', desc: 'Stands by species and age, burns, cuts (Ontario FRI 2010)', opacity: 'forest', data: 'forest' },
+      { key: 'fire', name: 'Burns', desc: 'Fire perimeters by year (MNRF)', data: 'places', live: 'fire' },
+      { key: 'bathy', name: 'Lake depths', desc: 'MNR lake survey contours · White Lake 1972', data: 'bathy', live: 'bathy' },
+    ],
+  },
+  {
+    title: 'History',
+    defs: [{ key: 'historical', name: 'Historical topo', desc: 'Old NTS sheets 042C13 / 042C14, georeferenced', opacity: 'historical', data: 'historical', live: 'historical' }],
+  },
+  {
+    title: 'Land',
+    defs: [
+      { key: 'camps', name: 'Camps', desc: 'Outpost and recreation camp land use permits, cottages', data: 'places', live: 'camps' },
+      { key: 'wmu', name: 'WMU boundaries', desc: 'Wildlife Management Units · here 21B', data: 'places', live: 'wmu' },
+      { key: 'crown', name: 'Private land', desc: 'Patented parcels · the rest is Crown', data: 'places', live: 'crown' },
+      { key: 'parks', name: 'Parks', desc: 'Provincial parks and conservation reserves', data: 'places', live: 'parks' },
+      { key: 'roads', name: 'Bush roads', desc: 'MNRF forest access roads · 9,400 segments, baked only', data: 'places' },
+    ],
+  },
+  {
+    title: 'Weather',
+    defs: [
+      { key: 'windFlow', name: 'Wind flow', desc: 'HRDPS wind streaming over the map at the picked hour', live: 'radar' },
+      { key: 'weather', name: 'Radar', desc: 'Rain rate, latest sweep (ECCC)', live: 'radar' },
+    ],
+  },
+]
+
+function status(d: LayerDef): string {
+  const pm = d.data ? sourceModes.get(d.data) : undefined
+  const mode = pm && pm !== 'missing' ? pm : geoModes.get(d.key)
+  if (mode === 'local') return 'on this phone'
+  if (mode === 'network') return 'baked · online'
+  if (d.live && (d.live in LIVE_RASTER || d.live in LIVE_VECTOR)) return 'live'
+  return 'not built yet'
+}
+
+export default function LayersPanel() {
+  const layers = useAppStore((s) => s.layers)
+  const setLayer = useAppStore((s) => s.setLayer)
+  const opacity = useAppStore((s) => s.opacity)
+  const setOpacity = useAppStore((s) => s.setOpacity)
+
+  return (
+    <div className="panel">
+      {GROUPS.map((g, gi) => (
+        <Fragment key={g.title}>
+          <div className={`panel-section${gi === 0 ? ' panel-section-first' : ''}`}>{g.title}</div>
+          {g.defs.map((d) => {
+            const st = status(d)
+            const dead = st === 'not built yet'
+            return (
+              <Fragment key={d.key}>
+                <label className="row">
+                  <div className="row-text">
+                    <span className="row-title">{d.name}</span>
+                    <span className="row-desc">
+                      {d.desc} · <em>{st}</em>
+                    </span>
+                  </div>
+                  <input type="checkbox" className="switch" checked={layers[d.key] && !dead} disabled={dead} onChange={(e) => setLayer(d.key, e.target.checked)} />
+                </label>
+                {d.opacity && layers[d.key] && !dead && (
+                  <div className="row layer-opacity">
+                    <div className="row-text">
+                      <span className="row-desc">Opacity · {Math.round(opacity[d.opacity] * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={10}
+                      max={100}
+                      step={5}
+                      value={Math.round(opacity[d.opacity] * 100)}
+                      onChange={(e) => setOpacity(d.opacity!, Number(e.target.value) / 100)}
+                    />
+                  </div>
+                )}
+              </Fragment>
+            )
+          })}
+        </Fragment>
+      ))}
+    </div>
+  )
+}

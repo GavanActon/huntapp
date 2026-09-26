@@ -1,0 +1,20 @@
+node_modules/
+dist/
+dev-dist/
+__pycache__/
+pipeline/raw/
+pipeline/tools/
+*.log
+# Raw CHS NONNA bathymetry (login-gated download, non-navigational license — keep out of the public repo)
+external/
+
+# dev-only Open-Meteo response cache
+app/.om-cache/
+
+# wrangler dev state (local D1) and local secrets
+worker/.wrangler/
+worker/.dev.vars
+
+# session screenshots and vite cache
+shot-*.png
+.vite/

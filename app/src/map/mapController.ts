@@ -1,0 +1,128 @@
+import type { Map as MlMap } from 'maplibre-gl'
+import { devlog } from '../devlog'
+
+/** Singleton access to the MapLibre map for non-React modules (weather, tracking). */
+
+type MapReadyFn = (map: MlMap) => void
+
+let map: MlMap | null = null
+// style parsed — sources and layers can be added; tracked ourselves because no
+// MapLibre predicate says exactly this (see setMap)
+let ready = false
+// the WebGL context is gone: MapLibre destroys the style and sets it to
+// null until the browser gives the context back, and every call that
+// touches the style throws in between. Coming back from the lock screen on
+// an iPhone does this on nearly every resume — the log showed it — so for
+// that window the map is not there: getMap() says so, withMap() queues.
+let lost = false
+const waiters: MapReadyFn[] = [] // one-shot: the next ready map, then dropped
+const perMap: MapReadyFn[] = [] // layer setup: re-run for every map instance
+
+/** One callback must not take the others down with it: they're queued in one
+ *  list, so an unguarded throw used to silently strand every layer behind it. */
+function run(fn: MapReadyFn, m: MlMap) {
+  try {
+    fn(m)
+  } catch (err) {
+    console.error('[map] ready callback failed', err)
+  }
+}
+
+export function setMap(m: MlMap | null) {
+  map = m
+  ready = false
+  if (!m) return
+
+  const markReady = () => {
+    if (map !== m || ready) return
+    ready = true
+    for (const fn of perMap) run(fn, m)
+    for (const fn of waiters.splice(0)) run(fn, m)
+  }
+
+  lost = false
+  m.on('webglcontextlost', () => {
+    if (map !== m) return
+    lost = true
+    ready = false
+    devlog('map', 'held back while the context is lost')
+  })
+  m.on('webglcontextrestored', () => {
+    if (map !== m) return
+    // the style comes back from a serialized copy — runtime sources, layers
+    // and images included — and is usable at its own 'style.load'
+    const back = () => {
+      if (map !== m) return
+      lost = false
+      ready = true
+      devlog('map', `back · ${waiters.length} waiting`)
+      for (const fn of waiters.splice(0)) run(fn, m)
+    }
+    if (m.isStyleLoaded()) back()
+    else m.once('style.load', back)
+  })
+
+  // 'style.load' — the moment the style's own sources and layers exist, which
+  // is all addSource/addLayer needs. Deliberately NOT 'load' (nor loaded() /
+  // isStyleLoaded(), which mean the same thing): those also wait on every tile
+  // source, and a pmtiles archive that doesn't cover the whole view leaves a
+  // raster tile loading forever — zoom out past the depth archive's coverage
+  // and 'load' never fires, so the route, weather, tracking and measure layers
+  // were never added at all, with nothing on screen to say why.
+  if (m.isStyleLoaded()) markReady()
+  else m.once('style.load', markReady)
+  m.once('load', markReady) // belt and braces if 'style.load' is ever missed
+}
+
+/** The map, or null while there is none — or while its context is lost. */
+export function getMap(): MlMap | null {
+  return lost ? null : map
+}
+
+/** Run fn now if the map exists (and its style has loaded), otherwise when it becomes ready. */
+export function withMap(fn: MapReadyFn) {
+  if (map && ready) run(fn, map)
+  else waiters.push(fn)
+}
+
+/**
+ * Run `fn` once the map has drawn its first settled frame — or after
+ * `fallbackMs` if that never comes ('idle' waits on every tile source, and
+ * an archive that does not cover the view leaves one loading forever). For
+ * work that should start AFTER the chart is on screen, not race it.
+ */
+export function onFirstIdle(m: MlMap, fn: () => void, fallbackMs = 2500) {
+  let done = false
+  const go = () => {
+    if (done) return
+    done = true
+    fn()
+  }
+  m.once('idle', go)
+  window.setTimeout(go, fallbackMs)
+}
+
+/** Like withMap, but for the layer modules: also runs against any *later* map.
+ *  A one-shot withMap would leave a replacement map (a remount, an HMR update)
+ *  with no route/weather/measure layers at all, and since render() writes
+ *  through `map.getSource(...)?.setData`, that failure is completely silent. */
+export function onEachMap(fn: MapReadyFn) {
+  perMap.push(fn)
+  if (map && ready) run(fn, map)
+}
+
+const LAYER_IDS: Record<string, string[]> = {
+  depth: ['depth-shade'],
+  contours: ['contour-lines', 'contour-labels', 'soundings'],
+  seamarks: ['seamarks'],
+  satellite: ['satellite'],
+}
+
+export function applyLayerVisibility(key: string, visible: boolean) {
+  if (!map) return
+  for (const id of LAYER_IDS[key] ?? []) {
+    if (map.getLayer(id)) {
+      map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none')
+    }
+  }
+}

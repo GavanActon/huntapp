@@ -1,0 +1,2015 @@
+{
+ "cover": {
+  "nodata": 2311,
+  "water": 28734,
+  "open wetland": 30174,
+  "treed wetland": 7,
+  "dense conifer": 128954,
+  "open conifer": 32503,
+  "mixedwood": 71593,
+  "hardwood": 25627,
+  "shrub / alder": 10912,
+  "young regen": 2078,
+  "rock / barren": 0,
+  "road": 4457
+ },
+ "landform": {
+  "flat": 219439,
+  "ridge": 52818,
+  "valley": 38478,
+  "saddle": 43,
+  "bench": 77,
+  "peak": 337,
+  "slope": 26158
+ },
+ "disturbed": 16013,
+ "inferredCuts": 2086,
+ "lakes": [
+  {
+   "id": 1,
+   "name": null,
+   "areaHa": 3.8,
+   "fetchMaxM": 358,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 2,
+   "name": null,
+   "areaHa": 3.0,
+   "fetchMaxM": 208,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 7,
+   "name": null,
+   "areaHa": 6.3,
+   "fetchMaxM": 208,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 8,
+   "name": null,
+   "areaHa": 1.3,
+   "fetchMaxM": 179,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 10,
+   "name": null,
+   "areaHa": 0.3,
+   "fetchMaxM": 59,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 12,
+   "name": null,
+   "areaHa": 5.2,
+   "fetchMaxM": 447,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 14,
+   "name": null,
+   "areaHa": 3.1,
+   "fetchMaxM": 238,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 17,
+   "name": null,
+   "areaHa": 31.9,
+   "fetchMaxM": 776,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 18,
+   "name": null,
+   "areaHa": 4.9,
+   "fetchMaxM": 298,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 20,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 21,
+   "name": "Spider Lake",
+   "areaHa": 24.0,
+   "fetchMaxM": 776,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 24,
+   "name": null,
+   "areaHa": 0.3,
+   "fetchMaxM": 59,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 26,
+   "name": null,
+   "areaHa": 0.3,
+   "fetchMaxM": 59,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 27,
+   "name": null,
+   "areaHa": 0.3,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 28,
+   "name": null,
+   "areaHa": 1.3,
+   "fetchMaxM": 149,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 29,
+   "name": null,
+   "areaHa": 0.3,
+   "fetchMaxM": 59,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 30,
+   "name": null,
+   "areaHa": 4.1,
+   "fetchMaxM": 388,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 31,
+   "name": null,
+   "areaHa": 16.6,
+   "fetchMaxM": 537,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 33,
+   "name": null,
+   "areaHa": 22.2,
+   "fetchMaxM": 597,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 34,
+   "name": null,
+   "areaHa": 1.8,
+   "fetchMaxM": 179,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 35,
+   "name": null,
+   "areaHa": 1.0,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 36,
+   "name": null,
+   "areaHa": 7.9,
+   "fetchMaxM": 388,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 37,
+   "name": "McGill Lake",
+   "areaHa": 134.6,
+   "fetchMaxM": 1552,
+   "maxDepth": 15.1,
+   "meanDepth": null,
+   "secchi": 1.8,
+   "species": [
+    "cisco",
+    "whitefish",
+    "pike",
+    "walleye"
+   ],
+   "depthModel": {
+    "k": 1.0,
+    "shoreMaxM": 439
+   }
+  },
+  {
+   "id": 39,
+   "name": null,
+   "areaHa": 1.9,
+   "fetchMaxM": 179,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 42,
+   "name": null,
+   "areaHa": 2.4,
+   "fetchMaxM": 238,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 43,
+   "name": "Beverly Lake",
+   "areaHa": 40.6,
+   "fetchMaxM": 835,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 44,
+   "name": null,
+   "areaHa": 0.7,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 45,
+   "name": null,
+   "areaHa": 7.4,
+   "fetchMaxM": 358,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 49,
+   "name": null,
+   "areaHa": 1.0,
+   "fetchMaxM": 149,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 53,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 57,
+   "name": null,
+   "areaHa": 0.8,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 58,
+   "name": null,
+   "areaHa": 20.5,
+   "fetchMaxM": 567,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 60,
+   "name": "Pickle Lake",
+   "areaHa": 187.4,
+   "fetchMaxM": 2089,
+   "maxDepth": 17.6,
+   "meanDepth": 3.6,
+   "secchi": null,
+   "species": [
+    "cisco",
+    "whitefish",
+    "pike",
+    "walleye",
+    "perch"
+   ],
+   "depthModel": {
+    "k": 1.46,
+    "shoreMaxM": 321
+   }
+  },
+  {
+   "id": 61,
+   "name": "Line Lake",
+   "areaHa": 77.4,
+   "fetchMaxM": 1313,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 62,
+   "name": null,
+   "areaHa": 2.3,
+   "fetchMaxM": 208,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 63,
+   "name": null,
+   "areaHa": 11.2,
+   "fetchMaxM": 358,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 66,
+   "name": null,
+   "areaHa": 10.2,
+   "fetchMaxM": 507,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 68,
+   "name": null,
+   "areaHa": 0.9,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 69,
+   "name": null,
+   "areaHa": 1.0,
+   "fetchMaxM": 149,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 71,
+   "name": "Ketchup Lake",
+   "areaHa": 61.9,
+   "fetchMaxM": 1044,
+   "maxDepth": 12.9,
+   "meanDepth": 2.5,
+   "secchi": null,
+   "species": [
+    "cisco",
+    "whitefish",
+    "pike",
+    "walleye"
+   ],
+   "depthModel": {
+    "k": 2.16,
+    "shoreMaxM": 190
+   }
+  },
+  {
+   "id": 72,
+   "name": null,
+   "areaHa": 22.0,
+   "fetchMaxM": 567,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 76,
+   "name": null,
+   "areaHa": 0.8,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 79,
+   "name": null,
+   "areaHa": 21.3,
+   "fetchMaxM": 716,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 82,
+   "name": null,
+   "areaHa": 25.0,
+   "fetchMaxM": 567,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 83,
+   "name": "Olga Lake",
+   "areaHa": 303.7,
+   "fetchMaxM": 2358,
+   "maxDepth": 15.6,
+   "meanDepth": 3.0,
+   "secchi": 3.2,
+   "species": [
+    "cisco",
+    "whitefish",
+    "pike",
+    "walleye",
+    "perch"
+   ],
+   "depthModel": {
+    "k": 1.51,
+    "shoreMaxM": 306
+   }
+  },
+  {
+   "id": 86,
+   "name": null,
+   "areaHa": 3.0,
+   "fetchMaxM": 238,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 88,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 89,
+   "name": null,
+   "areaHa": 0.9,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 90,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 94,
+   "name": null,
+   "areaHa": 0.9,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 95,
+   "name": null,
+   "areaHa": 1.3,
+   "fetchMaxM": 179,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 96,
+   "name": null,
+   "areaHa": 6.1,
+   "fetchMaxM": 298,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 97,
+   "name": "White Lake",
+   "areaHa": 3.0,
+   "fetchMaxM": 238,
+   "maxDepth": 48.8,
+   "meanDepth": 8.7,
+   "secchi": 2.7,
+   "species": [
+    "burbot",
+    "cisco",
+    "laketrout",
+    "whitefish",
+    "pike",
+    "walleye",
+    "perch"
+   ],
+   "depthModel": {
+    "k": 3.28,
+    "shoreMaxM": 84
+   }
+  },
+  {
+   "id": 98,
+   "name": null,
+   "areaHa": 11.8,
+   "fetchMaxM": 447,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 99,
+   "name": null,
+   "areaHa": 5.2,
+   "fetchMaxM": 298,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 100,
+   "name": "Garnham Lake",
+   "areaHa": 155.5,
+   "fetchMaxM": 1642,
+   "maxDepth": 33.0,
+   "meanDepth": 7.3,
+   "secchi": 3.2,
+   "species": [
+    "burbot",
+    "cisco",
+    "whitefish",
+    "pike",
+    "walleye",
+    "perch"
+   ],
+   "depthModel": {
+    "k": 1.67,
+    "shoreMaxM": 394
+   }
+  },
+  {
+   "id": 101,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 104,
+   "name": "Ravine Lake",
+   "areaHa": 54.8,
+   "fetchMaxM": 2358,
+   "maxDepth": 29.6,
+   "meanDepth": 10.2,
+   "secchi": 2.6,
+   "species": [
+    "burbot",
+    "cisco",
+    "laketrout",
+    "whitefish",
+    "pike",
+    "walleye",
+    "perch"
+   ],
+   "depthModel": {
+    "k": 1.44,
+    "shoreMaxM": 158
+   }
+  },
+  {
+   "id": 105,
+   "name": null,
+   "areaHa": 50.7,
+   "fetchMaxM": 985,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 107,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 108,
+   "name": "Bulldozer Lake",
+   "areaHa": 30.8,
+   "fetchMaxM": 925,
+   "maxDepth": 19.0,
+   "meanDepth": 3.5,
+   "secchi": 3.1,
+   "species": [
+    "burbot",
+    "cisco",
+    "whitefish",
+    "pike",
+    "walleye",
+    "perch"
+   ],
+   "depthModel": {
+    "k": 1.54,
+    "shoreMaxM": 251
+   }
+  },
+  {
+   "id": 111,
+   "name": null,
+   "areaHa": 0.6,
+   "fetchMaxM": 149,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 113,
+   "name": null,
+   "areaHa": 12.1,
+   "fetchMaxM": 507,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 114,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 115,
+   "name": null,
+   "areaHa": 4.2,
+   "fetchMaxM": 567,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 117,
+   "name": "Upper McGill Lake",
+   "areaHa": 42.8,
+   "fetchMaxM": 1253,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 118,
+   "name": null,
+   "areaHa": 87.3,
+   "fetchMaxM": 2089,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 119,
+   "name": null,
+   "areaHa": 2.4,
+   "fetchMaxM": 208,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 120,
+   "name": null,
+   "areaHa": 8.9,
+   "fetchMaxM": 477,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 123,
+   "name": null,
+   "areaHa": 1.2,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 124,
+   "name": null,
+   "areaHa": 0.9,
+   "fetchMaxM": 149,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 128,
+   "name": null,
+   "areaHa": 5.5,
+   "fetchMaxM": 417,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 133,
+   "name": null,
+   "areaHa": 1.2,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 135,
+   "name": null,
+   "areaHa": 3.1,
+   "fetchMaxM": 268,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 136,
+   "name": null,
+   "areaHa": 15.5,
+   "fetchMaxM": 597,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 138,
+   "name": null,
+   "areaHa": 5.9,
+   "fetchMaxM": 298,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 139,
+   "name": null,
+   "areaHa": 0.6,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 140,
+   "name": null,
+   "areaHa": 1.0,
+   "fetchMaxM": 179,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 141,
+   "name": null,
+   "areaHa": 9.1,
+   "fetchMaxM": 358,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 143,
+   "name": null,
+   "areaHa": 7.7,
+   "fetchMaxM": 417,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 144,
+   "name": null,
+   "areaHa": 27.5,
+   "fetchMaxM": 597,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 145,
+   "name": "Galoche Lake",
+   "areaHa": 34.3,
+   "fetchMaxM": 1164,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 147,
+   "name": null,
+   "areaHa": 0.6,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 149,
+   "name": null,
+   "areaHa": 2.5,
+   "fetchMaxM": 179,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 150,
+   "name": null,
+   "areaHa": 4.9,
+   "fetchMaxM": 298,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 151,
+   "name": null,
+   "areaHa": 0.8,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 154,
+   "name": null,
+   "areaHa": 7.1,
+   "fetchMaxM": 298,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 155,
+   "name": null,
+   "areaHa": 22.6,
+   "fetchMaxM": 567,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 156,
+   "name": null,
+   "areaHa": 0.7,
+   "fetchMaxM": 149,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 158,
+   "name": null,
+   "areaHa": 4.2,
+   "fetchMaxM": 268,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 160,
+   "name": null,
+   "areaHa": 2.1,
+   "fetchMaxM": 179,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 161,
+   "name": null,
+   "areaHa": 0.8,
+   "fetchMaxM": 149,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 164,
+   "name": null,
+   "areaHa": 0.6,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 165,
+   "name": null,
+   "areaHa": 2.5,
+   "fetchMaxM": 208,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 166,
+   "name": null,
+   "areaHa": 0.3,
+   "fetchMaxM": 59,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 167,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 168,
+   "name": null,
+   "areaHa": 0.7,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 172,
+   "name": null,
+   "areaHa": 0.7,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 173,
+   "name": null,
+   "areaHa": 2.3,
+   "fetchMaxM": 238,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 174,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 177,
+   "name": null,
+   "areaHa": 8.4,
+   "fetchMaxM": 388,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 178,
+   "name": null,
+   "areaHa": 0.6,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 179,
+   "name": null,
+   "areaHa": 0.3,
+   "fetchMaxM": 59,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 180,
+   "name": null,
+   "areaHa": 4.2,
+   "fetchMaxM": 208,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 182,
+   "name": "Twist Lake",
+   "areaHa": 118.9,
+   "fetchMaxM": 776,
+   "maxDepth": 23.0,
+   "meanDepth": 6.1,
+   "secchi": 3.5,
+   "species": [
+    "cisco",
+    "whitefish",
+    "walleye"
+   ],
+   "depthModel": {
+    "k": 1.12,
+    "shoreMaxM": 253
+   }
+  },
+  {
+   "id": 184,
+   "name": null,
+   "areaHa": 2.2,
+   "fetchMaxM": 179,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 188,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 190,
+   "name": null,
+   "areaHa": 1.3,
+   "fetchMaxM": 149,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 193,
+   "name": null,
+   "areaHa": 1.8,
+   "fetchMaxM": 179,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 194,
+   "name": null,
+   "areaHa": 1.0,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 198,
+   "name": null,
+   "areaHa": 5.2,
+   "fetchMaxM": 447,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 199,
+   "name": null,
+   "areaHa": 5.6,
+   "fetchMaxM": 388,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 200,
+   "name": null,
+   "areaHa": 2.4,
+   "fetchMaxM": 208,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 202,
+   "name": null,
+   "areaHa": 3.8,
+   "fetchMaxM": 298,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 203,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 204,
+   "name": null,
+   "areaHa": 2.5,
+   "fetchMaxM": 238,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 205,
+   "name": null,
+   "areaHa": 15.1,
+   "fetchMaxM": 537,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 208,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 211,
+   "name": null,
+   "areaHa": 1.9,
+   "fetchMaxM": 208,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 212,
+   "name": null,
+   "areaHa": 6.5,
+   "fetchMaxM": 268,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 215,
+   "name": null,
+   "areaHa": 11.5,
+   "fetchMaxM": 447,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 217,
+   "name": null,
+   "areaHa": 7.9,
+   "fetchMaxM": 358,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 218,
+   "name": null,
+   "areaHa": 2.6,
+   "fetchMaxM": 208,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 220,
+   "name": null,
+   "areaHa": 1.1,
+   "fetchMaxM": 149,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 222,
+   "name": "Jembi Lake",
+   "areaHa": 20.4,
+   "fetchMaxM": 477,
+   "maxDepth": 12.9,
+   "meanDepth": 2.3,
+   "secchi": 2.3,
+   "species": [
+    "burbot",
+    "whitefish",
+    "pike",
+    "walleye",
+    "perch"
+   ],
+   "depthModel": {
+    "k": 2.41,
+    "shoreMaxM": 125
+   }
+  },
+  {
+   "id": 224,
+   "name": null,
+   "areaHa": 5.4,
+   "fetchMaxM": 298,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 225,
+   "name": null,
+   "areaHa": 17.2,
+   "fetchMaxM": 507,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 226,
+   "name": null,
+   "areaHa": 21.7,
+   "fetchMaxM": 626,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 227,
+   "name": null,
+   "areaHa": 14.8,
+   "fetchMaxM": 417,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 228,
+   "name": null,
+   "areaHa": 12.5,
+   "fetchMaxM": 447,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 229,
+   "name": null,
+   "areaHa": 7.1,
+   "fetchMaxM": 328,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 230,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 231,
+   "name": null,
+   "areaHa": 2.3,
+   "fetchMaxM": 208,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 232,
+   "name": null,
+   "areaHa": 39.1,
+   "fetchMaxM": 895,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 233,
+   "name": null,
+   "areaHa": 2.0,
+   "fetchMaxM": 149,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 235,
+   "name": null,
+   "areaHa": 8.0,
+   "fetchMaxM": 358,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 238,
+   "name": null,
+   "areaHa": 8.4,
+   "fetchMaxM": 328,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 239,
+   "name": null,
+   "areaHa": 0.6,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike",
+    "walleye"
+   ],
+   "depthModel": null
+  }
+ ]
+}
