@@ -43,4 +43,8 @@
 .checks-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: 6px; }
 .checks-list .ck-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 4px 2px; border-bottom: 1px solid var(--c-border); }
 .checks-list .ck-row > span:first-child { flex: 1; }
+.gc-lock {
+  display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 4px 8px; border-radius: 10px;
+  border: 1px solid var(--c-accent); background: var(--c-accent-dim); color: var(--c-accent); font-size: 12px; font-weight: 600; cursor: pointer;
+}
 .pp-acts .pp-log { background: transparent; border: 1px solid var(--c-border-strong); color: var(--c-text); }

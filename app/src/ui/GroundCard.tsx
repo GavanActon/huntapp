@@ -36,18 +36,31 @@ function Arrow({ toward, size = 18 }: { toward: number; size?: number }) {
   )
 }
 
-/** The phone's compass heading, when it has one and is allowed. */
-function useHeading(active: boolean): number | null {
-  const [h, setH] = useState<number | null>(null)
+/** The phone's compass heading (where the top of the phone points), when
+ *  it has one and is allowed. 'none' after a few seconds without a reading. */
+function useHeading(active: boolean): number | null | 'none' {
+  const [h, setH] = useState<number | null | 'none'>(null)
   useEffect(() => {
     if (!active) return
+    setH(null)
+    let got = false
     const on = (e: DeviceOrientationEvent & { webkitCompassHeading?: number }) => {
-      if (typeof e.webkitCompassHeading === 'number') setH(e.webkitCompassHeading)
-      else if (e.absolute && e.alpha != null) setH((360 - e.alpha) % 360)
+      // the screen may be turned: the top of the phone is then not "up" on screen
+      const turn = (screen.orientation?.angle ?? 0) as number
+      let v: number | null = null
+      if (typeof e.webkitCompassHeading === 'number') v = e.webkitCompassHeading
+      else if (e.absolute && e.alpha != null) v = 360 - e.alpha
+      if (v == null || Number.isNaN(v)) return
+      got = true
+      setH((((v + turn) % 360) + 360) % 360)
     }
     window.addEventListener('deviceorientationabsolute', on as EventListener)
     window.addEventListener('deviceorientation', on as EventListener)
+    const t = window.setTimeout(() => {
+      if (!got) setH('none')
+    }, 3000)
     return () => {
+      window.clearTimeout(t)
       window.removeEventListener('deviceorientationabsolute', on as EventListener)
       window.removeEventListener('deviceorientation', on as EventListener)
     }
@@ -62,25 +75,41 @@ function CheckCard() {
   const [toward, setToward] = useState<number | null>(null)
   const [strength, setStrength] = useState<Strength | null>(null)
   const [useCompass, setUseCompass] = useState(false)
+  const [compassNote, setCompassNote] = useState<string | null>(null)
   const [saved, setSaved] = useState<WindCheck | null>(null)
   const heading = useHeading(useCompass)
 
   const askCompass = async () => {
+    setCompassNote(null)
+    if (!('DeviceOrientationEvent' in window)) return setCompassNote('No compass in this browser: tap the arrow instead')
     const DOE = window.DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> }
     try {
-      if (DOE?.requestPermission && (await DOE.requestPermission()) !== 'granted') return
-    } catch {
-      return
+      if (DOE?.requestPermission && (await DOE.requestPermission()) !== 'granted') return setCompassNote('Compass blocked: allow Motion & Orientation for this site, or tap the arrow')
+    } catch (e) {
+      return setCompassNote(`Compass not available (${(e as Error).message || 'refused'}): tap the arrow instead`)
     }
     setUseCompass(true)
   }
 
+  /** Take the live heading and stop tracking, so it holds still. */
+  const lockHeading = (h: number) => {
+    setToward(Math.round(h))
+    setUseCompass(false)
+    if (strength === 'calm') setStrength(null)
+  }
+
   const save = async () => {
     if (!strength) return
-    await loadMicro()
     const now = Date.now()
-    // the model's call first, before this check can sway it
-    const g = groundWind(at.lon, at.lat, now)
+    // the model's call first, before this check can sway it; a check is
+    // still worth saving without one (offline before the model loaded)
+    let g: ReturnType<typeof groundWind> = null
+    try {
+      await loadMicro()
+      g = groundWind(at.lon, at.lat, now)
+    } catch {
+      g = null
+    }
     const calm = strength === 'calm'
     const c = add({
       ts: now,
@@ -140,16 +169,22 @@ function CheckCard() {
             <button className="linklike" onClick={() => void askCompass()}>
               aim phone
             </button>
-          ) : heading == null ? (
+          ) : heading === 'none' ? (
             <span className="gc-note">no compass</span>
+          ) : heading == null ? (
+            <span className="gc-note">…</span>
           ) : (
-            <button className="linklike" onClick={() => setToward(Math.round(heading))}>
-              use {Math.round(heading)}°
+            <button className="gc-lock" onClick={() => lockHeading(heading)}>
+              <Arrow toward={0} size={20} />
+              <span>set {Math.round(heading)}°</span>
             </button>
           )}
         </div>
       </div>
-      {toward != null && toward % 45 !== 0 && <div className="gc-note">toward {toward}° ({compass(toward)})</div>}
+      {useCompass && heading !== 'none' && <div className="gc-note">Point the top of the phone where the powder goes, then tap set.</div>}
+      {useCompass && heading === 'none' && <div className="gc-note">No compass reading from this phone: tap the arrow instead.</div>}
+      {compassNote && <div className="gc-note">{compassNote}</div>}
+      {toward != null && toward % 45 !== 0 && <div className="gc-note">toward {toward}° ({compass(toward)}), from the compass</div>}
       <div className="gc-q">How hard?</div>
       <div className="gc-strength">
         {STRENGTHS.map((s) => (
