@@ -5,7 +5,7 @@ import { DATA_BASE, DATA_FILES, GEO_THEMES, geoFile, HOME, MAX_BOUNDS } from '..
 import { getStoredFile } from '../offline/fileStore'
 import { useAppStore, type LayerOpacity, type LayerVisibility } from '../state/appStore'
 import { usePlacesStore } from '../state/placesStore'
-import { setMap, withMap } from './mapController'
+import { geoUrls, setMap, withMap } from './mapController'
 import { useMeasureStore } from '../measure/measureStore'
 import { explainPoint } from '../spots/scoring'
 import { useSpotsStore } from '../state/spotsStore'
@@ -106,6 +106,8 @@ export default function MapView() {
     void (async () => {
       const [available, geo] = await Promise.all([registerAllDataFiles(), resolveGeo()])
       if (cancelled) return
+      geoUrls.clear()
+      for (const [k, v] of geo) geoUrls.set(k, v)
       const missing = DATA_FILES.filter((d) => sourceModes.get(d.key) === 'missing').map((d) => d.label)
       useAppStore.getState().setMissingData(missing)
       useAppStore.getState().setOfflineReady(DATA_FILES.every((d) => sourceModes.get(d.key) === 'local'))

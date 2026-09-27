@@ -24,6 +24,8 @@ export interface LakeFacts {
   secchi: number | null
   species: string[]
   depthModel: { k: number; shoreMaxM: number } | null
+  /** set when depths come from the lake's MNR survey sheet (pipeline/survey_depth.py) */
+  depthSurvey?: { sheet: string; max: number | null }
 }
 
 interface BandDef {

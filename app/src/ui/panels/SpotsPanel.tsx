@@ -385,7 +385,7 @@ export default function SpotsPanel() {
           )}
           {full && (
             <div className="panel-note row-desc">
-              Scores blend the habitat (Ontario FRI stands, burns, LiDAR-derived landform, water) with the hour&apos;s wind, light and temperature; see docs/HUNT-FISH-SCIENCE.md for the rules and their sources. Depths are estimates. Not a substitute for the regulations.
+              Scores blend the habitat (Ontario FRI stands, burns, LiDAR-derived landform, water) with the hour&apos;s wind, light and temperature; see docs/HUNT-FISH-SCIENCE.md for the rules and their sources. Depths on Pickle, Ketchup and McGill are read from the 1978–79 MNR survey sheets, estimated elsewhere. Not a substitute for the regulations.
             </div>
           )}
         </>

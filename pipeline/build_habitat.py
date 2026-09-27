@@ -192,6 +192,48 @@ def species_keys(summary: str | None) -> list[str]:
     return out
 
 
+SURVEY_DIR = Path(__file__).parent / "raw" / "bathy"
+
+
+def apply_survey_depths(depth_est: np.ndarray, lake_id: np.ndarray, lakes: list[dict]) -> int:
+    """Where survey_depth.py has turned a lake's MNR sheet into a depth
+    raster (raw/bathy/<id>_depth.tif, tagged with the lake name), its
+    depths replace the shape model on that lake: averaged into each 30 m
+    cell, and carried by nearest neighbour to lake cells the sheet's
+    outline just misses. Returns how many lakes were replaced."""
+    by_name = {(l.get("name") or "").lower(): l for l in lakes}
+    n = 0
+    for tif in sorted(SURVEY_DIR.glob("*_depth.tif")):
+        with rasterio.open(tif) as ds:
+            name = ds.tags().get("lake", "")
+            lk = by_name.get(name.lower())
+            if not lk:
+                print(f"  {tif.name}: lake {name!r} not in this grid, skipped")
+                continue
+            grid = np.full((ROWS, COLS), np.nan, dtype=np.float32)
+            reproject(
+                source=rasterio.band(ds, 1),
+                destination=grid,
+                dst_transform=TRANSFORM,
+                dst_crs="EPSG:4326",
+                resampling=Resampling.average,
+                src_nodata=np.nan,
+                dst_nodata=np.nan,
+            )
+            tags = ds.tags()
+        cells = lake_id == lk["id"]
+        have = cells & np.isfinite(grid)
+        if have.sum() < 0.5 * cells.sum():
+            print(f"  {tif.name}: covers only {have.sum()}/{cells.sum()} cells of {name}, skipped")
+            continue
+        _, (iy, ix) = ndimage.distance_transform_edt(~have, return_indices=True)
+        fill = grid[iy, ix]
+        depth_est[cells] = np.clip(np.round(fill[cells] * 4), 0, 254).astype(np.uint8)
+        lk["depthSurvey"] = {"sheet": tags.get("source", tif.name).replace("_geo.tif", ""), "max": float(tags.get("max_m") or 0) or None}
+        n += 1
+    return n
+
+
 def main() -> None:
     t0 = time.time()
     print(f"grid {COLS}×{ROWS} cells of {DX_M:.0f}×{DY_M:.0f} m over {REGION['name']}")
@@ -384,7 +426,8 @@ def main() -> None:
             depth_est[cells] = np.clip(np.round(depth * 4), 0, 254).astype(np.uint8)
             entry["depthModel"] = {"k": round(kexp, 2), "shoreMaxM": round(dmax_shore)}
         lakes.append(entry)
-    print(f"  {len(lakes)} lakes, {sum(1 for l in lakes if l['depthModel'])} with a depth model · {time.time() - t0:.0f}s")
+    n_survey = apply_survey_depths(depth_est, lake_id, lakes)
+    print(f"  {len(lakes)} lakes, {sum(1 for l in lakes if l['depthModel'])} with a depth model, {n_survey} from survey sheets · {time.time() - t0:.0f}s")
 
     # ---- assemble ----
     bands: list[tuple[str, np.ndarray, float, str]] = [

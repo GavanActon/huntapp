@@ -126,3 +126,8 @@ export function applyLayerVisibility(key: string, visible: boolean) {
     }
   }
 }
+
+/** Where each baked GeoJSON theme was found (a blob URL for the phone's
+ *  copy, else the server path), for layers added outside the style, like
+ *  the lake depth bands. Filled by MapView before the map is made. */
+export const geoUrls = new Map<string, string>()

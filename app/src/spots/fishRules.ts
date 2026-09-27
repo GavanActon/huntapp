@@ -365,7 +365,8 @@ export function fishVerdict(t: FishTarget, c: Conditions, lake: LakeFacts | null
     notes.push(`${PERIOD_NAMES[ctx.period]} · try ${lo.toFixed(0)}–${hi.toFixed(0)} m${lake.maxDepth ? ` (${lake.name ?? 'lake'} max ${lake.maxDepth.toFixed(1)} m${lake.meanDepth ? `, mean ${lake.meanDepth.toFixed(1)} m` : ''})` : ''}`)
     if (ctx.period === 'summer' || ctx.period === 'latesummer') notes.push(`Thermocline about ${thermoclineM(lake).toFixed(0)} m from the ${(lake.fetchMaxM / 1000).toFixed(1)} km fetch${lake.secchi != null && lake.secchi < 2.5 ? ' (stained water, shallower)' : ''}.`)
     if (lake.secchi != null) notes.push(lake.secchi < 2.5 ? `Secchi ${lake.secchi} m: stained, walleye feed in daylight here.` : `Secchi ${lake.secchi} m: clearer, low light matters more.`)
-    if (!lake.depthModel) notes.push('No depth survey for this lake: depths are guessed from the shoreline.')
+    if (lake.depthSurvey) notes.push('Depths are read from the MNR survey sheet (1978–79 contours, 2 m apart). Bottoms shift: sound them.')
+    else if (!lake.depthModel) notes.push('No depth survey for this lake: depths are guessed from the shoreline.')
     else notes.push('Depths are a shape estimate from the shoreline, calibrated to the MNR survey mean and maximum. Sound them.')
   }
   if (!c.hrdps) notes.push('This hour is beyond the HRDPS horizon: blended forecast.')

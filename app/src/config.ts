@@ -77,7 +77,7 @@ export const DATA_FILES: DataFileDef[] = [
 
 /** Vector themes the pipeline writes as GeoJSON (build_vectors.py). When a
  *  file is on the phone or the server it replaces the live LIO query. */
-export const GEO_THEMES = ['wmu', 'camps', 'crown', 'parks', 'bathy', 'fire', 'roads', 'forest'] as const
+export const GEO_THEMES = ['wmu', 'camps', 'crown', 'parks', 'bathy', 'fire', 'roads', 'forest', 'depth'] as const
 export type GeoTheme = (typeof GEO_THEMES)[number]
 export const geoFile = (t: GeoTheme) => `${t}-${REGION.id}.geojson`
 

@@ -347,6 +347,10 @@
    "depthModel": {
     "k": 1.0,
     "shoreMaxM": 439
+   },
+   "depthSurvey": {
+    "sheet": "16-6097-54195",
+    "max": 15.1
    }
   },
   {
@@ -490,6 +494,10 @@
    "depthModel": {
     "k": 1.46,
     "shoreMaxM": 321
+   },
+   "depthSurvey": {
+    "sheet": "16-6042-54219",
+    "max": 15.4
    }
   },
   {
@@ -592,6 +600,10 @@
    "depthModel": {
     "k": 2.16,
     "shoreMaxM": 190
+   },
+   "depthSurvey": {
+    "sheet": "16-6034-54164",
+    "max": 12.9
    }
   },
   {

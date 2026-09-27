@@ -7,7 +7,7 @@ top, a bottom sheet with Places · Spots · Layers · Weather · Settings.
 **Spots** answers "where should we be today": pick moose, grouse, bear,
 deer, walleye, pike or lake trout and it scores every 30 m cell of the
 region from a baked habitat grid (FRI stands and their age, burns and
-cuts, LiDAR-derived landform, lake shores, wetlands, estimated depth,
+cuts, LiDAR-derived landform, lake shores, wetlands, lake depth,
 fetch) against the hour's HRDPS wind, temperature, light and the season,
 then lists the best few spots near camp with reasons, a verdict card for
 the day, a heat map, and a scent cone from your pin. The rules and their
@@ -32,8 +32,14 @@ draws it from the live service instead; see [docs/DATA-SOURCES.md](docs/DATA-SOU
 - **Lake depths**: the MNR survey sheets for Pickle (1978), Ketchup (1978)
   and McGill (1979), fitted to the shoreline by `pipeline/georef_lake_sheet.py`
   (misses of 13, 19 and 8 m) and baked as ink on transparency, so the real
-  contours and soundings draw on the lake. Other lakes show the habitat
-  bake's estimated depths. Source: the Historic Bathymetry Index feature
+  contours and soundings draw on the lake. `pipeline/survey_depth.py` reads
+  those sheets into depth surfaces by counting contours in from the shore
+  (plus a few hand-read labels for the shoals), so the shaded depth bands,
+  the tap-a-point depth and the Spots fishing scores all follow the 1978-79
+  survey on these three lakes; Pickle's result averages 3.4 m against the
+  province's recorded 3.6 m mean. Other lakes show the habitat bake's shape
+  estimate. `pipeline/build_depth_bands.py` draws both as smooth bands at
+  the sheets' 2 m steps, clipped to the real shoreline. Source: the Historic Bathymetry Index feature
   service, `https://www.publicdocs.mnr.gov.on.ca/mirb/Bathymetry/<WBY_LID>.jpg`.
 - **Ground wind**: the air at head height, not the forecast at 10 m. The
   HRDPS wind is downscaled over the terrain and the forest (mass-consistent,
@@ -85,6 +91,8 @@ deeper, never all at once.
     historical sheets) → raster PMTiles
   - `georef_sheet.py` — pins a CanMatrix2 scan's neatline to its NTS sheet bounds
   - `georef_lake_sheet.py` — fits an MNR lake survey sheet to the lake's real shoreline
+  - `survey_depth.py` — turns a fitted sheet into a depth raster by counting its contours
+  - `build_depth_bands.py` — smooth lake depth band polygons for the map
   - `gen_icons.py` — app icons
 
 Two boxes drive every bake, both in `app/src/config.ts`: `CORE` (about
@@ -118,6 +126,9 @@ python pipeline/georef_sheet.py pipeline/raw/sheets/042c13_02.tif 042C13   # Can
 python pipeline/georef_sheet.py pipeline/raw/sheets/042c14_02.tif 042C14
 python pipeline/build_raster.py historical pipeline/raw/sheets/042c13_geo.tif pipeline/raw/sheets/042c14_geo.tif --minz 9 --maxz 15
 python pipeline/build_microclimate.py               # the ground-wind grid (after build_habitat.py; needs scipy)
+python pipeline/survey_depth.py --all               # lake sheets to depth (after georef_lake_sheet.py)
+python pipeline/build_habitat.py                    # again: picks the survey depths up
+python pipeline/build_depth_bands.py                # the map's depth bands
 ```
 
 The sheets come from `https://ftp.maps.canada.ca/pub/nrcan_rncan/raster/`

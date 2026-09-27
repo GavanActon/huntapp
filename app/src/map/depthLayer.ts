@@ -1,37 +1,42 @@
 import type { FeatureCollection } from 'geojson'
 import type { GeoJSONSource, Map as MlMap } from 'maplibre-gl'
-import { onEachMap } from './mapController'
+import { geoUrls, onEachMap } from './mapController'
 import { habitat, onHabitat } from '../spots/habitatGrid'
 import { useAppStore } from '../state/appStore'
 
 /**
  * Lake depths where the province has none. Pickle, Ketchup and McGill were
- * surveyed by transect in 1978–79 and only the paper sheets survive, so
- * the LIO contour layer is empty here. The habitat bake estimates depth
- * per water cell from the shoreline shape, calibrated to each lake's
- * surveyed mean and maximum (habitatGrid `depthEst`, `lakes[].depthModel`).
- * This draws that estimate as banded fills with a depth label, and says
- * "estimated" wherever it shows. It answers to the Lake depths switch.
+ * surveyed in 1978–79 and only the paper sheets survive, so the LIO
+ * contour layer is empty here. pipeline/survey_depth.py reads those sheets
+ * (counting contours from the shore) into depth surfaces; every other lake
+ * has the shape estimate from its shoreline. pipeline/build_depth_bands.py
+ * contours both into smooth band polygons clipped to the real shore
+ * (depth-<region>.geojson), which is what this draws. Without that file it
+ * falls back to the habitat grid's 30 m cells. It answers to the Lake
+ * depths switch.
  */
 
 const SRC = 'depth-est'
+/** Band edges at the survey sheets' own 2 m contours, so the fills sit
+ *  between the drawn lines. pipeline/build_depth_bands.py EDGES must match. */
 const BANDS: [number, string][] = [
-  [1.5, 'rgba(180, 225, 245, 0.55)'],
-  [3, 'rgba(120, 195, 235, 0.55)'],
-  [6, 'rgba(70, 150, 215, 0.6)'],
-  [10, 'rgba(40, 105, 185, 0.65)'],
-  [15, 'rgba(25, 70, 150, 0.7)'],
-  [99, 'rgba(15, 40, 110, 0.75)'],
+  [2, 'rgba(180, 225, 245, 0.55)'],
+  [4, 'rgba(125, 198, 236, 0.56)'],
+  [6, 'rgba(80, 162, 222, 0.6)'],
+  [8, 'rgba(52, 126, 200, 0.63)'],
+  [10, 'rgba(36, 96, 178, 0.66)'],
+  [14, 'rgba(24, 66, 148, 0.7)'],
+  [99, 'rgba(14, 38, 108, 0.75)'],
 ]
 
-/** Lakes with a georeferenced MNR survey sheet (bathySheets): the estimate
- *  is only a faint wash under the real contours there, and never labelled,
- *  so two sets of numbers never disagree on one lake. */
+/** Lakes with a georeferenced MNR survey sheet (bathySheets): their bands
+ *  now come from the sheet itself, drawn a little lighter so its ink and
+ *  numbers read on top, and not labelled again. */
 const SURVEYED = ['pickle lake', 'ketchup lake', 'mcgill lake']
 function surveyedIds(h: NonNullable<ReturnType<typeof habitat>>): Set<number> {
   return new Set(h.lakes.filter((l) => SURVEYED.includes((l.name ?? '').toLowerCase())).map((l) => l.id))
 }
-const washed = (rgba: string) => rgba.replace(/[\d.]+\)$/, (a) => `${(parseFloat(a) * 0.45).toFixed(2)})`)
+const washed = (rgba: string) => rgba.replace(/[\d.]+\)$/, (a) => `${(parseFloat(a) * 0.7).toFixed(2)})`)
 
 function bandOf(d: number): number {
   for (let i = 0; i < BANDS.length; i++) if (d <= BANDS[i][0]) return i
@@ -107,16 +112,29 @@ function labelsFc(): FeatureCollection {
 let layersOn: MlMap | null = null
 let currentMap: MlMap | null = null
 
+/** The band polygons' colour: the same ramp, washed on surveyed lakes. */
+function bandColor(): unknown {
+  const pick = (survey: boolean) => ['match', ['get', 'band'], ...BANDS.flatMap(([, c], i) => [i, survey ? washed(c) : c]), BANDS[BANDS.length - 1][1]]
+  return ['case', ['==', ['get', 'survey'], true], pick(true), pick(false)]
+}
+
 function addLayers(m: MlMap) {
-  if (layersOn === m || !m.getStyle() || !habitat()) return
+  const bandsUrl = geoUrls.get('depth')
+  if (layersOn === m || !m.getStyle() || (!bandsUrl && !habitat())) return
   const on = useAppStore.getState().layers.bathy
   const vis = { visibility: on ? 'visible' : 'none' } as const
   // beneath the basemap's labels and the vector overlays, above the rasters
   // under the survey sheets' ink where it exists, else under the overlays
   const before = m.getLayer('bathy-sheets') ? 'bathy-sheets' : m.getStyle().layers.find((l) => l.id === 'bathy-line' || l.id === 'wmu-line' || l.type === 'symbol')?.id
-  m.addSource(SRC, { type: 'geojson', data: buildFc() })
+  if (bandsUrl) {
+    // smooth bands, clipped to the shore: antialiased edges
+    m.addSource(SRC, { type: 'geojson', data: bandsUrl, attribution: 'Depths: MNR lake surveys 1978–79 · estimates elsewhere' })
+    m.addLayer({ id: 'depth-est-fill', type: 'fill', source: SRC, layout: vis, paint: { 'fill-color': bandColor() as never, 'fill-antialias': true }, metadata: { group: 'bathy' } }, before)
+  } else {
+    m.addSource(SRC, { type: 'geojson', data: buildFc() })
+    m.addLayer({ id: 'depth-est-fill', type: 'fill', source: SRC, layout: vis, paint: { 'fill-color': ['get', 'color'], 'fill-antialias': false }, metadata: { group: 'bathy' } }, before)
+  }
   m.addSource(`${SRC}-labels`, { type: 'geojson', data: labelsFc() })
-  m.addLayer({ id: 'depth-est-fill', type: 'fill', source: SRC, layout: vis, paint: { 'fill-color': ['get', 'color'], 'fill-antialias': false }, metadata: { group: 'bathy' } }, before)
   m.addLayer(
     {
       id: 'depth-est-label',
@@ -149,7 +167,7 @@ export function initDepthLayer() {
     if (!layersOn && currentMap) addLayers(currentMap)
     const m = layersOn
     if (!m) return
-    ;(m.getSource(SRC) as GeoJSONSource | undefined)?.setData(buildFc())
+    if (!geoUrls.get('depth')) (m.getSource(SRC) as GeoJSONSource | undefined)?.setData(buildFc())
     ;(m.getSource(`${SRC}-labels`) as GeoJSONSource | undefined)?.setData(labelsFc())
   })
 }
