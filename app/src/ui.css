@@ -103,8 +103,8 @@
   height: 15px;
 }
 
-/* the hour row holds the whole day but shows ten cells at a time — any hour
-   is a swipe away. No scrollbar: the clipped cell at the edge is the hint. */
+/* the hour row runs from now through the whole forecast, ten cells at a
+   time — any hour, overnight included, is a swipe away. No scrollbar: the clipped cell at the edge is the hint. */
 .wxstrip-cells {
   display: flex;
   gap: 3px;
@@ -228,6 +228,20 @@
   color: var(--c-text-dim);
   font-size: 10px;
   line-height: 1.1;
+}
+
+/* after dark: a shade deeper, so the night reads as a stretch of the row */
+.wxcell-night {
+  background: rgba(6, 12, 20, 0.8);
+}
+
+/* the day turns over: the cell names the new day and a rule marks the seam */
+.wxcell-midnight {
+  box-shadow: inset 1.5px 0 0 var(--c-border-strong);
+}
+
+.wxcell-midnight .wxcell-h {
+  color: var(--c-accent);
 }
 
 .wxcell b {

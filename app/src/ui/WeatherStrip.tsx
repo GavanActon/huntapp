@@ -1,17 +1,19 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { inRegion } from '../config'
 import { useAppStore } from '../state/appStore'
 import { selectedPlace, homePlace, usePlacesStore } from '../state/placesStore'
 import { useGpsStore } from '../tracking/gpsStore'
-import { dayHours, isRain, isSnow, isThunder, pointForecast, type HourRow, type PointForecast } from '../weather/openMeteo'
+import { hourRow, isRain, isSnow, isThunder, pointForecast, type HourRow, type PointForecast } from '../weather/openMeteo'
 import { startOfDayMs } from '../time'
 import { onWeatherRefreshed } from '../weather/refresh'
 
 /**
  * Two-level outlook strip pinned to the top of the map, straight from the
  * boat app's layout: a day row (seven days, sky, high/low) over an hour row
- * for the picked day (wind arrow and speed, temperature, rain chance).
- * Tapping a day or an hour sets the app-wide planning time. The strip is
+ * that runs unbroken from now to the end of the forecast (wind arrow and
+ * speed, temperature, rain chance), so a swipe carries on through the night
+ * into the next day. Tapping a day jumps the hour row to that morning;
+ * tapping a day or an hour sets the app-wide planning time. The strip is
  * about the selected place, or the camp, or the phone's position.
  */
 
@@ -137,20 +139,44 @@ export default function WeatherStrip() {
     })
   }, [forecast])
 
+  // every hour from this one on, across the days — overnight included
+  const floorNow = now - (now % 3600_000)
   const hours: HourRow[] = useMemo(() => {
     if (!forecast) return []
-    const all = dayHours(forecast, selDayMs)
-    const floorNow = now - (now % 3600_000)
-    return startOfDayMs(now) === selDayMs
-      ? all.filter((h) => h.time.getTime() >= floorNow)
-      : all.filter((h) => h.time.getHours() >= DAY_FROM_H)
-  }, [forecast, selDayMs, now])
+    const out: HourRow[] = []
+    forecast.hourly.time.forEach((t, i) => {
+      if (Date.parse(t) >= floorNow) out.push(hourRow(forecast, i))
+    })
+    return out
+  }, [forecast, floorNow])
+
+  // sun down to sun up, per day, to shade the night hours
+  const nights = useMemo(() => {
+    if (!forecast) return [] as [number, number][]
+    const { sunrise, sunset } = forecast.daily
+    return sunset.slice(0, -1).map((ss, i) => [Date.parse(ss), Date.parse(sunrise[i + 1])] as [number, number])
+  }, [forecast])
+  const firstRise = forecast ? Date.parse(forecast.daily.sunrise[0]) : 0
+  const isNight = (ms: number) => ms < firstRise || nights.some(([a, b]) => ms >= a && ms < b)
+
+  // bring the planned hour into view when it lands off-screen (a day tap)
+  const cellsRef = useRef<HTMLDivElement>(null)
+  const planHourMs = planTimeMs == null ? null : planTimeMs - (planTimeMs % 3600_000)
+  useEffect(() => {
+    const row = cellsRef.current
+    if (!row) return
+    const cell = row.querySelector<HTMLElement>(`[data-ms="${planHourMs ?? floorNow}"]`)
+    if (!cell) return
+    const left = cell.offsetLeft - row.offsetLeft
+    if (left < row.scrollLeft || left + cell.offsetWidth > row.scrollLeft + row.clientWidth)
+      row.scrollTo({ left, behavior: 'smooth' })
+  }, [planHourMs, hours.length, floorNow])
 
   if (!enabled) return null
 
   const temp = (c: number) => (units === 'imperial' ? Math.round(c * 1.8 + 32) : Math.round(c))
   const wind = (k: number) => (units === 'imperial' ? Math.round(k * 0.621371) : Math.round(k))
-  const activeHourMs = planTimeMs == null ? now - (now % 3600_000) : planTimeMs - (planTimeMs % 3600_000)
+  const activeHourMs = planTimeMs == null ? floorNow : planTimeMs - (planTimeMs % 3600_000)
 
   return (
     <div className="wxstrip glass">
@@ -188,16 +214,18 @@ export default function WeatherStrip() {
               </button>
             ))}
           </div>
-          <div className="wxstrip-cells">
+          <div className="wxstrip-cells" ref={cellsRef}>
             {hours.map((h) => {
               const ms = h.time.getTime()
+              const midnight = h.time.getHours() === 0
               return (
                 <button
                   key={ms}
-                  className={`wxcell${ms === activeHourMs ? ' wx-active' : ''}`}
+                  data-ms={ms}
+                  className={`wxcell${ms === activeHourMs ? ' wx-active' : ''}${isNight(ms) ? ' wxcell-night' : ''}${midnight ? ' wxcell-midnight' : ''}`}
                   onClick={() => setPlanTime(ms)}
                 >
-                  <span className="wxcell-h">{hourLabel(h.time)}</span>
+                  <span className="wxcell-h">{midnight ? DAYS[h.time.getDay()] : hourLabel(h.time)}</span>
                   <span className="wxday-wx">
                     <WindArrow deg={h.windDir} />
                     <b>{wind(h.windKmh)}</b>
