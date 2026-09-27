@@ -11,7 +11,7 @@ import { explainPoint } from '../spots/scoring'
 import { useSpotsStore } from '../state/spotsStore'
 import { TARGET_NAMES } from '../spots/types'
 import { buildMapStyle, contourFilters } from './mapStyle'
-import { registerAllDataFiles, sourceModes } from './pmtilesRegistry'
+import { offlineComplete, registerAllDataFiles, sourceModes } from './pmtilesRegistry'
 import { attachTapWeather } from './tapWeather'
 import { attachTapGround } from './tapGround'
 import { useScent } from '../weather/micro/scent'
@@ -110,7 +110,7 @@ export default function MapView() {
       for (const [k, v] of geo) geoUrls.set(k, v)
       const missing = DATA_FILES.filter((d) => sourceModes.get(d.key) === 'missing').map((d) => d.label)
       useAppStore.getState().setMissingData(missing)
-      useAppStore.getState().setOfflineReady(DATA_FILES.every((d) => sourceModes.get(d.key) === 'local'))
+      useAppStore.getState().setOfflineReady(offlineComplete())
       devlog('map', `sources · ${[...sourceModes].map(([k, m]) => `${k}:${m}`).join(' ')} · geo ${[...geo.keys()].join(',') || 'none'}`)
 
       const { layers, opacity, contourInterval } = useAppStore.getState()

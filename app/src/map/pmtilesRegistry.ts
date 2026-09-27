@@ -142,6 +142,29 @@ export function allDataLocal(): boolean {
   return DATA_FILES.every((d) => sourceModes.get(d.key) === 'local')
 }
 
+const ABSENT_KEY = 'huntapp-absent-files'
+
+/** Every map the offline bundle can hold is on the phone. Files the server
+ *  itself does not have (never baked) cannot be saved, so they do not count:
+ *  they are noted while online, since offline every unsaved file looks missing. */
+export function offlineComplete(): boolean {
+  let absent: string[] = []
+  try {
+    absent = JSON.parse(localStorage.getItem(ABSENT_KEY) ?? '[]') as string[]
+  } catch {
+    /* ignore */
+  }
+  if (navigator.onLine) {
+    absent = DATA_FILES.filter((d) => sourceModes.get(d.key) === 'missing').map((d) => d.key)
+    try {
+      localStorage.setItem(ABSENT_KEY, JSON.stringify(absent))
+    } catch {
+      /* ignore */
+    }
+  }
+  return DATA_FILES.every((d) => sourceModes.get(d.key) === 'local' || absent.includes(d.key))
+}
+
 /** Look up the depth (metres, positive down) at a lon/lat from the contour tiles' bathy grid.
  *  Placeholder for now — implemented via querying the depth raster is not possible client-side,
  *  so depth readout uses the contour vector features near the point instead (see MapView).

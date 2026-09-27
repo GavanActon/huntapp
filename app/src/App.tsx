@@ -43,7 +43,8 @@ function TopBar() {
   const gpsError = useGpsStore((s) => s.lastError)
   return (
     <div className="topbar">
-      {!online && <span className={`chip ${offlineReady ? 'chip-ok' : 'chip-warn'}`}>{offlineReady ? 'Offline · maps ready' : 'Offline · live layers only'}</span>}
+      {/* offline with every map saved is the normal state at camp: nothing to say */}
+      {!online && !offlineReady && <span className="chip chip-warn">Offline · some maps not saved</span>}
       {gpsStatus === 'acquiring' && <span className="chip">Acquiring GPS…</span>}
       {gpsStatus === 'denied' && <span className="chip chip-warn">Location denied</span>}
       {gpsStatus === 'insecure' && <span className="chip chip-warn">No location over plain http</span>}
