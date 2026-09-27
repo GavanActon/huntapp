@@ -1,0 +1,52 @@
+/* the mode and view switcher: a pill bottom left, above the dock */
+.viewpill-wrap {
+  position: absolute;
+  left: calc(var(--sal, 0px) + 12px);
+  bottom: calc(var(--barh, 170px) + 12px);
+  transition: bottom 0.18s ease-out;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+.viewpill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--c-border-strong);
+  color: var(--c-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.viewpill-menu {
+  width: 210px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid var(--c-border-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.viewpill-menu .seg { width: 100%; }
+.viewpill-menu .seg button { flex: 1; }
+.viewpill-list { display: flex; flex-direction: column; gap: 2px; }
+.viewpill-row { display: flex; align-items: center; border-radius: 9px; }
+.viewpill-row.on { background: var(--c-accent-dim); }
+.viewpill-name {
+  flex: 1;
+  text-align: left;
+  padding: 8px 10px;
+  background: transparent;
+  border: 0;
+  color: var(--c-text);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.viewpill-row.on .viewpill-name { color: var(--c-accent); font-weight: 600; }
+.viewpill-save { align-self: flex-start; font-size: 13px; padding: 2px 4px; }

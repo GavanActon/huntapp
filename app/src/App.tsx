@@ -20,6 +20,7 @@ import { initTrackLayer } from './tracking/trackLayer'
 import { initTrackRecording, useTrackStore } from './tracking/trackStore'
 import { initLogLayer } from './log/logLayer'
 import LogCard, { useLogForm } from './ui/LogCard'
+import ViewPill from './ui/ViewPill'
 import { initDepthLayer } from './map/depthLayer'
 import { initSpotsLayer } from './spots/spotsLayer'
 
@@ -166,6 +167,7 @@ export default function App() {
         <WeatherStrip />
       </div>
       <FabStack />
+      {!measuring && <ViewPill />}
       <div className="bottombar" ref={barRef}>
         {measuring && <MeasureCard />}
         {!measuring && logging && <LogCard />}
