@@ -5,6 +5,7 @@ import { usePlacesStore, type SavedPlace } from '../../state/placesStore'
 import type { PlaceDef } from '../../config'
 import { IconLocate, IconPin, IconShare, IconTrash } from '../icons'
 import { exportTrackGpx, trackDurationMin, useTrackStore } from '../../tracking/trackStore'
+import HuntLogSection from './HuntLogSection'
 
 const KINDS: PlaceDef['kind'][] = ['camp', 'lake', 'landing', 'stand', 'trail']
 
@@ -140,6 +141,7 @@ export default function PlacesPanel() {
           ))}
         </>
       )}
+      <HuntLogSection />
     </div>
   )
 }

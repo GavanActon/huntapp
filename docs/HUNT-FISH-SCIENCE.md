@@ -131,6 +131,17 @@ layer plus a bonus for aspects 135–225° and dense conifer within 500 m.
   - First cool day after two or more warm ones (high 5 °C lower, or under
     14 °C): × 1.15. This replaces the 24 h front factor, so the same drop
     is not counted twice.
+- **Your log** (weight key `log`, `app/src/log/huntLog.ts`):
+  - Sightings, sounds, sign and call-ins pull the heat map toward them:
+    +25 % at the spot, e-folding 250 m and 7 days, gone past 800 m or
+    21 days.
+  - Blank sits push it down: −10 %, e-folding 150 m and 2 days.
+  - An animal seen is an animal living there this week. A rutting bull
+    covers a few km², and cow groups hold for days.
+  - Each entry also saves where the spot sat on the model's own map
+    (without the log's pull), as a percentile of the scored cells within
+    3 km. The Places tab averages those per species: 50 is chance. That is
+    the model's report card, meaningful after ten or more sightings.
 - **Cloud**: overcast cool days extend morning activity into midday
   (thermal relief): +0.1 midday when cloud ≥80 % and below 14 °C.
 - **Moon**: GPS studies find no moon-phase effect on deer; nothing

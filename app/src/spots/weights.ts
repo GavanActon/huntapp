@@ -22,6 +22,7 @@ export type WeightKey =
   | 'scent'
   | 'visibility'
   | 'access'
+  | 'log'
   // the habitat
   | 'browse'
   | 'edge'
@@ -53,6 +54,7 @@ export const WEIGHT_DEFS: WeightDef[] = [
   { key: 'season', label: 'Season', desc: 'Closed water scores zero', group: 'day', fish: true },
   { key: 'scent', label: 'Scent', desc: 'Wind and thermals against the feeding side', group: 'site', hunt: true },
   { key: 'visibility', label: 'Downwind view', desc: 'Open ground where a circling animal shows', group: 'site', hunt: true },
+  { key: 'log', label: 'Your log', desc: 'Fresh sightings pull the map toward them; blank sits push a little', group: 'site', hunt: true },
   { key: 'access', label: 'Roads and landings', desc: 'How reachable the spot is; turn off to ignore roads', group: 'site', hunt: true },
   { key: 'browse', label: 'Browse and cover', desc: 'The stand itself: species, age, cuts and burns', group: 'habitat', hunt: true },
   { key: 'edge', label: 'Edges', desc: 'Browse near cover, cover near browse', group: 'habitat', hunt: true },

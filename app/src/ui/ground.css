@@ -43,3 +43,4 @@
 .checks-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: 6px; }
 .checks-list .ck-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 4px 2px; border-bottom: 1px solid var(--c-border); }
 .checks-list .ck-row > span:first-child { flex: 1; }
+.pp-acts .pp-log { background: transparent; border: 1px solid var(--c-border-strong); color: var(--c-text); }

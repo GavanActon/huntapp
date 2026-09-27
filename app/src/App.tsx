@@ -18,6 +18,8 @@ import { initWeatherRefresh } from './weather/refresh'
 import { initPositionLayer } from './tracking/positionLayer'
 import { initTrackLayer } from './tracking/trackLayer'
 import { initTrackRecording, useTrackStore } from './tracking/trackStore'
+import { initLogLayer } from './log/logLayer'
+import LogCard, { useLogForm } from './ui/LogCard'
 import { initDepthLayer } from './map/depthLayer'
 import { initSpotsLayer } from './spots/spotsLayer'
 
@@ -119,6 +121,7 @@ export default function App() {
   const setSheetTab = useAppStore((s) => s.setSheetTab)
   const setOnline = useAppStore((s) => s.setOnline)
   const measuring = useMeasureStore((s) => s.active)
+  const logging = useLogForm((s) => s.at != null)
   const barRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -140,6 +143,7 @@ export default function App() {
     initTrackLayer()
     initDepthLayer()
     initSpotsLayer()
+    initLogLayer()
     const on = () => setOnline(true)
     const off = () => setOnline(false)
     window.addEventListener('online', on)
@@ -164,7 +168,8 @@ export default function App() {
       <FabStack />
       <div className="bottombar" ref={barRef}>
         {measuring && <MeasureCard />}
-        {!measuring && <GroundCard />}
+        {!measuring && logging && <LogCard />}
+        {!measuring && !logging && <GroundCard />}
         <nav className="tabdock glass">
           {TABS.map((t) => {
             const Icon = t.icon

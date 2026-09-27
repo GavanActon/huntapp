@@ -16,6 +16,7 @@ import { useAppStore } from '../state/appStore'
 import { homePlace, selectedPlace, usePlacesStore } from '../state/placesStore'
 import { useSpotsStore } from '../state/spotsStore'
 import { useGpsStore } from '../tracking/gpsStore'
+import { useHuntLog } from '../log/huntLog'
 import { cachedPointForecast, pointForecast, type PointForecast } from '../weather/openMeteo'
 import { deriveConditions, recentDailyMeans, type Conditions } from './conditions'
 import { habitat, loadHabitat, onHabitat, COVER } from './habitatGrid'
@@ -517,6 +518,10 @@ export function initSpotsLayer() {
     useGpsStore.subscribe((s, prev) => {
       const near = (f: { lon: number; lat: number } | null) => !!f && inRegion(f.lon, f.lat)
       if (near(s.fix) !== near(prev.fix) && !selectedPlace()) schedule()
+    })
+    // a sighting or a blank sit logged: the map leans toward it
+    useHuntLog.subscribe((s, prev) => {
+      if (s.entries !== prev.entries) schedule()
     })
     // the hour turns over
     const tick = () => {

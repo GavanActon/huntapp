@@ -10,6 +10,7 @@ import { activityVerdict, describeCell, habitatScore, huntBands, siteFactor, typ
 import { cellScore, describeFishCell, fishBands, fishContext, fishVerdict, seasonOpen, type FishBands } from './fishRules'
 import { isFish, type Spot, type Target, type Verdict } from './types'
 import { DEFAULT_WEIGHTS, weigh, type Part, type PointCase, type Weights } from './weights'
+import { logBoostGrid, logNote } from '../log/huntLog'
 
 export interface ScoreResult {
   target: Target
@@ -102,10 +103,12 @@ export function scoreHunt(target: Exclude<Target, 'walleye' | 'pike' | 'laketrou
   const warm = c.tempC > 14 && c.sinceSunriseH > 2 && c.toSunsetH > 1.5
   const lateFall = c.dayOfYear >= 288
   const scores = new Float32Array(h.size)
+  // the hunter's own log: fresh sign pulls, blank sits push
+  const log = w.log > 0 ? logBoostGrid(h, target, c.timeMs) : null
   for (let i = 0; i < h.size; i++) {
     const hs = habitatScore(target, b, i, warm, lateFall, w)
     if (hs < 0.2) continue
-    scores[i] = hs * siteFactor(target, b, h, i, c, undefined, w)
+    scores[i] = hs * siteFactor(target, b, h, i, c, undefined, w) * (log ? weigh(log[i], w.log) : 1)
   }
   const peaks = pickPeaks(h, scores, 6, 600, 0.35, home)
   const spots: Spot[] = peaks.map((i) => {
@@ -215,12 +218,20 @@ export function pointCase(target: Target, lon: number, lat: number, c: Condition
   const habitatParts: Part[] = []
   const siteParts: Part[] = []
   const hs = habitatScore(target, b, i, warm, c.dayOfYear >= 288, w, habitatParts)
-  const sm = siteFactor(target, b, h, i, c, undefined, w, siteParts)
+  let sm = siteFactor(target, b, h, i, c, undefined, w, siteParts)
+  const reasons = describeCell(target, b, h, i, c)
+  const log = w.log > 0 ? logBoostGrid(h, target, c.timeMs) : null
+  if (log && log[i] !== 1) {
+    const note = logNote(target, lon, lat, c.timeMs)
+    siteParts.push({ key: 'log', label: note ? `near ${note}` : 'your log', value: log[i], kind: 'mult' })
+    sm *= weigh(log[i], w.log)
+    if (note) reasons.unshift(`${log[i] > 1 ? 'Near' : 'Close to'} ${note}`)
+  }
   const v = activityVerdict(target, c, w)
   const day: Part[] = v.factors.map((f) => ({ key: f.key ?? 'light', label: f.label, value: f.mult, kind: 'mult', note: f.note }))
   return {
     score: hs * sm,
-    reasons: describeCell(target, b, h, i, c),
+    reasons,
     habitat: habitatParts,
     site: siteParts,
     day,

@@ -15,6 +15,7 @@ import { offlineComplete, registerAllDataFiles, sourceModes } from './pmtilesReg
 import { attachTapWeather } from './tapWeather'
 import { attachTapGround } from './tapGround'
 import { useScent } from '../weather/micro/scent'
+import { useLogForm } from '../ui/LogCard'
 
 import type { FeatureCollection } from 'geojson'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -212,7 +213,7 @@ export default function MapView() {
         el.innerHTML =
           `<button class="pp-close" aria-label="Close">×</button>` +
           `<div class="depth-popup-wx"></div>${gameHtml}` +
-          `<div class="pp-acts"><button class="pp-scent">Scent cone</button><button class="pp-save">Pin</button><button class="pp-more-btn" aria-expanded="false">more</button></div>` +
+          `<div class="pp-acts"><button class="pp-scent">Scent cone</button><button class="pp-log">Log</button><button class="pp-save">Pin</button><button class="pp-more-btn" aria-expanded="false">more</button></div>` +
           `<div class="pp-more" hidden><div class="depth-popup-ground"></div>${gameMore}<div class="pp-coord">${fmtCoord(lng, lat)}</div></div>`
         const popup = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, offset: 8, maxWidth: '260px' }).setLngLat([lng, lat]).setDOMContent(el).addTo(m)
         // wind, temperature, sky and rain chance at the planning time
@@ -231,6 +232,10 @@ export default function MapView() {
         })
         el.querySelector('.pp-scent')?.addEventListener('click', () => {
           useScent.getState().show(lng, lat)
+          popup.remove()
+        })
+        el.querySelector('.pp-log')?.addEventListener('click', () => {
+          useLogForm.getState().open(lng, lat)
           popup.remove()
         })
         el.querySelector('.pp-details')?.addEventListener('click', () => {
