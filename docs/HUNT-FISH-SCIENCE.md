@@ -143,6 +143,8 @@ layer plus a bonus for aspects 135–225° and dense conifer within 500 m.
    drain downslope and pool in hollows, creek bottoms, low corners of
    cutovers and over lake surfaces. Morning: sit level with or below the
    target, across-slope; evening: sit above the target.
+   The ground-wind model computes this per spot and minute from the
+   forecast's own layering (docs/MICRO-WIND.md).
 6. Drainages are scent highways: evening scent flows down every gully to
    the lake, fouling the shoreline below.
 7. Lake shores in calm clear weather: a weak land-to-lake drift at night and

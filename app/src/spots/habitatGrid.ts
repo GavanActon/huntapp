@@ -28,7 +28,7 @@ export interface LakeFacts {
 
 interface BandDef {
   name: string
-  dtype: 'uint8' | 'uint16' | 'int16' | 'float32'
+  dtype: 'int8' | 'uint8' | 'uint16' | 'int16' | 'float32'
   scale: number
   offset: number
   meaning: string
@@ -50,7 +50,7 @@ interface Header {
   bands: BandDef[]
 }
 
-export type Band = Uint8Array | Uint16Array | Int16Array | Float32Array
+export type Band = Int8Array | Uint8Array | Uint16Array | Int16Array | Float32Array
 
 export const COVER = {
   nodata: 0,
@@ -101,6 +101,7 @@ export class Habitat {
       const off = base + b.offset
       let data: Band
       if (b.dtype === 'uint8') data = new Uint8Array(buf, off, n)
+      else if (b.dtype === 'int8') data = new Int8Array(buf, off, n)
       else if (b.dtype === 'uint16') data = new Uint16Array(buf.slice(off, off + n * 2))
       else if (b.dtype === 'int16') data = new Int16Array(buf.slice(off, off + n * 2))
       else data = new Float32Array(buf.slice(off, off + n * 4))
@@ -170,8 +171,10 @@ async function gunzip(blob: Blob): Promise<ArrayBuffer> {
   return new Response(blob.stream().pipeThrough(ds)).arrayBuffer()
 }
 
-async function fetchHabitat(): Promise<Habitat | null> {
-  const file = habitatFile()
+/** Read a baked band file (this format: the habitat grid, the
+ *  microclimate grid), the phone's stored copy first. Null when it is not
+ *  baked and not cached. */
+export async function loadBandFile(file: string, tag: string): Promise<{ grid: Habitat; header: Record<string, unknown> } | null> {
   let blob = await getStoredFile(file)
   let mode = 'local'
   if (!blob) {
@@ -185,10 +188,15 @@ async function fetchHabitat(): Promise<Habitat | null> {
   const view = new DataView(buf)
   const hlen = view.getUint32(0, true)
   const header = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 4, hlen))) as Header
-  if (header.region !== REGION.id) throw new Error(`habitat grid is for ${header.region}`)
+  if (header.region !== REGION.id) throw new Error(`${file} is for ${header.region}`)
   const h = new Habitat(header, buf, 4 + hlen)
-  devlog('spots', `habitat ${mode} · ${h.cols}×${h.rows} · ${header.bands.length} bands · ${h.lakes.length} lakes · baked ${header.generated}`)
-  return h
+  devlog(tag, `${file} ${mode} · ${h.cols}×${h.rows} · ${header.bands.length} bands · baked ${header.generated}`)
+  return { grid: h, header: header as unknown as Record<string, unknown> }
+}
+
+async function fetchHabitat(): Promise<Habitat | null> {
+  const r = await loadBandFile(habitatFile(), 'spots')
+  return r?.grid ?? null
 }
 
 /** The grid, loading it once. Null when it is not baked and not cached. */

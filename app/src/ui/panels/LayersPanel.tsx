@@ -49,7 +49,7 @@ const GROUPS: { title: string; defs: LayerDef[] }[] = [
   {
     title: 'Weather',
     defs: [
-      { key: 'windFlow', name: 'Wind flow', desc: 'HRDPS wind streaming over the map at the picked hour', live: 'radar' },
+      { key: 'windFlow', name: 'Wind flow', desc: 'Wind streaming over the map at the picked hour: at head height (terrain, trees, cold-air drainage) or the HRDPS forecast at 10 m', live: 'radar' },
       { key: 'weather', name: 'Radar', desc: 'Rain rate, latest sweep (ECCC)', live: 'radar' },
     ],
   },
@@ -69,6 +69,8 @@ export default function LayersPanel() {
   const setLayer = useAppStore((s) => s.setLayer)
   const opacity = useAppStore((s) => s.opacity)
   const setOpacity = useAppStore((s) => s.setOpacity)
+  const windLevel = useAppStore((s) => s.windLevel)
+  const setWindLevel = useAppStore((s) => s.setWindLevel)
 
   return (
     <div className="panel">
@@ -89,6 +91,21 @@ export default function LayersPanel() {
                   </div>
                   <input type="checkbox" className="switch" checked={layers[d.key] && !dead} disabled={dead} onChange={(e) => setLayer(d.key, e.target.checked)} />
                 </label>
+                {d.key === 'windFlow' && layers.windFlow && (
+                  <div className="row layer-opacity">
+                    <div className="row-text">
+                      <span className="row-desc">{windLevel === 'ground' ? 'Head height: the ground model' : 'HRDPS 2.5 km at 10 m'}</span>
+                    </div>
+                    <div className="seg">
+                      <button className={windLevel === 'ground' ? 'seg-on' : ''} onClick={() => setWindLevel('ground')}>
+                        Ground
+                      </button>
+                      <button className={windLevel === 'forecast' ? 'seg-on' : ''} onClick={() => setWindLevel('forecast')}>
+                        Forecast
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {d.opacity && layers[d.key] && !dead && (
                   <div className="row layer-opacity">
                     <div className="row-text">

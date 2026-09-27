@@ -85,6 +85,10 @@ export const geoFile = (t: GeoTheme) => `${t}-${REGION.id}.geojson`
  *  file of 30 m bands, kept with the bundle so the scoring works offline. */
 export const habitatFile = () => `habitat-${REGION.id}.hab`
 
+/** The microclimate grid (build_microclimate.py) on the same lattice: what
+ *  terrain, lakes and trees do to the wind, for the ground-wind model. */
+export const microFile = () => `micro-${REGION.id}.hab`
+
 export interface BundleDef {
   id: string
   name: string
@@ -99,7 +103,7 @@ export const BUNDLES: BundleDef[] = [
     description:
       'Topo, imagery, hillshade, forest stands, lake depths, historical topo, camps, WMU lines and the ' +
       'habitat grid the Spots tab scores, for Pickle, McGill, Ketchup and Line Lakes; full detail within 2 km of the camp.',
-    files: [...DATA_FILES.map((d) => d.file), ...GEO_THEMES.map(geoFile), habitatFile()],
+    files: [...DATA_FILES.map((d) => d.file), ...GEO_THEMES.map(geoFile), habitatFile(), microFile()],
   },
 ]
 

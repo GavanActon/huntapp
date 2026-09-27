@@ -56,7 +56,7 @@ from scipy import ndimage, sparse
 from scipy.sparse.linalg import splu
 
 import build_habitat as hb
-from common import OUT_DIR, REGION
+from common import CACHE_DIR, OUT_DIR, REGION
 
 ROWS, COLS = hb.ROWS, hb.COLS
 DX, DY = hb.DX_M, hb.DY_M
@@ -138,42 +138,58 @@ def layer_operator(H: np.ndarray):
     return sparse.csc_matrix((np.concatenate(vals), (np.concatenate(rows), np.concatenate(cols))), shape=(n, n))
 
 
-def divergence(H: np.ndarray, u: np.ndarray, v: np.ndarray) -> np.ndarray:
-    """div(H (u, v)) on cell centres; u east, v NORTH (rows run north→south)."""
-    fx = np.pad(H * u, ((0, 0), (1, 1)), mode="edge")
-    fy = np.pad(H * v, ((1, 1), (0, 0)), mode="edge")
-    dfx = (fx[:, 2:] - fx[:, :-2]) / (2 * DX)
-    dfy = (fy[:-2, :] - fy[2:, :]) / (2 * DY)  # north is row - 1
-    return dfx + dfy
+def face_h(a: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """A cell field averaged onto the faces: x faces (ROWS, COLS+1) west to
+    east, y faces (ROWS+1, COLS) north to south; edge faces take the edge
+    cell's value."""
+    ax = np.empty((ROWS, COLS + 1))
+    ax[:, 1:-1] = 0.5 * (a[:, :-1] + a[:, 1:])
+    ax[:, 0], ax[:, -1] = a[:, 0], a[:, -1]
+    ay = np.empty((ROWS + 1, COLS))
+    ay[1:-1, :] = 0.5 * (a[:-1, :] + a[1:, :])
+    ay[0, :], ay[-1, :] = a[0, :], a[-1, :]
+    return ax, ay
 
 
-def gradient(l: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def face_div(fx: np.ndarray, fy: np.ndarray) -> np.ndarray:
+    """Net outflow per cell from face fluxes (fy positive toward north)."""
+    return (fx[:, 1:] - fx[:, :-1]) / DX + (fy[:-1, :] - fy[1:, :]) / DY
+
+
+def face_grad(l: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     lp = np.pad(l, 1, mode="constant")  # l = 0 outside
-    gx = (lp[1:-1, 2:] - lp[1:-1, :-2]) / (2 * DX)
-    gy = (lp[:-2, 1:-1] - lp[2:, 1:-1]) / (2 * DY)  # d/d(north)
+    gx = (lp[1:-1, 1:] - lp[1:-1, :-1]) / DX
+    gy = (lp[:-1, 1:-1] - lp[1:, 1:-1]) / DY  # toward north
     return gx, gy
 
 
 def solve_basis(dem: np.ndarray, s: np.ndarray, lid: float, big_sigma: float) -> list[np.ndarray]:
     """Two solves (a unit wind toward the east and one toward the north);
     returns [ue, ve, un, vn]: the local wind vector for each, in units of
-    the regional 10 m wind."""
+    the regional 10 m wind, on cell centres."""
     large = ndimage.gaussian_filter(dem, big_sigma)
     H = np.clip(lid + (large - dem), 0.2 * lid, None)
+    print(f"    layer depth {H.min():.0f}–{H.max():.0f} m")
     A = layer_operator(H)
+    hx, hy = face_h(H)
+    sx, sy = face_h(s)
     t = time.time()
     lu = splu(A, permc_spec="COLAMD")
     print(f"    operator factorised · {time.time() - t:.0f}s")
     out = []
     for ex, ey in ((1.0, 0.0), (0.0, 1.0)):
-        u0 = s * ex
-        v0 = s * ey
-        rhs = -divergence(H, u0, v0).ravel()
-        l = lu.solve(rhs).reshape(ROWS, COLS)
-        gx, gy = gradient(l)
-        u, v = u0 + gx, v0 + gy
-        res = np.abs(divergence(H, u, v)[2:-2, 2:-2]).mean() / (np.abs(divergence(H, u0, v0)[2:-2, 2:-2]).mean() + 1e-12)
-        print(f"    unit wind toward {'east' if ex else 'north'} · residual divergence {res:.3f} of the first guess · speed {np.hypot(u, v).min():.2f}–{np.hypot(u, v).max():.2f}")
+        u0x, v0y = sx * ex, sy * ey  # the first guess's normal velocity on each face
+        div0 = face_div(hx * u0x, hy * v0y)
+        l = lu.solve(-div0.ravel()).reshape(ROWS, COLS)
+        gx, gy = face_grad(l)
+        ux, vy = u0x + gx, v0y + gy
+        res = np.abs(face_div(hx * ux, hy * vy)).mean() / (np.abs(div0).mean() + 1e-12)
+        # back to the centres; the tangential part of the first guess is
+        # carried as it was, plus the averaged correction
+        u = 0.5 * (ux[:, :-1] + ux[:, 1:])
+        v = 0.5 * (vy[:-1, :] + vy[1:, :])
+        spd = np.hypot(u, v)
+        print(f"    unit wind toward {'east' if ex else 'north'} · divergence left {res:.1e} of the first guess · speed {spd.min():.2f}–{spd.max():.2f}")
         out += [u, v]
     return out
 
@@ -281,13 +297,28 @@ def main() -> None:
     # potential drainage speed, m/s, for a strong inversion (scaled in the
     # browser by the forecast's): Prandtl-type sqrt(sin slope), growing
     # with the fetch of cold air draining in from upslope
+    # (Mahrt 1982; shallow drainage on 1–5° slopes runs ~0.3–1.5 m/s)
     sin_a = np.sin(np.radians(np.maximum(th_slope, 0.3)))
     fetch_f = 0.6 + 0.4 * np.clip(np.log10(acc) / 3, 0, 1)
-    kat = 2.2 * np.sqrt(sin_a) * fetch_f
+    kat = 3.0 * np.sqrt(sin_a) * fetch_f
     in_pool = pool > 0.3
-    kat = np.where(in_pool, 0.12, kat)  # pooled air creeps to the outlet
-    kat_brg = np.where(in_pool | (th_slope < 0.5), route_brg, down_brg)
-    kat[water] = 0.1
+    flat = in_pool | (th_slope < 1.0) | water
+    ke = np.where(flat, 0, kat * np.sin(np.radians(down_brg)))
+    kn = np.where(flat, 0, kat * np.cos(np.radians(down_brg)))
+    # flat ground (bogs, pools, lake surfaces) takes the inflow from the
+    # slopes round it: the smoothed drainage vectors, strong at the edges,
+    # cancelling in the middle, plus a slow creep toward the outlet
+    kes = ndimage.gaussian_filter(ke, 3)
+    kns = ndimage.gaussian_filter(kn, 3)
+    creep = np.where(in_pool, 0.1, 0.06)
+    rb = np.radians(np.nan_to_num(route_brg))
+    ke = np.where(flat, kes + creep * np.sin(rb), ke)
+    kn = np.where(flat, kns + creep * np.cos(rb), kn)
+    kat = np.hypot(ke, kn)
+    kat_brg = (np.degrees(np.arctan2(ke, kn)) + 360) % 360
+    # how low a spot sits in the ~500 m around it: where the cold layer
+    # settles and stays put under a light wind
+    rel = zs - ndimage.uniform_filter(zs, size=33)
     print(f"  drainage: {int(in_pool.sum())} pooled cells ({in_pool.mean() * 100:.1f}%), deepest pool {pool.max():.1f} m · {time.time() - t0:.0f}s")
 
     # ---- 3. lakes: onshore bearing near lakes over ~20 ha ----
@@ -306,6 +337,19 @@ def main() -> None:
     else:
         onshore = np.zeros((ROWS, COLS))
         shore_d = np.full((ROWS, COLS), 1e6)
+    # the breeze a lake can drive: ~1 m/s off a pond, ~2.5 m/s off a 10 km²
+    # lake (Crosman & Horel 2010); on a peninsula or an island the breezes
+    # from each side meet and rise, so little of it moves across the ground
+    lake_km2 = np.zeros((ROWS, COLS))
+    if big.any():
+        area = np.zeros(lake_id.max() + 1)
+        for lid, l in lakes.items():
+            area[lid] = l["areaHa"] / 100
+        near_lake = lake_id[ir, ic]
+        lake_km2 = area[near_lake]
+    land_frac = ndimage.uniform_filter((~water).astype(np.float64), size=21)
+    penin = np.clip((land_frac - 0.3) / 0.4, 0.15, 1)
+    breeze_max = (1.0 + 1.5 * np.clip(lake_km2 / 10, 0, 1)) * np.where(water, 1, penin)
 
     # ---- 4. canopy ----
     tall = np.isin(cover, (TREED_WET, CON_DENSE, CON_OPEN, MIXED, HARD))
@@ -347,6 +391,8 @@ def main() -> None:
         ("thAspect", q_bearing(down_brg, th_slope < 0.5), 360 / 250, "downslope bearing of the ~100 m terrain (255 flat)"),
         ("onshore", q_bearing(onshore, shore_d > 3000), 360 / 250, "bearing a lake breeze blows toward here (255 far from a big lake)"),
         ("shoreDist", np.clip(np.round(shore_d / 20), 0, 255).astype(np.uint8), 20, "m to the shore of a lake over 20 ha (×20)"),
+        ("breezeMax", np.clip(np.round(breeze_max * 100), 0, 255).astype(np.uint8), 0.01, "strongest lake breeze the nearest big lake drives here, m/s"),
+        ("rel", np.clip(np.round(rel * 2), -127, 127).astype(np.int8), 0.5, "height over the ~500 m around, m (negative = low ground)"),
         ("canopy", np.round(canopy * 250).astype(np.uint8), 1 / 250, "head-height (2 m) fraction of the local 10 m wind"),
         ("treeH", np.clip(np.round(h), 0, 255).astype(np.uint8), 1, "stand height m (0 open)"),
     ]
@@ -376,7 +422,7 @@ def main() -> None:
     out = OUT_DIR / f"micro-{REGION['id']}.hab"
     out.write_bytes(gzip.compress(raw, 9))
     print(f"wrote {out.name}: {len(raw) / 1e6:.1f} MB raw, {out.stat().st_size / 1e6:.2f} MB gzipped, {len(bands)} bands · {time.time() - t0:.0f}s")
-    np.savez_compressed(hb.CACHE_DIR / f"micro-debug-{REGION['id']}.npz", dem=dem.astype(np.float32), pool=pool, kat=kat.astype(np.float32), canopy=canopy.astype(np.float32), s=s.astype(np.float32), **{f"n{i}": a.astype(np.float32) for i, a in enumerate(neutral)}, **{f"s{i}": a.astype(np.float32) for i, a in enumerate(stable)})
+    np.savez_compressed(CACHE_DIR / f"micro-debug-{REGION['id']}.npz", dem=dem.astype(np.float32), pool=pool, kat=kat.astype(np.float32), rel=rel.astype(np.float32), breeze=breeze_max.astype(np.float32), canopy=canopy.astype(np.float32), s=s.astype(np.float32), **{f"n{i}": a.astype(np.float32) for i, a in enumerate(neutral)}, **{f"s{i}": a.astype(np.float32) for i, a in enumerate(stable)})
 
 
 if __name__ == "__main__":

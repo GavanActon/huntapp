@@ -3,6 +3,7 @@ import { useAppStore } from '../state/appStore'
 import { usePlacesStore } from '../state/placesStore'
 import { cachedPointForecast, fetchPointForecast, nextHrdpsRunMs, type PointForecast } from './openMeteo'
 import { ensureWeatherGrid } from './windGrid'
+import { ensureProfile } from './boundaryLayer'
 import { recentDailyMeans } from '../spots/conditions'
 
 /**
@@ -69,6 +70,8 @@ export function refreshWeather(reason: string, force = false): Promise<void> {
     }
     // the wind field on the same signal window
     await ensureWeatherGrid()
+    // the air's layering and the ensemble spread: the ground wind's inputs
+    await ensureProfile(force)
     devlog('wx', `sweep (${reason}) · ${fetched} fetched`)
     if (fetched) for (const cb of listeners) cb()
   })().finally(() => {

@@ -35,6 +35,17 @@ draws it from the live service instead; see [docs/DATA-SOURCES.md](docs/DATA-SOU
   contours and soundings draw on the lake. Other lakes show the habitat
   bake's estimated depths. Source: the Historic Bathymetry Index feature
   service, `https://www.publicdocs.mnr.gov.on.ca/mirb/Bathymetry/<WBY_LID>.jpg`.
+- **Ground wind**: the air at head height, not the forecast at 10 m. The
+  HRDPS wind is downscaled over the terrain and the forest (mass-consistent,
+  30 m), the forecast's 2 m vs 80 m temperatures say when the ground air
+  decouples, and cold-air drainage and pooling, upslope thermals, lake and
+  land breezes, canopy shelter and tree-line eddies are added on top. Tap
+  the map for the spot's ground air (why one tap deeper), a scent cone for
+  a 10-minute sit (a particle plume on that field), or log a wind check
+  that corrects the model nearby and scores it. The Weather tab gives the
+  day in ground-air windows; Layers draws the flow at ground or forecast
+  level. Science and limits: `docs/MICRO-WIND.md`; bake:
+  `pipeline/build_microclimate.py`.
 - **Offline**: the bundle in Settings holds the maps, the habitat grid and
   the lake sheets. Every signal window refreshes the forecast and the
   ten-day means for every saved place; with no signal, the Spots heat map
@@ -106,6 +117,7 @@ python pipeline/build_tiles.py topo   # Toporama hypsography (contours) via WMS
 python pipeline/georef_sheet.py pipeline/raw/sheets/042c13_02.tif 042C13   # CanMatrix2 scans have no georef
 python pipeline/georef_sheet.py pipeline/raw/sheets/042c14_02.tif 042C14
 python pipeline/build_raster.py historical pipeline/raw/sheets/042c13_geo.tif pipeline/raw/sheets/042c14_geo.tif --minz 9 --maxz 15
+python pipeline/build_microclimate.py               # the ground-wind grid (after build_habitat.py; needs scipy)
 ```
 
 The sheets come from `https://ftp.maps.canada.ca/pub/nrcan_rncan/raster/`

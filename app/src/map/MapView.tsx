@@ -13,6 +13,7 @@ import { TARGET_NAMES } from '../spots/types'
 import { buildMapStyle, contourFilters } from './mapStyle'
 import { registerAllDataFiles, sourceModes } from './pmtilesRegistry'
 import { attachTapWeather } from './tapWeather'
+import { attachTapGround } from './tapGround'
 
 import type { FeatureCollection } from 'geojson'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -204,11 +205,14 @@ export default function MapView() {
               .map((r) => `<li>${esc(r)}</li>`)
               .join('')}<li><button class="pp-details linklike" type="button">the arithmetic and the knobs ▸</button></li></ul></div>`
           : ''
-        el.innerHTML = `<button class="pp-close" aria-label="Close">×</button><div class="depth-popup-value">${fmtCoord(lng, lat)}</div><div class="depth-popup-wx"></div>${whyHtml}<div class="pp-acts"><button class="pp-save">Save</button></div>`
+        el.innerHTML = `<button class="pp-close" aria-label="Close">×</button><div class="depth-popup-value">${fmtCoord(lng, lat)}</div><div class="depth-popup-wx"></div><div class="depth-popup-ground"></div>${whyHtml}<div class="pp-acts"><button class="pp-save">Save</button></div>`
         const popup = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, offset: 8, maxWidth: '320px' }).setLngLat([lng, lat]).setDOMContent(el).addTo(m)
         // wind, temperature, sky and rain chance at the planning time
         const stopWx = attachTapWeather(el.querySelector('.depth-popup-wx') as HTMLElement, lng, lat)
         popup.on('close', stopWx)
+        // the air at head height there: drainage, shelter, the scent cone
+        const stopGround = attachTapGround(el.querySelector('.depth-popup-ground') as HTMLElement, lng, lat, () => popup.remove())
+        popup.on('close', stopGround)
         el.querySelector('.pp-close')?.addEventListener('click', () => popup.remove())
         el.querySelector('.pp-why-btn')?.addEventListener('click', (ev) => {
           const ul = el.querySelector('.pp-reasons') as HTMLElement | null

@@ -20,6 +20,9 @@ import { cachedPointForecast, pointForecast, type PointForecast } from '../weath
 import { deriveConditions, recentDailyMeans, type Conditions } from './conditions'
 import { habitat, loadHabitat, onHabitat, COVER } from './habitatGrid'
 import { scoreTarget } from './scoring'
+import { loadMicro, onMicro } from '../weather/micro/model'
+import { onProfile } from '../weather/boundaryLayer'
+import { useWindChecks } from '../weather/micro/windChecks'
 import { isFish } from './types'
 
 const HEAT_SRC = 'spots-heat'
@@ -492,6 +495,11 @@ export function initSpotsLayer() {
   })
   withMap(() => {
     onHabitat(() => schedule())
+    // the scent geometry reads the ground wind: rescore when it arrives
+    void loadMicro()
+    onMicro(() => schedule())
+    onProfile(() => schedule())
+    useWindChecks.subscribe(() => schedule())
     useSpotsStore.subscribe((s, prev) => {
       if (s.target !== prev.target || s.heat !== prev.heat || s.scent !== prev.scent || s.weights !== prev.weights || s.probe !== prev.probe) schedule()
     })

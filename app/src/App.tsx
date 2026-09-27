@@ -9,6 +9,8 @@ import BottomSheet from './ui/BottomSheet'
 import WeatherStrip from './ui/WeatherStrip'
 import { IconCompass, IconLayers, IconLocate, IconPlaces, IconRuler, IconSliders, IconTarget, IconWind } from './ui/icons'
 import MeasureCard from './ui/MeasureCard'
+import GroundCard from './ui/GroundCard'
+import { initScentLayer } from './weather/micro/scent'
 import { initMeasureLayer } from './measure/measureLayer'
 import { useMeasureStore } from './measure/measureStore'
 import { initWindFlow } from './weather/windFlow'
@@ -121,6 +123,7 @@ export default function App() {
     initTextScale()
     initMeasureLayer()
     initWindFlow()
+    initScentLayer()
     initWeatherRefresh()
     initPositionLayer()
     initTrackRecording()
@@ -153,6 +156,7 @@ export default function App() {
       <FabStack />
       <div className="bottombar" ref={barRef}>
         {measuring && <MeasureCard />}
+        {!measuring && <GroundCard />}
         <nav className="tabdock glass">
           {TABS.map((t) => {
             const Icon = t.icon

@@ -4,6 +4,9 @@ import { useAppStore } from '../state/appStore'
 import { lodOf, meanLod, onQuality, qualityProfile, reportFrame } from './flowQuality'
 import { centrePoint, compose, FrameAnchor, IDENTITY, invert, isIdentity, same, type Affine } from './frameAffine'
 import { ensureWeatherGrid, onWeatherGrid, onWeatherHour, windSampler } from './windGrid'
+import { ensureProfile, onProfile } from './boundaryLayer'
+import { groundSampler, loadMicro, microGrid, onMicro } from './micro/model'
+import { useWindChecks } from './micro/windChecks'
 
 /**
  * Wind made visible: particles advected by the forecast grid at the
@@ -39,9 +42,25 @@ function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
   const vy = new Float32Array(cols * rows)
   let live = false
   const speedMul = useAppStore.getState().flowTuning.windSpeed
+  // at ground level: the head-height model (drainage, shelter, breezes),
+  // slow air drawn a little faster so a creeping drainage still reads
+  const ground = useAppStore.getState().windLevel === 'ground' && microGrid() ? groundSampler(atMs) : null
   const wind = windSampler(atMs)
-  const out = new Float32Array(2)
-  if (wind) {
+  const out = new Float32Array(3)
+  if (ground) {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const ll = map.unproject([c * FIELD_STEP, r * FIELD_STEP])
+        if (!ground(ll.lng, ll.lat, out)) continue
+        const kmh = Math.hypot(out[0], out[1]) * 3.6
+        if (kmh < 0.05) continue
+        const pxps = Math.min(220, Math.max(6, kmh * 0.54 * 4.5 * 2.2 * speedMul))
+        vx[r * cols + c] = (out[0] / (kmh / 3.6)) * pxps
+        vy[r * cols + c] = -(out[1] / (kmh / 3.6)) * pxps
+        live = true
+      }
+    }
+  } else if (wind) {
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const ll = map.unproject([c * FIELD_STEP, r * FIELD_STEP])
@@ -288,7 +307,7 @@ function syncAmbient(map: MlMap) {
     ambient = null
   }
   if (!want) return
-  void ensureWeatherGrid().then(() => {
+  void Promise.all([ensureWeatherGrid(), useAppStore.getState().windLevel === 'ground' ? Promise.all([loadMicro(), ensureProfile()]) : null]).then(() => {
     if (ambient) return
     if (!useAppStore.getState().layers.windFlow) return
     const eng = startEngine(map, { warm: wasLive, level: () => useAppStore.getState().windFlowOpacity })
@@ -328,11 +347,15 @@ export function initWindFlow() {
         s.lowPower !== prev.lowPower ||
         s.planTimeMs !== prev.planTimeMs ||
         s.flowTuning.windDensity !== prev.flowTuning.windDensity ||
-        s.flowTuning.windSpeed !== prev.flowTuning.windSpeed
+        s.flowTuning.windSpeed !== prev.flowTuning.windSpeed ||
+        s.windLevel !== prev.windLevel
       )
         cur()
     })
     onWeatherGrid(cur)
     onWeatherHour(cur)
+    onMicro(cur)
+    onProfile(cur)
+    useWindChecks.subscribe(cur)
   })
 }

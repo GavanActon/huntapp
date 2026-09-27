@@ -99,6 +99,9 @@ interface AppState {
   setWindFlowOpacity: (v: number) => void
   flowTuning: FlowTuning
   setFlowTuning: (t: Partial<FlowTuning>) => void
+  /** Which wind the flow layer draws: the ground model at head height, or HRDPS at 10 m. */
+  windLevel: 'ground' | 'forecast'
+  setWindLevel: (v: 'ground' | 'forecast') => void
   /** Stills the wind for a long day on one battery. */
   lowPower: boolean
   setLowPower: (v: boolean) => void
@@ -147,6 +150,8 @@ export const useAppStore = create<AppState>()(
       setWindFlowOpacity: (windFlowOpacity) => set({ windFlowOpacity }),
       flowTuning: FLOW_TUNING_DEFAULTS,
       setFlowTuning: (t) => set((s) => ({ flowTuning: { ...s.flowTuning, ...t } })),
+      windLevel: 'ground',
+      setWindLevel: (windLevel) => set({ windLevel }),
       lowPower: false,
       setLowPower: (lowPower) => set({ lowPower }),
       textSize: 'auto',
@@ -178,6 +183,7 @@ export const useAppStore = create<AppState>()(
         paceKmh: s.paceKmh,
         windFlowOpacity: s.windFlowOpacity,
         flowTuning: s.flowTuning,
+        windLevel: s.windLevel,
         lowPower: s.lowPower,
         textSize: s.textSize,
         wxStrip: s.wxStrip,

@@ -27,7 +27,7 @@ export interface WindGrid {
 
 const COLS = 5
 const ROWS = 5
-const KEY = `huntapp-wind:${REGION.id}:v1`
+const KEY = `huntapp-wind:${REGION.id}:v2`
 const MAX_AGE_MS = 60 * 60_000
 
 let grid: WindGrid | null = null
@@ -62,6 +62,8 @@ async function fetchGrid(): Promise<WindGrid> {
     wind_speed_unit: 'kmh',
     timezone: 'America/Toronto',
     forecast_days: '3',
+    // yesterday too: wind checks are scored against the hour they were made
+    past_days: '1',
     models: 'gem_hrdps_continental',
   })
   const resp = await fetchTimeout(`https://api.open-meteo.com/v1/forecast?${q}`, 15_000)

@@ -7,6 +7,7 @@ import { moonPhase } from '../../weather/moon'
 import { startOfDayMs } from '../../time'
 import { SkyGlyph, stripSubject, WindArrow } from '../WeatherStrip'
 import { IconRefresh } from '../icons'
+import GroundAir from './GroundAir'
 
 function ageLabel(fetchedAt: number): string {
   const min = Math.round((Date.now() - fetchedAt) / 60000)
@@ -111,6 +112,8 @@ export default function WeatherPanel() {
               </div>
             </div>
           )}
+
+          <GroundAir />
 
           <div className="panel-section">Hour by hour</div>
           <div className="hd-table">

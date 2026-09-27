@@ -14,6 +14,7 @@ import { DEFAULT_WEIGHTS, weigh, type Part, type Weights } from './weights'
 import { COVER, LANDFORM, type Habitat } from './habitatGrid'
 import type { Conditions } from './conditions'
 import { compass8 } from './conditions'
+import { groundForScoring, REGIME_LABEL } from '../weather/micro/model'
 import type { Factor, HuntTarget, Verdict } from './types'
 
 // ---- lookups shared by the scorer, read once per pass ----
@@ -345,25 +346,48 @@ export function siteFactor(t: HuntTarget, b: HuntBands, h: Habitat, i: number, c
 export function siteParts(t: HuntTarget, b: HuntBands, h: Habitat, i: number, c: Conditions, reasons?: string[]): Part[] {
   let g: number
   const bear = b.bearBrowse[i]
-  const calm = c.windKmh < 5
   const evening = c.toSunsetH <= 1.5 || c.sinceSunriseH < 0.7
+  // the air at head height in this cell (docs/MICRO-WIND.md): drainage,
+  // shelter, breezes and the forecast's layering, not one regional arrow.
+  // The heat map skips the tree-line search; a tapped cell gets it all.
+  const [lon, lat] = h.center(i)
+  const gw = groundForScoring(c.timeMs, lon, lat, reasons != null)
+  const windDir = gw ? gw.dirFrom : c.windDir
+  const calm = gw ? gw.kmh < 0.8 : c.windKmh < 5
+  const geo = (from: number, approach: number) => {
+    const a = Math.abs(((from - approach) % 360 + 540) % 360 - 180)
+    return a <= 30 ? 0.9 : a <= 120 ? 1.0 : a <= 150 ? 0.5 : 0.12
+  }
+  if (gw && reasons && c.windKmh > 3 && !calm) {
+    const off = Math.abs(((gw.dirFrom - c.windDir) % 360 + 540) % 360 - 180)
+    if (off > 45) reasons.push(`at ground the air runs from the ${compass8(gw.dirFrom)}, not the forecast's ${compass8(c.windDir)} (${REGIME_LABEL[gw.regime].toLowerCase()})`)
+  }
   if (!calm && bear !== 255) {
     // expected approach from the browse; wind FROM windDir
     const approach = bear * (360 / 250)
-    const a = Math.abs(((c.windDir - approach) % 360 + 540) % 360 - 180)
-    if (a <= 30) {
-      g = 0.9
-      reasons?.push(`straight downwind of the feeding side (${compass8(approach)})`)
-    } else if (a <= 120) {
-      g = 1.0
-      reasons?.push(`crosswind to the feeding side (${compass8(approach)}), wind ${compass8(c.windDir)}`)
-    } else if (a <= 150) g = 0.5
-    else {
-      g = 0.12
-      reasons?.push(`your scent blows into the feeding side`)
-    }
+    const a = Math.abs(((windDir - approach) % 360 + 540) % 360 - 180)
+    if (gw) {
+      // averaged over the direction spread: a swirly spot is a gamble
+      const sd = Math.min(90, gw.sigmaDeg)
+      let sw = 0
+      g = 0
+      for (let k = -2; k <= 2; k++) {
+        const wk = Math.exp(-((k * 0.75) ** 2) / 2)
+        g += wk * geo(windDir + k * 0.75 * sd, approach)
+        sw += wk
+      }
+      g /= sw
+    } else g = geo(windDir, approach)
+    const air = gw ? 'ground air' : 'wind'
+    if (a <= 30) reasons?.push(`straight downwind of the feeding side (${compass8(approach)})`)
+    else if (a <= 120) reasons?.push(`crosswind to the feeding side (${compass8(approach)}), ${air} ${compass8(windDir)}`)
+    else if (a > 150) reasons?.push(`your scent ${gw ? 'drifts' : 'blows'} into the feeding side`)
+    if (gw && gw.sigmaDeg >= 55) reasons?.push(`the air here swings ±${Math.round(gw.sigmaDeg)}°: scent goes where it likes`)
+  } else if (calm && gw) {
+    g = gw.regime === 'pooled' ? 0.35 : 0.6
+    reasons?.push(gw.regime === 'pooled' ? 'cold air settled here: scent pools round you' : 'near dead calm at ground: scent spreads every way')
   } else if (calm) {
-    // thermals rule: evening drains downslope, morning rises
+    // no ground model: the thermals rule of thumb, evening drains downslope, morning rises
     const tpi = b.tpi[i] - 128
     if (evening) {
       g = tpi >= 2 ? 1.0 : tpi <= -3 ? 0.35 : 0.7
@@ -378,7 +402,7 @@ export function siteParts(t: HuntTarget, b: HuntBands, h: Habitat, i: number, c:
   // the downwind arc: can you see what circles there?
   let open = 0
   let n = 0
-  const down = (c.windDir + 180) % 360
+  const down = (windDir + 180) % 360
   for (const m of [60, 120, 200, 300]) {
     const j = h.offset(i, down, m)
     if (j < 0) continue
@@ -398,7 +422,7 @@ export function siteParts(t: HuntTarget, b: HuntBands, h: Habitat, i: number, c:
   if (t === 'grouse') access = dRoad <= 60 ? 1 : dRoad <= 800 ? 0.9 : 0.6
   const accessLabel = dLake <= 120 && dRoad > 150 ? 'reachable by boat' : dRoad <= 150 ? 'right by a road' : dRoad <= 2500 ? `${dRoad < 1000 ? `${dRoad} m` : `${(dRoad / 1000).toFixed(1)} km`} from a road` : 'a long walk in'
   return [
-    { key: 'scent', label: calm ? 'thermals' : 'wind against the feeding side', value: g, kind: 'mult' },
+    { key: 'scent', label: calm ? (gw ? 'still air at ground' : 'thermals') : gw ? 'ground air against the feeding side' : 'wind against the feeding side', value: g, kind: 'mult' },
     { key: 'visibility', label: openFrac >= 0.75 ? 'open downwind' : openFrac >= 0.4 ? 'partly open downwind' : 'thick downwind', value: vis, kind: 'mult' },
     { key: 'access', label: accessLabel, value: access, kind: 'mult' },
   ]
