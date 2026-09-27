@@ -42,10 +42,13 @@ const vis = (on: boolean) => ({ visibility: on ? 'visible' : 'none' }) as const
 /** [lines to keep, index lines] for a contour interval. A line's `step` is
  *  the coarsest of 10/5/2/1 that divides its elevation, so `step >= interval`
  *  keeps every interval-th metre; index lines are every fifth of those. */
-export function contourFilters(interval: ContourInterval): [FilterSpecification, FilterSpecification] {
+/** [every line kept, the index lines, the lines labelled]. At the fine
+ *  intervals (1–2 m) every line carries its number, since that is what the
+ *  close reading of a bench or a saddle is for; coarser, the index lines only. */
+export function contourFilters(interval: ContourInterval): [FilterSpecification, FilterSpecification, FilterSpecification] {
   const keep: FilterSpecification = ['>=', ['get', 'step'], interval]
   const index: FilterSpecification = ['==', ['%', ['get', 'elev'], interval * 5], 0]
-  return [keep, index]
+  return [keep, index, interval <= 2 ? keep : index]
 }
 const FONT = ['Noto Sans Regular']
 const FONT_MED = ['Noto Sans Medium']
@@ -151,7 +154,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   // index line: heavier, labelled.
   if (has('contours')) {
     sources.contours = { type: 'vector', url: 'pmtiles://contours', minzoom: 14, maxzoom: 16 }
-    const [keep, index] = contourFilters(o.contourInterval)
+    const [keep, index, labelled] = contourFilters(o.contourInterval)
     const line = { source: 'contours', 'source-layer': 'contours', minzoom: 13.5 } as const
     rasters.push(
       tag(
@@ -187,14 +190,14 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
           id: 'contour-label',
           type: 'symbol',
           ...line,
-          filter: index,
+          filter: labelled,
           layout: {
             ...vis(o.layers.contours),
             'symbol-placement': 'line',
             'text-field': ['to-string', ['get', 'elev']],
             'text-font': FONT,
             'text-size': 10,
-            'symbol-spacing': 350,
+            'symbol-spacing': 260,
             'text-max-angle': 30,
           },
           paint: { 'text-color': 'rgba(240,206,150,0.95)', 'text-halo-color': 'rgba(10,20,12,0.9)', 'text-halo-width': 1.2 },

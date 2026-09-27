@@ -61,7 +61,7 @@ export default function SettingsPanel() {
       <div className="row">
         <div className="row-text">
           <span className="row-title">Contour interval</span>
-          <span className="row-desc">{contoursOn ? 'LiDAR lines near camp · every fifth is labelled' : 'LiDAR contours are off in Layers'}</span>
+          <span className="row-desc">{contoursOn ? contourInterval <= 2 ? 'LiDAR lines near camp · every line labelled' : 'LiDAR lines near camp · every fifth is labelled' : 'LiDAR contours are off in Layers'}</span>
         </div>
         <div className="seg" role="radiogroup" aria-label="Contour interval">
           {CONTOUR_INTERVALS.map((m) => (

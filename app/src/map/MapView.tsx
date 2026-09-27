@@ -260,10 +260,10 @@ export default function MapView() {
     // the contour interval is a filter on the three contour layers
     const unsubContours = useAppStore.subscribe((s, prev) => {
       if (!map || s.contourInterval === prev.contourInterval || !map.getLayer('contour-line')) return
-      const [keep, index] = contourFilters(s.contourInterval)
+      const [keep, index, labelled] = contourFilters(s.contourInterval)
       map.setFilter('contour-line', keep)
       map.setFilter('contour-index', index)
-      map.setFilter('contour-label', index)
+      map.setFilter('contour-label', labelled)
     })
     const unsubPlaces = usePlacesStore.subscribe(() => {
       const src = map?.getSource('places') as maplibregl.GeoJSONSource | undefined
