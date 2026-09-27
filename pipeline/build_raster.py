@@ -30,6 +30,7 @@ def main():
     ap.add_argument("--minz", type=int, default=8)
     ap.add_argument("--maxz", type=int, default=14)
     ap.add_argument("--jpeg", action="store_true", help="JPEG tiles (no transparency, smaller)")
+    ap.add_argument("--all", action="store_true", help="bake every zoom wherever the inputs are, not just the core")
     a = ap.parse_args()
 
     srcs = [rasterio.open(p) for p in a.tifs]
@@ -51,6 +52,19 @@ def main():
             src_nodata=src.nodata,
             dst_nodata=0,
         )
+        if src.count >= 4:
+            # the input carries its own transparency (a lake sheet's ink)
+            reproject(
+                source=rasterio.band(src, 4),
+                destination=alpha,
+                dst_transform=transform,
+                dst_crs="EPSG:3857",
+                resampling=Resampling.bilinear,
+                src_nodata=None,
+                dst_nodata=0,
+            )
+            rgb = np.moveaxis(dst, 0, -1)
+            return rgb, alpha
         # coverage mask: reproject a ones band to learn where the sheet is
         ones = np.ones((src.height, src.width), dtype=np.uint8)
         reproject(
@@ -84,7 +98,7 @@ def main():
         )
 
     def render(z, x, y):
-        if z > REGION_MAXZOOM and not in_core(z, x, y):
+        if z > REGION_MAXZOOM and not a.all and not in_core(z, x, y):
             return None
         b = tile_bounds_3857(z, x, y)
         out = None

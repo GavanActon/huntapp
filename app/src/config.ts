@@ -67,9 +67,11 @@ export const DATA_FILES: DataFileDef[] = [
   { key: 'satellite', file: `satellite-${REGION.id}.pmtiles`, kind: 'raster', label: 'Imagery' },
   { key: 'hillshade', file: `hillshade-${REGION.id}.pmtiles`, kind: 'raster', label: 'Hillshade (30 m)' },
   { key: 'hillshadeLidar', file: `hillshade-lidar-${REGION.id}.pmtiles`, kind: 'raster', label: 'LiDAR hillshade (1 m)' },
+  { key: 'contours', file: `contours-${REGION.id}.pmtiles`, kind: 'vector', label: 'LiDAR contours (1 m)' },
   { key: 'forest', file: `forest-${REGION.id}.pmtiles`, kind: 'vector', label: 'Forest cover' },
   { key: 'bathy', file: `bathy-${REGION.id}.pmtiles`, kind: 'vector', label: 'Lake depths' },
   { key: 'historical', file: `historical-${REGION.id}.pmtiles`, kind: 'raster', label: 'Historical topo' },
+  { key: 'bathySheets', file: `bathysheets-${REGION.id}.pmtiles`, kind: 'raster', label: 'Lake survey sheets (1978–79)' },
   { key: 'places', file: `places-${REGION.id}.pmtiles`, kind: 'vector', label: 'Camps, WMUs, roads' },
 ]
 

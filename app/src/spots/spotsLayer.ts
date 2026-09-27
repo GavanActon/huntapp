@@ -16,7 +16,7 @@ import { useAppStore } from '../state/appStore'
 import { homePlace, selectedPlace, usePlacesStore } from '../state/placesStore'
 import { useSpotsStore } from '../state/spotsStore'
 import { useGpsStore } from '../tracking/gpsStore'
-import { cachedPointForecast, pointForecast } from '../weather/openMeteo'
+import { cachedPointForecast, pointForecast, type PointForecast } from '../weather/openMeteo'
 import { deriveConditions, recentDailyMeans, type Conditions } from './conditions'
 import { habitat, loadHabitat, onHabitat, COVER } from './habitatGrid'
 import { scoreTarget } from './scoring'
@@ -31,6 +31,18 @@ let canvas: HTMLCanvasElement | null = null
  *  a staircase. */
 const UP = 3
 let timer: number | null = null
+
+/** The closest saved place that has a forecast on the phone. */
+function nearestCachedPlace(lon: number, lat: number): { p: { lon: number; lat: number; name: string }; f: PointForecast } | null {
+  let best: { p: { lon: number; lat: number; name: string }; f: PointForecast; d: number } | null = null
+  for (const p of usePlacesStore.getState().places) {
+    const f = cachedPointForecast(p.lon, p.lat)
+    if (!f) continue
+    const d = Math.hypot((p.lon - lon) * Math.cos((lat * Math.PI) / 180), p.lat - lat)
+    if (!best || d < best.d) best = { p, f, d }
+  }
+  return best
+}
 
 function subject(): { lon: number; lat: number; name: string } {
   const sel = selectedPlace()
@@ -425,11 +437,21 @@ async function recompute() {
   const app = useAppStore.getState()
   const timeMs = app.planTimeMs ?? Date.now()
   let f = cachedPointForecast(subj.lon, subj.lat)
-  if (!f) {
+  if (!f && navigator.onLine) {
     const r = await pointForecast(subj.lon, subj.lat).catch(() => null)
     f = r?.forecast ?? null
   }
-  const recent = await recentDailyMeans(subj.lon, subj.lat)
+  // no signal and a subject with no cache of its own (the phone, moving):
+  // the nearest saved place's forecast stands in; HRDPS cells are 2.5 km
+  let recentAt = subj
+  if (!f) {
+    const near = nearestCachedPlace(subj.lon, subj.lat)
+    if (near) {
+      f = near.f
+      recentAt = near.p
+    }
+  }
+  const recent = await recentDailyMeans(recentAt.lon, recentAt.lat)
   if (!f) return s.setResult(null, null, 'no-forecast')
   const c = deriveConditions(f, timeMs, recent)
   if (!c) return s.setResult(null, null, 'no-forecast')

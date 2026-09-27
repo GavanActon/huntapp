@@ -1,4 +1,4 @@
-import { useAppStore } from '../../state/appStore'
+import { CONTOUR_INTERVALS, useAppStore } from '../../state/appStore'
 import { phoneTextStop } from '../textScale'
 import OfflinePanel from './OfflinePanel'
 
@@ -16,6 +16,9 @@ export default function SettingsPanel() {
   const setFlowTuning = useAppStore((s) => s.setFlowTuning)
   const lowPower = useAppStore((s) => s.lowPower)
   const setLowPower = useAppStore((s) => s.setLowPower)
+  const contourInterval = useAppStore((s) => s.contourInterval)
+  const setContourInterval = useAppStore((s) => s.setContourInterval)
+  const contoursOn = useAppStore((s) => s.layers.contours)
 
   return (
     <div className="panel">
@@ -53,6 +56,21 @@ export default function SettingsPanel() {
         </div>
         <input type="checkbox" className="switch" checked={wxStrip} onChange={(e) => setWxStrip(e.target.checked)} />
       </label>
+
+      <div className="panel-section">Terrain</div>
+      <div className="row">
+        <div className="row-text">
+          <span className="row-title">Contour interval</span>
+          <span className="row-desc">{contoursOn ? 'LiDAR lines near camp · every fifth is labelled' : 'LiDAR contours are off in Layers'}</span>
+        </div>
+        <div className="seg" role="radiogroup" aria-label="Contour interval">
+          {CONTOUR_INTERVALS.map((m) => (
+            <button key={m} className={contourInterval === m ? 'seg-on' : ''} role="radio" aria-checked={contourInterval === m} onClick={() => setContourInterval(m)}>
+              {m} m
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="panel-section">Wind flow</div>
       <div className="row layer-opacity">

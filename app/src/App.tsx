@@ -13,6 +13,10 @@ import { initMeasureLayer } from './measure/measureLayer'
 import { useMeasureStore } from './measure/measureStore'
 import { initWindFlow } from './weather/windFlow'
 import { initWeatherRefresh } from './weather/refresh'
+import { initPositionLayer } from './tracking/positionLayer'
+import { initTrackLayer } from './tracking/trackLayer'
+import { initTrackRecording, useTrackStore } from './tracking/trackStore'
+import { initDepthLayer } from './map/depthLayer'
 import { initSpotsLayer } from './spots/spotsLayer'
 
 const LayersPanel = lazy(() => import('./ui/panels/LayersPanel'))
@@ -49,6 +53,7 @@ function TopBar() {
 function FabStack() {
   const follow = useAppStore((s) => s.follow)
   const measuring = useMeasureStore((s) => s.active)
+  const recording = useTrackStore((s) => s.recordingId != null)
   const [offNorth, setOffNorth] = useState(false)
   const compassBtn = useRef<HTMLButtonElement>(null)
   useEffect(() => {
@@ -79,6 +84,17 @@ function FabStack() {
       <button ref={compassBtn} className="fab" style={{ opacity: offNorth ? 1 : 0.55 }} onClick={() => withMap((m) => m.easeTo({ bearing: 0, pitch: 0 }))} aria-label="Reset north">
         <IconCompass />
       </button>
+      <button
+        className={`fab fab-rec ${recording ? 'active' : ''}`}
+        onClick={() => {
+          if (recording) return useTrackStore.getState().stop()
+          startGps()
+          useTrackStore.getState().start()
+        }}
+        aria-label={recording ? 'Stop recording the track' : 'Record a track'}
+      >
+        <span className={`rec-dot${recording ? ' on' : ''}`} />
+      </button>
       <button className={`fab ${follow ? 'active' : ''}`} onClick={() => (follow ? useAppStore.getState().setFollow(false) : locateAndFollow())} aria-label={follow ? 'Stop following' : 'My position'}>
         <IconLocate />
       </button>
@@ -106,6 +122,10 @@ export default function App() {
     initMeasureLayer()
     initWindFlow()
     initWeatherRefresh()
+    initPositionLayer()
+    initTrackRecording()
+    initTrackLayer()
+    initDepthLayer()
     initSpotsLayer()
     const on = () => setOnline(true)
     const off = () => setOnline(false)

@@ -22,6 +22,24 @@ two days are ECCC's HRDPS 2.5 km by name. The ruler on the map stack
 measures range and bearing leg by leg, with time on foot at a set pace. Where the pipeline has not baked a layer yet the app
 draws it from the live service instead; see [docs/DATA-SOURCES.md](docs/DATA-SOURCES.md).
 
+## In the field
+
+- **Position**: a dot with an accuracy ring (and a heading arrow when
+  moving). The locate button turns follow on; dragging the map lets go.
+- **Track mode**: the red button records the trail (a point every 6 m, a
+  new segment after two minutes of silence), kept on the phone. Tracks are
+  listed in Places, can be shown, renamed, deleted and shared as GPX.
+- **Lake depths**: the MNR survey sheets for Pickle (1978), Ketchup (1978)
+  and McGill (1979), fitted to the shoreline by `pipeline/georef_lake_sheet.py`
+  (misses of 13, 19 and 8 m) and baked as ink on transparency, so the real
+  contours and soundings draw on the lake. Other lakes show the habitat
+  bake's estimated depths. Source: the Historic Bathymetry Index feature
+  service, `https://www.publicdocs.mnr.gov.on.ca/mirb/Bathymetry/<WBY_LID>.jpg`.
+- **Offline**: the bundle in Settings holds the maps, the habitat grid and
+  the lake sheets. Every signal window refreshes the forecast and the
+  ten-day means for every saved place; with no signal, the Spots heat map
+  uses the nearest saved place's cached forecast.
+
 ## Spots: progressive disclosure
 
 The rule for the whole app: the high level first, the detail one tap
@@ -51,9 +69,11 @@ deeper, never all at once.
   - `build_vectors.py` — LIO ArcGIS layers → GeoJSON (camps, WMU, roads, bathy…)
   - `build_tiles.py` — a live tile service (imagery, MRDEM hillshade) → raster PMTiles
   - `build_hillshade.py` — NRCan HRDEM 1 m LiDAR → hillshade PMTiles
+  - `build_contours.py` — the cached LiDAR → 1 m contour lines as vector PMTiles (interval picked in Settings)
   - `build_raster.py` — any georeferenced GeoTIFF (Toporama 50k, CanMatrix2
     historical sheets) → raster PMTiles
   - `georef_sheet.py` — pins a CanMatrix2 scan's neatline to its NTS sheet bounds
+  - `georef_lake_sheet.py` — fits an MNR lake survey sheet to the lake's real shoreline
   - `gen_icons.py` — app icons
 
 Two boxes drive every bake, both in `app/src/config.ts`: `CORE` (about
@@ -81,6 +101,7 @@ pip install numpy pillow rasterio pmtiles requests shapely
 python pipeline/build_vectors.py
 python pipeline/build_tiles.py satellite hillshade-mrdem
 python pipeline/build_hillshade.py                  # replaces the MRDEM hillshade with 1 m LiDAR
+python pipeline/build_contours.py                   # 1 m contours from the same LiDAR (after build_vectors.py waterbody)
 python pipeline/build_tiles.py topo   # Toporama hypsography (contours) via WMS
 python pipeline/georef_sheet.py pipeline/raw/sheets/042c13_02.tif 042C13   # CanMatrix2 scans have no georef
 python pipeline/georef_sheet.py pipeline/raw/sheets/042c14_02.tif 042C14

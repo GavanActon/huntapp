@@ -1,7 +1,7 @@
 import { DARK, layers as basemapLayers } from '@protomaps/basemaps'
-import type { LayerSpecification, StyleSpecification } from 'maplibre-gl'
+import type { FilterSpecification, LayerSpecification, StyleSpecification } from 'maplibre-gl'
 import { LIVE_RASTER, LIVE_VECTOR } from '../sources'
-import type { LayerOpacity, LayerVisibility } from '../state/appStore'
+import type { ContourInterval, LayerOpacity, LayerVisibility } from '../state/appStore'
 
 /** Bush-tuned flavour of the Protomaps dark basemap: dark green land, navy
  *  water, so the topo, hillshade and forest layers carry the contrast. */
@@ -23,6 +23,8 @@ export interface StyleOpts {
   base: string
   layers: LayerVisibility
   opacity: LayerOpacity
+  /** metres between the LiDAR contour lines drawn */
+  contourInterval: ContourInterval
   /** which pmtiles keys are reachable (from registerAllDataFiles) */
   available: Set<string>
   /** baked GeoJSON per theme: a URL (local blob or server file) when found */
@@ -36,6 +38,15 @@ function tag<T extends LayerSpecification>(l: T, group: keyof LayerVisibility, o
 }
 
 const vis = (on: boolean) => ({ visibility: on ? 'visible' : 'none' }) as const
+
+/** [lines to keep, index lines] for a contour interval. A line's `step` is
+ *  the coarsest of 10/5/2/1 that divides its elevation, so `step >= interval`
+ *  keeps every interval-th metre; index lines are every fifth of those. */
+export function contourFilters(interval: ContourInterval): [FilterSpecification, FilterSpecification] {
+  const keep: FilterSpecification = ['>=', ['get', 'step'], interval]
+  const index: FilterSpecification = ['==', ['%', ['get', 'elev'], interval * 5], 0]
+  return [keep, index]
+}
 const FONT = ['Noto Sans Regular']
 const FONT_MED = ['Noto Sans Medium']
 const HALO = { 'text-halo-color': 'rgba(10,20,12,0.92)', 'text-halo-width': 1.2 }
@@ -121,6 +132,77 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   }
   addRaster('topo')
   addRaster('historical', { 'raster-saturation': -0.2 })
+  // the MNR lake survey sheets (Pickle 1978, Ketchup 1978, McGill 1979),
+  // fitted to the shoreline and baked as ink on transparency: the true
+  // surveyed contours and soundings. They answer to the Lake depths switch.
+  if (has('bathySheets')) {
+    sources.bathySheets = { type: 'raster', url: 'pmtiles://bathySheets', tileSize: 256, minzoom: 12, maxzoom: 17 }
+    rasters.push(
+      tag(
+        { id: 'bathy-sheets', type: 'raster', source: 'bathySheets', minzoom: 12, layout: vis(o.layers.bathy), paint: { 'raster-opacity': 0.95, 'raster-resampling': 'linear' } },
+        'bathy',
+      ),
+    )
+  }
+
+  // ---- LiDAR contours (core only, z14+) ----
+  // The bake holds every whole metre; the interval is a filter, so the
+  // Settings knob switches instantly and offline. Every fifth line is an
+  // index line: heavier, labelled.
+  if (has('contours')) {
+    sources.contours = { type: 'vector', url: 'pmtiles://contours', minzoom: 14, maxzoom: 16 }
+    const [keep, index] = contourFilters(o.contourInterval)
+    const line = { source: 'contours', 'source-layer': 'contours', minzoom: 13.5 } as const
+    rasters.push(
+      tag(
+        {
+          id: 'contour-line',
+          type: 'line',
+          ...line,
+          filter: keep,
+          layout: vis(o.layers.contours),
+          paint: {
+            'line-color': 'rgba(214,170,110,0.55)',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 14, 0.5, 16, 0.8],
+          },
+        },
+        'contours',
+      ),
+      tag(
+        {
+          id: 'contour-index',
+          type: 'line',
+          ...line,
+          filter: index,
+          layout: vis(o.layers.contours),
+          paint: {
+            'line-color': 'rgba(228,186,124,0.85)',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 14, 1, 16, 1.6],
+          },
+        },
+        'contours',
+      ),
+      tag(
+        {
+          id: 'contour-label',
+          type: 'symbol',
+          ...line,
+          filter: index,
+          layout: {
+            ...vis(o.layers.contours),
+            'symbol-placement': 'line',
+            'text-field': ['to-string', ['get', 'elev']],
+            'text-font': FONT,
+            'text-size': 10,
+            'symbol-spacing': 350,
+            'text-max-angle': 30,
+          },
+          paint: { 'text-color': 'rgba(240,206,150,0.95)', 'text-halo-color': 'rgba(10,20,12,0.9)', 'text-halo-width': 1.2 },
+        },
+        'contours',
+      ),
+    )
+  }
 
   // ---- vector overlays ----
   // Each overlay reads from the baked 'places' archive (one source-layer

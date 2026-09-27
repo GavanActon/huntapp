@@ -20,6 +20,7 @@ const GROUPS: { title: string; defs: LayerDef[] }[] = [
     defs: [
       { key: 'topo', name: 'Topographic', desc: 'Contour lines and spot elevations (NRCan Toporama)', opacity: 'topo', data: 'topo', live: 'topo' },
       { key: 'hillshade', name: 'Hillshade', desc: 'Relief · 1 m LiDAR (2021) near camp, 30 m MRDEM around', opacity: 'hillshade', data: 'hillshade', live: 'hillshade' },
+      { key: 'contours', name: 'LiDAR contours', desc: 'Every metre near camp, from the 2021 LiDAR · interval in Settings', data: 'contours' },
       { key: 'satellite', name: 'Imagery', desc: 'Ontario orthophoto mosaic', opacity: 'satellite', data: 'satellite', live: 'satellite' },
     ],
   },
@@ -28,7 +29,7 @@ const GROUPS: { title: string; defs: LayerDef[] }[] = [
     defs: [
       { key: 'forest', name: 'Forest cover', desc: 'Stands by species and age, burns, cuts (Ontario FRI 2010)', opacity: 'forest', data: 'forest' },
       { key: 'fire', name: 'Burns', desc: 'Fire perimeters by year (MNRF)', data: 'places', live: 'fire' },
-      { key: 'bathy', name: 'Lake depths', desc: 'MNR lake survey contours · White Lake 1972', data: 'bathy', live: 'bathy' },
+      { key: 'bathy', name: 'Lake depths', desc: 'MNR survey sheets for Pickle, Ketchup and McGill (1978–79), estimated depths elsewhere', data: 'bathySheets', live: 'bathy' },
     ],
   },
   {

@@ -8,6 +8,8 @@ export type SheetTab = 'places' | 'spots' | 'layers' | 'weather' | 'settings'
 export interface LayerVisibility {
   topo: boolean
   hillshade: boolean
+  /** 1 m LiDAR contour lines near camp; the interval is a setting. */
+  contours: boolean
   forest: boolean
   bathy: boolean
   historical: boolean
@@ -34,6 +36,7 @@ export interface LayerOpacity {
 export const DEFAULT_LAYERS: LayerVisibility = {
   topo: true,
   hillshade: false,
+  contours: true,
   forest: false,
   bathy: true,
   historical: false,
@@ -66,6 +69,10 @@ export interface FlowTuning {
 }
 export const FLOW_TUNING_DEFAULTS: FlowTuning = { windDensity: 900, windSpeed: 1, windTrail: 0.92, windHue: 195, windSat: 100 }
 
+/** Contour interval choices for the LiDAR lines, metres. */
+export const CONTOUR_INTERVALS = [1, 2, 5, 10] as const
+export type ContourInterval = (typeof CONTOUR_INTERVALS)[number]
+
 interface AppState {
   sheetTab: SheetTab | null
   setSheetTab: (t: SheetTab | null) => void
@@ -79,6 +86,9 @@ interface AppState {
   /** Which historical map year to show, when more than one is available. */
   historicalYear: number | null
   setHistoricalYear: (y: number | null) => void
+  /** Metres between LiDAR contour lines (the bake holds every metre). */
+  contourInterval: ContourInterval
+  setContourInterval: (m: ContourInterval) => void
 
   units: 'metric' | 'imperial'
   setUnits: (u: 'metric' | 'imperial') => void
@@ -126,6 +136,8 @@ export const useAppStore = create<AppState>()(
       setOpacity: (k, v) => set((s) => ({ opacity: { ...s.opacity, [k]: v } })),
       historicalYear: null,
       setHistoricalYear: (historicalYear) => set({ historicalYear }),
+      contourInterval: 5,
+      setContourInterval: (contourInterval) => set({ contourInterval }),
 
       units: 'metric',
       setUnits: (units) => set({ units }),
@@ -161,6 +173,7 @@ export const useAppStore = create<AppState>()(
         layers: s.layers,
         opacity: s.opacity,
         historicalYear: s.historicalYear,
+        contourInterval: s.contourInterval,
         units: s.units,
         paceKmh: s.paceKmh,
         windFlowOpacity: s.windFlowOpacity,

@@ -3,7 +3,8 @@ import { getMap } from '../../map/mapController'
 import { useAppStore } from '../../state/appStore'
 import { usePlacesStore, type SavedPlace } from '../../state/placesStore'
 import type { PlaceDef } from '../../config'
-import { IconLocate, IconPin, IconTrash } from '../icons'
+import { IconLocate, IconPin, IconShare, IconTrash } from '../icons'
+import { exportTrackGpx, trackDurationMin, useTrackStore } from '../../tracking/trackStore'
 
 const KINDS: PlaceDef['kind'][] = ['camp', 'lake', 'landing', 'stand', 'trail']
 
@@ -17,6 +18,14 @@ export default function PlacesPanel() {
   const remove = usePlacesStore((s) => s.remove)
   const add = usePlacesStore((s) => s.add)
   const [editing, setEditing] = useState<string | null>(null)
+  const tracks = useTrackStore((s) => s.tracks)
+  const recordingId = useTrackStore((s) => s.recordingId)
+  const shown = useTrackStore((s) => s.shown)
+  const toggleShown = useTrackStore((s) => s.toggleShown)
+  const removeTrack = useTrackStore((s) => s.remove)
+  const renameTrack = useTrackStore((s) => s.rename)
+  const units = useAppStore((s) => s.units)
+  const dist = (m: number) => (units === 'imperial' ? `${(m / 1609.344).toFixed(2)} mi` : m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(2)} km`)
 
   const look = (p: SavedPlace) => {
     select(p.id)
@@ -102,6 +111,35 @@ export default function PlacesPanel() {
           )
         })}
       </div>
+      {tracks.length > 0 && (
+        <>
+          <div className="panel-section">Tracks</div>
+          {[...tracks].reverse().map((t) => (
+            <div key={t.id} className="track-row">
+              <input type="checkbox" className="switch" checked={t.id === recordingId || shown.includes(t.id)} disabled={t.id === recordingId} onChange={() => toggleShown(t.id)} aria-label="Show on the map" />
+              <div className="row-text">
+                <input className="pe-name" value={t.name} onChange={(e) => renameTrack(t.id, e.target.value)} onFocus={() => useAppStore.getState().setSheetTall(true)} onBlur={() => useAppStore.getState().setSheetTall(false)} />
+                <span className="row-desc">
+                  {t.id === recordingId ? 'recording · ' : ''}
+                  {dist(t.distanceM)} · {trackDurationMin(t)} min · {t.points.length} points
+                </span>
+              </div>
+              <button className="icon-btn" aria-label="Export GPX" onClick={() => void exportTrackGpx(t)}>
+                <IconShare size={16} />
+              </button>
+              <button
+                className="icon-btn danger"
+                aria-label="Delete"
+                onClick={() => {
+                  if (confirm(`Delete ${t.name}?`)) removeTrack(t.id)
+                }}
+              >
+                <IconTrash size={16} />
+              </button>
+            </div>
+          ))}
+        </>
+      )}
     </div>
   )
 }

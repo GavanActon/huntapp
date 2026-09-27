@@ -10,7 +10,7 @@ import { useMeasureStore } from '../measure/measureStore'
 import { explainPoint } from '../spots/scoring'
 import { useSpotsStore } from '../state/spotsStore'
 import { TARGET_NAMES } from '../spots/types'
-import { buildMapStyle } from './mapStyle'
+import { buildMapStyle, contourFilters } from './mapStyle'
 import { registerAllDataFiles, sourceModes } from './pmtilesRegistry'
 import { attachTapWeather } from './tapWeather'
 
@@ -109,8 +109,8 @@ export default function MapView() {
       useAppStore.getState().setOfflineReady(DATA_FILES.every((d) => sourceModes.get(d.key) === 'local'))
       devlog('map', `sources · ${[...sourceModes].map(([k, m]) => `${k}:${m}`).join(' ')} · geo ${[...geo.keys()].join(',') || 'none'}`)
 
-      const { layers, opacity } = useAppStore.getState()
-      const style = buildMapStyle({ base: import.meta.env.BASE_URL, layers, opacity, available, geo })
+      const { layers, opacity, contourInterval } = useAppStore.getState()
+      const style = buildMapStyle({ base: import.meta.env.BASE_URL, layers, opacity, contourInterval, available, geo })
       const saved = loadView()
 
       try {
@@ -240,6 +240,14 @@ export default function MapView() {
       if (!map || (s.layers === prev.layers && s.opacity === prev.opacity)) return
       applyLayerState(map, s.layers, s.opacity)
     })
+    // the contour interval is a filter on the three contour layers
+    const unsubContours = useAppStore.subscribe((s, prev) => {
+      if (!map || s.contourInterval === prev.contourInterval || !map.getLayer('contour-line')) return
+      const [keep, index] = contourFilters(s.contourInterval)
+      map.setFilter('contour-line', keep)
+      map.setFilter('contour-index', index)
+      map.setFilter('contour-label', index)
+    })
     const unsubPlaces = usePlacesStore.subscribe(() => {
       const src = map?.getSource('places') as maplibregl.GeoJSONSource | undefined
       src?.setData(placesGeoJson())
@@ -248,6 +256,7 @@ export default function MapView() {
     return () => {
       cancelled = true
       unsubLayers()
+      unsubContours()
       unsubPlaces()
       setMap(null)
       map?.remove()

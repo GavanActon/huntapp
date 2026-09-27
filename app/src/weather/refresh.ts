@@ -3,6 +3,7 @@ import { useAppStore } from '../state/appStore'
 import { usePlacesStore } from '../state/placesStore'
 import { cachedPointForecast, fetchPointForecast, nextHrdpsRunMs, type PointForecast } from './openMeteo'
 import { ensureWeatherGrid } from './windGrid'
+import { recentDailyMeans } from '../spots/conditions'
 
 /**
  * When to fetch weather, decided once, here. Camp has signal in the
@@ -58,6 +59,8 @@ export function refreshWeather(reason: string, force = false): Promise<void> {
       if (!force && !forecastStale(cached, now)) continue
       try {
         await fetchPointForecast(s.lon, s.lat)
+        // the Spots scorer's ten-day means, on the same signal window
+        await recentDailyMeans(s.lon, s.lat)
         fetched++
       } catch (e) {
         devlog('wx', `${s.name} · fetch failed · ${(e as Error).message}`)
