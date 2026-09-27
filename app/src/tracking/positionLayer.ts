@@ -4,12 +4,16 @@ import { onEachMap } from '../map/mapController'
 import { useAppStore } from '../state/appStore'
 import { nearestInBounds } from '../config'
 import { useGpsStore, type Fix } from './gpsStore'
+import { useCompass } from './compass'
+import { useCheckForm } from '../ui/WindCheckCard'
 
 /**
- * You on the map: a dot with an accuracy ring, and a heading arrow when
- * the phone is moving. Rides every fix; with follow on, the camera eases
- * to each fix (clamped to the region, so a fix on the highway in shows the
- * nearest edge of the chart rather than a blank).
+ * You on the map: a dot with an accuracy ring, a beam the way the phone
+ * faces (its compass), and a course arrow when moving. Rides every fix;
+ * with follow on, the camera eases to each fix (clamped to the region, so
+ * a fix on the highway in shows the nearest edge of the chart rather than
+ * a blank); heading up, the map turns with the compass. Tapping the dot
+ * logs the wind where you stand.
  */
 
 let marker: maplibregl.Marker | null = null
@@ -22,15 +26,27 @@ function dotElement(): HTMLDivElement {
   const el = document.createElement('div')
   el.className = 'me'
   el.innerHTML = `
-    <svg viewBox="0 0 40 40" width="40" height="40">
+    <svg viewBox="0 0 96 96" width="96" height="96">
       <defs>
         <filter id="meglow" x="-50%" y="-50%" width="200%" height="200%">
           <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#3fc8ff" flood-opacity="0.7"/>
         </filter>
+        <radialGradient id="mebeam" cx="48" cy="48" r="46" gradientUnits="userSpaceOnUse">
+          <stop offset="0.15" stop-color="#3fc8ff" stop-opacity="0.75"/>
+          <stop offset="1" stop-color="#3fc8ff" stop-opacity="0"/>
+        </radialGradient>
       </defs>
-      <path class="me-arrow" d="M20 3 L27 18 L20 15 L13 18 Z" fill="#3fc8ff" stroke="#0f1a12" stroke-width="1.2" filter="url(#meglow)" opacity="0"/>
-      <circle cx="20" cy="20" r="7" fill="#3fc8ff" stroke="#ffffff" stroke-width="2.5" filter="url(#meglow)"/>
+      <path class="me-beam" d="M48 48 L31.5 5 A46 46 0 0 1 64.5 5 Z" fill="url(#mebeam)" opacity="0"/>
+      <path class="me-arrow" d="M48 31 L55 46 L48 43 L41 46 Z" fill="#3fc8ff" stroke="#0f1a12" stroke-width="1.2" filter="url(#meglow)" opacity="0"/>
+      <circle cx="48" cy="48" r="7" fill="#3fc8ff" stroke="#ffffff" stroke-width="2.5" filter="url(#meglow)"/>
+      <circle class="me-hit" cx="48" cy="48" r="20" fill="transparent"/>
     </svg>`
+  // the dot itself is the quickest way to say what the wind is doing here
+  el.addEventListener('click', (e) => {
+    e.stopPropagation()
+    const f = useGpsStore.getState().fix
+    if (f) useCheckForm.getState().open(f.lon, f.lat, 'where you stand')
+  })
   return el
 }
 
@@ -61,9 +77,21 @@ function place(map: MlMap, fix: Fix) {
   // the arrow only when there is a course to show (moving, heading known)
   const arrow = marker!.getElement().querySelector('.me-arrow') as SVGElement | null
   const moving = fix.cog != null && fix.sogKn != null && fix.sogKn > 0.5
-  if (arrow) arrow.setAttribute('opacity', moving ? '1' : '0')
-  marker!.setRotation(moving ? fix.cog! : 0)
+  if (arrow) {
+    arrow.setAttribute('opacity', moving ? '1' : '0')
+    arrow.setAttribute('transform', `rotate(${moving ? fix.cog! : 0} 48 48)`)
+  }
+  beam()
   sizeRing(map, fix)
+}
+
+/** The beam the way the phone faces (the marker turns with the map, so this is a true bearing). */
+function beam() {
+  const el = marker?.getElement().querySelector('.me-beam') as SVGElement | null
+  if (!el) return
+  const h = useCompass.getState().heading
+  el.setAttribute('opacity', h == null ? '0' : '1')
+  if (h != null) el.setAttribute('transform', `rotate(${h.toFixed(1)} 48 48)`)
 }
 
 function sizeRing(map: MlMap, fix: Fix) {
@@ -98,7 +126,21 @@ export function initPositionLayer() {
       if (current === map) current = null
     })
   })
+  // the compass: the beam follows it, and heading up the map turns with it
+  let lastTurn = 0
+  useCompass.subscribe((c) => {
+    beam()
+    const map = current
+    if (!map || c.heading == null || !useGpsStore.getState().headingUp) return
+    const now = performance.now()
+    const d = Math.abs(((c.heading - map.getBearing() + 540) % 360) - 180)
+    // a degree of wobble is not worth turning the whole map for
+    if (d < 1.5 || now - lastTurn < 120) return
+    lastTurn = now
+    map.rotateTo(c.heading, { duration: 150, easing: (t) => t })
+  })
   useGpsStore.subscribe((s, prev) => {
+    if (s.headingUp !== prev.headingUp && !s.headingUp) current?.easeTo({ bearing: 0, duration: 400 })
     if (s.fix === prev.fix) return
     if (!s.fix) {
       // location switched off: the dot goes with it

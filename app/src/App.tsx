@@ -59,6 +59,7 @@ function TopBar() {
 function FabStack() {
   const follow = useAppStore((s) => s.follow)
   const locating = useGpsStore((s) => s.locating)
+  const headingUp = useGpsStore((s) => s.headingUp)
   const measuring = useMeasureStore((s) => s.active)
   const recording = useTrackStore((s) => s.recordingId != null)
   const [offNorth, setOffNorth] = useState(false)
@@ -88,7 +89,16 @@ function FabStack() {
       >
         <IconRuler />
       </button>
-      <button ref={compassBtn} className="fab" style={{ opacity: offNorth ? 1 : 0.55 }} onClick={() => withMap((m) => m.easeTo({ bearing: 0, pitch: 0 }))} aria-label="Reset north">
+      <button
+        ref={compassBtn}
+        className="fab"
+        style={{ opacity: offNorth ? 1 : 0.55 }}
+        onClick={() => {
+          useGpsStore.getState().setHeadingUp(false)
+          withMap((m) => m.easeTo({ bearing: 0, pitch: 0 }))
+        }}
+        aria-label="Reset north"
+      >
         <IconCompass />
       </button>
       <button
@@ -106,10 +116,10 @@ function FabStack() {
         <span className={`rec-dot${recording ? ' on' : ''}`} />
       </button>
       <button
-        className={`fab ${locating && follow ? 'active' : ''}`}
+        className={`fab ${locating && follow ? 'active' : ''}${headingUp ? ' fab-heading' : ''}`}
         style={locating && !follow ? { opacity: 0.8, outline: '1.5px solid var(--c-accent)' } : undefined}
         onClick={toggleLocate}
-        aria-label={!locating ? 'Show my position' : follow ? 'Turn location off' : 'Follow my position'}
+        aria-label={!locating ? 'Show my position' : !follow ? 'Follow my position' : headingUp ? 'Turn location off' : 'Turn the map the way I face'}
       >
         <IconLocate />
       </button>

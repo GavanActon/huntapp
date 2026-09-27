@@ -49,3 +49,18 @@
 }
 .gc-opts { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; }
 .pp-acts .pp-log { background: transparent; border: 1px solid var(--c-border-strong); color: var(--c-text); }
+/* the wind check's rose: north marked, the pick shown big in the middle, a Save that says what is missing */
+.gc-dir.gc-north { border-color: rgba(255, 120, 110, 0.7); }
+.gc-dir.gc-north span { color: #ff8a80; }
+.gc-dir.gc-on.gc-north span { color: var(--c-accent); }
+.gc-rose .gc-dir { transition: transform 0.12s linear; touch-action: manipulation; }
+.gc-strength .chip-pick { min-height: 36px; padding-left: 12px; padding-right: 12px; touch-action: manipulation; }
+.gc-mid-pick { display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--c-accent); font-size: 13px; }
+.gc-mid-word { font-size: 12px; color: var(--c-text-dim); }
+.gc-missing { margin: 4px 0 2px; font-size: 12.5px; font-weight: 600; color: #ffb3a8; }
+/* the position dot: room for the compass beam, but only the dot itself takes a tap (it logs the wind) */
+div.me { width: 96px; height: 96px; pointer-events: none; }
+div.me .me-hit { pointer-events: all; cursor: pointer; }
+/* the locate button with the map turned the way you face */
+.fab.fab-heading { box-shadow: 0 0 0 2px var(--c-accent), 0 0 14px rgba(63, 200, 255, 0.55); }
+.fab.fab-heading svg { transform: rotate(-35deg); }

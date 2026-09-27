@@ -3,6 +3,7 @@ import { useAppStore } from '../state/appStore'
 import { nearestInBounds } from '../config'
 import { useGpsStore, type Fix } from './gpsStore'
 import { useTrackStore } from './trackStore'
+import { requestCompass, startCompass, stopCompass, useCompass } from './compass'
 
 /** A plain geolocation watch: one fix in the store, and the map follows
  *  when asked. It runs only while the locate button is on or a track is
@@ -51,6 +52,11 @@ export function stopGps() {
 
 /** Locate and follow: start the watch, centre on the next fix. */
 export function locateAndFollow() {
+  if (!useGpsStore.getState().locating) {
+    // the beam on the dot: which way the phone faces (iOS asks, from this tap)
+    void requestCompass()
+    startCompass()
+  }
   useGpsStore.getState().setLocating(true)
   useAppStore.getState().setFollow(true)
   startGps()
@@ -61,13 +67,18 @@ export function locateAndFollow() {
   }
 }
 
-/** The locate button: off → on and following; panned away → follow again;
- *  following → off (the watch keeps running only for a recording). */
+/** The locate button: off → following, north up → following, heading up
+ *  (skipped without a compass) → off; panned away → follow again. The
+ *  watch keeps running after off only for a recording. */
 export function toggleLocate() {
-  const locating = useGpsStore.getState().locating
-  if (!locating || !useAppStore.getState().follow) return locateAndFollow()
+  const g = useGpsStore.getState()
+  if (!g.locating || !useAppStore.getState().follow) return locateAndFollow()
+  if (!g.headingUp && useCompass.getState().status === 'on') return g.setHeadingUp(true)
+  g.setHeadingUp(false)
   useAppStore.getState().setFollow(false)
-  useGpsStore.getState().setLocating(false)
+  g.setLocating(false)
+  stopCompass()
+  withMap((m) => m.easeTo({ bearing: 0, duration: 400 }))
   if (!useTrackStore.getState().recordingId) stopGps()
 }
 

@@ -44,6 +44,9 @@ interface GpsState {
   /** The locate button is on: the watch runs until it is tapped off. */
   locating: boolean
   setLocating: (v: boolean) => void
+  /** The map turns with the phone's compass, so up is the way you face. */
+  headingUp: boolean
+  setHeadingUp: (v: boolean) => void
   setStatus: (s: GpsStatus, lastError?: string | null) => void
   setFix: (f: Fix | null) => void
   setRecording: (on: boolean, since?: number | null) => void
@@ -64,6 +67,8 @@ export const useGpsStore = create<GpsState>((set) => ({
   setWake: (wake) => set({ wake }),
   locating: false,
   setLocating: (locating) => set({ locating }),
+  headingUp: false,
+  setHeadingUp: (headingUp) => set({ headingUp }),
   setStatus: (status, lastError) => set(lastError === undefined ? { status } : { status, lastError }),
   setFix: (fix) => set({ fix, avgSogKn: pushSog(fix) }),
   setRecording: (recording, since = null) =>
