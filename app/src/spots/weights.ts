@@ -14,6 +14,7 @@ export type WeightKey =
   | 'wind'
   | 'rain'
   | 'front'
+  | 'recent'
   | 'rut'
   | 'water'
   | 'season'
@@ -47,6 +48,7 @@ export const WEIGHT_DEFS: WeightDef[] = [
   { key: 'wind', label: 'Wind', desc: 'Calling range, movement, boat safety', group: 'day' },
   { key: 'rain', label: 'Rain', desc: 'Drizzle to downpour', group: 'day' },
   { key: 'front', label: 'Fronts and pressure', desc: 'A cold front through, a falling glass', group: 'day' },
+  { key: 'recent', label: 'Recent days', desc: 'A warm spell beds moose; the first cool day after one moves them', group: 'day', hunt: true },
   { key: 'rut', label: 'Rut', desc: 'The moose calendar', group: 'day', hunt: true },
   { key: 'season', label: 'Season', desc: 'Closed water scores zero', group: 'day', fish: true },
   { key: 'scent', label: 'Scent', desc: 'Wind and thermals against the feeding side', group: 'site', hunt: true },

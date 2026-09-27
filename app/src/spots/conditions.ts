@@ -47,20 +47,33 @@ export interface Conditions {
   waterTempNote: string
   /** true when the forecast has HRDPS numbers for this hour */
   hrdps: boolean
+  /** days in a row before the plan day with a high of WARM_HIGH_C or more */
+  warmRun: number
+  /** the plan day's high and the day before's, °C (null when unknown) */
+  dayHigh: number | null
+  prevHigh: number | null
 }
+
+/** A day warm enough that the afternoon sits well above the moose's 14 °C
+ *  heat-stress onset for hours (docs/HUNT-FISH-SCIENCE.md, recent days). */
+export const WARM_HIGH_C = 18
 
 const RECENT_KEY = 'huntapp-recent:'
 interface RecentDaily {
   fetchedAt: number
   date: string[]
   tMean: number[]
+  /** daily highs, lows and rain (absent in caches from before they were fetched) */
+  tMax?: number[]
+  tMin?: number[]
+  precipMm?: number[]
 }
 
 function recentKey(lon: number, lat: number) {
   return `${RECENT_KEY}${lon.toFixed(2)},${lat.toFixed(2)}`
 }
 
-/** Daily mean air temperature for the past ten days (cached six hours). */
+/** Daily mean, high, low and rain for the past ten days (cached six hours). */
 export async function recentDailyMeans(lon: number, lat: number): Promise<RecentDaily | null> {
   lon = Math.min(Math.max(lon, REGION_BBOX.west), REGION_BBOX.east)
   lat = Math.min(Math.max(lat, REGION_BBOX.south), REGION_BBOX.north)
@@ -71,20 +84,29 @@ export async function recentDailyMeans(lon: number, lat: number): Promise<Recent
   } catch {
     /* ignore */
   }
-  if (cached && Date.now() - cached.fetchedAt < 6 * 3600_000) return cached
+  if (cached && cached.tMax && Date.now() - cached.fetchedAt < 6 * 3600_000) return cached
   try {
     const q = new URLSearchParams({
       latitude: lat.toFixed(4),
       longitude: lon.toFixed(4),
-      daily: 'temperature_2m_mean',
+      daily: 'temperature_2m_mean,temperature_2m_max,temperature_2m_min,precipitation_sum',
       past_days: '10',
       forecast_days: '1',
       timezone: 'America/Toronto',
     })
     const r = await fetchTimeout(`https://api.open-meteo.com/v1/forecast?${q}`)
     if (!r.ok) throw new Error(String(r.status))
-    const j = (await r.json()) as { daily: { time: string[]; temperature_2m_mean: (number | null)[] } }
-    const out: RecentDaily = { fetchedAt: Date.now(), date: j.daily.time, tMean: j.daily.temperature_2m_mean.map((v) => v ?? NaN) }
+    type Col = (number | null)[]
+    const j = (await r.json()) as { daily: { time: string[]; temperature_2m_mean: Col; temperature_2m_max: Col; temperature_2m_min: Col; precipitation_sum: Col } }
+    const num = (a: Col | undefined) => (a ?? []).map((v) => v ?? NaN)
+    const out: RecentDaily = {
+      fetchedAt: Date.now(),
+      date: j.daily.time,
+      tMean: num(j.daily.temperature_2m_mean),
+      tMax: num(j.daily.temperature_2m_max),
+      tMin: num(j.daily.temperature_2m_min),
+      precipMm: num(j.daily.precipitation_sum),
+    }
     try {
       localStorage.setItem(recentKey(lon, lat), JSON.stringify(out))
     } catch {
@@ -151,6 +173,36 @@ function angDiff(a: number, b: number): number {
   return d
 }
 
+function isoDay(ms: number): string {
+  const d = new Date(ms)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/** Daily highs by date: the forecast from today on, the recent record before. */
+function dailyHighs(f: PointForecast, recent: RecentDaily | null): Map<string, number> {
+  const m = new Map<string, number>()
+  if (recent?.tMax) recent.date.forEach((d, i) => Number.isFinite(recent.tMax![i]) && m.set(d, recent.tMax![i]))
+  const today = isoDay(Date.now())
+  f.daily.date.forEach((d, i) => {
+    const v = f.daily.tMaxC[i]
+    if (d >= today && Number.isFinite(v)) m.set(d, v)
+  })
+  return m
+}
+
+/** The run of warm days before the plan day, and its high against the day before. */
+function recentDays(f: PointForecast, recent: RecentDaily | null, dayStart: number): { warmRun: number; dayHigh: number | null; prevHigh: number | null } {
+  const highs = dailyHighs(f, recent)
+  const at = (k: number) => highs.get(isoDay(dayStart + k * 86_400_000 + 12 * 3600_000)) ?? null
+  let warmRun = 0
+  for (let k = -1; k >= -10; k--) {
+    const h = at(k)
+    if (h == null || h < WARM_HIGH_C) break
+    warmRun++
+  }
+  return { warmRun, dayHigh: at(0), prevHigh: at(-1) }
+}
+
 export function deriveConditions(f: PointForecast, timeMs: number, recent: RecentDaily | null): Conditions | null {
   const now = hourAt(f, timeMs)
   if (!now) return null
@@ -206,6 +258,7 @@ export function deriveConditions(f: PointForecast, timeMs: number, recent: Recen
     waterTempC: wt.t,
     waterTempNote: wt.note,
     hrdps: now.hrdps,
+    ...recentDays(f, recent, dayStart),
   }
 }
 

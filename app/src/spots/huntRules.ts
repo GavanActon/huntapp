@@ -13,7 +13,7 @@ import { DEFAULT_WEIGHTS, weigh, type Part, type Weights } from './weights'
  */
 import { COVER, LANDFORM, type Habitat } from './habitatGrid'
 import type { Conditions } from './conditions'
-import { compass8 } from './conditions'
+import { compass8, WARM_HIGH_C } from './conditions'
 import { groundForScoring, REGIME_LABEL } from '../weather/micro/model'
 import type { Factor, HuntTarget, Verdict } from './types'
 
@@ -312,9 +312,20 @@ export function activityVerdict(t: HuntTarget, c: Conditions, w: Weights = DEFAU
 
   // cloud on a cool day extends the morning
   if (c.cloudPct >= 80 && c.tempC < 14 && c.sinceSunriseH > 3 && c.toSunsetH > 3) factors.push({ label: 'overcast and cool: midday stays active', mult: 1.1, key: 'light' })
+  // the last few days: a warm spell beds moose and deer by day; the first
+  // cool day after one is the break that moves them (and stands in for the
+  // 24 h front factor, which would count the same drop twice)
+  let broke = false
+  if ((t === 'moose' || t === 'deer') && c.warmRun >= 2 && c.dayHigh != null) {
+    if (c.dayHigh >= WARM_HIGH_C) factors.push({ label: `warm spell, day ${c.warmRun + 1}: bedded through the heat, moving at night`, mult: 0.85, note: `highs ${Math.round(c.dayHigh)}°C`, key: 'recent' })
+    else if (c.prevHigh != null && (c.prevHigh - c.dayHigh >= 5 || c.dayHigh < 14)) {
+      broke = true
+      factors.push({ label: `first cool day after ${c.warmRun} warm ones: expect movement`, mult: 1.15, note: `high ${Math.round(c.dayHigh)}° after ${Math.round(c.prevHigh)}°`, key: 'recent' })
+    }
+  }
   // a front that just passed: the temperature drop is what matters
-  if (c.tempDrop24h >= 5 && c.windKmh < 25) factors.push({ label: `cold front through: ${Math.round(c.tempDrop24h)}° colder than yesterday`, mult: 1.15, key: 'front' })
-  else if (c.tempDrop24h <= -6) factors.push({ label: 'warm-up: slower than yesterday', mult: 0.9, key: 'front' })
+  if (!broke && c.tempDrop24h >= 5 && c.windKmh < 25) factors.push({ label: `cold front through: ${Math.round(c.tempDrop24h)}° colder than yesterday`, mult: 1.15, key: 'front' })
+  else if (!broke && c.tempDrop24h <= -6) factors.push({ label: 'warm-up: slower than yesterday', mult: 0.9, key: 'front' })
 
   if (t === 'moose') {
     factors.push({ label: rut.phase, mult: 0.6 + 0.4 * rut.f, key: 'rut' })

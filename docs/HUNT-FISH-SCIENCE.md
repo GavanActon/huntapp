@@ -119,6 +119,18 @@ layer plus a bonus for aspects 135–225° and dense conifer within 500 m.
   on moose or deer [S]. "Rising after a front" is used only as a proxy for
   the temperature drop and clearing that do matter: +0.15 when the 24 h
   temperature drop is ≥5 °C and the wind is easing.
+- **Recent days** (moose and deer, weight key `recent`) [S/H]:
+  - Fall heat stress starts near 14 °C (Renecker & Hudson 1986), and moose
+    cut daytime movement and seek thermal cover in warm spells (McCann et
+    al. 2013; Street et al. 2016).
+  - The multi-day part is hunter experience, not measured [H]. A warm spell
+    beds them, and the first cool day after one moves them.
+  - Daily highs come from the Open-Meteo record for past days and the
+    forecast for today on.
+  - Warm spell, third day or later of highs ≥ 18 °C: × 0.85.
+  - First cool day after two or more warm ones (high 5 °C lower, or under
+    14 °C): × 1.15. This replaces the 24 h front factor, so the same drop
+    is not counted twice.
 - **Cloud**: overcast cool days extend morning activity into midday
   (thermal relief): +0.1 midday when cloud ≥80 % and below 14 °C.
 - **Moon**: GPS studies find no moon-phase effect on deer; nothing
