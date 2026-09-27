@@ -67,7 +67,7 @@ export interface FlowTuning {
   windHue: number // stroke hue, degrees
   windSat: number // stroke saturation %
 }
-export const FLOW_TUNING_DEFAULTS: FlowTuning = { windDensity: 900, windSpeed: 1, windTrail: 0.92, windHue: 195, windSat: 100 }
+export const FLOW_TUNING_DEFAULTS: FlowTuning = { windDensity: 2500, windSpeed: 1, windTrail: 0.97, windHue: 195, windSat: 100 }
 
 /** Contour interval choices for the LiDAR lines, metres. */
 export const CONTOUR_INTERVALS = [1, 2, 5, 10] as const
@@ -146,7 +146,7 @@ export const useAppStore = create<AppState>()(
       setUnits: (units) => set({ units }),
       paceKmh: 4,
       setPaceKmh: (paceKmh) => set({ paceKmh }),
-      windFlowOpacity: 0.8,
+      windFlowOpacity: 1,
       setWindFlowOpacity: (windFlowOpacity) => set({ windFlowOpacity }),
       flowTuning: FLOW_TUNING_DEFAULTS,
       setFlowTuning: (t) => set((s) => ({ flowTuning: { ...s.flowTuning, ...t } })),
@@ -174,6 +174,20 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'huntapp',
+      // v1: the wind's strength, particles and trail default to full; a
+      // phone still holding the old defaults takes the new ones once
+      version: 1,
+      migrate: (persisted, from) => {
+        const p = (persisted ?? {}) as Partial<AppState>
+        if (from < 1) {
+          delete p.windFlowOpacity
+          if (p.flowTuning) {
+            const { windDensity: _d, windTrail: _t, ...rest } = p.flowTuning
+            p.flowTuning = rest as FlowTuning
+          }
+        }
+        return p as AppState
+      },
       partialize: (s) => ({
         layers: s.layers,
         opacity: s.opacity,
