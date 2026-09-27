@@ -241,7 +241,7 @@ function ScentCard() {
       <div className="gc-note">
         {view === 'cloud'
           ? "Scent at a deer's nose: deep orange is strong, the pale wash only a trace."
-          : "Each dot is scent on its way, bright where it is strong at a deer's nose; the ring is how far it stays noticeable."}{' '}
+          : "Each puff is scent drifting off you, widening as it goes and warmest where it is strong at a deer's nose; the dashed line is where it stops being noticeable."}{' '}
         Follows the ground model, not the forecast arrow.
       </div>
     </div>

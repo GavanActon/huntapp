@@ -162,10 +162,16 @@ Sherman (1978) and WindNinja's conservation-of-mass solver (Forthofer et al.
     The card gives "reaches noses from X m". It still uses the head-height
     wind: the wind at stand height is stronger, not yet modelled.
   - **Particle view** (an option on the card): every particle replayed
-    along its own path, 15 minutes in 12 s on a loop. Each dot is as
-    bright as the nose-height band where it is, and dropped below a trace.
-    A dashed ring shows the noticeable reach. It is a still frame in low
-    power or with reduced motion.
+    along its own path, 15 minutes in 12 s on a loop. Each is a soft puff
+    whose width grows with the distance it has travelled (σ ≈ 3 m +
+    0.08 × travel, a drawing aid, not the model's σy), as warm and as
+    opaque as the nose-height band where it is, and gone below a trace;
+    the puffs are drawn at half resolution and scaled up. A dashed line
+    traces the noticeable edge (marching squares at NOTICE on the grid,
+    blurred once more, specks dropped, corners cut twice) with the reach
+    at its far tip, so a stand's plume shows where it touches down rather
+    than a ring round the tree. It is a still frame in low power or with
+    reduced motion.
   - The bands are relative strength, not a deer detection threshold:
     no published data maps these ratios to detection.
   - 2026-09-26 check at camp, 4.4 km/h daytime breeze: the old picture

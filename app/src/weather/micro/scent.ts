@@ -270,6 +270,131 @@ function blur(raw: Float32Array): Float32Array {
   return grid
 }
 
+/** One closed (or, at worst, open) line in metres east/north of the source, as x, y pairs. */
+interface Outline {
+  xy: Float32Array
+  closed: boolean
+}
+
+/**
+ * Where scent stops being noticeable: marching squares on the grid at
+ * NOTICE, blurred once more so the edge reads as the plume's shape rather
+ * than the jitter of single particles. Specks too small to matter are dropped.
+ */
+function noticeOutline(grid: Float32Array): Outline[] {
+  const g = blur(grid)
+  const at = (i: number, j: number) => g[j * N + i]
+  const xm = (i: number) => (i + 0.5) * CELL_M - EXTENT_M
+  const ym = (j: number) => EXTENT_M - (j + 0.5) * CELL_M
+  const pts = new Map<number, [number, number]>()
+  const nb = new Map<number, number[]>()
+  // the crossing on the edge east (h) or south (v) of cell i, j
+  const h = (i: number, j: number) => {
+    const key = (j * N + i) * 2
+    if (!pts.has(key)) pts.set(key, [xm(i) + ((NOTICE - at(i, j)) / (at(i + 1, j) - at(i, j))) * CELL_M, ym(j)])
+    return key
+  }
+  const v = (i: number, j: number) => {
+    const key = (j * N + i) * 2 + 1
+    if (!pts.has(key)) pts.set(key, [xm(i), ym(j) - ((NOTICE - at(i, j)) / (at(i, j + 1) - at(i, j))) * CELL_M])
+    return key
+  }
+  const link = (p: number, q: number) => {
+    for (const [a, b] of [
+      [p, q],
+      [q, p],
+    ]) {
+      const l = nb.get(a)
+      if (l) l.push(b)
+      else nb.set(a, [b])
+    }
+  }
+  for (let j = 0; j < N - 1; j++)
+    for (let i = 0; i < N - 1; i++) {
+      const c = (at(i, j) >= NOTICE ? 8 : 0) | (at(i + 1, j) >= NOTICE ? 4 : 0) | (at(i + 1, j + 1) >= NOTICE ? 2 : 0) | (at(i, j + 1) >= NOTICE ? 1 : 0)
+      if (c === 0 || c === 15) continue
+      const T = () => h(i, j)
+      const B = () => h(i, j + 1)
+      const L = () => v(i, j)
+      const R = () => v(i + 1, j)
+      // a saddle is split by the cell's mean
+      const mid = () => (at(i, j) + at(i + 1, j) + at(i + 1, j + 1) + at(i, j + 1)) / 4 >= NOTICE
+      if (c === 1 || c === 14) link(L(), B())
+      else if (c === 2 || c === 13) link(B(), R())
+      else if (c === 3 || c === 12) link(L(), R())
+      else if (c === 4 || c === 11) link(T(), R())
+      else if (c === 6 || c === 9) link(T(), B())
+      else if (c === 7 || c === 8) link(L(), T())
+      else if ((c === 5 && mid()) || (c === 10 && !mid())) {
+        link(T(), L())
+        link(B(), R())
+      } else {
+        link(T(), R())
+        link(L(), B())
+      }
+    }
+  const seen = new Set<number>()
+  const walk = (from: number, first: number | undefined) => {
+    const out: number[] = []
+    let prev = from
+    let cur = first
+    while (cur !== undefined && !seen.has(cur)) {
+      seen.add(cur)
+      out.push(cur)
+      const n = nb.get(cur)!
+      const next: number | undefined = n[0] === prev ? n[1] : n[0]
+      prev = cur
+      cur = next
+    }
+    return out
+  }
+  const lines: Outline[] = []
+  for (const s of nb.keys()) {
+    if (seen.has(s)) continue
+    seen.add(s)
+    const n = nb.get(s)!
+    const fwd = walk(s, n[0])
+    const keys = [...walk(s, n[1]).reverse(), s, ...fwd]
+    if (keys.length < 10) continue
+    let xy: Float32Array = new Float32Array(keys.length * 2)
+    keys.forEach((k, m) => {
+      const p = pts.get(k)!
+      xy[2 * m] = p[0]
+      xy[2 * m + 1] = p[1]
+    })
+    const closed = nb.get(keys[keys.length - 1])!.includes(keys[0])
+    // two rounds of corner cutting take the grid's stair steps off the edge
+    for (let pass = 0; pass < 2; pass++) xy = chaikin(xy, closed)
+    lines.push({ xy, closed })
+  }
+  return lines
+}
+
+/** Chaikin corner cutting: each segment's ends move a quarter of the way in. */
+function chaikin(xy: Float32Array, closed: boolean): Float32Array {
+  const n = xy.length / 2
+  const segs = closed ? n : n - 1
+  const out = new Float32Array((closed ? 0 : 4) + segs * 4)
+  let o = 0
+  if (!closed) {
+    out[o++] = xy[0]
+    out[o++] = xy[1]
+  }
+  for (let s = 0; s < segs; s++) {
+    const a = s * 2
+    const b = ((s + 1) % n) * 2
+    out[o++] = 0.75 * xy[a] + 0.25 * xy[b]
+    out[o++] = 0.75 * xy[a + 1] + 0.25 * xy[b + 1]
+    out[o++] = 0.25 * xy[a] + 0.75 * xy[b]
+    out[o++] = 0.25 * xy[a + 1] + 0.75 * xy[b + 1]
+  }
+  if (!closed) {
+    out[o++] = xy[xy.length - 2]
+    out[o++] = xy[xy.length - 1]
+  }
+  return out
+}
+
 function renderPng(grid: Float32Array): string {
   const c = document.createElement('canvas')
   c.width = N
@@ -403,18 +528,60 @@ function draw(map: MlMap) {
 
 /**
  * The particle view: every particle of the plume replayed along its own
- * path, the 15-minute sit compressed into 12 seconds on a loop, each dot as
- * bright as the scent where it is at nose height, and gone below a trace.
- * A dashed ring marks how far it stays noticeable. The emphasis is on path
+ * path, the 15-minute sit compressed into 12 seconds on a loop, each one a
+ * soft puff that widens as it travels, as warm as the scent where it is at
+ * nose height and fading out at a trace. A dashed line traces where it
+ * stops being noticeable, labelled at its far tip. The emphasis is on path
  * and range; the cloud is the better read of how much.
  */
 const particles = (() => {
   const LOOP_MS = 12_000
+  const SHADES = 8
   let canvas: HTMLCanvasElement | null = null
   let raf = 0
   let map: MlMap | null = null
-  let state: { lon: number; lat: number; kx: number; ky: number; r: PlumeRun; level: Float32Array } | null = null
+  let state: {
+    lon: number
+    lat: number
+    kx: number
+    ky: number
+    r: PlumeRun
+    level: Float32Array
+    /** distance travelled at each step, m, which sets how wide the puff has spread */
+    travel: Float32Array
+    outline: Outline[]
+    /** the outline's farthest point from the source, for the label */
+    tip: [number, number] | null
+  } | null = null
   let t0 = 0
+  let sprites: HTMLCanvasElement[] | null = null
+  let soft: HTMLCanvasElement | null = null
+
+  /** A soft Gaussian puff per shade, pale amber at a trace to deep orange-red where strong. */
+  function puffs(): HTMLCanvasElement[] {
+    if (sprites) return sprites
+    sprites = []
+    for (let s = 0; s < SHADES; s++) {
+      const v = s / (SHADES - 1)
+      const c = document.createElement('canvas')
+      c.width = c.height = 64
+      const g = c.getContext('2d')!
+      const rg = g.createRadialGradient(32, 32, 0, 32, 32, 32)
+      const rgb = `255,${Math.round(200 - 150 * v)},${Math.round(90 - 70 * v)}`
+      for (const [r, a] of [
+        [0, 1],
+        [0.25, 0.78],
+        [0.5, 0.37],
+        [0.75, 0.1],
+        [1, 0],
+      ])
+        rg.addColorStop(r, `rgba(${rgb},${a})`)
+      g.fillStyle = rg
+      g.fillRect(0, 0, 64, 64)
+      sprites.push(c)
+    }
+    return sprites
+  }
 
   const still = () =>
     useAppStore.getState().lowPower || !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.visibilityState !== 'visible'
@@ -442,34 +609,31 @@ const particles = (() => {
     ctx.setTransform(d, 0, 0, d, 0, 0)
     ctx.clearRect(0, 0, w, h)
     const m = map
-    const { lon, lat, kx, ky, r, level } = state
+    const { lon, lat, kx, ky, r, level, travel, outline, tip } = state
     const tr = r.tracks
     const project = (x: number, y: number) => m.project([lon + x / kx, lat + y / ky])
-    // the range ring: how far scent stays noticeable
     const src = project(0, 0)
-    if (r.plume.reach >= 40) {
-      const edge = project(0, r.plume.reach)
-      const rad = Math.hypot(edge.x - src.x, edge.y - src.y)
-      ctx.setLineDash([5, 5])
-      ctx.strokeStyle = 'rgba(255,170,90,0.7)'
-      ctx.lineWidth = 1.2
-      ctx.beginPath()
-      ctx.arc(src.x, src.y, rad, 0, 2 * Math.PI)
-      ctx.stroke()
-      ctx.setLineDash([])
-      ctx.font = '600 11px system-ui, sans-serif'
-      ctx.fillStyle = 'rgba(255,200,140,0.95)'
-      ctx.strokeStyle = 'rgba(20,10,4,0.85)'
-      ctx.lineWidth = 3
-      const label = r.plume.beyond ? `> ${EXTENT_M} m` : `${Math.round(r.plume.reach / 10) * 10} m`
-      ctx.strokeText(label, src.x + 4, src.y - rad - 4)
-      ctx.fillText(label, src.x + 4, src.y - rad - 4)
-    }
+    const top = project(0, 100)
+    const pxPerM = Math.hypot(top.x - src.x, top.y - src.y) / 100
     // sim time now, looping; standing still draws the end of the sit
     const T = still() ? TOTAL_S - DT : (((now - t0) % LOOP_MS) / LOOP_MS) * TOTAL_S
     const kf = T / DT
     const k = Math.floor(kf)
     const f = kf - k
+    // the last minute fades, so the loop starts over without a blink
+    const fade = Math.min(1, (TOTAL_S - T) / 60)
+    const shade = puffs()
+    // puffs are soft, so they go on a half-size buffer and are scaled up:
+    // the same look for a small share of the fill a phone would do at full size
+    const sw = Math.ceil(w / 2)
+    const sh = Math.ceil(h / 2)
+    if (!soft) soft = document.createElement('canvas')
+    if (soft.width !== sw || soft.height !== sh) {
+      soft.width = sw
+      soft.height = sh
+    }
+    const sx = soft.getContext('2d')!
+    sx.clearRect(0, 0, sw, sh)
     for (let p = 0; p < tr.k0.length; p++) {
       const a = tr.k0[p]
       const b = tr.k1[p]
@@ -482,20 +646,55 @@ const particles = (() => {
       const y = tr.y[i] + (tr.y[j] - tr.y[i]) * f
       const v = Math.min(1, Math.log(g / TRACE) / -Math.log(TRACE))
       const q = project(x, y)
-      const rgb = `255,${Math.round(200 - 150 * v)},${Math.round(90 - 70 * v)}`
-      // a short tail back along the path, so the dots read as flow
-      const ib = p * tr.steps + Math.max(a, k - 2)
-      const qb = project(tr.x[ib], tr.y[ib])
-      ctx.strokeStyle = `rgba(${rgb},${(0.15 + 0.5 * v).toFixed(2)})`
-      ctx.lineWidth = 1 + 1.5 * v
-      ctx.beginPath()
-      ctx.moveTo(qb.x, qb.y)
-      ctx.lineTo(q.x, q.y)
-      ctx.stroke()
-      ctx.fillStyle = `rgba(${rgb},${(0.35 + 0.6 * v).toFixed(2)})`
-      ctx.beginPath()
-      ctx.arc(q.x, q.y, 1.2 + 1.8 * v, 0, 2 * Math.PI)
-      ctx.fill()
+      // the puff's spread, m: a couple of metres at the body, widening with travel
+      const sigma = 3 + 0.08 * (travel[i] + (travel[j] - travel[i]) * f)
+      const half = Math.min(80, Math.max(2, sigma * pxPerM))
+      // wide faint puffs overlap a lot, so a trace is kept thin or it would pile up to look strong
+      sx.globalAlpha = (0.04 + 0.26 * v ** 1.2) * fade
+      sx.drawImage(shade[Math.round(v * (SHADES - 1))], q.x / 2 - half, q.y / 2 - half, 2 * half, 2 * half)
+    }
+    sx.globalAlpha = 1
+    ctx.drawImage(soft, 0, 0, w, h)
+    // where it stops being noticeable: the cone's own edge, not a ring
+    if (r.plume.reach >= 40) {
+      const trace = (o: Outline) => {
+        ctx.beginPath()
+        for (let n = 0; n < o.xy.length; n += 2) {
+          const q = project(o.xy[n], o.xy[n + 1])
+          if (n) ctx.lineTo(q.x, q.y)
+          else ctx.moveTo(q.x, q.y)
+        }
+        if (o.closed) ctx.closePath()
+      }
+      ctx.lineJoin = 'round'
+      ctx.setLineDash([6, 5])
+      for (const o of outline) {
+        trace(o)
+        ctx.strokeStyle = 'rgba(20,10,4,0.45)'
+        ctx.lineWidth = 3
+        ctx.stroke()
+        ctx.strokeStyle = 'rgba(255,170,90,0.9)'
+        ctx.lineWidth = 1.5
+        ctx.stroke()
+      }
+      ctx.setLineDash([])
+      if (tip) {
+        const q = project(tip[0], tip[1])
+        const dx = q.x - src.x
+        const dy = q.y - src.y
+        const d = Math.hypot(dx, dy) || 1
+        const lx = q.x + (dx / d) * 8
+        const ly = q.y + (dy / d) * 8
+        ctx.font = '600 11px system-ui, sans-serif'
+        ctx.textAlign = dx < 0 ? 'right' : 'left'
+        ctx.textBaseline = dy < 0 ? 'bottom' : 'top'
+        ctx.fillStyle = 'rgba(255,200,140,0.95)'
+        ctx.strokeStyle = 'rgba(20,10,4,0.85)'
+        ctx.lineWidth = 3
+        const label = r.plume.beyond ? `> ${EXTENT_M} m` : `${Math.round(r.plume.reach / 10) * 10} m`
+        ctx.strokeText(label, lx, ly)
+        ctx.fillText(label, lx, ly)
+      }
     }
     if (!still()) raf = requestAnimationFrame(frame)
   }
@@ -518,14 +717,31 @@ const particles = (() => {
       // each particle step's nose-height level, looked up once from the grid
       const tr = r.tracks
       const level = new Float32Array(tr.x.length)
-      for (let p = 0; p < tr.k0.length; p++)
+      const travel = new Float32Array(tr.x.length)
+      for (let p = 0; p < tr.k0.length; p++) {
+        let s = 0
         for (let k = tr.k0[p]; k <= tr.k1[p]; k++) {
           const i = p * tr.steps + k
           const cx = Math.floor((tr.x[i] + EXTENT_M) / CELL_M)
           const cy = Math.floor((EXTENT_M - tr.y[i]) / CELL_M)
           level[i] = cx >= 0 && cy >= 0 && cx < N && cy < N ? r.grid[cy * N + cx] : 0
+          // even in a calm the air stirs, so a puff never quite stops spreading
+          s += k === tr.k0[p] ? Math.hypot(tr.x[i], tr.y[i]) : Math.max(1, Math.hypot(tr.x[i] - tr.x[i - 1], tr.y[i] - tr.y[i - 1]))
+          travel[i] = s
         }
-      state = { lon, lat, kx, ky, r, level }
+      }
+      const outline = noticeOutline(r.grid)
+      let tip: [number, number] | null = null
+      let far = 0
+      for (const o of outline)
+        for (let n = 0; n < o.xy.length; n += 2) {
+          const d = Math.hypot(o.xy[n], o.xy[n + 1])
+          if (d > far) {
+            far = d
+            tip = [o.xy[n], o.xy[n + 1]]
+          }
+        }
+      state = { lon, lat, kx, ky, r, level, travel, outline, tip }
       t0 = performance.now()
       if (!raf) raf = requestAnimationFrame(frame)
     },
@@ -537,6 +753,7 @@ const particles = (() => {
       map = null
       canvas?.remove()
       canvas = null
+      soft = null
     },
     /** the tab came back, or low power changed */
     wake() {
