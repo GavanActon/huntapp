@@ -6,8 +6,8 @@ import { onWeatherRefreshed, refreshWeather } from '../../weather/refresh'
 import { moonPhase } from '../../weather/moon'
 import { startOfDayMs } from '../../time'
 import { SkyGlyph, stripSubject, WindArrow } from '../WeatherStrip'
-import { IconRefresh } from '../icons'
-import GroundAir from './GroundAir'
+import { IconRefresh, IconWind } from '../icons'
+import GroundAir, { logWindHere } from './GroundAir'
 
 function ageLabel(fetchedAt: number): string {
   const min = Math.round((Date.now() - fetchedAt) / 60000)
@@ -56,7 +56,12 @@ export default function WeatherPanel() {
 
   return (
     <div className="panel">
-      <div className="panel-section panel-section-first fc-header">
+      <div className="wx-log">
+        <button className="btn-secondary" onClick={logWindHere}>
+          <IconWind size={16} /> Log wind here
+        </button>
+      </div>
+      <div className="panel-section fc-header">
         <span>
           7-day outlook
           {name && <em className="age-badge">at {name}</em>}

@@ -2,15 +2,14 @@ import { useAppStore } from '../state/appStore'
 import { useCheckForm } from '../ui/GroundCard'
 import { ensureProfile, onProfile } from '../weather/boundaryLayer'
 import { groundWind, loadMicro, onMicro } from '../weather/micro/model'
-import { useScent } from '../weather/micro/scent'
 import { useWindChecks } from '../weather/micro/windChecks'
 import { ensureWeatherGrid } from '../weather/windGrid'
 
 /**
- * The ground line under a tapped point's conditions: the air at head
- * height there, one headline and a tag (decoupled, swirly), with the
- * reasons one tap deeper and two actions: draw the scent cone from here,
- * or log what the wind is actually doing.
+ * The ground air in a tapped point's "more": the air at head height
+ * there, one headline and a tag (decoupled, swirly), its reasons, and
+ * logging what the wind is actually doing. The scent cone is the
+ * popup's own button, up front.
  */
 
 function esc(s: string): string {
@@ -23,7 +22,6 @@ function arrow(toward: number): string {
 
 export function attachTapGround(el: HTMLElement, lon: number, lat: number, closePopup: () => void): () => void {
   let alive = true
-  let open = false
   const render = () => {
     if (!alive) return
     const ms = useAppStore.getState().planTimeMs ?? Date.now()
@@ -37,16 +35,8 @@ export function attachTapGround(el: HTMLElement, lon: number, lat: number, close
     const tags = [g.decoupled ? 'decoupled' : '', g.swirl ? 'swirly' : '', g.sigmaDeg >= 60 ? `±${Math.round(g.sigmaDeg)}°` : ''].filter(Boolean)
     el.innerHTML =
       `<div class="pg-head">${arrow((g.dirFrom + 180) % 360)}<span>Ground: ${esc(g.headline)}</span>${tags.map((t) => `<em class="pg-tag">${esc(t)}</em>`).join('')}</div>` +
-      `<ul ${open ? '' : 'hidden'}>${g.reasons.map((r) => `<li>${esc(r)}</li>`).join('')}<li>Head height ${esc(spd)} · forecast ${Math.round(g.regionalKmh)} km/h at 10 m${g.inGrid ? '' : ' · outside the ground model'}</li></ul>` +
-      `<div class="pg-acts"><button class="linklike pg-why" type="button">${open ? 'less' : 'why'}</button><button class="linklike pg-scent" type="button">scent cone</button><button class="linklike pg-check" type="button">log wind here</button></div>`
-    el.querySelector('.pg-why')?.addEventListener('click', () => {
-      open = !open
-      render()
-    })
-    el.querySelector('.pg-scent')?.addEventListener('click', () => {
-      useScent.getState().show(lon, lat)
-      closePopup()
-    })
+      `<ul>${g.reasons.map((r) => `<li>${esc(r)}</li>`).join('')}<li>Head height ${esc(spd)} · forecast ${Math.round(g.regionalKmh)} km/h at 10 m${g.inGrid ? '' : ' · outside the ground model'}</li></ul>` +
+      `<div class="pg-acts"><button class="linklike pg-check" type="button">log wind here</button></div>`
     el.querySelector('.pg-check')?.addEventListener('click', () => {
       useCheckForm.getState().open(lon, lat, 'tapped spot')
       closePopup()

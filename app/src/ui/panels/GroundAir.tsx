@@ -31,6 +31,17 @@ const TIP: Record<Regime, string> = {
   calm: 'scent hangs and spreads every way',
 }
 
+/** Open the wind-check form at the phone's fix, or the strip's place, and drop the sheet. */
+export function logWindHere() {
+  const fix = useGpsStore.getState().fix
+  if (fix && inRegion(fix.lon, fix.lat)) useCheckForm.getState().open(fix.lon, fix.lat, 'here')
+  else {
+    const s = stripSubject()
+    useCheckForm.getState().open(s.lon, s.lat, s.name)
+  }
+  useAppStore.getState().setSheetTab(null)
+}
+
 export default function GroundAir() {
   const planTimeMs = useAppStore((s) => s.planTimeMs)
   const units = useAppStore((s) => s.units)
@@ -59,16 +70,6 @@ export default function GroundAir() {
   const today = checks.filter((c) => startOfDayMs(c.ts) === startOfDayMs(now))
   const scored = checks.filter((c) => verdict(c) != null)
   const hits = scored.filter((c) => verdict(c) === 'agree').length
-
-  const logHere = () => {
-    const fix = useGpsStore.getState().fix
-    if (fix && inRegion(fix.lon, fix.lat)) useCheckForm.getState().open(fix.lon, fix.lat, 'here')
-    else {
-      const s = stripSubject()
-      useCheckForm.getState().open(s.lon, s.lat, s.name)
-    }
-    useAppStore.getState().setSheetTab(null)
-  }
 
   return (
     <>
@@ -101,20 +102,13 @@ export default function GroundAir() {
         Head height at this spot: terrain, trees, cold-air drainage, lake breezes and the air's layering (HRDPS 2 m vs 80 m). Tap the map anywhere for that spot's ground air and its scent cone.
       </div>
 
-      <div className="panel-section fc-header">
-        <span>
-          Wind checks
-          {scored.length > 0 && (
-            <em className="age-badge">
-              model {hits}/{scored.length} agreed
-            </em>
-          )}
-        </span>
-        <span className="fc-actions">
-          <button className="linklike" onClick={logHere}>
-            Log wind here
-          </button>
-        </span>
+      <div className="panel-section">
+        Wind checks
+        {scored.length > 0 && (
+          <em className="age-badge">
+            model {hits}/{scored.length} agreed
+          </em>
+        )}
       </div>
       {today.length === 0 ? (
         <div className="panel-note row-desc">Puff powder or drop milkweed, tap which way it goes. Each check corrects the ground model near it and scores it.</div>

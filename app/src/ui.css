@@ -639,18 +639,21 @@
 /* ---------- depth tap popup ---------- */
 
 .depth-popup .maplibregl-popup-content {
-  background: var(--c-surface-heavy);
-  -webkit-backdrop-filter: blur(var(--blur));
-  backdrop-filter: blur(var(--blur));
-  border: 1px solid var(--c-border-strong);
+  /* see-through enough to keep the ground under it; the blur keeps the
+     numbers readable over busy terrain */
+  background: rgba(12, 23, 36, 0.6);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--c-border);
   border-radius: var(--r-sm);
-  padding: 6px 12px;
+  padding: 6px 30px 7px 10px;
+  min-width: 232px;
   box-shadow: var(--shadow-fab);
 }
 
 .depth-popup .maplibregl-popup-tip {
-  border-top-color: var(--c-surface-heavy) !important;
-  border-bottom-color: var(--c-surface-heavy) !important;
+  border-top-color: rgba(12, 23, 36, 0.6) !important;
+  border-bottom-color: rgba(12, 23, 36, 0.6) !important;
 }
 
 .depth-popup-value {
@@ -671,10 +674,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 10px;
-  margin-top: 3px;
-  padding-top: 4px;
-  border-top: 1px solid var(--c-border);
+  gap: 3px 9px;
+  min-height: 24px;
   font-size: 13px;
   font-weight: 600;
   color: var(--c-text);
@@ -1036,6 +1037,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+/* the Weather tab's first thing: log what the wind is doing, a thumb away */
+.wx-log {
+  display: flex;
+  margin-top: 2px;
 }
 
 .fc-actions {
@@ -2434,6 +2441,65 @@
   padding: 6px 0;
   border-radius: var(--r-tile);
   cursor: pointer;
+}
+
+.pp-acts button {
+  white-space: nowrap;
+}
+
+.pp-acts .pp-more-btn {
+  flex: 0 0 auto;
+  padding: 6px 8px;
+  background: transparent;
+  border: 0;
+  color: var(--c-accent);
+}
+
+.pp-scent {
+  background: var(--c-accent-dim);
+  border: 1px solid var(--c-accent);
+  color: var(--c-text);
+}
+
+/* the game line: the score and what it means, one glance */
+.pp-game {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.pp-game .pp-score {
+  font-size: 15px;
+  min-width: 26px;
+}
+
+.pp-more {
+  /* the reasons scroll inside the popup rather than push it off-screen */
+  max-height: 34vh;
+  overflow-y: auto;
+  margin-top: 6px;
+  padding-top: 5px;
+  border-top: 1px solid var(--c-border);
+  font-size: 12px;
+  color: var(--c-text-dim);
+}
+
+.pp-more-h {
+  margin-top: 6px;
+  color: var(--c-text);
+  font-weight: 600;
+}
+
+.pp-coord {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--c-text-faint);
+  font-variant-numeric: tabular-nums;
+  user-select: text;
 }
 
 .pp-go {

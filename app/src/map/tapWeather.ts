@@ -79,7 +79,9 @@ export function attachTapWeather(el: HTMLElement, lon: number, lat: number): () 
       if (sample && sample(lon, lat, out)) body = windOnlyHtml(out[0], out[1])
       else body = `<span class="wx-item"><span>${forecast ? 'No forecast for this hour' : navigator.onLine ? 'Fetching conditions…' : 'No conditions cached'}</span></span>`
     }
-    el.innerHTML = `<span class="wx-item"><span>${esc(whenLabel())}</span></span>${body}`
+    // "Now" goes without saying; a planned time is worth the words
+    const when = useAppStore.getState().planTimeMs == null ? '' : `<span class="wx-item"><span>${esc(whenLabel())}</span></span>`
+    el.innerHTML = when + body
   }
 
   render()

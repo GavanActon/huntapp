@@ -14,6 +14,7 @@ import { buildMapStyle, contourFilters } from './mapStyle'
 import { registerAllDataFiles, sourceModes } from './pmtilesRegistry'
 import { attachTapWeather } from './tapWeather'
 import { attachTapGround } from './tapGround'
+import { useScent } from '../weather/micro/scent'
 
 import type { FeatureCollection } from 'geojson'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -189,36 +190,46 @@ export default function MapView() {
         if (hit.length) return
         const { lng, lat } = e.lngLat
         const el = document.createElement('div')
-        // the picked point's case, progressively: the score and the day's
-        // headline first; "why" unfolds the reasons; "details" hands the
-        // point to the Spots tab as the probe, where the arithmetic and the
-        // knobs live. Only when the scorer has conditions and the grid.
+        // glance first: the weather there, the game score, Scent and Pin.
+        // Everything else — the ground air's reasons, the score's reasons,
+        // the coordinates, logging the wind — waits behind "more".
         const sp = useSpotsStore.getState()
         const why = sp.conditions && sp.heat ? explainPoint(sp.target, lng, lat, sp.conditions, sp.weights) : null
         const esc = (t: string) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] ?? c)
         const grade = (v: number) => (v >= 0.75 ? 'top' : v >= 0.55 ? 'good' : v >= 0.35 ? 'fair' : 'poor')
-        // Brief shows the score alone; the reasons wait behind "why"
-        const nReasons = sp.detail === 'brief' ? 3 : sp.detail === 'full' ? 8 : 4
-        const whyHtml = why
-          ? `<div class="pp-why"><div class="pp-why-head"><b class="pp-score pp-${grade(why.score)}">${Math.round(why.score * 100)}</b><span>${esc(TARGET_NAMES[sp.target])} · ${esc(sp.result?.verdict.headline ?? '')}</span><button class="pp-why-btn linklike" type="button">why</button></div><ul class="pp-reasons" hidden>${why.reasons
+        const nReasons = sp.detail === 'full' ? 8 : 4
+        const gameHtml = why
+          ? `<div class="pp-game"><b class="pp-score pp-${grade(why.score)}">${Math.round(why.score * 100)}</b><span>${esc(TARGET_NAMES[sp.target])} · ${grade(why.score)}</span></div>`
+          : ''
+        const gameMore = why
+          ? `<div class="pp-more-h">${esc(TARGET_NAMES[sp.target])}${sp.result?.verdict.headline ? ` · ${esc(sp.result.verdict.headline)}` : ''}</div><ul class="pp-reasons">${why.reasons
               .slice(0, nReasons)
               .map((r) => `<li>${esc(r)}</li>`)
-              .join('')}<li><button class="pp-details linklike" type="button">the arithmetic and the knobs ▸</button></li></ul></div>`
+              .join('')}<li><button class="pp-details linklike" type="button">the arithmetic and the knobs ▸</button></li></ul>`
           : ''
-        el.innerHTML = `<button class="pp-close" aria-label="Close">×</button><div class="depth-popup-value">${fmtCoord(lng, lat)}</div><div class="depth-popup-wx"></div><div class="depth-popup-ground"></div>${whyHtml}<div class="pp-acts"><button class="pp-save">Save</button></div>`
-        const popup = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, offset: 8, maxWidth: '320px' }).setLngLat([lng, lat]).setDOMContent(el).addTo(m)
+        el.innerHTML =
+          `<button class="pp-close" aria-label="Close">×</button>` +
+          `<div class="depth-popup-wx"></div>${gameHtml}` +
+          `<div class="pp-acts"><button class="pp-scent">Scent cone</button><button class="pp-save">Pin</button><button class="pp-more-btn" aria-expanded="false">more</button></div>` +
+          `<div class="pp-more" hidden><div class="depth-popup-ground"></div>${gameMore}<div class="pp-coord">${fmtCoord(lng, lat)}</div></div>`
+        const popup = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, offset: 8, maxWidth: '260px' }).setLngLat([lng, lat]).setDOMContent(el).addTo(m)
         // wind, temperature, sky and rain chance at the planning time
         const stopWx = attachTapWeather(el.querySelector('.depth-popup-wx') as HTMLElement, lng, lat)
         popup.on('close', stopWx)
-        // the air at head height there: drainage, shelter, the scent cone
+        // the air at head height there, and logging what it really does
         const stopGround = attachTapGround(el.querySelector('.depth-popup-ground') as HTMLElement, lng, lat, () => popup.remove())
         popup.on('close', stopGround)
         el.querySelector('.pp-close')?.addEventListener('click', () => popup.remove())
-        el.querySelector('.pp-why-btn')?.addEventListener('click', (ev) => {
-          const ul = el.querySelector('.pp-reasons') as HTMLElement | null
-          if (!ul) return
-          ul.hidden = !ul.hidden
-          ;(ev.currentTarget as HTMLElement).textContent = ul.hidden ? 'why' : 'less'
+        el.querySelector('.pp-more-btn')?.addEventListener('click', (ev) => {
+          const more = el.querySelector('.pp-more') as HTMLElement
+          more.hidden = !more.hidden
+          const b = ev.currentTarget as HTMLElement
+          b.textContent = more.hidden ? 'more' : 'less'
+          b.setAttribute('aria-expanded', String(!more.hidden))
+        })
+        el.querySelector('.pp-scent')?.addEventListener('click', () => {
+          useScent.getState().show(lng, lat)
+          popup.remove()
         })
         el.querySelector('.pp-details')?.addEventListener('click', () => {
           usePlacesStore.getState().select(null)
