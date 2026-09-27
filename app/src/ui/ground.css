@@ -47,4 +47,5 @@
   display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 4px 8px; border-radius: 10px;
   border: 1px solid var(--c-accent); background: var(--c-accent-dim); color: var(--c-accent); font-size: 12px; font-weight: 600; cursor: pointer;
 }
+.gc-opts { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; }
 .pp-acts .pp-log { background: transparent; border: 1px solid var(--c-border-strong); color: var(--c-text); }

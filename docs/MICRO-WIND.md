@@ -156,6 +156,16 @@ Sherman (1978) and WindNinja's conservation-of-mass solver (Forthofer et al.
     card gives the share by sector and how far it stays noticeable, or
     "past 700 m" when it runs off the grid, and says so on a stable
     night when scent hugs the ground.
+  - **Tree stand**: release at 4 or 6 m instead of 1.5 m, through the same
+    reflected Gaussian. The grid is scaled to the same sit on the ground,
+    so a stand reads as thinner near the tree, touching down farther out.
+    The card gives "reaches noses from X m". It still uses the head-height
+    wind: the wind at stand height is stronger, not yet modelled.
+  - **Particle view** (an option on the card): every particle replayed
+    along its own path, 15 minutes in 12 s on a loop. Each dot is as
+    bright as the nose-height band where it is, and dropped below a trace.
+    A dashed ring shows the noticeable reach. It is a still frame in low
+    power or with reduced motion.
   - The bands are relative strength, not a deer detection threshold:
     no published data maps these ratios to detection.
   - 2026-09-26 check at camp, 4.4 km/h daytime breeze: the old picture

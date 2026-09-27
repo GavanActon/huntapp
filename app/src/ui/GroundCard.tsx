@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { create } from 'zustand'
 import { compass } from '../weather/openMeteo'
 import { groundWind, loadMicro, REGIME_LABEL, type Regime } from '../weather/micro/model'
-import { plumeSummary, useScent } from '../weather/micro/scent'
+import { GROUND_H, plumeSummary, SCENT_HEIGHTS, useScent, type ScentView } from '../weather/micro/scent'
 import { STRENGTH_LABEL, useWindChecks, verdict, type Strength, type WindCheck } from '../weather/micro/windChecks'
 import { IconClose } from './icons'
 import './ground.css'
@@ -201,9 +201,18 @@ function CheckCard() {
   )
 }
 
+const VIEWS: { v: ScentView; name: string }[] = [
+  { v: 'cloud', name: 'Cloud' },
+  { v: 'particles', name: 'Particles' },
+]
+
 function ScentCard() {
   const plume = useScent((s) => s.plume)
   const clear = useScent((s) => s.clear)
+  const view = useScent((s) => s.view)
+  const setView = useScent((s) => s.setView)
+  const height = useScent((s) => s.height)
+  const setHeight = useScent((s) => s.setHeight)
   return (
     <div className="tripbuilder glass ground-card">
       <div className="tb-head">
@@ -213,7 +222,28 @@ function ScentCard() {
         </button>
       </div>
       <div className="gc-line">{plume ? plumeSummary(plume) : 'Working out the ground wind…'}</div>
-      <div className="gc-note">Scent at a deer's nose: deep orange is strong, the pale wash only a trace. Follows the ground model, not the forecast arrow.</div>
+      <div className="gc-opts">
+        <div className="seg" role="radiogroup" aria-label="Where you sit">
+          {SCENT_HEIGHTS.map((h) => (
+            <button key={h} className={height === h ? 'seg-on' : ''} role="radio" aria-checked={height === h} onClick={() => setHeight(h)}>
+              {h === GROUND_H ? 'Ground' : `Stand ${h} m`}
+            </button>
+          ))}
+        </div>
+        <div className="seg" role="radiogroup" aria-label="How it is drawn">
+          {VIEWS.map((o) => (
+            <button key={o.v} className={view === o.v ? 'seg-on' : ''} role="radio" aria-checked={view === o.v} onClick={() => setView(o.v)}>
+              {o.name}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="gc-note">
+        {view === 'cloud'
+          ? "Scent at a deer's nose: deep orange is strong, the pale wash only a trace."
+          : "Each dot is scent on its way, bright where it is strong at a deer's nose; the ring is how far it stays noticeable."}{' '}
+        Follows the ground model, not the forecast arrow.
+      </div>
     </div>
   )
 }
