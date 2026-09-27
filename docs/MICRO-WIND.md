@@ -176,7 +176,28 @@ Sherman (1978) and WindNinja's conservation-of-mass solver (Forthofer et al.
     no published data maps these ratios to detection.
   - 2026-09-26 check at camp, 4.4 km/h daytime breeze: the old picture
     ran to the 700 m grid edge; now it's noticeable to 150 m, with a
-    trace to 350 m. Each redraw takes 100–220 ms.
+    trace to 350 m.
+  - **Speed**: the ground wind is one value per 30 m micro cell, so a
+    plume's ~90 000 samples are evaluated once per cell (at its centre)
+    and kept, and σz with the nose-height share is a 1 m table along the
+    path. Same cones (sector shares and reach unchanged, grid within
+    0.2%), 40–60 ms a plume on a desktop instead of 150–220.
+  - **Several people** (2026-09-27; sitting only, numbered 1, 2, 3 …):
+    each person's plume is run as above, at their own height, and laid
+    into one frame (each placed to the nearest 10 m cell). Exposure from
+    a passive tracer adds, so the frame is the sum of each person's grid
+    as scaled to their own ground sit: a cone alone looks as it would by
+    itself, and where two overlap a pair of traces can add up to
+    noticeable. The card gives the ground noticeable at nose height
+    everyone together (ha, or acres in imperial), how much of it only the
+    overlap makes, and whose scent is noticeable where another person
+    sits ("1's scent drifts over 3"). Views: the combined cloud; the
+    combined particles inside one edge; or "By person", each person's own
+    noticeable edge in their colour over the combined cloud. People drag
+    about on the map and only the one moved is run again. Not yet: a
+    score for the setup against where animals come in (the Spots heat map
+    and each stand's feeding side), saving a setup to Places, and people
+    walking a push.
   - Because particles sample the field where they are, the cone bends
     along drainage, stalls in a settled bog and turns at a tree line.
 

@@ -180,7 +180,7 @@ export default function MapView() {
 
       // tap a place: select it; tap the map: a popup with the spot and Save
       m.on('click', 'places-pt', (e) => {
-        if (useMeasureStore.getState().active) return
+        if (useMeasureStore.getState().active || useScent.getState().adding) return
         const id = e.features?.[0]?.properties?.id as string | undefined
         if (id) {
           usePlacesStore.getState().select(id)
@@ -189,6 +189,9 @@ export default function MapView() {
       })
       m.on('click', (e) => {
         if (useMeasureStore.getState().active) return // the ruler owns the tap
+        const scent = useScent.getState()
+        // placing another person: the tap is where they sit
+        if (scent.adding) return scent.add(e.lngLat.lng, e.lngLat.lat)
         const hit = m.queryRenderedFeatures(e.point, { layers: ['places-pt'] })
         if (hit.length) return
         const { lng, lat } = e.lngLat
@@ -201,6 +204,9 @@ export default function MapView() {
         const esc = (t: string) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] ?? c)
         const grade = (v: number) => (v >= 0.75 ? 'top' : v >= 0.55 ? 'good' : v >= 0.35 ? 'fair' : 'poor')
         const nReasons = sp.detail === 'full' ? 8 : 4
+        // with people already sitting, the scent button adds the next one here
+        const sitting = scent.people.length
+        const scentBtn = sitting ? `+ Person ${sitting + 1}` : 'Scent cone'
         const gameHtml = why
           ? `<div class="pp-game"><b class="pp-score pp-${grade(why.score)}">${Math.round(why.score * 100)}</b><span>${esc(TARGET_NAMES[sp.target])} · ${grade(why.score)}</span></div>`
           : ''
@@ -213,7 +219,7 @@ export default function MapView() {
         el.innerHTML =
           `<button class="pp-close" aria-label="Close">×</button>` +
           `<div class="depth-popup-wx"></div>${gameHtml}` +
-          `<div class="pp-acts"><button class="pp-scent">Scent cone</button><button class="pp-log">Log</button><button class="pp-save">Pin</button><button class="pp-more-btn" aria-expanded="false">more</button></div>` +
+          `<div class="pp-acts"><button class="pp-scent">${scentBtn}</button><button class="pp-log">Log</button><button class="pp-save">Pin</button><button class="pp-more-btn" aria-expanded="false">more</button></div>` +
           `<div class="pp-more" hidden><div class="depth-popup-ground"></div>${gameMore}<div class="pp-coord">${fmtCoord(lng, lat)}</div></div>`
         const popup = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, offset: 8, maxWidth: '260px' }).setLngLat([lng, lat]).setDOMContent(el).addTo(m)
         // wind, temperature, sky and rain chance at the planning time
@@ -231,7 +237,9 @@ export default function MapView() {
           b.setAttribute('aria-expanded', String(!more.hidden))
         })
         el.querySelector('.pp-scent')?.addEventListener('click', () => {
-          useScent.getState().show(lng, lat)
+          const sc = useScent.getState()
+          if (sc.people.length) sc.add(lng, lat)
+          else sc.show(lng, lat)
           popup.remove()
         })
         el.querySelector('.pp-log')?.addEventListener('click', () => {

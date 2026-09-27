@@ -64,3 +64,17 @@ div.me .me-hit { pointer-events: all; cursor: pointer; }
 /* the locate button with the map turned the way you face */
 .fab.fab-heading { box-shadow: 0 0 0 2px var(--c-accent), 0 0 14px rgba(63, 200, 255, 0.55); }
 .fab.fab-heading svg { transform: rotate(-35deg); }
+/* the scent card with several people: their numbers, who is picked, whose scent drifts over whom */
+.ground-card .gc-people { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ground-card .gc-people .seg button { padding: 5px 12px; min-width: 34px; }
+.ground-card .gc-remove { margin-left: auto; font-size: 12.5px; }
+.ground-card .gc-drift { color: var(--c-warn); }
+.ground-card .gc-opts .chip-pick { padding: 5px 11px; }
+/* each person on the map: a dot to drag (numbered once there are two), a finger's width to catch it by, above the particles */
+.scent-person {
+  width: 14px; height: 14px; border-radius: 50%; background: var(--sp, #ff9d4d); border: 2px solid #1a0f06;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.45); cursor: grab; z-index: 3; touch-action: none;
+}
+.scent-person::before { content: ''; position: absolute; inset: -14px; border-radius: 50%; }
+.scent-person.sp-many { width: 24px; height: 24px; display: grid; place-items: center; font: 700 12.5px/1 system-ui, sans-serif; color: #1a0f06; }
+.scent-person.sp-pick { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9), 0 1px 6px rgba(0, 0, 0, 0.5); }
