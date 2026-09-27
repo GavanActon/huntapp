@@ -63,6 +63,7 @@ Inputs, all fetched and on disk:
 | Forest cover | Ontario FRI Packaged Products v2 (FIMv2), **White River Forest 2010 2D**, FGDB — **downloaded and baked to GeoJSON 2026-09-25, see above** | `https://ws.gisetl.lrc.gov.on.ca/fmedatadownload/Packages/pp_FRI_FIMv2_WhiteRiverForest_2010_2D.zip`. Neighbours: Marathon Block 2008 (Big Pic), Nagagami 390 2014, Magpie 565 2014. FRI Term 2 (2018–2028) for White River is "nearing completion"; check GeoHub before rebuilding. Fallback raster: NRCan 2020 Land Cover 30 m COG. Cut-block age: CanLaD harvest-year raster 1984–2015. |
 | Bush roads | LIO MNRF Road Segment | `LIO_Open09/MapServer/18`, 9 427 segments in the region (paged). Fields `ROAD_NAME`, `STATUS`, `PASSABLE_IND`, `GATE_IND`, `BERM_IND`, `YEAR_DECOMMISSIONED`. Also ORN Road Net Element `LIO_Open09/MapServer/0`, Road Barrier `/22`. |
 | LiDAR contours (1 m) | Traced by `build_contours.py` from the cached HRDEM grid above: averaged to 2 m, Gaussian-smoothed (σ 1 cell), lakes masked with the LIO waterbody polygons, closed rings under 40 m dropped. Every whole metre is baked as `contours-<region>.pmtiles` (z14–16, ~3 MB) with `elev` and `step` (the coarsest of 10/5/2/1 dividing `elev`); the app keeps `step >= interval`, so 1 / 2 / 5 / 10 m is a setting, not a rebuild. z14 holds 2 m and coarser only | derived from HRDEM |
+| Elevation (relief colours) | `build_dem.py`: Mapbox Terrain-RGB heights (0.1 m steps), lossless WebP, one archive `dem-<region>.pmtiles` (z8–16, ~12 MB). LiDAR from the cached HRDEM grid wherever it exists, MRDEM 30 m (cubic up, area-mean down) around it with a 150 m feather at the LiDAR edge; decoded heights within 0.15 m of the LiDAR. The app draws it as a `color-relief` layer (elevation colours), a multi-directional `hillshade` over it and the LIO waterbody polygons (`waterbody-<region>.geojson`) as water on top; the grey hillshade files are the fallback without it | derived from HRDEM and MRDEM |
 | Contours | LIO Contour | `LIO_Open01/MapServer/29`, field `ELEVATION` |
 | Water | Ontario Hydro Network | Waterbody `LIO_Open01/25`, Watercourse `/26`, Shoreline `/14`; names `LIO_Open09/36` |
 | Tenure & regs | LIO | Unpatented Crown `LIO_Open08/34`, BMA `LIO_Open10/23`, Trapline `LIO_Open10/24`, FMZ `LIO_Open07/14`, CLUPA `LIO_Open06/5`, Conservation Reserve `LIO_Open03/2`, Fishing Access Point `LIO_Open07/15`, Bait Harvest Area `LIO_Open07/3`, Moose survey plot grid `LIO_Open07/35` |
@@ -80,3 +81,72 @@ Inputs, all fetched and on disk:
   summary is HTML on ontario.ca.
 - Canoe routes and portages: only OpenStreetMap (`route=canoe`, `portage=*`).
 - The old LIO WMS connector URLs on the OSM wiki are dead.
+
+### Vegetation structure from LiDAR (bush thickness)
+
+**Source.** Ontario MNR Forest Resources Inventory leaf-on single-photon
+LiDAR (Leica SPL100), project White Lake 2021, flown 18–29 Sep 2021.
+- Classified COPC point clouds in 1 km tiles, EPSG:3160 + CGVD2013.
+- From the FRI download service: tile index
+  `https://download.fri.mnrf.gov.on.ca/api/api/Download/tile-index/FRI_Leaf_On_Tile_Index_GeoPackage/FRI_Leaf_On_Tile_Index_GeoPackage.gpkg`,
+  tiles at `.../Download/laz/utm16/<Tilename>.copc.laz` with `_DEM.tif`,
+  `_DSM.tif` and `_Canopy.tif` beside them. Open, OGL-Ontario.
+- The API refuses Range headers but redirects to a signed blob URL that
+  takes them.
+- NRCan's point-cloud bucket does not hold this project.
+- About 36 returns/m², 2–4× in flight-line overlaps.
+- `fetch_pointcloud.py` fetches tiles (resumable, capped by `--max-gb`).
+  `build_vegstructure.py` bakes `raw/vegstructure-<region>.npz` (10 m
+  grids) and `understory-<region>.pmtiles` (z14–16).
+- Coverage so far: 26 of the core's 90 tiles (2 km around camp plus four
+  check tiles, 7.4 GB). The whole core is 26 GB.
+
+**Method.** Height is the return's z minus the provider's 0.5 m DEM of the
+same tile (bilinear).
+- Dropped: noise classes 7/18, returns outside −1…45 m, and returns over
+  DEM-flattened water, which sit 0.5–1 m above it and would read as shrubs.
+- SPL return numbers carry no linear-mode meaning (95 % are "single"), so
+  every return counts as an independent interception sample.
+- Metrics, per 10 m cell:
+  - **Canopy height**: 95th percentile of returns above 2 m (White et al. 2013).
+  - **Canopy cover**: share of returns above 2 m.
+  - **Understory (bush thickness)**: returns 0.5–3 m ÷ returns 0–3 m. This
+    is the normalised relative density, which corrects for occlusion by
+    counting only what reached the layer (Campbell et al. 2018; Wing et
+    al. 2012). Nodata under 50 returns.
+  - **Understory PAD**: the Beer–Lambert inversion of the same gap fraction
+    (MacArthur & Horn 1969).
+  - Return counts in height bands, so a browse layer (0.5–2 m) needs no
+    re-bake.
+
+**Check against the FRI** (medians):
+
+| Stand | Understory |
+|---|---|
+| Open muskeg | 0.12 |
+| Mature closed conifer | 0.38 (height 14.8 m, cover 0.69) |
+| Hardwood-leading | 0.59 |
+| Alder brush | 0.69 |
+| Young stands and cut/blowdown regrowth | 0.71 (the 2007 aspen blowdown 0.77) |
+| Cedar lowland | 0.67 |
+
+LiDAR height against FRI stand height: r 0.76 over 84 stands.
+
+**Caveats.**
+- Leaf-on in late September: deciduous brush opens up after leaf fall,
+  and conifer does not.
+- The 0.5–3 m layer includes low live conifer branches, which is what a
+  hunter pushes through anyway.
+- Five growing seasons since 2021: regrowth is taller, and later cuts
+  are not shown.
+- Single-photon returns thin out under closed conifer; see `n_reach` in
+  the npz.
+- 10 m cells: single shrubs are not resolved.
+
+The DTM row above says Oct 2021. The points' GPS times put the flights
+at 18–29 Sep.
+
+References: Campbell, Dennison, Hudak, Parham & Butler 2018, RSE
+215:330–342 · Wing et al. 2012, RSE 124:730–741 · MacArthur & Horn 1969,
+Ecology 50:802–804 · White et al. 2013, CFS FI-X-010 · Irwin et al. 2021,
+Remote Sens. Lett. 12(10):1049–1060.

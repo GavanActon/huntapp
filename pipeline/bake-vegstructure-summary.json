@@ -1,0 +1,215 @@
+{
+ "brush / alder (BSH)": {
+  "cells": 96,
+  "stands": 3,
+  "canopy_height": {
+   "p25": 3.376,
+   "median": 4.717,
+   "p75": 10.288
+  },
+  "canopy_cover": {
+   "p25": 0.133,
+   "median": 0.276,
+   "p75": 0.449
+  },
+  "understory": {
+   "p25": 0.544,
+   "median": 0.69,
+   "p75": 0.782
+  },
+  "understory_pad": {
+   "p25": 0.628,
+   "median": 0.937,
+   "p75": 1.218
+  },
+  "density": {
+   "p25": 29.897,
+   "median": 34.655,
+   "p75": 63.607
+  }
+ },
+ "mature closed conifer (origin <=1945, cc>=70)": {
+  "cells": 29167,
+  "stands": 44,
+  "canopy_height": {
+   "p25": 12.869,
+   "median": 14.753,
+   "p75": 16.592
+  },
+  "canopy_cover": {
+   "p25": 0.578,
+   "median": 0.692,
+   "p75": 0.82
+  },
+  "understory": {
+   "p25": 0.245,
+   "median": 0.379,
+   "p75": 0.568
+  },
+  "understory_pad": {
+   "p25": 0.225,
+   "median": 0.381,
+   "p75": 0.671
+  },
+  "density": {
+   "p25": 33.57,
+   "median": 35.78,
+   "p75": 40.035
+  }
+ },
+ "mature hardwood-leading (origin <=1960)": {
+  "cells": 17390,
+  "stands": 22,
+  "canopy_height": {
+   "p25": 14.507,
+   "median": 17.589,
+   "p75": 20.883
+  },
+  "canopy_cover": {
+   "p25": 0.724,
+   "median": 0.835,
+   "p75": 0.92
+  },
+  "understory": {
+   "p25": 0.418,
+   "median": 0.592,
+   "p75": 0.747
+  },
+  "understory_pad": {
+   "p25": 0.433,
+   "median": 0.718,
+   "p75": 1.1
+  },
+  "density": {
+   "p25": 33.06,
+   "median": 36.505,
+   "p75": 47.97
+  }
+ },
+ "mature open conifer (origin <=1945, cc<60)": {
+  "cells": 15579,
+  "stands": 17,
+  "canopy_height": {
+   "p25": 10.111,
+   "median": 12.683,
+   "p75": 15.836
+  },
+  "canopy_cover": {
+   "p25": 0.382,
+   "median": 0.594,
+   "p75": 0.836
+  },
+  "understory": {
+   "p25": 0.242,
+   "median": 0.371,
+   "p75": 0.558
+  },
+  "understory_pad": {
+   "p25": 0.222,
+   "median": 0.371,
+   "p75": 0.652
+  },
+  "density": {
+   "p25": 33.39,
+   "median": 35.71,
+   "p75": 45.7
+  }
+ },
+ "open muskeg (OMS)": {
+  "cells": 580,
+  "stands": 12,
+  "canopy_height": {
+   "p25": 0.0,
+   "median": 3.471,
+   "p75": 6.433
+  },
+  "canopy_cover": {
+   "p25": 0.0,
+   "median": 0.015,
+   "p75": 0.108
+  },
+  "understory": {
+   "p25": 0.027,
+   "median": 0.117,
+   "p75": 0.325
+  },
+  "understory_pad": {
+   "p25": 0.022,
+   "median": 0.099,
+   "p75": 0.315
+  },
+  "density": {
+   "p25": 31.198,
+   "median": 32.645,
+   "p75": 34.993
+  }
+ },
+ "water (FRI WAT)": {
+  "cells": 85,
+  "stands": 3,
+  "canopy_height": {
+   "p25": 0.0,
+   "median": 0.0,
+   "p75": 0.0
+  },
+  "canopy_cover": {
+   "p25": 0.0,
+   "median": 0.0,
+   "p75": 0.0
+  },
+  "understory": {
+   "p25": 0.001,
+   "median": 0.004,
+   "p75": 0.016
+  },
+  "understory_pad": {
+   "p25": 0.001,
+   "median": 0.003,
+   "p75": 0.013
+  },
+  "density": {
+   "p25": 29.42,
+   "median": 31.98,
+   "p75": 33.15
+  }
+ },
+ "young forest, origin 1985+ or cut/burn": {
+  "cells": 832,
+  "stands": 7,
+  "canopy_height": {
+   "p25": 5.874,
+   "median": 6.915,
+   "p75": 8.849
+  },
+  "canopy_cover": {
+   "p25": 0.661,
+   "median": 0.822,
+   "p75": 0.913
+  },
+  "understory": {
+   "p25": 0.566,
+   "median": 0.71,
+   "p75": 0.835
+  },
+  "understory_pad": {
+   "p25": 0.669,
+   "median": 0.99,
+   "p75": 1.444
+  },
+  "density": {
+   "p25": 32.177,
+   "median": 33.595,
+   "p75": 35.56
+  }
+ },
+ "water (DEM-flattened)": {
+  "cells": 21840,
+  "share_with_any_value": 0.0261
+ },
+ "_fri_vs_lidar": {
+  "stands": 84,
+  "height_r": 0.76,
+  "height_median_diff_m (lidar2021 - fri2010)": 0.24,
+  "closure_vs_cover_r": 0.345
+ }
+}

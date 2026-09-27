@@ -11,6 +11,8 @@ export interface LayerVisibility {
   /** 1 m LiDAR contour lines near camp; the interval is a setting. */
   contours: boolean
   forest: boolean
+  /** Bush thickness near camp: the 0.5–3 m layer from the 2021 LiDAR point cloud. */
+  understory: boolean
   bathy: boolean
   historical: boolean
   satellite: boolean
@@ -29,6 +31,7 @@ export interface LayerOpacity {
   topo: number
   hillshade: number
   forest: number
+  understory: number
   historical: number
   satellite: number
 }
@@ -38,6 +41,7 @@ export const DEFAULT_LAYERS: LayerVisibility = {
   hillshade: false,
   contours: true,
   forest: false,
+  understory: false,
   bathy: true,
   historical: false,
   satellite: true,
@@ -55,6 +59,7 @@ export const DEFAULT_OPACITY: LayerOpacity = {
   topo: 1,
   hillshade: 0.6,
   forest: 0.55,
+  understory: 0.7,
   historical: 0.8,
   satellite: 0.8,
 }

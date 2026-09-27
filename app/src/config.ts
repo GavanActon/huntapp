@@ -67,8 +67,10 @@ export const DATA_FILES: DataFileDef[] = [
   { key: 'satellite', file: `satellite-${REGION.id}.pmtiles`, kind: 'raster', label: 'Imagery' },
   { key: 'hillshade', file: `hillshade-${REGION.id}.pmtiles`, kind: 'raster', label: 'Hillshade (30 m)' },
   { key: 'hillshadeLidar', file: `hillshade-lidar-${REGION.id}.pmtiles`, kind: 'raster', label: 'LiDAR hillshade (1 m)' },
+  { key: 'dem', file: `dem-${REGION.id}.pmtiles`, kind: 'raster', label: 'Elevation (1 m LiDAR, 30 m around)' },
   { key: 'contours', file: `contours-${REGION.id}.pmtiles`, kind: 'vector', label: 'LiDAR contours (1 m)' },
   { key: 'forest', file: `forest-${REGION.id}.pmtiles`, kind: 'vector', label: 'Forest cover' },
+  { key: 'understory', file: `understory-${REGION.id}.pmtiles`, kind: 'raster', label: 'Bush thickness (LiDAR)' },
   { key: 'bathy', file: `bathy-${REGION.id}.pmtiles`, kind: 'vector', label: 'Lake depths' },
   { key: 'historical', file: `historical-${REGION.id}.pmtiles`, kind: 'raster', label: 'Historical topo' },
   { key: 'bathySheets', file: `bathysheets-${REGION.id}.pmtiles`, kind: 'raster', label: 'Lake survey sheets (1978–79)' },
@@ -89,6 +91,12 @@ export const habitatFile = () => `habitat-${REGION.id}.hab`
  *  terrain, lakes and trees do to the wind, for the ground-wind model. */
 export const microFile = () => `micro-${REGION.id}.hab`
 
+/** Baked GeoJSON with no live fallback, drawn under the data layers: the
+ *  lake outlines that sit over the elevation colours so water reads as water. */
+export const BASE_GEO = ['waterbody'] as const
+export type BaseGeo = (typeof BASE_GEO)[number]
+export const baseGeoFile = (t: BaseGeo) => `${t}-${REGION.id}.geojson`
+
 export interface BundleDef {
   id: string
   name: string
@@ -103,7 +111,7 @@ export const BUNDLES: BundleDef[] = [
     description:
       'Topo, imagery, hillshade, forest stands, lake depths, historical topo, camps, WMU lines and the ' +
       'habitat grid the Spots tab scores, for Pickle, McGill, Ketchup and Line Lakes; full detail within 2 km of the camp.',
-    files: [...DATA_FILES.map((d) => d.file), ...GEO_THEMES.map(geoFile), habitatFile(), microFile()],
+    files: [...DATA_FILES.map((d) => d.file), ...GEO_THEMES.map(geoFile), ...BASE_GEO.map(baseGeoFile), habitatFile(), microFile()],
   },
 ]
 

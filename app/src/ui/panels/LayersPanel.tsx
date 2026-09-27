@@ -28,6 +28,13 @@ const GROUPS: { title: string; defs: LayerDef[] }[] = [
     title: 'Bush & water',
     defs: [
       { key: 'forest', name: 'Forest cover', desc: 'Stands by species and age, burns, cuts (Ontario FRI 2010)', opacity: 'forest', data: 'forest' },
+      {
+        key: 'understory',
+        name: 'Bush thickness',
+        desc: 'How thick the 0.5–3 m layer is, from the Sept 2021 LiDAR point cloud · pale open, deep red thicket · 2 km around camp so far · zoom in',
+        opacity: 'understory',
+        data: 'understory',
+      },
       { key: 'fire', name: 'Burns', desc: 'Fire perimeters by year (MNRF)', data: 'places', live: 'fire' },
       { key: 'bathy', name: 'Lake depths', desc: 'MNR survey sheets for Pickle, Ketchup and McGill (1978–79), estimated depths elsewhere', data: 'bathySheets', live: 'bathy' },
     ],

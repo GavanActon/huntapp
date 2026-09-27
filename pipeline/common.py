@@ -83,28 +83,41 @@ def region_tiles(z: int):
     return sorted((zxy_to_tileid(z, x, y), x, y) for x in range(x0, x1 + 1) for y in range(y0, y1 + 1))
 
 
-def write_raster_pmtiles(path: Path, name: str, attribution: str, minz: int, maxz: int, render_tile, fmt: str = "PNG"):
+def write_raster_pmtiles(
+    path: Path, name: str, attribution: str, minz: int, maxz: int, render_tile, fmt: str = "PNG", metadata: dict | None = None
+) -> dict[int, tuple[int, int]]:
     """Write a raster PMTiles archive. `render_tile(z, x, y)` returns an RGBA
-    numpy array (256×256×4) or None to skip an empty tile."""
+    numpy array (256×256×4), or RGB (256×256×3) for PNG/WEBP, or None to skip
+    an empty tile. fmt is PNG, JPEG (quality 82) or WEBP (lossless, for data
+    tiles such as elevation). `metadata` adds keys to the archive's JSON
+    metadata. Returns {zoom: (tiles, bytes)}."""
     count = 0
+    stats: dict[int, tuple[int, int]] = {}
     with open(path, "wb") as f:
         writer = Writer(f)
         for z in range(minz, maxz + 1):
+            zn = zb = 0
             for tileid, x, y in region_tiles(z):
                 img = render_tile(z, x, y)
                 if img is None:
                     continue
                 buf = io.BytesIO()
+                mode = "RGB" if img.shape[-1] == 3 else "RGBA"
                 if fmt == "PNG":
-                    Image.fromarray(img, "RGBA").save(buf, format="PNG", optimize=True)
+                    Image.fromarray(img, mode).save(buf, format="PNG", optimize=True)
+                elif fmt == "WEBP":
+                    Image.fromarray(img, mode).save(buf, format="WEBP", lossless=True, quality=100, method=6, exact=True)
                 else:
                     Image.fromarray(img[..., :3], "RGB").save(buf, format="JPEG", quality=82)
                 writer.write_tile(tileid, buf.getvalue())
                 count += 1
+                zn += 1
+                zb += buf.tell()
+            stats[z] = (zn, zb)
             print(f"z{z}: done ({count} tiles total)")
         writer.finalize(
             {
-                "tile_type": TileType.PNG if fmt == "PNG" else TileType.JPEG,
+                "tile_type": {"PNG": TileType.PNG, "WEBP": TileType.WEBP}.get(fmt, TileType.JPEG),
                 "tile_compression": Compression.NONE,
                 "min_lon_e7": int(REGION["west"] * 1e7),
                 "min_lat_e7": int(REGION["south"] * 1e7),
@@ -114,9 +127,10 @@ def write_raster_pmtiles(path: Path, name: str, attribution: str, minz: int, max
                 "center_lon_e7": int((REGION["west"] + REGION["east"]) / 2 * 1e7),
                 "center_lat_e7": int((REGION["south"] + REGION["north"]) / 2 * 1e7),
             },
-            {"name": name, "attribution": attribution},
+            {"name": name, "attribution": attribution, **(metadata or {})},
         )
     print(f"wrote {path.name} ({path.stat().st_size / 1e6:.1f} MB, {count} tiles)")
+    return stats
 
 
 def hillshade(elev: np.ndarray, cell_m: float, az_deg: float = 315.0, alt_deg: float = 45.0) -> np.ndarray:

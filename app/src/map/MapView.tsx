@@ -1,7 +1,7 @@
 import maplibregl from 'maplibre-gl'
 import { useEffect, useRef, useState } from 'react'
 import { devlog } from '../devlog'
-import { DATA_BASE, DATA_FILES, GEO_THEMES, geoFile, HOME, MAX_BOUNDS } from '../config'
+import { BASE_GEO, baseGeoFile, DATA_BASE, DATA_FILES, GEO_THEMES, geoFile, HOME, MAX_BOUNDS } from '../config'
 import { getStoredFile } from '../offline/fileStore'
 import { useAppStore, type LayerOpacity, type LayerVisibility } from '../state/appStore'
 import { usePlacesStore } from '../state/placesStore'
@@ -66,9 +66,9 @@ export const geoModes = new Map<string, 'local' | 'network'>()
 async function resolveGeo(): Promise<Map<string, string>> {
   const geo = new Map<string, string>()
   geoModes.clear()
+  const themes = [...GEO_THEMES.map((t) => [t, geoFile(t)] as const), ...BASE_GEO.map((t) => [t, baseGeoFile(t)] as const)]
   await Promise.all(
-    GEO_THEMES.map(async (t) => {
-      const file = geoFile(t)
+    themes.map(async ([t, file]) => {
       const blob = await getStoredFile(file)
       if (blob) {
         geoModes.set(t, 'local')
@@ -298,6 +298,7 @@ export function applyLayerState(map: maplibregl.Map, layers: LayerVisibility, op
     const on = layers[meta.group]
     map.setLayoutProperty(l.id, 'visibility', on ? 'visible' : 'none')
     if (meta.opacityKey && l.type === 'raster') map.setPaintProperty(l.id, 'raster-opacity', opacity[meta.opacityKey])
+    if (meta.opacityKey && l.type === 'color-relief') map.setPaintProperty(l.id, 'color-relief-opacity', opacity[meta.opacityKey])
     if (meta.opacityKey === 'forest' && l.type === 'fill') map.setPaintProperty(l.id, 'fill-opacity', opacity.forest)
   }
 }

@@ -1,5 +1,5 @@
 import { DARK, layers as basemapLayers } from '@protomaps/basemaps'
-import type { FilterSpecification, LayerSpecification, StyleSpecification } from 'maplibre-gl'
+import type { ExpressionSpecification, FilterSpecification, LayerSpecification, StyleSpecification } from 'maplibre-gl'
 import { LIVE_RASTER, LIVE_VECTOR } from '../sources'
 import type { ContourInterval, LayerOpacity, LayerVisibility } from '../state/appStore'
 
@@ -50,6 +50,28 @@ export function contourFilters(interval: ContourInterval): [FilterSpecification,
   const index: FilterSpecification = ['==', ['%', ['get', 'elev'], interval * 5], 0]
   return [keep, index, interval <= 2 ? keep : index]
 }
+/** Elevation colours for the relief, m: low ground and lake shores green,
+ *  through the core's benches (340–420 m) in olive and tan, to the high
+ *  ridges in pale brown. Stretched over the core's 325–466 m, with the
+ *  wider region's extremes clamped at either end. */
+const RELIEF_RAMP = [
+  'interpolate',
+  ['linear'],
+  ['elevation'],
+  250, '#2f5236',
+  325, '#3f6b42',
+  340, '#5a824a',
+  355, '#7b9651',
+  370, '#a0a65a',
+  385, '#bfae63',
+  400, '#cc9f5e',
+  415, '#bf8658',
+  430, '#a9735a',
+  450, '#b49a86',
+  470, '#d9ccbd',
+  600, '#f1ebe2',
+] as unknown as ExpressionSpecification
+
 const FONT = ['Noto Sans Regular']
 const FONT_MED = ['Noto Sans Medium']
 const HALO = { 'text-halo-color': 'rgba(10,20,12,0.92)', 'text-halo-width': 1.2 }
@@ -113,10 +135,61 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
     )
   }
   addRaster('satellite', { 'raster-saturation': -0.3 })
-  addRaster('hillshade')
+  // with the elevation tiles on hand, the relief is drawn here from heights:
+  // colour by elevation, a multi-directional shade over it, the lakes as
+  // water on top; the baked grey shades are the fallback without them
+  const dem = has('dem')
+  if (dem) {
+    sources.dem = { type: 'raster-dem', url: 'pmtiles://dem', encoding: 'mapbox', tileSize: 256, attribution: 'MRDEM, HRDEM LiDAR © Natural Resources Canada' }
+    const lakes = o.geo.get('waterbody')
+    if (lakes) sources.lakes = { type: 'geojson', data: lakes, attribution: '© Ontario MNRF' }
+    rasters.push(
+      tag(
+        {
+          id: 'relief-colour',
+          type: 'color-relief',
+          source: 'dem',
+          layout: vis(o.layers.hillshade),
+          paint: { 'color-relief-color': RELIEF_RAMP, 'color-relief-opacity': o.opacity.hillshade },
+        } as LayerSpecification,
+        'hillshade',
+        'hillshade',
+      ),
+      tag(
+        {
+          id: 'relief-shade',
+          type: 'hillshade',
+          source: 'dem',
+          layout: vis(o.layers.hillshade),
+          paint: {
+            'hillshade-method': 'multidirectional',
+            'hillshade-illumination-direction': [270, 315, 0, 45],
+            'hillshade-illumination-altitude': [30, 30, 30, 30],
+            'hillshade-highlight-color': ['rgba(255,250,235,0.35)', 'rgba(255,250,235,0.45)', 'rgba(255,250,235,0.35)', 'rgba(255,250,235,0.2)'],
+            'hillshade-shadow-color': ['rgba(16,20,12,0.6)', 'rgba(16,20,12,0.8)', 'rgba(16,20,12,0.6)', 'rgba(16,20,12,0.35)'],
+            'hillshade-exaggeration': 0.85,
+          },
+        } as LayerSpecification,
+        'hillshade',
+      ),
+    )
+    if (lakes)
+      rasters.push(
+        tag(
+          {
+            id: 'relief-lakes',
+            type: 'fill',
+            source: 'lakes',
+            layout: vis(o.layers.hillshade),
+            paint: { 'fill-color': '#3f6f8f', 'fill-outline-color': '#5d8fae', 'fill-opacity': ['*', 0.95, o.opacity.hillshade] },
+          },
+          'hillshade',
+        ),
+      )
+  } else addRaster('hillshade')
   // the 1 m LiDAR shade rides above the 30 m one where it is baked (the
   // core, z14+); both answer to the one Hillshade switch and slider
-  if (has('hillshadeLidar')) {
+  if (!dem && has('hillshadeLidar')) {
     sources.hillshadeLidar = { type: 'raster', url: 'pmtiles://hillshadeLidar', tileSize: 256, minzoom: 14 }
     rasters.push(
       tag(
@@ -130,6 +203,24 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
         },
         'hillshade',
         'hillshade',
+      ),
+    )
+  }
+  // bush thickness from the point cloud, near camp (z14–16 baked, overzoomed above)
+  if (has('understory')) {
+    sources.understory = { type: 'raster', url: 'pmtiles://understory', tileSize: 256, minzoom: 14, maxzoom: 16, attribution: 'FRI LiDAR © Ontario MNR' }
+    rasters.push(
+      tag(
+        {
+          id: 'understory',
+          type: 'raster',
+          source: 'understory',
+          minzoom: 12.5,
+          layout: vis(o.layers.understory),
+          paint: { 'raster-opacity': o.opacity.understory, 'raster-resampling': 'nearest' },
+        },
+        'understory',
+        'understory',
       ),
     )
   }
