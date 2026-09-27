@@ -3,7 +3,7 @@ import MapView from './map/MapView'
 import { withMap } from './map/mapController'
 import { useAppStore, type SheetTab } from './state/appStore'
 import { useGpsStore } from './tracking/gpsStore'
-import { locateAndFollow, startGps } from './tracking/gpsService'
+import { afterRecording, startGps, toggleLocate } from './tracking/gpsService'
 import { initTextScale } from './ui/textScale'
 import BottomSheet from './ui/BottomSheet'
 import WeatherStrip from './ui/WeatherStrip'
@@ -55,6 +55,7 @@ function TopBar() {
 
 function FabStack() {
   const follow = useAppStore((s) => s.follow)
+  const locating = useGpsStore((s) => s.locating)
   const measuring = useMeasureStore((s) => s.active)
   const recording = useTrackStore((s) => s.recordingId != null)
   const [offNorth, setOffNorth] = useState(false)
@@ -90,7 +91,10 @@ function FabStack() {
       <button
         className={`fab fab-rec ${recording ? 'active' : ''}`}
         onClick={() => {
-          if (recording) return useTrackStore.getState().stop()
+          if (recording) {
+            useTrackStore.getState().stop()
+            return afterRecording()
+          }
           startGps()
           useTrackStore.getState().start()
         }}
@@ -98,7 +102,12 @@ function FabStack() {
       >
         <span className={`rec-dot${recording ? ' on' : ''}`} />
       </button>
-      <button className={`fab ${follow ? 'active' : ''}`} onClick={() => (follow ? useAppStore.getState().setFollow(false) : locateAndFollow())} aria-label={follow ? 'Stop following' : 'My position'}>
+      <button
+        className={`fab ${locating && follow ? 'active' : ''}`}
+        style={locating && !follow ? { opacity: 0.8, outline: '1.5px solid var(--c-accent)' } : undefined}
+        onClick={toggleLocate}
+        aria-label={!locating ? 'Show my position' : follow ? 'Turn location off' : 'Follow my position'}
+      >
         <IconLocate />
       </button>
     </div>
@@ -135,8 +144,6 @@ export default function App() {
     const off = () => setOnline(false)
     window.addEventListener('online', on)
     window.addEventListener('offline', off)
-    // a fix is useful from the first second; the OS asks once
-    startGps()
     document.getElementById('splash')?.classList.add('gone')
     setTimeout(() => document.getElementById('splash')?.remove(), 400)
     return () => {

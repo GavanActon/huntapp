@@ -2,10 +2,11 @@ import { withMap } from '../map/mapController'
 import { useAppStore } from '../state/appStore'
 import { nearestInBounds } from '../config'
 import { useGpsStore, type Fix } from './gpsStore'
+import { useTrackStore } from './trackStore'
 
 /** A plain geolocation watch: one fix in the store, and the map follows
- *  when asked. The boat app's fix gate, wake lock and track recording are
- *  deliberately not here yet. */
+ *  when asked. It runs only while the locate button is on or a track is
+ *  recording, never on its own: location is the hunter's to switch on. */
 let watchId: number | null = null
 
 export function startGps() {
@@ -43,11 +44,14 @@ export function startGps() {
 export function stopGps() {
   if (watchId != null) navigator.geolocation.clearWatch(watchId)
   watchId = null
+  // a stale dot is worse than none: with location off the app works from camp or a pin
+  useGpsStore.getState().setFix(null)
   useGpsStore.getState().setStatus('off')
 }
 
 /** Locate and follow: start the watch, centre on the next fix. */
 export function locateAndFollow() {
+  useGpsStore.getState().setLocating(true)
   useAppStore.getState().setFollow(true)
   startGps()
   const fix = useGpsStore.getState().fix
@@ -55,4 +59,19 @@ export function locateAndFollow() {
     const { center } = nearestInBounds(fix.lon, fix.lat)
     withMap((m) => m.easeTo({ center, zoom: Math.max(m.getZoom(), 13) }))
   }
+}
+
+/** The locate button: off → on and following; panned away → follow again;
+ *  following → off (the watch keeps running only for a recording). */
+export function toggleLocate() {
+  const locating = useGpsStore.getState().locating
+  if (!locating || !useAppStore.getState().follow) return locateAndFollow()
+  useAppStore.getState().setFollow(false)
+  useGpsStore.getState().setLocating(false)
+  if (!useTrackStore.getState().recordingId) stopGps()
+}
+
+/** A track stopped: the watch goes too, unless the locate button is on. */
+export function afterRecording() {
+  if (!useGpsStore.getState().locating) stopGps()
 }

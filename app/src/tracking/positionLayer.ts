@@ -99,7 +99,16 @@ export function initPositionLayer() {
     })
   })
   useGpsStore.subscribe((s, prev) => {
-    if (s.fix === prev.fix || !s.fix) return
+    if (s.fix === prev.fix) return
+    if (!s.fix) {
+      // location switched off: the dot goes with it
+      marker?.remove()
+      ring?.remove()
+      marker = null
+      ring = null
+      onMap = null
+      return
+    }
     const map = current
     if (!map) return
     place(map, s.fix)

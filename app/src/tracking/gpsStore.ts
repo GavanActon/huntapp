@@ -41,6 +41,9 @@ interface GpsState {
   setDropped: (d: { coarse: number; stale: number; jump: number }) => void
   wake: WakeState
   setWake: (w: WakeState) => void
+  /** The locate button is on: the watch runs until it is tapped off. */
+  locating: boolean
+  setLocating: (v: boolean) => void
   setStatus: (s: GpsStatus, lastError?: string | null) => void
   setFix: (f: Fix | null) => void
   setRecording: (on: boolean, since?: number | null) => void
@@ -59,6 +62,8 @@ export const useGpsStore = create<GpsState>((set) => ({
   setDropped: (dropped) => set({ dropped: { ...dropped } }),
   wake: 'off',
   setWake: (wake) => set({ wake }),
+  locating: false,
+  setLocating: (locating) => set({ locating }),
   setStatus: (status, lastError) => set(lastError === undefined ? { status } : { status, lastError }),
   setFix: (fix) => set({ fix, avgSogKn: pushSog(fix) }),
   setRecording: (recording, since = null) =>
