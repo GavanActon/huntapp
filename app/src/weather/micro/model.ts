@@ -547,6 +547,12 @@ export function groundSampler(ms: number): GroundSampler | null {
   }
 }
 
+/** The air's layering at a time: 0…1 decoupled-stable, 0…1 sun-driven convective. */
+export function groundStability(ms: number): { stable: number; convective: number } {
+  const l = makeCtx(ms).lay
+  return { stable: l.stable, convective: l.convective }
+}
+
 export interface Window {
   startMs: number
   endMs: number

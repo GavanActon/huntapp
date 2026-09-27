@@ -178,7 +178,7 @@ function ScentCard() {
         </button>
       </div>
       <div className="gc-line">{plume ? plumeSummary(plume) : 'Working out the ground wind…'}</div>
-      <div className="gc-note">Shaded by chance: deep orange where scent lingers most. Follows the ground model, not the forecast arrow.</div>
+      <div className="gc-note">Scent at a deer's nose: deep orange is strong, the pale wash only a trace. Follows the ground model, not the forecast arrow.</div>
     </div>
   )
 }

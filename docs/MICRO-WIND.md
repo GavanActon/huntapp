@@ -137,14 +137,30 @@ Sherman (1978) and WindNinja's conservation-of-mass solver (Forthofer et al.
 
   A nearby wind check narrows it by a quarter.
 - **Scent cone**: a Lagrangian particle plume on the ground-wind field.
-  - 540 particles released over 10 minutes and followed for 15, each
+  - 720 particles released over 10 minutes and followed for 15, each
     moving with the local ground wind plus Langevin gusts (time scale
     20 s, size growing with speed and spread).
   - The mean direction meanders with the source's sigma on a 2.5 minute
     time scale, in six independent realisations.
-  - The picture is the time-integrated exposure, so it shows the chance
-    scent reaches a place. The card gives the share by sector and the
-    distance holding 90% of it.
+  - Each particle is also a puff that mixes upward as it travels
+    (particle–puff hybrid, as HYSPLIT does): σz from the Briggs (1973)
+    rural curves along the distance travelled, neutral D blended toward
+    stable F by the decoupling or toward unstable B by the convection,
+    plus 1 m for the body's wake. A particle counts only for the share
+    of its puff left at a deer's nose (1 m, released at 1.5 m,
+    reflected at the ground). Without this, a flat 2D plume never
+    dilutes upward and the far tail runs 5–10× too strong.
+  - The picture is time-integrated nose-height exposure, scaled to the
+    plume core 20–40 m out (not the spike on the source cell), in three
+    bands: strong ≥ 20%, noticeable ≥ 4%, a faint trace wash ≥ 1%. The
+    card gives the share by sector and how far it stays noticeable, or
+    "past 700 m" when it runs off the grid, and says so on a stable
+    night when scent hugs the ground.
+  - The bands are relative strength, not a deer detection threshold:
+    no published data maps these ratios to detection.
+  - 2026-09-26 check at camp, 4.4 km/h daytime breeze: the old picture
+    ran to the 700 m grid edge; now it's noticeable to 150 m, with a
+    trace to 350 m. Each redraw takes 100–220 ms.
   - Because particles sample the field where they are, the cone bends
     along drainage, stalls in a settled bog and turns at a tree line.
 
