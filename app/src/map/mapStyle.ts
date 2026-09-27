@@ -135,9 +135,11 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
     )
   }
   addRaster('satellite', { 'raster-saturation': -0.3 })
-  // with the elevation tiles on hand, the relief is drawn here from heights:
-  // colour by elevation, a multi-directional shade over it, the lakes as
-  // water on top; the baked grey shades are the fallback without them
+  // Two switches over the elevation tiles. Elevation colours: the heights
+  // coloured, lakes as water. Hillshade: the shade, drawn from the heights
+  // for the wide view, then the crisp baked grey 1 m LiDAR shade near camp
+  // from z13.5, the one that shows old skid trails and ditches; the
+  // DEM-drawn shade has 1.6 m pixels and a smoothing light, and loses them.
   const dem = has('dem')
   if (dem) {
     sources.dem = { type: 'raster-dem', url: 'pmtiles://dem', encoding: 'mapbox', tileSize: 256, attribution: 'MRDEM, HRDEM LiDAR © Natural Resources Canada' }
@@ -149,11 +151,11 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
           id: 'relief-colour',
           type: 'color-relief',
           source: 'dem',
-          layout: vis(o.layers.hillshade),
-          paint: { 'color-relief-color': RELIEF_RAMP, 'color-relief-opacity': o.opacity.hillshade },
+          layout: vis(o.layers.relief),
+          paint: { 'color-relief-color': RELIEF_RAMP, 'color-relief-opacity': o.opacity.relief },
         } as LayerSpecification,
-        'hillshade',
-        'hillshade',
+        'relief',
+        'relief',
       ),
       tag(
         {
@@ -167,7 +169,8 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
             'hillshade-illumination-altitude': [30, 30, 30, 30],
             'hillshade-highlight-color': ['rgba(255,250,235,0.35)', 'rgba(255,250,235,0.45)', 'rgba(255,250,235,0.35)', 'rgba(255,250,235,0.2)'],
             'hillshade-shadow-color': ['rgba(16,20,12,0.6)', 'rgba(16,20,12,0.8)', 'rgba(16,20,12,0.6)', 'rgba(16,20,12,0.35)'],
-            'hillshade-exaggeration': 0.85,
+            // fading out where the grey LiDAR shade takes over, so the core is not shaded twice
+            'hillshade-exaggeration': has('hillshadeLidar') ? ['interpolate', ['linear'], ['zoom'], 13.3, 0.85, 14, 0.25] : 0.85,
           },
         } as LayerSpecification,
         'hillshade',
@@ -180,16 +183,16 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
             id: 'relief-lakes',
             type: 'fill',
             source: 'lakes',
-            layout: vis(o.layers.hillshade),
-            paint: { 'fill-color': '#3f6f8f', 'fill-outline-color': '#5d8fae', 'fill-opacity': ['*', 0.95, o.opacity.hillshade] },
+            layout: vis(o.layers.relief),
+            paint: { 'fill-color': '#3f6f8f', 'fill-outline-color': '#5d8fae', 'fill-opacity': 0.95 },
           },
-          'hillshade',
+          'relief',
         ),
       )
   } else addRaster('hillshade')
   // the 1 m LiDAR shade rides above the 30 m one where it is baked (the
   // core, z14+); both answer to the one Hillshade switch and slider
-  if (!dem && has('hillshadeLidar')) {
+  if (has('hillshadeLidar')) {
     sources.hillshadeLidar = { type: 'raster', url: 'pmtiles://hillshadeLidar', tileSize: 256, minzoom: 14 }
     rasters.push(
       tag(

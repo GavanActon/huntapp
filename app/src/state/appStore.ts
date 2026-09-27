@@ -8,6 +8,8 @@ export type SheetTab = 'places' | 'spots' | 'layers' | 'weather' | 'settings'
 export interface LayerVisibility {
   topo: boolean
   hillshade: boolean
+  /** Elevation colours from the DEM (green low ground to pale ridges), lakes as water. */
+  relief: boolean
   /** 1 m LiDAR contour lines near camp; the interval is a setting. */
   contours: boolean
   forest: boolean
@@ -30,6 +32,7 @@ export interface LayerVisibility {
 export interface LayerOpacity {
   topo: number
   hillshade: number
+  relief: number
   forest: number
   understory: number
   historical: number
@@ -39,6 +42,7 @@ export interface LayerOpacity {
 export const DEFAULT_LAYERS: LayerVisibility = {
   topo: true,
   hillshade: false,
+  relief: false,
   contours: true,
   forest: false,
   understory: false,
@@ -58,6 +62,7 @@ export const DEFAULT_LAYERS: LayerVisibility = {
 export const DEFAULT_OPACITY: LayerOpacity = {
   topo: 1,
   hillshade: 0.6,
+  relief: 0.9,
   forest: 0.55,
   understory: 0.7,
   historical: 0.8,

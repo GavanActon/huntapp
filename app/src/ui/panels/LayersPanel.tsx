@@ -19,7 +19,8 @@ const GROUPS: { title: string; defs: LayerDef[] }[] = [
     title: 'Terrain',
     defs: [
       { key: 'topo', name: 'Topographic', desc: 'Contour lines and spot elevations (NRCan Toporama)', opacity: 'topo', data: 'topo', live: 'topo' },
-      { key: 'hillshade', name: 'Hillshade', desc: 'Relief · 1 m LiDAR (2021) near camp, 30 m MRDEM around', opacity: 'hillshade', data: 'hillshade', live: 'hillshade' },
+      { key: 'hillshade', name: 'Hillshade', desc: 'Grey relief · the crisp 1 m LiDAR (2021) near camp shows old skid trails and ditches · 30 m around', opacity: 'hillshade', data: 'hillshade', live: 'hillshade' },
+      { key: 'relief', name: 'Elevation colours', desc: 'Low ground green to high ridges pale brown, lakes as water · put Hillshade over it', opacity: 'relief', data: 'dem' },
       { key: 'contours', name: 'LiDAR contours', desc: 'Every metre near camp, from the 2021 LiDAR · interval in Settings', data: 'contours' },
       { key: 'satellite', name: 'Imagery', desc: 'Ontario orthophoto mosaic', opacity: 'satellite', data: 'satellite', live: 'satellite' },
     ],
