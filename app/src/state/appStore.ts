@@ -15,6 +15,8 @@ export interface LayerVisibility {
   forest: boolean
   /** Bush thickness near camp: the 0.5–3 m layer from the 2021 LiDAR point cloud. */
   understory: boolean
+  /** The same drawn for a bow: open ground clear, thick bush shaded dark (the Bow view). */
+  lanes: boolean
   bathy: boolean
   historical: boolean
   satellite: boolean
@@ -35,6 +37,7 @@ export interface LayerOpacity {
   relief: number
   forest: number
   understory: number
+  lanes: number
   historical: number
   satellite: number
 }
@@ -46,6 +49,7 @@ export const DEFAULT_LAYERS: LayerVisibility = {
   contours: true,
   forest: false,
   understory: false,
+  lanes: false,
   bathy: true,
   historical: false,
   satellite: true,
@@ -65,6 +69,7 @@ export const DEFAULT_OPACITY: LayerOpacity = {
   relief: 0.9,
   forest: 0.55,
   understory: 0.7,
+  lanes: 0.9,
   historical: 0.8,
   satellite: 0.8,
 }

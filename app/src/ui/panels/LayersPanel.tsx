@@ -36,6 +36,13 @@ const GROUPS: { title: string; defs: LayerDef[] }[] = [
         opacity: 'understory',
         data: 'understory',
       },
+      {
+        key: 'lanes',
+        name: 'Shooting lanes',
+        desc: 'The same bush drawn for a bow: open and light ground left clear, thicker bush shaded darker · the Bow view · zoom in',
+        opacity: 'lanes',
+        data: 'lanes',
+      },
       { key: 'fire', name: 'Burns', desc: 'Fire perimeters by year (MNRF)', data: 'places', live: 'fire' },
       { key: 'bathy', name: 'Lake depths', desc: 'MNR survey sheets for Pickle, Ketchup and McGill (1978–79), estimated depths elsewhere', data: 'bathySheets', live: 'bathy' },
     ],

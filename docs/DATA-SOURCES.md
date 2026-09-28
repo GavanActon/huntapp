@@ -97,7 +97,9 @@ LiDAR (Leica SPL100), project White Lake 2021, flown 18–29 Sep 2021.
 - About 36 returns/m², 2–4× in flight-line overlaps.
 - `fetch_pointcloud.py` fetches tiles (resumable, capped by `--max-gb`).
   `build_vegstructure.py` bakes `raw/vegstructure-<region>.npz` (10 m
-  grids) and `understory-<region>.pmtiles` (z14–16).
+  grids), `understory-<region>.pmtiles` (z14–16) and, from the same grid,
+  `lanes-<region>.pmtiles` for the Bow view (open ground clear, thick bush
+  dark; `--lanes` re-renders only that one, in seconds).
 - Coverage so far: 26 of the core's 90 tiles (2 km around camp plus four
   check tiles, 7.4 GB). The whole core is 26 GB.
 

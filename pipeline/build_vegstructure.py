@@ -53,10 +53,12 @@ Metrics per 10 m cell (a 100-cell block per 1 km tile, aligned to the tiles):
 
 Output: pipeline/raw/vegstructure-<region>.npz  (grids, transform, crs, nodata)
         app/public/data/understory-<region>.pmtiles  (z14-16, the core only)
+        app/public/data/lanes-<region>.pmtiles  (the same, drawn for a bow: open clear)
         pipeline/bake-vegstructure-summary.json  (FRI stand-class check)
 
     python pipeline/build_vegstructure.py            # metrics + tiles + check (~20 s a tile)
     python pipeline/build_vegstructure.py --tiles    # re-render tiles from the npz
+    python pipeline/build_vegstructure.py --lanes    # re-render only the lanes tiles
 """
 
 from __future__ import annotations
@@ -308,18 +310,32 @@ RAMP = [
 ]
 
 
-def colourise(v: np.ndarray) -> np.ndarray:
+# The same classes drawn for a bow (the app's Bow view): open and light
+# ground left clear, so the imagery shows through where an arrow would, and
+# thicker bush shaded ever darker, as it is to see into. Dark, not a colour,
+# so it adds contrast instead of a wash, and leaves the warm colours to the
+# scent cone.
+LANES_RAMP = [
+    (0.30, (0, 0, 0, 0)),  # open and light: a lane
+    (0.45, (12, 16, 28, 70)),  # moderate
+    (0.60, (12, 16, 28, 115)),  # thick
+    (0.75, (12, 16, 28, 155)),  # very thick
+    (9.99, (12, 16, 28, 190)),  # thicket
+]
+
+
+def colourise(v: np.ndarray, ramp=RAMP) -> np.ndarray:
     out = np.zeros((*v.shape, 4), np.uint8)
     lo = -np.inf
     valid = np.isfinite(v)
-    for hi, rgba in RAMP:
+    for hi, rgba in ramp:
         m = valid & (v >= lo) & (v < hi)
         out[m] = rgba
         lo = hi
     return out
 
 
-def render_tiles(d: dict) -> None:
+def render_tiles(d: dict, layers: tuple[str, ...] = ("understory", "lanes")) -> None:
     under = np.where((d["understory"] >= 0) & ~d["water"], d["understory"], np.nan).astype(np.float32)
     transform = rasterio.Affine(*d["transform"])
     crs = str(d["crs"])
@@ -348,16 +364,28 @@ def render_tiles(d: dict) -> None:
         )
         if not np.isfinite(dst).any():
             return None
-        return colourise(dst)
+        return dst
 
-    write_raster_pmtiles(
-        OUT_DIR / f"understory-{REGION['id']}.pmtiles",
-        f"understory-{REGION['id']}",
-        "Understory from Ontario FRI SPL LiDAR 2021 · contains information licensed under the Open Government Licence – Ontario",
-        REGION_MAXZOOM + 1,
-        CORE["maxzoom"],
-        render,
-    )
+    for name, ramp in (("understory", RAMP), ("lanes", LANES_RAMP)):
+        if name not in layers:
+            continue
+
+        def tile(z, x, y, ramp=ramp):
+            dst = render(z, x, y)
+            if dst is None:
+                return None
+            rgba = colourise(dst, ramp)
+            # a tile that is all lane is nothing to draw
+            return rgba if rgba[..., 3].any() else None
+
+        write_raster_pmtiles(
+            OUT_DIR / f"{name}-{REGION['id']}.pmtiles",
+            f"{name}-{REGION['id']}",
+            "Understory from Ontario FRI SPL LiDAR 2021 · contains information licensed under the Open Government Licence – Ontario",
+            REGION_MAXZOOM + 1,
+            CORE["maxzoom"],
+            tile,
+        )
 
 
 # ---- sanity check against the FRI -------------------------------------------
@@ -437,6 +465,8 @@ def check(d: dict) -> dict:
 
 
 def main(argv: list[str]) -> None:
+    if "--lanes" in argv:
+        return render_tiles(load(), ("lanes",))
     if "--tiles" not in argv:
         build()
     d = load()

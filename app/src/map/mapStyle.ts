@@ -227,6 +227,24 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
       ),
     )
   }
+  // the same bush drawn for a bow: open ground left clear, thicker bush darker
+  if (has('lanes')) {
+    sources.lanes = { type: 'raster', url: 'pmtiles://lanes', tileSize: 256, minzoom: 14, maxzoom: 16, attribution: 'FRI LiDAR © Ontario MNR' }
+    rasters.push(
+      tag(
+        {
+          id: 'lanes',
+          type: 'raster',
+          source: 'lanes',
+          minzoom: 12.5,
+          layout: vis(o.layers.lanes),
+          paint: { 'raster-opacity': o.opacity.lanes, 'raster-resampling': 'linear' },
+        },
+        'lanes',
+        'lanes',
+      ),
+    )
+  }
   addRaster('topo')
   addRaster('historical', { 'raster-saturation': -0.2 })
   // the MNR lake survey sheets (Pickle 1978, Ketchup 1978, McGill 1979),

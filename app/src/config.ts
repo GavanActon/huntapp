@@ -71,6 +71,7 @@ export const DATA_FILES: DataFileDef[] = [
   { key: 'contours', file: `contours-${REGION.id}.pmtiles`, kind: 'vector', label: 'LiDAR contours (1 m)' },
   { key: 'forest', file: `forest-${REGION.id}.pmtiles`, kind: 'vector', label: 'Forest cover' },
   { key: 'understory', file: `understory-${REGION.id}.pmtiles`, kind: 'raster', label: 'Bush thickness (LiDAR)' },
+  { key: 'lanes', file: `lanes-${REGION.id}.pmtiles`, kind: 'raster', label: 'Shooting lanes (LiDAR)' },
   { key: 'bathy', file: `bathy-${REGION.id}.pmtiles`, kind: 'vector', label: 'Lake depths' },
   { key: 'historical', file: `historical-${REGION.id}.pmtiles`, kind: 'raster', label: 'Historical topo' },
   { key: 'bathySheets', file: `bathysheets-${REGION.id}.pmtiles`, kind: 'raster', label: 'Lake survey sheets (1978–79)' },
