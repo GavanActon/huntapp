@@ -38,6 +38,13 @@ export interface HuntBands {
   distWater: Uint8Array
   distRoad: Uint8Array
   landFrac: Uint8Array
+  /** eye-level bush thickness ×250, and m to thick hiding cover ×10;
+   *  null with a habitat file baked before they existed */
+  thick: Uint8Array | null
+  distThick: Uint8Array | null
+  /** per cell, the share of light that gets through 30 m of it (the view
+   *  model's one number, precomputed: the heat map asks for it a million times) */
+  through30: Float32Array | null
 }
 
 export function huntBands(h: Habitat): HuntBands {
@@ -62,7 +69,74 @@ export function huntBands(h: Habitat): HuntBands {
     distWater: u8('distWater'),
     distRoad: u8('distRoad'),
     landFrac: u8('landFrac'),
+    thick: h.has('thick') ? u8('thick') : null,
+    distThick: h.has('distThick') ? u8('distThick') : null,
+    through30: h.has('thick') ? transmission(u8('thick'), u8('cover')) : null,
   }
+}
+
+/** Water, bog, rock and road are seen across; everything else by its bush. */
+const SEE_ACROSS = new Set<number>([COVER.water, COVER.openWet, COVER.barren, COVER.road])
+
+function transmission(thick: Uint8Array, cover: Uint8Array): Float32Array {
+  const out = new Float32Array(thick.length)
+  for (let j = 0; j < thick.length; j++) out[j] = Math.exp(-30 / (SEE_ACROSS.has(cover[j]) ? 400 : sightM(thick[j] / 250)))
+  return out
+}
+
+/** Cell steps along a bearing, 30 m apart out to 240 m, per whole degree:
+ *  the same for every cell, so worked out once. */
+const stepCache = new Map<number, Int32Array>()
+function stepsFor(h: Habitat, bearing: number): Int32Array {
+  const key = ((Math.round(bearing) % 360) + 360) % 360
+  let st = stepCache.get(key)
+  if (!st) {
+    st = new Int32Array(16)
+    const rad = (key * Math.PI) / 180
+    for (let k = 0; k < 8; k++) {
+      const m = 30 * (k + 1)
+      st[2 * k] = Math.round((-Math.cos(rad) * m) / h.cellM[1])
+      st[2 * k + 1] = Math.round((Math.sin(rad) * m) / h.cellM[0])
+    }
+    stepCache.set(key, st)
+  }
+  return st
+}
+
+/** How far you see through bush of thickness t (0..1), metres: about 80 m
+ *  in open woods, 5 m in a thicket (docs/HUNT-FISH-SCIENCE.md). */
+export function sightM(t: number): number {
+  return 5 + 75 * Math.pow(1 - t, 1.5)
+}
+
+/** Distance to hiding cover, m: the nearer of dense conifer and any thick
+ *  bush; `thick` says which one it was. */
+function hidingCover(b: HuntBands, i: number): { m: number; thick: boolean } {
+  const conifer = b.distCover[i] * 10
+  if (!b.distThick) return { m: conifer, thick: false }
+  const t = b.distThick[i] * 10
+  return t < conifer ? { m: t, thick: true } : { m: conifer, thick: false }
+}
+
+/** Expected view along a bearing from cell i, m: the light that gets
+ *  through each 30 m of bush, summed, out to 240 m. Water and open bog
+ *  are seen across. */
+function viewM(b: HuntBands, h: Habitat, i: number, bearing: number): number {
+  const tr = b.through30!
+  const st = stepsFor(h, bearing)
+  const r0 = (i / h.cols) | 0
+  const c0 = i - r0 * h.cols
+  let tau = Math.sqrt(tr[i]) // half your own cell
+  let range = 0
+  for (let k = 0; k < 8; k++) {
+    const rr = r0 + st[2 * k]
+    const cc = c0 + st[2 * k + 1]
+    if (rr < 0 || cc < 0 || rr >= h.rows || cc >= h.cols) break
+    range += tau * 30
+    tau *= tr[rr * h.cols + cc]
+    if (tau < 0.03) break
+  }
+  return range
 }
 
 const OPEN_COVER = new Set<number>([COVER.water, COVER.openWet, COVER.regen, COVER.shrub, COVER.barren, COVER.road])
@@ -152,9 +226,12 @@ export function habitatScore(t: HuntTarget, b: HuntBands, i: number, warm: boole
     const isCover = cover === COVER.coniferDense || cover === COVER.treedWet
     // interspersion: browse near cover, cover near browse. The stand's own
     // value is one part, the edge bonus another, so each has its knob.
+    // hiding cover is any thick bush, not only tall dense conifer: a moose
+    // beds in a young thicket or an alder run as readily
+    const hide = hidingCover(b, i)
     const base = isCover ? browse * 0.3 : browse * 0.45
-    const edge = isCover ? 0.35 * edgeFromBrowse(dBrowse) : browse * 0.55 * edgeFromCover(dCover)
-    s = add('browse', isCover ? 'conifer cover' : 'browse value', base) + add('edge', isCover ? 'browse within reach' : 'near the conifer edge', edge)
+    const edge = isCover ? 0.35 * edgeFromBrowse(dBrowse) : browse * 0.55 * edgeFromCover(hide.m)
+    s = add('browse', isCover ? 'conifer cover' : 'browse value', base) + add('edge', isCover ? 'browse within reach' : hide.thick ? 'near thick cover' : 'near the conifer edge', edge)
     // water: cows and calves on shores and beaver meadows; bulls come to them in the rut
     if (dLake <= 200 || dWet <= 100) s += add('shore', 'shore or beaver meadow', 0.15)
     if (dLake <= 60 && dist >= 5 && dist <= 30) s += add('shore', 'a cut running to the shore', 0.1)
@@ -175,7 +252,7 @@ export function habitatScore(t: HuntTarget, b: HuntBands, i: number, warm: boole
         const deg = asp * (360 / 250)
         if (deg >= 135 && deg <= 225 && b.slope[i] >= 3) s += add('funnel', 'a south slope', 0.3)
       }
-      if (dCover <= 500) s += add('edge', 'cover within 500 m', 0.15)
+      if (hidingCover(b, i).m <= 500) s += add('edge', 'cover within 500 m', 0.15)
     }
   } else if (t === 'grouse') {
     const age = b.age[i]
@@ -228,7 +305,7 @@ export function habitatScore(t: HuntTarget, b: HuntBands, i: number, warm: boole
     else if (cover === COVER.coniferOpen) s = 0.3
     else s = 0.1
     s = add('browse', 'berries and cover for bear', s)
-    if (dCover <= 300) s += add('edge', 'cover within 300 m', 0.2)
+    if (hidingCover(b, i).m <= 300) s += add('edge', 'cover within 300 m', 0.2)
     if (dLake <= 150 && s >= 0.5) s += add('shore', 'a shore within 150 m', 0.15)
     if (lf === LANDFORM.ridge && b.lead[i] === 2) s += add('funnel', 'a jack pine ridge', 0.1)
     if (lateFall) {
@@ -410,19 +487,37 @@ export function siteParts(t: HuntTarget, b: HuntBands, h: Habitat, i: number, c:
     }
   } else g = 0.75
 
-  // the downwind arc: can you see what circles there?
-  let open = 0
-  let n = 0
+  // the view: can you see what circles downwind (a grouse flushes any
+  // way, so for grouse it is the view all round)? From the bush
+  // thickness where the bake has it, else from open cover classes
   const down = (windDir + 180) % 360
-  for (const m of [60, 120, 200, 300]) {
-    const j = h.offset(i, down, m)
-    if (j < 0) continue
-    n++
-    if (OPEN_COVER.has(b.cover[j]) || b.cover[j] === COVER.regen) open++
+  let vis: number
+  let visLabel: string
+  if (b.through30) {
+    const bearings = t === 'grouse' ? [0, 90, 180, 270] : [down - 30, down, down + 30]
+    const range = bearings.reduce((a, br) => a + viewM(b, h, i, (br + 360) % 360), 0) / bearings.length
+    // a sitter needs the view; a grouse hunter walks the thick and flushes
+    // birds out of it, so for grouse thick bush costs a shot, not the spot
+    vis = t === 'grouse' ? 0.82 + 0.18 * Math.min(1, range / 60) : 0.6 + 0.4 * Math.min(1, range / 100)
+    const where = t === 'grouse' ? 'round you' : 'downwind'
+    visLabel = range >= 80 ? `open ${where}` : range >= 35 ? `partly open ${where}` : `thick ${where}`
+    if (range >= 80 && t !== 'grouse') reasons?.push('open ground downwind: a circling animal shows itself')
+    else if (range < 35) reasons?.push(`thick ${where}: about ${Math.max(5, Math.round(range / 5) * 5)} m of view`)
+    else reasons?.push(`about ${Math.round(range / 5) * 5} m of view ${where}`)
+  } else {
+    let open = 0
+    let n = 0
+    for (const m of [60, 120, 200, 300]) {
+      const j = h.offset(i, down, m)
+      if (j < 0) continue
+      n++
+      if (OPEN_COVER.has(b.cover[j]) || b.cover[j] === COVER.regen) open++
+    }
+    const openFrac = n ? open / n : 0.5
+    vis = 0.7 + 0.3 * openFrac
+    visLabel = openFrac >= 0.75 ? 'open downwind' : openFrac >= 0.4 ? 'partly open downwind' : 'thick downwind'
+    if (openFrac >= 0.75) reasons?.push('open ground downwind: a circling animal shows itself')
   }
-  const openFrac = n ? open / n : 0.5
-  const vis = 0.7 + 0.3 * openFrac
-  if (openFrac >= 0.75) reasons?.push('open ground downwind: a circling animal shows itself')
   if (c.windShiftDeg > 30 && !calm) g *= 0.85
 
   // reachable: near a road or a shore, but not on the road
@@ -434,7 +529,7 @@ export function siteParts(t: HuntTarget, b: HuntBands, h: Habitat, i: number, c:
   const accessLabel = dLake <= 120 && dRoad > 150 ? 'reachable by boat' : dRoad <= 150 ? 'right by a road' : dRoad <= 2500 ? `${dRoad < 1000 ? `${dRoad} m` : `${(dRoad / 1000).toFixed(1)} km`} from a road` : 'a long walk in'
   return [
     { key: 'scent', label: calm ? (gw ? 'still air at ground' : 'thermals') : gw ? 'ground air against the feeding side' : 'wind against the feeding side', value: g, kind: 'mult' },
-    { key: 'visibility', label: openFrac >= 0.75 ? 'open downwind' : openFrac >= 0.4 ? 'partly open downwind' : 'thick downwind', value: vis, kind: 'mult' },
+    { key: 'visibility', label: visLabel, value: vis, kind: 'mult' },
     { key: 'access', label: accessLabel, value: access, kind: 'mult' },
   ]
 }
@@ -453,11 +548,17 @@ export function describeCell(t: HuntTarget, b: HuntBands, h: Habitat, i: number,
     if (lead) what += `, ${lead}-led`
   }
   out.push(what)
-  const dCover = b.distCover[i] * 10
+  if (b.thick && cover !== COVER.water && cover !== COVER.road) {
+    const tt = b.thick[i] / 250
+    const see = Math.round(sightM(tt) / 5) * 5
+    if (tt >= 0.75) out.push(`thick bush: about ${see} m of sight, slow and loud to walk`)
+    else if (tt <= 0.35 && cover !== COVER.openWet) out.push(`open underfoot: about ${see} m of sight`)
+  }
+  const hide = hidingCover(b, i)
   const dBrowse = b.distBrowse[i] * 10
   if (cover === COVER.coniferDense || cover === COVER.treedWet) {
     if (dBrowse <= 250) out.push(`cover ${dBrowse} m from browse`)
-  } else if (dCover <= 200) out.push(`${dCover <= 30 ? 'right on' : `${dCover} m from`} the conifer edge`)
+  } else if (hide.m <= 200 && !(b.thick && b.thick[i] / 250 >= 0.7)) out.push(`${hide.m <= 30 ? 'right on' : `${hide.m} m from`} ${hide.thick ? 'thick cover' : 'the conifer edge'}`)
   const dLake = b.distLake[i] * 10
   const dWet = b.distWetland[i] * 10
   if (dLake <= 200) out.push(`${dLake <= 40 ? 'on' : `${dLake} m from`} a lake shore`)

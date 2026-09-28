@@ -192,6 +192,64 @@ def species_keys(summary: str | None) -> list[str]:
     return out
 
 
+# Lead species codes, as burnt into f_lead above
+LEAD_SB, LEAD_PJ, LEAD_SW, LEAD_BF, LEAD_CW, LEAD_LA, LEAD_PT, LEAD_BW = range(1, 9)
+
+
+def young_thickness(age: np.ndarray) -> np.ndarray:
+    """Eye-level density of regrowth by years since a cut, burn or stand
+    origin (docs/HUNT-FISH-SCIENCE.md, "Bush thickness"): slash and
+    raspberry first, then the stem-exclusion thicket, then self-thinning
+    as the canopy lifts. NaN past 40 years: the stand type decides."""
+    t = np.full(age.shape, np.nan, dtype=np.float32)
+    t[age <= 40] = 0.75
+    t[age <= 25] = 0.95
+    t[age <= 8] = 0.7
+    t[age <= 3] = 0.35
+    return t
+
+
+def bush_thickness(cover, stand_age, dist_age, f_cc, f_lead, f_poly) -> np.ndarray:
+    """Eye-level bush thickness per cell, 0 (open: see and walk) to 1 (a
+    wall). An estimate from what the stand is and how old, not a
+    measurement: the forest inventory describes the canopy, and the brush
+    under it follows the stand's development stage (Oliver & Larson).
+    Calibrate on the ground; LiDAR returns would measure it directly."""
+    T = np.full(cover.shape, 0.3, dtype=np.float32)
+    # mature stands by type: the understory under a closed canopy
+    T[cover == CONIFER_DENSE] = 0.55  # black spruce: many small stems, low dead branches
+    T[cover == CONIFER_OPEN] = 0.4
+    T[cover == MIXED] = 0.5
+    T[cover == HARDWOOD] = 0.45  # aspen with a hazel and maple layer
+    T[cover == TREED_WET] = 0.5
+    known = (f_poly == 1) & (stand_age > 0)
+    old = known & (stand_age > 80)
+    # understory reinitiation: the canopy opens, fir and hazel come back
+    T[old & (cover == MIXED)] = 0.65
+    T[old & (cover == HARDWOOD)] = 0.55
+    # lead species: jack pine floors stay open (lichen and blueberry);
+    # fir and cedar keep branches to the ground
+    forest = np.isin(cover, (CONIFER_DENSE, CONIFER_OPEN, MIXED, HARDWOOD, TREED_WET))
+    T[forest & (f_lead == LEAD_PJ)] -= 0.15
+    T[forest & np.isin(f_lead, (LEAD_BF, LEAD_CW))] = np.maximum(T[forest & np.isin(f_lead, (LEAD_BF, LEAD_CW))], 0.75)
+    # canopy closure moves the understory the other way: light makes brush
+    mid = known & (stand_age > 40) & (f_cc > 0)
+    T[mid & (f_cc < 40)] += 0.1
+    T[mid & (f_cc >= 80)] -= 0.08
+    # young stands and disturbances follow the regrowth curve, whatever the type
+    yt = young_thickness(np.where(dist_age < 255, dist_age, np.where(known, stand_age, 255)).astype(np.int32))
+    young = np.isfinite(yt) & (forest | (cover == REGEN) | (dist_age < 255))
+    T[young] = yt[young]
+    # the classes with no stand
+    T[cover == SHRUB] = 0.85  # alder runs
+    T[cover == OPEN_WET] = 0.15  # sedge and leatherleaf, knee high
+    T[cover == BARREN] = 0.1
+    T[cover == ROAD] = 0.05
+    T[cover == WATER] = 0.0
+    T[cover == NODATA] = 0.3
+    return np.clip(T, 0, 1)
+
+
 SURVEY_DIR = Path(__file__).parent / "raw" / "bathy"
 
 
@@ -343,6 +401,18 @@ def main() -> None:
     d_road = edt_m(road)
     cover_mask = np.isin(cover, (CONIFER_DENSE, TREED_WET))
     d_cover = edt_m(cover_mask)
+    # hiding cover: any thick bush (young thickets, alder, fir and cedar,
+    # dense spruce), not only tall dense conifer. Patches of half a hectare up
+    thick = bush_thickness(cover, stand_age, dist_age, f_cc, f_lead, f_poly)
+    thick_mask = thick >= 0.7
+    tl, tn = ndimage.label(thick_mask)
+    if tn:
+        tsz = np.bincount(tl.ravel(), minlength=tn + 1)
+        big = tsz >= int(round(5000 / (DX_M * DY_M)))
+        big[0] = False
+        thick_mask = big[tl]
+    d_thick = edt_m(thick_mask)
+    print(f"  bush thickness: {100 * (thick >= 0.7).mean():.0f}% of cells thick, {100 * (thick <= 0.35).mean():.0f}% open")
     browse_mask = np.isin(cover, (HARDWOOD, SHRUB, REGEN)) | ((cover == MIXED) & (f_hard >= 40)) | ((dist_age >= 5) & (dist_age <= 30) & ~water)
     d_browse = edt_m(browse_mask)
     if browse_mask.any():
@@ -449,6 +519,8 @@ def main() -> None:
         ("distLake", q8(d_lake, 10), 10, "m to a lake or pond (×10)"),
         ("distWetland", q8(d_wetland, 10), 10, "m to wetland (×10)"),
         ("distCover", q8(d_cover, 10), 10, "m to dense conifer / treed wetland cover (×10)"),
+        ("thick", np.round(thick * 250).astype(np.uint8), 1 / 250, "eye-level bush thickness, 0 open to 1 a wall (estimate from stand type, age, closure, disturbance)"),
+        ("distThick", q8(d_thick, 10), 10, "m to thick hiding cover, patches of 0.5 ha up (×10)"),
         ("distBrowse", q8(d_browse, 10), 10, "m to browse habitat (×10)"),
         ("bearBrowse", bear_q, 360 / 250, "compass bearing to nearest browse (255 = in browse)"),
         ("distRoad", q8(d_road, 20), 20, "m to a bush road (×20)"),

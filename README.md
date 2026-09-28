@@ -7,7 +7,7 @@ top, a bottom sheet with Places · Spots · Layers · Weather · Settings.
 **Spots** answers "where should we be today": pick moose, grouse, bear,
 deer, walleye, pike or lake trout and it scores every 30 m cell of the
 region from a baked habitat grid (FRI stands and their age, burns and
-cuts, LiDAR-derived landform, lake shores, wetlands, lake depth,
+cuts, bush thickness, LiDAR-derived landform, lake shores, wetlands, lake depth,
 fetch) against the hour's HRDPS wind, temperature, light and the season,
 then lists the best few spots near camp with reasons, a verdict card for
 the day, a heat map, and a scent cone from your pin. The rules and their

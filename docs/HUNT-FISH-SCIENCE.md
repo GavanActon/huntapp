@@ -147,10 +147,72 @@ layer plus a bonus for aspects 135–225° and dense conifer within 500 m.
 - **Moon**: GPS studies find no moon-phase effect on deer; nothing
   published for moose. Weight 0, display only.
 
+### Bush thickness (eye-level cover)
+
+What a hunter calls thick bush is the layer at eye level: saplings,
+alder, low conifer branches. It decides two things the canopy does not:
+how far you see from a stand, and where an animal can hide.
+
+**Why not the canopy numbers.** The forest inventory's crown closure is
+the overhead layer, and the brush under it often runs the other way: a
+closed canopy shades the understory out, an opening lets it in. The brush
+follows the stand's development stage [S] (Oliver & Larson 1996, *Forest
+Stand Dynamics*): stand initiation after a cut or burn (slash, raspberry,
+suckers), stem exclusion (a dense sapling thicket that self-thins as the
+canopy lifts), then understory reinitiation in old stands as gaps open and
+shade-tolerant fir and hazel come back. Horizontal cover is what cover
+boards measure in the field [S] (Nudds 1977, Wildl. Soc. Bull. 5).
+
+**The model** (`bush_thickness` in `pipeline/build_habitat.py`; the numbers
+are this app's estimates on that sequence, not measurements, and want
+checking on the ground). Thickness runs 0 (open) to 1 (a wall):
+
+| What | Thickness |
+|---|---|
+| Regrowth 0–3 yr after a cut or burn | 0.35 |
+| 4–8 yr | 0.7 |
+| 9–25 yr (the thicket) | 0.95 |
+| 26–40 yr | 0.75 |
+| Mature dense conifer (black spruce) | 0.55 |
+| Mature open conifer | 0.4 |
+| Mature mixedwood / hardwood | 0.5 / 0.45 |
+| Old (>80 yr) mixedwood / hardwood | 0.65 / 0.55 |
+| Jack pine lead | −0.15 (open lichen and blueberry floor) |
+| Balsam fir or cedar lead | at least 0.75 |
+| Canopy under 40 % / over 80 % (stands past 40 yr) | +0.1 / −0.08 |
+| Alder and shrub | 0.85 |
+| Open bog, rock, road, water | 0.15, 0.1, 0.05, 0 |
+
+Sight distance through it: 5 + 75·(1 − thickness)^1.5 m, so about 80 m in
+open woods, 30 m in mature spruce, 5 m in a thicket. Across water, bog,
+rock and road the view is taken as 400 m.
+
+**Where it counts.**
+1. *The view from a stand* (the site's visibility part): the expected view
+   along three bearings across the downwind arc (a circling animal passes
+   through it), each 30 m step passing the share of light its bush lets
+   through, summed out to 240 m. Multiplier 0.6 with no view to 1.0 at
+   100 m. For grouse, the view all round and a softer 0.82–1.0: the grouse
+   hunter walks the thick and flushes birds out of it.
+2. *Hiding cover* for the moose, deer and bear edge terms: the nearer of
+   tall dense conifer and any thick patch (thickness ≥ 0.7, half a hectare
+   up). A moose beds in a young thicket or an alder run as readily as in
+   spruce, and 5–20 yr cuts are both its browse and its cover. Heat still
+   looks for canopy (shade), which is conifer.
+
+The net effect: the spots move to the edge of the thick, where the view
+opens onto what comes out of it, not into the middle of it.
+
+**Next** (not built): the walk in, since thick bush is slow and loud and
+should cost the route, not the spot; and LiDAR, whose first and last
+returns would measure canopy height and gaps at 1 m, and whose point cloud
+would measure the brush at 0.5–3 m directly.
+
 ### Wind and scent (stand and calling-site geometry) [H/G]
 
 1. A responding bull circles to the **downwind side** of the caller. Score
-   a site by whether its downwind arc is open, visible and shootable.
+   a site by whether its downwind arc is open, visible and shootable (how
+   far you see through the bush there: see Bush thickness).
 2. Ideal geometry: wind from the expected animal location (browse, water,
    bedding) across the hunter into dead ground (open lake, big bog you can
    see across). Crosswind (60–120° off the approach line) 1.0; hunter
@@ -185,9 +247,15 @@ coming out of a pocket for a look and going back: the screen sleeps as
 usual, each look starts a fresh fix, and the cone and the moose catch up
 at once. A web app gets no fixes with the screen off, so the track is
 stretches joined by faint dotted lines across the times it was away. The
-**Bow** view it puts on shows bush thickness at 0.5–3 m (the LiDAR point
-cloud: open lanes read as gaps in the red) over the grey 1 m LiDAR shade,
-which shows old skid trails and ditches through the thick stuff.
+**Bow** view it puts on is the imagery at full strength with the Shooting
+lanes layer over it: the same 0.5–3 m bush thickness from the LiDAR point
+cloud as the Bush view, but with open and light ground left clear (the
+imagery shows through where an arrow would go) and thicker bush shaded
+darker (ratio 0.30–0.45 faint, up to near-black at a thicket). The first
+Bow view drew the Bush colour scale at 40 % over dimmed imagery and read as
+washed out (Gavan, 2026-09-28): even open ground got a pale wash. The grey
+1 m LiDAR shade sits over it at 35 % for the old skid trails and ditches
+through the thick stuff.
 
 Each moose you hear goes on the map from where you stand: what it was
 (cow call, bull grunt, thrashing, walking, splash, seen), the way (the rose
@@ -384,7 +452,9 @@ Moose: ontario.ca/files/2025-06/guide-moosehabitat.pdf; Hamilton et al. 1980
 doi:10.1139/z80-194; Fraser et al. 1984 doi:10.1139/z84-014; Renecker &
 Hudson (Alces); Current Zoology 64(4) 2018 (boreal GPS); Melin et al. 2014
 doi:10.1111/gcb.12405; Street et al. 2015; Klassen & Rea 2008;
-outdoorcanada.ca/the-best-time-to-call-moose. Grouse: Wisconsin Sandhill
+outdoorcanada.ca/the-best-time-to-call-moose. Bush thickness: Oliver &
+Larson 1996, Forest Stand Dynamics (Wiley); Nudds 1977, Wildl. Soc. Bull.
+5:113–117. Grouse: Wisconsin Sandhill
 study; MN DNR ruffed grouse woodland guide; Birds of the World (spruce
 grouse). Bear: Brodeur et al. 2008 doi:10.1139/Z08-118; Mosnier et al.
 (Écoscience); Romain et al. (Can. Field-Nat.). Deer: Kennedy-Slaney et al.
