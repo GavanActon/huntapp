@@ -1,5 +1,5 @@
 import { getMap } from '../../map/mapController'
-import { SPECIES_NAMES, tallies, useHuntLog, WHAT_NAMES, type LogEntry } from '../../log/huntLog'
+import { SOUND_NAMES, SPECIES_NAMES, tallies, useHuntLog, WHAT_NAMES, type LogEntry } from '../../log/huntLog'
 import { compass } from '../../weather/openMeteo'
 import { IconLocate, IconShare, IconTrash } from '../icons'
 
@@ -15,7 +15,7 @@ function when(ts: number): string {
 }
 
 function csv(entries: LogEntry[]): string {
-  const cols = ['time', 'lat', 'lon', 'species', 'what', 'count', 'kind', 'note', 'temp_c', 'wind_kmh', 'wind_from', 'day_high_c', 'warm_days_before', 'model_score', 'model_percentile', 'day_activity']
+  const cols = ['time', 'lat', 'lon', 'species', 'what', 'count', 'kind', 'sound', 'bearing_from_you', 'distance_m', 'note', 'temp_c', 'wind_kmh', 'wind_from', 'day_high_c', 'warm_days_before', 'model_score', 'model_percentile', 'day_activity']
   const q = (v: unknown) => (v == null ? '' : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v))
   const rows = entries.map((e) =>
     [
@@ -26,6 +26,9 @@ function csv(entries: LogEntry[]): string {
       e.what,
       e.count,
       e.kind,
+      e.sound,
+      e.from?.bearing.toFixed(0),
+      e.from?.distM.toFixed(0),
       e.note,
       e.wx?.tempC.toFixed(1),
       e.wx?.windKmh.toFixed(0),
@@ -83,7 +86,7 @@ export default function HuntLogSection() {
         <div key={e.id} className="track-row">
           <div className="row-text">
             <span className="row-title">
-              {e.what === 'nothing' ? `Blank sit · ${SPECIES_NAMES[e.species].toLowerCase()}` : `${SPECIES_NAMES[e.species]}${e.count && e.count > 1 ? ` ×${e.count}` : ''}${e.kind ? ` (${e.kind})` : ''} · ${WHAT_NAMES[e.what].toLowerCase()}`}
+              {e.what === 'nothing' ? `Blank sit · ${SPECIES_NAMES[e.species].toLowerCase()}` : `${SPECIES_NAMES[e.species]}${e.count && e.count > 1 ? ` ×${e.count}` : ''}${e.kind ? ` (${e.kind})` : ''} · ${e.sound ? SOUND_NAMES[e.sound].toLowerCase() : WHAT_NAMES[e.what].toLowerCase()}`}
             </span>
             <span className="row-desc">
               {when(e.ts)}

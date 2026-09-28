@@ -70,6 +70,8 @@ interface TrackState {
   /** tracks drawn on the map besides the live one */
   shown: string[]
   start: () => void
+  /** Pick an unfinished track back up (the app was reloaded mid-walk); false if there is none to resume. */
+  resume: (id: string) => boolean
   stop: () => void
   push: (fix: Fix) => void
   rename: (id: string, name: string) => void
@@ -94,6 +96,14 @@ export const useTrackStore = create<TrackState>((set, get) => ({
     save(tracks)
     const fix = useGpsStore.getState().fix
     if (fix) get().push(fix)
+  },
+  resume: (id) => {
+    if (get().recordingId) return get().recordingId === id
+    const t = get().tracks.find((x) => x.id === id)
+    if (!t || t.endedAt != null) return false
+    // the silence while the app was gone makes the next fix a new segment
+    set({ recordingId: id })
+    return true
   },
   stop: () => {
     const id = get().recordingId

@@ -177,6 +177,38 @@ layer plus a bonus for aspects 135–225° and dense conifer within 500 m.
    animals bed there on windy days.
 9. Never sit in a bowl or saddle in the evening: scent pools there.
 
+### Out hunting: the moose you hear (hunting mode)
+
+Hunting mode (the mode pill → Go hunting) follows you, records the track,
+and draws your scent cone from where you stand. It is made for the phone
+coming out of a pocket for a look and going back: the screen sleeps as
+usual, each look starts a fresh fix, and the cone and the moose catch up
+at once. A web app gets no fixes with the screen off, so the track is
+stretches joined by faint dotted lines across the times it was away. The
+**Bow** view it puts on shows bush thickness at 0.5–3 m (the LiDAR point
+cloud: open lanes read as gaps in the red) over the grey 1 m LiDAR shade,
+which shows old skid trails and ditches through the thick stuff.
+
+Each moose you hear goes on the map from where you stand: what it was
+(cow call, bull grunt, thrashing, walking, splash, seen), the way (the rose
+turns with the phone), about how far, and when (now, or up to 20 minutes
+ago, since the phone comes out after the grunt). The card's one line on
+each look is his last sound, where, how long ago, which way he is going
+and his likely swing. The sounds join up in order into
+his route, with a faint line back to where you heard each from. With two
+sounds in half an hour the map also draws the way he is heading.
+
+From his last spot it draws his likely swing round to wind you: an arc
+round you at his distance to the side your scent goes (the live cone's
+main sector, or downwind on the ground wind), the way he has been moving
+round if that says, the shorter way if not. This is rule 1 above, and it is
+what happened on 2026-09-27 at Pickle Lake: 2.5 hours of cow calls with
+the odd bull grunt, the bull pulled the hunter off the calling spot, then
+ran to get downwind once a last cow call set him going. The arc is a rule
+of thumb, not a model; he may come straight in or leave. What beats it is
+rule 3: a caller 40–50 m upwind of the shooter, placed with the scent
+card's second person, so the swing passes the shooter in the crosswind.
+
 ### Terrain features flagged
 
 - Saddles on ridges between drainages: rut travel funnels (0.8 in the rut).

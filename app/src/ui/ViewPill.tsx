@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { startHunting, stopHunting, useHunting } from '../hunting/hunting'
 import { useAppStore } from '../state/appStore'
 import { useSpotsStore } from '../state/spotsStore'
 import { activeView, MODE_NAMES, useViews, viewsFor, type Mode } from '../state/viewsStore'
@@ -10,7 +11,15 @@ import './views.css'
  * saying what the map is set up for ("Hunt · Scout"). Tap it for the modes
  * and the views; one more tap puts a view on. Saving the map as it is now
  * is at the bottom of the list.
+ *
+ * Hunting mode starts and stops here too (hunting/hunting.ts): while it is
+ * on, the pill says so, with how long, and the menu's first button stops it.
  */
+
+function elapsed(ms: number): string {
+  const m = Math.max(0, Math.floor(ms / 60_000))
+  return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`
+}
 export default function ViewPill() {
   const mode = useViews((s) => s.mode)
   const saved = useViews((s) => s.saved)
@@ -20,8 +29,18 @@ export default function ViewPill() {
   const remove = useViews((s) => s.remove)
   const layers = useAppStore((s) => s.layers)
   const heat = useSpotsStore((s) => s.heat)
+  const hunting = useHunting((s) => s.on)
+  const startedAt = useHunting((s) => s.startedAt)
   const [open, setOpen] = useState(false)
+  const [, tick] = useState(0)
   const box = useRef<HTMLDivElement>(null)
+
+  // the time out hunting, kept current
+  useEffect(() => {
+    if (!hunting) return
+    const t = window.setInterval(() => tick((x) => x + 1), 30_000)
+    return () => window.clearInterval(t)
+  }, [hunting])
 
   const views = viewsFor(mode, saved)
   const on = activeView(views, layers, heat)
@@ -40,13 +59,44 @@ export default function ViewPill() {
     <div className="viewpill-wrap" ref={box}>
       {open && (
         <div className="viewpill-menu glass" role="menu">
-          <div className="seg" role="radiogroup" aria-label="Mode">
-            {(Object.keys(MODE_NAMES) as Mode[]).map((m) => (
-              <button key={m} className={mode === m ? 'seg-on' : ''} role="radio" aria-checked={mode === m} onClick={() => setMode(m)}>
-                {MODE_NAMES[m]}
+          {hunting ? (
+            <div className="vp-hunt">
+              <button
+                className="btn-primary vp-stop"
+                onClick={() => {
+                  stopHunting()
+                  setOpen(false)
+                }}
+              >
+                Stop hunting
               </button>
-            ))}
-          </div>
+              <div className="vp-note">The track records while the screen is on and joins up across the times it was off.</div>
+            </div>
+          ) : (
+            <>
+              {mode === 'hunt' && (
+                <div className="vp-hunt">
+                  <button
+                    className="btn-primary"
+                    onClick={() => {
+                      startHunting()
+                      setOpen(false)
+                    }}
+                  >
+                    Go hunting
+                  </button>
+                  <div className="vp-note">Follows you, records the track, and your scent cone goes with you. Lock the phone between looks.</div>
+                </div>
+              )}
+              <div className="seg" role="radiogroup" aria-label="Mode">
+                {(Object.keys(MODE_NAMES) as Mode[]).map((m) => (
+                  <button key={m} className={mode === m ? 'seg-on' : ''} role="radio" aria-checked={mode === m} onClick={() => setMode(m)}>
+                    {MODE_NAMES[m]}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           <div className="viewpill-list">
             {views.map((v) => (
               <div key={v.id} className={`viewpill-row${on?.id === v.id ? ' on' : ''}`}>
@@ -85,10 +135,10 @@ export default function ViewPill() {
           </button>
         </div>
       )}
-      <button className="viewpill glass" onClick={() => setOpen(!open)} aria-expanded={open} aria-label="Mode and view">
-        <IconLayers size={15} />
+      <button className={`viewpill glass${hunting ? ' vp-on' : ''}`} onClick={() => setOpen(!open)} aria-expanded={open} aria-label="Mode and view">
+        {hunting ? <span className="vp-dot" /> : <IconLayers size={15} />}
         <span>
-          {MODE_NAMES[mode]} · {on ? on.name : 'custom'}
+          {hunting ? `Hunting ${elapsed(Date.now() - (startedAt ?? Date.now()))}` : MODE_NAMES[mode]} · {on ? on.name : 'custom'}
         </span>
       </button>
     </div>

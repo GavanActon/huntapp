@@ -600,6 +600,8 @@ export interface Sitter {
   lon: number
   lat: number
   height: number
+  /** you, out hunting: the cone follows your position (see hunting/hunting.ts) */
+  live?: boolean
 }
 
 interface ScentState {
@@ -621,6 +623,9 @@ interface ScentState {
   add: (lon: number, lat: number) => void
   move: (k: number, lon: number, lat: number) => void
   remove: (k: number) => void
+  /** you, first in the list, at your position */
+  putLive: (lon: number, lat: number) => void
+  removeLive: () => void
   setPick: (k: number) => void
   setAdding: (v: boolean) => void
   clear: () => void
@@ -645,6 +650,12 @@ export const useScent = create<ScentState>()(
         set({ people, pick: people.length - 1, adding: false })
       },
       move: (k, lon, lat) => set({ people: get().people.map((p, i) => (i === k ? { ...p, lon, lat } : p)) }),
+      putLive: (lon, lat) => set({ people: [{ lon, lat, height: get().height, live: true }, ...get().people.filter((p) => !p.live)], pick: 0 }),
+      removeLive: () => {
+        const rest = get().people.filter((p) => !p.live)
+        if (!rest.length) return get().clear()
+        if (rest.length < get().people.length) set({ people: rest, pick: 0 })
+      },
       remove: (k) => {
         const { people, pick } = get()
         const rest = people.filter((_, i) => i !== k)
@@ -809,12 +820,20 @@ function syncMarkers(map: MlMap | null) {
   people.forEach((p, k) => {
     const m = markers[k]
     if (k !== dragging) m.setLngLat([p.lon, p.lat])
+    // you: the position dot is where your scent comes from, and it moves with you, not a finger
+    m.setDraggable(!p.live)
     const el = m.getElement()
+    el.style.display = p.live ? 'none' : ''
     el.textContent = many ? String(k + 1) : ''
     el.classList.toggle('sp-many', many)
     el.classList.toggle('sp-pick', many && k === pick)
     el.style.setProperty('--sp', own ? personColour(k) : '#ff9d4d')
   })
+}
+
+/** The planning time, or now to the minute: the plume's seed is the minute, and a drag keeps its cache. */
+function planMinute(): number {
+  return useAppStore.getState().planTimeMs ?? Math.floor(Date.now() / 60_000) * 60_000
 }
 
 // bumped whenever the air changes, so every cone is run again
@@ -845,7 +864,7 @@ function draw(map: MlMap) {
     particles.stop()
     return
   }
-  const runs = runsFor(people, useAppStore.getState().planTimeMs ?? Date.now())
+  const runs = runsFor(people, planMinute())
   const plumes = runs.map((r) => r?.plume ?? null)
   if (!runs.some(Boolean)) {
     removeLayers(map)
@@ -1149,18 +1168,22 @@ function areaText(ha: number): string {
   return `${v < 10 ? v.toFixed(1) : Math.round(v)} ${acres ? 'acres' : 'ha'}`
 }
 
-const listText = (ns: number[]) => (ns.length < 2 ? `${ns[0]}` : `${ns.slice(0, -1).join(', ')} and ${ns[ns.length - 1]}`)
+const listText = (ns: string[]) => (ns.length < 2 ? ns[0] : `${ns.slice(0, -1).join(', ')} and ${ns[ns.length - 1]}`)
 
 /**
  * The card's lines for two or more: the ground they scent together (and
  * how much of it only because cones overlap), and whose scent drifts over
- * whom, numbered from 1; null when no one's does.
+ * whom, numbered from 1 (or "you", the live one out hunting); null when no
+ * one's does.
  */
-export function groupSummary(g: Group): { head: string; drift: string | null } {
+export function groupSummary(g: Group, people: Sitter[] = []): { head: string; drift: string | null } {
   const adds = g.addsHa >= 0.1 ? ` · overlap adds ${areaText(g.addsHa)}` : ''
-  const onto = new Map<number, number[]>()
-  for (const [a, b] of g.reaches) onto.set(a, [...(onto.get(a) ?? []), b + 1])
-  const drift = [...onto].map(([a, bs], i) => `${a + 1}'s ${i ? '' : 'scent '}drifts over ${listText(bs)}`)
+  const name = (k: number) => (people[k]?.live ? 'you' : `${k + 1}`)
+  const onto = new Map<number, string[]>()
+  for (const [a, b] of g.reaches) onto.set(a, [...(onto.get(a) ?? []), name(b)])
+  // the first names the scent; the rest are short: "1's scent drifts over you · yours over 2"
+  const whose = (a: number, first: boolean) => (people[a]?.live ? (first ? 'Your scent' : 'yours') : `${a + 1}'s${first ? ' scent' : ''}`)
+  const drift = [...onto].map(([a, bs], i) => `${whose(a, !i)} drifts over ${listText(bs)}`)
   return { head: `Noticeable over ${areaText(g.areaHa)} together${adds}`, drift: drift.length ? drift.join(' · ') : null }
 }
 
@@ -1218,7 +1241,15 @@ export function initScentLayer() {
       if (s.planTimeMs !== p.planTimeMs && useScent.getState().people.length) schedule()
       if (s.lowPower !== p.lowPower) particles.wake()
     })
-    document.addEventListener('visibilitychange', () => particles.wake())
+    document.addEventListener('visibilitychange', () => {
+      particles.wake()
+      // out of a pocket: the cone catches up with the clock at once, not at the next minute
+      if (document.visibilityState === 'visible' && useScent.getState().people.length && useAppStore.getState().planTimeMs == null) schedule()
+    })
+    // at "now" the cone keeps up with the clock, a minute at a time
+    window.setInterval(() => {
+      if (document.visibilityState === 'visible' && useScent.getState().people.length && useAppStore.getState().planTimeMs == null) schedule()
+    }, 60_000)
     useWindChecks.subscribe(airChanged)
     onMicro(airChanged)
     onProfile(airChanged)

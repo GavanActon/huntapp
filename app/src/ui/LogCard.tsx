@@ -37,7 +37,7 @@ const HUNT: LogSpecies[] = ['moose', 'deer', 'bear', 'grouse']
 
 /** The weather and the model's call at a spot, now. Best effort: offline
  *  without a cached forecast, the entry is saved without them. */
-async function snapshot(species: LogSpecies, lon: number, lat: number): Promise<{ wx?: LogWeather; model?: LogModel }> {
+export async function snapshot(species: LogSpecies, lon: number, lat: number): Promise<{ wx?: LogWeather; model?: LogModel }> {
   const now = Date.now()
   const home = homePlace()
   const f = cachedPointForecast(home.lon, home.lat)

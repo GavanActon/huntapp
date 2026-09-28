@@ -7,10 +7,13 @@ import { afterRecording, startGps, toggleLocate } from './tracking/gpsService'
 import { initTextScale } from './ui/textScale'
 import BottomSheet from './ui/BottomSheet'
 import WeatherStrip from './ui/WeatherStrip'
-import { IconCompass, IconLayers, IconLocate, IconPlaces, IconRuler, IconSliders, IconTarget, IconWind } from './ui/icons'
+import { IconCompass, IconEar, IconLayers, IconLocate, IconPlaces, IconRuler, IconScent, IconSliders, IconTarget, IconWind } from './ui/icons'
 import MeasureCard from './ui/MeasureCard'
 import GroundCard from './ui/GroundCard'
-import { initScentLayer } from './weather/micro/scent'
+import { initScentLayer, useScent } from './weather/micro/scent'
+import { initHunting, useHunting } from './hunting/hunting'
+import { initMoveLayer } from './hunting/moveLayer'
+import HeardCard, { useHeardForm } from './ui/HeardCard'
 import { initMeasureLayer } from './measure/measureLayer'
 import { useMeasureStore } from './measure/measureStore'
 import { initWindFlow } from './weather/windFlow'
@@ -62,6 +65,9 @@ function FabStack() {
   const headingUp = useGpsStore((s) => s.headingUp)
   const measuring = useMeasureStore((s) => s.active)
   const recording = useTrackStore((s) => s.recordingId != null)
+  const hunting = useHunting((s) => s.on)
+  const coneOn = useScent((s) => s.people.some((p) => p.live))
+  const coneWanted = useHunting((s) => s.cone)
   const [offNorth, setOffNorth] = useState(false)
   const compassBtn = useRef<HTMLButtonElement>(null)
   useEffect(() => {
@@ -78,6 +84,23 @@ function FabStack() {
   }, [])
   return (
     <div className="fabstack">
+      {hunting && (
+        <>
+          {/* out hunting: your scent cone, on until this hides it, and a moose heard */}
+          <button
+            className={`fab ${coneWanted ? 'active' : ''}`}
+            onClick={() => useHunting.getState().setCone(!coneWanted)}
+            aria-pressed={coneWanted}
+            aria-label={coneWanted ? 'Hide your scent cone' : 'Show your scent cone'}
+            style={coneWanted && !coneOn ? { opacity: 0.7 } : undefined}
+          >
+            <IconScent />
+          </button>
+          <button className="fab" onClick={() => useHeardForm.getState().show()} aria-label="Heard a moose">
+            <IconEar />
+          </button>
+        </>
+      )}
       <button
         className={`fab ${measuring ? 'active' : ''}`}
         onClick={() => {
@@ -101,20 +124,22 @@ function FabStack() {
       >
         <IconCompass />
       </button>
-      <button
-        className={`fab fab-rec ${recording ? 'active' : ''}`}
-        onClick={() => {
-          if (recording) {
-            useTrackStore.getState().stop()
-            return afterRecording()
-          }
-          startGps()
-          useTrackStore.getState().start()
-        }}
-        aria-label={recording ? 'Stop recording the track' : 'Record a track'}
-      >
-        <span className={`rec-dot${recording ? ' on' : ''}`} />
-      </button>
+      {!hunting && (
+        <button
+          className={`fab fab-rec ${recording ? 'active' : ''}`}
+          onClick={() => {
+            if (recording) {
+              useTrackStore.getState().stop()
+              return afterRecording()
+            }
+            startGps()
+            useTrackStore.getState().start()
+          }}
+          aria-label={recording ? 'Stop recording the track' : 'Record a track'}
+        >
+          <span className={`rec-dot${recording ? ' on' : ''}`} />
+        </button>
+      )}
       <button
         className={`fab ${locating && follow ? 'active' : ''}${headingUp ? ' fab-heading' : ''}`}
         style={locating && !follow ? { opacity: 0.8, outline: '1.5px solid var(--c-accent)' } : undefined}
@@ -133,6 +158,7 @@ export default function App() {
   const setOnline = useAppStore((s) => s.setOnline)
   const measuring = useMeasureStore((s) => s.active)
   const logging = useLogForm((s) => s.at != null)
+  const hearing = useHeardForm((s) => s.open)
   const barRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -155,6 +181,8 @@ export default function App() {
     initDepthLayer()
     initSpotsLayer()
     initLogLayer()
+    initMoveLayer()
+    initHunting()
     const on = () => setOnline(true)
     const off = () => setOnline(false)
     window.addEventListener('online', on)
@@ -181,7 +209,8 @@ export default function App() {
       <div className="bottombar" ref={barRef}>
         {measuring && <MeasureCard />}
         {!measuring && logging && <LogCard />}
-        {!measuring && !logging && <GroundCard />}
+        {!measuring && !logging && hearing && <HeardCard />}
+        {!measuring && !logging && !hearing && <GroundCard />}
         <nav className="tabdock glass">
           {TABS.map((t) => {
             const Icon = t.icon

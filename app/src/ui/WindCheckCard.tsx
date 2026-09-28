@@ -5,6 +5,7 @@ import { groundWind, loadMicro, REGIME_LABEL, type Regime } from '../weather/mic
 import { STRENGTH_LABEL, useWindChecks, verdict, type Strength, type WindCheck } from '../weather/micro/windChecks'
 import { requestCompass, startCompass, stopCompass, useCompass } from '../tracking/compass'
 import { IconClose } from './icons'
+import Rose, { Arrow } from './Rose'
 import './ground.css'
 
 /**
@@ -34,18 +35,7 @@ export const useCheckForm = create<CheckForm>((set) => ({
   close: () => set({ at: null }),
 }))
 
-const ROSE = [0, 45, 90, 135, 180, 225, 270, 315]
 const STRENGTHS: Strength[] = ['calm', 'drift', 'light', 'breezy', 'windy']
-
-function Arrow({ toward, size = 18 }: { toward: number; size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 14 14" style={{ transform: `rotate(${toward}deg)` }} aria-hidden>
-      <path d="M7 1.5 L10 10 L7 8 L4 10 Z" fill="currentColor" />
-    </svg>
-  )
-}
-
-const sector = (deg: number) => (Math.round((((deg % 360) + 360) % 360) / 45) * 45) % 360
 
 export default function WindCheckCard() {
   const at = useCheckForm((s) => s.at)!
@@ -128,7 +118,6 @@ export default function WindCheckCard() {
     )
   }
 
-  const on = toward == null || calm ? null : sector(toward)
   return (
     <div className="tripbuilder glass ground-card">
       <div className="tb-head">
@@ -138,38 +127,23 @@ export default function WindCheckCard() {
         </button>
       </div>
       <div className="gc-q">Which way does the powder go?</div>
-      <div className="gc-rose">
-        {ROSE.map((b) => (
-          <button
-            key={b}
-            className={`gc-dir${on === b ? ' gc-on' : ''}${b === 0 ? ' gc-north' : ''}`}
-            style={{ ['--a' as string]: `${b - turn}deg` }}
-            onClick={() => pick(b)}
-            aria-label={`toward ${compass(b)}`}
-            aria-pressed={on === b}
-          >
-            <Arrow toward={b - turn} size={16} />
-            <span>{compass(b)}</span>
+      <Rose turn={turn} value={calm ? null : toward} onPick={pick} label={(b) => `toward ${compass(b)}`}>
+        {calm ? (
+          <span className="gc-mid-word">calm</span>
+        ) : toward != null ? (
+          <span className="gc-mid-pick">
+            <Arrow toward={toward - turn} size={30} />
+            <b>{compass(toward)}</b>
+          </span>
+        ) : live ? (
+          <button className="gc-lock" onClick={() => pick(heading)}>
+            <Arrow toward={0} size={20} />
+            <span>ahead</span>
           </button>
-        ))}
-        <div className="gc-rose-mid">
-          {calm ? (
-            <span className="gc-mid-word">calm</span>
-          ) : toward != null ? (
-            <span className="gc-mid-pick">
-              <Arrow toward={toward - turn} size={30} />
-              <b>{compass(toward)}</b>
-            </span>
-          ) : live ? (
-            <button className="gc-lock" onClick={() => pick(heading)}>
-              <Arrow toward={0} size={20} />
-              <span>ahead</span>
-            </button>
-          ) : (
-            <span className="gc-mid-word">tap an arrow</span>
-          )}
-        </div>
-      </div>
+        ) : (
+          <span className="gc-mid-word">tap an arrow</span>
+        )}
+      </Rose>
       <div className="gc-note">
         {live
           ? 'The rose turns with the phone: tap the arrow pointing where the powder drifts, or "ahead" if it goes the way the phone points.'

@@ -74,6 +74,13 @@ export function toggleLocate() {
   const g = useGpsStore.getState()
   if (!g.locating || !useAppStore.getState().follow) return locateAndFollow()
   if (!g.headingUp && useCompass.getState().status === 'on') return g.setHeadingUp(true)
+  stopLocating()
+}
+
+/** Location off: no follow, north up, and the watch stops unless a track is recording. */
+export function stopLocating() {
+  const g = useGpsStore.getState()
+  if (!g.locating) return
   g.setHeadingUp(false)
   useAppStore.getState().setFollow(false)
   g.setLocating(false)
@@ -81,6 +88,22 @@ export function toggleLocate() {
   withMap((m) => m.easeTo({ bearing: 0, duration: 400 }))
   if (!useTrackStore.getState().recordingId) stopGps()
 }
+
+/**
+ * Back from the pocket. A phone stops a web app's GPS while the screen is
+ * off; after a while away the watch is started afresh, so the next fix is
+ * new rather than whatever the phone kept, and "Acquiring GPS…" says the
+ * dot is where you were until it comes.
+ */
+let hiddenAt = 0
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') hiddenAt = Date.now()
+  else if (watchId != null && Date.now() - hiddenAt > 30_000) {
+    navigator.geolocation.clearWatch(watchId)
+    watchId = null
+    startGps()
+  }
+})
 
 /** A track stopped: the watch goes too, unless the locate button is on. */
 export function afterRecording() {

@@ -310,3 +310,20 @@ export const IconTarget = (p: IconProps) => (
     <path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3" />
   </svg>
 )
+
+/** Scent rising off you: the cone's button out hunting. */
+export const IconScent = (p: IconProps) => (
+  <svg width={S(p)} height={S(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+    <path d="M7 20c-2-2.5 2-4.5 0-7s2-4.5 0-7" />
+    <path d="M12 21c-2-2.5 2-4.5 0-7s2-4.5 0-7" opacity="0.8" />
+    <path d="M17 20c-2-2.5 2-4.5 0-7s2-4.5 0-7" opacity="0.6" />
+  </svg>
+)
+
+/** An ear: a moose heard. */
+export const IconEar = (p: IconProps) => (
+  <svg width={S(p)} height={S(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6.5 9a5.5 5.5 0 0 1 11 0c0 3-2.2 4.2-3.2 5.6-.9 1.3-.8 3-2.1 4.3a3 3 0 0 1-4.7-1.4" />
+    <path d="M9.5 9.3a2.5 2.5 0 0 1 5 0c0 1.3-1.2 1.8-1.7 2.7" />
+  </svg>
+)
