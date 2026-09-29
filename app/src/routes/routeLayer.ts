@@ -1,9 +1,12 @@
 import maplibregl, { type GeoJSONSource, type Map as MlMap } from 'maplibre-gl'
 import type { Feature, FeatureCollection } from 'geojson'
 import { getMap, onEachMap, withMap } from '../map/mapController'
+import { closeOnTapOff } from '../map/tapPopup'
+import { formatDistance } from '../measure/measureMath'
+import { useAppStore } from '../state/appStore'
 import { usePlacesStore } from '../state/placesStore'
-import { ROUTE_COLOURS, ROUTE_LETTERS, useRoutes, type RouteEnd } from './routeStore'
-import { routeTime } from './routeText'
+import { clearRoutes, openRoutes, ROUTE_COLOURS, ROUTE_LETTERS, useRoutes, type RouteEnd } from './routeStore'
+import { endName, height, routeTime } from './routeText'
 import '../ui/routes.css'
 
 /**
@@ -12,7 +15,7 @@ import '../ui/routes.css'
  * that drag. While the card is up the map's tap is the route's: on a line
  * it picks that route, on a place it goes there, anywhere else it moves
  * where you are going. With the card closed, the kept route stays drawn
- * alone, to be walked.
+ * alone, to be walked; a tap on it says what it is, with Clear and Edit.
  */
 
 const SRC = 'routes'
@@ -20,6 +23,7 @@ let layersOn: MlMap | null = null
 let fromM: maplibregl.Marker | null = null
 let toM: maplibregl.Marker | null = null
 let markersOn: MlMap | null = null
+let keptPop: maplibregl.Popup | null = null
 
 function addLayers(map: MlMap) {
   if (layersOn === map || !map.getStyle()) return
@@ -148,6 +152,40 @@ function render(map: MlMap) {
   syncMarkers(map)
 }
 
+const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c)
+
+/** The kept route, tapped: what it is, and Clear or Edit. Closes on the next tap off it. */
+function showKept(map: MlMap, at: [number, number]) {
+  const k = useRoutes.getState().kept
+  if (!k) return
+  keptPop?.remove()
+  const units = useAppStore.getState().units
+  const a = k.coords[0]
+  const b = k.coords[k.coords.length - 1]
+  const to = endName({ lon: a[0], lat: a[1], kind: 'map', name: k.from }, { lon: b[0], lat: b[1], kind: 'map', name: k.to }, units)
+  const el = document.createElement('div')
+  el.className = 'rt-pop'
+  el.innerHTML =
+    `<div class="rt-pop-head"><i style="background:${ROUTE_COLOURS[k.k] ?? ROUTE_COLOURS[0]}"></i><b>${esc(routeTime(k.timeS))}</b>` +
+    `<span>${esc(formatDistance(k.distM, units))} · ↑${esc(height(k.climbM, units))}</span></div>` +
+    `<div class="rt-pop-sub">${k.mode === 'hunt' ? 'Hunt route' : 'Route'} from ${esc(k.from || 'the start')} to ${esc(to)}</div>` +
+    `<div class="pp-acts"><button class="rt-pop-clear">Clear</button><button class="rt-pop-edit">Edit</button></div>`
+  const pop = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, closeOnClick: false, offset: 8, maxWidth: '240px' }).setLngLat(at).setDOMContent(el).addTo(map)
+  closeOnTapOff(map, pop)
+  pop.on('close', () => {
+    if (keptPop === pop) keptPop = null
+  })
+  keptPop = pop
+  el.querySelector('.rt-pop-clear')?.addEventListener('click', () => {
+    pop.remove()
+    clearRoutes()
+  })
+  el.querySelector('.rt-pop-edit')?.addEventListener('click', () => {
+    pop.remove()
+    openRoutes()
+  })
+}
+
 let inited = false
 export function initRouteLayer() {
   if (inited) return
@@ -157,11 +195,15 @@ export function initRouteLayer() {
     render(map)
     map.on('click', (e) => {
       const s = useRoutes.getState()
-      if (!s.open) return
       const box: [[number, number], [number, number]] = [
         [e.point.x - 6, e.point.y - 6],
         [e.point.x + 6, e.point.y + 6],
       ]
+      // the card closed: only the kept route answers a tap (the map's popup stands aside for it, MapView)
+      if (!s.open) {
+        if (s.kept && map.queryRenderedFeatures(e.point, { layers: ['routes-hit'] }).length) showKept(map, [e.lngLat.lng, e.lngLat.lat])
+        return
+      }
       const hit = map.queryRenderedFeatures(box, { layers: ['routes-hit'] })
       if (hit.length) {
         // the picked one wins a tap where lines run together
@@ -180,6 +222,8 @@ export function initRouteLayer() {
     map.on('mouseleave', 'routes-hit', () => (map.getCanvas().style.cursor = ''))
   })
   useRoutes.subscribe((s, p) => {
+    // a kept route cleared or reopened from the card takes its popup with it
+    if (keptPop && (s.open || s.kept !== p.kept)) keptPop.remove()
     if (s.routes === p.routes && s.pick === p.pick && s.open === p.open && s.kept === p.kept && s.from === p.from && s.to === p.to) return
     const live = getMap()
     if (live && layersOn === live) render(live)

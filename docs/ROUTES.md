@@ -29,8 +29,9 @@ It has not yet been checked against a walk at Pickle Lake. See
   the bush was measured by LiDAR, and the knobs: pace on the flat (shared
   with the ruler) and **Stay dry**.
 - **Close** (×): the picked route stays on the map, and through a reload,
-  so it can be planned at camp and walked later, out hunting. **Clear**
-  takes it off.
+  so it can be planned at camp and walked later, out hunting. Tap the line
+  for its time and ends, with **Clear** to take it off and **Edit** to
+  open the card on it again. The card has a **Clear** of its own.
 
 ## The going grid
 
