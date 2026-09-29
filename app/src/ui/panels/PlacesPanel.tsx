@@ -6,6 +6,7 @@ import type { PlaceDef } from '../../config'
 import { IconLocate, IconPin, IconShare, IconTrash } from '../icons'
 import { exportTrackGpx, trackDurationMin, useTrackStore } from '../../tracking/trackStore'
 import HuntLogSection from './HuntLogSection'
+import { isDroppedPin } from '../../map/placePopup'
 
 const KINDS: PlaceDef['kind'][] = ['camp', 'lake', 'landing', 'stand', 'trail']
 
@@ -19,6 +20,8 @@ export default function PlacesPanel() {
   const remove = usePlacesStore((s) => s.remove)
   const add = usePlacesStore((s) => s.add)
   const [editing, setEditing] = useState<string | null>(null)
+  // pins dropped from the map and never named or written on: cleared together
+  const dropped = places.filter(isDroppedPin)
   const tracks = useTrackStore((s) => s.tracks)
   const recordingId = useTrackStore((s) => s.recordingId)
   const shown = useTrackStore((s) => s.shown)
@@ -47,8 +50,20 @@ export default function PlacesPanel() {
           <IconPin size={16} /> Add at map centre
         </button>
         {selectedId && (
-          <button className="btn-secondary spot-clear" onClick={() => select(null)}>
+          <button className="btn-secondary" onClick={() => select(null)}>
             Clear
+          </button>
+        )}
+        {dropped.length > 0 && (
+          <button
+            className="linklike danger"
+            onClick={() => {
+              const n = dropped.length
+              if (!confirm(`Delete the ${n === 1 ? 'pin' : `${n} pins`} you dropped and never named? Named places stay.`)) return
+              for (const p of dropped) remove(p.id)
+            }}
+          >
+            Delete {dropped.length === 1 ? '1 pin' : `${dropped.length} pins`}
           </button>
         )}
       </div>

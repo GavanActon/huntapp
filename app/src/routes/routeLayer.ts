@@ -8,6 +8,7 @@ import { usePlacesStore } from '../state/placesStore'
 import { clearRoutes, openRoutes, ROUTE_COLOURS, ROUTE_LETTERS, useRoutes, type RouteEnd } from './routeStore'
 import { endName, height, routeTime } from './routeText'
 import '../ui/routes.css'
+import '../ui/minipop.css'
 
 /**
  * The routes on the map: the three lines, the picked one on top and
@@ -164,12 +165,11 @@ function showKept(map: MlMap, at: [number, number]) {
   const b = k.coords[k.coords.length - 1]
   const to = endName({ lon: a[0], lat: a[1], kind: 'map', name: k.from }, { lon: b[0], lat: b[1], kind: 'map', name: k.to }, units)
   const el = document.createElement('div')
-  el.className = 'rt-pop'
   el.innerHTML =
-    `<div class="rt-pop-head"><i style="background:${ROUTE_COLOURS[k.k] ?? ROUTE_COLOURS[0]}"></i><b>${esc(routeTime(k.timeS))}</b>` +
+    `<div class="mp-head"><i style="background:${ROUTE_COLOURS[k.k] ?? ROUTE_COLOURS[0]}"></i><b>${esc(routeTime(k.timeS))}</b>` +
     `<span>${esc(formatDistance(k.distM, units))} · ↑${esc(height(k.climbM, units))}</span></div>` +
-    `<div class="rt-pop-sub">${k.mode === 'hunt' ? 'Hunt route' : 'Route'} from ${esc(k.from || 'the start')} to ${esc(to)}</div>` +
-    `<div class="pp-acts"><button class="rt-pop-clear">Clear</button><button class="rt-pop-edit">Edit</button></div>`
+    `<div class="mp-sub">${k.mode === 'hunt' ? 'Hunt route' : 'Route'} from ${esc(k.from || 'the start')} to ${esc(to)}</div>` +
+    `<div class="pp-acts"><button class="mp-danger rt-pop-clear">Clear</button><button class="mp-plain rt-pop-edit">Edit</button></div>`
   const pop = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, closeOnClick: false, offset: 8, maxWidth: '240px' }).setLngLat(at).setDOMContent(el).addTo(map)
   closeOnTapOff(map, pop)
   pop.on('close', () => {

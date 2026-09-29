@@ -15,6 +15,7 @@ import { offlineComplete, registerAllDataFiles, sourceModes } from './pmtilesReg
 import { attachTapWeather } from './tapWeather'
 import { attachTapGround } from './tapGround'
 import { closeOnTapOff } from './tapPopup'
+import { showPlacePopup } from './placePopup'
 import { useScent } from '../weather/micro/scent'
 import { useLogForm } from '../ui/LogCard'
 import { openRoutes, useRoutes } from '../routes/routeStore'
@@ -180,15 +181,17 @@ export default function MapView() {
       })
       m.on('dragstart', () => useAppStore.getState().setFollow(false))
 
-      // tap a place: select it; tap the map: a popup with the spot and Save
+      // tap a place: your own pin says what it is, with Delete (placePopup); the camp
+      // and the lakes select and open Places; tap the map: a popup with the spot and Save
       m.on('click', 'places-pt', (e) => {
         // the ruler, a person being placed and the route card each own the tap
         if (useMeasureStore.getState().active || useScent.getState().adding || useRoutes.getState().open) return
         const id = e.features?.[0]?.properties?.id as string | undefined
-        if (id) {
-          usePlacesStore.getState().select(id)
-          useAppStore.getState().setSheetTab('places')
-        }
+        const p = id ? usePlacesStore.getState().places.find((q) => q.id === id) : undefined
+        if (!p) return
+        if (p.savedAt > 0) return showPlacePopup(m, p)
+        usePlacesStore.getState().select(p.id)
+        useAppStore.getState().setSheetTab('places')
       })
       m.on('click', (e) => {
         if (useMeasureStore.getState().active) return // the ruler owns the tap
