@@ -92,6 +92,11 @@ export const habitatFile = () => `habitat-${REGION.id}.hab`
  *  terrain, lakes and trees do to the wind, for the ground-wind model. */
 export const microFile = () => `micro-${REGION.id}.hab`
 
+/** The going grid (build_going.py): 10 m bands over the core of what the
+ *  ground is like to walk on (grade, bush, roughness, wet, roads, creeks),
+ *  for the route finder. */
+export const goingFile = () => `going-${REGION.id}.hab`
+
 /** Baked GeoJSON with no live fallback, drawn under the data layers: the
  *  lake outlines that sit over the elevation colours so water reads as water. */
 export const BASE_GEO = ['waterbody'] as const
@@ -111,8 +116,8 @@ export const BUNDLES: BundleDef[] = [
     name: REGION.name,
     description:
       'Topo, imagery, hillshade, forest stands, lake depths, historical topo, camps, WMU lines and the ' +
-      'habitat grid the Spots tab scores, for Pickle, McGill, Ketchup and Line Lakes; full detail within 2 km of the camp.',
-    files: [...DATA_FILES.map((d) => d.file), ...GEO_THEMES.map(geoFile), ...BASE_GEO.map(baseGeoFile), habitatFile(), microFile()],
+      'habitat grid the Spots tab scores and the going grid routes are found on, for Pickle, McGill, Ketchup and Line Lakes; full detail within 2 km of the camp.',
+    files: [...DATA_FILES.map((d) => d.file), ...GEO_THEMES.map(geoFile), ...BASE_GEO.map(baseGeoFile), habitatFile(), microFile(), goingFile()],
   },
 ]
 

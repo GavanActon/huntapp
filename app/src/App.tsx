@@ -7,8 +7,11 @@ import { toggleLocate } from './tracking/gpsService'
 import { initTextScale } from './ui/textScale'
 import BottomSheet from './ui/BottomSheet'
 import WeatherStrip from './ui/WeatherStrip'
-import { IconCompass, IconEar, IconLayers, IconLocate, IconPlaces, IconRuler, IconScent, IconSliders, IconTarget, IconWind } from './ui/icons'
+import { IconCompass, IconEar, IconLayers, IconLocate, IconPlaces, IconRoute, IconRuler, IconScent, IconSliders, IconTarget, IconWind } from './ui/icons'
 import MeasureCard from './ui/MeasureCard'
+import RouteCard from './ui/RouteCard'
+import { closeRoutes, initRoutes, openRoutes, useRoutes } from './routes/routeStore'
+import { initRouteLayer } from './routes/routeLayer'
 import GroundCard from './ui/GroundCard'
 import { initScentLayer, useScent } from './weather/micro/scent'
 import { initCheckLayer } from './weather/micro/checkLayer'
@@ -86,6 +89,7 @@ function FabStack() {
   const locating = useGpsStore((s) => s.locating)
   const headingUp = useGpsStore((s) => s.headingUp)
   const measuring = useMeasureStore((s) => s.active)
+  const routing = useRoutes((s) => s.open)
   const windOn = useAppStore((s) => s.layers.windFlow)
   const hunting = useHunting((s) => s.on)
   const coneOn = useScent((s) => s.people.some((p) => p.live))
@@ -123,6 +127,15 @@ function FabStack() {
           </button>
         </>
       )}
+      {/* the three best ways to a place on foot */}
+      <button
+        className={`fab ${routing ? 'active' : ''}`}
+        onClick={() => (routing ? closeRoutes() : openRoutes())}
+        aria-pressed={routing}
+        aria-label={routing ? 'Close routes' : 'Routes: the best ways there on foot'}
+      >
+        <IconRoute />
+      </button>
       <button
         className={`fab ${measuring ? 'active' : ''}`}
         onClick={() => {
@@ -172,6 +185,7 @@ export default function App() {
   const setSheetTab = useAppStore((s) => s.setSheetTab)
   const setOnline = useAppStore((s) => s.setOnline)
   const measuring = useMeasureStore((s) => s.active)
+  const routing = useRoutes((s) => s.open)
   const logging = useLogForm((s) => s.at != null)
   const hearing = useHeardForm((s) => s.open)
   const barRef = useRef<HTMLDivElement>(null)
@@ -200,6 +214,8 @@ export default function App() {
     initMapUpdates()
     initMoveLayer()
     initHunting()
+    initRoutes()
+    initRouteLayer()
     const on = () => setOnline(true)
     const off = () => setOnline(false)
     window.addEventListener('online', on)
@@ -225,9 +241,10 @@ export default function App() {
       {!measuring && <ViewPill />}
       <div className="bottombar" ref={barRef}>
         {measuring && <MeasureCard />}
-        {!measuring && logging && <LogCard />}
-        {!measuring && !logging && hearing && <HeardCard />}
-        {!measuring && !logging && !hearing && <GroundCard />}
+        {!measuring && routing && <RouteCard />}
+        {!measuring && !routing && logging && <LogCard />}
+        {!measuring && !routing && !logging && hearing && <HeardCard />}
+        {!measuring && !routing && !logging && !hearing && <GroundCard />}
         <nav className="tabdock glass">
           {TABS.map((t) => {
             const Icon = t.icon

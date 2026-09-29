@@ -52,6 +52,14 @@ draws it from the live service instead; see [docs/DATA-SOURCES.md](docs/DATA-SOU
   day in ground-air windows; Layers draws the flow at ground or forecast
   level. Science and limits: `docs/MICRO-WIND.md`; bake:
   `pipeline/build_microclimate.py`.
+- **Routes**: the route button (or **Route** in a tapped point's popup)
+  finds the three best ways there on foot from you or camp, over a 10 m
+  grid of grade, LiDAR bush, rough and wet ground, creeks and roads, timed
+  with walking studies (Campbell et al. 2017, 2019). **Hunt** bends the way
+  toward good ground for the Spots animal, skirts the best of it, and keeps
+  your scent off it and off where you are going. The picked route stays on
+  the map for the walk. Science and limits: `docs/ROUTES.md`; bake:
+  `pipeline/build_going.py`.
 - **Offline**: the bundle in Settings holds the maps, the habitat grid and
   the lake sheets. Every signal window refreshes the forecast and the
   ten-day means for every saved place; with no signal, the Spots heat map
@@ -93,6 +101,7 @@ deeper, never all at once.
   - `georef_lake_sheet.py` — fits an MNR lake survey sheet to the lake's real shoreline
   - `survey_depth.py` — turns a fitted sheet into a depth raster by counting its contours
   - `build_depth_bands.py` — smooth lake depth band polygons for the map
+  - `build_going.py` — the going grid routes are found on (10 m: grade, bush, roughness, wet ground, roads, creeks)
   - `gen_icons.py` — app icons
 
 Two boxes drive every bake, both in `app/src/config.ts`: `CORE` (about
@@ -129,6 +138,7 @@ python pipeline/build_microclimate.py               # the ground-wind grid (afte
 python pipeline/survey_depth.py --all               # lake sheets to depth (after georef_lake_sheet.py)
 python pipeline/build_habitat.py                    # again: picks the survey depths up
 python pipeline/build_depth_bands.py                # the map's depth bands
+py -3.14 pipeline/build_going.py                    # the routes' going grid (after build_habitat.py and build_vegstructure.py)
 ```
 
 The sheets come from `https://ftp.maps.canada.ca/pub/nrcan_rncan/raster/`

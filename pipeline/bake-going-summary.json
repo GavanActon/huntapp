@@ -1,0 +1,84 @@
+{
+ "cells": [
+  867,
+  801
+ ],
+ "cell_m": [
+  9.75,
+  9.95
+ ],
+ "elevation_from_lidar": 1.0,
+ "bush_from_lidar_of_land": 0.347,
+ "estimate_to_lidar": [
+  {
+   "estimate": 0.15000000596046448,
+   "lidar_median": 0.44122254848480225,
+   "cells": 32581
+  },
+  {
+   "estimate": 0.4000000059604645,
+   "lidar_median": 0.38743868470191956,
+   "cells": 21147
+  },
+  {
+   "estimate": 0.44999998807907104,
+   "lidar_median": 0.3090468645095825,
+   "cells": 2236
+  },
+  {
+   "estimate": 0.5,
+   "lidar_median": 0.4901901185512543,
+   "cells": 26923
+  },
+  {
+   "estimate": 0.550000011920929,
+   "lidar_median": 0.4181419610977173,
+   "cells": 102940
+  },
+  {
+   "estimate": 0.6499999761581421,
+   "lidar_median": 0.5869421362876892,
+   "cells": 22641
+  },
+  {
+   "estimate": 0.75,
+   "lidar_median": 0.513516902923584,
+   "cells": 2762
+  },
+  {
+   "estimate": 0.8500000238418579,
+   "lidar_median": 0.5630894303321838,
+   "cells": 9031
+  },
+  {
+   "estimate": 0.949999988079071,
+   "lidar_median": 0.45102763175964355,
+   "cells": 816
+  }
+ ],
+ "bush_land_percentiles": {
+  "10": 0.322,
+  "25": 0.441,
+  "50": 0.492,
+  "75": 0.585,
+  "90": 0.587,
+  "99": 0.837
+ },
+ "rough_m_land_percentiles": {
+  "10": 0.02,
+  "25": 0.025,
+  "50": 0.03,
+  "75": 0.037,
+  "90": 0.051,
+  "99": 0.099
+ },
+ "ground": {
+  "upland": 464381,
+  "water": 42606,
+  "marsh": 6899,
+  "open peatland": 10655,
+  "swamp": 162620,
+  "road": 2925,
+  "stream": 4381
+ }
+}

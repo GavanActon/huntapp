@@ -16,6 +16,7 @@ import { attachTapWeather } from './tapWeather'
 import { attachTapGround } from './tapGround'
 import { useScent } from '../weather/micro/scent'
 import { useLogForm } from '../ui/LogCard'
+import { openRoutes, useRoutes } from '../routes/routeStore'
 
 import type { FeatureCollection } from 'geojson'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -180,7 +181,8 @@ export default function MapView() {
 
       // tap a place: select it; tap the map: a popup with the spot and Save
       m.on('click', 'places-pt', (e) => {
-        if (useMeasureStore.getState().active || useScent.getState().adding) return
+        // the ruler, a person being placed and the route card each own the tap
+        if (useMeasureStore.getState().active || useScent.getState().adding || useRoutes.getState().open) return
         const id = e.features?.[0]?.properties?.id as string | undefined
         if (id) {
           usePlacesStore.getState().select(id)
@@ -189,6 +191,7 @@ export default function MapView() {
       })
       m.on('click', (e) => {
         if (useMeasureStore.getState().active) return // the ruler owns the tap
+        if (useRoutes.getState().open) return // so does the route card (routes/routeLayer)
         const scent = useScent.getState()
         // placing another person: the tap is where they sit
         if (scent.adding) return scent.add(e.lngLat.lng, e.lngLat.lat)
@@ -220,7 +223,7 @@ export default function MapView() {
         el.innerHTML =
           `<button class="pp-close" aria-label="Close">×</button>` +
           `<div class="depth-popup-wx"></div>${gameHtml}` +
-          `<div class="pp-acts"><button class="pp-scent">${scentBtn}</button><button class="pp-log">Log</button><button class="pp-save">Pin</button><button class="pp-more-btn" aria-expanded="false">more</button></div>` +
+          `<div class="pp-acts"><button class="pp-scent">${scentBtn}</button><button class="pp-route">Route</button><button class="pp-log">Log</button><button class="pp-save">Pin</button><button class="pp-more-btn" aria-expanded="false">more</button></div>` +
           `<div class="pp-more" hidden><div class="depth-popup-ground"></div>${gameMore}<div class="pp-coord">${fmtCoord(lng, lat)}</div></div>`
         const popup = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, offset: 8, maxWidth: '260px' }).setLngLat([lng, lat]).setDOMContent(el).addTo(m)
         // wind, temperature, sky and rain chance at the planning time
@@ -241,6 +244,10 @@ export default function MapView() {
           const sc = useScent.getState()
           if (sc.people.length) sc.add(lng, lat)
           else sc.show(lng, lat)
+          popup.remove()
+        })
+        el.querySelector('.pp-route')?.addEventListener('click', () => {
+          openRoutes({ lon: lng, lat })
           popup.remove()
         })
         el.querySelector('.pp-log')?.addEventListener('click', () => {
