@@ -192,7 +192,8 @@ export default function MapView() {
         const scent = useScent.getState()
         // placing another person: the tap is where they sit
         if (scent.adding) return scent.add(e.lngLat.lng, e.lngLat.lat)
-        const hit = m.queryRenderedFeatures(e.point, { layers: ['places-pt'] })
+        // a place or a wind check has its own tap
+        const hit = m.queryRenderedFeatures(e.point, { layers: ['places-pt', 'windchecks-hit'].filter((id) => m.getLayer(id)) })
         if (hit.length) return
         const { lng, lat } = e.lngLat
         const el = document.createElement('div')

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { create } from 'zustand'
 import { compass } from '../weather/openMeteo'
 import { groundWind, loadMicro, REGIME_LABEL, type Regime } from '../weather/micro/model'
-import { STRENGTH_LABEL, useWindChecks, verdict, type Strength, type WindCheck } from '../weather/micro/windChecks'
+import { checkReachM, checkSpentAt, STRENGTH_LABEL, useWindChecks, verdict, type Strength, type WindCheck } from '../weather/micro/windChecks'
+import { timeLabel } from '../time'
 import { requestCompass, startCompass, stopCompass, useCompass } from '../tracking/compass'
 import { IconClose } from './icons'
 import Rose, { Arrow } from './Rose'
@@ -113,7 +114,9 @@ export default function WindCheckCard() {
             {v && <b className={`gc-verdict gc-${v}`}>{v === 'agree' ? 'agreed' : v === 'close' ? 'close' : 'missed'}</b>}
           </div>
         )}
-        <div className="gc-note">Blended into the ground wind within ~300 m for the next hour or two.</div>
+        <div className="gc-note">
+          In effect now: half the ground wind right here, less farther out, to about {Math.round(checkReachM(saved, Date.now()) / 10) * 10} m, fading out by {timeLabel(checkSpentAt(saved))}. The ring on the map shows how far it still reaches; tap the arrow to remove it.
+        </div>
       </div>
     )
   }

@@ -3,10 +3,11 @@ import { useGpsStore, type Fix } from './gpsStore'
 
 /**
  * Track mode: the phone's trail, recorded from the fixes while it is on.
- * A point is kept when the phone has moved MIN_STEP_M since the last one
- * (a stand does not fill the log), a silence longer than GAP_MS starts a
- * new segment, and every track is kept in localStorage so a day's walk
- * survives a reload and exports as GPX from the Places tab.
+ * The fixes come filtered (fixFilter.ts); a point is kept when the phone
+ * has moved more than MIN_STEP_M and more than the fix's own wander since
+ * the last one (a stand does not fill the log), a silence longer than
+ * GAP_MS starts a new segment, and every track is kept in localStorage so
+ * a day's walk survives a reload and exports as GPX from the Places tab.
  */
 
 export interface TrackPoint {
@@ -29,6 +30,10 @@ export interface Track {
 
 const KEY = 'huntapp-tracks'
 const MIN_STEP_M = 6
+/** the filtered fix's spread above which nothing is recorded, metres */
+const MAX_SIGMA_M = 25
+/** under this the phone is standing (0.25 m/s), knots */
+const STILL_KN = 0.5
 const GAP_MS = 120_000
 const MAX_POINTS = 20_000
 
@@ -117,14 +122,20 @@ export const useTrackStore = create<TrackState>((set, get) => ({
   push: (fix) => {
     const id = get().recordingId
     if (!id) return
-    if (fix.accuracy > 60) return // a coarse fix draws a trail nobody walked
+    // a coarse fix draws a trail nobody walked: the filter's spread (the
+    // first fix out of a pocket is often 30-60 m) must have settled first
+    const sigma = fix.sigma ?? fix.accuracy
+    if (sigma > MAX_SIGMA_M) return
     const tracks = get().tracks.map((t) => {
       if (t.id !== id) return t
       const last = t.points[t.points.length - 1]
       if (last) {
         const d = haversineM(last.lon, last.lat, fix.lon, fix.lat)
         const gap = fix.ts - last.ts > GAP_MS
-        if (d < MIN_STEP_M && !gap) return t
+        // a step must be more than the wander; standing still (the phone
+        // says under a pace a second) it must be well more
+        const still = fix.sogKn != null && fix.sogKn < STILL_KN
+        if (!gap && d < Math.max(MIN_STEP_M, sigma * (still ? 3 : 1.5))) return t
         const pts = t.points.length >= MAX_POINTS ? t.points.slice(1) : t.points
         return { ...t, points: [...pts, { lon: fix.lon, lat: fix.lat, ts: fix.ts, ...(gap ? { gap: true } : {}) }], distanceM: t.distanceM + (gap ? 0 : d) }
       }

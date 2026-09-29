@@ -99,7 +99,7 @@ export default function SettingsPanel() {
         <input type="checkbox" className="switch" checked={lowPower} onChange={(e) => setLowPower(e.target.checked)} />
       </label>
 
-      <div className="panel-section">Maps offline</div>
+      <div className="panel-section" id="maps-offline">Maps offline</div>
       <OfflinePanel />
     </div>
   )

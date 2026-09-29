@@ -8,7 +8,11 @@ CRS, cached to pipeline/raw/lidar-<region>.npz, and every tile is rendered
 from that array in memory. Only the core (z12+) comes from LiDAR; the
 wider region's low zooms keep the MRDEM hillshade from build_tiles.py.
 
-    python pipeline/build_hillshade.py
+The lakes are left unshaded (lakes.py): the LiDAR ground model is not
+flattened on water here, and its 0.2-1 m of noise drew as texture on the
+lakes over the imagery (Gavan, 2026-09-28, in the Bow view).
+
+    py -3.14 pipeline/build_hillshade.py
 """
 
 from __future__ import annotations
@@ -23,6 +27,7 @@ from rasterio.warp import Resampling, reproject, transform_bounds
 from rasterio.windows import from_bounds as window_from_bounds
 
 from common import CACHE_DIR, CORE, OUT_DIR, REGION, REGION_MAXZOOM, hillshade, lat_to_tile, lon_to_tile, tile_bounds_3857, write_raster_pmtiles
+from lakes import lake_mask_1m
 
 S3 = "https://canelevation-dem.s3.ca-central-1.amazonaws.com"
 WHITE_LAKE = f"{S3}/hrdem-lidar/ON-SPL_ON_White_Lake_UTM16_2021-1m-dtm.tif"
@@ -105,6 +110,7 @@ def fetch_core(source: str):
 def main(source: str = WHITE_LAKE):
     elev, transform, crs, nodata = fetch_core(source)
     elev = np.where(elev == nodata, np.nan, elev)
+    wet, _, _ = lake_mask_1m(elev, transform, crs)
     fill = np.nanmean(elev)
     lat = (CORE["south"] + CORE["north"]) / 2
 
@@ -134,10 +140,21 @@ def main(source: str = WHITE_LAKE):
         valid = ~np.isnan(dst)
         if valid.mean() < 0.01:
             return None
+        # the lakes, bilinear so the cut at the shore is soft
+        lake = np.zeros((size, size), dtype=np.float32)
+        reproject(
+            source=wet,
+            destination=lake,
+            src_transform=transform,
+            src_crs=crs,
+            dst_transform=from_bounds(*b, size, size),
+            dst_crs="EPSG:3857",
+            resampling=Resampling.bilinear,
+        )
         cell_m = ((b[2] - b[0]) / size) * np.cos(np.radians(lat))
         sh = hillshade(np.where(valid, dst, fill), cell_m)
         sh = sh.reshape(256, OVERSAMPLE, 256, OVERSAMPLE).mean(axis=(1, 3))
-        v = valid.reshape(256, OVERSAMPLE, 256, OVERSAMPLE).mean(axis=(1, 3))
+        v = (valid * (1 - lake)).reshape(256, OVERSAMPLE, 256, OVERSAMPLE).mean(axis=(1, 3))
         shade = (sh - 0.5) * 2
         rgb = np.where(shade[..., None] < 0, 0, 255).astype(np.uint8).repeat(3, axis=-1)
         alpha = (np.abs(shade) * 0.85 * 255 * v).astype(np.uint8)

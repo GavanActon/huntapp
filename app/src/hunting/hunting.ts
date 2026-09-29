@@ -90,7 +90,8 @@ export function stopHunting() {
   afterRecording()
   useScent.getState().removeLive()
   if (h.before) {
-    useAppStore.setState({ layers: h.before.layers, opacity: h.before.opacity })
+    // the wind stays as its own button left it
+    useAppStore.setState((a) => ({ layers: { ...h.before!.layers, windFlow: a.layers.windFlow }, opacity: h.before!.opacity }))
     useSpotsStore.getState().setHeat(h.before.heat)
   }
 }
@@ -110,7 +111,7 @@ function syncCone() {
   }
   const fix = useGpsStore.getState().fix
   // a coarse fix would put the cone somewhere you are not
-  if (!fix || fix.accuracy > 60) return
+  if (!fix || (fix.sigma ?? fix.accuracy) > 40) return
   if (k < 0) sc.putLive(fix.lon, fix.lat)
   else if (metres(sc.people[k], fix) >= 10) sc.move(k, fix.lon, fix.lat)
 }

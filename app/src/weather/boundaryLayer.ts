@@ -1,6 +1,6 @@
 import { devlog } from '../devlog'
 import { homePlace } from '../state/placesStore'
-import { fetchTimeout } from './openMeteo'
+import { fetchTimeout, turnHour } from './openMeteo'
 
 /**
  * The air's layering over camp, hour by hour: what decides whether the
@@ -254,7 +254,10 @@ export function layeringAt(ms: number, fallback: { cloud: number; w10: number; t
       const convective = dTheta < -0.2 ? clamp((-dTheta - 0.2) / 1.5, 0, 1) * clamp(sw / 400, 0, 1) : 0
       let hourIdx = -1
       for (let k = 0; k < p.time.length; k++) if (Date.parse(p.time[k]) <= ms) hourIdx = k
-      const d10 = p.d10[Math.max(0, hourIdx)]
+      const h0 = Math.max(0, hourIdx)
+      const h1 = Math.min(p.time.length - 1, h0 + 1)
+      const t0 = Date.parse(p.time[h0])
+      const d10 = h1 > h0 ? turnHour(p.d10[h0], p.d10[h1], clamp((ms - t0) / (Date.parse(p.time[h1]) - t0), 0, 1)) : p.d10[h0]
       let ensDirSd: number | null = null
       if (p.ens) {
         const v = lerpAt(p.ens.time, p.ens.dirSd, ms)

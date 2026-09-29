@@ -4,6 +4,8 @@ import { movesText, readMoves } from '../hunting/moveLayer'
 import { useHuntLog } from '../log/huntLog'
 import { useAppStore } from '../state/appStore'
 import { drawnView, GROUND_H, groupSummary, personColour, plumeSummary, SCENT_HEIGHTS, useScent, type ScentView } from '../weather/micro/scent'
+import { checkSpentAt, strongestCheck, useWindChecks } from '../weather/micro/windChecks'
+import { timeLabel } from '../time'
 import WindCheckCard, { useCheckForm } from './WindCheckCard'
 import { IconClose } from './icons'
 import './ground.css'
@@ -85,6 +87,12 @@ function ScentCard() {
   const live = people.some((p) => p.live)
   const who = (i: number) => (people[i]?.live ? 'You' : `${i + 1}`)
   const title = live && !many ? 'Your scent · now' : many ? `Scent · ${n} people · 10 min sit` : 'Scent cone · 10 min sit'
+  // a wind check correcting the air where this cone starts: said, so a stale one is not trusted blind
+  const checks = useWindChecks((s) => s.checks)
+  const planMs = useAppStore((s) => s.planTimeMs)
+  const at = people[k]
+  const checked = at ? strongestCheck(checks, at.lon, at.lat, planMs ?? Date.now()) : null
+  const checkedTag = checked && <em className="gc-tag">checked {Math.round(checked.pull * 100)}%</em>
   const lines =
     many ? (
       <>
@@ -99,6 +107,7 @@ function ScentCard() {
       <div className="tripbuilder glass ground-card gc-compact">
         <div className="tb-head">
           <span className="tb-title">{title}</span>
+          {checkedTag}
           <button className="linklike gc-more" onClick={() => setMore(true)}>
             more
           </button>
@@ -120,6 +129,7 @@ function ScentCard() {
     <div className="tripbuilder glass ground-card">
       <div className="tb-head">
         <span className="tb-title">{title}</span>
+        {checkedTag}
         {hunting && live && (
           <button className="linklike gc-more" onClick={() => setMore(false)}>
             less
@@ -183,6 +193,8 @@ function ScentCard() {
       </div>
       <div className="gc-note">
         {note(shown, many)} Follows the ground model, not the forecast arrow.
+        {checked &&
+          ` Your wind check at ${timeLabel(checked.check.ts)} makes up ${Math.round(checked.pull * 100)}% of the wind ${many ? `where ${who(k) === 'You' ? 'you sit' : `${k + 1} sits`}` : 'here'}, fading out by ${timeLabel(checkSpentAt(checked.check))} (its ring on the map).`}
       </div>
     </div>
   )

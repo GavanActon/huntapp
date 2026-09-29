@@ -3,7 +3,7 @@ import MapView from './map/MapView'
 import { withMap } from './map/mapController'
 import { useAppStore, type SheetTab } from './state/appStore'
 import { useGpsStore } from './tracking/gpsStore'
-import { afterRecording, startGps, toggleLocate } from './tracking/gpsService'
+import { toggleLocate } from './tracking/gpsService'
 import { initTextScale } from './ui/textScale'
 import BottomSheet from './ui/BottomSheet'
 import WeatherStrip from './ui/WeatherStrip'
@@ -11,6 +11,8 @@ import { IconCompass, IconEar, IconLayers, IconLocate, IconPlaces, IconRuler, Ic
 import MeasureCard from './ui/MeasureCard'
 import GroundCard from './ui/GroundCard'
 import { initScentLayer, useScent } from './weather/micro/scent'
+import { initCheckLayer } from './weather/micro/checkLayer'
+import { initMapUpdates, useMapUpdates } from './offline/updates'
 import { initHunting, useHunting } from './hunting/hunting'
 import { initMoveLayer } from './hunting/moveLayer'
 import HeardCard, { useHeardForm } from './ui/HeardCard'
@@ -20,7 +22,7 @@ import { initWindFlow } from './weather/windFlow'
 import { initWeatherRefresh } from './weather/refresh'
 import { initPositionLayer } from './tracking/positionLayer'
 import { initTrackLayer } from './tracking/trackLayer'
-import { initTrackRecording, useTrackStore } from './tracking/trackStore'
+import { initTrackRecording } from './tracking/trackStore'
 import { initLogLayer } from './log/logLayer'
 import LogCard, { useLogForm } from './ui/LogCard'
 import ViewPill from './ui/ViewPill'
@@ -45,12 +47,32 @@ const TABS: { id: SheetTab; name: string; icon: typeof IconLayers }[] = [
 function TopBar() {
   const online = useAppStore((s) => s.online)
   const offlineReady = useAppStore((s) => s.offlineReady)
+  const newMaps = useMapUpdates((s) => s.pending)
   const gpsStatus = useGpsStore((s) => s.status)
   const gpsError = useGpsStore((s) => s.lastError)
   return (
     <div className="topbar">
       {/* offline with every map saved is the normal state at camp: nothing to say */}
       {!online && !offlineReady && <span className="chip chip-warn">Offline · some maps not saved</span>}
+      {/* a rebake on the server: said while there is a connection to fetch it, one tap to the downloads */}
+      {online && newMaps.length > 0 && (
+        <button
+          className="chip chip-accent"
+          onClick={() => {
+            useAppStore.getState().setSheetTab('settings')
+            useAppStore.getState().setSheetTall(true)
+            let tries = 0
+            const find = () => {
+              const el = document.getElementById('maps-offline')
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              else if (tries++ < 20) setTimeout(find, 100)
+            }
+            find()
+          }}
+        >
+          New maps to download · {newMaps.length}
+        </button>
+      )}
       {gpsStatus === 'acquiring' && <span className="chip">Acquiring GPS…</span>}
       {gpsStatus === 'denied' && <span className="chip chip-warn">Location denied</span>}
       {gpsStatus === 'insecure' && <span className="chip chip-warn">No location over plain http</span>}
@@ -64,7 +86,7 @@ function FabStack() {
   const locating = useGpsStore((s) => s.locating)
   const headingUp = useGpsStore((s) => s.headingUp)
   const measuring = useMeasureStore((s) => s.active)
-  const recording = useTrackStore((s) => s.recordingId != null)
+  const windOn = useAppStore((s) => s.layers.windFlow)
   const hunting = useHunting((s) => s.on)
   const coneOn = useScent((s) => s.people.some((p) => p.live))
   const coneWanted = useHunting((s) => s.cone)
@@ -124,22 +146,15 @@ function FabStack() {
       >
         <IconCompass />
       </button>
-      {!hunting && (
-        <button
-          className={`fab fab-rec ${recording ? 'active' : ''}`}
-          onClick={() => {
-            if (recording) {
-              useTrackStore.getState().stop()
-              return afterRecording()
-            }
-            startGps()
-            useTrackStore.getState().start()
-          }}
-          aria-label={recording ? 'Stop recording the track' : 'Record a track'}
-        >
-          <span className={`rec-dot${recording ? ' on' : ''}`} />
-        </button>
-      )}
+      {/* the wind over the map, on and off from here in any view (hunting keeps the track itself) */}
+      <button
+        className={`fab ${windOn ? 'active' : ''}`}
+        onClick={() => useAppStore.getState().setLayer('windFlow', !windOn)}
+        aria-pressed={windOn}
+        aria-label={windOn ? 'Hide the wind flow' : 'Show the wind flow'}
+      >
+        <IconWind />
+      </button>
       <button
         className={`fab ${locating && follow ? 'active' : ''}${headingUp ? ' fab-heading' : ''}`}
         style={locating && !follow ? { opacity: 0.8, outline: '1.5px solid var(--c-accent)' } : undefined}
@@ -181,6 +196,8 @@ export default function App() {
     initDepthLayer()
     initSpotsLayer()
     initLogLayer()
+    initCheckLayer()
+    initMapUpdates()
     initMoveLayer()
     initHunting()
     const on = () => setOnline(true)

@@ -59,6 +59,9 @@ Output: pipeline/raw/vegstructure-<region>.npz  (grids, transform, crs, nodata)
     python pipeline/build_vegstructure.py            # metrics + tiles + check (~20 s a tile)
     python pipeline/build_vegstructure.py --tiles    # re-render tiles from the npz
     python pipeline/build_vegstructure.py --lanes    # re-render only the lanes tiles
+
+The tiles stop at the water on the 1 m lake edge (lakes.py), not in the
+10 m cells' steps.
 """
 
 from __future__ import annotations
@@ -74,9 +77,10 @@ import rasterio
 from rasterio.features import rasterize
 from rasterio.transform import from_bounds, from_origin
 from rasterio.warp import Resampling, reproject, transform_geom
-from scipy.ndimage import label, maximum_filter, minimum_filter
+from scipy.ndimage import distance_transform_edt, label, maximum_filter, minimum_filter
 
 from common import CACHE_DIR, CORE, OUT_DIR, REGION, REGION_MAXZOOM, lat_to_tile, lon_to_tile, tile_bounds_3857, write_raster_pmtiles
+from lakes import lake_mask_1m
 
 PC_DIR = CACHE_DIR / "pointcloud"
 INDEX = PC_DIR / f"tiles-{REGION['id']}.json"
@@ -335,10 +339,31 @@ def colourise(v: np.ndarray, ramp=RAMP) -> np.ndarray:
     return out
 
 
+SHORE_FILL_CELLS = 3  # how far the land's values are carried out over the water before the 1 m cut
+
+
+def extend_over_water(v: np.ndarray, water: np.ndarray, cells: int) -> np.ndarray:
+    """The nearest land value carried up to `cells` cells out over the water,
+    so the tiles' bilinear field runs on past the shore instead of stopping
+    on the 10 m grid; the 1 m lake mask then cuts it at the water's edge."""
+    gap = ~np.isfinite(v)
+    dist, (iy, ix) = distance_transform_edt(gap, return_indices=True)
+    fill = gap & water & (dist <= cells)
+    out = v.copy()
+    out[fill] = v[iy[fill], ix[fill]]
+    return out
+
+
 def render_tiles(d: dict, layers: tuple[str, ...] = ("understory", "lanes")) -> None:
     under = np.where((d["understory"] >= 0) & ~d["water"], d["understory"], np.nan).astype(np.float32)
+    under = extend_over_water(under, d["water"], SHORE_FILL_CELLS)
     transform = rasterio.Affine(*d["transform"])
     crs = str(d["crs"])
+    # the lakes at 1 m, taken to 2 m (the z16 tiles are 2.4 m a pixel): where the tiles stop at the shore
+    wet, wtr, wcrs = lake_mask_1m()
+    h, w = (wet.shape[0] // 2) * 2, (wet.shape[1] // 2) * 2
+    wet = wet[:h, :w].reshape(h // 2, 2, w // 2, 2).mean(axis=(1, 3))
+    wtr = wtr * rasterio.Affine.scale(2)
 
     def in_core(z, x, y):
         return (
@@ -364,17 +389,30 @@ def render_tiles(d: dict, layers: tuple[str, ...] = ("understory", "lanes")) -> 
         )
         if not np.isfinite(dst).any():
             return None
-        return dst
+        lake = np.zeros((256, 256), np.float32)
+        reproject(
+            source=wet,
+            destination=lake,
+            src_transform=wtr,
+            src_crs=wcrs,
+            dst_transform=from_bounds(*b, 256, 256),
+            dst_crs="EPSG:3857",
+            resampling=Resampling.bilinear,
+        )
+        return dst, lake
 
     for name, ramp in (("understory", RAMP), ("lanes", LANES_RAMP)):
         if name not in layers:
             continue
 
         def tile(z, x, y, ramp=ramp):
-            dst = render(z, x, y)
-            if dst is None:
+            got = render(z, x, y)
+            if got is None:
                 return None
+            dst, lake = got
             rgba = colourise(dst, ramp)
+            # cut at the lake's edge, softly
+            rgba[..., 3] = (rgba[..., 3] * (1 - lake)).astype(np.uint8)
             # a tile that is all lane is nothing to draw
             return rgba if rgba[..., 3].any() else None
 

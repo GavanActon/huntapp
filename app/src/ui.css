@@ -1325,6 +1325,18 @@
   gap: 12px;
 }
 
+/* a rebake waiting on the server */
+.bundle-update {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(63, 200, 255, 0.35);
+  background: rgba(63, 200, 255, 0.06);
+}
+
 .bundle-actions {
   display: flex;
   align-items: center;

@@ -33,7 +33,7 @@ const MAX_AGE_MS = 60 * 60_000
 let grid: WindGrid | null = null
 let inflight: Promise<WindGrid | null> | null = null
 const gridListeners = new Set<() => void>()
-const hourListeners = new Set<() => void>()
+const tickListeners = new Set<() => void>()
 
 try {
   const raw = localStorage.getItem(KEY)
@@ -118,24 +118,26 @@ export function onWeatherGrid(cb: () => void): () => void {
   return () => gridListeners.delete(cb)
 }
 
-/** Fires at the top of every hour: the field is one hour's wind. */
-export function onWeatherHour(cb: () => void): () => void {
-  hourListeners.add(cb)
-  return () => hourListeners.delete(cb)
+/** Fires every ten minutes, on the clock: the field is blended between
+ *  hours, so "now" drifts from one hour's wind to the next. */
+export function onWeatherTick(cb: () => void): () => void {
+  tickListeners.add(cb)
+  return () => tickListeners.delete(cb)
 }
-let hourTimer: number | null = null
-function armHourTick() {
-  if (hourTimer != null) return
+const TICK_MS = 10 * 60_000
+let tickTimer: number | null = null
+function armTick() {
+  if (tickTimer != null) return
   const now = Date.now()
-  const next = now - (now % 3600_000) + 3600_000 + 5000
-  hourTimer = window.setTimeout(() => {
-    hourTimer = null
-    for (const cb of hourListeners) cb()
+  const next = now - (now % TICK_MS) + TICK_MS + 5000
+  tickTimer = window.setTimeout(() => {
+    tickTimer = null
+    for (const cb of tickListeners) cb()
     void ensureWeatherGrid()
-    armHourTick()
+    armTick()
   }, next - now)
 }
-armHourTick()
+armTick()
 
 export type WindSample = (lon: number, lat: number, out: Float32Array) => boolean
 
@@ -148,11 +150,16 @@ function hourIndexAt(time: string[], ms: number): number {
   return idx
 }
 
-/** Bilinear wind at a moment: out[0] = km/h, out[1] = direction FROM. */
+/** Bilinear wind at a moment, blended between the hours either side of
+ *  it (each corner's speed linear, its direction by unit vectors, so it
+ *  turns the short way): out[0] = km/h, out[1] = direction FROM. */
 export function windSampler(ms: number): WindSample | null {
   const g = grid
   if (!g || g.time.length === 0) return null
   const i = hourIndexAt(g.time, ms)
+  const j = Math.min(g.time.length - 1, i + 1)
+  const t0 = Date.parse(g.time[i])
+  const tf = j > i ? Math.min(1, Math.max(0, (ms - t0) / (Date.parse(g.time[j]) - t0))) : 0
   return (lon, lat, out) => {
     const fx = (lon - g.lon0) / g.dLon
     const fy = (lat - g.lat0) / g.dLat
@@ -167,12 +174,21 @@ export function windSampler(ms: number): WindSample | null {
       const cell = (y0 + (k >> 1)) * g.cols + x0 + (k & 1)
       const w = (k & 1 ? tx : 1 - tx) * (k >> 1 ? ty : 1 - ty)
       if (!w) continue
-      const spd = g.windKmh[cell][i]
+      let spd = g.windKmh[cell][i]
       if (!Number.isFinite(spd)) return false
+      let rad = (g.windDir[cell][i] * Math.PI) / 180
+      let du = Math.sin(rad)
+      let dv = Math.cos(rad)
+      const next = g.windKmh[cell][j]
+      if (tf > 0 && Number.isFinite(next)) {
+        spd += (next - spd) * tf
+        rad = (g.windDir[cell][j] * Math.PI) / 180
+        du += (Math.sin(rad) - du) * tf
+        dv += (Math.cos(rad) - dv) * tf
+      }
       wind += spd * w
-      const rad = (g.windDir[cell][i] * Math.PI) / 180
-      u += Math.sin(rad) * w
-      v += Math.cos(rad) * w
+      u += du * w
+      v += dv * w
     }
     out[0] = wind
     out[1] = ((Math.atan2(u, v) * 180) / Math.PI + 360) % 360

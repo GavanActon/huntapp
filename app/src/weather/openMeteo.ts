@@ -276,7 +276,31 @@ export function dayHours(f: PointForecast, dayStartMs: number): HourRow[] {
   return out
 }
 
-/** The hour row at or just before a moment. */
+/** Linear between two hourly values; either one alone if the other is missing. */
+export function lerpHour(a: number, b: number, t: number): number {
+  if (!Number.isFinite(a)) return b
+  if (!Number.isFinite(b)) return a
+  return a + (b - a) * t
+}
+
+/** A wind direction between two hours, turning the short way round. */
+export function turnHour(a: number, b: number, t: number): number {
+  if (!Number.isFinite(a)) return b
+  if (!Number.isFinite(b)) return a
+  const d = ((b - a + 540) % 360) - 180
+  return (a + d * t + 360) % 360
+}
+
+/**
+ * The weather at a moment. Open-Meteo's wind, gusts, temperature, cloud
+ * and pressure are snapshots on the hour, so a moment between two hours
+ * is blended between them (the wind turning the short way): 6:30 is
+ * halfway from 6:00 to 7:00, not 6:00 held for the hour. Rain, snow, the
+ * rain chance and the sky word are the hour before each stamp, so they
+ * come from the stamp that closes the hour the moment falls in (7:00's,
+ * for 6:30). Before the first stamp or past the last there is nothing to
+ * blend with.
+ */
 export function hourAt(f: PointForecast, ms: number): HourRow | null {
   const times = f.hourly.time
   let idx = -1
@@ -284,7 +308,25 @@ export function hourAt(f: PointForecast, ms: number): HourRow | null {
     if (Date.parse(times[i]) <= ms) idx = i
     else break
   }
-  return idx < 0 ? null : hourRow(f, idx)
+  if (idx < 0) return null
+  const a = hourRow(f, idx)
+  const t0 = a.time.getTime()
+  if (ms === t0 || idx + 1 >= times.length) return a
+  const b = hourRow(f, idx + 1)
+  const t = (ms - t0) / (b.time.getTime() - t0)
+  if (!(t > 0 && t < 1)) return a
+  return {
+    ...b,
+    time: new Date(ms),
+    windKmh: lerpHour(a.windKmh, b.windKmh, t),
+    gustKmh: lerpHour(a.gustKmh, b.gustKmh, t),
+    windDir: turnHour(a.windDir, b.windDir, t),
+    tempC: lerpHour(a.tempC, b.tempC, t),
+    feelsC: lerpHour(a.feelsC, b.feelsC, t),
+    cloudPct: lerpHour(a.cloudPct, b.cloudPct, t),
+    pressureHpa: lerpHour(a.pressureHpa, b.pressureHpa, t),
+    hrdps: a.hrdps && b.hrdps,
+  }
 }
 
 /** WMO weather code to a short word. */

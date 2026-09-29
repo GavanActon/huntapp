@@ -3,7 +3,7 @@ import { getMap, onEachMap, onFirstIdle, withMap } from '../map/mapController'
 import { useAppStore } from '../state/appStore'
 import { lodOf, meanLod, onQuality, qualityProfile, reportFrame } from './flowQuality'
 import { centrePoint, compose, FrameAnchor, IDENTITY, invert, isIdentity, same, type Affine } from './frameAffine'
-import { ensureWeatherGrid, onWeatherGrid, onWeatherHour, windSampler } from './windGrid'
+import { ensureWeatherGrid, onWeatherGrid, onWeatherTick, windSampler } from './windGrid'
 import { ensureProfile, onProfile } from './boundaryLayer'
 import { groundSampler, loadMicro, microGrid, onMicro } from './micro/model'
 import { useWindChecks } from './micro/windChecks'
@@ -353,7 +353,10 @@ export function initWindFlow() {
         cur()
     })
     onWeatherGrid(cur)
-    onWeatherHour(cur)
+    // at "now" the air drifts between hours; a planned time stands still
+    onWeatherTick(() => {
+      if (useAppStore.getState().planTimeMs == null) cur()
+    })
     onMicro(cur)
     onProfile(cur)
     useWindChecks.subscribe(cur)

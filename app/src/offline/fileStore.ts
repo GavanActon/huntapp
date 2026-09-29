@@ -17,9 +17,11 @@ export interface StoredFileInfo {
   name: string
   size: number
   savedAt: number
+  /** the file's hash in the server's data manifest when it was saved (offline/updates.ts) */
+  hash?: string
 }
 
-function manifestGet(name: string): StoredFileInfo | null {
+export function manifestGet(name: string): StoredFileInfo | null {
   try {
     const raw = localStorage.getItem(MANIFEST_PREFIX + name)
     return raw ? (JSON.parse(raw) as StoredFileInfo) : null
@@ -28,7 +30,7 @@ function manifestGet(name: string): StoredFileInfo | null {
   }
 }
 
-function manifestSet(info: StoredFileInfo) {
+export function manifestSet(info: StoredFileInfo) {
   localStorage.setItem(MANIFEST_PREFIX + info.name, JSON.stringify(info))
 }
 
@@ -107,14 +109,17 @@ export async function deleteStoredFile(name: string): Promise<void> {
 
 export type ProgressFn = (loaded: number, total: number) => void
 
-/** Download url and persist as `name`. Reports progress. Throws on failure. */
+/** Download url and persist as `name`, noting the server's hash for it
+ *  when known. Reports progress. Throws on failure. */
 export async function downloadToStore(
   url: string,
   name: string,
   onProgress?: ProgressFn,
   signal?: AbortSignal,
+  hash?: string,
 ): Promise<StoredFileInfo> {
-  const resp = await fetch(url, { signal })
+  // no-store: a rebaked file must not come out of the browser's HTTP cache
+  const resp = await fetch(url, { signal, cache: 'no-store' })
   if (!resp.ok || !resp.body) throw new Error(`Download failed (${resp.status}) for ${url}`)
   const total = Number(resp.headers.get('content-length') ?? 0)
 
@@ -161,7 +166,7 @@ export async function downloadToStore(
     await cache.put(`/${DIR}/${name}`, new Response(blob))
   }
 
-  const info: StoredFileInfo = { name, size: written, savedAt: Date.now() }
+  const info: StoredFileInfo = { name, size: written, savedAt: Date.now(), ...(hash ? { hash } : {}) }
   manifestSet(info)
   return info
 }

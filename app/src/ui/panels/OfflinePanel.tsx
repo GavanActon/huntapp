@@ -7,6 +7,7 @@ import {
   requestPersistence,
   storageEstimate,
 } from '../../offline/fileStore'
+import { checkMapUpdates, serverHashes, useMapUpdates } from '../../offline/updates'
 import { useAppStore } from '../../state/appStore'
 import { IconCheck, IconDownload, IconTrash } from '../icons'
 
@@ -35,6 +36,12 @@ export default function OfflinePanel() {
   const [error, setError] = useState<string | null>(null)
   const [skipped, setSkipped] = useState<string[]>([])
   const [quota, setQuota] = useState<{ usage: number; quota: number } | null>(null)
+  const pending = useMapUpdates((s) => s.pending)
+
+  // opening the section is a good moment to ask the server again
+  useEffect(() => {
+    void checkMapUpdates()
+  }, [])
 
   useEffect(() => {
     void storageEstimate().then(setQuota)
@@ -42,7 +49,8 @@ export default function OfflinePanel() {
 
   const storedNames = new Set(stored.map((s) => s.name))
 
-  async function downloadBundle(files: string[]) {
+  /** Download the files not on the phone, or with `replace` these files whether or not they are. */
+  async function downloadBundle(files: string[], replace = false) {
     setError(null)
     setSkipped([])
     // OPFS and Cache Storage only exist on https (or localhost): over plain
@@ -52,7 +60,8 @@ export default function OfflinePanel() {
       return
     }
     await requestPersistence()
-    const todo = files.filter((f) => !storedNames.has(f))
+    const todo = replace ? files : files.filter((f) => !storedNames.has(f))
+    const hashes = await serverHashes()
     const missing: string[] = []
     try {
       for (let i = 0; i < todo.length; i++) {
@@ -62,8 +71,12 @@ export default function OfflinePanel() {
           missing.push(file)
           continue
         }
-        await downloadToStore(DATA_BASE + file, file, (loaded, total) =>
-          setDl({ active: true, file, loaded, total, fileIdx: i + 1, fileCount: todo.length }),
+        await downloadToStore(
+          DATA_BASE + file,
+          file,
+          (loaded, total) => setDl({ active: true, file, loaded, total, fileIdx: i + 1, fileCount: todo.length }),
+          undefined,
+          hashes.get(file),
         )
         setStored(listStored())
       }
@@ -91,6 +104,8 @@ export default function OfflinePanel() {
         const have = b.files.filter((f) => storedNames.has(f))
         const complete = have.length === b.files.length
         const bundleSize = stored.filter((s) => b.files.includes(s.name)).reduce((sum, s) => sum + s.size, 0)
+        // with part of the bundle saved, what the server has that the phone lacks (new or rebaked) is one button
+        const offerNew = have.length > 0 && pending.length > 0 && !dl?.active
         return (
           <div key={b.id} className="bundle glass-inset">
             <div className="bundle-head">
@@ -117,6 +132,19 @@ export default function OfflinePanel() {
               </div>
             )}
 
+            {offerNew && (
+              <div className="bundle-update">
+                <div className="row-title">New maps on the server</div>
+                <div className="row-desc">
+                  {pending.map((p) => `${p.label}${p.why === 'new' ? ' (new)' : ''}`).join(', ')} · {fmtBytes(pending.reduce((a, p) => a + p.size, 0))}
+                </div>
+                <button className="btn-primary" disabled={!online} onClick={() => void downloadBundle(pending.map((p) => p.name), true)}>
+                  <IconDownload size={18} />
+                  {online ? 'Download the new maps' : 'Connect to download'}
+                </button>
+              </div>
+            )}
+
             {error && <div className="dl-error">{error}</div>}
             {skipped.length > 0 && (
               <div className="row-desc">Not built yet: {skipped.join(', ')}</div>
@@ -134,6 +162,7 @@ export default function OfflinePanel() {
                 </button>
               )}
               {!complete &&
+                !offerNew &&
                 (dl?.active ? (
                   <span className="bundle-status">Downloading…</span>
                 ) : (

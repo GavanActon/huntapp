@@ -78,14 +78,43 @@ export function metresBetween(aLon: number, aLat: number, bLon: number, bLat: nu
   return Math.hypot((aLon - bLon) * kx, (aLat - bLat) * 110_574)
 }
 
+const TAU_MS = 40 * 60_000
+const LEN_M = 300
+const MAX_MS = 2 * 3600_000
+const MAX_M = 800
+
 /** How far a check reaches: 40 min and 300 m e-folding, nothing past 2 h
  *  or 800 m. Returns the weight (0 = out of reach). */
 export function checkWeight(c: WindCheck, lon: number, lat: number, ms: number): number {
   const dt = Math.abs(ms - c.ts)
-  if (dt > 2 * 3600_000) return 0
+  if (dt > MAX_MS) return 0
   const d = metresBetween(lon, lat, c.lon, c.lat)
-  if (d > 800) return 0
-  return Math.exp(-dt / (40 * 60_000)) * Math.exp(-d / 300)
+  if (d > MAX_M) return 0
+  return Math.exp(-dt / TAU_MS) * Math.exp(-d / LEN_M)
+}
+
+/** A check's share of the ground wind at a spot and moment: model.ts
+ *  averages the model's wind with each check at its weight w, so a check
+ *  alone makes up w / (1 + w) of the answer (half, where and when it was made). */
+export function checkPull(c: WindCheck, lon: number, lat: number, ms: number): number {
+  const w = checkWeight(c, lon, lat, ms)
+  return w / (1 + w)
+}
+
+/** Below this share of the wind a check is not worth drawing: it is "in effect" above it. */
+export const PULL_SHOWN = 0.1
+const W_SHOWN = PULL_SHOWN / (1 - PULL_SHOWN)
+
+/** How far from the check it still makes up PULL_SHOWN of the wind at a moment, metres (0 = spent). */
+export function checkReachM(c: WindCheck, ms: number): number {
+  const dt = Math.abs(ms - c.ts)
+  if (dt > MAX_MS) return 0
+  return Math.max(0, Math.min(MAX_M, LEN_M * (Math.log(1 / W_SHOWN) - dt / TAU_MS)))
+}
+
+/** When a check stops making up PULL_SHOWN of the wind even where it was made. */
+export function checkSpentAt(c: WindCheck): number {
+  return c.ts + Math.min(MAX_MS, TAU_MS * Math.log(1 / W_SHOWN))
 }
 
 /** Did the model get it? Direction within 45° (or both calm-ish) is a hit,
@@ -98,4 +127,14 @@ export function verdict(c: WindCheck): 'agree' | 'close' | 'miss' | null {
   if (obsCalm || modelCalm) return obsCalm === modelCalm ? 'agree' : m.kmh < 2.5 && c.strength !== 'breezy' && c.strength !== 'windy' ? 'close' : 'miss'
   const d = angleDiff(c.dirFrom!, m.dirFrom)
   return d <= 45 ? 'agree' : d <= 90 ? 'close' : 'miss'
+}
+
+/** The check that makes up most of the ground wind at a spot and moment, if any counts for PULL_SHOWN. */
+export function strongestCheck(checks: WindCheck[], lon: number, lat: number, ms: number): { check: WindCheck; pull: number } | null {
+  let best: { check: WindCheck; pull: number } | null = null
+  for (const c of checks) {
+    const pull = checkPull(c, lon, lat, ms)
+    if (pull >= PULL_SHOWN && (!best || pull > best.pull)) best = { check: c, pull }
+  }
+  return best
 }

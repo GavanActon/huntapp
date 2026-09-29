@@ -3,7 +3,9 @@ import { create } from 'zustand'
 export interface Fix {
   lon: number
   lat: number
-  accuracy: number // metres
+  accuracy: number // metres, the phone's own figure
+  /** the filter's spread, metres (fixFilter.ts); unset on a raw fix */
+  sigma?: number
   sogKn: number | null // speed over ground, knots
   cog: number | null // course over ground, degrees true
   ts: number

@@ -1,7 +1,51 @@
-import { defineConfig } from 'vite'
+import { createHash } from 'node:crypto'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 import { VitePWA } from 'vite-plugin-pwa'
+
+/**
+ * data/manifest.json: every baked data file's size and a hash of its
+ * bytes, so a phone holding the maps offline can tell when one has been
+ * rebaked (offline/updates.ts). GitHub Pages stamps every file with the
+ * deploy's date, so dates and ETags cannot say which files changed.
+ */
+function dataManifest(): Plugin {
+  const dir = fileURLToPath(new URL('./public/data/', import.meta.url))
+  const seen = new Map<string, { key: string; hash: string }>()
+  const build = () => {
+    const files: Record<string, { size: number; hash: string }> = {}
+    for (const name of readdirSync(dir)) {
+      if (name === 'manifest.json') continue
+      const st = statSync(dir + name)
+      if (!st.isFile()) continue
+      const key = `${st.size}:${st.mtimeMs}`
+      let hit = seen.get(name)
+      if (hit?.key !== key) {
+        hit = { key, hash: createHash('sha1').update(readFileSync(dir + name)).digest('hex').slice(0, 16) }
+        seen.set(name, hit)
+      }
+      files[name] = { size: st.size, hash: hit.hash }
+    }
+    return JSON.stringify({ files })
+  }
+  return {
+    name: 'data-manifest',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (!req.url?.split('?')[0].endsWith('/data/manifest.json')) return next()
+        res.setHeader('content-type', 'application/json')
+        res.setHeader('cache-control', 'no-store')
+        res.end(build())
+      })
+    },
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'data/manifest.json', source: build() })
+    },
+  }
+}
 
 // BASE_PATH lets the same build target a GitHub Pages project site (e.g. /huntapp/)
 export default defineConfig({
@@ -12,6 +56,7 @@ export default defineConfig({
   plugins: [
     ...(process.env.HTTPS_DEV ? [basicSsl()] : []),
     react(),
+    dataManifest(),
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {

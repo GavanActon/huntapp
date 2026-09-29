@@ -4,11 +4,15 @@ import { nearestInBounds } from '../config'
 import { useGpsStore, type Fix } from './gpsStore'
 import { useTrackStore } from './trackStore'
 import { requestCompass, startCompass, stopCompass, useCompass } from './compass'
+import { FixFilter } from './fixFilter'
 
-/** A plain geolocation watch: one fix in the store, and the map follows
- *  when asked. It runs only while the locate button is on or a track is
- *  recording, never on its own: location is the hunter's to switch on. */
+/** A geolocation watch: one fix in the store, filtered (fixFilter.ts) so
+ *  the dot and the track do not wander with the canopy's multipath, and
+ *  the map follows when asked. It runs only while the locate button is on
+ *  or a track is recording, never on its own: location is the hunter's to
+ *  switch on. */
 let watchId: number | null = null
+const filter = new FixFilter()
 
 export function startGps() {
   if (watchId != null) return
@@ -18,16 +22,22 @@ export function startGps() {
   gps.setStatus('acquiring')
   watchId = navigator.geolocation.watchPosition(
     (p) => {
-      const fix: Fix = {
+      const raw: Fix = {
         lon: p.coords.longitude,
         lat: p.coords.latitude,
         accuracy: p.coords.accuracy,
-        sogKn: p.coords.speed == null ? null : p.coords.speed * 1.94384,
-        cog: p.coords.heading,
+        sogKn: p.coords.speed == null || p.coords.speed < 0 ? null : p.coords.speed * 1.94384,
+        cog: p.coords.heading == null || Number.isNaN(p.coords.heading) ? null : p.coords.heading,
         ts: p.timestamp,
       }
-      useGpsStore.getState().setFix(fix)
-      useGpsStore.getState().setStatus('on')
+      const gps = useGpsStore.getState()
+      const { fix, why } = filter.push(raw)
+      if (!fix) {
+        gps.setDropped({ ...gps.dropped, [why]: gps.dropped[why] + 1 })
+        return
+      }
+      gps.setFix(fix)
+      gps.setStatus('on')
       if (useAppStore.getState().follow) {
         const { center } = nearestInBounds(fix.lon, fix.lat)
         withMap((m) => m.easeTo({ center, duration: 500 }))
@@ -45,6 +55,7 @@ export function startGps() {
 export function stopGps() {
   if (watchId != null) navigator.geolocation.clearWatch(watchId)
   watchId = null
+  filter.reset()
   // a stale dot is worse than none: with location off the app works from camp or a pin
   useGpsStore.getState().setFix(null)
   useGpsStore.getState().setStatus('off')

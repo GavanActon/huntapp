@@ -12,6 +12,9 @@ import { isFish, type Target } from '../spots/types'
  * saved as a view of its own. The views hold no state of their own: which
  * one is "on" is simply whichever matches the layers now, so a switch
  * flipped in Layers shows as "custom" without anything going stale.
+ *
+ * The wind flow is not part of any view: it has its own button on the
+ * map, and stays as that button left it whichever view goes on.
  */
 
 export type Mode = 'hunt' | 'fish'
@@ -32,7 +35,7 @@ const L = (on: (keyof LayerVisibility)[]): LayerVisibility =>
 
 export const BUILT_IN: MapView[] = [
   { id: 'hunt-scout', name: 'Scout', mode: 'hunt', builtIn: true, heat: true, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'contours', 'forest', 'fire', 'roads']) },
-  { id: 'hunt-sit', name: 'Sit', mode: 'hunt', builtIn: true, heat: false, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'contours', 'windFlow', 'roads']) },
+  { id: 'hunt-sit', name: 'Sit', mode: 'hunt', builtIn: true, heat: false, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'contours', 'roads']) },
   { id: 'hunt-bush', name: 'Bush', mode: 'hunt', builtIn: true, heat: false, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'understory', 'contours', 'roads']) },
   // out hunting with a bow: the imagery at full strength, open lanes left clear and
   // thick bush shaded dark (the lanes layer, not the colour scale, which washes it out),
@@ -41,7 +44,7 @@ export const BUILT_IN: MapView[] = [
   { id: 'hunt-terrain', name: 'Terrain', mode: 'hunt', builtIn: true, heat: false, opacity: { ...DEFAULT_OPACITY, hillshade: 0.9 }, layers: L(['hillshade', 'contours', 'roads']) },
   { id: 'hunt-relief', name: 'Relief', mode: 'hunt', builtIn: true, heat: false, opacity: { ...DEFAULT_OPACITY, hillshade: 0.7 }, layers: L(['relief', 'hillshade', 'contours', 'roads']) },
   { id: 'hunt-land', name: 'Land', mode: 'hunt', builtIn: true, heat: false, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'crown', 'wmu', 'camps', 'parks', 'roads']) },
-  { id: 'fish-lake', name: 'Lake', mode: 'fish', builtIn: true, heat: true, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'bathy', 'windFlow']) },
+  { id: 'fish-lake', name: 'Lake', mode: 'fish', builtIn: true, heat: true, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'bathy']) },
   { id: 'fish-chart', name: 'Chart', mode: 'fish', builtIn: true, heat: true, opacity: DEFAULT_OPACITY, layers: L(['bathy', 'topo']) },
 ]
 
@@ -75,7 +78,8 @@ export const useViews = create<ViewsState>()(
         if (first) get().apply(first)
       },
       apply: (v) => {
-        useAppStore.setState({ layers: { ...DEFAULT_LAYERS, ...v.layers }, opacity: { ...DEFAULT_OPACITY, ...v.opacity } })
+        const windFlow = useAppStore.getState().layers.windFlow
+        useAppStore.setState({ layers: { ...DEFAULT_LAYERS, ...v.layers, windFlow }, opacity: { ...DEFAULT_OPACITY, ...v.opacity } })
         useSpotsStore.getState().setHeat(v.heat)
       },
       saveCurrent: (name) => {
@@ -97,7 +101,7 @@ export function viewsFor(mode: Mode, saved = useViews.getState().saved): MapView
 
 /** The view the map is showing now, if any: layers and heat match exactly. */
 export function activeView(views: MapView[], layers: LayerVisibility, heat: boolean): MapView | null {
-  return views.find((v) => v.heat === heat && (Object.keys(DEFAULT_LAYERS) as (keyof LayerVisibility)[]).every((k) => !!v.layers[k] === !!layers[k])) ?? null
+  return views.find((v) => v.heat === heat && (Object.keys(DEFAULT_LAYERS) as (keyof LayerVisibility)[]).every((k) => k === 'windFlow' || !!v.layers[k] === !!layers[k])) ?? null
 }
 
 // a fish picked in Spots while hunting (or the reverse) is a change of mode:

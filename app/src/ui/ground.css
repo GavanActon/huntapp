@@ -23,6 +23,7 @@
 .gc-miss { background: rgba(255, 120, 110, 0.18); color: #ff8a80; }
 
 .depth-popup-ground { margin: 5px 0 1px; font-size: 12px; color: var(--c-text-dim); }
+.ck-pop .pp-reasons li:last-child { list-style: disc; margin: 2px 0 0; }
 .depth-popup-ground .pg-head { display: flex; align-items: center; gap: 6px; color: var(--c-text); }
 .depth-popup-ground .pg-head svg { flex: none; }
 .depth-popup-ground .pg-head > span { flex: 1; }
@@ -81,6 +82,7 @@ div.me .me-hit { pointer-events: all; cursor: pointer; }
 /* out hunting: the scent card as its summary alone, "more" for the rest */
 .ground-card .tb-head .gc-more { margin-left: auto; font-size: 12.5px; }
 .ground-card .tb-head .gc-more + .icon-btn { margin-left: 0; }
+.ground-card .gc-tag { flex: none; font-size: 10.5px; font-style: normal; padding: 1px 7px; border-radius: 999px; background: rgba(191, 230, 255, 0.14); color: #bfe6ff; }
 .ground-card.gc-compact { gap: 3px; padding-top: 6px; padding-bottom: 8px; }
 .ground-card.gc-compact .icon-btn { width: 32px; height: 32px; }
 .ground-card .gc-moves { color: #ffc98a; }
