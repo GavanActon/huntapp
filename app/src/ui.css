@@ -646,7 +646,7 @@
   backdrop-filter: blur(14px);
   border: 1px solid var(--c-border);
   border-radius: var(--r-sm);
-  padding: 6px 30px 7px 10px;
+  padding: 6px 10px 7px;
   min-width: 232px;
   box-shadow: var(--shadow-fab);
 }
@@ -2437,8 +2437,6 @@
 
 /* the water-tap popup's two square actions: Go explores, Save keeps */
 
-.pp-close { position: absolute; top: 4px; right: 4px; width: 28px; height: 28px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, 0.08); color: var(--c-text-dim); font-size: 18px; line-height: 28px; text-align: center; padding: 0; cursor: pointer; }
-.pp-close:active { background: rgba(255, 255, 255, 0.16); }
 .pp-acts {
   display: flex;
   gap: 5px;

@@ -14,6 +14,7 @@ import { buildMapStyle, contourFilters } from './mapStyle'
 import { offlineComplete, registerAllDataFiles, sourceModes } from './pmtilesRegistry'
 import { attachTapWeather } from './tapWeather'
 import { attachTapGround } from './tapGround'
+import { closeOnTapOff } from './tapPopup'
 import { useScent } from '../weather/micro/scent'
 import { useLogForm } from '../ui/LogCard'
 import { openRoutes, useRoutes } from '../routes/routeStore'
@@ -221,18 +222,21 @@ export default function MapView() {
               .join('')}<li><button class="pp-details linklike" type="button">the arithmetic and the knobs ▸</button></li></ul>`
           : ''
         el.innerHTML =
-          `<button class="pp-close" aria-label="Close">×</button>` +
           `<div class="depth-popup-wx"></div>${gameHtml}` +
           `<div class="pp-acts"><button class="pp-scent">${scentBtn}</button><button class="pp-route">Route</button><button class="pp-log">Log</button><button class="pp-save">Pin</button><button class="pp-more-btn" aria-expanded="false">more</button></div>` +
           `<div class="pp-more" hidden><div class="depth-popup-ground"></div>${gameMore}<div class="pp-coord">${fmtCoord(lng, lat)}</div></div>`
-        const popup = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, offset: 8, maxWidth: '260px' }).setLngLat([lng, lat]).setDOMContent(el).addTo(m)
+        const popup = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, closeOnClick: false, offset: 8, maxWidth: '260px' })
+          .setLngLat([lng, lat])
+          .setDOMContent(el)
+          .addTo(m)
+        // no ×: tap again, anywhere off it, and it goes
+        closeOnTapOff(m, popup)
         // wind, temperature, sky and rain chance at the planning time
         const stopWx = attachTapWeather(el.querySelector('.depth-popup-wx') as HTMLElement, lng, lat)
         popup.on('close', stopWx)
         // the air at head height there, and logging what it really does
         const stopGround = attachTapGround(el.querySelector('.depth-popup-ground') as HTMLElement, lng, lat, () => popup.remove())
         popup.on('close', stopGround)
-        el.querySelector('.pp-close')?.addEventListener('click', () => popup.remove())
         el.querySelector('.pp-more-btn')?.addEventListener('click', (ev) => {
           const more = el.querySelector('.pp-more') as HTMLElement
           more.hidden = !more.hidden

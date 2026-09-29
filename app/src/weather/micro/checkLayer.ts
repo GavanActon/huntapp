@@ -2,6 +2,7 @@ import maplibregl from 'maplibre-gl'
 import type { Feature, FeatureCollection } from 'geojson'
 import type { GeoJSONSource, Map as MlMap } from 'maplibre-gl'
 import { onEachMap } from '../../map/mapController'
+import { closeOnTapOff } from '../../map/tapPopup'
 import { useAppStore } from '../../state/appStore'
 import { timeLabel } from '../../time'
 import { compass } from '../openMeteo'
@@ -159,7 +160,6 @@ function popupHtml(c: WindCheck, at: number): string {
   const spent = checkSpentAt(c)
   const when = useAppStore.getState().planTimeMs == null ? 'now' : 'at the planned time'
   return (
-    `<button class="pp-close" aria-label="Close">×</button>` +
     `<div class="pg-head"><span>Wind check · ${esc(timeLabel(c.ts))}</span></div>` +
     `<ul class="pp-reasons"><li>You felt: ${esc(felt)}</li>${model}` +
     `<li>In effect ${when}: ${pull}% of the ground wind here, less farther out, to about ${reach} m (the ring)</li>` +
@@ -177,8 +177,8 @@ function openPopup(map: MlMap, id: string) {
   const el = document.createElement('div')
   el.className = 'depth-popup-ground ck-pop'
   el.innerHTML = popupHtml(c, ms())
-  const p = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, offset: 12, maxWidth: '260px' }).setLngLat([c.lon, c.lat]).setDOMContent(el).addTo(map)
-  el.querySelector('.pp-close')?.addEventListener('click', () => p.remove())
+  const p = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, closeOnClick: false, offset: 12, maxWidth: '260px' }).setLngLat([c.lon, c.lat]).setDOMContent(el).addTo(map)
+  closeOnTapOff(map, p)
   el.querySelector('.ck-remove')?.addEventListener('click', () => {
     useWindChecks.getState().remove(c.id)
     p.remove()
