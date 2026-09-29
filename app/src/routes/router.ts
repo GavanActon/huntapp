@@ -108,7 +108,7 @@ export interface RoutesAnswer {
 }
 
 // [dr, dc]: the eight neighbours, then the knight's moves
-const MOVES: [number, number][] = [
+export const MOVES: [number, number][] = [
   [0, 1],
   [1, 0],
   [0, -1],
@@ -136,7 +136,7 @@ const LUT = (() => {
   for (let i = 0; i < n; i++) a[i] = slopeFactor(LUT_MIN + i * LUT_STEP)
   return a
 })()
-function sf(grade: number): number {
+export function sf(grade: number): number {
   const i = Math.round((grade - LUT_MIN) / LUT_STEP)
   return LUT[i < 0 ? 0 : i >= LUT.length ? LUT.length - 1 : i]
 }
@@ -264,7 +264,7 @@ function huntGrids(g: GoingGridData, h: HuntField, wind: WindField | undefined, 
   return { here, near, scent }
 }
 
-class Heap {
+export class Heap {
   keys = new Float64Array(1 << 16)
   vals = new Int32Array(1 << 16)
   size = 0

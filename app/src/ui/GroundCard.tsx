@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useHunting } from '../hunting/hunting'
-import { movesText, readMoves } from '../hunting/moveLayer'
+import { movesText, readMoves, useSwing } from '../hunting/moveLayer'
 import { useHuntLog } from '../log/huntLog'
 import { useAppStore } from '../state/appStore'
 import { drawnView, GROUND_H, groupSummary, personColour, plumeSummary, SCENT_HEIGHTS, useScent, type ScentView } from '../weather/micro/scent'
@@ -75,6 +75,7 @@ function ScentCard() {
   const hunting = useHunting((s) => s.on)
   const [more, setMore] = useState(false)
   useLookTick()
+  useSwing((s) => s.swing)
   const moves = hunting ? readMoves() : null
   const { clear, setView, setHeight, setPick, setAdding, remove } = useScent.getState()
   const n = people.length
@@ -203,6 +204,7 @@ function ScentCard() {
 /** Out hunting with the cone hidden: the moose line alone, while a sound is fresh. */
 function MovesCard() {
   useLookTick()
+  useSwing((s) => s.swing)
   const r = readMoves()
   if (!r) return null
   return (

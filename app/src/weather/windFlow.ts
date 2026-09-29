@@ -7,6 +7,7 @@ import { ensureWeatherGrid, onWeatherGrid, onWeatherTick, windSampler } from './
 import { ensureProfile, onProfile } from './boundaryLayer'
 import { groundSampler, loadMicro, microGrid, onMicro } from './micro/model'
 import { useWindChecks } from './micro/windChecks'
+import { currentTextStop } from '../ui/textScale'
 
 /**
  * Wind made visible: particles advected by the forecast grid at the
@@ -25,6 +26,15 @@ import { useWindChecks } from './micro/windChecks'
 
 const FIELD_STEP = 28 // css px between wind samples
 const ALPHA_BANDS = 12
+
+/** Streak width by the size setting, css px; auto follows the text size (Settings). */
+const STREAK_PX = { standard: 1.2, large: 2, larger: 2.8 } as const
+let streakPx: number = STREAK_PX.standard
+function sizeStreaks() {
+  const s = useAppStore.getState().flowTuning.windSize
+  // the phone's text size is read off the page: worked out when a setting changes, not every frame
+  streakPx = STREAK_PX[s === 'auto' || !s ? currentTextStop() : s]
+}
 
 interface FieldGrid {
   step: number
@@ -47,6 +57,10 @@ function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
   const ground = useAppStore.getState().windLevel === 'ground' && microGrid() ? groundSampler(atMs) : null
   const wind = windSampler(atMs)
   const out = new Float32Array(3)
+  // a map turned heading up turns the screen: a true bearing shows turned back by the map's
+  const turn = (map.getBearing() * Math.PI) / 180
+  const cb = Math.cos(turn)
+  const sb = Math.sin(turn)
   if (ground) {
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
@@ -55,8 +69,10 @@ function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
         const kmh = Math.hypot(out[0], out[1]) * 3.6
         if (kmh < 0.05) continue
         const pxps = Math.min(220, Math.max(6, kmh * 0.54 * 4.5 * 2.2 * speedMul))
-        vx[r * cols + c] = (out[0] / (kmh / 3.6)) * pxps
-        vy[r * cols + c] = -(out[1] / (kmh / 3.6)) * pxps
+        const ue = out[0] / (kmh / 3.6)
+        const un = out[1] / (kmh / 3.6)
+        vx[r * cols + c] = (ue * cb - un * sb) * pxps
+        vy[r * cols + c] = -(ue * sb + un * cb) * pxps
         live = true
       }
     }
@@ -65,9 +81,9 @@ function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
       for (let c = 0; c < cols; c++) {
         const ll = map.unproject([c * FIELD_STEP, r * FIELD_STEP])
         if (!wind(ll.lng, ll.lat, out)) continue
-        // blows TOWARD dir+180; screen y grows downward, north is up.
+        // blows TOWARD dir+180; screen y grows downward, the map's bearing is up.
         // out[0] is km/h (the boat app's was knots): scaled to the same px/s
-        const rad = ((out[1] + 180) * Math.PI) / 180
+        const rad = ((out[1] + 180) * Math.PI) / 180 - turn
         const pxps = Math.min(220, Math.max(8, out[0] * 0.54 * 4.5 * speedMul))
         vx[r * cols + c] = Math.sin(rad) * pxps
         vy[r * cols + c] = -Math.cos(rad) * pxps
@@ -269,7 +285,7 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
       px[i] = nx
       py[i] = ny
     }
-    ctx.lineWidth = 1.2
+    ctx.lineWidth = streakPx
     for (let b = 0; b < ALPHA_BANDS; b++) {
       const alpha = (0.22 + ((b + 0.5) / ALPHA_BANDS) * 0.4) * level
       ctx.strokeStyle = `hsla(${tune.windHue}, ${tune.windSat}%, 62%, ${alpha})`
@@ -323,6 +339,14 @@ if (import.meta.hot) import.meta.hot.accept(() => window.location.reload())
 export function initWindFlow() {
   if (wired) return
   wired = true
+  sizeStreaks()
+  useAppStore.subscribe((s, prev) => {
+    if (s.flowTuning.windSize !== prev.flowTuning.windSize || s.textSize !== prev.textSize) sizeStreaks()
+  })
+  // the phone's text size can change while we are in the background
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') sizeStreaks()
+  })
   onEachMap((map) => {
     onFirstIdle(map, () => syncAmbient(map))
     map.on('moveend', () => {

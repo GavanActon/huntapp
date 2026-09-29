@@ -58,7 +58,8 @@ function features(at: number): FeatureCollection {
   return { type: 'FeatureCollection', features: out }
 }
 
-/** An arrow pointing north (the symbol turns it), white with a dark edge, and a calm ring. */
+/** An arrow pointing north (the symbol turns it), pale with a dark edge, and a calm ring. A shaft
+ *  and a head, a wind vane's arrow: a bare arrowhead read as a second position arrow beside you. */
 function images(map: MlMap) {
   const px = 2
   const draw = (paint: (g: CanvasRenderingContext2D) => void) => {
@@ -74,16 +75,32 @@ function images(map: MlMap) {
     map.addImage(
       ARROW,
       draw((g) => {
-        g.beginPath()
-        g.moveTo(14, 2)
-        g.lineTo(22, 23)
-        g.lineTo(14, 18)
-        g.lineTo(6, 23)
-        g.closePath()
-        g.lineWidth = 3
+        const head = () => {
+          g.beginPath()
+          g.moveTo(14, 2)
+          g.lineTo(20, 12)
+          g.lineTo(8, 12)
+          g.closePath()
+        }
+        const shaft = () => {
+          g.beginPath()
+          g.moveTo(14, 10)
+          g.lineTo(14, 26)
+        }
+        g.lineCap = 'round'
         g.strokeStyle = 'rgba(8, 20, 34, 0.9)'
+        g.lineWidth = 5.5
+        shaft()
+        g.stroke()
+        g.lineWidth = 3
+        head()
+        g.stroke()
+        g.strokeStyle = '#bfe6ff'
+        g.lineWidth = 2.5
+        shaft()
         g.stroke()
         g.fillStyle = '#bfe6ff'
+        head()
         g.fill()
       }),
       { pixelRatio: px },

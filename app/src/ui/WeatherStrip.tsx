@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { inRegion } from '../config'
+import { useMapBearing } from '../map/mapBearing'
 import { useAppStore } from '../state/appStore'
 import { selectedPlace, homePlace, usePlacesStore } from '../state/placesStore'
 import { useGpsStore } from '../tracking/gpsStore'
@@ -70,9 +71,10 @@ export function SkyGlyph({ code, size = 13 }: { code: number; size?: number }) {
 }
 
 export function WindArrow({ deg, size = 12 }: { deg: number; size?: number }) {
-  // blowing FROM deg: the arrow points where the wind goes
+  // blowing FROM deg: the arrow points where the wind goes, on the map as it is turned
+  const up = useMapBearing((s) => s.bearing)
   return (
-    <svg width={size} height={size} viewBox="0 0 14 14" style={{ transform: `rotate(${Math.round(deg + 180) % 360}deg)` }}>
+    <svg width={size} height={size} viewBox="0 0 14 14" style={{ transform: `rotate(${(Math.round(deg + 180 - up) + 720) % 360}deg)` }}>
       <path d="M7 1.5 L10 10 L7 8 L4 10 Z" fill="currentColor" />
     </svg>
   )

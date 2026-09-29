@@ -84,6 +84,33 @@ function TopBar() {
   )
 }
 
+/** FAB size and gap (theme.css .fab, ui.css .fabstack): one button's share of a column. */
+const FAB_PITCH = 46 + 12
+
+/** How many buttons fit in one column between the top strip and the bottom bar with its card. */
+function useFabRoom(): number {
+  const [room, setRoom] = useState(99)
+  useEffect(() => {
+    const top = document.querySelector('.toparea')
+    const bar = document.querySelector('.bottombar')
+    if (!top || !bar) return
+    const measure = () => {
+      const avail = bar.getBoundingClientRect().top - top.getBoundingClientRect().bottom - 24
+      setRoom(Math.max(1, Math.floor((avail + 12) / FAB_PITCH)))
+    }
+    const ro = new ResizeObserver(measure)
+    ro.observe(top)
+    ro.observe(bar)
+    window.addEventListener('resize', measure)
+    measure()
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', measure)
+    }
+  }, [])
+  return room
+}
+
 function FabStack() {
   const follow = useAppStore((s) => s.follow)
   const locating = useGpsStore((s) => s.locating)
@@ -96,6 +123,7 @@ function FabStack() {
   const coneWanted = useHunting((s) => s.cone)
   const [offNorth, setOffNorth] = useState(false)
   const compassBtn = useRef<HTMLButtonElement>(null)
+  const room = useFabRoom()
   useEffect(() => {
     withMap((map) => {
       const apply = () => {
@@ -108,74 +136,87 @@ function FabStack() {
       apply()
     })
   }, [])
+  const fabs = [
+    // out hunting: your scent cone, on until this hides it, and a moose heard
+    hunting && (
+      <button
+        key="cone"
+        className={`fab ${coneWanted ? 'active' : ''}`}
+        onClick={() => useHunting.getState().setCone(!coneWanted)}
+        aria-pressed={coneWanted}
+        aria-label={coneWanted ? 'Hide your scent cone' : 'Show your scent cone'}
+        style={coneWanted && !coneOn ? { opacity: 0.7 } : undefined}
+      >
+        <IconScent />
+      </button>
+    ),
+    hunting && (
+      <button key="heard" className="fab" onClick={() => useHeardForm.getState().show()} aria-label="Heard a moose">
+        <IconEar />
+      </button>
+    ),
+    // the three best ways to a place on foot
+    <button
+      key="route"
+      className={`fab ${routing ? 'active' : ''}`}
+      onClick={() => (routing ? closeRoutes() : openRoutes())}
+      aria-pressed={routing}
+      aria-label={routing ? 'Close routes' : 'Routes: the best ways there on foot'}
+    >
+      <IconRoute />
+    </button>,
+    <button
+      key="measure"
+      className={`fab ${measuring ? 'active' : ''}`}
+      onClick={() => {
+        if (measuring) return useMeasureStore.getState().stop()
+        useAppStore.getState().setSheetTab(null)
+        useMeasureStore.getState().start()
+      }}
+      aria-label="Measure distance"
+    >
+      <IconRuler />
+    </button>,
+    <button
+      key="compass"
+      ref={compassBtn}
+      className="fab"
+      style={{ opacity: offNorth ? 1 : 0.55 }}
+      onClick={() => {
+        useGpsStore.getState().setHeadingUp(false)
+        withMap((m) => m.easeTo({ bearing: 0, pitch: 0 }))
+      }}
+      aria-label="Reset north"
+    >
+      <IconCompass />
+    </button>,
+    // the wind over the map, on and off from here in any view (hunting keeps the track itself)
+    <button
+      key="wind"
+      className={`fab ${windOn ? 'active' : ''}`}
+      onClick={() => useAppStore.getState().setLayer('windFlow', !windOn)}
+      aria-pressed={windOn}
+      aria-label={windOn ? 'Hide the wind flow' : 'Show the wind flow'}
+    >
+      <IconWind />
+    </button>,
+    <button
+      key="locate"
+      className={`fab ${locating && follow ? 'active' : ''}${headingUp ? ' fab-heading' : ''}`}
+      style={locating && !follow ? { opacity: 0.8, outline: '1.5px solid var(--c-accent)' } : undefined}
+      onClick={toggleLocate}
+      aria-label={!locating ? 'Show my position' : !follow ? 'Follow my position' : headingUp ? 'Turn location off' : 'Turn the map the way I face'}
+    >
+      <IconLocate />
+    </button>,
+  ].filter(Boolean)
+  // a card up leaves less room than the stack needs: the top ones step out to a column
+  // beside it rather than run up under the weather strip
+  const split = Math.max(0, fabs.length - room)
   return (
     <div className="fabstack">
-      {hunting && (
-        <>
-          {/* out hunting: your scent cone, on until this hides it, and a moose heard */}
-          <button
-            className={`fab ${coneWanted ? 'active' : ''}`}
-            onClick={() => useHunting.getState().setCone(!coneWanted)}
-            aria-pressed={coneWanted}
-            aria-label={coneWanted ? 'Hide your scent cone' : 'Show your scent cone'}
-            style={coneWanted && !coneOn ? { opacity: 0.7 } : undefined}
-          >
-            <IconScent />
-          </button>
-          <button className="fab" onClick={() => useHeardForm.getState().show()} aria-label="Heard a moose">
-            <IconEar />
-          </button>
-        </>
-      )}
-      {/* the three best ways to a place on foot */}
-      <button
-        className={`fab ${routing ? 'active' : ''}`}
-        onClick={() => (routing ? closeRoutes() : openRoutes())}
-        aria-pressed={routing}
-        aria-label={routing ? 'Close routes' : 'Routes: the best ways there on foot'}
-      >
-        <IconRoute />
-      </button>
-      <button
-        className={`fab ${measuring ? 'active' : ''}`}
-        onClick={() => {
-          if (measuring) return useMeasureStore.getState().stop()
-          useAppStore.getState().setSheetTab(null)
-          useMeasureStore.getState().start()
-        }}
-        aria-label="Measure distance"
-      >
-        <IconRuler />
-      </button>
-      <button
-        ref={compassBtn}
-        className="fab"
-        style={{ opacity: offNorth ? 1 : 0.55 }}
-        onClick={() => {
-          useGpsStore.getState().setHeadingUp(false)
-          withMap((m) => m.easeTo({ bearing: 0, pitch: 0 }))
-        }}
-        aria-label="Reset north"
-      >
-        <IconCompass />
-      </button>
-      {/* the wind over the map, on and off from here in any view (hunting keeps the track itself) */}
-      <button
-        className={`fab ${windOn ? 'active' : ''}`}
-        onClick={() => useAppStore.getState().setLayer('windFlow', !windOn)}
-        aria-pressed={windOn}
-        aria-label={windOn ? 'Hide the wind flow' : 'Show the wind flow'}
-      >
-        <IconWind />
-      </button>
-      <button
-        className={`fab ${locating && follow ? 'active' : ''}${headingUp ? ' fab-heading' : ''}`}
-        style={locating && !follow ? { opacity: 0.8, outline: '1.5px solid var(--c-accent)' } : undefined}
-        onClick={toggleLocate}
-        aria-label={!locating ? 'Show my position' : !follow ? 'Follow my position' : headingUp ? 'Turn location off' : 'Turn the map the way I face'}
-      >
-        <IconLocate />
-      </button>
+      {split > 0 && <div className="fabcol">{fabs.slice(0, split)}</div>}
+      <div className="fabcol">{fabs.slice(split)}</div>
     </div>
   )
 }

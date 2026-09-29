@@ -266,14 +266,47 @@ and his likely swing. The sounds join up in order into
 his route, with a faint line back to where you heard each from. With two
 sounds in half an hour the map also draws the way he is heading.
 
-From his last spot it draws his likely swing round to wind you: an arc
-round you at his distance to the side your scent goes (the live cone's
-main sector, or downwind on the ground wind), the way he has been moving
-round if that says, the shorter way if not. This is rule 1 above, and it is
-what happened on 2026-09-27 at Pickle Lake: 2.5 hours of cow calls with
-the odd bull grunt, the bull pulled the hunter off the calling spot, then
-ran to get downwind once a last cow call set him going. The arc is a rule
-of thumb, not a model; he may come straight in or leave. What beats it is
+From his last spot it draws his likely swing round to wind you, routed
+over the ground rather than drawn as an arc (`hunting/swing.ts`, run in
+the route worker on the same 10 m LiDAR going grid as Route mode). It is a
+least-cost path over a resistance surface, the usual way movement ecology
+puts an animal's likely route across a landscape, with a moose's costs,
+not a walker's:
+
+- **Slope**: the walking curve (see `docs/ROUTES.md`), square-rooted. Four
+  long legs take a grade better than a person, but he still takes the easy
+  line, and a rock face stays a rock face. Topography and forest cover
+  shape moose movement far more than roads, rivers or power lines do
+  (Bartzke et al. 2015, Ecosphere 6(4), 151 GPS-collared moose in Norway).
+- **Bush** hardly slows him (1 − 0.2 × NRD). **Wet ground** is his: bog,
+  fen and marsh cost a little (0.8–0.9 of the going). **Open water** he
+  swims, at a quarter of the going, so a narrow channel is crossed and a
+  bay is walked round.
+- **Open ground in your sight** (bog, road, water, bush thinner than NRD
+  0.35) costs up to three times as much within 250 m of you, fading out
+  with distance. A wary bull working in to a call keeps to cover; moose
+  step length grows with distance from cover, that is they move through
+  the open rather than use it (Brown et al. 2018, Ecosphere 9:e02405).
+- **Close in** costs more, up to five times at 25 m, from 80 m in, and
+  nothing inside 25 m is crossed. Guides put the hang-up at 50–80 yards
+  (45–75 m), "while they're still concealed by the cover of heavy timber"
+  (Outdoor Canada, "Pro tips for calling in big bull moose").
+
+The path ends at the first ground where your scent is noticeable at his
+nose, 40 m or more from you: the live cone as drawn (it follows drainage
+and the terrain, so the end moves with it), or, with the cone hidden, a
+60° sector downwind on the ground wind out to 450 m. It is searched both
+ways round, each walled off from the other along the line through you that
+halves them, and the way he has been moving round wins if his heading
+says; otherwise the cheaper. Off the going grid, or before it has loaded
+for the first time, the plain arc round you at his distance stands in.
+
+This is rule 1 above, and it is what happened on 2026-09-27 at Pickle
+Lake: 2.5 hours of cow calls with the odd bull grunt, the bull pulled the
+hunter off the calling spot, then ran to get downwind once a last cow call
+set him going. The costs are judgment built on those sources, not fitted
+to collar data, and nothing is field-checked: he may come straight in or
+leave. The heard log is what to check it against. What beats the swing is
 rule 3: a caller 40–50 m upwind of the shooter, placed with the scent
 card's second person, so the swing passes the shooter in the crosswind.
 

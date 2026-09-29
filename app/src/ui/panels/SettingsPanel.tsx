@@ -1,5 +1,5 @@
 import { CONTOUR_INTERVALS, useAppStore } from '../../state/appStore'
-import { phoneTextStop } from '../textScale'
+import { currentTextStop, phoneTextStop } from '../textScale'
 import OfflinePanel from './OfflinePanel'
 
 export default function SettingsPanel() {
@@ -78,6 +78,25 @@ export default function SettingsPanel() {
           <span className="row-desc">Strength · {Math.round(windFlowOpacity * 100)}%</span>
         </div>
         <input type="range" min={10} max={100} step={5} value={Math.round(windFlowOpacity * 100)} onChange={(e) => setWindFlowOpacity(Number(e.target.value) / 100)} />
+      </div>
+      <div className="row">
+        <div className="row-text">
+          <span className="row-title">Streak size</span>
+          <span className="row-desc">{tune.windSize === 'auto' ? `Follows the text size · ${currentTextStop()} now` : 'The wind over the map'}</span>
+        </div>
+        <div className="seg text-seg" role="radiogroup" aria-label="Wind streak size">
+          {(['auto', 'standard', 'large', 'larger'] as const).map((t) => (
+            <button key={t} className={tune.windSize === t ? 'seg-on' : ''} role="radio" aria-checked={tune.windSize === t} onClick={() => setFlowTuning({ windSize: t })}>
+              {t === 'auto' ? (
+                'Auto'
+              ) : (
+                <svg className="streak-a" width="18" height="14" viewBox="0 0 18 14" aria-label={t}>
+                  <line x1="3" y1="11" x2="15" y2="3" stroke="currentColor" strokeLinecap="round" strokeWidth={t === 'standard' ? 1.5 : t === 'large' ? 2.6 : 3.7} />
+                </svg>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="row layer-opacity">
         <div className="row-text">

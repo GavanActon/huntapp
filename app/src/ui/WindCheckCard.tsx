@@ -96,6 +96,7 @@ export default function WindCheckCard() {
 
   if (saved) {
     const v = verdict(saved)
+    const replaced = useWindChecks.getState().checks.some((c) => c.until === saved.ts && c.id !== saved.id)
     const m = saved.model
     return (
       <div className="tripbuilder glass ground-card">
@@ -115,7 +116,8 @@ export default function WindCheckCard() {
           </div>
         )}
         <div className="gc-note">
-          In effect now: half the ground wind right here, less farther out, to about {Math.round(checkReachM(saved, Date.now()) / 10) * 10} m, fading out by {timeLabel(checkSpentAt(saved))}. The ring on the map shows how far it still reaches; tap the arrow to remove it.
+          In effect now: half the ground wind right here, less farther out, to about {Math.round(checkReachM(saved, Date.now()) / 10) * 10} m, fading out by {timeLabel(checkSpentAt(saved))}.
+          {replaced ? ' It replaces your earlier check here, so one arrow shows.' : ''} The ring on the map shows how far it still reaches; tap the arrow to remove it.
         </div>
       </div>
     )

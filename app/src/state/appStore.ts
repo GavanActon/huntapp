@@ -81,8 +81,12 @@ export interface FlowTuning {
   windTrail: number // per-frame fade 0.86–0.97, higher = longer streaks
   windHue: number // stroke hue, degrees
   windSat: number // stroke saturation %
+  windSize: SizeStop // streak width: auto follows the text size
 }
-export const FLOW_TUNING_DEFAULTS: FlowTuning = { windDensity: 2500, windSpeed: 1, windTrail: 0.97, windHue: 195, windSat: 100 }
+export const FLOW_TUNING_DEFAULTS: FlowTuning = { windDensity: 2500, windSpeed: 1, windTrail: 0.97, windHue: 195, windSat: 100, windSize: 'auto' }
+
+/** A size setting's stops, the text's and the wind streaks': auto follows the phone (text) or the text (wind). */
+export type SizeStop = 'auto' | 'standard' | 'large' | 'larger'
 
 /** Contour interval choices for the LiDAR lines, metres. */
 export const CONTOUR_INTERVALS = [1, 2, 5, 10] as const
@@ -120,8 +124,8 @@ interface AppState {
   /** Stills the wind for a long day on one battery. */
   lowPower: boolean
   setLowPower: (v: boolean) => void
-  textSize: 'auto' | 'standard' | 'large' | 'larger'
-  setTextSize: (v: 'auto' | 'standard' | 'large' | 'larger') => void
+  textSize: SizeStop
+  setTextSize: (v: SizeStop) => void
   wxStrip: boolean
   setWxStrip: (v: boolean) => void
   /** The app-wide planning time (ms) picked on the strip; null = now. */

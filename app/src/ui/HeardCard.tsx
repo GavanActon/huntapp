@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { create } from 'zustand'
 import { SOUND_DESC, SOUND_NAMES, useHuntLog, type LogEntry, type MooseSound } from '../log/huntLog'
-import { movesText, offsetBy, readMoves } from '../hunting/moveLayer'
+import { movesText, offsetBy, readMoves, useSwing } from '../hunting/moveLayer'
 import { requestCompass, startCompass, stopCompass, useCompass } from '../tracking/compass'
 import { useGpsStore } from '../tracking/gpsStore'
 import { compass } from '../weather/openMeteo'
@@ -94,6 +94,9 @@ export default function HeardCard() {
     setMissing(null)
   }
 
+  // his routed way round lands a moment after the save: the lines below follow it
+  useSwing((s) => s.swing)
+
   if (saved) {
     const r = readMoves()
     return (
@@ -106,8 +109,8 @@ export default function HeardCard() {
         </div>
         <div className="gc-line">{r ? movesText(r) : `${SOUND_NAMES[saved.sound!]} ${saved.from!.distM} m ${compass(saved.from!.bearing)}`}</div>
         <div className="gc-note">
-          {r && r.downwind != null && !r.onIt
-            ? 'The red dashed line is his likely way round to where your scent goes: a bull on a call often circles to wind the caller before he shows. Watch that side.'
+          {r && r.downwind != null && !(r.swing ? r.swing.onIt : r.onIt)
+            ? 'The red dashed line is his likeliest way round to your scent: through cover, off open ground near you, holding off where bulls hang up. A bull on a call often circles to wind the caller before he shows. Watch where it meets your scent.'
             : 'Each sound joins the one before it on the map, in order, so the way he is moving shows.'}
         </div>
         <button className="btn-primary" onClick={again}>

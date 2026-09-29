@@ -13,7 +13,8 @@ import { groundSampler } from '../weather/micro/model'
 import { cellAt, cellCentre, loadGoing, type Going } from './goingGrid'
 import { HUNT, HUNT_STYLE } from './walkModel'
 import type { HuntField, RouteResult, WindField } from './router'
-import type { FromWorker, ToWorker } from './routeWorker'
+import type { FromWorker } from './routeWorker'
+import { askWorker } from './workerClient'
 
 /**
  * Route mode: pick where you are going and the app finds the three best
@@ -153,23 +154,9 @@ export function clearRoutes() {
 
 // ---- the worker ----
 
-let worker: Worker | null = null
-let gridSent: Going | null = null
-let reqId = 0
-let wantId = 0
+/** the latest run: an answer to an earlier one is dropped */
+let latest = 0
 let timer: number | null = null
-
-function getWorker(g: Going): Worker {
-  if (!worker) {
-    worker = new Worker(new URL('./routeWorker.ts', import.meta.url), { type: 'module' })
-    worker.onmessage = (e: MessageEvent<FromWorker>) => onAnswer(g, e.data)
-  }
-  if (gridSent !== g) {
-    worker.postMessage({ type: 'grid', grid: g.data } satisfies ToWorker)
-    gridSent = g
-  }
-  return worker
-}
 
 /** The ground wind over the grid every ~250 m, for scent and the way in. */
 function windField(g: Going, ms: number): WindField | undefined {
@@ -243,19 +230,16 @@ async function run() {
   if (start < 0 || goal < 0) return useRoutes.setState({ status: 'outside', routes: [] })
   const app = useAppStore.getState()
   const ms = app.planTimeMs ?? Date.now()
-  const id = ++reqId
-  wantId = id
+  const mine = ++latest
   useRoutes.setState({ status: 'working' })
   const hunt = s.mode === 'hunt' ? huntField(g) : undefined
-  getWorker(g).postMessage({
-    type: 'route',
-    id,
-    req: { start, goal, opts: { paceKmh: app.paceKmh, stayDry: s.stayDry }, wind: windField(g, ms), hunt },
-  } satisfies ToWorker)
+  const req = { start, goal, opts: { paceKmh: app.paceKmh, stayDry: s.stayDry }, wind: windField(g, ms), hunt }
+  const m = await askWorker(g, (id) => ({ type: 'route', id, req }))
+  if (mine === latest) onAnswer(g, m)
 }
 
 function onAnswer(g: Going, m: FromWorker) {
-  if (m.id !== wantId) return
+  if (m.type === 'swing') return
   if (m.type === 'error') {
     devlog('routes', `worker · ${m.message}`)
     return useRoutes.setState({ status: 'no-way', routes: [] })

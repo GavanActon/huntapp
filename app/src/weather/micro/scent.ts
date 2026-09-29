@@ -856,10 +856,26 @@ function runsFor(people: Sitter[], ms: number): (PlumeRun | null)[] {
   return out
 }
 
+/** Everyone's scent as last drawn, for what else needs to know where it goes (the moose's swing). */
+let drawn: Frame | null = null
+
+/** Scent at a nose at a point as last drawn, everyone together, as a share of the plume core
+ *  (noticeable from SCENT_NOTICE); null off the drawn ground or with no cone. */
+export function scentAt(lon: number, lat: number): number | null {
+  const f = drawn
+  if (!f) return null
+  const x = Math.floor(((lon - f.lon) * f.kx - f.west) / CELL_M)
+  const y = Math.floor((f.north - (lat - f.lat) * f.ky) / CELL_M)
+  if (x < 0 || y < 0 || x >= f.w || y >= f.h) return null
+  return f.grid[y * f.w + x]
+}
+export const SCENT_NOTICE = NOTICE
+
 function draw(map: MlMap) {
   const { people, view } = useScent.getState()
   syncMarkers(people.length ? map : null)
   if (!people.length) {
+    drawn = null
     removeLayers(map)
     particles.stop()
     return
@@ -867,12 +883,14 @@ function draw(map: MlMap) {
   const runs = runsFor(people, planMinute())
   const plumes = runs.map((r) => r?.plume ?? null)
   if (!runs.some(Boolean)) {
+    drawn = null
     removeLayers(map)
     particles.stop()
     useScent.setState({ plumes, group: null })
     return
   }
   const f = combine(people, runs)
+  drawn = f
   const v = drawnView(view, people.length)
   if (v === 'particles') {
     removeLayers(map)

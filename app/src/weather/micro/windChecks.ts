@@ -9,6 +9,11 @@ import { persist } from 'zustand/middleware'
  * (model.ts blends it in by time and distance), and it scores the model,
  * so over a season the app can say how often it gets a stand right.
  *
+ * A new check replaces the ones before it within SUPERSEDE_M: the air
+ * there is what was felt last, and one arrow shows where you stand, not a
+ * pile of them pointing every way. The old ones stay in the log, scored,
+ * but stop counting (and drawing) from the moment the new one was made.
+ *
  * Kept on the phone (localStorage); a camp weather station can later add
  * checks with source 'station'.
  */
@@ -44,7 +49,12 @@ export interface WindCheck {
   source: 'hand' | 'station'
   /** what the ground model said at that place and minute, before the check */
   model?: ModelCall
+  /** replaced by a newer check near it at this moment: it counts until then */
+  until?: number
 }
+
+/** A newer check this close replaces an older one. */
+export const SUPERSEDE_M = 100
 
 interface ChecksState {
   checks: WindCheck[]
@@ -59,7 +69,9 @@ export const useWindChecks = create<ChecksState>()(
       checks: [],
       add: (c) => {
         const check = { ...c, id: `wc${c.ts.toString(36)}${Math.random().toString(36).slice(2, 6)}` }
-        set((s) => ({ checks: [...s.checks, check].slice(-500) }))
+        // the earlier checks here stop counting now
+        const replaced = (o: WindCheck) => o.until == null && o.ts <= c.ts && o.source === c.source && metresBetween(o.lon, o.lat, c.lon, c.lat) <= SUPERSEDE_M
+        set((s) => ({ checks: [...s.checks.map((o) => (replaced(o) ? { ...o, until: c.ts } : o)), check].slice(-500) }))
         return check
       },
       remove: (id) => set((s) => ({ checks: s.checks.filter((c) => c.id !== id) })),
@@ -86,6 +98,7 @@ const MAX_M = 800
 /** How far a check reaches: 40 min and 300 m e-folding, nothing past 2 h
  *  or 800 m. Returns the weight (0 = out of reach). */
 export function checkWeight(c: WindCheck, lon: number, lat: number, ms: number): number {
+  if (c.until != null && ms >= c.until) return 0
   const dt = Math.abs(ms - c.ts)
   if (dt > MAX_MS) return 0
   const d = metresBetween(lon, lat, c.lon, c.lat)
@@ -107,6 +120,7 @@ const W_SHOWN = PULL_SHOWN / (1 - PULL_SHOWN)
 
 /** How far from the check it still makes up PULL_SHOWN of the wind at a moment, metres (0 = spent). */
 export function checkReachM(c: WindCheck, ms: number): number {
+  if (c.until != null && ms >= c.until) return 0
   const dt = Math.abs(ms - c.ts)
   if (dt > MAX_MS) return 0
   return Math.max(0, Math.min(MAX_M, LEN_M * (Math.log(1 / W_SHOWN) - dt / TAU_MS)))
@@ -114,7 +128,7 @@ export function checkReachM(c: WindCheck, ms: number): number {
 
 /** When a check stops making up PULL_SHOWN of the wind even where it was made. */
 export function checkSpentAt(c: WindCheck): number {
-  return c.ts + Math.min(MAX_MS, TAU_MS * Math.log(1 / W_SHOWN))
+  return Math.min(c.until ?? Infinity, c.ts + Math.min(MAX_MS, TAU_MS * Math.log(1 / W_SHOWN)))
 }
 
 /** Did the model get it? Direction within 45° (or both calm-ish) is a hit,
