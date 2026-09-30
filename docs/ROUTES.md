@@ -47,10 +47,11 @@ to it, so a hunt route reads the Spots scores with no resampling.
 | `rough` | mean \|DTM − its 5 m focal mean\| per cell, from the 1 m DTM |
 | `ground` | water (the LiDAR's flattened water, else OHN), marsh, open fen or bog (OHN Fen and Bog, FRI OMS), swamp (OHN Swamp, FRI TMS), road (MNRF roads, over water and creeks: culverts and bridges), creek (OHN "Stream" lines, all-touched) |
 
-**Measured and estimated bush.** The 26 point-cloud tiles fetched so far
-cover 33% of the grid; the rest is estimated from the forest map. That
-estimate predicts the LiDAR poorly. Binned by the estimate, the median LiDAR
-NRD barely moves: 0.15 → 0.44, 0.45 → 0.31, 0.65 → 0.59, 0.95 → 0.45
+**Measured and estimated bush.** The 34 point-cloud tiles fetched so far
+(2 km round camp, the shore of Pickle Lake, four check tiles) cover 43% of
+the grid; the rest is estimated from the forest map. That estimate
+predicts the LiDAR poorly. Binned by the estimate, the median LiDAR NRD
+barely moves: 0.15 → 0.45, 0.45 → 0.32, 0.65 → 0.59, 0.95 → 0.46
 (`bake-going-summary.json`). Once mapped, the estimate spans only 0.44–0.59,
 so outside the LiDAR the routes follow slope, wet ground and roads, and
 treat the bush as middling everywhere. The card says so: "Bush measured by

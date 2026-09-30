@@ -6,7 +6,10 @@ Input:  pipeline/raw/pointcloud/laz/*.copc.laz and dem/*_DEM.tif, fetched by
         fetch_pointcloud.py (Ontario FRI leaf-on single-photon LiDAR,
         project White Lake 2021, flown late Sept 2021, ~35 pts/m² and 2-4x
         that where flight lines overlap). Whatever tiles are on disk are
-        used; cells of tiles not fetched are nodata.
+        used, whole (<tile>.copc.laz) or a band of one (<tile>.band.laz,
+        fetch_pointcloud.py --band, the points of a shore band or a circle
+        only); cells of tiles not fetched, and a band's other cells, are
+        nodata (no returns: under MIN_DENSITY).
         app/public/data/waterbody-<region>.geojson (LIO OHN) for the water mask.
         app/public/data/forest-<region>.geojson (FRI 2010) for the sanity check.
 
@@ -246,6 +249,8 @@ def build() -> dict:
     stats = {"raw_points": 0, "noise": 0, "dropped": 0, "water_points": 0}
     for r in rows:
         laz = PC_DIR / "laz" / f"{r['Tilename']}.copc.laz"
+        if not laz.exists():
+            laz = laz.with_name(f"{r['Tilename']}.band.laz")
         dem = PC_DIR / "dem" / f"{r['Tilename']}_DEM.tif"
         if not (laz.exists() and dem.exists()):
             continue
@@ -267,7 +272,7 @@ def build() -> dict:
         n_reach[win] = np.minimum(m["n_reach"], 65535).astype(np.uint16)
         strata[:, win[0], win[1]] = np.minimum(m["strata"], 65535).astype(np.uint16)
         done.append(r["Tilename"])
-        print(f"  {len(done):3d} {r['Tilename']}  {m['raw_points'] / 1e6:5.1f} M pts · {time.time() - t0:5.0f} s", flush=True)
+        print(f"  {len(done):3d} {r['Tilename']}{' (band)' if laz.name.endswith('.band.laz') else ''}  {m['raw_points'] / 1e6:5.1f} M pts · {time.time() - t0:5.0f} s", flush=True)
     if not done:
         raise SystemExit("no tiles on disk: run fetch_pointcloud.py first")
     # water: the DEM's flattened water where there is lidar, OHN polygons elsewhere
