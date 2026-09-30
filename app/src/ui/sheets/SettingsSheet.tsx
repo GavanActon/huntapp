@@ -29,6 +29,8 @@ export default function SettingsSheet(): JSX.Element {
   const setLowPower = useAppStore((s) => s.setLowPower)
   const leftHanded = useAppStore((s) => s.leftHanded)
   const setLeftHanded = useAppStore((s) => s.setLeftHanded)
+  const buttonLabels = useAppStore((s) => s.buttonLabels)
+  const setButtonLabels = useAppStore((s) => s.setButtonLabels)
   const contourInterval = useAppStore((s) => s.contourInterval)
   const setContourInterval = useAppStore((s) => s.setContourInterval)
   const windFlowOpacity = useAppStore((s) => s.windFlowOpacity)
@@ -83,6 +85,10 @@ export default function SettingsSheet(): JSX.Element {
           ))}
         </div>
       </div>
+      <label className="st-row">
+        <span>Button names</span>
+        <input type="checkbox" className="switch" checked={buttonLabels} onChange={(e) => setButtonLabels(e.target.checked)} />
+      </label>
       <div className="st-row">
         <span>Units</span>
         <div className="seg" role="radiogroup" aria-label="Units">

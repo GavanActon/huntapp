@@ -182,6 +182,9 @@ export interface AppState {
   /** the near column and the view pill swap sides for a left hand; persisted */
   leftHanded: boolean
   setLeftHanded: (v: boolean) => void
+  /** the word under each hot button; persisted */
+  buttonLabels: boolean
+  setButtonLabels: (v: boolean) => void
 
   layers: LayerVisibility
   setLayer: (k: keyof LayerVisibility, v: boolean) => void
@@ -254,6 +257,8 @@ export const useAppStore = create<AppState>()(
       setHotButtons: (mode, side, ids) => set((st) => ({ hotButtons: { ...st.hotButtons, [mode]: { ...st.hotButtons[mode], [side]: cleanHot(ids) } } })),
       leftHanded: false,
       setLeftHanded: (leftHanded) => set({ leftHanded }),
+      buttonLabels: true,
+      setButtonLabels: (buttonLabels) => set({ buttonLabels }),
 
       layers: DEFAULT_LAYERS,
       setLayer: (k, v) => set((s) => ({ layers: { ...s.layers, [k]: v } })),
@@ -340,6 +345,7 @@ export const useAppStore = create<AppState>()(
         stripOpen: s.stripOpen,
         hotButtons: s.hotButtons,
         leftHanded: s.leftHanded,
+        buttonLabels: s.buttonLabels,
         onboarded: s.onboarded,
       }),
       merge: (persisted, current) => {

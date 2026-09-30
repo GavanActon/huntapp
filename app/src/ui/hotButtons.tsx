@@ -204,6 +204,7 @@ function holdAction(id: HotId): () => void {
 export function HotButton({ id }: { id: HotId }): JSX.Element {
   const d = HOT_DEFS[id]
   const on = d.useActive()
+  const labels = useAppStore((s) => s.buttonLabels)
   const timer = useRef(0)
   const held = useRef(false)
   const down = () => {
@@ -218,7 +219,7 @@ export function HotButton({ id }: { id: HotId }): JSX.Element {
   const up = () => window.clearTimeout(timer.current)
   return (
     <button
-      className={`fab hotbtn${on ? ' active' : ''}`}
+      className={`fab hotbtn${on ? ' active' : ''}${labels ? '' : ' no-label'}`}
       onPointerDown={down}
       onPointerUp={up}
       onPointerLeave={up}
@@ -232,7 +233,7 @@ export function HotButton({ id }: { id: HotId }): JSX.Element {
       aria-label={d.name}
     >
       <d.Icon />
-      <span className="hotbtn-label">{d.short}</span>
+      {labels && <span className="hotbtn-label">{d.short}</span>}
     </button>
   )
 }

@@ -2575,6 +2575,11 @@
   margin-bottom: 16px;
 }
 
+/* names off in Settings: the circles close up */
+.hotcol > .fab.hotbtn.no-label {
+  margin-bottom: 0;
+}
+
 /* the word keeps its taps: one landing beside the circle must not fall
    through to the map and open a popup */
 .hotbtn-label {
