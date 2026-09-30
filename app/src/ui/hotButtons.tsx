@@ -1,4 +1,4 @@
-import type { JSX } from 'react'
+import { useRef, type JSX } from 'react'
 import { inRegion } from '../config'
 import { toggleCone, useHunting } from '../hunting/hunting'
 import { getMap } from '../map/mapController'
@@ -122,8 +122,9 @@ export const HOT_DEFS: Record<HotId, HotDef> = {
     name: 'Heard',
     short: 'Heard',
     Icon: IconEar,
-    useActive: off,
-    onTap: () => useHeardForm.getState().show(),
+    useActive: () => useHeardForm((s) => s.placing || s.open),
+    // tap, then tap the map where it was, then say what it was
+    onTap: () => useHeardForm.getState().arm(),
   },
   person: {
     id: 'person',
@@ -176,12 +177,60 @@ export const HOT_DEFS: Record<HotId, HotDef> = {
 /** Every hot button, in the order the editor's Add chips list them. */
 export const HOT_ORDER: HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'heat', 'person', 'pin', 'understory', 'lanes', 'bathy', 'radar', 'lowPower']
 
-/** A hot button in the column: the round .fab with its short word hung under it. */
+const HOLD_MS = 450
+
+/** A long press on a button: its own settings. The wind flow's knobs, your
+ *  scent in full, the layers for the heat map; the rest open Map buttons. */
+function holdAction(id: HotId): () => void {
+  const st = useAppStore.getState()
+  switch (id) {
+    case 'windflow':
+      return () => st.openSheet({ kind: 'settings' })
+    case 'scent':
+      return () => st.setTopCard({ kind: 'scent' })
+    case 'heat':
+    case 'understory':
+    case 'lanes':
+    case 'bathy':
+    case 'radar':
+      return () => st.openSheet({ kind: 'layers' })
+    default:
+      return () => st.openSheet({ kind: 'buttons' })
+  }
+}
+
+/** A hot button in the column: the round .fab with its short word hung under
+ *  it. A tap does its thing; a press and hold opens its settings. */
 export function HotButton({ id }: { id: HotId }): JSX.Element {
   const d = HOT_DEFS[id]
   const on = d.useActive()
+  const timer = useRef(0)
+  const held = useRef(false)
+  const down = () => {
+    held.current = false
+    window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => {
+      held.current = true
+      if (navigator.vibrate) navigator.vibrate(12)
+      holdAction(id)()
+    }, HOLD_MS)
+  }
+  const up = () => window.clearTimeout(timer.current)
   return (
-    <button className={`fab hotbtn${on ? ' active' : ''}`} onClick={d.onTap} aria-pressed={on} aria-label={d.name}>
+    <button
+      className={`fab hotbtn${on ? ' active' : ''}`}
+      onPointerDown={down}
+      onPointerUp={up}
+      onPointerLeave={up}
+      onPointerCancel={up}
+      onContextMenu={(e) => e.preventDefault()}
+      onClick={() => {
+        if (held.current) return (held.current = false)
+        d.onTap()
+      }}
+      aria-pressed={on}
+      aria-label={d.name}
+    >
       <d.Icon />
       <span className="hotbtn-label">{d.short}</span>
     </button>

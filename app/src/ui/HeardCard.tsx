@@ -24,22 +24,28 @@ import './ground.css'
 
 interface HeardForm {
   open: boolean
+  /** the Heard button pressed: the next map tap is where it was */
+  placing: boolean
   /** a spot tapped on the map: the sound goes there, no rose, no distance */
   at: { lon: number; lat: number } | null
+  /** the button: wait for a tap on the map (again: stop waiting) */
+  arm: () => void
   show: (at?: { lon: number; lat: number }) => void
   close: () => void
 }
-export const useHeardForm = create<HeardForm>((set) => ({
+export const useHeardForm = create<HeardForm>((set, get) => ({
   open: false,
+  placing: false,
   at: null,
+  arm: () => set({ placing: !get().placing, open: false, at: null }),
   show: (at) => {
-    if (at) return set({ open: true, at })
+    if (at) return set({ open: true, at, placing: false })
     // from the tap: iOS only grants the compass and location from one
     void requestCompass()
     if (!useGpsStore.getState().locating) locateAndFollow()
-    set({ open: true, at: null })
+    set({ open: true, at: null, placing: false })
   },
-  close: () => set({ open: false, at: null }),
+  close: () => set({ open: false, at: null, placing: false }),
 }))
 
 const SOUNDS: MooseSound[] = ['cow', 'bull', 'thrash', 'walk', 'splash', 'seen']
