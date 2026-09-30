@@ -1,0 +1,166 @@
+/* The live card (LiveCard.tsx) and "Your scent" (ScentCard.tsx): what the
+   shared .livecard / .topcard classes in ui.css leave to the cards
+   themselves. Text sizes follow the text-size dial (--ui-scale). */
+
+/* ---------- the live card ---------- */
+
+/* the default card: the lines at the left, ⌃ at the right */
+.lc-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.lc-lines {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* the planning time in front of the scent line: "Tue 8a" */
+.lc-when {
+  color: var(--c-text-dim);
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+/* ⌃ folds the card; ⌄ on the chip is a mark, the whole chip opens */
+.lc-fold {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin: -6px -8px -6px 0;
+  border-radius: 8px;
+  color: var(--c-text-dim);
+}
+
+.lc-fold:active {
+  background: rgba(126, 178, 224, 0.1);
+  transform: none;
+}
+
+.livecard-chip > svg {
+  flex: none;
+  margin-left: 2px;
+  color: var(--c-text-dim);
+}
+
+/* the opened card's rows are buttons or plain lines; a plain line keeps the
+   row's rhythm without a › */
+.lc-row.lc-plain {
+  cursor: default;
+}
+
+.lc-row.lc-plain:active {
+  background: none;
+}
+
+/* who it was, in the opened card's sound row */
+.lc-who {
+  color: var(--c-warn);
+  font-weight: 700;
+}
+
+/* a lone row with no ‹ or › on the default card: the party's line */
+.livecard > .lc-row:first-child {
+  border-top: 0;
+  padding-top: 2px;
+}
+
+/* + Person · Clear (also cancel while placing) */
+.lc-btns {
+  display: flex;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.lc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(126, 178, 224, 0.1);
+  border: 1px solid rgba(126, 178, 224, 0.22);
+  color: var(--c-text);
+  font-weight: 600;
+  font-size: calc(14px * var(--ui-scale));
+  white-space: nowrap;
+}
+
+.lc-btn.lc-btn-on {
+  background: var(--c-accent-dim);
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+}
+
+/* ---------- Your scent ---------- */
+
+.scent-line {
+  line-height: 1.4;
+  font-size: calc(14px * var(--ui-scale));
+}
+
+.scent-line b {
+  font-weight: 700;
+}
+
+/* a section: its name in small caps over a seg */
+.sc-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+}
+
+.sc-sec-name {
+  font-size: calc(11px * var(--ui-scale));
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-text-dim);
+  font-weight: 700;
+}
+
+.sc-sec .seg {
+  align-self: flex-start;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.sc-sec .seg button {
+  padding: 5px 11px;
+  white-space: nowrap;
+  font-size: calc(13px * var(--ui-scale));
+}
+
+/* the party: everyone's number, the picked one lit, Remove N at the right */
+.sc-people {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 8px;
+}
+
+.sc-people .seg button {
+  min-width: 34px;
+  padding: 5px 12px;
+}
+
+.sc-remove {
+  margin-left: auto;
+  font-size: calc(12.5px * var(--ui-scale));
+}
+
+.sc-btns {
+  display: flex;
+  gap: 8px;
+  padding-top: 10px;
+}

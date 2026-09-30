@@ -1,0 +1,155 @@
+import { useEffect, type JSX } from 'react'
+import { useAppStore } from '../state/appStore'
+import { clockShort } from '../time'
+import { groundWind } from '../weather/micro/model'
+import { clearPlaced, drawnView, GROUND_H, groupSummary, personColour, reachLabel, SCENT_HEIGHTS, sittersLine, useScent, type ScentView } from '../weather/micro/scent'
+import { checkSpentAt, strongestCheck, useWindChecks } from '../weather/micro/windChecks'
+import { compass } from '../weather/openMeteo'
+import { useLookTick } from './useLookTick'
+import './live.css'
+
+/**
+ * "Your scent": the live card's Scent › opened, a top card in its slot with
+ * the map (and both columns) still there. What the cone rests on, in
+ * three lines: the wind at head height against the forecast, the wind
+ * check pulling it while one does, and how wide and how far it goes. Then
+ * the knobs: where you sit (the ground, or a stand), how it is drawn, and
+ * with a party placed, whose line it is, Remove and Clear (+ Person is the
+ * live card's, and the map popup's Scent). ‹ Back returns the live card.
+ */
+
+const VIEWS: { v: ScentView; name: string; many?: boolean }[] = [
+  { v: 'cloud', name: 'Cloud' },
+  { v: 'particles', name: 'Particles' },
+  { v: 'people', name: 'By person', many: true },
+]
+
+export default function ScentCard(): JSX.Element | null {
+  useLookTick()
+  const people = useScent((s) => s.people)
+  const plumes = useScent((s) => s.plumes)
+  const group = useScent((s) => s.group)
+  const pick = useScent((s) => s.pick)
+  const view = useScent((s) => s.view)
+  const checks = useWindChecks((s) => s.checks)
+  const planTimeMs = useAppStore((s) => s.planTimeMs)
+  const units = useAppStore((s) => s.units)
+  const setTopCard = useAppStore((s) => s.setTopCard)
+  const n = people.length
+  // everyone cleared while it was open: back to the live card
+  useEffect(() => {
+    if (!n) setTopCard(null)
+  }, [n, setTopCard])
+  if (!n) return null
+
+  const { setView, setHeight, setPick, remove } = useScent.getState()
+  const many = n > 1
+  const k = Math.min(Math.max(0, pick), n - 1)
+  const at = people[k]
+  const plume = plumes[k] ?? null
+  const planMs = planTimeMs ?? Date.now()
+  const g = groundWind(at.lon, at.lat, planMs)
+  const check = strongestCheck(checks, at.lon, at.lat, planMs)
+  const height = at.height
+  const shown = drawnView(view, n)
+  const party = many && group ? { head: sittersLine(group, n), drift: groupSummary(group, people).drift } : null
+  const placed = people.some((p) => !p.live)
+  const who = (i: number) => (people[i]?.live ? 'You' : `${i + 1}`)
+  const kmh = (v: number) => (units === 'imperial' ? Math.round(v * 0.621371) : Math.round(v))
+  const slowed = g && g.kmh < g.regionalKmh * 0.8 ? ', slowed by the bush' : ''
+
+  return (
+    <div className="topcard">
+      <div className="topcard-head">
+        <button className="topcard-back" onClick={() => setTopCard(null)}>
+          ‹ Back
+        </button>
+        <span className="topcard-title">Your scent</span>
+      </div>
+      <div className="topcard-body">
+        {g && (
+          <div className="scent-line">
+            <span className="dim">Wind at head height</span> {g.kmh < 0.5 ? 'calm' : `${compass(g.dirFrom)} ${kmh(g.kmh)}`}{' '}
+            <span className="dim">
+              · forecast {kmh(g.regionalKmh)}
+              {slowed}
+            </span>
+          </div>
+        )}
+        {check && (
+          <div className="scent-line">
+            <span className="dim">Wind check {clockShort(check.check.ts)}</span> pulls it {Math.round(check.pull * 100)}% toward what you felt{' '}
+            <span className="dim">· fades by ~{clockShort(checkSpentAt(check.check))}</span>
+          </div>
+        )}
+        {(g || plume) && (
+          <div className="scent-line">
+            {g && (
+              <>
+                <span className="dim">Spread</span> ±{Math.round(g.sigmaDeg)}°
+              </>
+            )}
+            {g && plume && <span className="dim"> · </span>}
+            {plume && (plume.height > GROUND_H && plume.landing >= 30 ? `noticeable from ${Math.round(plume.landing / 10) * 10} m out to ${reachLabel(plume)}` : `noticeable to ${reachLabel(plume)}`)}
+          </div>
+        )}
+        {many && (
+          <div className="sc-people">
+            <div className="seg" role="radiogroup" aria-label="Whose sit">
+              {people.map((_, i) => (
+                <button
+                  key={i}
+                  className={i === k ? 'seg-on' : ''}
+                  role="radio"
+                  aria-checked={i === k}
+                  onClick={() => setPick(i)}
+                  style={shown === 'people' ? { color: personColour(i) } : undefined}
+                >
+                  {who(i)}
+                </button>
+              ))}
+            </div>
+            {!at.live && (
+              <button className="linklike sc-remove" onClick={() => remove(k)}>
+                Remove {k + 1}
+              </button>
+            )}
+          </div>
+        )}
+        {party && (
+          <>
+            <div className="scent-line">{party.head}</div>
+            {party.drift && <div className="scent-line lc-amber">{party.drift}</div>}
+          </>
+        )}
+        <div className="sc-sec">
+          <span className="sc-sec-name">{at.live || !many ? "You're at" : `${k + 1} is at`}</span>
+          <div className="seg" role="radiogroup" aria-label={at.live || !many ? 'Where you sit' : `Where ${k + 1} sits`}>
+            {SCENT_HEIGHTS.map((h) => (
+              <button key={h} className={height === h ? 'seg-on' : ''} role="radio" aria-checked={height === h} onClick={() => setHeight(h)}>
+                {h === GROUND_H ? 'Ground' : `Stand ${h} m`}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="sc-sec">
+          <span className="sc-sec-name">Draw it as</span>
+          <div className="seg" role="radiogroup" aria-label="How it is drawn">
+            {VIEWS.filter((o) => many || !o.many).map((o) => (
+              <button key={o.v} className={shown === o.v ? 'seg-on' : ''} role="radio" aria-checked={shown === o.v} onClick={() => setView(o.v)}>
+                {o.name}
+              </button>
+            ))}
+          </div>
+        </div>
+        {placed && (
+          <div className="sc-btns">
+            <button className="lc-btn" onClick={clearPlaced}>
+              Clear
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

@@ -1,10 +1,8 @@
-/* the mode and view switcher: a pill bottom left, above the dock */
+/* the view pill at the foot of the left stack (ui.css .leftstack), and its
+   menu, which opens upward over the hot column's place (App hides the
+   column while the menu is up, so the menu has the room to itself) */
 .viewpill-wrap {
-  position: absolute;
-  left: calc(var(--sal, 0px) + 12px);
-  bottom: calc(var(--barh, 170px) + 12px);
-  transition: bottom 0.18s ease-out;
-  z-index: 10;
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -13,47 +11,79 @@
 .viewpill {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
+  gap: 8px;
+  padding: 10px 14px;
   border-radius: 999px;
   border: 1px solid var(--c-border-strong);
   color: var(--c-text);
   font: inherit;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: calc(13px * var(--ui-scale));
+  font-weight: 650;
   cursor: pointer;
 }
+.viewpill-caret {
+  display: flex;
+}
 .viewpill-menu {
-  width: 210px;
-  padding: 10px;
-  border-radius: 14px;
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  z-index: 12;
+  width: 230px;
+  padding: 8px;
+  border-radius: 18px;
   border: 1px solid var(--c-border-strong);
+  background: var(--c-surface-heavy);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  animation: rise-in 0.15s ease;
 }
-.viewpill-menu .seg { width: 100%; }
-.viewpill-menu .seg button { flex: 1; }
-.viewpill-list { display: flex; flex-direction: column; gap: 2px; }
-.viewpill-row { display: flex; align-items: center; border-radius: 9px; }
-.viewpill-row.on { background: var(--c-accent-dim); }
+.viewpill-row {
+  display: flex;
+  align-items: center;
+  border-radius: 10px;
+}
+.viewpill-row.on {
+  background: var(--c-accent-dim);
+}
 .viewpill-name {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   text-align: left;
-  padding: 8px 10px;
+  padding: 10px;
+  border-radius: 10px;
   background: transparent;
   border: 0;
   color: var(--c-text);
   font: inherit;
-  font-size: 14px;
+  font-size: calc(15px * var(--ui-scale));
   cursor: pointer;
 }
-.viewpill-row.on .viewpill-name { color: var(--c-accent); font-weight: 600; }
-.viewpill-save { align-self: flex-start; font-size: 13px; padding: 2px 4px; }
-/* hunting mode: started and stopped from the menu; the pill says it is on, and for how long */
-.vp-hunt { display: flex; flex-direction: column; gap: 4px; }
-.vp-hunt .btn-primary { width: 100%; margin: 0; }
-.vp-hunt .vp-stop { background: rgba(255, 107, 107, 0.16); color: #ff8a80; border: 1px solid rgba(255, 107, 107, 0.45); }
-.vp-note { font-size: 11.5px; line-height: 1.35; color: var(--c-text-dim); }
-.viewpill.vp-on { border-color: rgba(89, 224, 184, 0.6); color: #9ff0d4; }
-.vp-dot { width: 9px; height: 9px; border-radius: 50%; background: #ff6b6b; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8); animation: rec-pulse 1.2s ease-in-out infinite; }
+.viewpill-name > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+.viewpill-name svg {
+  flex: none;
+  color: var(--c-accent);
+}
+.viewpill-name:active {
+  background: rgba(126, 178, 224, 0.1);
+  transform: none;
+}
+.viewpill-more {
+  color: var(--c-text-dim);
+}
+.viewpill-trash {
+  width: 32px;
+  height: 32px;
+  margin-right: 4px;
+}
+.viewpill-divider {
+  height: 1px;
+  background: rgba(126, 178, 224, 0.16);
+  margin: 4px 0;
+}

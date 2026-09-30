@@ -3,21 +3,23 @@ import type { GeoJSONSource, Map as MlMap } from 'maplibre-gl'
 import { create } from 'zustand'
 import { devlog } from '../devlog'
 import { onEachMap } from '../map/mapController'
-import { SOUND_NAMES, useHuntLog, type LogEntry } from '../log/huntLog'
+import { SOUND_NAMES, useHuntLog, type LogEntry, type MooseSound } from '../log/huntLog'
+import { LIVE_SOUND_MS, outingSince } from '../log/outingTime'
 import { cellAt, cellCentre, loadGoing, type Going } from '../routes/goingGrid'
 import { askWorker } from '../routes/workerClient'
+import { clockShort } from '../time'
 import { useGpsStore } from '../tracking/gpsStore'
 import { compass } from '../weather/openMeteo'
 import { groundWind } from '../weather/micro/model'
 import { SCENT_NOTICE, scentAt, useScent } from '../weather/micro/scent'
-import { useHunting } from './hunting'
 import { SWING, type SwingRequest } from './swing'
 
 /**
- * The moose you hear while hunting, on the map: each sound where it came
+ * The moose you hear out there, on the map: each sound where it came
  * from (the dot is the hunt log's own), joined in the order they came with
  * arrows, a faint line back to where you stood when you heard it, and
- * where he is likely to go next.
+ * where he is likely to go next. An outing from the hunt log replays its
+ * sounds the same way, without the swing.
  *
  * A bull coming to a call very often swings round to get downwind of the
  * caller and scent-check before he shows himself. It is what happened on
@@ -35,9 +37,9 @@ import { SWING, type SwingRequest } from './swing'
  */
 
 const SRC = 'moose-moves'
-/** a sound this recent still says where he is */
+/** two sounds this close together say which way he is moving */
 const RECENT_MS = 30 * 60_000
-/** after a hunt, its sounds stay on the map this long */
+/** after the last sound, this outing's sounds stay on the map this long */
 const AFTER_MS = 3 * 3600_000
 
 const KY = 110_574
@@ -58,18 +60,25 @@ export function offsetBy(p: LL, bearing: number, m: number): [number, number] {
 /** Signed turn from bearing a to bearing b, −180..180, clockwise positive. */
 const turnTo = (a: number, b: number) => ((b - a + 540) % 360) - 180
 
-/**
- * The moose heard or seen this hunt, oldest first: from half an hour before
- * it started (a grunt that got you going, or one logged as a few minutes
- * ago), or after one, the last three hours.
- */
-export function heardThisHunt(): LogEntry[] {
-  const h = useHunting.getState()
-  const since = h.on && h.startedAt ? h.startedAt - RECENT_MS : Date.now() - AFTER_MS
+/** The moose entries that go on this map: heard, seen or called in, oldest first. */
+function mooseEntries(): LogEntry[] {
   return useHuntLog
     .getState()
-    .entries.filter((e) => e.species === 'moose' && (e.what === 'heard' || e.what === 'seen' || e.what === 'called') && e.ts >= since)
+    .entries.filter((e) => e.species === 'moose' && (e.what === 'heard' || e.what === 'seen' || e.what === 'called'))
     .sort((a, b) => a.ts - b.ts)
+}
+
+/**
+ * The moose heard or seen this outing, oldest first: the newest run of
+ * sounds with no gap over an outing's (log/outingTime), while the last of
+ * them is under three hours old. Empty after that.
+ */
+export function heardThisHunt(): LogEntry[] {
+  const es = mooseEntries()
+  const last = es[es.length - 1]
+  if (!last || Date.now() - last.ts > AFTER_MS) return []
+  const since = outingSince(es.map((e) => e.ts))
+  return since == null ? [] : es.filter((e) => e.ts >= since)
 }
 
 /** Which way your scent goes now: the live cone's main sector, or downwind on the ground wind. */
@@ -121,11 +130,11 @@ export interface MoveRead {
   swing: Swing | null
 }
 
-/** Where he was last, which way he is going, and where he is likely to swing to; null with nothing recent. */
+/** Where he was last, which way he is going, and where he is likely to swing to; null with nothing live. */
 export function readMoves(): MoveRead | null {
   const es = heardThisHunt()
   const last = es[es.length - 1]
-  if (!last || Date.now() - last.ts > RECENT_MS) return null
+  if (!last || Date.now() - last.ts > LIVE_SOUND_MS) return null
   const fix = useGpsStore.getState().fix
   const you: LL | null = fix ? { lon: fix.lon, lat: fix.lat } : (last.from ?? null)
   if (!you) return null
@@ -157,16 +166,44 @@ export function readMoves(): MoveRead | null {
   }
 }
 
-/** One line for the card: the last sound, where, how long ago, which way he is going. */
-export function movesText(r: MoveRead): string {
-  const what = r.last.sound ? SOUND_NAMES[r.last.sound] : r.last.what === 'seen' ? 'Seen' : 'Heard'
-  const ago = r.minutesAgo < 1 ? 'just now' : `${r.minutesAgo} min ago`
-  const parts = [`${what} ${Math.round(r.distM / 10) * 10} m ${compass(r.bearing)}, ${ago}`]
-  if (r.heading != null) parts.push(`moving ${compass(r.heading)}`)
+/** Who it was, in a word: the sound's animal, else what was logged. */
+const WHO: Record<MooseSound, string> = { cow: 'Cow', bull: 'Bull', thrash: 'Thrashing', walk: 'Walking', splash: 'Splash', seen: 'Seen' }
+function who(e: LogEntry): string {
+  if (e.sound) return WHO[e.sound]
+  if (e.kind === 'bull' || e.kind === 'cow') return e.kind === 'bull' ? 'Bull' : 'Cow'
+  return e.what === 'seen' ? 'Seen' : 'Moose'
+}
+const tens = (m: number) => `${Math.round(m / 10) * 10} m`
+const mins = (n: number) => (n < 1 ? 'now' : `${n} min`)
+
+/** Where he is likely to swing to, or that he has your wind already; null with no scent to go on. */
+function swingWords(r: MoveRead): string | null {
   const sw = r.swing?.coords || r.swing?.onIt ? r.swing : null
-  if (sw?.onIt || (!sw && r.downwind != null && r.onIt)) parts.push('he is on your downwind side: he may have your scent')
-  else if (sw) parts.push(`likely to swing round to your ${compass(sw.endBearing)} to wind you`)
-  else if (r.downwind != null) parts.push(`likely to swing round to your ${compass(r.downwind)} to wind you`)
+  if (sw?.onIt || (!sw && r.downwind != null && r.onIt)) return 'on your wind'
+  if (sw) return `swings ${compass(sw.endBearing)}`
+  if (r.downwind != null) return `swings ${compass(r.downwind)}`
+  return null
+}
+
+/** The live card's line: 'Bull NNE 300 m · 12 min · swings SE', or '… · on your wind'. */
+export function movesLine(r: MoveRead): string {
+  const parts = [`${who(r.last)} ${compass(r.bearing)} ${tens(r.distM)}`, mins(r.minutesAgo)]
+  const sw = swingWords(r)
+  if (sw) parts.push(sw)
+  return parts.join(' · ')
+}
+
+/** The folded card's part: 'bull 12 min'. */
+export function movesChip(r: MoveRead): string {
+  return `${who(r.last).toLowerCase()} ${mins(r.minutesAgo)}`
+}
+
+/** A sound as a row: 'Bull grunt 6:11 · 300 m NNE · moving E' (the way he moved from the sound before, when it says). */
+export function soundRow(e: LogEntry, prev?: LogEntry): string {
+  const what = e.sound ? SOUND_NAMES[e.sound] : e.what === 'seen' ? 'Seen' : e.what === 'called' ? 'Called in' : 'Heard'
+  const parts = [`${what} ${clockShort(e.ts)}`]
+  if (e.from) parts.push(`${tens(e.from.distM)} ${compass(e.from.bearing)}`)
+  if (prev && e.ts - prev.ts <= RECENT_MS && metresTo(prev, e) >= 30) parts.push(`moving ${compass(bearingTo(prev, e))}`)
   return parts.join(' · ')
 }
 
@@ -315,27 +352,47 @@ function planSwing(r: MoveRead) {
   })
 }
 
-const hhmm = (ms: number) => {
-  const d = new Date(ms)
-  return `${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}`
-}
 const SHORT: Record<string, string> = { cow: 'cow', bull: 'grunt', thrash: 'thrash', walk: 'walking', splash: 'splash', seen: 'seen' }
 
+/** An outing being replayed from the hunt log: its sounds instead of the live ones. */
+let replay: { from: number; to: number } | null = null
+
+/**
+ * Replay an outing's sounds: the rays, the route and the labels of the
+ * entries in the range, with no heading and no swing. `null` puts the
+ * live sounds back.
+ */
+export function showOutingSounds(range: { from: number; to: number } | null): void {
+  replay = range
+  redrawSoon()
+}
+
 function features(): FeatureCollection {
-  const es = heardThisHunt()
+  if (replay) {
+    const { from, to } = replay
+    return featuresFor(
+      mooseEntries().filter((e) => e.ts >= from && e.ts <= to),
+      false,
+    )
+  }
+  return featuresFor(heardThisHunt(), true)
+}
+
+/** The sounds on the map; `live` adds the way he is moving and his way round to your scent. */
+function featuresFor(es: LogEntry[], live: boolean): FeatureCollection {
   const out: Feature[] = []
   const line = (kind: string, coordinates: [number, number][]) => out.push({ type: 'Feature', geometry: { type: 'LineString', coordinates }, properties: { kind } })
   const arrow = (kind: string, at: [number, number], rot: number) => out.push({ type: 'Feature', geometry: { type: 'Point', coordinates: at }, properties: { kind, rot } })
   const label = (at: [number, number]) => out.push({ type: 'Feature', geometry: { type: 'Point', coordinates: at }, properties: { kind: 'swing-label', t: 'where he winds you' } })
   for (const e of es) {
     if (e.from) line('ray', [[e.from.lon, e.from.lat], [e.lon, e.lat]])
-    out.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [e.lon, e.lat] }, properties: { kind: 'label', t: `${hhmm(e.ts)} ${e.sound ? SHORT[e.sound] : e.what}` } })
+    out.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [e.lon, e.lat] }, properties: { kind: 'label', t: `${clockShort(e.ts)} ${e.sound ? SHORT[e.sound] : e.what}` } })
   }
   if (es.length >= 2) {
     line('route', es.map((e) => [e.lon, e.lat]))
     for (let i = 1; i < es.length; i++) arrow('route', [es[i].lon, es[i].lat], bearingTo(es[i - 1], es[i]))
   }
-  const r = readMoves()
+  const r = live ? readMoves() : null
   if (r) {
     if (r.heading != null) {
       const to = offsetBy(r.last, r.heading, 120)
@@ -435,9 +492,6 @@ export function initMoveLayer() {
   useHuntLog.subscribe((s, p) => {
     if (s.entries !== p.entries) redraw()
   })
-  useHunting.subscribe((s, p) => {
-    if (s.on !== p.on || s.startedAt !== p.startedAt) redraw()
-  })
   useScent.subscribe((s, p) => {
     if (s.plumes === p.plumes) return
     // his way round ends in the scent as drawn: a new drawing routes him again
@@ -445,9 +499,9 @@ export function initMoveLayer() {
     redraw()
   })
   useGpsStore.subscribe((s, p) => {
-    if (s.fix !== p.fix && readMoves()) redraw()
+    if (s.fix !== p.fix && !replay && readMoves()) redraw()
   })
-  // "min ago" and the half hour a sound stays fresh, and at once on a look
+  // "min ago" and the while a sound stays live, and at once on a look
   window.setInterval(redraw, 60_000)
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') redraw()

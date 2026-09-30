@@ -6,7 +6,7 @@ import { closeOnTapOff } from '../../map/tapPopup'
 import { useAppStore } from '../../state/appStore'
 import { timeLabel } from '../../time'
 import { compass } from '../openMeteo'
-import { checkPull, checkReachM, checkSpentAt, useWindChecks, verdict, type WindCheck } from './windChecks'
+import { checkPull, checkReachM, checkSpentAt, useWindChecks, type WindCheck } from './windChecks'
 
 /**
  * The wind checks still in effect, on the map. Each is an arrow where it
@@ -17,7 +17,9 @@ import { checkPull, checkReachM, checkSpentAt, useWindChecks, verdict, type Wind
  * when it runs out, and to take it away.
  *
  * "In effect" is at the planning time, not the clock: plan an hour back
- * and the checks from then are the ones drawn.
+ * and the checks from then are the ones drawn. An outing from the hunt
+ * log replays its checks instead: every arrow made in its hours, spent or
+ * not, with no ring.
  */
 
 const SRC = 'windchecks'
@@ -44,8 +46,34 @@ export function checksInEffect(at = ms()): WindCheck[] {
   return useWindChecks.getState().checks.filter((c) => checkReachM(c, at) > 0)
 }
 
+/** An outing being replayed from the hunt log: its checks instead of the live ones. */
+let replay: { from: number; to: number } | null = null
+let refreshSoon: () => void = () => {}
+
+/**
+ * Replay an outing's wind checks: an arrow for every check made in the
+ * range, whether or not it still reaches. `null` puts the checks in effect
+ * back.
+ */
+export function showOutingChecks(range: { from: number; to: number } | null): void {
+  replay = range
+  refreshSoon()
+}
+
 function features(at: number): FeatureCollection {
   const out: Feature[] = []
+  if (replay) {
+    const { from, to } = replay
+    for (const c of useWindChecks.getState().checks) {
+      if (c.ts < from || c.ts > to) continue
+      out.push({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [c.lon, c.lat] },
+        properties: { id: c.id, pull: 1, calm: c.dirFrom == null, toward: c.dirFrom == null ? 0 : (c.dirFrom + 180) % 360 },
+      })
+    }
+    return { type: 'FeatureCollection', features: out }
+  }
   for (const c of checksInEffect(at)) {
     const pull = checkPull(c, c.lon, c.lat, at)
     out.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring(c, checkReachM(c, at))] }, properties: { id: c.id, pull } })
@@ -165,20 +193,16 @@ function esc(s: string): string {
   return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c)
 }
 
-/** What a check says and how much it still counts, for its popup. */
+/** What a check says and how much it still counts, for its popup (the model's verdict is in the outing's rows). */
 function popupHtml(c: WindCheck, at: number): string {
   const felt = c.dirFrom == null ? 'calm' : `toward ${compass((c.dirFrom + 180) % 360)}, ${c.strength}`
-  const v = verdict(c)
-  const model = c.model
-    ? `<li>The model had ${c.model.kmh < 1 ? 'near calm' : `toward ${compass((c.model.dirFrom + 180) % 360)}`}${v ? ` · <b class="gc-verdict gc-${v}">${v === 'agree' ? 'agreed' : v === 'close' ? 'close' : 'missed'}</b>` : ''}</li>`
-    : ''
   const pull = Math.round(checkPull(c, c.lon, c.lat, at) * 100)
   const reach = Math.round(checkReachM(c, at) / 10) * 10
   const spent = checkSpentAt(c)
   const when = useAppStore.getState().planTimeMs == null ? 'now' : 'at the planned time'
   return (
     `<div class="pg-head"><span>Wind check · ${esc(timeLabel(c.ts))}</span></div>` +
-    `<ul class="pp-reasons"><li>You felt: ${esc(felt)}</li>${model}` +
+    `<ul class="pp-reasons"><li>You felt: ${esc(felt)}</li>` +
     `<li>In effect ${when}: ${pull}% of the ground wind here, less farther out, to about ${reach} m (the ring)</li>` +
     `<li>${spent > at ? `Fades out by ${esc(timeLabel(spent))}` : 'About spent'}</li></ul>` +
     `<div class="pg-acts"><button class="linklike ck-remove" type="button">remove this check</button></div>`
@@ -219,6 +243,7 @@ export function initCheckLayer() {
       /* the style is still loading: styledata adds it */
     }
   }
+  refreshSoon = refresh
   onEachMap((map) => {
     current = map
     if (map.isStyleLoaded()) refresh()
@@ -240,7 +265,7 @@ export function initCheckLayer() {
   })
   // at "now" the rings shrink with the clock, a minute at a time
   window.setInterval(() => {
-    if (document.visibilityState === 'visible' && useAppStore.getState().planTimeMs == null && (drawn || checksInEffect().length)) refresh()
+    if (document.visibilityState === 'visible' && !replay && useAppStore.getState().planTimeMs == null && (drawn || checksInEffect().length)) refresh()
   }, 60_000)
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') refresh()

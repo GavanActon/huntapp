@@ -211,11 +211,26 @@ export async function fetchPointForecast(lon: number, lat: number): Promise<Poin
   return f
 }
 
+// The cache read back, parsed once per stored string: the ground model asks
+// for the camp's forecast for every minute it evaluates, and a 7-day blend
+// is a big JSON to parse each time. A different string in storage (a fresh
+// fetch, another tab) re-parses; a missing one drops the entry.
+const parsedCache = new Map<string, { raw: string; parsed: PointForecast }>()
+
 export function cachedPointForecast(lon: number, lat: number): PointForecast | null {
   ;[lon, lat] = clampToRegion(lon, lat)
+  const key = cacheKey(lon, lat)
   try {
-    const raw = localStorage.getItem(cacheKey(lon, lat))
-    return raw ? (JSON.parse(raw) as PointForecast) : null
+    const raw = localStorage.getItem(key)
+    if (!raw) {
+      parsedCache.delete(key)
+      return null
+    }
+    const hit = parsedCache.get(key)
+    if (hit && hit.raw === raw) return hit.parsed
+    const parsed = JSON.parse(raw) as PointForecast
+    parsedCache.set(key, { raw, parsed })
+    return parsed
   } catch {
     return null
   }

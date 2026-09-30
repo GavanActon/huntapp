@@ -8,7 +8,7 @@ import { startOfDayMs } from '../../time'
 import { layeringAt, onProfile, type Layering } from '../boundaryLayer'
 import { cachedPointForecast, compass, hourAt } from '../openMeteo'
 import { sunPosition } from '../sun'
-import { onWeatherGrid, windSampler } from '../windGrid'
+import { onWeatherGrid, windGridInfo, windSampler } from '../windGrid'
 import { checkWeight, metresBetween, STRENGTH_KMH, useWindChecks } from './windChecks'
 
 /**
@@ -42,6 +42,20 @@ export const REGIME_LABEL: Record<Regime, string> = {
   landBreeze: 'Land breeze',
   calm: 'Near dead calm',
 }
+
+/** What each regime does to scent, in a few words. */
+export const REGIME_TIP: Record<Regime, string> = {
+  wind: 'scent goes with the wind',
+  drainage: 'scent sinks downhill',
+  pooled: 'scent sits in the low ground',
+  upslope: 'scent rises up the slope',
+  lakeBreeze: 'scent carried inland',
+  landBreeze: 'scent drifts out over the water',
+  calm: 'scent hangs and spreads',
+}
+
+/** The colour class of a regime's window (ground.css); plain wind has none. */
+export const REGIME_CLASS: Partial<Record<Regime, string>> = { drainage: 'gd-drain', pooled: 'gd-pool', upslope: 'gd-up', lakeBreeze: 'gd-breeze', landBreeze: 'gd-breeze' }
 
 export interface Part {
   key: 'terrain' | 'drainage' | 'upslope' | 'breeze' | 'check'
@@ -489,10 +503,13 @@ export interface CellGround {
   regime: Regime
 }
 
-// bumped whenever an input changes, so the scorer's memo knows to refresh
+// bumped whenever an input changes, so the scorer's memo knows to refresh;
+// the day memo (groundDay) is dropped on the same events
 let version = 0
+const dayMemo = new Map<string, Window[]>()
 const bump = () => {
   version++
+  dayMemo.clear()
 }
 listeners.add(bump)
 onProfile(bump)
@@ -562,9 +579,25 @@ export interface Window {
   decoupled: boolean
 }
 
+const DAY_MEMO_MAX = 64
+
 /** The day at a point in windows of one regime (15-minute steps, anything
- *  under 45 minutes folded into its neighbour): day windows before hours. */
+ *  under 45 minutes folded into its neighbour): day windows before hours.
+ *  Memoised per point and day until an input changes (the grids, the
+ *  layering profile, a wind check, or a fresh forecast at camp). */
 export function groundDay(lon: number, lat: number, dayStartMs: number): Window[] {
+  const home = homePlace()
+  const f = cachedPointForecast(home.lon, home.lat)
+  const key = `${lon.toFixed(4)},${lat.toFixed(4)},${dayStartMs},${f?.fetchedAt ?? 0}`
+  const hit = dayMemo.get(key)
+  if (hit) return hit
+  const out = groundDayPass(lon, lat, dayStartMs)
+  if (dayMemo.size >= DAY_MEMO_MAX) dayMemo.delete(dayMemo.keys().next().value as string)
+  dayMemo.set(key, out)
+  return out
+}
+
+function groundDayPass(lon: number, lat: number, dayStartMs: number): Window[] {
   const steps: { ms: number; regime: Regime; e: number; n: number; dec: boolean }[] = []
   for (let k = 0; k < 96; k++) {
     const ms = dayStartMs + k * 15 * 60_000
@@ -607,6 +640,94 @@ export function groundDay(lon: number, lat: number, dayStartMs: number): Window[
       decoupled: dec / cnt > 0.5,
     }
   })
+}
+
+// ---------------------------------------------------------------- around a moment
+
+/** Local midnight after the day starting at `dayStartMs` (DST-safe). */
+function nextDayStartMs(dayStartMs: number): number {
+  const d = new Date(dayStartMs)
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime()
+}
+
+/** The last moment the wind is forecast for: the wind grid's end (it runs
+ *  from yesterday's midnight for its hours), else the camp forecast's last
+ *  hour, which makeCtx falls back to; null with neither. */
+function windHorizonMs(): number | null {
+  const info = windGridInfo()
+  if (info) {
+    const d = new Date(info.fetchedAt)
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1).getTime() + info.hours * 3600_000
+  }
+  const home = homePlace()
+  const times = cachedPointForecast(home.lon, home.lat)?.hourly.time
+  return times && times.length ? Date.parse(times[times.length - 1]) + 3600_000 : null
+}
+
+const ownAir = (w: Window) => w.regime !== 'wind'
+const drains = (w: Window) => w.regime === 'drainage' || w.regime === 'pooled'
+
+/**
+ * The ground's own air around a moment, for the hour detail: `now` is the
+ * window the moment sits in when the ground air is anything but the plain
+ * forecast wind, `next` the first such window after it (into the next day
+ * while the wind is forecast). A run ending at midnight carries on into
+ * the next morning's window of the same regime, so "till" reads 6:30, not
+ * 12:00. Both null when the forecast wind reaches the ground for the rest
+ * of the horizon, or past it.
+ */
+export function groundAirAround(lon: number, lat: number, ms: number): { now: Window | null; next: Window | null } {
+  const horizon = windHorizonMs()
+  if (horizon != null && ms >= horizon) return { now: null, next: null }
+  const day0 = startOfDayMs(ms)
+  let now: Window | null = null
+  let next: Window | null = null
+  for (const w of groundDay(lon, lat, day0)) {
+    if (!ownAir(w)) continue
+    if (ms >= w.startMs && ms < w.endMs) now = w
+    else if (w.startMs > ms) {
+      next = w
+      break
+    }
+  }
+  const day1 = nextDayStartMs(day0)
+  if (((now && now.endMs >= day1) || !next) && (horizon == null || day1 < horizon)) {
+    const tomorrow = groundDay(lon, lat, day1)
+    const first = tomorrow[0]
+    if (now && now.endMs >= day1 && first && first.regime === now.regime) now = { ...now, endMs: first.endMs }
+    if (!next) {
+      const after = now ? now.endMs : ms
+      next = tomorrow.find((w) => ownAir(w) && w.startMs >= after) ?? null
+    }
+  }
+  return { now, next }
+}
+
+/**
+ * The evening run of cold air at a point: the drainage or pooled window
+ * starting after 12:00 of the day, joined with what follows it of the
+ * same kind and carried into the next morning while the wind is forecast.
+ * Null past the horizon, or when the evening stays windy.
+ */
+export function drainWindow(lon: number, lat: number, dayStartMs: number): { startMs: number; endMs: number } | null {
+  const d = new Date(dayStartMs)
+  const noon = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12).getTime()
+  const horizon = windHorizonMs()
+  if (horizon == null || noon >= horizon) return null
+  const wins = groundDay(lon, lat, dayStartMs)
+  const k = wins.findIndex((w) => drains(w) && w.startMs >= noon)
+  if (k < 0) return null
+  const startMs = wins[k].startMs
+  let endMs = wins[k].endMs
+  for (let i = k + 1; i < wins.length && drains(wins[i]) && wins[i].startMs === endMs; i++) endMs = wins[i].endMs
+  const day1 = nextDayStartMs(dayStartMs)
+  if (endMs >= day1 && day1 < horizon) {
+    for (const w of groundDay(lon, lat, day1)) {
+      if (!drains(w) || w.startMs !== endMs) break
+      endMs = w.endMs
+    }
+  }
+  return { startMs, endMs }
 }
 
 /** The baked values under a point, for the dev console. */

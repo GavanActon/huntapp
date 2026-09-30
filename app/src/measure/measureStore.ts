@@ -5,7 +5,8 @@ import { create } from 'zustand'
 interface MeasureState {
   active: boolean
   points: [number, number][]
-  start: () => void
+  /** Open the tool; with a point (Dig in's "Measure from here"), that is the first one dropped. */
+  start: (p?: [number, number]) => void
   /** Leave the tool; the measurement goes with it. */
   stop: () => void
   addPoint: (p: [number, number]) => void
@@ -18,7 +19,7 @@ interface MeasureState {
 export const useMeasureStore = create<MeasureState>((set) => ({
   active: false,
   points: [],
-  start: () => set({ active: true }),
+  start: (p) => set(p ? { active: true, points: [p] } : { active: true }),
   stop: () => set({ active: false, points: [] }),
   addPoint: (p) => set((s) => ({ points: [...s.points, p] })),
   movePoint: (idx, p) => set((s) => ({ points: s.points.map((q, i) => (i === idx ? p : q)) })),

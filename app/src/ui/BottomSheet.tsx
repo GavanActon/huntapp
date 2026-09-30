@@ -1,51 +1,73 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { useAppStore } from '../state/appStore'
-import { IconClose } from './icons'
+import { useTapOff } from './tapOff'
 
-/** The detents promise the chart most of the screen, so the sheet sizes
+/** The detents promise the map most of the screen, so the sheet sizes
  *  itself against at most this much viewport — full-screen Safari and the
  *  installed app have taller viewports, and a pure dvh height crept up the
- *  chart with them. */
+ *  map with them. */
 const VH_CAP_PX = 800
+
+/** The full detent, and what the keyboard grows the sheet to. */
+const FULL_PCT = 88
 
 /** A detent as CSS: pct of the viewport, but of no more than VH_CAP_PX of it. */
 function heightCss(pct: number) {
   return `calc(min(${pct}dvh, ${(pct * VH_CAP_PX) / 100}px) + var(--sab))`
 }
 
+/** An input that brings the keyboard up. A range slider or a checkbox does
+ *  not, and a sheet that jumped to full height under a knob would throw
+ *  the thumb off it. */
+const NO_KEYBOARD = new Set(['range', 'checkbox', 'radio', 'button', 'submit', 'reset', 'file', 'color'])
+function isField(t: EventTarget | null): t is HTMLElement {
+  if (!(t instanceof HTMLElement)) return false
+  if (t.tagName === 'TEXTAREA' || t.tagName === 'SELECT') return true
+  return t instanceof HTMLInputElement && !NO_KEYBOARD.has(t.type)
+}
+
 /**
- * iOS-style draggable bottom sheet with half / full snap points.
- * Content scrolls internally when at full height.
+ * iOS-style draggable bottom sheet with half / full snap points. Content
+ * scrolls internally when at full height. No close button: a tap off it
+ * (the map included) closes it, as does a drag well below its rest.
  */
 export default function BottomSheet({
   title,
   children,
   halfPct = 52,
-  openPct,
+  snapKey,
+  onClose,
+  onBack,
+  action,
 }: {
+  /** '' for a panel that carries its own heading row (Dig in, the layers) */
   title: string
   children: ReactNode
-  /** The half snap: Places rests lower so the chart keeps most of the screen. */
+  /** The half snap: a list rests lower so the map keeps most of the screen. */
   halfPct?: number
-  /** Where the sheet opens, when that is not the half snap: a sheet sent
-   *  for by a Discover row opens full, so the control it lands on is in
-   *  view without a scroll. Read once, at mount. */
-  openPct?: number
+  /** What the sheet holds; a change resets the height to its snap. */
+  snapKey: string
+  onClose: () => void
+  /** A sheet pushed over another: ‹ Back at the left of the title. */
+  onBack?: () => void
+  /** Done, ⋯ or such at the right of the title. */
+  action?: ReactNode
 }) {
-  const setSheetTab = useAppStore((s) => s.setSheetTab)
-  // a text field in edit stretches the sheet to full — the keyboard eats the
-  // bottom half of the screen, and a half-height sheet vanishes behind it
-  const tall = useAppStore((s) => s.sheetTall)
-  const [heightPct, setHeightPct] = useState(openPct ?? halfPct)
+  const [heightPct, setHeightPct] = useState(halfPct)
   const drag = useRef<{ startY: number; startPct: number } | null>(null)
   const sheetRef = useRef<HTMLDivElement>(null)
   // the live height during a drag. React state would re-render the whole
-  // panel on every pointermove — with the places list inside that recomputes
+  // panel on every pointermove — with a list inside that recomputes
   // conditions for every spot per frame, which is what made the drag chunky
-  const livePct = useRef(openPct ?? halfPct)
+  const livePct = useRef(halfPct)
   // what the last reset was for — StrictMode runs the effect twice on
   // mount, so "first run" can't be what guards the opening height
-  const lastSnap = useRef<[string, number]>([title, halfPct])
+  const lastSnap = useRef<[string, number]>([snapKey, halfPct])
+  // a text field in edit stretches the sheet to full — the keyboard eats the
+  // bottom half of the screen, and a half-height sheet vanishes behind it.
+  // This is the detent to fall back to when the field lets go.
+  const beforeKeyboard = useRef<number | null>(null)
+
+  useTapOff(sheetRef, true, onClose)
 
   /** Write the height straight to the node: a drag has to track the finger,
    *  and a render per frame cannot. */
@@ -56,13 +78,14 @@ export default function BottomSheet({
   }
 
   useEffect(() => {
-    // the opening height stands; a NEW title or snap resets to the snap
-    const [t, h] = lastSnap.current
-    if (t === title && h === halfPct) return
-    lastSnap.current = [title, halfPct]
+    // the opening height stands; a NEW panel or snap resets to the snap
+    const [k, h] = lastSnap.current
+    if (k === snapKey && h === halfPct) return
+    lastSnap.current = [snapKey, halfPct]
+    beforeKeyboard.current = null
     setHeightPct(halfPct)
     applyHeight(halfPct)
-  }, [title, halfPct])
+  }, [snapKey, halfPct])
 
   function onPointerDown(e: React.PointerEvent) {
     drag.current = { startY: e.clientY, startPct: livePct.current }
@@ -77,7 +100,7 @@ export default function BottomSheet({
     // number or the sheet lags the finger on tall screens
     const vh = Math.min(window.innerHeight, VH_CAP_PX)
     const dyPct = ((drag.current.startY - e.clientY) / vh) * 100
-    applyHeight(Math.min(88, Math.max(15, drag.current.startPct + dyPct)))
+    applyHeight(Math.min(FULL_PCT, Math.max(15, drag.current.startPct + dyPct)))
   }
   function onPointerUp() {
     if (!drag.current) return
@@ -85,18 +108,33 @@ export default function BottomSheet({
     sheetRef.current?.classList.remove('sheet-dragging')
     const h = livePct.current
     // dragged well below where it rests: that's a dismiss
-    const snap = h < halfPct - 14 ? halfPct : h < 68 ? halfPct : 88
-    if (h < halfPct - 14) setSheetTab(null)
+    const snap = h < halfPct - 14 ? halfPct : h < 68 ? halfPct : FULL_PCT
+    if (h < halfPct - 14) onClose()
     applyHeight(snap)
     setHeightPct(snap)
   }
 
+  function onFocusIn(e: React.FocusEvent) {
+    if (!isField(e.target)) return
+    if (beforeKeyboard.current == null) beforeKeyboard.current = livePct.current
+    applyHeight(FULL_PCT)
+    setHeightPct(FULL_PCT)
+  }
+  function onFocusOut(e: React.FocusEvent) {
+    if (!isField(e.target)) return
+    // straight to another field in the same sheet: the keyboard stays up
+    if (isField(e.relatedTarget) && sheetRef.current?.contains(e.relatedTarget)) return
+    const back = beforeKeyboard.current
+    beforeKeyboard.current = null
+    if (back == null) return
+    applyHeight(back)
+    setHeightPct(back)
+  }
+
+  const titleRow = title !== '' || onBack != null || action != null
+
   return (
-    <div
-      ref={sheetRef}
-      className="sheet glass"
-      style={{ height: heightCss(tall ? 88 : heightPct) }}
-    >
+    <div ref={sheetRef} className="sheet glass" style={{ height: heightCss(heightPct) }}>
       <div
         className="sheet-grab"
         onPointerDown={onPointerDown}
@@ -105,26 +143,32 @@ export default function BottomSheet({
         onPointerCancel={onPointerUp}
       >
         {/* a real button, not just a grab strip: a swipe is invisible to a
-            keyboard, to VoiceOver, and to anyone who hasn't guessed it — the
-            trip dock's handle makes the same argument for the same reason */}
+            keyboard, to VoiceOver, and to anyone who hasn't guessed it */}
         <button
           className="sheet-handle"
           onClick={() => {
-            const next = livePct.current >= 68 ? halfPct : 88
+            const next = livePct.current >= 68 ? halfPct : FULL_PCT
             applyHeight(next)
             setHeightPct(next)
           }}
           aria-expanded={heightPct >= 68}
           aria-label={heightPct >= 68 ? 'Collapse' : 'Expand'}
         />
-        <div className="sheet-titlerow">
-          <h2>{title}</h2>
-          <button className="sheet-close" onClick={() => setSheetTab(null)} aria-label="Close">
-            <IconClose size={18} />
-          </button>
-        </div>
+        {titleRow && (
+          <div className="sheet-titlerow">
+            {onBack && (
+              <button className="sheet-back" onClick={onBack}>
+                ‹ Back
+              </button>
+            )}
+            <h2>{title}</h2>
+            <div className="sheet-actions">{action}</div>
+          </div>
+        )}
       </div>
-      <div className="sheet-body">{children}</div>
+      <div className="sheet-body" onFocus={onFocusIn} onBlur={onFocusOut}>
+        {children}
+      </div>
     </div>
   )
 }

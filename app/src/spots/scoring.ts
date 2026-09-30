@@ -6,11 +6,12 @@
 import { SPOTS_RADIUS_M } from '../config'
 import { habitat, type Habitat } from './habitatGrid'
 import type { Conditions } from './conditions'
-import { activityVerdict, describeCell, habitatScore, huntBands, siteFactor, type HuntBands } from './huntRules'
+import { activityVerdict, describeCell, habitatScore, huntBands, siteFactor, viewM, type HuntBands } from './huntRules'
 import { cellScore, describeFishCell, fishBands, fishContext, fishVerdict, seasonOpen, type FishBands } from './fishRules'
 import { isFish, type Spot, type Target, type Verdict } from './types'
 import { DEFAULT_WEIGHTS, weigh, type Part, type PointCase, type Weights } from './weights'
 import { logBoostGrid, logNote } from '../log/huntLog'
+import type { DayPlan, WindowScore } from './dayPlan'
 
 export interface ScoreResult {
   target: Target
@@ -244,4 +245,43 @@ export function pointCase(target: Target, lon: number, lat: number, c: Condition
 /** A weighed multiplier, for the breakdown's arithmetic. */
 export function weighed(p: Part, w: Weights): number {
   return p.kind === 'mult' ? weigh(p.value, w[p.key]) : p.value * w[p.key]
+}
+
+/** How far you see from a point on bearings 0, 45, …, 315, in metres
+ *  (Dig in's "See" row); null without the bush-thickness band
+ *  (`through30 == null`) or off the grid. */
+export function sightLines(lon: number, lat: number): { bearing: number; m: number }[] | null {
+  const h = habitat()
+  if (!h) return null
+  const i = h.index(lon, lat)
+  if (i < 0) return null
+  if (!huntCache || huntCache.h !== h) huntCache = { h, b: huntBands(h) }
+  const b = huntCache.b
+  if (!b.through30) return null
+  const out: { bearing: number; m: number }[] = []
+  for (let bearing = 0; bearing < 360; bearing += 45) out.push({ bearing, m: viewM(b, h, i, bearing) })
+  return out
+}
+
+/** This point's best window of the week: the one whose activity × the
+ *  point's score under that window's conditions is highest. The log knob
+ *  is turned off for the pass (no logBoostGrid allocation per window; the
+ *  log leans the map, not the hour). Null with no windows or off the grid. */
+export function bestWindowHere(t: Target, lon: number, lat: number, plans: DayPlan[], w: Weights = DEFAULT_WEIGHTS): WindowScore | null {
+  const w0: Weights = { ...w, log: 0 }
+  let best: WindowScore | null = null
+  let bestV = -Infinity
+  for (const plan of plans) {
+    for (const win of [plan.morning, plan.evening]) {
+      if (!win) continue
+      const pc = pointCase(t, lon, lat, win.conditions, w0)
+      if (!pc) continue
+      const v = win.activity * pc.score
+      if (v > bestV) {
+        bestV = v
+        best = win
+      }
+    }
+  }
+  return best
 }

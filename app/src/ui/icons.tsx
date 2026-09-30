@@ -123,12 +123,6 @@ export const IconTrash = (p: IconProps) => (
   </svg>
 )
 
-export const IconClose = (p: IconProps) => (
-  <svg width={S(p)} height={S(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-    <path d="M6 6l12 12M18 6L6 18" />
-  </svg>
-)
-
 export const IconCheck = (p: IconProps) => (
   <svg width={S(p)} height={S(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M4.5 12.5 10 18 19.5 7" />
@@ -325,5 +319,137 @@ export const IconEar = (p: IconProps) => (
   <svg width={S(p)} height={S(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <path d="M6.5 9a5.5 5.5 0 0 1 11 0c0 3-2.2 4.2-3.2 5.6-.9 1.3-.8 3-2.1 4.3a3 3 0 0 1-4.7-1.4" />
     <path d="M9.5 9.3a2.5 2.5 0 0 1 5 0c0 1.3-1.2 1.8-1.7 2.7" />
+  </svg>
+)
+
+/* ---------- the one-screen chrome: hot buttons, menus, chevrons ----------
+   These default to 20 px, the inline size for a menu row or a strip line;
+   inside a .fab theme.css sizes every svg to 22 px whatever is asked. */
+
+const S20 = (p: IconProps) => p.size ?? 20
+
+/** The heat map: a small grid of cells, hot in the middle. */
+export const IconHeat = (p: IconProps) => (
+  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3.5" y="3.5" width="5" height="5" rx="1" fill="currentColor" opacity=".25" stroke="none" />
+    <rect x="9.5" y="3.5" width="5" height="5" rx="1" fill="currentColor" opacity=".55" stroke="none" />
+    <rect x="15.5" y="3.5" width="5" height="5" rx="1" fill="currentColor" opacity=".3" stroke="none" />
+    <rect x="3.5" y="9.5" width="5" height="5" rx="1" fill="currentColor" opacity=".55" stroke="none" />
+    <rect x="9.5" y="9.5" width="5" height="5" rx="1" fill="currentColor" opacity="1" stroke="none" />
+    <rect x="15.5" y="9.5" width="5" height="5" rx="1" fill="currentColor" opacity=".6" stroke="none" />
+    <rect x="3.5" y="15.5" width="5" height="5" rx="1" fill="currentColor" opacity=".2" stroke="none" />
+    <rect x="9.5" y="15.5" width="5" height="5" rx="1" fill="currentColor" opacity=".5" stroke="none" />
+    <rect x="15.5" y="15.5" width="5" height="5" rx="1" fill="currentColor" opacity=".25" stroke="none" />
+  </svg>
+)
+
+export const IconChevronDown = (p: IconProps) => (
+  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6 9l6 6 6-6" />
+  </svg>
+)
+
+export const IconChevronUp = (p: IconProps) => (
+  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6 15l6-6 6 6" />
+  </svg>
+)
+
+export const IconChevronLeft = (p: IconProps) => (
+  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M15 6l-6 6 6 6" />
+  </svg>
+)
+
+export const IconChevronRight = (p: IconProps) => (
+  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 6l6 6-6 6" />
+  </svg>
+)
+
+/** ⋯ — the more menu. */
+export const IconDots = (p: IconProps) => (
+  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="currentColor" stroke="none">
+    <circle cx="5" cy="12" r="1.7" />
+    <circle cx="12" cy="12" r="1.7" />
+    <circle cx="19" cy="12" r="1.7" />
+  </svg>
+)
+
+/** A wind check: the powder bottle, a puff drifting off its tip. */
+export const IconPowder = (p: IconProps) => (
+  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="8" y="10" width="6.5" height="11" rx="1.6" />
+    <path d="M9.5 10V8h3.5v2" />
+    <path d="M11.25 8V5" />
+    <circle cx="15" cy="4.5" r="1.1" fill="currentColor" stroke="none" />
+    <circle cx="18.2" cy="3" r="1.1" fill="currentColor" stroke="none" opacity=".7" />
+    <circle cx="19.8" cy="6.5" r="1.1" fill="currentColor" stroke="none" opacity=".45" />
+  </svg>
+)
+
+/** Bush thickness: three shrubs, the front one over the two behind. */
+export const IconBush = (p: IconProps) => (
+  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2.5 18v-3a4 4 0 0 1 7.5-2" opacity=".55" />
+    <path d="M21.5 18v-3a4 4 0 0 0-7.5-2" opacity=".55" />
+    <path d="M6.5 18v-4.5a5.5 5.5 0 0 1 11 0V18" />
+    <path d="M2 18h20" />
+  </svg>
+)
+
+/** Shooting lanes: a wedge of clear ground opening from where you sit. */
+export const IconLanes = (p: IconProps) => (
+  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 20L5 6M12 20l7-14" />
+    <path d="M5 6a15.5 15.5 0 0 1 14 0" />
+    <path d="M12 20V6" opacity=".4" strokeDasharray="0.1 3" />
+    <circle cx="12" cy="20" r="1.6" fill="currentColor" stroke="none" />
+  </svg>
+)
+
+/** Lake depths: nested contours, the deep hole in the middle. */
+export const IconDepth = (p: IconProps) => (
+  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2.5 12c0-3.6 4.5-6.5 9.5-6.5s9.5 2.9 9.5 6.5-4.5 6.5-9.5 6.5S2.5 15.6 2.5 12z" />
+    <path d="M6.5 12.3c0-2.1 2.7-3.8 6-3.8s6 1.7 6 3.8-2.7 3.8-6 3.8-6-1.7-6-3.8z" opacity=".75" />
+    <path d="M10.2 12.5c0-.8 1.1-1.5 2.6-1.5s2.6.7 2.6 1.5-1.1 1.5-2.6 1.5-2.6-.7-2.6-1.5z" fill="currentColor" stroke="none" opacity=".6" />
+  </svg>
+)
+
+/** Radar: the sweep, and an echo. */
+export const IconRadar = (p: IconProps) => (
+  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="8.5" />
+    <circle cx="12" cy="12" r="4.5" opacity=".45" />
+    <path d="M12 3.5A8.5 8.5 0 0 1 18 6L12 12z" fill="currentColor" stroke="none" opacity=".28" />
+    <path d="M12 12l6-6" />
+    <circle cx="8.3" cy="14.6" r="1.5" fill="currentColor" stroke="none" />
+  </svg>
+)
+
+/** Low power: a battery down to its last bar. */
+export const IconBattery = (p: IconProps) => (
+  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2.5" y="7" width="17" height="10" rx="2" />
+    <path d="M21.5 10.5v3" />
+    <rect x="5" y="9.5" width="4" height="5" rx=".8" fill="currentColor" stroke="none" />
+  </svg>
+)
+
+/** Settings. */
+export const IconGear = (p: IconProps) => (
+  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="3" />
+    <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" />
+  </svg>
+)
+
+/** The hunt log: a clock turning back. */
+export const IconClock = (p: IconProps) => (
+  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1" />
+    <path d="M3.5 4v4.5H8" />
+    <path d="M12 7.5V12l3 2" />
   </svg>
 )

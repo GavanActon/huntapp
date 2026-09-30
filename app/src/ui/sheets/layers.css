@@ -1,0 +1,159 @@
+/* Edit this view (LayersSheet): the On list, the folded groups, the foot.
+   Sits in the sheet body (ui.css .sheet-body), under its own .sheet-head. */
+.layers {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 8px;
+}
+
+/* the one section word: On */
+.layers-sec {
+  font-size: calc(11px * var(--ui-scale));
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-text-dim);
+  margin-bottom: -8px;
+}
+
+.layers-list,
+.layers-groups {
+  display: flex;
+  flex-direction: column;
+}
+
+/* a layer's row: the name (a button, or a label's text) and its switch */
+.layers-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid rgba(126, 178, 224, 0.1);
+  color: var(--c-text);
+  text-align: left;
+  font-size: calc(15px * var(--ui-scale));
+}
+
+.layers-row > .switch {
+  margin: 8px 0;
+}
+
+.layers-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.layers-name > span:first-child {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.layers-name > .spots-legend {
+  flex: none;
+}
+
+.layers-name:active {
+  transform: none;
+  opacity: 0.7;
+}
+
+/* a layer the phone has no data for: greyed, its switch dead */
+.layers-dead {
+  opacity: 0.45;
+}
+
+.layers-dead .layers-name:active {
+  opacity: 1;
+}
+
+/* the strength slider, open under its name */
+.layers-slider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 2px 0 12px;
+  border-bottom: 1px solid rgba(126, 178, 224, 0.1);
+}
+
+.layers-slider.layer-opacity input[type='range'] {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+
+.layers-slider .numeral {
+  flex: none;
+  min-width: 3.2em;
+  text-align: right;
+  font-size: calc(12.5px * var(--ui-scale));
+}
+
+/* a folded group: Terrain ›, and its rows once unfolded */
+.layers-group {
+  padding: 12px 0;
+  background: none;
+}
+
+.layers-group > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.layers-group:active {
+  transform: none;
+  background: rgba(126, 178, 224, 0.06);
+}
+
+.layers-chev {
+  display: inline-block;
+  font-size: calc(17px * var(--ui-scale));
+  line-height: 1;
+  padding-right: 6px;
+  transition: transform 0.15s ease;
+}
+
+.layers-chev.open {
+  transform: rotate(90deg);
+  padding-right: 0;
+  padding-bottom: 6px;
+}
+
+.layers-sub {
+  padding-left: 12px;
+}
+
+/* the foot: Save as new view · Update · Reset */
+.layers-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  padding-top: 2px;
+}
+
+.layers-link {
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: var(--c-accent);
+  font-size: calc(13px * var(--ui-scale));
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.layers-link.dim {
+  color: var(--c-text-dim);
+}

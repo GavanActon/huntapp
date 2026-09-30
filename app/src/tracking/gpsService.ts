@@ -2,17 +2,28 @@ import { withMap } from '../map/mapController'
 import { useAppStore } from '../state/appStore'
 import { nearestInBounds } from '../config'
 import { useGpsStore, type Fix } from './gpsStore'
-import { useTrackStore } from './trackStore'
 import { requestCompass, startCompass, stopCompass, useCompass } from './compass'
 import { FixFilter } from './fixFilter'
 
 /** A geolocation watch: one fix in the store, filtered (fixFilter.ts) so
  *  the dot and the track do not wander with the canopy's multipath, and
- *  the map follows when asked. It runs only while the locate button is on
- *  or a track is recording, never on its own: location is the hunter's to
- *  switch on. */
+ *  the map follows when asked. It runs while the locate button is on and
+ *  never on its own: location is the hunter's to switch on. The track
+ *  records whenever it runs (trackStore.ts), and the button's state is
+ *  remembered so a reload comes back locating with no prompt. */
 let watchId: number | null = null
 const filter = new FixFilter()
+
+/** Where the locate button's state is kept between loads: '1' on, '0' off. */
+const LOCATING_KEY = 'huntapp.locating'
+
+function remember(on: boolean) {
+  try {
+    localStorage.setItem(LOCATING_KEY, on ? '1' : '0')
+  } catch {
+    /* storage full or blocked: the button just starts off next time */
+  }
+}
 
 export function startGps() {
   if (watchId != null) return
@@ -70,6 +81,7 @@ export function locateAndFollow() {
   }
   useGpsStore.getState().setLocating(true)
   useAppStore.getState().setFollow(true)
+  remember(true)
   startGps()
   const fix = useGpsStore.getState().fix
   if (fix) {
@@ -79,8 +91,7 @@ export function locateAndFollow() {
 }
 
 /** The locate button: off → following, north up → following, heading up
- *  (skipped without a compass) → off; panned away → follow again. The
- *  watch keeps running after off only for a recording. */
+ *  (skipped without a compass) → off; panned away → follow again. */
 export function toggleLocate() {
   const g = useGpsStore.getState()
   if (!g.locating || !useAppStore.getState().follow) return locateAndFollow()
@@ -88,23 +99,44 @@ export function toggleLocate() {
   stopLocating()
 }
 
-/** Location off: no follow, north up, and the watch stops unless a track is recording. */
+/** Location off: no follow, north up, and the watch stops (the track with it). */
 export function stopLocating() {
   const g = useGpsStore.getState()
   if (!g.locating) return
   g.setHeadingUp(false)
   useAppStore.getState().setFollow(false)
   g.setLocating(false)
+  remember(false)
   stopCompass()
   withMap((m) => m.easeTo({ bearing: 0, duration: 400 }))
-  if (!useTrackStore.getState().recordingId) stopGps()
+  stopGps()
+}
+
+/**
+ * At startup: location comes back on if it was on when the app was last
+ * closed (a phone drops a web app it has not looked at for a while). As
+ * locateAndFollow, but with no permission prompts: iOS allows those only
+ * from a tap, so the compass is started without being asked for.
+ */
+export function resumeLocation(): void {
+  let on = false
+  try {
+    on = localStorage.getItem(LOCATING_KEY) === '1'
+  } catch {
+    return
+  }
+  if (!on || useGpsStore.getState().locating) return
+  useGpsStore.getState().setLocating(true)
+  useAppStore.getState().setFollow(true)
+  startCompass()
+  startGps()
 }
 
 /**
  * Back from the pocket. A phone stops a web app's GPS while the screen is
  * off; after a while away the watch is started afresh, so the next fix is
- * new rather than whatever the phone kept, and "Acquiring GPS…" says the
- * dot is where you were until it comes.
+ * new rather than whatever the phone kept, and the locate button's pulse
+ * says the dot is where you were until it comes.
  */
 let hiddenAt = 0
 document.addEventListener('visibilitychange', () => {
@@ -115,8 +147,3 @@ document.addEventListener('visibilitychange', () => {
     startGps()
   }
 })
-
-/** A track stopped: the watch goes too, unless the locate button is on. */
-export function afterRecording() {
-  if (!useGpsStore.getState().locating) stopGps()
-}

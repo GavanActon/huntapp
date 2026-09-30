@@ -1,23 +1,25 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { create } from 'zustand'
-import { SOUND_DESC, SOUND_NAMES, useHuntLog, type LogEntry, type MooseSound } from '../log/huntLog'
-import { movesText, offsetBy, readMoves, useSwing } from '../hunting/moveLayer'
+import { SOUND_DESC, SOUND_NAMES, useHuntLog, type MooseSound } from '../log/huntLog'
+import { snapshot } from '../log/snapshot'
+import { offsetBy } from '../hunting/moveLayer'
 import { requestCompass, startCompass, stopCompass, useCompass } from '../tracking/compass'
+import { locateAndFollow } from '../tracking/gpsService'
 import { useGpsStore } from '../tracking/gpsStore'
 import { compass } from '../weather/openMeteo'
-import { snapshot } from './LogCard'
 import Rose, { Arrow } from './Rose'
-import { IconClose } from './icons'
+import { useTapOff } from './tapOff'
 import './ground.css'
 
 /**
- * A moose heard (or seen) out hunting, placed from where you stand: what
- * it was, the way it came from (the rose turns with the phone, so the
- * arrow to tap points at the sound), about how far, and when, since the
- * phone comes out of a pocket a while after the grunt (now unless told).
- * Four taps, then it is on the map with the others in order and where he
- * is likely to go (moveLayer). It saves at once; the weather and the
- * model's call for the spot are added behind it.
+ * A moose heard (or seen) out there, placed from where you stand: what it
+ * was, the way it came from (the rose turns with the phone, so the arrow
+ * to tap points at the sound), about how far, and when, since the phone
+ * comes out of a pocket a while after the grunt (now unless told). Four
+ * taps, then it is on the map with the others in order and where he is
+ * likely to go (moveLayer), and the live card reads him. It saves at once;
+ * the weather and the model's call for the spot are added behind it.
+ * Opening it turns location on, since the sound is placed from your fix.
  */
 
 interface HeardForm {
@@ -28,8 +30,9 @@ interface HeardForm {
 export const useHeardForm = create<HeardForm>((set) => ({
   open: false,
   show: () => {
-    // from the tap: iOS only grants the compass from one
+    // from the tap: iOS only grants the compass and location from one
     void requestCompass()
+    if (!useGpsStore.getState().locating) locateAndFollow()
     set({ open: true })
   },
   close: () => set({ open: false }),
@@ -51,7 +54,8 @@ export default function HeardCard() {
   const [dist, setDist] = useState<number | null>(null)
   const [ago, setAgo] = useState(0)
   const [missing, setMissing] = useState<string | null>(null)
-  const [saved, setSaved] = useState<LogEntry | null>(null)
+  const ref = useRef<HTMLDivElement>(null)
+  useTapOff(ref, true, close)
 
   useEffect(() => {
     startCompass()
@@ -62,7 +66,7 @@ export default function HeardCard() {
   const turn = live ? heading : 0
 
   const save = () => {
-    if (!fix) return setMissing('No GPS fix yet. Or close this, tap the map where it was, then Log')
+    if (!fix) return
     if (!sound) return setMissing('Tap what you heard')
     if (toward == null) return setMissing('Tap the way it came from')
     if (dist == null) return setMissing('Tap about how far')
@@ -82,51 +86,14 @@ export default function HeardCard() {
     void snapshot('moose', lon, lat)
       .then((snap) => useHuntLog.getState().update(e.id, snap))
       .catch(() => {})
-    setSaved(e)
-  }
-
-  const again = () => {
-    setSaved(null)
-    setSound(null)
-    setToward(null)
-    setDist(null)
-    setAgo(0)
-    setMissing(null)
-  }
-
-  // his routed way round lands a moment after the save: the lines below follow it
-  useSwing((s) => s.swing)
-
-  if (saved) {
-    const r = readMoves()
-    return (
-      <div className="tripbuilder glass ground-card">
-        <div className="tb-head">
-          <span className="tb-title">On the map</span>
-          <button className="icon-btn" onClick={close} aria-label="Close">
-            <IconClose size={16} />
-          </button>
-        </div>
-        <div className="gc-line">{r ? movesText(r) : `${SOUND_NAMES[saved.sound!]} ${saved.from!.distM} m ${compass(saved.from!.bearing)}`}</div>
-        <div className="gc-note">
-          {r && r.downwind != null && !(r.swing ? r.swing.onIt : r.onIt)
-            ? 'The red dashed line is his likeliest way round to your scent: through cover, off open ground near you, holding off where bulls hang up. A bull on a call often circles to wind the caller before he shows. Watch where it meets your scent.'
-            : 'Each sound joins the one before it on the map, in order, so the way he is moving shows.'}
-        </div>
-        <button className="btn-primary" onClick={again}>
-          Heard more
-        </button>
-      </div>
-    )
+    // on the map and on the live card; another sound is the button again
+    close()
   }
 
   return (
-    <div className="tripbuilder glass ground-card">
+    <div className="tripbuilder glass ground-card" ref={ref}>
       <div className="tb-head">
         <span className="tb-title">Heard a moose</span>
-        <button className="icon-btn" onClick={close} aria-label="Close">
-          <IconClose size={16} />
-        </button>
       </div>
       <div className="gc-strength">
         {SOUNDS.map((s) => (
@@ -164,11 +131,8 @@ export default function HeardCard() {
             <Arrow toward={0} size={20} />
             <span>ahead</span>
           </button>
-        ) : (
-          <span className="gc-mid-word">tap an arrow</span>
-        )}
+        ) : null}
       </Rose>
-      <div className="gc-note">{live ? 'Point the phone at the sound and tap "ahead", or tap the arrow toward it.' : 'North is up: tap the arrow toward the sound.'}</div>
       <div className="gc-q">About how far?</div>
       <div className="gc-strength">
         {DISTANCES.map((d) => (
@@ -194,8 +158,8 @@ export default function HeardCard() {
         ))}
       </div>
       {missing && <div className="gc-missing">{missing}</div>}
-      <button className="btn-primary" onClick={save}>
-        Save
+      <button className="btn-primary" disabled={!fix} onClick={save}>
+        {fix ? 'Save' : 'Waiting for a fix…'}
       </button>
     </div>
   )

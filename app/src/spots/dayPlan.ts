@@ -1,7 +1,8 @@
 import type { PointForecast } from '../weather/openMeteo'
 import { sunTimes } from '../weather/sun'
-import { startOfDayMs } from '../time'
+import { floorHourMs } from '../time'
 import { deriveConditions, type Conditions } from './conditions'
+import { activityGrade, type ActivityGrade } from './grades'
 import { activityVerdict } from './huntRules'
 import { fishVerdict } from './fishRules'
 import type { LakeFacts } from './habitatGrid'
@@ -46,7 +47,14 @@ export interface DayPlan {
   best: Slot | null
 }
 
-type RecentDaily = Parameters<typeof deriveConditions>[2]
+export type RecentDaily = Parameters<typeof deriveConditions>[2]
+
+function verdictAt(f: PointForecast, target: Target, ms: number, recent: RecentDaily, lake: LakeFacts | null, w: Weights): { v: Verdict; c: Conditions } | null {
+  const c = deriveConditions(f, ms, recent)
+  if (!c) return null
+  const v = isFish(target) ? fishVerdict(target, c, lake, w) : activityVerdict(target, c, w)
+  return { v, c }
+}
 
 function windowFor(f: PointForecast, target: Target, slot: Slot, dayStartMs: number, recent: RecentDaily, lake: LakeFacts | null, w: Weights): WindowScore | null {
   const sun = sunTimes(dayStartMs + 12 * 3600_000, f.lat, f.lon)
@@ -58,12 +66,11 @@ function windowFor(f: PointForecast, target: Target, slot: Slot, dayStartMs: num
   let best: { v: Verdict; c: Conditions; ms: number } | null = null
   // hourly samples on the hour inside the window
   for (let ms = Math.ceil(startMs / 3600_000) * 3600_000; ms <= endMs; ms += 3600_000) {
-    const c = deriveConditions(f, ms, recent)
-    if (!c) continue
-    const v = isFish(target) ? fishVerdict(target, c, lake, w) : activityVerdict(target, c, w)
-    sum += v.activity
+    const r = verdictAt(f, target, ms, recent, lake, w)
+    if (!r) continue
+    sum += r.v.activity
     n++
-    if (!best || v.activity > best.v.activity) best = { v, c, ms }
+    if (!best || r.v.activity > best.v.activity) best = { v: r.v, c: r.c, ms }
   }
   if (!best || n === 0) return null
   return { slot, atMs: best.ms, startMs, endMs, activity: sum / n, peak: best.v.activity, headline: best.v.headline, verdict: best.v, conditions: best.c }
@@ -72,9 +79,11 @@ function windowFor(f: PointForecast, target: Target, slot: Slot, dayStartMs: num
 /** Seven days of morning and evening windows, from the cached forecast. */
 export function dayPlans(f: PointForecast, target: Target, recent: RecentDaily, lake: LakeFacts | null = null, w: Weights = DEFAULT_WEIGHTS, now = Date.now()): DayPlan[] {
   const out: DayPlan[] = []
-  const first = startOfDayMs(now)
+  const t = new Date(now)
   for (let d = 0; d < 7; d++) {
-    const dayStartMs = first + d * 86_400_000
+    // local midnight of each day by the calendar, so a clock change does not
+    // shift every later day an hour off the forecast's dates
+    const dayStartMs = new Date(t.getFullYear(), t.getMonth(), t.getDate() + d).getTime()
     let morning = windowFor(f, target, 'morning', dayStartMs, recent, lake, w)
     let evening = windowFor(f, target, 'evening', dayStartMs, recent, lake, w)
     // a window already over today is not an option
@@ -95,4 +104,40 @@ export function bestWindow(plans: DayPlan[]): { plan: DayPlan; win: WindowScore 
     }
   }
   return best
+}
+
+export interface HourActivity {
+  ms: number
+  activity: number
+  grade: ActivityGrade
+  warnings: string[]
+}
+
+/** The forecast's last hour on the hour. */
+function lastHourMs(f: PointForecast): number {
+  const times = f.hourly.time
+  return times.length ? floorHourMs(Date.parse(times[times.length - 1])) : 0
+}
+
+let hoursMemo: { key: unknown[]; out: HourActivity[] } | null = null
+
+/**
+ * Every hour on the hour from `floorHourMs(fromMs)` to `toMs` (default:
+ * the forecast's last hour), scored for the target: the bar under each
+ * hour of the strip. Memoised on its inputs (the weights by reference),
+ * so the same call returns the same array.
+ */
+export function hourScores(f: PointForecast, target: Target, recent: RecentDaily, lake: LakeFacts | null, w: Weights, fromMs: number, toMs?: number): HourActivity[] {
+  const from = floorHourMs(fromMs)
+  const to = toMs ?? lastHourMs(f)
+  const key: unknown[] = [f.fetchedAt, f.lon, f.lat, target, w, lake?.id ?? null, recent?.fetchedAt ?? 0, from, to]
+  if (hoursMemo && hoursMemo.key.every((k, i) => k === key[i])) return hoursMemo.out
+  const out: HourActivity[] = []
+  for (let ms = from; ms <= to; ms += 3600_000) {
+    const r = verdictAt(f, target, ms, recent, lake, w)
+    if (!r) continue
+    out.push({ ms, activity: r.v.activity, grade: activityGrade(r.v), warnings: r.v.warnings })
+  }
+  hoursMemo = { key, out }
+  return out
 }

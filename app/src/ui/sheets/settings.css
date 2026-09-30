@@ -1,0 +1,223 @@
+/* Settings, More, Map buttons and Maps on this phone: the rows inside the
+   sheet. Shared row classes (.seg, .switch, .dl-bar, .hotedit-*) come from
+   ui.css; this is the layout that is only theirs. */
+
+.settings {
+  display: flex;
+  flex-direction: column;
+}
+
+/* a row: the name at the left (it takes the width), the control or › at the right */
+.st-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 0;
+  border-top: 1px solid rgba(126, 178, 224, 0.1);
+  color: var(--c-text);
+  text-align: left;
+  font-size: calc(15px * var(--ui-scale));
+  line-height: 1.3;
+}
+
+.settings > .st-row:first-child {
+  border-top: 0;
+}
+
+.st-row > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.st-row > .dim:last-child {
+  flex: none;
+}
+
+/* a row whose name is itself the tap (Maps on this phone) beside a button of its own */
+.st-row > button:first-child {
+  padding: 0;
+  text-align: left;
+  color: inherit;
+}
+
+.st-row small {
+  font-size: calc(12px * var(--ui-scale));
+}
+
+/* the accent word at the right: 2 new · Download */
+.st-more {
+  flex: none;
+  color: var(--c-accent);
+  font-size: calc(13px * var(--ui-scale));
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.st-more:disabled {
+  color: var(--c-text-dim);
+}
+
+/* the progress bar under the Maps row while a download runs */
+.st-dl {
+  padding: 0 0 8px;
+}
+
+.st-dl .dl-bar {
+  height: 4px;
+}
+
+/* the segmented controls in these sheets scale with the text and sit tighter */
+.settings .seg {
+  flex: none;
+  max-width: 100%;
+}
+
+.settings .seg button {
+  padding: 5px 10px;
+  font-size: calc(13px * var(--ui-scale));
+}
+
+/* a slider row: the name and its number over the range */
+.st-slider {
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+.st-slider > :first-child {
+  flex: 1 1 100%;
+}
+
+.st-slider input[type='range'] {
+  flex: 1 1 100%;
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(126, 178, 224, 0.25);
+}
+
+.st-slider input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--c-accent);
+  border: 3px solid var(--c-bg-raised);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+
+.st-slider .numeral {
+  color: var(--c-text-dim);
+  font-weight: 600;
+}
+
+/* a small heading between groups of rows */
+.st-sec {
+  padding: 14px 0 4px;
+  font-size: calc(11px * var(--ui-scale));
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-text-dim);
+  font-weight: 700;
+}
+
+.settings > .st-sec:first-child {
+  padding-top: 4px;
+}
+
+/* the streak-size choices draw the streak they set */
+.streak-a {
+  display: block;
+}
+
+/* ---------- Maps on this phone ---------- */
+
+.st-file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid rgba(126, 178, 224, 0.1);
+  font-size: calc(14px * var(--ui-scale));
+  color: var(--c-text);
+}
+
+.st-file > :first-child {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.st-file.missing {
+  color: var(--c-text-dim);
+}
+
+.st-file .numeral {
+  flex: none;
+  color: var(--c-text-dim);
+  font-size: calc(12.5px * var(--ui-scale));
+}
+
+.st-file svg {
+  flex: none;
+  color: var(--c-track);
+}
+
+.st-file .st-new {
+  flex: none;
+  font-size: calc(11px * var(--ui-scale));
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(63, 200, 255, 0.16);
+  color: var(--c-accent);
+}
+
+.st-files-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0 4px;
+  font-size: calc(13px * var(--ui-scale));
+  color: var(--c-text-dim);
+}
+
+.st-files-foot > :first-child {
+  flex: 1;
+}
+
+.st-line {
+  padding: 6px 0;
+  font-size: calc(13px * var(--ui-scale));
+  color: var(--c-text-dim);
+}
+
+.st-line.error {
+  color: var(--c-danger);
+}
+
+.st-dlhead {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 0 6px;
+  font-size: calc(12.5px * var(--ui-scale));
+  color: var(--c-text-dim);
+}
+
+.st-download {
+  margin: 6px 0 4px;
+}
+
+/* ---------- Map buttons ---------- */
+
+.hotedit-slot > span:nth-child(2),
+.hotedit-locked > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}

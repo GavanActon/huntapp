@@ -62,6 +62,31 @@ export function hourShort(ms: number): string {
   return `${h % 12 || 12}${h < 12 ? 'a' : 'p'}`
 }
 
+/** Clock with no suffix: "7:30", "6:05". */
+export function clockShort(ms: number): string {
+  const d = new Date(ms)
+  const h = d.getHours()
+  return `${h % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+/** Hour with its half of the day: "7 pm", "11 am". */
+export function hourAmPm(ms: number): string {
+  const h = new Date(ms).getHours()
+  return `${h % 12 || 12} ${h < 12 ? 'am' : 'pm'}`
+}
+
+/** Compact clock: "4:40p", "2:10p". */
+export function hourMinShort(ms: number): string {
+  const d = new Date(ms)
+  const h = d.getHours()
+  return `${h % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}${h < 12 ? 'a' : 'p'}`
+}
+
+/** Weekday and day of month: "Sun 27". */
+export function dayDate(ms: number): string {
+  return `${dayShort(ms)} ${new Date(ms).getDate()}`
+}
+
 /** Top of the current hour. */
 export function floorHourMs(ms = Date.now()): number {
   const d = new Date(ms)

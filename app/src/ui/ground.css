@@ -1,4 +1,4 @@
-/* the ground-wind card (GroundCard.tsx) and the tap popup's ground line */
+/* the bottom-bar forms (Heard, Wind check, Log), the outing card's verdict badges and the locate button's heading-up look */
 
 .ground-card .gc-line { font-size: 13px; color: var(--c-text); line-height: 1.35; }
 .ground-card .gc-note { font-size: 11.5px; color: var(--c-text-dim); line-height: 1.35; }

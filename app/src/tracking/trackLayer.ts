@@ -1,34 +1,49 @@
 import type { FeatureCollection } from 'geojson'
 import type { FilterSpecification, GeoJSONSource, Map as MlMap } from 'maplibre-gl'
 import { onEachMap } from '../map/mapController'
-import { useTrackStore, type Track } from './trackStore'
+import { outingSince } from '../log/outingTime'
+import { useTrackStore, type Track, type TrackPoint } from './trackStore'
 
-/** The trails on the map: the live recording in the track colour, the
- *  tracks switched on in Places in a quieter one. Where a track went quiet
- *  (the phone in a pocket, its screen off), a faint dotted line joins one
+/** The trail on the map: the live recording from the start of this outing
+ *  in the track colour, or, while an outing from the Hunt log is open, its
+ *  stretch of every track in a quieter one. Where a track went quiet (the
+ *  phone in a pocket, its screen off), a faint dotted line joins one
  *  stretch to the next: you got from there to here, the way unrecorded. */
 
 const SRC = 'tracks'
 let layersOn: MlMap | null = null
+/** the outing being looked at, or null for the live track */
+let replay: { from: number; to: number } | null = null
+
+function lines(points: TrackPoint[], live: boolean, features: FeatureCollection['features']) {
+  if (points.length < 2) return
+  const segs: [number, number][][] = []
+  const gaps: [number, number][][] = []
+  let prev: [number, number] | null = null
+  for (const p of points) {
+    if (p.gap && prev) gaps.push([prev, [p.lon, p.lat]])
+    if (p.gap || !segs.length) segs.push([])
+    prev = [p.lon, p.lat]
+    segs[segs.length - 1].push(prev)
+  }
+  const walked = segs.filter((g) => g.length >= 2)
+  if (walked.length) features.push({ type: 'Feature', geometry: { type: 'MultiLineString', coordinates: walked }, properties: { live } })
+  if (gaps.length) features.push({ type: 'Feature', geometry: { type: 'MultiLineString', coordinates: gaps }, properties: { live, gap: true } })
+}
 
 function fc(): FeatureCollection {
   const s = useTrackStore.getState()
-  const want = (t: Track) => t.id === s.recordingId || s.shown.includes(t.id)
   const features: FeatureCollection['features'] = []
-  for (const t of s.tracks) {
-    if (!want(t) || t.points.length < 2) continue
-    const segs: [number, number][][] = []
-    const gaps: [number, number][][] = []
-    let prev: [number, number] | null = null
-    for (const p of t.points) {
-      if (p.gap && prev) gaps.push([prev, [p.lon, p.lat]])
-      if (p.gap || !segs.length) segs.push([])
-      prev = [p.lon, p.lat]
-      segs[segs.length - 1].push(prev)
-    }
-    const live = t.id === s.recordingId
-    features.push({ type: 'Feature', geometry: { type: 'MultiLineString', coordinates: segs.filter((g) => g.length >= 2) }, properties: { live } })
-    if (gaps.length) features.push({ type: 'Feature', geometry: { type: 'MultiLineString', coordinates: gaps }, properties: { live, gap: true } })
+  if (replay) {
+    const { from, to } = replay
+    for (const t of s.tracks) lines(t.points.filter((p) => p.ts >= from && p.ts <= to), false, features)
+    return { type: 'FeatureCollection', features }
+  }
+  const t: Track | undefined = s.tracks.find((x) => x.id === s.recordingId)
+  if (t) {
+    // this outing only: a track picked up after hours in a pocket starts again from here
+    const since = outingSince(t.points.map((p) => p.ts))
+    lines(since == null ? t.points : t.points.filter((p) => p.ts >= since), true, features)
   }
   return { type: 'FeatureCollection', features }
 }
@@ -63,6 +78,12 @@ function render() {
   ;(m.getSource(SRC) as GeoJSONSource | undefined)?.setData(fc())
 }
 
+/** An outing from the Hunt log on the map: the points of every track inside the slice; null puts the live track back. */
+export function showOutingTrack(slice: { from: number; to: number } | null): void {
+  replay = slice
+  render()
+}
+
 let wired = false
 export function initTrackLayer() {
   if (wired) return
@@ -75,6 +96,6 @@ export function initTrackLayer() {
     })
   })
   useTrackStore.subscribe((s, prev) => {
-    if (s.tracks !== prev.tracks || s.shown !== prev.shown || s.recordingId !== prev.recordingId) render()
+    if (s.tracks !== prev.tracks || s.recordingId !== prev.recordingId) render()
   })
 }

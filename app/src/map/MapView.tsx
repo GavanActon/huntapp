@@ -8,20 +8,21 @@ import { usePlacesStore } from '../state/placesStore'
 import { geoUrls, setMap, withMap } from './mapController'
 import { useMeasureStore } from '../measure/measureStore'
 import { explainPoint } from '../spots/scoring'
+import { spotGrade, spotGradeWords } from '../spots/grades'
 import { useSpotsStore } from '../state/spotsStore'
 import { TARGET_NAMES } from '../spots/types'
 import { buildMapStyle, contourFilters } from './mapStyle'
 import { offlineComplete, registerAllDataFiles, sourceModes } from './pmtilesRegistry'
 import { attachTapWeather } from './tapWeather'
-import { attachTapGround } from './tapGround'
 import { closeOnTapOff } from './tapPopup'
-import { showPlacePopup } from './placePopup'
+import { DROPPED_NAME, showPlacePopup } from './placePopup'
 import { useScent } from '../weather/micro/scent'
-import { useLogForm } from '../ui/LogCard'
-import { openRoutes, useRoutes } from '../routes/routeStore'
+import { useRoutes } from '../routes/routeStore'
 
 import type { FeatureCollection } from 'geojson'
 import 'maplibre-gl/dist/maplibre-gl.css'
+// the tap popup's score circle (the rest of the popup is in ui.css)
+import '../ui/sheets/digin.css'
 
 const VIEW_KEY = 'huntapp.lastView'
 
@@ -93,7 +94,8 @@ async function resolveGeo(): Promise<Map<string, string>> {
   return geo
 }
 
-function fmtCoord(lon: number, lat: number): string {
+/** "51.47312, -90.18844": lat, lon to five places, for Copy coordinates. */
+export function fmtCoord(lon: number, lat: number): string {
   return `${lat.toFixed(5)}, ${lon.toFixed(5)}`
 }
 
@@ -141,6 +143,20 @@ export default function MapView() {
       const m = map
       if (import.meta.env.DEV) (window as unknown as { __map?: unknown }).__map = m
 
+      // the credits start folded to their (i): MapLibre opens a compact
+      // attribution the first time a source has something to say, so fold
+      // it then, once (its own listeners run first, being registered first)
+      const foldAttrib = () => {
+        const d = el.querySelector('details.maplibregl-ctrl-attrib.maplibregl-compact')
+        if (!d) return
+        d.classList.remove('maplibregl-compact-show')
+        d.removeAttribute('open')
+        m.off('styledata', foldAttrib)
+        m.off('sourcedata', foldAttrib)
+      }
+      m.on('styledata', foldAttrib)
+      m.on('sourcedata', foldAttrib)
+
       // the controller hands the map to the layer modules once the style is
       // parsed ('style.load'), not 'load': a live tile source that never
       // finishes would otherwise hold every layer back
@@ -181,8 +197,9 @@ export default function MapView() {
       })
       m.on('dragstart', () => useAppStore.getState().setFollow(false))
 
-      // tap a place: your own pin says what it is, with Delete (placePopup); the camp
-      // and the lakes select and open Places; tap the map: a popup with the spot and Save
+      // tap a place: your own pin says what it is, with Delete (placePopup);
+      // the camp and the lakes are presets and open Dig in on themselves.
+      // Tap the map: a three-line popup, Dig in behind it
       m.on('click', 'places-pt', (e) => {
         // the ruler, a person being placed and the route card each own the tap
         if (useMeasureStore.getState().active || useScent.getState().adding || useRoutes.getState().open) return
@@ -190,8 +207,8 @@ export default function MapView() {
         const p = id ? usePlacesStore.getState().places.find((q) => q.id === id) : undefined
         if (!p) return
         if (p.savedAt > 0) return showPlacePopup(m, p)
-        usePlacesStore.getState().select(p.id)
-        useAppStore.getState().setSheetTab('places')
+        // a preset: never selected (the heat and the strip stay where they are)
+        useAppStore.getState().openSheet({ kind: 'digin', lon: p.lon, lat: p.lat })
       })
       m.on('click', (e) => {
         if (useMeasureStore.getState().active) return // the ruler owns the tap
@@ -199,79 +216,44 @@ export default function MapView() {
         const scent = useScent.getState()
         // placing another person: the tap is where they sit
         if (scent.adding) return scent.add(e.lngLat.lng, e.lngLat.lat)
-        // a place, a wind check or a kept route has its own tap
-        const hit = m.queryRenderedFeatures(e.point, { layers: ['places-pt', 'windchecks-hit', 'routes-hit'].filter((id) => m.getLayer(id)) })
+        // a place, a numbered pin, a wind check or a kept route has its own tap
+        const hit = m.queryRenderedFeatures(e.point, { layers: ['places-pt', 'spots-pin', 'windchecks-hit', 'routes-hit'].filter((id) => m.getLayer(id)) })
         if (hit.length) return
         const { lng, lat } = e.lngLat
         const el = document.createElement('div')
-        // glance first: the weather there, the game score, Scent and Pin.
-        // Everything else — the ground air's reasons, the score's reasons,
-        // the coordinates, logging the wind — waits behind "more".
+        // one glance: the weather there, the game score, then Scent, Pin and
+        // Dig in. Everything else is the sheet's.
         const sp = useSpotsStore.getState()
-        const why = sp.conditions && sp.heat ? explainPoint(sp.target, lng, lat, sp.conditions, sp.weights) : null
+        const why = sp.conditions ? explainPoint(sp.target, lng, lat, sp.conditions, sp.weights) : null
         const esc = (t: string) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] ?? c)
-        const grade = (v: number) => (v >= 0.75 ? 'top' : v >= 0.55 ? 'good' : v >= 0.35 ? 'fair' : 'poor')
-        const nReasons = sp.detail === 'full' ? 8 : 4
-        // with people already sitting, the scent button adds the next one here
-        const sitting = scent.people.length
-        const scentBtn = sitting ? `+ Person ${sitting + 1}` : 'Scent cone'
         const gameHtml = why
-          ? `<div class="pp-game"><b class="pp-score pp-${grade(why.score)}">${Math.round(why.score * 100)}</b><span>${esc(TARGET_NAMES[sp.target])} · ${grade(why.score)}</span></div>`
+          ? `<div class="pp-game"><b class="pp-score pp-${spotGrade(why.score)}">${Math.round(why.score * 100)}</b><span>${esc(TARGET_NAMES[sp.target])} · ${esc(spotGradeWords(sp.target, why.score))}</span></div>`
           : ''
-        const gameMore = why
-          ? `<div class="pp-more-h">${esc(TARGET_NAMES[sp.target])}${sp.result?.verdict.headline ? ` · ${esc(sp.result.verdict.headline)}` : ''}</div><ul class="pp-reasons">${why.reasons
-              .slice(0, nReasons)
-              .map((r) => `<li>${esc(r)}</li>`)
-              .join('')}<li><button class="pp-details linklike" type="button">the arithmetic and the knobs ▸</button></li></ul>`
-          : ''
-        el.innerHTML =
-          `<div class="depth-popup-wx"></div>${gameHtml}` +
-          `<div class="pp-acts"><button class="pp-scent">${scentBtn}</button><button class="pp-route">Route</button><button class="pp-log">Log</button><button class="pp-save">Pin</button><button class="pp-more-btn" aria-expanded="false">more</button></div>` +
-          `<div class="pp-more" hidden><div class="depth-popup-ground"></div>${gameMore}<div class="pp-coord">${fmtCoord(lng, lat)}</div></div>`
+        el.innerHTML = `<div class="depth-popup-wx"></div>${gameHtml}<div class="pp-acts"><button class="pp-scent">Scent</button><button class="pp-save">Pin</button><button class="pp-digin">Dig in ›</button></div>`
         const popup = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, closeOnClick: false, offset: 8, maxWidth: '260px' })
           .setLngLat([lng, lat])
           .setDOMContent(el)
           .addTo(m)
         // no ×: tap again, anywhere off it, and it goes
         closeOnTapOff(m, popup)
-        // wind, temperature, sky and rain chance at the planning time
+        // wind, temperature and sky at the planning time
         const stopWx = attachTapWeather(el.querySelector('.depth-popup-wx') as HTMLElement, lng, lat)
         popup.on('close', stopWx)
-        // the air at head height there, and logging what it really does
-        const stopGround = attachTapGround(el.querySelector('.depth-popup-ground') as HTMLElement, lng, lat, () => popup.remove())
-        popup.on('close', stopGround)
-        el.querySelector('.pp-more-btn')?.addEventListener('click', (ev) => {
-          const more = el.querySelector('.pp-more') as HTMLElement
-          more.hidden = !more.hidden
-          const b = ev.currentTarget as HTMLElement
-          b.textContent = more.hidden ? 'more' : 'less'
-          b.setAttribute('aria-expanded', String(!more.hidden))
-        })
+        // with people already sitting, Scent adds the next one here
         el.querySelector('.pp-scent')?.addEventListener('click', () => {
           const sc = useScent.getState()
           if (sc.people.length) sc.add(lng, lat)
           else sc.show(lng, lat)
           popup.remove()
         })
-        el.querySelector('.pp-route')?.addEventListener('click', () => {
-          openRoutes({ lon: lng, lat })
-          popup.remove()
-        })
-        el.querySelector('.pp-log')?.addEventListener('click', () => {
-          useLogForm.getState().open(lng, lat)
-          popup.remove()
-        })
-        el.querySelector('.pp-details')?.addEventListener('click', () => {
-          usePlacesStore.getState().select(null)
-          useSpotsStore.getState().setProbe({ lon: lng, lat, name: 'Tapped point' })
-          useAppStore.getState().setSheetTab('spots')
-          popup.remove()
-        })
+        // a pin, dropped and left alone: nothing selected, no sheet
         el.querySelector('.pp-save')?.addEventListener('click', () => {
-          const p = usePlacesStore.getState().add({ name: 'Pin', lon: lng, lat, kind: 'stand' })
-          usePlacesStore.getState().select(p.id)
-          useAppStore.getState().setSheetTab('places')
+          usePlacesStore.getState().add({ name: DROPPED_NAME, lon: lng, lat, kind: 'stand' })
           popup.remove()
+        })
+        el.querySelector('.pp-digin')?.addEventListener('click', () => {
+          popup.remove()
+          useAppStore.getState().openSheet({ kind: 'digin', lon: lng, lat })
         })
       })
       m.on('mouseenter', 'places-pt', () => (m.getCanvas().style.cursor = 'pointer'))

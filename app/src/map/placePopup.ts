@@ -7,8 +7,8 @@ import '../ui/minipop.css'
 
 /**
  * A pin of your own, tapped: its name, when it was dropped and its note,
- * with Delete, and Open for the Places sheet on it (what a tap on a place
- * did before). The camp and the lakes are presets and keep the plain tap.
+ * with Delete, and Open for the Pins sheet on it. The camp and the lakes
+ * are presets and open Dig in instead (MapView).
  *
  * A pin never named and with no note goes at once; one you have named or
  * written on asks first.
@@ -46,7 +46,8 @@ export function showPlacePopup(map: MlMap, p: SavedPlace) {
   })
   el.querySelector('.pl-open')?.addEventListener('click', () => {
     pop.remove()
+    // one of the two places a pin gets selected (the other is a Pins row)
     usePlacesStore.getState().select(p.id)
-    useAppStore.getState().setSheetTab('places')
+    useAppStore.getState().openSheet({ kind: 'pins' })
   })
 }

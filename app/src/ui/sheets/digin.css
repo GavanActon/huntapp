@@ -1,0 +1,397 @@
+/* Dig in (DigInSheet) and Scoring (ScoringSheet): the score row, the
+   reasons, the Wind and See rows opened in place, the actions, and the
+   arithmetic and knobs one sheet deeper. The shared parts (.sheet-head,
+   .digin-row, .digin-score, .digin-bar, .digin-tick, .digin-hours,
+   .menu-pop) are in ui.css; this holds only what is theirs alone. Also the
+   tap popup's score circle (MapView imports this for it). */
+
+/* ---------- the tap popup's score ---------- */
+
+.pp-game .pp-score {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  min-width: 0;
+  padding: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(89, 224, 184, 0.18);
+  border: 1.5px solid var(--c-track);
+  color: var(--c-track);
+  font-size: calc(13px * var(--ui-scale));
+  font-weight: 800;
+}
+
+.pp-game .pp-score.pp-fair {
+  background: rgba(230, 220, 180, 0.14);
+  border-color: #e6dcb4;
+  color: #e6dcb4;
+}
+
+.pp-game .pp-score.pp-poor {
+  background: rgba(126, 178, 224, 0.08);
+  border-color: var(--c-text-faint);
+  color: var(--c-text-dim);
+}
+
+.pp-game > span {
+  font-size: calc(14px * var(--ui-scale));
+  font-weight: 700;
+}
+
+.pp-acts .pp-digin {
+  background: var(--c-accent);
+  border: 1px solid var(--c-accent);
+  color: #07141f;
+}
+
+/* ---------- Dig in ---------- */
+
+.digin {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 8px;
+}
+
+/* the score circle beside the grade line, the reasons and Scoring › */
+.digin-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.digin-case {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.digin-grade {
+  font-size: calc(15px * var(--ui-scale));
+  font-weight: 700;
+  color: var(--c-text);
+}
+
+.digin-grade .dim {
+  font-weight: 500;
+}
+
+.digin-warn {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(255, 138, 128, 0.14);
+  color: #ffb3ab;
+  font-size: calc(13px * var(--ui-scale));
+  font-weight: 600;
+}
+
+.digin-more {
+  align-self: flex-start;
+  padding: 2px 0 0;
+  color: var(--c-accent);
+  font-size: calc(13px * var(--ui-scale));
+  font-weight: 650;
+}
+
+.digin-empty {
+  padding: 6px 0;
+  color: var(--c-text-dim);
+  font-size: calc(14px * var(--ui-scale));
+}
+
+.digin-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+/* a row opened in place: what it unfolds sits under the row, same rhythm */
+.digin-open {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 0 12px;
+  border-top: 1px solid rgba(126, 178, 224, 0.1);
+}
+
+.digin-open > .digin-row {
+  border-top: 0;
+  padding-bottom: 6px;
+}
+
+/* the bar with the planning-time tick beside it, not in it (ui.css rounds
+   the bar's first and last child: those must be windows) */
+.digin-barwrap {
+  position: relative;
+  margin-top: 4px;
+}
+
+.digin-barwrap > .digin-bar {
+  margin-top: 0;
+}
+
+/* the bar's other regimes (drains is blue in ui.css; wind stays grey) */
+.digin-bar > .gd-up {
+  background: rgba(255, 180, 84, 0.55);
+}
+
+.digin-bar > .gd-breeze {
+  background: rgba(89, 224, 184, 0.45);
+}
+
+.digin-bar > .gd-calm {
+  background: rgba(160, 180, 200, 0.18);
+}
+
+.digin-line {
+  font-size: calc(13px * var(--ui-scale));
+  color: var(--c-text);
+  line-height: 1.35;
+}
+
+/* the eight distances: two per line, the point bold */
+.digin-see {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px 8px;
+  font-size: calc(13px * var(--ui-scale));
+  color: var(--c-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.digin-see > span {
+  display: flex;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.digin-see b {
+  min-width: 2.2em;
+  font-weight: 700;
+}
+
+.digin-see .open {
+  color: var(--c-track);
+}
+
+.digin-see .thick {
+  color: var(--c-text-dim);
+}
+
+/* Set up here (primary), Route in */
+.digin-acts {
+  display: flex;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.digin-acts > button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px;
+  border-radius: 14px;
+  font-size: calc(15px * var(--ui-scale));
+  font-weight: 600;
+  background: rgba(126, 178, 224, 0.1);
+  border: 1px solid rgba(126, 178, 224, 0.22);
+  color: var(--c-text);
+}
+
+.digin-acts > .digin-pri {
+  background: var(--c-accent);
+  border-color: var(--c-accent);
+  color: #04121d;
+  font-weight: 750;
+}
+
+.digin-acts > button:active {
+  transform: scale(0.985);
+}
+
+/* ---------- Scoring ---------- */
+
+.scoring {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 8px;
+}
+
+.scoring-sec {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 12px 0 4px;
+  font-size: calc(11px * var(--ui-scale));
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-text-dim);
+}
+
+.scoring-sec > b {
+  font-size: calc(13px * var(--ui-scale));
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--c-text);
+}
+
+.scoring-sec > em {
+  margin-left: auto;
+  font-style: normal;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 400;
+  font-size: calc(12px * var(--ui-scale));
+}
+
+/* one part of the case: its value, its label, its knob's word */
+.sc-line {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(126, 178, 224, 0.06);
+  font-size: calc(12.5px * var(--ui-scale));
+}
+
+.sc-line:last-child {
+  border-bottom: 0;
+}
+
+.sc-val {
+  min-width: 46px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text);
+}
+
+.sc-val.up {
+  color: var(--c-track);
+}
+
+.sc-val.down {
+  color: #ff8a80;
+}
+
+.sc-label {
+  flex: 1;
+  min-width: 0;
+  color: var(--c-text-dim);
+}
+
+.sc-label em {
+  font-style: normal;
+  color: var(--c-text-faint);
+}
+
+.sc-w {
+  font-size: calc(10.5px * var(--ui-scale));
+  color: var(--c-accent);
+}
+
+.sc-w.off {
+  color: var(--c-text-faint);
+  text-decoration: line-through;
+}
+
+/* the sum: habitat × site = score */
+.sc-sum {
+  margin-top: 6px;
+  font-size: calc(13px * var(--ui-scale));
+  color: var(--c-text-dim);
+}
+
+.sc-sum b {
+  color: var(--c-text);
+}
+
+.sc-note {
+  font-size: calc(12.5px * var(--ui-scale));
+  color: var(--c-text-dim);
+  line-height: 1.35;
+}
+
+/* a folded group of knobs: its name, how many are off their rule */
+.sc-fold {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(126, 178, 224, 0.08);
+  color: var(--c-text);
+  font-size: calc(14px * var(--ui-scale));
+  font-weight: 600;
+  text-align: left;
+}
+
+.sc-fold em {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--c-text-dim);
+  font-size: calc(12px * var(--ui-scale));
+}
+
+/* a knob: its name and what it weighs, the slider, its word */
+.sc-knob {
+  display: grid;
+  grid-template-columns: 1fr 96px 46px;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.sc-knob-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.sc-knob-title {
+  font-size: calc(13px * var(--ui-scale));
+  color: var(--c-text);
+}
+
+.sc-knob-desc {
+  font-size: calc(11px * var(--ui-scale));
+  color: var(--c-text-dim);
+  line-height: 1.3;
+}
+
+.sc-knob input[type='range'] {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--c-accent);
+}
+
+.sc-knob-val {
+  font-size: calc(11px * var(--ui-scale));
+  text-align: right;
+  color: var(--c-accent);
+}
+
+.sc-knob-val.off {
+  color: var(--c-text-faint);
+}
+
+.sc-reset {
+  align-self: flex-start;
+  margin-top: 10px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: rgba(126, 178, 224, 0.1);
+  border: 1px solid rgba(126, 178, 224, 0.22);
+  color: var(--c-text);
+  font-size: calc(13.5px * var(--ui-scale));
+  font-weight: 600;
+}

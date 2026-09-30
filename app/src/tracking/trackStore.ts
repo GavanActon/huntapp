@@ -1,13 +1,17 @@
 import { create } from 'zustand'
+import { OUTING_GAP_MS } from '../log/outingTime'
 import { useGpsStore, type Fix } from './gpsStore'
 
 /**
- * Track mode: the phone's trail, recorded from the fixes while it is on.
- * The fixes come filtered (fixFilter.ts); a point is kept when the phone
- * has moved more than MIN_STEP_M and more than the fix's own wander since
- * the last one (a stand does not fill the log), a silence longer than
- * GAP_MS starts a new segment, and every track is kept in localStorage so
- * a day's walk survives a reload and exports as GPX from the Places tab.
+ * The phone's trail, recorded from the fixes whenever location is on: the
+ * locate button starts and stops it, nothing else. A fix comes filtered
+ * (fixFilter.ts); a point is kept when the phone has moved more than
+ * MIN_STEP_M and more than the fix's own wander since the last one (a stand
+ * does not fill the log), and a silence longer than GAP_MS starts a new
+ * segment. Location switched back on within OUTING_GAP_MS picks the last
+ * track up again; longer than that starts a new one. Every track is kept in
+ * localStorage so a day's walk survives a reload. The Hunt log cuts the
+ * tracks into outings by time (log/outings.ts) and exports them as GPX.
  */
 
 export interface TrackPoint {
@@ -37,13 +41,29 @@ const STILL_KN = 0.5
 const GAP_MS = 120_000
 const MAX_POINTS = 20_000
 
-function haversineM(aLon: number, aLat: number, bLon: number, bLat: number): number {
+export function haversineM(aLon: number, aLat: number, bLon: number, bLat: number): number {
   const R = 6371008.8
   const toRad = Math.PI / 180
   const dLat = (bLat - aLat) * toRad
   const dLon = (bLon - aLon) * toRad
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(aLat * toRad) * Math.cos(bLat * toRad) * Math.sin(dLon / 2) ** 2
   return 2 * R * Math.asin(Math.sqrt(h))
+}
+
+/** The walked distance along points between t0 and t1 inclusive: the steps with both ends inside, gap joins not counted. */
+export function sliceDistanceM(points: TrackPoint[], t0: number, t1: number): number {
+  let d = 0
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1]
+    const b = points[i]
+    if (b.gap || a.ts < t0 || b.ts > t1) continue
+    d += haversineM(a.lon, a.lat, b.lon, b.lat)
+  }
+  return d
+}
+
+function distanceOf(points: TrackPoint[]): number {
+  return points.length ? sliceDistanceM(points, points[0].ts, points[points.length - 1].ts) : 0
 }
 
 function load(): Track[] {
@@ -55,13 +75,14 @@ function load(): Track[] {
   }
 }
 
+/** Written a couple of seconds after the last change, whatever the store holds by then. */
 let saveTimer: number | null = null
-function save(tracks: Track[]) {
+function save() {
   if (saveTimer != null) return
   saveTimer = window.setTimeout(() => {
     saveTimer = null
     try {
-      localStorage.setItem(KEY, JSON.stringify(tracks))
+      localStorage.setItem(KEY, JSON.stringify(useTrackStore.getState().tracks))
     } catch {
       /* full: the track lives in memory until something is deleted */
     }
@@ -72,16 +93,13 @@ interface TrackState {
   tracks: Track[]
   /** the id of the track being recorded, or null */
   recordingId: string | null
-  /** tracks drawn on the map besides the live one */
-  shown: string[]
   start: () => void
-  /** Pick an unfinished track back up (the app was reloaded mid-walk); false if there is none to resume. */
+  /** Pick a track back up (location on again within the gap, or a reload mid-walk); false if there is none. */
   resume: (id: string) => boolean
   stop: () => void
   push: (fix: Fix) => void
   rename: (id: string, name: string) => void
   remove: (id: string) => void
-  toggleShown: (id: string) => void
 }
 
 function dayName(ms: number): string {
@@ -89,35 +107,55 @@ function dayName(ms: number): string {
   return `${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()]} ${d.getDate()} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()]} ${d.getHours() % 12 || 12}${d.getHours() < 12 ? 'a' : 'p'}`
 }
 
+/** The name a track gets when it starts: 'Sun 27 Sep 6a'. */
+export function defaultTrackName(startedAt: number): string {
+  return dayName(startedAt)
+}
+
+/** The track still carries the name it was given when it started (nobody renamed it). */
+export function isDefaultName(t: Track): boolean {
+  return t.name === dayName(t.startedAt)
+}
+
+function lastTs(t: Track): number {
+  return t.points[t.points.length - 1]?.ts ?? t.startedAt
+}
+
 export const useTrackStore = create<TrackState>((set, get) => ({
   tracks: load(),
   recordingId: null,
-  shown: [],
   start: () => {
     if (get().recordingId) return
     const t: Track = { id: `t-${Date.now().toString(36)}`, name: dayName(Date.now()), startedAt: Date.now(), endedAt: null, points: [], distanceM: 0 }
     const tracks = [...get().tracks, t]
     set({ tracks, recordingId: t.id })
-    save(tracks)
+    save()
     const fix = useGpsStore.getState().fix
     if (fix) get().push(fix)
   },
   resume: (id) => {
     if (get().recordingId) return get().recordingId === id
     const t = get().tracks.find((x) => x.id === id)
-    if (!t || t.endedAt != null) return false
-    // the silence while the app was gone makes the next fix a new segment
-    set({ recordingId: id })
+    if (!t) return false
+    // the silence while location was off makes the next fix a new segment
+    if (t.endedAt == null) {
+      set({ recordingId: id })
+      return true
+    }
+    const tracks = get().tracks.map((x) => (x.id === id ? { ...x, endedAt: null } : x))
+    set({ tracks, recordingId: id })
+    save()
     return true
   },
   stop: () => {
     const id = get().recordingId
     if (!id) return
-    const tracks = get().tracks.map((t) => (t.id === id ? { ...t, endedAt: Date.now() } : t))
+    // it ended when the walking did, not when the button was tapped
+    const tracks = get().tracks.map((t) => (t.id === id ? { ...t, endedAt: lastTs(t) } : t))
     // an empty track is nothing to keep
     const kept = tracks.filter((t) => t.id !== id || t.points.length >= 2)
     set({ tracks: kept, recordingId: null })
-    save(kept)
+    save()
   },
   push: (fix) => {
     const id = get().recordingId
@@ -142,33 +180,101 @@ export const useTrackStore = create<TrackState>((set, get) => ({
       return { ...t, points: [{ lon: fix.lon, lat: fix.lat, ts: fix.ts }] }
     })
     set({ tracks })
-    save(tracks)
+    save()
   },
   rename: (id, name) => {
     const tracks = get().tracks.map((t) => (t.id === id ? { ...t, name } : t))
     set({ tracks })
-    save(tracks)
+    save()
   },
   remove: (id) => {
     const tracks = get().tracks.filter((t) => t.id !== id)
-    set({ tracks, shown: get().shown.filter((s) => s !== id), recordingId: get().recordingId === id ? null : get().recordingId })
-    save(tracks)
+    set({ tracks, recordingId: get().recordingId === id ? null : get().recordingId })
+    save()
   },
-  toggleShown: (id) => set((s) => ({ shown: s.shown.includes(id) ? s.shown.filter((x) => x !== id) : [...s.shown, id] })),
 }))
 
-/** The recording follows the GPS store: one subscription, wired once. */
+/**
+ * Cut the points between t0 and t1 (inclusive) out of every track: an
+ * outing deleted from the Hunt log. The point after a cut starts a new
+ * segment; a track left under 2 points goes altogether.
+ */
+export function removeRange(t0: number, t1: number): void {
+  const s = useTrackStore.getState()
+  let changed = false
+  const tracks: Track[] = []
+  for (const t of s.tracks) {
+    if (!t.points.some((p) => p.ts >= t0 && p.ts <= t1)) {
+      tracks.push(t)
+      continue
+    }
+    changed = true
+    const kept: TrackPoint[] = []
+    let cut = false
+    for (const p of t.points) {
+      if (p.ts >= t0 && p.ts <= t1) {
+        cut = true
+        continue
+      }
+      kept.push(cut && kept.length ? { ...p, gap: true } : p)
+      cut = false
+    }
+    if (kept.length < 2) continue
+    tracks.push({ ...t, points: kept, distanceM: distanceOf(kept) })
+  }
+  if (!changed) return
+  const recordingId = s.recordingId != null && tracks.some((t) => t.id === s.recordingId) ? s.recordingId : null
+  useTrackStore.setState({ tracks, recordingId })
+  save()
+}
+
+/**
+ * The recording follows location, wired once at startup: a good fix with
+ * nothing recording picks the last track up (its last point within
+ * OUTING_GAP_MS) or starts a new one; location off stops it. A track left
+ * open by a reload is closed when its last point is older than the gap,
+ * and resumed by the first fix otherwise.
+ */
 let wired = false
 export function initTrackRecording() {
   if (wired) return
   wired = true
-  useGpsStore.subscribe((s, prev) => {
-    if (s.fix && s.fix !== prev.fix) useTrackStore.getState().push(s.fix)
+  const now = Date.now()
+  const s = useTrackStore.getState()
+  let changed = false
+  const closed: Track[] = []
+  for (const t of s.tracks) {
+    if (t.endedAt != null || now - lastTs(t) <= OUTING_GAP_MS) {
+      closed.push(t)
+      continue
+    }
+    changed = true
+    if (t.points.length >= 2) closed.push({ ...t, endedAt: lastTs(t) })
+  }
+  if (changed) {
+    useTrackStore.setState({ tracks: closed })
+    save()
+  }
+  useGpsStore.subscribe((g, prev) => {
+    if (g.locating !== prev.locating && !g.locating) useTrackStore.getState().stop()
+    if (!g.fix || g.fix === prev.fix) return
+    const tr = useTrackStore.getState()
+    if (!tr.recordingId) {
+      if (!g.locating) return
+      const sigma = g.fix.sigma ?? g.fix.accuracy
+      if (sigma > MAX_SIGMA_M) return
+      const newest = tr.tracks[tr.tracks.length - 1]
+      if (newest && g.fix.ts - lastTs(newest) <= OUTING_GAP_MS) tr.resume(newest.id)
+      else tr.start()
+    }
+    useTrackStore.getState().push(g.fix)
   })
 }
 
-export function trackToGpx(track: Track): string {
-  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+/** One track as a GPX <trk>: a <trkseg> per stretch, split where the track went quiet. */
+export function trkXml(track: Track): string {
   const segs: TrackPoint[][] = []
   for (const p of track.points) {
     if (p.gap || !segs.length) segs.push([])
@@ -177,30 +283,14 @@ export function trackToGpx(track: Track): string {
   const body = segs
     .map((seg) => `    <trkseg>\n${seg.map((p) => `      <trkpt lat="${p.lat.toFixed(7)}" lon="${p.lon.toFixed(7)}"><time>${new Date(p.ts).toISOString()}</time></trkpt>`).join('\n')}\n    </trkseg>`)
     .join('\n')
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Pic River" xmlns="http://www.topografix.com/GPX/1/1">\n  <trk>\n    <name>${esc(track.name)}</name>\n${body}\n  </trk>\n</gpx>\n`
+  return `  <trk>\n    <name>${esc(track.name)}</name>\n${body}\n  </trk>`
 }
 
-/** Share (the phone's share sheet) or download a track as GPX. */
-export async function exportTrackGpx(track: Track): Promise<void> {
-  const gpx = trackToGpx(track)
-  const fileName = `${track.name.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-') || 'track'}.gpx`
-  const file = new File([gpx], fileName, { type: 'application/gpx+xml' })
-  if (navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file], title: track.name })
-      return
-    } catch (e) {
-      if ((e as DOMException).name === 'AbortError') return
-    }
-  }
-  const url = URL.createObjectURL(file)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = fileName
-  a.click()
-  URL.revokeObjectURL(url)
+/** A GPX document round its <wpt> and <trk> blocks. */
+export function gpxDoc(body: string): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Pic River" xmlns="http://www.topografix.com/GPX/1/1">\n${body}\n</gpx>\n`
 }
 
-export function trackDurationMin(t: Track): number {
-  return Math.round(((t.endedAt ?? Date.now()) - t.startedAt) / 60_000)
+export function trackToGpx(track: Track): string {
+  return gpxDoc(trkXml(track))
 }

@@ -1,0 +1,189 @@
+/* The strip's own layout on top of ui.css's shared classes (.wxfold,
+   .wx-head, .wxbar, .wxdrain, .wxdetail, .wxfold-handle, .wx-menu,
+   .menu-pop): the sky glyph span, the quarry chip and its menu, the best
+   link, Now, the hour's ! mark and the detail's coloured words. Sizes as
+   calc(Npx * var(--ui-scale)). */
+
+/* skyGlyphSvg's markup lives in a span: keep it on the line, no descender gap */
+.wx-sky {
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+  flex: none;
+}
+
+.wx-sky svg {
+  display: block;
+}
+
+/* the open header anchors the ⋯ menu under its own right end */
+.wx-head {
+  position: relative;
+}
+
+.wx-spacer {
+  flex: 1;
+}
+
+/* the quarry chip, and its menu hung under its left edge */
+.wx-quarry {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.wx-quarry > .menu-pop {
+  left: 0;
+  right: auto;
+  min-width: 200px;
+}
+
+.wx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(63, 200, 255, 0.2);
+  border: 1px solid rgba(63, 200, 255, 0.6);
+  color: #c8f0ff;
+  font-size: calc(12px * var(--ui-scale));
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.wx-chip:active {
+  color: #c8f0ff;
+  background: rgba(63, 200, 255, 0.32);
+}
+
+/* the check beside the picked quarry */
+.wx-menu-check {
+  margin-left: auto;
+  display: flex;
+  color: var(--c-accent);
+}
+
+.wx-menu-rule {
+  height: 1px;
+  margin: 4px 0;
+  background: rgba(126, 178, 224, 0.16);
+}
+
+/* best Tue morning › — lit while the planning time sits in that window */
+.wx-best {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 3px 8px;
+  margin-left: -4px;
+  border-radius: 999px;
+  font-size: calc(12px * var(--ui-scale));
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wx-best.on {
+  background: var(--c-accent-dim);
+}
+
+/* Now, only while the planning time is not now */
+.wx-now {
+  flex: none;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(63, 200, 255, 0.18);
+  color: var(--c-accent);
+  font-size: calc(11px * var(--ui-scale));
+  font-weight: 700;
+}
+
+/* an hour with a hard stop for the quarry (fish limits): a small ! at the corner */
+.wxcell-warn {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-size: calc(9px * var(--ui-scale));
+  font-weight: 800;
+  line-height: 1;
+  color: var(--c-warn);
+}
+
+/* the picked hour's detail: the words that carry colour */
+.wx-ground {
+  color: #a9c1ff;
+  font-weight: 700;
+}
+
+.wx-grade-prime,
+.wx-grade-good {
+  color: var(--c-track);
+}
+
+.wx-grade-fair {
+  color: var(--c-text);
+}
+
+.wx-grade-slow,
+.wx-grade-poor {
+  color: var(--c-text-dim);
+}
+
+.wx-grade-closed {
+  color: var(--c-danger);
+}
+
+.wx-warn {
+  color: var(--c-warn);
+}
+
+.wx-more {
+  align-self: flex-start;
+  padding-top: 2px;
+  font-size: calc(13px * var(--ui-scale));
+}
+
+.wxdetail-more .linklike {
+  margin-left: 6px;
+}
+
+.wxdetail-more .linklike:disabled {
+  opacity: 0.5;
+}
+
+/* folded: today in one line over the hours; the ⋯ menu hangs under its right end */
+.wx-today {
+  padding: 1px 4px 0;
+}
+
+.wx-todaybtn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 32px;
+  padding: 0 4px;
+  color: inherit;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  font-size: calc(14px * var(--ui-scale));
+}
+
+.wx-todaybtn b {
+  font-weight: 700;
+}
+
+.wx-todaybtn > svg:last-child {
+  margin-left: auto;
+  flex: none;
+  color: var(--c-text-dim);
+}
+
+/* the folded line's empty text when nothing is cached */
+.wx-todaybtn .wxfold-empty {
+  color: var(--c-text-dim);
+  font-weight: 500;
+}

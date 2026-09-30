@@ -1,24 +1,25 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { create } from 'zustand'
 import { compass } from '../weather/openMeteo'
-import { groundWind, loadMicro, REGIME_LABEL, type Regime } from '../weather/micro/model'
-import { checkReachM, checkSpentAt, STRENGTH_LABEL, useWindChecks, verdict, type Strength, type WindCheck } from '../weather/micro/windChecks'
-import { timeLabel } from '../time'
+import { groundWind, loadMicro } from '../weather/micro/model'
+import { checkPull, checkSpentAt, useWindChecks, verdict, type Strength, type WindCheck } from '../weather/micro/windChecks'
+import { clockShort } from '../time'
 import { requestCompass, startCompass, stopCompass, useCompass } from '../tracking/compass'
-import { IconClose } from './icons'
 import Rose, { Arrow } from './Rose'
+import { useTapOff } from './tapOff'
 import './ground.css'
 
 /**
- * A wind check, docked above the tabs: which way the powder goes and how
- * hard, then Save. The model's own call for that spot and minute is saved
- * beside it before the check can sway it.
+ * A wind check, in the bottom bar: which way the powder goes and how hard,
+ * then Save. The model's own call for that spot and minute is saved beside
+ * it before the check can sway it.
  *
  * The rose turns with the phone when it has a compass, so the arrow to tap
  * is the one pointing where the powder really goes, not a compass point to
  * work out in the bush; without one, north is up. Whatever is picked lights
  * up (a compass heading lights its nearest arrow), and Save always answers:
- * saved, or what is still missing.
+ * saved (one line: the model's verdict, the pull and when it fades), or
+ * what is still missing. Tapping off it closes it, as does Done.
  */
 
 interface CheckForm {
@@ -49,6 +50,8 @@ export default function WindCheckCard() {
   const [missing, setMissing] = useState<string | null>(null)
   const [saved, setSaved] = useState<WindCheck | null>(null)
   const [saving, setSaving] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useTapOff(ref, true, close)
 
   useEffect(() => {
     startCompass()
@@ -96,40 +99,33 @@ export default function WindCheckCard() {
 
   if (saved) {
     const v = verdict(saved)
-    const replaced = useWindChecks.getState().checks.some((c) => c.until === saved.ts && c.id !== saved.id)
-    const m = saved.model
+    const pull = Math.round(checkPull(saved, saved.lon, saved.lat, Date.now()) * 100)
     return (
-      <div className="tripbuilder glass ground-card">
+      <div className="tripbuilder glass ground-card" ref={ref}>
         <div className="tb-head">
-          <span className="tb-title">Wind check saved</span>
-          <button className="icon-btn" onClick={close} aria-label="Close">
-            <IconClose size={16} />
+          <span className="tb-title">Wind check</span>
+          <button className="sheet-done" style={{ marginLeft: 'auto' }} onClick={close}>
+            Done
           </button>
         </div>
         <div className="gc-line">
-          You: {saved.dirFrom == null ? 'calm' : <>toward {compass((saved.dirFrom + 180) % 360)}, {saved.strength}</>}
-        </div>
-        {m && (
-          <div className="gc-line">
-            Model: {m.kmh < 1 ? 'near calm' : <>toward {compass((m.dirFrom + 180) % 360)}, {m.kmh.toFixed(1)} km/h</>} · {(REGIME_LABEL[m.regime as Regime] ?? m.regime).toLowerCase()}
-            {v && <b className={`gc-verdict gc-${v}`}>{v === 'agree' ? 'agreed' : v === 'close' ? 'close' : 'missed'}</b>}
-          </div>
-        )}
-        <div className="gc-note">
-          In effect now: half the ground wind right here, less farther out, to about {Math.round(checkReachM(saved, Date.now()) / 10) * 10} m, fading out by {timeLabel(checkSpentAt(saved))}.
-          {replaced ? ' It replaces your earlier check here, so one arrow shows.' : ''} The ring on the map shows how far it still reaches; tap the arrow to remove it.
+          Saved
+          {v && (
+            <>
+              {' '}
+              · model <b className={`gc-verdict gc-${v}`}>{v === 'agree' ? 'agreed' : v === 'close' ? 'close' : 'missed'}</b>
+            </>
+          )}{' '}
+          · pulling {pull}% · till {clockShort(checkSpentAt(saved))}
         </div>
       </div>
     )
   }
 
   return (
-    <div className="tripbuilder glass ground-card">
+    <div className="tripbuilder glass ground-card" ref={ref}>
       <div className="tb-head">
         <span className="tb-title">Wind check · {at.label}</span>
-        <button className="icon-btn" onClick={close} aria-label="Close">
-          <IconClose size={16} />
-        </button>
       </div>
       <div className="gc-q">Which way does the powder go?</div>
       <Rose turn={turn} value={calm ? null : toward} onPick={pick} label={(b) => `toward ${compass(b)}`}>
@@ -145,19 +141,8 @@ export default function WindCheckCard() {
             <Arrow toward={0} size={20} />
             <span>ahead</span>
           </button>
-        ) : (
-          <span className="gc-mid-word">tap an arrow</span>
-        )}
+        ) : null}
       </Rose>
-      <div className="gc-note">
-        {live
-          ? 'The rose turns with the phone: tap the arrow pointing where the powder drifts, or "ahead" if it goes the way the phone points.'
-          : status === 'denied'
-            ? 'North is up (the compass is blocked: allow Motion & Orientation for this site to have the rose turn with the phone).'
-            : status === 'none'
-              ? 'North is up: this phone gives no compass reading.'
-              : 'North is up.'}
-      </div>
       <div className="gc-q">How hard?</div>
       <div className="gc-strength">
         {STRENGTHS.map((s) => (
@@ -174,7 +159,6 @@ export default function WindCheckCard() {
           </button>
         ))}
       </div>
-      {strength && <div className="gc-note">{STRENGTH_LABEL[strength]}</div>}
       {missing && <div className="gc-missing">{missing}</div>}
       <button className="btn-primary" disabled={saving} onClick={() => void save()}>
         {saving ? 'Saving…' : 'Save check'}

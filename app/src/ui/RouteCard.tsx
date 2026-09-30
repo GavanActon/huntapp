@@ -5,14 +5,16 @@ import { TARGET_NAMES } from '../spots/types'
 import { formatDistance } from '../measure/measureMath'
 import { clearRoutes, closeRoutes, huntBlocked, ROUTE_COLOURS, ROUTE_LETTERS, useRoutes, type RouteMode } from '../routes/routeStore'
 import { approachText, endName, height, lidarText, routeFacts, routeLine, routeTag, routeTime, timeParts } from '../routes/routeText'
-import { IconClose, IconMinus, IconPlus, IconSwap } from './icons'
+import { IconMinus, IconPlus, IconSwap } from './icons'
 
 /**
- * Route mode's card, docked above the tabs like the ruler's. First the
- * three routes, a line each: the time, the distance and climb, and what
- * sets it apart ("+4 min · driest"). The picked one says what it is like
- * underfoot and how the wind sits coming in. "why" opens where its time
- * goes, how much of the bush was measured, and the knobs: pace, stay dry.
+ * Route mode's card, in the bottom bar like the ruler's. First the three
+ * routes, a line each: the time, the distance and climb, and what sets it
+ * apart ("+4 min · driest"). The picked one says what it is like underfoot
+ * and how the wind sits coming in. "why" opens where its time goes, how
+ * much of the bush was measured, and the knobs: pace, stay dry. The
+ * right column's Routes button closes the card (so does Escape), keeping
+ * the picked route on the map.
  */
 
 const MODES: { m: RouteMode; name: string }[] = [
@@ -54,12 +56,13 @@ export default function RouteCard() {
   const approach = r && !(mode === 'hunt' && target === 'grouse') ? approachText(r.approach) : null
   const game = TARGET_NAMES[target].toLowerCase()
 
+  // with no end yet the card is just its head and From: the next map tap sets it
   let msg: string | null = null
-  if (!to) msg = "Tap the map where you're going, or a place."
-  else if (status === 'outside') msg = 'Routes reach about 4 km round camp, where the LiDAR is: bring both ends inside.'
+  if (!to) msg = ''
+  else if (status === 'outside') msg = 'Both ends must be within 4 km of camp.'
   else if (status === 'water') msg = 'That end is out on the water.'
-  else if (status === 'no-way') msg = 'No way there on foot: water all round?'
-  else if (status === 'no-grid') msg = 'Routes need the going grid: download the maps in Settings, or open the app online once.'
+  else if (status === 'no-way') msg = 'No way there on foot.'
+  else if (status === 'no-grid') msg = 'Download the maps in Settings first.'
   else if (!routes.length) msg = 'Finding the ways…'
 
   return (
@@ -76,25 +79,22 @@ export default function RouteCard() {
         <button className="icon-btn" onClick={swap} disabled={!to} aria-label="Swap the ends: the way back">
           <IconSwap size={16} />
         </button>
-        <button className="icon-btn" onClick={closeRoutes} aria-label="Close routes, keeping the picked one on the map">
-          <IconClose size={16} />
-        </button>
       </div>
       <div className="rt-ends">
         From <b>{from?.name ?? '…'}</b>
         {to ? (
           <>
             {' '}
-            to <b>{toName}</b> · drag either end{stayDry ? ' · staying dry' : ''}
+            to <b>{toName}</b>{stayDry ? ' · staying dry' : ''}
             <button className="linklike rt-clear" onClick={clearRoutes}>
               Clear
             </button>
           </>
         ) : null}
       </div>
-      {blocked && <div className="rt-note">{blocked} The easiest ways meanwhile.</div>}
-      {msg ? (
-        <div className="tb-hint">{msg}</div>
+      {blocked && <div className="rt-note">{blocked}</div>}
+      {msg != null ? (
+        msg && <div className="tb-hint">{msg}</div>
       ) : (
         <>
           <div className="rt-rows" role="radiogroup" aria-label="Routes">
@@ -178,7 +178,7 @@ function RouteWhy() {
       </div>
       {mode === 'hunt' && r.nearM != null && (
         <div>
-          Good {game} ground in sight for {formatDistance(r.nearM, units)} of it, as today's Spots scores rank it.{' '}
+          Good {game} ground in sight for {formatDistance(r.nearM, units)} of it, as today's scores rank it.{' '}
           {target === 'grouse'
             ? 'Grouse routes walk the cover, to flush birds.'
             : r.scentM

@@ -1,14 +1,15 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { formatBearing, formatDistance, legsOf, totalM } from '../measure/measureMath'
 import { useMeasureStore } from '../measure/measureStore'
 import { useAppStore } from '../state/appStore'
 import { durationLabel } from '../time'
-import { IconClose, IconMinus, IconPlus, IconUndo } from './icons'
+import { IconMinus, IconPlus, IconUndo } from './icons'
 
 /**
- * The measuring tool's readout, docked above the tabs: total range, the
- * last leg's range and bearing, and how long that is on foot at the pace
- * set here. The legs label themselves on the map; this is the sum.
+ * The measuring tool's readout, in the bottom bar: the total, and the last
+ * leg's range and bearing. How long that is on foot sits one tap deeper
+ * (pace ›), with the pace nudges. The legs label themselves on the map;
+ * this is the sum. Done leaves the tool; so does Escape.
  */
 export default function MeasureCard() {
   const points = useMeasureStore((s) => s.points)
@@ -18,6 +19,7 @@ export default function MeasureCard() {
   const units = useAppStore((s) => s.units)
   const paceKmh = useAppStore((s) => s.paceKmh)
   const setPaceKmh = useAppStore((s) => s.setPaceKmh)
+  const [showPace, setShowPace] = useState(false)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -42,22 +44,27 @@ export default function MeasureCard() {
         <button className="icon-btn" onClick={() => undo()} disabled={points.length === 0} aria-label="Undo last point">
           <IconUndo size={16} />
         </button>
-        <button className="icon-btn" onClick={() => stop()} aria-label="Close measuring tool">
-          <IconClose size={16} />
+        <button className="sheet-done" onClick={() => stop()}>
+          Done
         </button>
       </div>
-      {legs.length === 0 ? (
-        <div className="tb-hint">{points.length === 0 ? 'Tap two points' : 'Tap again'}</div>
-      ) : (
-        <div className="tb-facts">
-          <span className="numeral">
-            <b className="measure-total">{formatDistance(total, units)}</b>
-            {legs.length > 1 ? ` total · ${legs.length} legs` : ' total'}
-          </span>
+      <div className="tb-facts">
+        <span className="numeral">
+          <b className="measure-total">{formatDistance(total, units)}</b>
+          {legs.length > 1 ? ` total · ${legs.length} legs` : legs.length === 1 ? ' total' : ''}
+        </span>
+        {last && (
           <span className="numeral">
             {legs.length > 1 ? 'last leg ' : ''}
             <b>{formatDistance(last.m, units)}</b> · <b>{formatBearing(last.deg)}</b>
           </span>
+        )}
+        {total > 0 && !showPace && (
+          <button className="linklike" onClick={() => setShowPace(true)} aria-expanded={false}>
+            pace ›
+          </button>
+        )}
+        {total > 0 && showPace && (
           <span className="numeral speed-step">
             about <b>{durationLabel(Math.max(1, Math.round((total / 1000 / paceKmh) * 60)))}</b> on foot at
             <button className="nudge" onClick={() => setPaceKmh(Math.max(1, Math.round((paceKmh - 0.5) * 2) / 2))} aria-label="Slower">
@@ -68,8 +75,8 @@ export default function MeasureCard() {
               <IconPlus size={11} />
             </button>
           </span>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

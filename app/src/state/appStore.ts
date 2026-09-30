@@ -1,7 +1,57 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-export type SheetTab = 'places' | 'spots' | 'layers' | 'weather' | 'settings'
+/** A bottom sheet. The stack holds one at a time in the common case; a
+ *  sheet pushed on top of another (Scoring over Dig in, Map buttons over
+ *  Settings) gets a `‹ Back` that pops it. */
+export type Sheet =
+  | { kind: 'digin'; lon: number; lat: number }
+  | { kind: 'scoring'; lon: number; lat: number }
+  | { kind: 'pins' }
+  | { kind: 'huntlog' }
+  | { kind: 'settings' }
+  | { kind: 'settingsMore' }
+  | { kind: 'buttons' }
+  | { kind: 'offline' }
+  | { kind: 'layers' }
+export type SheetKind = Sheet['kind']
+
+/** Each sheet's half-open height, % of the screen. */
+export const SHEET_HALF_PCT: Record<SheetKind, number> = {
+  digin: 58,
+  scoring: 72,
+  pins: 46,
+  huntlog: 44,
+  settings: 52,
+  settingsMore: 60,
+  buttons: 66,
+  offline: 60,
+  layers: 80,
+}
+
+/** The sheet showing now: the top of the stack, or null when closed. */
+export const topSheet = (s: AppState): Sheet | null => s.sheets[s.sheets.length - 1] ?? null
+
+/** A card in the live card's slot at the top of the screen: Your scent, or
+ *  an outing from the Hunt log. The columns stay under it. */
+export type TopCard = { kind: 'scent' } | { kind: 'outing'; id: string }
+
+/** The buttons the left column can hold, picked in Map buttons. */
+export type HotId = 'heat' | 'scent' | 'heard' | 'person' | 'windcheck' | 'pin' | 'understory' | 'lanes' | 'bathy' | 'radar' | 'lowPower'
+export const HOT_MAX = 4
+export const DEFAULT_HOT: Record<'hunt' | 'fish', HotId[]> = { hunt: ['heat', 'scent', 'heard'], fish: ['heat', 'bathy', 'pin'] }
+const HOT_IDS: readonly HotId[] = ['heat', 'scent', 'heard', 'person', 'windcheck', 'pin', 'understory', 'lanes', 'bathy', 'radar', 'lowPower']
+
+/** Known ids only, each once, at most HOT_MAX. */
+function cleanHot(ids: readonly unknown[]): HotId[] {
+  const out: HotId[] = []
+  for (const id of ids) {
+    if (!HOT_IDS.includes(id as HotId) || out.includes(id as HotId)) continue
+    out.push(id as HotId)
+    if (out.length >= HOT_MAX) break
+  }
+  return out
+}
 
 /** Every map layer the Layers sheet can switch. Keys match the style's
  *  layer ids (see map/mapStyle.ts). */
@@ -42,26 +92,32 @@ export interface LayerOpacity {
   satellite: number
 }
 
+/** A fresh phone shows the Scout view (viewsStore BUILT_IN[0]): imagery,
+ *  contours, forest cover, burns and bush roads, with the wind flowing. */
 export const DEFAULT_LAYERS: LayerVisibility = {
-  topo: true,
+  topo: false,
   hillshade: false,
   relief: false,
   contours: true,
-  forest: false,
+  forest: true,
   understory: false,
   lanes: false,
-  bathy: true,
+  bathy: false,
   historical: false,
   satellite: true,
   camps: false,
   wmu: false,
   crown: false,
   parks: false,
-  fire: false,
-  roads: false,
+  fire: true,
+  roads: true,
   weather: false,
   windFlow: true,
 }
+
+/** What the layers were before v3, for the migration: a phone still holding
+ *  these untouched takes the Scout view instead. */
+const LAYERS_V2: Partial<LayerVisibility> = { topo: true, contours: true, bathy: true, satellite: true }
 
 export const DEFAULT_OPACITY: LayerOpacity = {
   topo: 1,
@@ -92,11 +148,32 @@ export type SizeStop = 'auto' | 'standard' | 'large' | 'larger'
 export const CONTOUR_INTERVALS = [1, 2, 5, 10] as const
 export type ContourInterval = (typeof CONTOUR_INTERVALS)[number]
 
-interface AppState {
-  sheetTab: SheetTab | null
-  setSheetTab: (t: SheetTab | null) => void
-  sheetTall: boolean
-  setSheetTall: (v: boolean) => void
+export interface AppState {
+  /** the bottom sheets, bottom first; [] = closed (not persisted) */
+  sheets: Sheet[]
+  /** replace the stack with one sheet */
+  openSheet: (s: Sheet) => void
+  /** open a sheet over the current one (it gets a ‹ Back) */
+  pushSheet: (s: Sheet) => void
+  /** drop the top sheet */
+  popSheet: () => void
+  closeSheet: () => void
+  /** the card in the live card's slot, if any (not persisted) */
+  topCard: TopCard | null
+  setTopCard: (c: TopCard | null) => void
+
+  /** the weather strip open (day and hour rows) or folded to one line; persisted */
+  stripOpen: boolean
+  setStripOpen: (v: boolean) => void
+  /** the live card folded to a chip; session only */
+  liveFolded: boolean
+  setLiveFolded: (v: boolean) => void
+  /** the view pill's menu up (the hot column hides under it); session only */
+  viewMenuOpen: boolean
+  setViewMenuOpen: (v: boolean) => void
+  /** the left column's buttons per mode, up to HOT_MAX; persisted */
+  hotButtons: Record<'hunt' | 'fish', HotId[]>
+  setHotButtons: (mode: 'hunt' | 'fish', ids: HotId[]) => void
 
   layers: LayerVisibility
   setLayer: (k: keyof LayerVisibility, v: boolean) => void
@@ -126,8 +203,6 @@ interface AppState {
   setLowPower: (v: boolean) => void
   textSize: SizeStop
   setTextSize: (v: SizeStop) => void
-  wxStrip: boolean
-  setWxStrip: (v: boolean) => void
   /** The app-wide planning time (ms) picked on the strip; null = now. */
   planTimeMs: number | null
   setPlanTime: (ms: number | null) => void
@@ -147,10 +222,22 @@ interface AppState {
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
-      sheetTab: null,
-      setSheetTab: (sheetTab) => set({ sheetTab }),
-      sheetTall: false,
-      setSheetTall: (sheetTall) => set({ sheetTall }),
+      sheets: [],
+      openSheet: (s) => set({ sheets: [s] }),
+      pushSheet: (s) => set((st) => ({ sheets: [...st.sheets, s] })),
+      popSheet: () => set((st) => ({ sheets: st.sheets.slice(0, -1) })),
+      closeSheet: () => set({ sheets: [] }),
+      topCard: null,
+      setTopCard: (topCard) => set({ topCard }),
+
+      stripOpen: false,
+      setStripOpen: (stripOpen) => set({ stripOpen }),
+      liveFolded: false,
+      setLiveFolded: (liveFolded) => set({ liveFolded }),
+      viewMenuOpen: false,
+      setViewMenuOpen: (viewMenuOpen) => set({ viewMenuOpen }),
+      hotButtons: DEFAULT_HOT,
+      setHotButtons: (mode, ids) => set((st) => ({ hotButtons: { ...st.hotButtons, [mode]: cleanHot(ids) } })),
 
       layers: DEFAULT_LAYERS,
       setLayer: (k, v) => set((s) => ({ layers: { ...s.layers, [k]: v } })),
@@ -175,8 +262,6 @@ export const useAppStore = create<AppState>()(
       setLowPower: (lowPower) => set({ lowPower }),
       textSize: 'auto',
       setTextSize: (textSize) => set({ textSize }),
-      wxStrip: true,
-      setWxStrip: (wxStrip) => set({ wxStrip }),
       planTimeMs: null,
       setPlanTime: (planTimeMs) => set({ planTimeMs }),
 
@@ -195,7 +280,9 @@ export const useAppStore = create<AppState>()(
       name: 'huntapp',
       // v1: the wind's strength, particles and trail default to full; a
       // phone still holding the old defaults takes the new ones once
-      version: 1,
+      // v2: the strip is always on (its fold is stripOpen); the old on/off switch goes
+      // v3: the default layers are the Scout view's; the old defaults, never touched, become them
+      version: 3,
       migrate: (persisted, from) => {
         const p = (persisted ?? {}) as Partial<AppState>
         if (from < 1) {
@@ -204,6 +291,12 @@ export const useAppStore = create<AppState>()(
             const { windDensity: _d, windTrail: _t, ...rest } = p.flowTuning
             p.flowTuning = rest as FlowTuning
           }
+        }
+        if (from < 2) delete (p as { wxStrip?: boolean }).wxStrip
+        if (from < 3 && p.layers) {
+          const old = p.layers
+          const untouched = (Object.keys(DEFAULT_LAYERS) as (keyof LayerVisibility)[]).every((k) => k === 'windFlow' || !!old[k] === !!LAYERS_V2[k])
+          if (untouched) delete p.layers
         }
         return p as AppState
       },
@@ -219,17 +312,21 @@ export const useAppStore = create<AppState>()(
         windLevel: s.windLevel,
         lowPower: s.lowPower,
         textSize: s.textSize,
-        wxStrip: s.wxStrip,
+        stripOpen: s.stripOpen,
+        hotButtons: s.hotButtons,
         onboarded: s.onboarded,
       }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<AppState>
+        const hot: Partial<Record<'hunt' | 'fish', unknown>> = { ...DEFAULT_HOT, ...(p.hotButtons ?? {}) }
+        const pick = (v: unknown, d: HotId[]): HotId[] => (Array.isArray(v) ? cleanHot(v) : d)
         return {
           ...current,
           ...p,
           layers: { ...DEFAULT_LAYERS, ...(p.layers ?? {}) },
           opacity: { ...DEFAULT_OPACITY, ...(p.opacity ?? {}) },
           flowTuning: { ...FLOW_TUNING_DEFAULTS, ...(p.flowTuning ?? {}) },
+          hotButtons: { hunt: pick(hot.hunt, DEFAULT_HOT.hunt), fish: pick(hot.fish, DEFAULT_HOT.fish) },
         }
       },
     },

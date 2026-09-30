@@ -1,34 +1,38 @@
 /**
  * The Spots layer on the map: a heat image over the region for the chosen
- * target at the planning time, the best few spots as numbered pins, and a
- * scent cone from the selected place showing where the wind (or the
- * thermal) carries you. Recomputes when the target, the hour, the
- * forecast or the selected place changes; the scorer runs in well under a
- * frame for the whole grid.
+ * target at the planning time, and the best few spots as numbered pins
+ * (tap one: Dig in). Recomputes when the target, the hour, the forecast
+ * or the selected place changes, and after a weather refresh; the scorer
+ * runs in well under a frame for the whole grid. The week's windows and
+ * the hour bars under the strip are scored here too, grid or no grid.
  */
-import { dayPlans } from './dayPlan'
+import { dayPlans, hourScores } from './dayPlan'
 import type { GeoJSONSource, ImageSource, Map as MlMap } from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
 import { inRegion, REGION, SPOTS_RADIUS_M } from '../config'
 import { devlog } from '../devlog'
+import { initDigInMarker } from '../map/diginMarker'
 import { getMap, onEachMap, withMap } from '../map/mapController'
+import { useMeasureStore } from '../measure/measureStore'
+import { useRoutes } from '../routes/routeStore'
 import { useAppStore } from '../state/appStore'
 import { homePlace, selectedPlace, usePlacesStore } from '../state/placesStore'
 import { useSpotsStore } from '../state/spotsStore'
 import { useGpsStore } from '../tracking/gpsStore'
 import { useHuntLog } from '../log/huntLog'
 import { cachedPointForecast, pointForecast, type PointForecast } from '../weather/openMeteo'
-import { deriveConditions, recentDailyMeans, type Conditions } from './conditions'
+import { onWeatherRefreshed } from '../weather/refresh'
+import { deriveConditions, recentDailyMeans } from './conditions'
 import { habitat, loadHabitat, onHabitat, COVER } from './habitatGrid'
 import { scoreTarget } from './scoring'
 import { loadMicro, onMicro } from '../weather/micro/model'
+import { useScent } from '../weather/micro/scent'
 import { onProfile } from '../weather/boundaryLayer'
 import { useWindChecks } from '../weather/micro/windChecks'
 import { isFish } from './types'
 
 const HEAT_SRC = 'spots-heat'
 const PINS_SRC = 'spots-pins'
-const CONE_SRC = 'spots-cone'
 let canvas: HTMLCanvasElement | null = null
 /** Heat pixels per grid cell: the canvas is drawn at this multiple and the
  *  cells feathered into each other, so the 30 m lattice does not read as
@@ -51,9 +55,6 @@ function nearestCachedPlace(lon: number, lat: number): { p: { lon: number; lat: 
 function subject(): { lon: number; lat: number; name: string } {
   const sel = selectedPlace()
   if (sel) return sel
-  // a tapped point under examination stands in for a saved place
-  const probe = useSpotsStore.getState().probe
-  if (probe) return probe
   const fix = useGpsStore.getState().fix
   // a fix far from the region is the phone at home: the search stays at camp
   if (fix && inRegion(fix.lon, fix.lat)) return { lon: fix.lon, lat: fix.lat, name: 'here' }
@@ -82,18 +83,10 @@ function ensureSources(m: MlMap) {
   })
   // The heat goes under the LiDAR shade (transparent where flat) so the
   // relief shows through the hot patches, and under the contours and every
-  // line and label; the pins and the cone ride on top, under the places.
+  // line and label; the pins ride on top, under the places.
   const heatBefore = (['hillshade-lidar', 'topo', 'historical', 'places-halo'] as const).find((id) => m.getLayer(id))
   const before = m.getLayer('places-halo') ? 'places-halo' : undefined
   m.addLayer({ id: 'spots-heat', type: 'raster', source: HEAT_SRC, paint: { 'raster-opacity': 0.8, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } }, heatBefore)
-  m.addSource(CONE_SRC, { type: 'geojson', data: empty() })
-  // the cone is a stack of nested wedges at one low opacity each: densest at
-  // the pin, thinning downwind, the way scent actually spreads
-  m.addLayer({ id: 'spots-cone', type: 'fill', source: CONE_SRC, filter: ['==', ['get', 'kind'], 'fill'], paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.09 } }, before)
-  m.addLayer(
-    { id: 'spots-cone-line', type: 'line', source: CONE_SRC, filter: ['==', ['get', 'kind'], 'edge'], paint: { 'line-color': ['get', 'color'], 'line-width': 1.2, 'line-dasharray': [2, 2], 'line-opacity': 0.8 } },
-    before,
-  )
   m.addSource(PINS_SRC, { type: 'geojson', data: empty() })
   if (!m.hasImage('spot-pin')) m.addImage('spot-pin', pinImage(), { pixelRatio: 2 })
   m.addLayer(
@@ -148,11 +141,15 @@ function ensureSources(m: MlMap) {
     },
     before,
   )
+  // a numbered pin: Dig in on it (MapView keeps its popup off the pin)
   m.on('click', 'spots-pin', (e) => {
+    // the ruler, a person being placed and the route card each own the tap
+    if (useMeasureStore.getState().active || useScent.getState().adding || useRoutes.getState().open) return
     const n = e.features?.[0]?.properties?.n as number | undefined
     if (n == null) return
-    useAppStore.getState().setSheetTab('spots')
-    window.dispatchEvent(new CustomEvent('spots:pick', { detail: n }))
+    const sp = useSpotsStore.getState().result?.spots[n - 1]
+    if (!sp) return
+    useAppStore.getState().openSheet({ kind: 'digin', lon: sp.lon, lat: sp.lat })
   })
   m.on('mouseenter', 'spots-pin', () => (m.getCanvas().style.cursor = 'pointer'))
   m.on('mouseleave', 'spots-pin', () => (m.getCanvas().style.cursor = ''))
@@ -382,61 +379,8 @@ function pins(m: MlMap) {
   })
 }
 
-/** Scent cone from a point: the downwind wedge (or the thermal drift when calm). */
-function cone(m: MlMap, c: Conditions | null) {
-  const src = m.getSource(CONE_SRC) as GeoJSONSource | undefined
-  if (!src) return
-  const s = useSpotsStore.getState()
-  const p = selectedPlace() ?? s.probe
-  const h = habitat()
-  if (!s.scent || !c || !p || !h || isFish(s.target)) return src.setData(empty())
-  let dir: number
-  let len: number
-  let half: number
-  let color: string
-  const i = h.index(p.lon, p.lat)
-  if (c.windKmh >= 5) {
-    dir = (c.windDir + 180) % 360
-    len = 150 + Math.min(450, c.windKmh * 12)
-    half = c.windKmh < 10 ? 35 : 22
-    color = '#ff8a80'
-  } else {
-    // thermal: downslope at dusk and dawn, upslope by day; aspect is the downslope direction
-    const asp = i >= 0 ? h.value('aspect', i) : NaN
-    const evening = c.toSunsetH <= 1.5 || c.sinceSunriseH < 0.7
-    if (!Number.isFinite(asp) || (h.raw('aspect') as Uint8Array)[i] === 255) return src.setData(empty())
-    dir = evening ? asp : (asp + 180) % 360
-    len = 220
-    half = 45
-    color = '#c9a227'
-  }
-  const kx = 1 / (111_320 * Math.cos((p.lat * Math.PI) / 180))
-  const ky = 1 / 110_574
-  const wedge = (l: number): [number, number][] => {
-    const pts: [number, number][] = [[p.lon, p.lat]]
-    for (let a = -half; a <= half; a += 4) {
-      const rad = ((dir + a) * Math.PI) / 180
-      pts.push([p.lon + Math.sin(rad) * l * kx, p.lat + Math.cos(rad) * l * ky])
-    }
-    pts.push([p.lon, p.lat])
-    return pts
-  }
-  // six nested wedges at one low opacity each add up to a fade from the pin outward
-  const STEPS = 6
-  const features: FeatureCollection['features'] = []
-  for (let k = 1; k <= STEPS; k++) {
-    features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [wedge((len * k) / STEPS)] }, properties: { color, kind: 'fill' } })
-  }
-  features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [wedge(len)] }, properties: { color, kind: 'edge' } })
-  src.setData({ type: 'FeatureCollection', features })
-}
-
 async function recompute() {
-  const m = getMap()
   const s = useSpotsStore.getState()
-  const h = await loadHabitat()
-  if (!h) return s.setResult(null, null, 'no-grid')
-  if (m) ensureSources(m)
   const subj = subject()
   const app = useAppStore.getState()
   const timeMs = app.planTimeMs ?? Date.now()
@@ -456,23 +400,36 @@ async function recompute() {
     }
   }
   const recent = await recentDailyMeans(recentAt.lon, recentAt.lat)
-  if (!f) return s.setResult(null, null, 'no-forecast')
-  const c = deriveConditions(f, timeMs, recent)
-  if (!c) return s.setResult(null, null, 'no-forecast')
+  const c = f ? deriveConditions(f, timeMs, recent) : null
+  if (!f || !c) {
+    s.setHours([])
+    return s.setResult(null, null, 'no-forecast')
+  }
+  // the week's windows and the hour bars need only the forecast: with no
+  // habitat grid the strip still says when, if not where
+  const h = await loadHabitat()
+  if (!h) {
+    const plans = dayPlans(f, s.target, recent, null, s.weights)
+    s.setHours(hourScores(f, s.target, recent, null, s.weights, Date.now()))
+    return s.setResult(null, c, 'no-grid', plans)
+  }
+  const m = getMap()
+  if (m) ensureSources(m)
   const t0 = performance.now()
   const res = scoreTarget(s.target, c, subj, s.weights)
-  // the week's windows, from the same forecast
+  // the week and the hours from the same forecast, scored with the lake the verdict is about
   const lake = res?.lakeId ? h.lake(res.lakeId) ?? null : null
   const plans = dayPlans(f, s.target, recent, lake, s.weights)
+  s.setHours(hourScores(f, s.target, recent, lake, s.weights, Date.now()))
   devlog('spots', `${s.target} scored in ${(performance.now() - t0).toFixed(0)} ms · ${res?.spots.length ?? 0} spots · ${res?.verdict.headline ?? ''}`)
   s.setResult(res, c, 'ready', plans)
   const mm = getMap()
   if (!mm || !mm.getSource(HEAT_SRC)) return
-  const visible = s.heat && app.sheetTab === 'spots' ? 'visible' : s.heat ? 'visible' : 'none'
+  // the numbered pins follow the heat map
+  const visible = s.heat ? 'visible' : 'none'
   for (const id of ['spots-heat', 'spots-pin', 'spots-pin-glow', 'spots-pin-score']) mm.setLayoutProperty(id, 'visibility', visible)
   paint(s.heat ? res?.scores ?? null : null, isFish(s.target), subj)
   pins(mm)
-  cone(mm, c)
 }
 
 function schedule() {
@@ -487,6 +444,8 @@ let wired = false
 export function initSpotsLayer() {
   if (wired) return
   wired = true
+  // the white ring on the point Dig in is open on
+  initDigInMarker()
   onEachMap((m) => {
     m.once('remove', () => {
       canvas = null
@@ -496,13 +455,15 @@ export function initSpotsLayer() {
   })
   withMap(() => {
     onHabitat(() => schedule())
-    // the scent geometry reads the ground wind: rescore when it arrives
+    // the site rules read the ground wind: rescore when it arrives
     void loadMicro()
     onMicro(() => schedule())
     onProfile(() => schedule())
     useWindChecks.subscribe(() => schedule())
+    // a fresh forecast: the map rescores itself
+    onWeatherRefreshed(() => schedule())
     useSpotsStore.subscribe((s, prev) => {
-      if (s.target !== prev.target || s.heat !== prev.heat || s.scent !== prev.scent || s.weights !== prev.weights || s.probe !== prev.probe) schedule()
+      if (s.target !== prev.target || s.heat !== prev.heat || s.weights !== prev.weights) schedule()
     })
     useAppStore.subscribe((s, prev) => {
       if (s.planTimeMs !== prev.planTimeMs || s.online !== prev.online) schedule()
@@ -533,11 +494,6 @@ export function initSpotsLayer() {
     }
     tick()
   })
-}
-
-/** Ask for a fresh pass (the panel's refresh button). */
-export function refreshSpots() {
-  schedule()
 }
 
 export const SPOTS_REGION = REGION

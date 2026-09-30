@@ -60,6 +60,9 @@
 
 .wxstrip {
   position: relative;
+  /* the blur makes a stacking context, so the strip's menus (⋯, the
+     quarry) would paint under the live card beneath it: lift the strip */
+  z-index: 2;
   align-self: stretch;
   display: flex;
   flex-direction: column;
@@ -67,40 +70,6 @@
   padding: 4px;
   border-radius: 8px;
   animation: rise-in 0.25s ease;
-}
-
-/* at the helm: the week is gone, the next few hours fill the row, and the
-   numbers are sized for a glance from the wheel */
-.wxstrip-near .wxstrip-cells {
-  overflow-x: hidden;
-}
-
-.wxstrip-near .wxcell {
-  flex: 1 1 0;
-  padding: 7px 0 8px;
-  gap: 3px;
-  font-size: 12px;
-}
-
-.wxstrip-near .wxcell b {
-  font-size: 19px;
-}
-
-.wxstrip-near .wxcell-h {
-  font-size: 10.5px;
-}
-
-.wxstrip-near .wxcell-wave {
-  font-size: 11.5px;
-}
-
-.wxstrip-near .wxcell-wave em {
-  font-size: 10px;
-}
-
-.wxstrip-near .wxcell svg {
-  width: 15px;
-  height: 15px;
 }
 
 /* the hour row runs from now through the whole forecast, ten cells at a
@@ -182,33 +151,6 @@
   text-align: center;
   font-size: 11px;
   color: var(--c-text-faint);
-}
-
-.wxstrip-focus {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  align-self: flex-start;
-  padding: 4px 8px 2px;
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--c-accent);
-}
-
-.wxstrip-focus svg:last-child {
-  opacity: 0.65;
-}
-
-/* same chip, naming where the trip departs from rather than a focused leg:
-   nothing to dismiss, so it sits quieter than the accent-colored focus one */
-.wxstrip-from {
-  color: var(--c-text-dim);
-}
-
-/* no fix, no home dock: the numbers are for a default nobody chose — the
-   accent says it's a tap, the star says what the tap does */
-.wxstrip-nudge {
-  color: var(--c-accent);
 }
 
 .wxcell {
@@ -324,42 +266,6 @@
   color: var(--c-accent);
 }
 
-/* ---------- the planned window, drawn on the strip ----------
-   Out and back right where the hours live: the departure keeps the solid
-   accent outline (wx-active), the RETURN hour wears a dashed one — the same
-   vocabulary as the chart's dashed ride-home lane — and every hour between
-   carries a thin underline. The day chips get the underline too, so a window
-   that spans days still reads as one span. */
-.wx-window {
-  box-shadow: inset 0 -2.5px 0 rgba(63, 200, 255, 0.35);
-}
-
-.wx-back {
-  outline: 1.5px dashed var(--c-track);
-  outline-offset: -1.5px;
-  background: rgba(89, 224, 184, 0.1);
-}
-
-.wx-back .wxcell-h {
-  color: var(--c-track);
-}
-
-.wxday-window {
-  box-shadow: inset 0 -2.5px 0 rgba(63, 200, 255, 0.35);
-}
-
-/* with a chip armed, its existing pick is the keypad's current value: lit
-   solid so "move it from HERE" has a visible here */
-.wx-arm-back .wx-back {
-  outline-style: solid;
-  outline-width: 2px;
-  background: rgba(89, 224, 184, 0.18);
-}
-
-.wx-arm-out .wx-active {
-  outline-width: 2px;
-}
-
 .wxstrip-stale {
   position: absolute;
   top: -3px;
@@ -395,28 +301,7 @@
   border-color: rgba(255, 180, 84, 0.35);
 }
 
-/* ---------- FABs ---------- */
-
-/* docked just above the bottom bar (--barh, published by App) so the stack
-   clears whatever card is in it — the fallback covers the first paint */
-.fabstack {
-  position: absolute;
-  right: calc(var(--sar) + 12px);
-  bottom: calc(var(--barh, 170px) + 12px);
-  transition: bottom 0.18s ease-out;
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  z-index: 10;
-}
-/* one column, or two when a card leaves too little room under the strip (App) */
-.fabcol {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-/* ---------- bottom bar: tab dock + instruments ---------- */
+/* ---------- bottom bar: the tool and form cards ---------- */
 
 .bottombar {
   position: absolute;
@@ -439,36 +324,6 @@
   pointer-events: auto;
 }
 
-.tabdock {
-  /* full strip width, tabs sharing it evenly — the dock used to shrink-wrap
-     and float centered, the one pane that didn't line up with the rest */
-  align-self: stretch;
-  display: flex;
-  gap: 2px;
-  padding: 4px;
-  border-radius: 8px;
-}
-
-.tab {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  padding: 6px 0;
-  border-radius: var(--r-tile);
-  color: var(--c-text-dim);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  transition: background 0.2s, color 0.2s;
-}
-
-.tab-on {
-  background: var(--c-accent-dim);
-  color: var(--c-accent);
-}
-
 .instruments {
   display: flex;
   align-items: center;
@@ -489,10 +344,6 @@
   font-size: 22px;
 }
 
-.inst-embedded .rec-btn {
-  padding: 8px 12px;
-}
-
 /* the live card folded to a line: heading, time left, the pill */
 .tb-folded .leg-head {
   gap: 8px;
@@ -510,11 +361,6 @@
   font-size: 11px;
   font-weight: 500;
   color: var(--c-text-dim);
-}
-
-.tb-folded .rec-btn {
-  padding: 6px 10px;
-  font-size: 11px;
 }
 
 .inst {
@@ -565,66 +411,7 @@
   background: var(--c-border);
 }
 
-.rec-btn {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 10px 14px;
-  border-radius: var(--r-tile);
-  background: rgba(255, 107, 107, 0.12);
-  border: 1px solid rgba(255, 107, 107, 0.3);
-  color: #ff9d9d;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.rec-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--c-danger);
-}
-
-/* the panel's own record control — full width, letters not a code word */
-.rec-btn.rec-start {
-  width: 100%;
-  justify-content: center;
-  margin-bottom: 8px;
-  letter-spacing: 0.02em;
-  font-size: 13px;
-}
-
-.rec-btn.recording {
-  background: rgba(89, 224, 184, 0.16);
-  border-color: rgba(89, 224, 184, 0.5);
-  color: var(--c-track);
-}
-
-.rec-btn.go {
-  background: rgba(89, 224, 184, 0.14);
-  border-color: rgba(89, 224, 184, 0.45);
-  color: #7fe8c8;
-}
-
-.rec-btn.recording .rec-dot {
-  animation: pulse 1.4s ease-in-out infinite;
-}
-
-/* first tap under way: the pill names what the second will do */
-.rec-btn.recording.rec-arm {
-  background: rgba(255, 180, 84, 0.16);
-  border-color: rgba(255, 180, 84, 0.55);
-  color: var(--c-warn);
-}
-
-.rec-btn.rec-arm .rec-dot {
-  background: var(--c-warn);
-  animation: none;
-}
-
+/* a slow fade in and out: the locate button while the GPS is still looking */
 @keyframes pulse {
   0%,
   100% {
@@ -774,27 +561,24 @@
   margin: -4px auto -10px;
 }
 
+/* the host's title row: ‹ Back (a pushed sheet), the title, Done or ⋯ at
+   the right. No ×: a tap off the sheet closes it. */
 .sheet-titlerow {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 10px;
   padding: 6px 18px 8px;
 }
 
 .sheet-titlerow h2 {
-  font-size: 19px;
+  flex: 1;
+  min-width: 0;
+  font-size: calc(19px * var(--ui-scale));
   font-weight: 700;
   letter-spacing: -0.01em;
-}
-
-.sheet-close {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: rgba(126, 178, 224, 0.1);
-  color: var(--c-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sheet-body {
@@ -843,16 +627,6 @@
   font-size: 12.5px;
   color: var(--c-text-dim);
   line-height: 1.35;
-}
-
-.panel-section {
-  margin-top: 18px;
-  padding-bottom: 4px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--c-text-faint);
 }
 
 .empty {
@@ -922,28 +696,6 @@
   color: var(--c-accent);
 }
 
-/* the text-size dial: three A's that show their size */
-.text-seg button {
-  padding: 5px 11px;
-  line-height: 1;
-}
-
-.text-a {
-  font-weight: 700;
-}
-
-.text-a-standard {
-  font-size: 12px;
-}
-
-.text-a-large {
-  font-size: 15px;
-}
-
-.text-a-larger {
-  font-size: 18px;
-}
-
 .icon-btn {
   width: 38px;
   height: 38px;
@@ -960,63 +712,10 @@
   background: rgba(255, 107, 107, 0.1);
 }
 
-.track-row.track-shown .row-title {
-  color: var(--c-track);
-}
-
-/* ---------- weather panel ---------- */
-
-.scrubber {
-  padding: 6px 4px 14px;
-  border-bottom: 1px solid rgba(126, 178, 224, 0.08);
-}
-
-.scrubber-label {
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-  color: var(--c-text-dim);
-  margin-bottom: 8px;
-}
-
-.scrubber-label b {
-  color: var(--c-accent);
-}
-
-.scrubber input[type='range'] {
-  width: 100%;
-  appearance: none;
-  -webkit-appearance: none;
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(126, 178, 224, 0.25);
-}
-
-.scrubber input[type='range']::-webkit-slider-thumb {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--c-accent);
-  border: 3px solid var(--c-bg-raised);
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
-}
+/* ---------- the layer strength slider (Edit this view) ---------- */
 
 .layer-opacity {
   padding-top: 0;
-}
-
-/* a row that DOES something rather than setting something — the icon on the
-   right is its face, wearing the wind's colour */
-.row-action {
-  width: 100%;
-  text-align: left;
-}
-
-.row-action svg {
-  color: var(--c-accent);
-  flex-shrink: 0;
 }
 
 .layer-opacity input[type='range'] {
@@ -1039,329 +738,7 @@
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
 }
 
-.fc-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-/* the Weather tab's first thing: log what the wind is doing, a thumb away */
-.wx-log {
-  display: flex;
-  margin-top: 2px;
-}
-
-.fc-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.age-badge {
-  font-style: normal;
-  font-weight: 500;
-  text-transform: none;
-  letter-spacing: 0;
-  margin-left: 8px;
-  padding: 2px 8px;
-  border-radius: var(--r-row);
-  font-size: 11px;
-  background: rgba(126, 178, 224, 0.12);
-  color: var(--c-text-dim);
-}
-
-.age-badge.stale {
-  background: rgba(255, 180, 84, 0.15);
-  color: var(--c-warn);
-}
-
-/* hourly detail table */
-
-.hd-table {
-  display: flex;
-  flex-direction: column;
-  font-size: 13px;
-  color: var(--c-text-dim);
-}
-
-.hd-row {
-  display: grid;
-  grid-template-columns: 44px 1.35fr 34px 1fr 1.2fr;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 2px;
-  border-bottom: 1px solid rgba(126, 178, 224, 0.07);
-}
-
-.hd-row:last-child {
-  border-bottom: none;
-}
-
-.hd-head {
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--c-text-faint);
-  padding-bottom: 4px;
-}
-
-.hd-row b {
-  color: var(--c-text);
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.hd-row em {
-  font-style: normal;
-  color: var(--c-text-dim);
-  font-size: 12px;
-}
-
-.hd-time {
-  font-weight: 600;
-  color: var(--c-text);
-}
-
-.hd-wind {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  white-space: nowrap;
-}
-
-.hd-wind svg {
-  color: var(--c-text-faint);
-  flex-shrink: 0;
-}
-
-.hd-wind.warn b,
-.hd-wave.warn b {
-  color: var(--c-warn);
-}
-
-.hd-wind.warn svg {
-  color: var(--c-warn);
-}
-
-.hd-gust {
-  text-align: right;
-}
-
-.hd-wave {
-  white-space: nowrap;
-}
-
-.hd-right {
-  text-align: right;
-  white-space: nowrap;
-}
-
-.fc-charts {
-  padding: 10px 0 4px;
-}
-
-.fc-readout {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 4px 2px 12px;
-  font-size: 13px;
-  color: var(--c-text-dim);
-}
-
-.fc-time {
-  font-weight: 700;
-  color: var(--c-text);
-  min-width: 92px;
-}
-
-.fc-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.fc-chip i {
-  width: 9px;
-  height: 9px;
-  border-radius: 3px;
-  display: inline-block;
-}
-
-.fc-chip b {
-  color: var(--c-text);
-  font-size: 14px;
-}
-
-.fc-title {
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  fill: var(--c-text-faint);
-}
-
-.fc-tick {
-  font-size: 9px;
-  fill: var(--c-text-faint);
-  font-variant-numeric: tabular-nums;
-}
-
-/* ---------- 7-day outlook rows (the weather tab's headline) ---------- */
-
-.sevenday {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding-top: 2px;
-}
-
-/* Day name spans both lines; the numbers sit across the top and the verdict
-   runs under them, so a thumb scroll reads down one column of days and one
-   column of go/no-go without stopping on either. */
-.sd-row {
-  display: grid;
-  grid-template-columns: 50px 1fr auto auto;
-  grid-template-areas:
-    'day sky wind wave'
-    'day note note note';
-  align-items: center;
-  column-gap: 8px;
-  row-gap: 1px;
-  width: 100%;
-  text-align: left;
-  padding: 7px 8px;
-  border-radius: var(--r-row);
-  border-left: 3px solid transparent;
-  color: var(--c-text-dim);
-}
-
-.sd-on {
-  background: var(--c-accent-dim);
-}
-
-.sd-on .sd-day b {
-  color: var(--c-accent);
-}
-
-.sd-row b {
-  color: var(--c-text);
-  font-size: 13.5px;
-  font-weight: 700;
-}
-
-/* the second number of a pair — the day's low, the unit, the wave's metres —
-   half a step down so the one that matters reads first */
-.sd-row em {
-  font-style: normal;
-  font-size: 11px;
-  color: var(--c-text-faint);
-}
-
-.sd-day {
-  grid-area: day;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-}
-
-.sd-day em {
-  font-style: normal;
-  font-size: 10.5px;
-  color: var(--c-text-faint);
-}
-
-.sd-sky {
-  grid-area: sky;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-width: 0;
-}
-
-.sd-sky svg {
-  color: var(--c-text-faint);
-}
-
-.sd-wind {
-  grid-area: wind;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-}
-
-.sd-wind svg {
-  color: var(--c-text-faint);
-}
-
-.sd-wave {
-  grid-area: wave;
-  min-width: 42px;
-  text-align: right;
-  white-space: nowrap;
-}
-
-.sd-note {
-  grid-area: note;
-  font-size: 11.5px;
-  color: var(--c-text-faint);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* the sea-state word, wearing its own ramp colour (inline, from seaColor) */
-.sd-note b.sd-verdict {
-  font-size: 11.5px;
-  font-weight: 700;
-}
-
-/* ---------- offline panel ---------- */
-
-.bundle {
-  background: rgba(126, 178, 224, 0.06);
-  border: 1px solid var(--c-border);
-  border-radius: 8px;
-  padding: 14px;
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-/* a rebake waiting on the server */
-.bundle-update {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(63, 200, 255, 0.35);
-  background: rgba(63, 200, 255, 0.06);
-}
-
-.bundle-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.bundle-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--c-text-dim);
-}
-
-.bundle-status.ok {
-  color: var(--c-track);
-}
+/* ---------- Maps on this phone: the download bar and the quota line ---------- */
 
 .btn-primary {
   flex: 1;
@@ -1382,19 +759,6 @@
   opacity: 0.45;
 }
 
-.dl-progress {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.dl-progress-label {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: var(--c-text-dim);
-}
-
 .dl-bar {
   height: 6px;
   border-radius: 3px;
@@ -1409,18 +773,8 @@
   transition: width 0.2s;
 }
 
-.dl-error {
-  font-size: 13px;
-  color: var(--c-danger);
-}
-
 .quota {
   padding: 14px 4px 0;
-  text-align: center;
-}
-
-.panel-note {
-  padding: 14px 8px 4px;
   text-align: center;
 }
 
@@ -1434,10 +788,6 @@
 .chip-accent {
   color: var(--c-accent);
   border-color: rgba(63, 200, 255, 0.4);
-}
-
-.panel-section-first {
-  margin-top: 2px;
 }
 
 /* invitation to keep a map-picked start around */
@@ -1493,7 +843,6 @@
   border-bottom: none;
 }
 
-
 .trip-row b {
   color: var(--c-text);
   font-size: 14px;
@@ -1542,7 +891,6 @@
   color: var(--c-accent);
 }
 
-
 .trip-name {
   background: none;
   border: none;
@@ -1569,17 +917,7 @@
   color: var(--c-accent);
 }
 
-/* the hourly-table row matching the app-wide planning time */
-
-.hd-row.hd-selected {
-  background: var(--c-accent-dim);
-  border-radius: 6px;
-}
-
-
 /* small round ± steppers — limits, cruise speed */
-
-
 .nudge {
   width: 24px;
   height: 24px;
@@ -1590,7 +928,6 @@
   background: rgba(126, 178, 224, 0.14);
   flex-shrink: 0;
 }
-
 
 .icon-btn:disabled {
   opacity: 0.35;
@@ -1657,7 +994,6 @@
   color: var(--c-text);
 }
 
-
 .tb-dim {
   color: var(--c-text-faint);
 }
@@ -1672,7 +1008,6 @@
   gap: 10px;
   margin-top: 2px;
 }
-
 
 /* sliders button while its setup card is up */
 
@@ -1691,7 +1026,6 @@
   gap: 4px;
   border-left: 4px solid transparent;
 }
-
 
 /* ---------- measuring tool ---------- */
 
@@ -1785,17 +1119,6 @@
   margin-left: 0;
 }
 
-/* the quiet statement of a future plan, where the button would be (§0.4) */
-.plan-note {
-  padding: 4px 0 1px;
-  text-align: center;
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--c-text-faint);
-}
-
 /* ---------- raised: the note, the run, the jump list (L2) ---------- */
 
 /* tiny uppercase section caps inside the raised card */
@@ -1862,22 +1185,8 @@
   border-color: var(--c-accent);
 }
 
-.spot-note-l2 {
-  margin: 6px 2px 0;
-  font-size: 11px;
-  line-height: 1.45;
-  color: var(--c-text-dim);
-}
-
 /* the jump list: the other spots as square tiles, calmest first (§3.3) */
 /* "inside the limits you set" — quiet, and never present until they're set */
-.spot-clear {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--c-track);
-  flex: none;
-}
 
 .limits-set {
   align-self: flex-start;
@@ -1913,98 +1222,6 @@
 
 /* ---------- the trip window: two chips, the strip as their keypad ---------- */
 
-.win-chips {
-  display: flex;
-  align-items: stretch;
-  gap: 6px;
-}
-
-.win-chip {
-  flex: 1;
-  min-width: 0;
-  border: 1px solid var(--c-border-strong);
-  border-radius: var(--r-tile);
-  padding: 5px 8px 6px;
-  text-align: left;
-  transition: border-color 0.15s ease, background 0.15s ease;
-}
-
-.win-chip:disabled {
-  opacity: 0.45;
-}
-
-/* armed: the strip's hour cells become this chip's keypad */
-.win-chip.win-armed {
-  border-color: var(--c-accent);
-  background: var(--c-accent-dim);
-  box-shadow: 0 0 0 3px rgba(63, 200, 255, 0.14);
-}
-
-.win-k {
-  display: block;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-  color: var(--c-text-faint);
-}
-
-/* Out and back each own a colour, worn everywhere the end appears — the
-   chip's label here, the hour tile on the strip, the armed banner. Accent
-   for leaving; the home-ward green (the Home star's, the track's) for the
-   ride back. The times stay neutral: facts, not grades. */
-.win-out .win-k {
-  color: var(--c-accent);
-}
-
-.win-back:not(:disabled) .win-k {
-  color: var(--c-track);
-}
-
-.win-chip.win-armed .win-k {
-  color: var(--c-accent);
-}
-
-/* armed BACK: the same keypad grammar, wearing back's green */
-.win-back.win-armed {
-  border-color: var(--c-track);
-  background: rgba(89, 224, 184, 0.12);
-  box-shadow: 0 0 0 3px rgba(89, 224, 184, 0.14);
-}
-
-.win-back.win-armed .win-k {
-  color: var(--c-track);
-}
-
-.win-v {
-  display: block;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* time there — derived from the window, never set */
-.win-mid {
-  flex: none;
-  width: 62px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  text-align: center;
-  font-size: 12.5px;
-}
-
-.win-mid.win-tight {
-  color: var(--c-warn);
-}
-
-.win-mid.win-tight .win-k {
-  color: var(--c-warn);
-}
-
 /* cruise speed, in place on the card rather than behind a popover */
 .speed-chip {
   font-size: 11.5px;
@@ -2025,32 +1242,6 @@
   background: var(--c-accent-dim);
   border-radius: var(--r-row);
   padding: 2px 8px;
-}
-
-/* while a chip is armed, the hours that would still make a window stand out
-   and the ones that wouldn't stand down */
-/* armed keypad: the offer is carried by CONTRAST, not decoration — hours you
-   can pick stay crisp with a quiet lift, hours you can't fade out. The old
-   dashed outlines drew a fence around every cell and read as noise. */
-.wxcell.wx-armable {
-  background: rgba(63, 200, 255, 0.08);
-}
-
-.wxcell.wx-unarmable {
-  opacity: 0.25;
-}
-
-.wxstrip-arm {
-  margin-top: 4px;
-  font-size: 10.5px;
-  color: var(--c-accent);
-  text-align: center;
-  padding: 2px 0;
-}
-
-/* picking the BACK hour: the keypad banner wears back's green */
-.wxstrip-arm-back {
-  color: var(--c-track);
 }
 
 /* ---------- the live leg: time left, arrival, the far end ---------- */
@@ -2275,10 +1466,6 @@
   gap: 10px;
 }
 
-.saved-head .panel-section {
-  margin-top: 10px;
-}
-
 .saved-actions {
   display: inline-flex;
   gap: 14px;
@@ -2288,7 +1475,6 @@
 .linklike.danger {
   color: var(--c-danger);
 }
-
 
 /* §6.5 — motion stops for anyone who asked for less of it. The map's comet
    already checked this in JS; the chrome did not, so the record dot went on
@@ -2305,28 +1491,33 @@
   }
 }
 
-
-/* The MapLibre attribution sat under the tab dock and wrapped into three
-   broken lines on every screen. Lift it clear of the bottom chrome. */
-.maplibregl-ctrl-bottom-left,
-.maplibregl-ctrl-bottom-right {
+/* The MapLibre controls sit clear of the bottom chrome: the scale above the
+   bar (and the left stack), the attribution folded to its (i) at the left
+   of My location so it never lands under the buttons. (.map-root in the
+   selector: maplibre-gl.css loads after this file and sets the same
+   corners to 0.) */
+.map-root .maplibregl-ctrl-bottom-left {
   bottom: calc(var(--barh, 0px) + var(--sab) + 6px);
+}
+
+.map-root .maplibregl-ctrl-bottom-right {
+  bottom: calc(var(--sab) + 4px);
+  right: calc(var(--sar, 0px) + 68px);
 }
 
 .maplibregl-ctrl-attrib.maplibregl-compact {
   margin: 0 8px 0 8px;
 }
 
+/* opened from its (i), the credits wrap narrow enough to clear the view pill */
+.maplibregl-ctrl-attrib.maplibregl-compact-show {
+  max-width: 140px;
+}
+
 /* ============================== Places sheet ==============================
    WHICH PLACE, superseding the dock's old "Here" bar. Rows are square tiles
    in a column: name (+ the hand-written note), the one badge number on the
    ramp, a limits dot. No forecasts here — the strip owns the days. */
-
-.places-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
 
 .place-list {
   display: flex;
@@ -2463,14 +1654,6 @@
   white-space: nowrap;
 }
 
-.pp-acts .pp-more-btn {
-  flex: 0 0 auto;
-  padding: 6px 8px;
-  background: transparent;
-  border: 0;
-  color: var(--c-accent);
-}
-
 .pp-scent {
   background: var(--c-accent-dim);
   border: 1px solid var(--c-accent);
@@ -2491,37 +1674,6 @@
 .pp-game .pp-score {
   font-size: 15px;
   min-width: 26px;
-}
-
-.pp-more {
-  /* the reasons scroll inside the popup rather than push it off-screen */
-  max-height: 34vh;
-  overflow-y: auto;
-  margin-top: 6px;
-  padding-top: 5px;
-  border-top: 1px solid var(--c-border);
-  font-size: 12px;
-  color: var(--c-text-dim);
-}
-
-.pp-more-h {
-  margin-top: 6px;
-  color: var(--c-text);
-  font-weight: 600;
-}
-
-.pp-coord {
-  margin-top: 6px;
-  font-size: 11px;
-  color: var(--c-text-faint);
-  font-variant-numeric: tabular-nums;
-  user-select: text;
-}
-
-.pp-go {
-  background: var(--c-accent);
-  border: 1px solid var(--c-accent);
-  color: #07141f;
 }
 
 .pp-save {
@@ -2552,21 +1704,6 @@
   padding: 6px 8px 6px 10px;
 }
 
-/* The home-base star: hollow until this place is home, then filled and warm.
-   One per list — starring elsewhere moves house. */
-.pe-star {
-  color: var(--c-text-faint);
-  flex-shrink: 0;
-}
-
-.pe-star.pe-star-on {
-  color: var(--c-warn);
-}
-
-.pe-star.pe-star-on svg {
-  fill: currentColor;
-}
-
 /* the quiet star beside the home place's name in the everyday list */
 .pg-home {
   display: inline-flex;
@@ -2595,10 +1732,6 @@
   padding: 2px 0;
 }
 
-.pe-name.pe-fixed {
-  color: var(--c-text);
-}
-
 .pe-note {
   text-align: left;
   font-size: 10.5px;
@@ -2609,25 +1742,8 @@
   text-overflow: ellipsis;
 }
 
-.pe-note.pe-empty {
-  color: var(--c-text-faint);
-  font-style: italic;
-}
-
-.place-row-hidden {
-  opacity: 0.55;
-  border-style: dashed;
-}
-
 .place-row-edit .trip-name-input {
   width: 100%;
-}
-
-/* the Offline tab once everything is downloaded: a check and a calm tint —
-   reassurance, not an alert */
-.tab-ready {
-  color: var(--c-accent);
-  opacity: 0.85;
 }
 
 /* ---------- the sentence: from -> to, the trip's headline ---------- */
@@ -2712,15 +1828,6 @@
   border-color: var(--c-accent);
   background: var(--c-accent-dim);
   box-shadow: 0 0 0 3px rgba(63, 200, 255, 0.14);
-}
-
-/* the dormant window: there from the first moment, asking nothing */
-.win-chips.win-ghost {
-  opacity: 0.6;
-}
-
-.win-chips.win-ghost .win-v {
-  color: var(--c-text-faint);
 }
 
 /* Start, never out of reach: a control, not a prompt */
@@ -3052,15 +2159,14 @@
 /* the boat's own colour, on the chart and beside its name */
 .crew-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; box-shadow: 0 0 0 1.5px rgba(8, 20, 34, 0.6); }
 .crew .ashore .crew-dot { opacity: 0.55; }
-.crew .panel-section { display: flex; justify-content: space-between; align-items: baseline; }
-.crew .panel-section .meta { text-transform: none; letter-spacing: 0; font-weight: 500; }
+
 /* ---------- the log: trips, not files ---------- */
 .log-stats { display: flex; gap: 6px; padding: 0 0 6px; }
 .stat { display: flex; flex-direction: column; gap: 1px; flex: 1; padding: 8px 10px; border: 1px solid var(--c-border); border-radius: var(--r-tile); background: rgba(16, 31, 47, 0.45); }
 .stat .v { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
 .stat .k { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--c-text-faint); }
-.log .panel-section, .lines-head { display: flex; justify-content: space-between; align-items: baseline; }
-.log .panel-section .meta, .lines-head .meta { text-transform: none; letter-spacing: 0; font-weight: 500; }
+.lines-head { display: flex; justify-content: space-between; align-items: baseline; }
+.lines-head .meta { text-transform: none; letter-spacing: 0; font-weight: 500; }
 .log-month { margin-top: 12px; }
 .log-entry .row-text { padding: 0; }
 .log-entry .row { border-bottom: 1px solid rgba(126, 178, 224, 0.08); }
@@ -3079,10 +2185,6 @@
 .mark-btn { width: 44px; height: 38px; border-radius: var(--r-tile); border: 1px solid rgba(63, 200, 255, 0.45); background: rgba(63, 200, 255, 0.1); color: var(--c-accent); display: grid; place-items: center; flex: none; transition: background var(--dur) ease, transform var(--dur-fast) var(--ease-out); }
 .mark-btn.mark-hit { background: rgba(255, 180, 84, 0.3); border-color: var(--c-warn); color: var(--c-warn); }
 .pg-line { color: var(--c-track); }
-
-/* the dock's word that something in the crew is new since the last look */
-.tab-dot { position: absolute; top: 5px; right: calc(50% - 16px); width: 7px; height: 7px; border-radius: 50%; background: var(--c-accent); box-shadow: 0 0 0 2px rgba(12, 23, 36, 0.96); }
-.tab { position: relative; }
 
 .boats-out { padding: 6px 0 4px; border-bottom: 1px solid rgba(233, 242, 250, 0.1); margin-bottom: 6px; }
 .bo-head { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 16px 4px; font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.75; }
@@ -3113,18 +2215,15 @@
 .boat-popup .maplibregl-popup-content { white-space: normal; max-width: min(300px, 78vw); }
 .boat-popup .boat-card-what { white-space: normal; }
 
-
 /* ---------- polish pass: press, settle, arrive ---------- */
 
-/* the strip's cells and the dock's tabs answer the thumb */
+/* the strip's cells and the rows answer the thumb */
 .wxcell,
 .wxday,
-.tab,
 .chip,
 .place-go,
 .bo-row,
 .row,
-.track-row,
 .fv-row {
   transition:
     transform var(--dur-fast) var(--ease-out),
@@ -3134,14 +2233,12 @@
     box-shadow var(--dur) ease;
 }
 .wxcell:active,
-.wxday:active,
-.tab:active {
+.wxday:active {
   transform: scale(0.94);
   transition-duration: 0.06s;
 }
 .place-go:active,
-.bo-row:active,
-.track-row:active {
+.bo-row:active {
   background: rgba(126, 178, 224, 0.1);
   transform: none;
 }
@@ -3151,14 +2248,6 @@
 .icon-btn:active {
   transform: scale(0.9);
   background: rgba(126, 178, 224, 0.18);
-}
-
-/* the active tab's glyph lifts a hair; the others sit */
-.tab svg {
-  transition: transform var(--dur) var(--ease-out);
-}
-.tab-on svg {
-  transform: translateY(-1px);
 }
 
 /* the one primary action carries the accent's light */
@@ -3184,8 +2273,7 @@
     transform: none;
   }
 }
-.sheet .panel,
-.sheet .places-panel {
+.sheet .panel {
   animation: settle-up var(--dur) var(--ease-out) both;
 }
 
@@ -3213,8 +2301,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .sheet .panel,
-  .sheet .places-panel,
-  .maplibregl-popup {
+.maplibregl-popup {
     animation: none;
   }
 }
@@ -3395,6 +2482,767 @@
 /* Settings: the dev log's small row of links under its buttons */
 .devlog-actions { padding: 4px 4px 8px; flex-wrap: wrap; row-gap: 4px; }
 
+/* ============================================================
+   One screen: the chrome
+   Read at the top (the strip, the live card, a top card), touch at the
+   bottom (the hot column over the view pill at the left, the fixed tools at
+   the right). No dock, no modes, no ×. The font sizes for everything here
+   live in the text-size block below (calc(Npx * var(--ui-scale))).
+   ============================================================ */
+
+/* a word that steps back — the mockups' .dim, for a separator or a › */
+.dim {
+  color: var(--c-text-dim);
+}
+
+/* ---------- the left stack: hot buttons over the view pill ---------- */
+
+/* docked above the bottom bar (--barh, published by App) so it clears
+   whatever card is in it */
+.leftstack {
+  position: absolute;
+  left: calc(var(--sal, 0px) + 12px);
+  bottom: calc(var(--barh, 0px) + 12px);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  transition: bottom 0.18s ease-out;
+  /* the stack is as wide as the pill: only the buttons themselves take a
+     tap, the map beside them keeps its popup */
+  pointer-events: none;
+}
+
+.leftstack > * {
+  pointer-events: auto;
+}
+
+.hotcol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.hotcol > * {
+  pointer-events: auto;
+}
+
+/* one hot button: the round .fab with its word under it. Either the
+   wrapper carries .hotbtn (the .fab and the label inside it), or the .fab
+   itself does and the label hangs under the circle. */
+.hotbtn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.fab.hotbtn {
+  display: grid;
+}
+
+.fab.hotbtn > .hotbtn-label {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.hotcol > .fab.hotbtn {
+  margin-bottom: 16px;
+}
+
+/* the word keeps its taps: one landing beside the circle must not fall
+   through to the map and open a popup */
+.hotbtn-label {
+  margin-top: 2px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--c-text);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  white-space: nowrap;
+}
+
+/* ---------- the right column: the fixed tools ---------- */
+
+.toolcol {
+  position: absolute;
+  right: calc(var(--sar, 0px) + 12px);
+  bottom: calc(var(--barh, 0px) + 12px);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  transition: bottom 0.18s ease-out;
+}
+
+.toolgap {
+  height: 14px;
+}
+
+/* My location while the GPS is still looking: the glyph breathes */
+.fab-acquiring svg {
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+/* ---------- the live card, under the strip ---------- */
+
+.livecard,
+.livecard-chip {
+  position: relative;
+  display: flex;
+  background: var(--c-surface);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
+  backdrop-filter: blur(var(--blur)) saturate(1.4);
+  border: 1px solid var(--c-border);
+  box-shadow: var(--shadow-panel);
+  color: var(--c-text);
+  text-align: left;
+  animation: rise-in 0.2s ease;
+}
+
+.livecard {
+  align-self: stretch;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+
+/* folded to one line: a pill at the left, the map under the rest */
+.livecard-chip {
+  align-self: flex-start;
+  flex-direction: row;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* opened downward: the rows, scrolling once they outgrow it */
+.livecard-open {
+  max-height: 300px;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  gap: 0;
+  padding: 10px 14px 12px;
+  border-radius: 18px;
+  background: var(--c-surface-heavy);
+}
+
+/* one line of the card, clipped with an ellipsis rather than wrapped; an
+   arrow or a tag rides inline */
+.lc-line {
+  display: block;
+  min-width: 0;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lc-line svg {
+  vertical-align: middle;
+}
+
+.lc-line + .lc-line {
+  font-weight: 500;
+}
+
+.lc-amber {
+  color: var(--c-warn);
+}
+
+/* a small pill: "checked" while a wind check pulls the cone */
+.lc-tag {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 7px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(89, 224, 184, 0.16);
+  color: var(--c-track);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+/* the card's heading once open: "Now · 6:23" */
+.lc-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 6px;
+  font-weight: 750;
+}
+
+.lc-head > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+/* a tappable row with › at its end (the › is the row's last .dim) */
+.lc-row,
+.topcard-row,
+.digin-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 0;
+  border: 0;
+  border-top: 1px solid rgba(126, 178, 224, 0.1);
+  color: var(--c-text);
+  text-align: left;
+  line-height: 1.3;
+}
+
+.lc-row > :first-child,
+.topcard-row > :first-child,
+.digin-row > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.lc-row b,
+.topcard-row b,
+.digin-row b {
+  font-weight: 700;
+}
+
+.lc-row:active,
+.topcard-row:active,
+.digin-row:active,
+.menu-row:active,
+.wx-menu-row:active {
+  background: rgba(126, 178, 224, 0.1);
+  transform: none;
+}
+
+/* ---------- a top card: Your scent, or an outing, in the live card's slot ---------- */
+
+.topcard {
+  align-self: stretch;
+  position: relative;
+  max-height: 300px;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 0 0;
+  border-radius: 18px;
+  background: var(--c-surface-heavy);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
+  backdrop-filter: blur(var(--blur)) saturate(1.4);
+  border: 1px solid var(--c-border);
+  box-shadow: var(--shadow-panel);
+  color: var(--c-text);
+  text-align: left;
+  animation: rise-in 0.2s ease;
+}
+
+/* ‹ at the left, the title, ⋯ (a .sheet-dots) at the right */
+.topcard-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px 6px;
+  font-weight: 750;
+}
+
+.topcard-head > h2,
+.topcard-head > .topcard-title {
+  flex: 1;
+  min-width: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topcard-head > .sheet-dots,
+.topcard-head > .sheet-actions {
+  margin-left: auto;
+}
+
+.topcard-back {
+  flex: none;
+  padding: 4px 8px 4px 0;
+  color: var(--c-accent);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.topcard-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 4px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ---------- the strip: folded line, open header, bars, drains, detail ---------- */
+
+/* folded: one 44 px line — today, now, ⌄ and then ⋯ at its right end */
+.wxfold {
+  position: relative;
+  z-index: 2; /* its ⋯ menu drops over the live card (see .wxstrip) */
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: var(--c-surface);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
+  backdrop-filter: blur(var(--blur)) saturate(1.4);
+  border: 1px solid var(--c-border);
+  box-shadow: var(--shadow-panel);
+  color: var(--c-text);
+  white-space: nowrap;
+}
+
+/* the line itself is a button beside the ⋯ button: it takes the width and
+   carries the ⌄ at its far end */
+.wxfold > button:not(.wxfold-dots) {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  color: inherit;
+  text-align: left;
+  overflow: hidden;
+}
+
+.wxfold > button:not(.wxfold-dots) > svg:last-child {
+  margin-left: auto;
+  flex: none;
+  color: var(--c-text-dim);
+}
+
+.wxfold b {
+  font-weight: 700;
+}
+
+/* the ⋯ button, a glyph or an IconDots, at the right end of its row */
+.wxfold-dots,
+.sheet-dots {
+  flex: none;
+  margin-left: auto;
+  min-width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0 4px;
+  color: var(--c-text);
+  font-size: calc(22px * var(--ui-scale));
+  line-height: 1;
+}
+
+.sheet-dots {
+  color: var(--c-text-dim);
+}
+
+/* open: the quarry chip, best window, Now, ⋯ */
+.wx-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 4px 3px;
+  min-height: 30px;
+}
+
+/* an anchored ⋯ menu: hangs under the right end of whatever is
+   position: relative around it (the strip's root, the folded line) */
+.wx-menu,
+.menu-pop {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 12;
+  min-width: 190px;
+  margin-top: 6px;
+  padding: 8px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-surface-heavy);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
+  backdrop-filter: blur(var(--blur)) saturate(1.4);
+  border: 1px solid var(--c-border-strong);
+  box-shadow: var(--shadow-panel);
+  animation: rise-in 0.15s ease;
+}
+
+.menu-pop {
+  z-index: 30;
+}
+
+.wx-menu-row,
+.menu-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: var(--c-text);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.wx-menu-row svg,
+.menu-row svg {
+  flex: none;
+}
+
+.wx-menu-row > .dim,
+.menu-row > .dim {
+  margin-left: auto;
+}
+
+.menu-row.danger {
+  color: var(--c-danger);
+}
+
+/* "2 new maps" beside Settings */
+.wx-menu-badge {
+  margin-left: auto;
+  color: var(--c-accent);
+  font-weight: 650;
+}
+
+/* a thin green bar along the foot of a day or hour cell: the quarry's
+   activity then, --bar 0..1 set inline */
+.wxbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2.5px;
+  border-radius: 0 0 var(--r-tile) var(--r-tile);
+  background: rgba(89, 224, 184, var(--bar, 0));
+  pointer-events: none;
+}
+
+/* the ground-air drain: a thin blue line under the hours it covers. Each
+   draining hour cell carries one; it runs through the 3 px gaps so a run
+   reads as one line, the first one carrying the word. The hour row scrolls
+   and clips, so give it room: .wxstrip-cells.wx-drains pads the bottom. */
+.wxdrain {
+  position: absolute;
+  left: -2px;
+  right: -2px;
+  bottom: -5px;
+  height: 2px;
+  background: rgba(76, 116, 240, 0.85);
+  pointer-events: none;
+}
+
+.wxdrain-label {
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  font-weight: 700;
+  line-height: 1;
+  color: #a9c1ff;
+  white-space: nowrap;
+}
+
+.wxstrip-cells.wx-drains {
+  padding-bottom: 16px;
+}
+
+/* the picked hour's detail, under the rows */
+.wxdetail {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 2px;
+  padding: 8px 6px 4px;
+  border-top: 1px solid rgba(126, 178, 224, 0.18);
+  color: var(--c-text);
+  text-align: left;
+  line-height: 1.3;
+}
+
+.wxdetail > :first-child {
+  font-weight: 700;
+}
+
+.wxdetail > :first-child .dim {
+  font-weight: 500;
+}
+
+.wxdetail-more {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 5px;
+  border-top: 1px dashed rgba(126, 178, 224, 0.14);
+  color: var(--c-text-dim);
+}
+
+/* the ⌃ that folds the strip: a slim row, a thumb's width to hit */
+.wxfold-handle {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  margin: -4px 0 -3px;
+  padding: 0 30px;
+  color: var(--c-text-dim);
+}
+
+/* ---------- a sheet's own heading row, and the shared heading parts ---------- */
+
+/* Dig in and the layers carry their own: the title left, Done or ⋯ right */
+.sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0 10px;
+  font-weight: 750;
+  color: var(--c-text);
+}
+
+.sheet-head > h2,
+.sheet-head > .sheet-title {
+  flex: 1;
+  min-width: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sheet-head > .sheet-dots,
+.sheet-head > .sheet-actions,
+.sheet-head > .sheet-done {
+  margin-left: auto;
+}
+
+/* the right end of a heading row: Done, ⋯, or both */
+.sheet-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  position: relative;
+}
+
+.sheet-back {
+  flex: none;
+  padding: 4px 8px 4px 0;
+  color: var(--c-accent);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.sheet-done {
+  flex: none;
+  padding: 6px 14px;
+  border-radius: 12px;
+  background: rgba(126, 178, 224, 0.1);
+  border: 1px solid rgba(126, 178, 224, 0.22);
+  color: var(--c-text);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ---------- Dig in: the score, the reasons, the 24 h wind bar ---------- */
+
+.digin-score {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(89, 224, 184, 0.18);
+  border: 1.5px solid var(--c-track);
+  color: var(--c-track);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.digin-score.fair {
+  background: rgba(230, 220, 180, 0.14);
+  border-color: #e6dcb4;
+  color: #e6dcb4;
+}
+
+.digin-score.poor {
+  background: rgba(126, 178, 224, 0.08);
+  border-color: var(--c-text-faint);
+  color: var(--c-text-dim);
+}
+
+.digin-reason {
+  color: var(--c-text);
+  line-height: 1.35;
+}
+
+/* the day as a bar: drains / wind / drains, widths set inline, the
+   planning time a .digin-tick over it */
+.digin-bar {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  height: 18px;
+  margin-top: 4px;
+  font-weight: 700;
+  color: var(--c-text);
+}
+
+.digin-bar > * {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding-left: 6px;
+  overflow: hidden;
+  white-space: nowrap;
+  background: rgba(160, 180, 200, 0.32);
+}
+
+.digin-bar > .drains {
+  background: rgba(76, 116, 240, 0.8);
+}
+
+.digin-bar > :first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+.digin-bar > :last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+.digin-tick {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 24px;
+  margin-left: -1px;
+  background: var(--c-accent);
+  padding: 0;
+  pointer-events: none;
+}
+
+/* 12a · 6a · 12p · 6p · 12a under the bar */
+.digin-hours {
+  display: flex;
+  justify-content: space-between;
+  color: var(--c-text-dim);
+}
+
+/* ---------- Map buttons: the editor's rows ---------- */
+
+/* a slot in use: the button's icon, its name, − at the right */
+.hotedit-slot,
+.hotedit-locked {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(126, 178, 224, 0.1);
+  color: var(--c-text);
+  text-align: left;
+}
+
+.hotedit-slot > :last-child {
+  margin-left: auto;
+}
+
+.hotedit-slot > button:last-child {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 107, 107, 0.18);
+  color: #ff8a80;
+  font-weight: 800;
+  font-size: calc(18px * var(--ui-scale));
+  line-height: 1;
+}
+
+.hotedit-slot .fab,
+.hotedit-locked .fab {
+  flex: none;
+  box-shadow: none;
+}
+
+/* a free slot: a dashed ring and the one word inside the row */
+.hotedit-empty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(126, 178, 224, 0.1);
+  color: var(--c-text-faint);
+}
+
+.hotedit-empty::before {
+  content: '';
+  flex: none;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(143, 169, 191, 0.6);
+}
+
+/* the chips to add, wrapping */
+.hotedit-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 0 4px;
+}
+
+.hotedit-add > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: rgba(126, 178, 224, 0.1);
+  border: 1px solid rgba(126, 178, 224, 0.2);
+  color: var(--c-text);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.hotedit-add > button:disabled {
+  opacity: 0.4;
+}
+
+/* the right column, always there */
+.hotedit-locked {
+  color: var(--c-text-dim);
+}
+
 /* ---------- text size: one dial, three stops (ui/textScale.ts) ----------
    --ui-scale is 1 · 1.3 · 1.6 on <html>; the strip also shows fewer hours
    across (10 · 8 · 6) and, at the top stop, five day chips with the rest a
@@ -3526,13 +3374,110 @@
   font-size: calc(15px * var(--ui-scale));
 }
 
-.tab {
+/* the one-screen chrome (the "one screen" section above holds the layout) */
+.hotbtn-label {
+  font-size: calc(10.5px * var(--ui-scale));
+}
+
+.livecard,
+.livecard-chip {
+  font-size: calc(14px * var(--ui-scale));
+}
+
+.lc-line + .lc-line {
+  font-size: calc(13px * var(--ui-scale));
+}
+
+.lc-head {
+  font-size: calc(16px * var(--ui-scale));
+}
+
+.lc-tag,
+.wx-menu-badge {
+  font-size: calc(11px * var(--ui-scale));
+}
+
+.topcard {
+  font-size: calc(13.5px * var(--ui-scale));
+}
+
+.topcard-head,
+.topcard-back {
+  font-size: calc(16px * var(--ui-scale));
+}
+
+.lc-row,
+.topcard-row,
+.digin-row {
+  font-size: calc(14px * var(--ui-scale));
+}
+
+.menu-row,
+.wx-menu-row,
+.hotedit-slot,
+.hotedit-locked {
+  font-size: calc(15px * var(--ui-scale));
+}
+
+.wxfold {
+  font-size: calc(14px * var(--ui-scale));
+}
+
+.wx-head {
+  font-size: calc(12px * var(--ui-scale));
+}
+
+.wxdetail {
+  font-size: calc(13px * var(--ui-scale));
+}
+
+.wxdetail > :first-child {
+  font-size: calc(15px * var(--ui-scale));
+}
+
+.wxdetail-more {
+  font-size: calc(12.5px * var(--ui-scale));
+}
+
+.wxdrain-label {
+  font-size: calc(9px * var(--ui-scale));
+}
+
+.sheet-head {
+  font-size: calc(19px * var(--ui-scale));
+}
+
+.sheet-back,
+.sheet-done {
+  font-size: calc(13.5px * var(--ui-scale));
+}
+
+.digin-score {
+  font-size: calc(17px * var(--ui-scale));
+}
+
+.digin-reason {
+  font-size: calc(13px * var(--ui-scale));
+}
+
+.digin-bar {
   font-size: calc(10px * var(--ui-scale));
 }
 
+.digin-hours {
+  font-size: calc(10.5px * var(--ui-scale));
+}
+
+.hotedit-empty {
+  font-size: calc(14px * var(--ui-scale));
+}
+
+.hotedit-add > button {
+  font-size: calc(12.5px * var(--ui-scale));
+}
+
 /* ---- Spots: where to be for the target at the planning time ---- */
-.spots-targets { display: flex; flex-direction: column; gap: 6px; padding: 2px 0 8px; }
-.spots-chiprow { display: flex; flex-wrap: wrap; gap: 6px; }
+
 .chip-pick { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 999px; border: 1px solid rgba(126, 178, 224, 0.18); background: rgba(255, 255, 255, 0.04); color: var(--c-text-dim); font-size: 13px; }
 .chip-pick.chip-on { background: var(--c-accent-dim); color: var(--c-accent); border-color: var(--c-accent); font-weight: 600; }
 .chip-pick input { margin: 0; accent-color: var(--c-accent); }
@@ -3540,91 +3485,34 @@
 .verdict.v-go { border-left-color: #59e0b8; }
 .verdict.v-ok { border-left-color: #ffb454; }
 .verdict.v-no { border-left-color: #ff8a80; }
-.verdict-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-.verdict-title { font-size: 18px; font-weight: 700; color: var(--c-text); }
-.verdict-warn { padding: 6px 10px; border-radius: 8px; background: rgba(255, 138, 128, 0.14); color: #ffb3ab; font-size: 13px; font-weight: 600; }
-.verdict-factors { display: flex; flex-direction: column; gap: 3px; }
+
 .vf-row { display: grid; grid-template-columns: 52px 1fr; gap: 8px; align-items: baseline; font-size: 13px; color: var(--c-text); }
 .vf-mult { font-variant-numeric: tabular-nums; text-align: right; color: var(--c-text-faint); font-weight: 600; }
 .vf-mult.up { color: #59e0b8; }
 .vf-mult.down { color: #ff8a80; }
 .vf-label em { font-style: normal; color: var(--c-text-faint); }
-.verdict-notes { display: flex; flex-direction: column; gap: 3px; padding-top: 4px; border-top: 1px solid rgba(126, 178, 224, 0.1); }
-.spots-switches { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 0 0; }
+
 .spots-legend { display: inline-flex; align-items: center; gap: 3px; padding: 0 6px; font-size: 11.5px; color: var(--c-text-faint); }
 .spots-legend i { width: 14px; height: 9px; border-radius: 2px; display: inline-block; }
 .spots-legend .b1 { background: rgba(255, 214, 90, 0.5); }
 .spots-legend .b2 { background: rgba(255, 140, 40, 0.7); }
 .spots-legend .b3 { background: rgba(235, 45, 25, 0.9); }
 .spots-legend span { margin-left: 4px; }
-.spots-mode { display: inline-flex; border-radius: 999px; border: 1px solid rgba(126, 178, 224, 0.18); background: rgba(255, 255, 255, 0.04); overflow: hidden; }
-.spots-mode-btn { padding: 6px 11px; border: 0; background: none; color: var(--c-text-dim); font-size: 13px; cursor: pointer; }
-.spots-mode-btn + .spots-mode-btn { border-left: 1px solid rgba(126, 178, 224, 0.14); }
-.spots-mode-btn.on { background: var(--c-accent-dim); color: var(--c-accent); font-weight: 600; }
-.spot-row { border-bottom: 1px solid rgba(126, 178, 224, 0.08); }
-.spot-head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 4px; text-align: left; color: inherit; background: none; border: 0; }
-.spot-num { flex: none; width: 24px; height: 24px; border-radius: 50%; background: #ffc400; color: #1a1200; font-weight: 700; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; }
-.spot-score { flex: none; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--c-accent); font-size: 15px; }
-.spot-reasons { margin: 0; padding: 0 4px 10px 38px; list-style: disc; color: var(--c-text-dim); font-size: 12.5px; line-height: 1.4; }
-.spot-reasons li { margin-left: 14px; }
-.spot-coords { list-style: none; margin-left: 0 !important; color: var(--c-text-faint); font-variant-numeric: tabular-nums; }
-.spot-open .spot-head .row-title { color: var(--c-accent); }
 
-/* the tap popup's Spots case: the score first, the reasons on "why" */
-.pp-why { margin: 6px 0 2px; font-size: 12px; color: var(--c-text-dim); }
-.pp-why-head { display: flex; align-items: center; gap: 8px; }
-.pp-why-head > span { flex: 1; color: var(--c-text); font-weight: 600; }
+/* the tap popup's game line: the score in its grade's colour */
+
 .pp-score { font-size: 18px; font-weight: 700; min-width: 30px; text-align: center; padding: 1px 6px; border-radius: 6px; background: rgba(255, 255, 255, 0.06); }
+
 .pp-top { color: #ff8a80; }
 .pp-good { color: var(--c-warn); }
 .pp-fair { color: #e6dcb4; }
 .pp-poor { color: var(--c-text-faint); }
-.pp-why-btn, .pp-details { font-size: 12px; }
+
 .pp-reasons { margin: 6px 0 0 14px; padding: 0; }
 .pp-reasons li { margin: 2px 0; line-height: 1.3; }
 .pp-reasons li:last-child { list-style: none; margin-left: -14px; margin-top: 6px; }
 
-/* Spots: the week's windows */
-.week { display: flex; flex-direction: column; gap: 3px; }
-.week-row { display: grid; grid-template-columns: 52px 1fr 1fr; gap: 4px; align-items: stretch; }
-.week-day { display: flex; flex-direction: column; justify-content: center; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--c-text-dim); }
-.win { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 5px 8px; border-radius: var(--r-tile); background: rgba(18, 32, 45, 0.65); border-left: 3px solid transparent; color: var(--c-text-dim); font-size: 11px; text-align: left; }
-.win b { font-size: 14px; color: var(--c-text); }
-.win-go { border-left-color: #ff8a80; }
-.win-ok { border-left-color: var(--c-warn); }
-.win-no { border-left-color: rgba(126, 178, 224, 0.25); }
-.win-best { outline: 1.5px solid var(--c-accent); outline-offset: -1.5px; }
-.win-on { background: var(--c-accent-dim); }
-.win-gone { opacity: 0.35; }
-.week-pick { font-size: 12.5px; color: var(--c-text); margin: 6px 0 2px; }
-.week-pick b { color: var(--c-accent); }
-
-/* Spots: the breakdown and the knobs */
-.case-line { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; font-size: 12.5px; border-bottom: 1px solid rgba(126, 178, 224, 0.06); }
-.case-line:last-child { border-bottom: none; }
-.case-val { min-width: 46px; text-align: right; font-variant-numeric: tabular-nums; color: var(--c-text); }
-.case-val.up { color: var(--c-track); }
-.case-val.down { color: #ff8a80; }
-.case-label { flex: 1; color: var(--c-text-dim); }
-.case-w { font-size: 10.5px; color: var(--c-accent); }
-.case-w.off { color: var(--c-text-faint); text-decoration: line-through; }
-.case-sum { margin-top: 6px; font-size: 12.5px; color: var(--c-text-dim); }
-.case-sum b { color: var(--c-text); }
-.knob { display: grid; grid-template-columns: 1fr 96px 44px; gap: 8px; align-items: center; padding: 5px 0; }
-.knob-text { display: flex; flex-direction: column; gap: 1px; }
-.knob-title { font-size: 13px; color: var(--c-text); }
-.knob-desc { font-size: 11px; color: var(--c-text-dim); line-height: 1.3; }
-.knob input[type='range'] { width: 100%; }
-.knob-val { font-size: 11px; text-align: right; color: var(--c-accent); }
-.knob-val.off { color: var(--c-text-faint); }
-.fold { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 9px 4px; font-size: 13px; font-weight: 600; color: var(--c-text); border-bottom: 1px solid rgba(126, 178, 224, 0.08); }
-.fold em { font-style: normal; font-weight: 400; font-size: 12px; color: var(--c-text-dim); }
-
 /* you on the map */
 .me { width: 40px; height: 40px; }
 .me-ring { border-radius: 50%; background: rgba(63, 200, 255, 0.12); border: 1px solid rgba(63, 200, 255, 0.35); pointer-events: none; }
-.fab-rec .rec-dot { display: block; width: 14px; height: 14px; border-radius: 50%; background: #ff6b6b; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85); }
-.fab-rec .rec-dot.on { animation: rec-pulse 1.2s ease-in-out infinite; }
-@keyframes rec-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(0.7); } }
-.track-row { display: flex; align-items: center; gap: 10px; padding: 9px 4px; border-bottom: 1px solid rgba(126, 178, 224, 0.08); }
-.track-row .row-text { flex: 1; }
+

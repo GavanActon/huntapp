@@ -121,7 +121,7 @@ function hidingCover(b: HuntBands, i: number): { m: number; thick: boolean } {
 /** Expected view along a bearing from cell i, m: the light that gets
  *  through each 30 m of bush, summed, out to 240 m. Water and open bog
  *  are seen across. */
-function viewM(b: HuntBands, h: Habitat, i: number, bearing: number): number {
+export function viewM(b: HuntBands, h: Habitat, i: number, bearing: number): number {
   const tr = b.through30!
   const st = stepsFor(h, bearing)
   const r0 = (i / h.cols) | 0

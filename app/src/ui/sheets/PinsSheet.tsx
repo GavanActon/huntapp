@@ -1,18 +1,20 @@
-import { useState } from 'react'
-import { getMap } from '../../map/mapController'
-import { useAppStore } from '../../state/appStore'
-import { usePlacesStore, type SavedPlace } from '../../state/placesStore'
+import { useState, type JSX } from 'react'
 import type { PlaceDef } from '../../config'
-import { IconLocate, IconPin, IconShare, IconTrash } from '../icons'
-import { exportTrackGpx, trackDurationMin, useTrackStore } from '../../tracking/trackStore'
-import HuntLogSection from './HuntLogSection'
+import { getMap } from '../../map/mapController'
 import { isDroppedPin } from '../../map/placePopup'
+import { fromHome } from '../../spots/scoring'
+import { homePlace, usePlacesStore, type SavedPlace } from '../../state/placesStore'
+import { IconLocate, IconPin, IconTrash } from '../icons'
+import './log.css'
 
 const KINDS: PlaceDef['kind'][] = ['camp', 'lake', 'landing', 'stand', 'trail']
 
-/** Saved places: the camp, the lakes, stands and landings. Tapping a row
- *  looks (the map eases there, the strip retargets); the sheet stays up. */
-export default function PlacesPanel() {
+/**
+ * Pins: the camp, the lakes, the stands and landings, and the pins dropped
+ * on the map. Tapping a row picks it (the map eases there, the strip
+ * retargets); tapping the picked row again, or Clear, lets it go.
+ */
+export default function PinsSheet(): JSX.Element {
   const places = usePlacesStore((s) => s.places)
   const selectedId = usePlacesStore((s) => s.selectedId)
   const select = usePlacesStore((s) => s.select)
@@ -22,16 +24,10 @@ export default function PlacesPanel() {
   const [editing, setEditing] = useState<string | null>(null)
   // pins dropped from the map and never named or written on: cleared together
   const dropped = places.filter(isDroppedPin)
-  const tracks = useTrackStore((s) => s.tracks)
-  const recordingId = useTrackStore((s) => s.recordingId)
-  const shown = useTrackStore((s) => s.shown)
-  const toggleShown = useTrackStore((s) => s.toggleShown)
-  const removeTrack = useTrackStore((s) => s.remove)
-  const renameTrack = useTrackStore((s) => s.rename)
-  const units = useAppStore((s) => s.units)
-  const dist = (m: number) => (units === 'imperial' ? `${(m / 1609.344).toFixed(2)} mi` : m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(2)} km`)
+  const home = homePlace()
 
-  const look = (p: SavedPlace) => {
+  const tap = (p: SavedPlace) => {
+    if (p.id === selectedId) return select(null)
     select(p.id)
     getMap()?.easeTo({ center: [p.lon, p.lat], zoom: Math.max(getMap()!.getZoom(), 13) })
   }
@@ -42,9 +38,10 @@ export default function PlacesPanel() {
     select(p.id)
     setEditing(p.id)
   }
+  const where = (p: SavedPlace) => (p.id === home.id ? p.kind : `${p.kind} · ${fromHome(p.lon, p.lat, home)}`)
 
   return (
-    <div className="panel places-panel">
+    <div className="pins">
       <div className="places-tools">
         <button className="btn-secondary" onClick={addHere}>
           <IconPin size={16} /> Add at map centre
@@ -74,13 +71,7 @@ export default function PlacesPanel() {
             return (
               <div key={p.id} className="place-row place-row-edit">
                 <div className="pe-fields">
-                  <input
-                    className="pe-name"
-                    value={p.name}
-                    onFocus={() => useAppStore.getState().setSheetTall(true)}
-                    onBlur={() => useAppStore.getState().setSheetTall(false)}
-                    onChange={(e) => update(p.id, { name: e.target.value })}
-                  />
+                  <input className="pe-name" value={p.name} onChange={(e) => update(p.id, { name: e.target.value })} />
                   <select value={p.kind} onChange={(e) => update(p.id, { kind: e.target.value as PlaceDef['kind'] })}>
                     {KINDS.map((k) => (
                       <option key={k} value={k}>
@@ -110,53 +101,23 @@ export default function PlacesPanel() {
           }
           return (
             <div key={p.id} className={`place-row${on ? ' place-current' : ''}`}>
-              <button className="row-text place-go" onClick={() => look(p)}>
+              <button className="row-text place-go" aria-pressed={on} onClick={() => tap(p)}>
                 <span className="row-title">{p.name}</span>
                 <span className="row-desc">
-                  {p.kind} · {p.lat.toFixed(4)}, {p.lon.toFixed(4)}
+                  {where(p)}
                   {p.note ? ` · ${p.note}` : ''}
                 </span>
               </button>
               <button className="icon-btn" aria-label="Edit" onClick={() => setEditing(p.id)}>
                 <IconPin size={16} />
               </button>
-              <button className="icon-btn" aria-label="Go" onClick={() => look(p)}>
+              <button className="icon-btn" aria-label="Go" onClick={() => getMap()?.easeTo({ center: [p.lon, p.lat], zoom: Math.max(getMap()!.getZoom(), 13) })}>
                 <IconLocate size={16} />
               </button>
             </div>
           )
         })}
       </div>
-      {tracks.length > 0 && (
-        <>
-          <div className="panel-section">Tracks</div>
-          {[...tracks].reverse().map((t) => (
-            <div key={t.id} className="track-row">
-              <input type="checkbox" className="switch" checked={t.id === recordingId || shown.includes(t.id)} disabled={t.id === recordingId} onChange={() => toggleShown(t.id)} aria-label="Show on the map" />
-              <div className="row-text">
-                <input className="pe-name" value={t.name} onChange={(e) => renameTrack(t.id, e.target.value)} onFocus={() => useAppStore.getState().setSheetTall(true)} onBlur={() => useAppStore.getState().setSheetTall(false)} />
-                <span className="row-desc">
-                  {t.id === recordingId ? 'recording · ' : ''}
-                  {dist(t.distanceM)} · {trackDurationMin(t)} min · {t.points.length} points
-                </span>
-              </div>
-              <button className="icon-btn" aria-label="Export GPX" onClick={() => void exportTrackGpx(t)}>
-                <IconShare size={16} />
-              </button>
-              <button
-                className="icon-btn danger"
-                aria-label="Delete"
-                onClick={() => {
-                  if (confirm(`Delete ${t.name}?`)) removeTrack(t.id)
-                }}
-              >
-                <IconTrash size={16} />
-              </button>
-            </div>
-          ))}
-        </>
-      )}
-      <HuntLogSection />
     </div>
   )
 }

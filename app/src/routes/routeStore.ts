@@ -21,7 +21,7 @@ import { askWorker } from './workerClient'
  * ways there on foot, from you (or camp, with no good fix). "Easiest" is
  * the quickest walk: grade, bush, rough and wet ground, creeks and roads
  * (routes/walkModel.ts). "Hunt" still walks well but bends toward good
- * ground for the animal picked in Spots and keeps your scent off it and
+ * ground for the animal picked on the strip and keeps your scent off it and
  * off the spot you are heading for, so you come in with the wind in your
  * face.
  *
@@ -123,7 +123,7 @@ export function defaultFrom(): RouteEnd {
 /** Open the card; with a point, that is where you are going. */
 export function openRoutes(to?: { lon: number; lat: number; name?: string; kind?: RouteEnd['kind'] }) {
   useMeasureStore.getState().stop()
-  useAppStore.getState().setSheetTab(null)
+  useAppStore.getState().closeSheet()
   const s = useRoutes.getState()
   // from you means from where you are now
   const from = !s.from || s.from.kind === 'you' || (to && s.from.kind === 'camp') ? defaultFrom() : s.from
@@ -186,8 +186,8 @@ function windField(g: Going, ms: number): WindField | undefined {
 /** Why a hunt route cannot be had right now, or null when it can. */
 export function huntBlocked(): string | null {
   const sp = useSpotsStore.getState()
-  if (isFish(sp.target)) return 'Hunt routes follow a game animal: pick one in Spots.'
-  if (sp.status !== 'ready' || !sp.result) return 'Hunt routes need the Spots scores, which need a forecast: waiting for one.'
+  if (isFish(sp.target)) return 'Hunt routes follow a game animal: pick one on the strip.'
+  if (sp.status !== 'ready' || !sp.result) return 'Hunt routes wait on the scores, which wait on a forecast.'
   return null
 }
 

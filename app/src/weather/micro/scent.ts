@@ -708,7 +708,8 @@ function drawCloud(map: MlMap, f: Frame, dim: boolean) {
   map.setPaintProperty('scent-layer', 'raster-opacity', dim ? 0.6 : 0.9)
 }
 
-function reachLabel(p: Plume): string {
+/** How far scent is noticeable, to 10 m: '180 m', or '> 700 m' off the grid. */
+export function reachLabel(p: Plume): string {
   return p.beyond ? `> ${EXTENT_M} m` : `${Math.round(p.reach / 10) * 10} m`
 }
 
@@ -1180,7 +1181,39 @@ export function plumeSummary(p: Plume): string {
   return `${Math.round(p.mainShare * 100)}% of your scent goes ${compass(p.mainToward)}${tail} · ${reachText(p)}${still}`
 }
 
-function areaText(ha: number): string {
+/** it spreads rather than goes one way */
+const spreads = (p: Plume) => p.calm && p.mainShare < 0.35
+
+/** The live card's line: 'Scent → SE · 180 m', or 'Scent spreads · 40 m' in near calm. */
+export function scentLine(p: Plume): string {
+  return spreads(p) ? `Scent spreads · ${reachLabel(p)}` : `Scent → ${compass(p.mainToward)} · ${reachLabel(p)}`
+}
+
+/** The opened card's row: 'Scent · 70% goes SE · to ~180 m', or 'Scent · spreads every way · to ~40 m'. */
+export function scentRow(p: Plume): string {
+  const to = `to ~${reachLabel(p)}`
+  return spreads(p) ? `Scent · spreads every way · ${to}` : `Scent · ${Math.round(p.mainShare * 100)}% goes ${compass(p.mainToward)} · ${to}`
+}
+
+/** 'Everyone placed is off the map; you stay.' Takes the placed people off and leaves the live one. */
+export function clearPlaced(): void {
+  const s = useScent.getState()
+  const live = s.people.filter((p) => p.live)
+  if (!live.length) return s.clear()
+  if (live.length === s.people.length) {
+    if (s.adding) s.setAdding(false)
+    return
+  }
+  useScent.setState({ people: live, pick: 0, adding: false })
+}
+
+/** The party's line: '2 sitters · scent over 5.2 ha'. */
+export function sittersLine(g: Group, n: number): string {
+  return `${n} sitters · scent over ${areaText(g.areaHa)}`
+}
+
+/** Ground in the user's units: '5.2 ha', '13 acres'. */
+export function areaText(ha: number): string {
   const acres = useAppStore.getState().units === 'imperial'
   const v = acres ? ha * 2.471 : ha
   return `${v < 10 ? v.toFixed(1) : Math.round(v)} ${acres ? 'acres' : 'ha'}`
