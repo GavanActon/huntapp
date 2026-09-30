@@ -42,8 +42,8 @@ export const HOT_MAX = 4
 export type HotSide = 'near' | 'far'
 export type HotSets = Record<HotSide, HotId[]>
 export const DEFAULT_HOT: Record<'hunt' | 'fish', HotSets> = {
-  hunt: { near: ['windcheck', 'scent', 'heard'], far: ['windflow', 'routes', 'measure', 'heat'] },
-  fish: { near: ['pin', 'bathy'], far: ['windflow', 'routes', 'measure', 'heat'] },
+  hunt: { near: ['windcheck', 'scent', 'heard', 'windflow'], far: ['routes', 'measure', 'heat'] },
+  fish: { near: ['pin', 'bathy', 'windflow'], far: ['routes', 'measure', 'heat'] },
 }
 const HOT_IDS: readonly HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'heat', 'person', 'pin', 'understory', 'lanes', 'bathy', 'radar', 'lowPower']
 
@@ -303,7 +303,8 @@ export const useAppStore = create<AppState>()(
       // v2: the strip is always on (its fold is stripOpen); the old on/off switch goes
       // v3: the default layers are the Scout view's; the old defaults, never touched, become them
       // v4: two button columns (near and far), Wind flow, Routes and Measure among them; the one-column sets go
-      version: 4,
+      // v5: the wind flow sits just above My location; the v4 defaults are replaced
+      version: 5,
       migrate: (persisted, from) => {
         const p = (persisted ?? {}) as Partial<AppState>
         if (from < 1) {
@@ -319,7 +320,7 @@ export const useAppStore = create<AppState>()(
           const untouched = (Object.keys(DEFAULT_LAYERS) as (keyof LayerVisibility)[]).every((k) => k === 'windFlow' || !!old[k] === !!LAYERS_V2[k])
           if (untouched) delete p.layers
         }
-        if (from < 4) delete (p as { hotButtons?: unknown }).hotButtons
+        if (from < 5) delete (p as { hotButtons?: unknown }).hotButtons
         return p as AppState
       },
       partialize: (s) => ({
