@@ -1,7 +1,11 @@
 /**
  * Whole-file storage for chart data (.pmtiles).
  *
- * Primary backend: OPFS (navigator.storage.getDirectory) with streaming writes.
+ * Primary backend: OPFS (navigator.storage.getDirectory) with streaming writes,
+ * gathered into WRITE_BYTES pieces first: the network hands over a file in
+ * small chunks (a few KB each on an iPhone), and a write awaited for each
+ * one held a download off the laptop to about 1 Mbps in the field
+ * (2026-09-30), with a fast link on both sides.
  * Fallback (older iOS without createWritable): Cache Storage with an in-memory
  * assembled response.
  *
@@ -11,6 +15,22 @@
 
 const DIR = 'charts'
 const CACHE_NAME = 'chart-files'
+/** how much of a download is gathered before one write to the file */
+const WRITE_BYTES = 4 << 20
+/** progress is reported about this often, not per network chunk */
+const PROGRESS_MS = 150
+
+/** The chunks so far as one array. */
+function joined(chunks: Uint8Array[], bytes: number): Uint8Array<ArrayBuffer> {
+  if (chunks.length === 1 && chunks[0].buffer instanceof ArrayBuffer) return chunks[0] as Uint8Array<ArrayBuffer>
+  const out = new Uint8Array(new ArrayBuffer(bytes))
+  let at = 0
+  for (const c of chunks) {
+    out.set(c, at)
+    at += c.byteLength
+  }
+  return out
+}
 const MANIFEST_PREFIX = 'chartfile:'
 
 export interface StoredFileInfo {
@@ -133,13 +153,28 @@ export async function downloadToStore(
     const writable = await fh.createWritable()
     const reader = resp.body.getReader()
     try {
+      let pending: Uint8Array[] = []
+      let pendingBytes = 0
+      let told = 0
       for (;;) {
         const { done, value } = await reader.read()
         if (done) break
-        await writable.write(value)
+        pending.push(value)
+        pendingBytes += value.byteLength
         written += value.byteLength
-        onProgress?.(written, total)
+        if (pendingBytes >= WRITE_BYTES) {
+          await writable.write(joined(pending, pendingBytes))
+          pending = []
+          pendingBytes = 0
+        }
+        const now = performance.now()
+        if (now - told >= PROGRESS_MS) {
+          told = now
+          onProgress?.(written, total)
+        }
       }
+      if (pendingBytes) await writable.write(joined(pending, pendingBytes))
+      onProgress?.(written, total)
       await writable.close()
     } catch (e) {
       try {
@@ -153,13 +188,19 @@ export async function downloadToStore(
     // Cache Storage fallback — assemble in memory (fine for bundle-sized files)
     const reader = resp.body.getReader()
     const chunks: Uint8Array[] = []
+    let told = 0
     for (;;) {
       const { done, value } = await reader.read()
       if (done) break
       chunks.push(value)
       written += value.byteLength
-      onProgress?.(written, total)
+      const now = performance.now()
+      if (now - told >= PROGRESS_MS) {
+        told = now
+        onProgress?.(written, total)
+      }
     }
+    onProgress?.(written, total)
     const blob = new Blob(chunks as BlobPart[], { type: 'application/octet-stream' })
     if (typeof caches === 'undefined') throw new Error('no storage: the page is not https')
     const cache = await caches.open(CACHE_NAME)
