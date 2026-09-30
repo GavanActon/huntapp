@@ -1654,6 +1654,23 @@
   white-space: nowrap;
 }
 
+/* a log entry's popup: what and when over its coordinates and Delete */
+.lp-title {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.lp-when {
+  font-size: 12px;
+  color: var(--c-text-dim);
+  margin-bottom: 6px;
+}
+
+.pp-acts .lp-coord {
+  flex: 2;
+  font-variant-numeric: tabular-nums;
+}
+
 .pp-scent {
   background: var(--c-accent-dim);
   border: 1px solid var(--c-accent);
@@ -2584,6 +2601,18 @@
   height: 14px;
 }
 
+/* a left hand: the near column and the pill's stack swap sides */
+.app-lefty .leftstack {
+  left: auto;
+  right: calc(var(--sar, 0px) + 12px);
+  align-items: flex-end;
+}
+
+.app-lefty .toolcol {
+  right: auto;
+  left: calc(var(--sal, 0px) + 12px);
+}
+
 /* My location while the GPS is still looking: the glyph breathes */
 .fab-acquiring svg {
   animation: pulse 1.6s ease-in-out infinite;
@@ -3211,6 +3240,36 @@
   height: 46px;
   border-radius: 50%;
   border: 1.5px dashed rgba(143, 169, 191, 0.6);
+}
+
+/* a tap on a free slot picks which column the Add chips fill */
+button.hotedit-empty {
+  width: 100%;
+  text-align: left;
+}
+
+.hotedit-empty.on {
+  color: var(--c-accent);
+}
+
+.hotedit-empty.on::before {
+  border-color: var(--c-accent);
+}
+
+/* the ⋯ with new maps waiting: a dot at its corner */
+.wxfold-dots.has-new::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c-accent);
+}
+
+.wxfold-dots {
+  position: relative;
 }
 
 /* the chips to add, wrapping */

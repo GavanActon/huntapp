@@ -55,13 +55,15 @@ function TopBar() {
 
 /**
  * One screen. Read at the top: the strip, then the live card or a top card
- * in its slot. Touch at the bottom: your hot buttons over the view pill at
- * the left, the fixed tools at the right, and the bottom bar for whichever
- * tool or form is up. A sheet or a tall form takes the columns away; a top
- * card never does.
+ * in its slot. Touch at the bottom: the far column's buttons over the view
+ * pill on one side, the near column (your high-use buttons and My location)
+ * under the thumb on the other, mirrored for a left hand, and the bottom bar
+ * for whichever tool or form is up. A sheet or a tall form takes the
+ * columns away; a top card never does.
  */
 export default function App() {
   const setOnline = useAppStore((s) => s.setOnline)
+  const leftHanded = useAppStore((s) => s.leftHanded)
   const sheetOpen = useAppStore((s) => s.sheets.length > 0)
   const topCard = useAppStore((s) => s.topCard != null)
   const viewMenuOpen = useAppStore((s) => s.viewMenuOpen)
@@ -118,7 +120,7 @@ export default function App() {
   }, [setOnline])
 
   return (
-    <div className="app">
+    <div className={`app${leftHanded ? ' app-lefty' : ''}`}>
       <MapView />
       <div className="toparea">
         <TopBar />
@@ -127,7 +129,7 @@ export default function App() {
       </div>
       {!sheetOpen && !formUp && (
         <div className="leftstack">
-          {!viewMenuOpen && <HotColumn />}
+          {!viewMenuOpen && <HotColumn side="far" />}
           {!measuring && <ViewPill />}
         </div>
       )}

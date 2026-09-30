@@ -5,8 +5,10 @@ import { create } from 'zustand'
 interface MeasureState {
   active: boolean
   points: [number, number][]
-  /** Open the tool; with a point (Dig in's "Measure from here"), that is the first one dropped. */
-  start: (p?: [number, number]) => void
+  /** what the first point is: you (location on), a spot (Dig in), or nothing yet */
+  from: 'you' | 'spot' | null
+  /** Open the tool; with a point, that is the first one dropped. */
+  start: (p?: [number, number], from?: 'you' | 'spot') => void
   /** Leave the tool; the measurement goes with it. */
   stop: () => void
   addPoint: (p: [number, number]) => void
@@ -19,11 +21,13 @@ interface MeasureState {
 export const useMeasureStore = create<MeasureState>((set) => ({
   active: false,
   points: [],
-  start: (p) => set(p ? { active: true, points: [p] } : { active: true }),
-  stop: () => set({ active: false, points: [] }),
+  from: null,
+  start: (p, from) => set(p ? { active: true, points: [p], from: from ?? 'spot' } : { active: true, from: null }),
+  stop: () => set({ active: false, points: [], from: null }),
   addPoint: (p) => set((s) => ({ points: [...s.points, p] })),
-  movePoint: (idx, p) => set((s) => ({ points: s.points.map((q, i) => (i === idx ? p : q)) })),
-  removePoint: (idx) => set((s) => ({ points: s.points.filter((_, i) => i !== idx) })),
-  undo: () => set((s) => ({ points: s.points.slice(0, -1) })),
-  clear: () => set({ points: [] }),
+  // the first point moved or taken away is no longer you
+  movePoint: (idx, p) => set((s) => ({ points: s.points.map((q, i) => (i === idx ? p : q)), from: idx === 0 ? null : s.from })),
+  removePoint: (idx) => set((s) => ({ points: s.points.filter((_, i) => i !== idx), from: idx === 0 ? null : s.from })),
+  undo: () => set((s) => ({ points: s.points.slice(0, -1), from: s.points.length <= 1 ? null : s.from })),
+  clear: () => set({ points: [], from: null }),
 }))

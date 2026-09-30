@@ -71,6 +71,18 @@
   opacity: 0.7;
 }
 
+/* the star: dim until the layer is starred to the top */
+.layers-star {
+  flex: none;
+  display: flex;
+  padding: 8px 4px;
+  color: var(--c-text-faint);
+}
+
+.layers-star.on {
+  color: var(--c-warn);
+}
+
 /* a layer the phone has no data for: greyed, its switch dead */
 .layers-dead {
   opacity: 0.45;

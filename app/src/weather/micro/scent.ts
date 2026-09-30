@@ -4,6 +4,8 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { devlog } from '../../devlog'
 import { getMap, onEachMap, withMap } from '../../map/mapController'
+import { useMeasureStore } from '../../measure/measureStore'
+import { useRoutes } from '../../routes/routeStore'
 import { useAppStore } from '../../state/appStore'
 import { compass } from '../openMeteo'
 import { onProfile } from '../boundaryLayer'
@@ -794,9 +796,13 @@ function syncMarkers(map: MlMap | null) {
     const k = markers.length
     const el = document.createElement('div')
     el.className = 'scent-person'
-    // the map's own tap popup stays shut
+    // the map's own tap popup stays shut; with the tape or the routes out,
+    // the person is the point you meant
     el.addEventListener('click', (e) => {
       e.stopPropagation()
+      const p = useScent.getState().people[k]
+      if (p && useMeasureStore.getState().active) return useMeasureStore.getState().addPoint([p.lon, p.lat])
+      if (p && useRoutes.getState().open) return useRoutes.getState().setTo({ lon: p.lon, lat: p.lat, kind: 'map', name: `${k + 1}` })
       useScent.getState().setPick(k)
     })
     const m = new maplibregl.Marker({ element: el, draggable: true })

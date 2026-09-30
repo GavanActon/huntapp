@@ -88,6 +88,16 @@
   background: var(--c-accent-dim);
 }
 
+/* the chevron that opens the strip, folded */
+.wx-open {
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 4px;
+  color: var(--c-text-dim);
+}
+
 /* Now, only while the planning time is not now */
 .wx-now {
   flex: none;

@@ -10,7 +10,6 @@ export type Sheet =
   | { kind: 'pins' }
   | { kind: 'huntlog' }
   | { kind: 'settings' }
-  | { kind: 'settingsMore' }
   | { kind: 'buttons' }
   | { kind: 'offline' }
   | { kind: 'layers' }
@@ -22,8 +21,7 @@ export const SHEET_HALF_PCT: Record<SheetKind, number> = {
   scoring: 72,
   pins: 46,
   huntlog: 44,
-  settings: 52,
-  settingsMore: 60,
+  settings: 72,
   buttons: 66,
   offline: 60,
   layers: 80,
@@ -36,11 +34,18 @@ export const topSheet = (s: AppState): Sheet | null => s.sheets[s.sheets.length 
  *  an outing from the Hunt log. The columns stay under it. */
 export type TopCard = { kind: 'scent' } | { kind: 'outing'; id: string }
 
-/** The buttons the left column can hold, picked in Map buttons. */
-export type HotId = 'heat' | 'scent' | 'heard' | 'person' | 'windcheck' | 'pin' | 'understory' | 'lanes' | 'bathy' | 'radar' | 'lowPower'
+/** The buttons either column can hold, picked in Map buttons. My location
+ *  is not one of them: it is always at the foot of the near column. */
+export type HotId = 'windcheck' | 'scent' | 'heard' | 'windflow' | 'routes' | 'measure' | 'heat' | 'person' | 'pin' | 'understory' | 'lanes' | 'bathy' | 'radar' | 'lowPower'
 export const HOT_MAX = 4
-export const DEFAULT_HOT: Record<'hunt' | 'fish', HotId[]> = { hunt: ['heat', 'scent', 'heard'], fish: ['heat', 'bathy', 'pin'] }
-const HOT_IDS: readonly HotId[] = ['heat', 'scent', 'heard', 'person', 'windcheck', 'pin', 'understory', 'lanes', 'bathy', 'radar', 'lowPower']
+/** The two columns: `near` is the thumb's side (right, or left for a left hand), `far` the other. */
+export type HotSide = 'near' | 'far'
+export type HotSets = Record<HotSide, HotId[]>
+export const DEFAULT_HOT: Record<'hunt' | 'fish', HotSets> = {
+  hunt: { near: ['windcheck', 'scent', 'heard'], far: ['windflow', 'routes', 'measure', 'heat'] },
+  fish: { near: ['pin', 'bathy'], far: ['windflow', 'routes', 'measure', 'heat'] },
+}
+const HOT_IDS: readonly HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'heat', 'person', 'pin', 'understory', 'lanes', 'bathy', 'radar', 'lowPower']
 
 /** Known ids only, each once, at most HOT_MAX. */
 function cleanHot(ids: readonly unknown[]): HotId[] {
@@ -171,14 +176,23 @@ export interface AppState {
   /** the view pill's menu up (the hot column hides under it); session only */
   viewMenuOpen: boolean
   setViewMenuOpen: (v: boolean) => void
-  /** the left column's buttons per mode, up to HOT_MAX; persisted */
-  hotButtons: Record<'hunt' | 'fish', HotId[]>
-  setHotButtons: (mode: 'hunt' | 'fish', ids: HotId[]) => void
+  /** both columns' buttons per mode, up to HOT_MAX each; persisted */
+  hotButtons: Record<'hunt' | 'fish', HotSets>
+  setHotButtons: (mode: 'hunt' | 'fish', side: HotSide, ids: HotId[]) => void
+  /** the near column and the view pill swap sides for a left hand; persisted */
+  leftHanded: boolean
+  setLeftHanded: (v: boolean) => void
 
   layers: LayerVisibility
   setLayer: (k: keyof LayerVisibility, v: boolean) => void
   opacity: LayerOpacity
   setOpacity: (k: keyof LayerOpacity, v: number) => void
+  /** colour saturation per raster layer, -1..1 (0 as shot); persisted */
+  saturation: Partial<Record<keyof LayerOpacity, number>>
+  setSaturation: (k: keyof LayerOpacity, v: number) => void
+  /** layers starred to the top of Edit this view; persisted */
+  starred: (keyof LayerVisibility)[]
+  toggleStar: (k: keyof LayerVisibility) => void
   /** Which historical map year to show, when more than one is available. */
   historicalYear: number | null
   setHistoricalYear: (y: number | null) => void
@@ -237,12 +251,18 @@ export const useAppStore = create<AppState>()(
       viewMenuOpen: false,
       setViewMenuOpen: (viewMenuOpen) => set({ viewMenuOpen }),
       hotButtons: DEFAULT_HOT,
-      setHotButtons: (mode, ids) => set((st) => ({ hotButtons: { ...st.hotButtons, [mode]: cleanHot(ids) } })),
+      setHotButtons: (mode, side, ids) => set((st) => ({ hotButtons: { ...st.hotButtons, [mode]: { ...st.hotButtons[mode], [side]: cleanHot(ids) } } })),
+      leftHanded: false,
+      setLeftHanded: (leftHanded) => set({ leftHanded }),
 
       layers: DEFAULT_LAYERS,
       setLayer: (k, v) => set((s) => ({ layers: { ...s.layers, [k]: v } })),
       opacity: DEFAULT_OPACITY,
       setOpacity: (k, v) => set((s) => ({ opacity: { ...s.opacity, [k]: v } })),
+      saturation: {},
+      setSaturation: (k, v) => set((s) => ({ saturation: { ...s.saturation, [k]: v } })),
+      starred: [],
+      toggleStar: (k) => set((s) => ({ starred: s.starred.includes(k) ? s.starred.filter((x) => x !== k) : [...s.starred, k] })),
       historicalYear: null,
       setHistoricalYear: (historicalYear) => set({ historicalYear }),
       contourInterval: 5,
@@ -282,7 +302,8 @@ export const useAppStore = create<AppState>()(
       // phone still holding the old defaults takes the new ones once
       // v2: the strip is always on (its fold is stripOpen); the old on/off switch goes
       // v3: the default layers are the Scout view's; the old defaults, never touched, become them
-      version: 3,
+      // v4: two button columns (near and far), Wind flow, Routes and Measure among them; the one-column sets go
+      version: 4,
       migrate: (persisted, from) => {
         const p = (persisted ?? {}) as Partial<AppState>
         if (from < 1) {
@@ -298,11 +319,14 @@ export const useAppStore = create<AppState>()(
           const untouched = (Object.keys(DEFAULT_LAYERS) as (keyof LayerVisibility)[]).every((k) => k === 'windFlow' || !!old[k] === !!LAYERS_V2[k])
           if (untouched) delete p.layers
         }
+        if (from < 4) delete (p as { hotButtons?: unknown }).hotButtons
         return p as AppState
       },
       partialize: (s) => ({
         layers: s.layers,
         opacity: s.opacity,
+        saturation: s.saturation,
+        starred: s.starred,
         historicalYear: s.historicalYear,
         contourInterval: s.contourInterval,
         units: s.units,
@@ -314,19 +338,23 @@ export const useAppStore = create<AppState>()(
         textSize: s.textSize,
         stripOpen: s.stripOpen,
         hotButtons: s.hotButtons,
+        leftHanded: s.leftHanded,
         onboarded: s.onboarded,
       }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<AppState>
-        const hot: Partial<Record<'hunt' | 'fish', unknown>> = { ...DEFAULT_HOT, ...(p.hotButtons ?? {}) }
+        const hot = (p.hotButtons ?? {}) as Partial<Record<'hunt' | 'fish', Partial<Record<HotSide, unknown>>>>
         const pick = (v: unknown, d: HotId[]): HotId[] => (Array.isArray(v) ? cleanHot(v) : d)
+        const sets = (m: 'hunt' | 'fish'): HotSets => ({ near: pick(hot[m]?.near, DEFAULT_HOT[m].near), far: pick(hot[m]?.far, DEFAULT_HOT[m].far) })
         return {
           ...current,
           ...p,
           layers: { ...DEFAULT_LAYERS, ...(p.layers ?? {}) },
           opacity: { ...DEFAULT_OPACITY, ...(p.opacity ?? {}) },
+          saturation: { ...(p.saturation ?? {}) },
+          starred: Array.isArray(p.starred) ? p.starred.filter((k): k is keyof LayerVisibility => typeof k === 'string' && k in DEFAULT_LAYERS) : [],
           flowTuning: { ...FLOW_TUNING_DEFAULTS, ...(p.flowTuning ?? {}) },
-          hotButtons: { hunt: pick(hot.hunt, DEFAULT_HOT.hunt), fish: pick(hot.fish, DEFAULT_HOT.fish) },
+          hotButtons: { hunt: sets('hunt'), fish: sets('fish') },
         }
       },
     },

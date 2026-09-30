@@ -286,9 +286,14 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
       py[i] = ny
     }
     ctx.lineWidth = streakPx
+    // on a pale base (topo, the elevation colours, the shade alone) the
+    // streaks go dark, else they stay light over the imagery and the bush
+    const ly = useAppStore.getState().layers
+    const pale = !ly.satellite && (ly.topo || ly.relief || ly.hillshade)
+    const light = pale ? 32 : 62
     for (let b = 0; b < ALPHA_BANDS; b++) {
-      const alpha = (0.22 + ((b + 0.5) / ALPHA_BANDS) * 0.4) * level
-      ctx.strokeStyle = `hsla(${tune.windHue}, ${tune.windSat}%, 62%, ${alpha})`
+      const alpha = (0.22 + ((b + 0.5) / ALPHA_BANDS) * 0.4) * level * (pale ? 1.25 : 1)
+      ctx.strokeStyle = `hsla(${tune.windHue}, ${tune.windSat}%, ${light}%, ${Math.min(1, alpha)})`
       ctx.stroke(bands[b])
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)

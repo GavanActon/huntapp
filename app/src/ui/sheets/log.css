@@ -117,6 +117,15 @@
   color: var(--c-text);
 }
 
+/* the entry's coordinates: dim, a tap copies them */
+.oc-coord {
+  align-self: flex-start;
+  padding: 0;
+  font-size: calc(11px * var(--ui-scale));
+  color: var(--c-text-dim);
+  letter-spacing: 0.01em;
+}
+
 .oc-desc {
   font-size: calc(12px * var(--ui-scale));
   color: var(--c-text-dim);

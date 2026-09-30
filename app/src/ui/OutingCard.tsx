@@ -4,6 +4,7 @@ import { SOUND_NAMES, SPECIES_NAMES, useHuntLog, WHAT_NAMES, type LogEntry } fro
 import { exportOutingGpx } from '../log/logExport'
 import { deleteOuting, outingById, outingChecks, outingEntries, outingTitle, renameOuting, type Outing } from '../log/outings'
 import { getMap } from '../map/mapController'
+import { fmtCoord } from '../map/MapView'
 import { useAppStore } from '../state/appStore'
 import { clockShort } from '../time'
 import { useGpsStore } from '../tracking/gpsStore'
@@ -125,6 +126,17 @@ function Row({ lon, lat, title, desc, badge, onDelete }: { lon: number; lat: num
           {badge && <b className={`gc-verdict gc-${badge}`}>{BADGE[badge]}</b>}
         </span>
         {desc && <span className="oc-desc">{desc}</span>}
+        <button
+          className="oc-coord numeral"
+          onClick={(ev) => {
+            void navigator.clipboard?.writeText(fmtCoord(lon, lat))
+            const b = ev.currentTarget
+            b.textContent = 'Copied'
+            window.setTimeout(() => (b.textContent = fmtCoord(lon, lat)), 900)
+          }}
+        >
+          {fmtCoord(lon, lat)}
+        </button>
       </div>
       <button className="icon-btn" aria-label="Go" onClick={() => getMap()?.easeTo({ center: [lon, lat], zoom: Math.max(getMap()!.getZoom(), 14) })}>
         <IconLocate size={15} />

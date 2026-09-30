@@ -1,14 +1,14 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { useGpsStore } from '../tracking/gpsStore'
-import { locateAndFollow } from '../tracking/gpsService'
 import { useScent } from '../weather/micro/scent'
 
 /**
  * Your scent cone, live: the cone drawn from where you stand and moved
- * with you as the fixes come. One button on the map turns it on and off;
- * turning it on also turns location on, since the cone has nowhere to be
- * without a fix. Location off leaves the cone where it was.
+ * with you as the fixes come. One button on the map turns it on and off
+ * while location is on; with location off the same button waits for a tap
+ * on the map and sits the cone there. Location off leaves a live cone
+ * where it was.
  *
  * There is no hunting mode. The phone comes out of a pocket, gets a look,
  * and goes back: each look starts a fresh fix (gpsService) and the cone
@@ -37,12 +37,20 @@ export const useHunting = create<HuntingState>()(
   ),
 )
 
-/** The Scent button. On: the cone, and location with it when it is off (from the tap: iOS
- *  grants location and the compass only from one). Off: the cone alone; location stays. */
+/** The Scent button. With location on: the cone on you (off again on the
+ *  next tap). With location off: the next map tap is where the cone sits, a
+ *  person placed; tapping again before that cancels. */
 export function toggleCone(): void {
+  const sc = useScent.getState()
+  if (sc.adding) return sc.setAdding(false)
   if (useHunting.getState().cone) return useHunting.getState().setCone(false)
-  useHunting.getState().setCone(true)
-  if (!useGpsStore.getState().locating) locateAndFollow()
+  if (useGpsStore.getState().locating) return useHunting.getState().setCone(true)
+  sc.setAdding(true)
+}
+
+/** The Scent button's lit state: the cone on you, or a tap being waited for. */
+export function coneLit(): boolean {
+  return useHunting.getState().cone || useScent.getState().adding
 }
 
 function metres(a: { lon: number; lat: number }, b: { lon: number; lat: number }): number {

@@ -3,6 +3,8 @@ import { inRegion } from '../config'
 import { toggleCone, useHunting } from '../hunting/hunting'
 import { getMap } from '../map/mapController'
 import { DROPPED_NAME } from '../map/placePopup'
+import { useMeasureStore } from '../measure/measureStore'
+import { closeRoutes, openRoutes, useRoutes } from '../routes/routeStore'
 import { useAppStore, type HotId, type LayerVisibility } from '../state/appStore'
 import { usePlacesStore } from '../state/placesStore'
 import { useSpotsStore } from '../state/spotsStore'
@@ -10,7 +12,7 @@ import { useGpsStore } from '../tracking/gpsStore'
 import { useScent } from '../weather/micro/scent'
 import { useHeardForm } from './HeardCard'
 import { useCheckForm } from './WindCheckCard'
-import { IconBattery, IconBush, IconCrew, IconDepth, IconEar, IconHeat, IconLanes, IconPin, IconPowder, IconRadar, IconScent } from './icons'
+import { IconBattery, IconBush, IconCrew, IconDepth, IconEar, IconHeat, IconLanes, IconPin, IconPowder, IconRadar, IconRoute, IconRuler, IconScent, IconWind } from './icons'
 import { logWindHere } from './logWindHere'
 
 /**
@@ -67,6 +69,31 @@ function layerDef(id: HotId, k: keyof LayerVisibility, name: string, short: stri
 }
 
 export const HOT_DEFS: Record<HotId, HotDef> = {
+  windflow: layerDef('windflow', 'windFlow', 'Wind flow', 'Wind', IconWind),
+  routes: {
+    id: 'routes',
+    name: 'Routes',
+    short: 'Route',
+    Icon: IconRoute,
+    useActive: () => useRoutes((s) => s.open),
+    onTap: () => (useRoutes.getState().open ? closeRoutes() : openRoutes()),
+  },
+  measure: {
+    id: 'measure',
+    name: 'Measure',
+    short: 'Measure',
+    Icon: IconRuler,
+    useActive: () => useMeasureStore((s) => s.active),
+    onTap: () => {
+      const m = useMeasureStore.getState()
+      if (m.active) return m.stop()
+      useAppStore.getState().closeSheet()
+      // with location on, the first point is you: the tape starts where you stand
+      const fix = useGpsStore.getState().fix
+      const you = useGpsStore.getState().locating && fix && inRegion(fix.lon, fix.lat) && (fix.sigma ?? fix.accuracy) <= 50
+      m.start(you ? [fix.lon, fix.lat] : undefined, you ? 'you' : undefined)
+    },
+  },
   heat: {
     id: 'heat',
     name: 'Heat map',
@@ -83,7 +110,11 @@ export const HOT_DEFS: Record<HotId, HotDef> = {
     name: 'Scent cone',
     short: 'Scent',
     Icon: IconScent,
-    useActive: () => useHunting((s) => s.cone),
+    useActive: () => {
+      const cone = useHunting((s) => s.cone)
+      const placing = useScent((s) => s.adding)
+      return cone || placing
+    },
     onTap: () => toggleCone(),
   },
   heard: {
@@ -143,7 +174,7 @@ export const HOT_DEFS: Record<HotId, HotDef> = {
 }
 
 /** Every hot button, in the order the editor's Add chips list them. */
-export const HOT_ORDER: HotId[] = ['heat', 'scent', 'heard', 'person', 'windcheck', 'pin', 'understory', 'lanes', 'bathy', 'radar', 'lowPower']
+export const HOT_ORDER: HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'heat', 'person', 'pin', 'understory', 'lanes', 'bathy', 'radar', 'lowPower']
 
 /** A hot button in the column: the round .fab with its short word hung under it. */
 export function HotButton({ id }: { id: HotId }): JSX.Element {

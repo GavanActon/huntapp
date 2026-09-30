@@ -24,18 +24,22 @@ import './ground.css'
 
 interface HeardForm {
   open: boolean
-  show: () => void
+  /** a spot tapped on the map: the sound goes there, no rose, no distance */
+  at: { lon: number; lat: number } | null
+  show: (at?: { lon: number; lat: number }) => void
   close: () => void
 }
 export const useHeardForm = create<HeardForm>((set) => ({
   open: false,
-  show: () => {
+  at: null,
+  show: (at) => {
+    if (at) return set({ open: true, at })
     // from the tap: iOS only grants the compass and location from one
     void requestCompass()
     if (!useGpsStore.getState().locating) locateAndFollow()
-    set({ open: true })
+    set({ open: true, at: null })
   },
-  close: () => set({ open: false }),
+  close: () => set({ open: false, at: null }),
 }))
 
 const SOUNDS: MooseSound[] = ['cow', 'bull', 'thrash', 'walk', 'splash', 'seen']
@@ -45,6 +49,7 @@ const WHEN = [0, 2, 5, 10, 20]
 
 export default function HeardCard() {
   const close = useHeardForm((s) => s.close)
+  const at = useHeardForm((s) => s.at)
   const add = useHuntLog((s) => s.add)
   const fix = useGpsStore((s) => s.fix)
   const heading = useCompass((s) => s.heading)
@@ -66,11 +71,20 @@ export default function HeardCard() {
   const turn = live ? heading : 0
 
   const save = () => {
-    if (!fix) return
     if (!sound) return setMissing('Tap what you heard')
-    if (toward == null) return setMissing('Tap the way it came from')
-    if (dist == null) return setMissing('Tap about how far')
-    const [lon, lat] = offsetBy(fix, toward, dist)
+    let lon: number
+    let lat: number
+    let from: { lon: number; lat: number; bearing: number; distM: number } | undefined
+    if (at) {
+      lon = at.lon
+      lat = at.lat
+    } else {
+      if (!fix) return
+      if (toward == null) return setMissing('Tap the way it came from')
+      if (dist == null) return setMissing('Tap about how far')
+      ;[lon, lat] = offsetBy(fix, toward, dist)
+      from = { lon: fix.lon, lat: fix.lat, bearing: toward, distM: dist }
+    }
     const e = add({
       ts: Date.now() - ago * 60_000,
       lon,
@@ -80,7 +94,7 @@ export default function HeardCard() {
       count: 1,
       ...(sound === 'bull' ? { kind: 'bull' as const } : sound === 'cow' ? { kind: 'cow' as const } : {}),
       sound,
-      from: { lon: fix.lon, lat: fix.lat, bearing: toward, distM: dist },
+      ...(from ? { from } : {}),
     })
     // the weather and the model's call follow behind: no waiting on them with a moose about
     void snapshot('moose', lon, lat)
@@ -111,6 +125,8 @@ export default function HeardCard() {
           </button>
         ))}
       </div>
+      {!at && (
+        <>
       <div className="gc-q">Which way?</div>
       <Rose
         turn={turn}
@@ -149,6 +165,8 @@ export default function HeardCard() {
           </button>
         ))}
       </div>
+        </>
+      )}
       <div className="gc-q">When?</div>
       <div className="gc-strength">
         {WHEN.map((m) => (
@@ -158,8 +176,8 @@ export default function HeardCard() {
         ))}
       </div>
       {missing && <div className="gc-missing">{missing}</div>}
-      <button className="btn-primary" disabled={!fix} onClick={save}>
-        {fix ? 'Save' : 'Waiting for a fix…'}
+      <button className="btn-primary" disabled={!at && !fix} onClick={save}>
+        {at || fix ? 'Save' : 'Waiting for a fix…'}
       </button>
     </div>
   )

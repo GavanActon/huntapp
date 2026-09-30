@@ -13,6 +13,7 @@ import { IconMinus, IconPlus, IconUndo } from './icons'
  */
 export default function MeasureCard() {
   const points = useMeasureStore((s) => s.points)
+  const from = useMeasureStore((s) => s.from)
   const undo = useMeasureStore((s) => s.undo)
   const clear = useMeasureStore((s) => s.clear)
   const stop = useMeasureStore((s) => s.stop)
@@ -49,10 +50,17 @@ export default function MeasureCard() {
         </button>
       </div>
       <div className="tb-facts">
-        <span className="numeral">
-          <b className="measure-total">{formatDistance(total, units)}</b>
-          {legs.length > 1 ? ` total · ${legs.length} legs` : legs.length === 1 ? ' total' : ''}
-        </span>
+        {points.length === 0 ? (
+          <span className="dim">Tap the map</span>
+        ) : points.length === 1 ? (
+          <span className="dim">{from === 'you' ? 'From you' : from === 'spot' ? 'From the spot' : 'From here'} · tap the map, or a person</span>
+        ) : (
+          <span className="numeral">
+            {from === 'you' && <span className="dim">from you · </span>}
+            <b className="measure-total">{formatDistance(total, units)}</b>
+            {legs.length > 1 ? ` total · ${legs.length} legs` : ' total'}
+          </span>
+        )}
         {last && (
           <span className="numeral">
             {legs.length > 1 ? 'last leg ' : ''}

@@ -1,7 +1,7 @@
 import { useRef, type JSX } from 'react'
 import { useMapUpdates } from '../offline/updates'
 import { useAppStore, type Sheet } from '../state/appStore'
-import { IconClock, IconGear, IconPin } from './icons'
+import { IconClock, IconGear, IconGrid, IconPin } from './icons'
 import { useTapOff } from './tapOff'
 
 /**
@@ -30,6 +30,11 @@ export default function AppMenu({ open, onClose }: { open: boolean; onClose: () 
       <button className="wx-menu-row" role="menuitem" onClick={() => go({ kind: 'pins' })}>
         <IconPin />
         Pins
+        <span className="dim">›</span>
+      </button>
+      <button className="wx-menu-row" role="menuitem" onClick={() => go({ kind: 'buttons' })}>
+        <IconGrid />
+        Map buttons
         <span className="dim">›</span>
       </button>
       <button className="wx-menu-row" role="menuitem" onClick={() => go({ kind: 'settings' })}>

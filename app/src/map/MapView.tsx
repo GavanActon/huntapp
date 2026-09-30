@@ -18,6 +18,9 @@ import { closeOnTapOff } from './tapPopup'
 import { DROPPED_NAME, showPlacePopup } from './placePopup'
 import { useScent } from '../weather/micro/scent'
 import { useRoutes } from '../routes/routeStore'
+import { useHeardForm } from '../ui/HeardCard'
+import { showLogPopup } from '../log/logLayer'
+import { useHuntLog } from '../log/huntLog'
 
 import type { FeatureCollection } from 'geojson'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -217,7 +220,7 @@ export default function MapView() {
         // placing another person: the tap is where they sit
         if (scent.adding) return scent.add(e.lngLat.lng, e.lngLat.lat)
         // a place, a numbered pin, a wind check or a kept route has its own tap
-        const hit = m.queryRenderedFeatures(e.point, { layers: ['places-pt', 'spots-pin', 'windchecks-hit', 'routes-hit'].filter((id) => m.getLayer(id)) })
+        const hit = m.queryRenderedFeatures(e.point, { layers: ['places-pt', 'spots-pin', 'windchecks-hit', 'routes-hit', 'huntlog-dot'].filter((id) => m.getLayer(id)) })
         if (hit.length) return
         const { lng, lat } = e.lngLat
         const el = document.createElement('div')
@@ -229,7 +232,8 @@ export default function MapView() {
         const gameHtml = why
           ? `<div class="pp-game"><b class="pp-score pp-${spotGrade(why.score)}">${Math.round(why.score * 100)}</b><span>${esc(TARGET_NAMES[sp.target])} · ${esc(spotGradeWords(sp.target, why.score))}</span></div>`
           : ''
-        el.innerHTML = `<div class="depth-popup-wx"></div>${gameHtml}<div class="pp-acts"><button class="pp-scent">Scent</button><button class="pp-save">Pin</button><button class="pp-digin">Dig in ›</button></div>`
+        const sitting = useScent.getState().people.length > 0
+        el.innerHTML = `<div class="depth-popup-wx"></div>${gameHtml}<div class="pp-acts"><button class="pp-scent">${sitting ? '+ Person' : 'Scent'}</button><button class="pp-heard">Heard</button><button class="pp-save">Pin</button><button class="pp-digin">Dig in ›</button></div>`
         const popup = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, closeOnClick: false, offset: 8, maxWidth: '260px' })
           .setLngLat([lng, lat])
           .setDOMContent(el)
@@ -255,6 +259,18 @@ export default function MapView() {
           popup.remove()
           useAppStore.getState().openSheet({ kind: 'digin', lon: lng, lat })
         })
+        // a moose heard, placed here rather than from where you stand
+        el.querySelector('.pp-heard')?.addEventListener('click', () => {
+          popup.remove()
+          useHeardForm.getState().show({ lon: lng, lat })
+        })
+      })
+      // a log entry (a moose heard, a sighting): what and when, Delete, and press-and-hold to move it
+      m.on('click', 'huntlog-dot', (e) => {
+        if (useMeasureStore.getState().active || useScent.getState().adding || useRoutes.getState().open) return
+        const id = e.features?.[0]?.properties?.id as string | undefined
+        const entry = id ? useHuntLog.getState().entries.find((x) => x.id === id) : undefined
+        if (entry) showLogPopup(m, entry)
       })
       m.on('mouseenter', 'places-pt', () => (m.getCanvas().style.cursor = 'pointer'))
       m.on('mouseleave', 'places-pt', () => (m.getCanvas().style.cursor = ''))
@@ -264,8 +280,8 @@ export default function MapView() {
 
     // the sheet's switches: visibility by metadata.group, opacity by key
     const unsubLayers = useAppStore.subscribe((s, prev) => {
-      if (!map || (s.layers === prev.layers && s.opacity === prev.opacity)) return
-      applyLayerState(map, s.layers, s.opacity)
+      if (!map || (s.layers === prev.layers && s.opacity === prev.opacity && s.saturation === prev.saturation)) return
+      applyLayerState(map, s.layers, s.opacity, s.saturation)
     })
     // the contour interval is a filter on the three contour layers
     const unsubContours = useAppStore.subscribe((s, prev) => {
@@ -295,14 +311,22 @@ export default function MapView() {
   return <div ref={containerRef} className="map-root" style={{ position: 'absolute', inset: 0 }} />
 }
 
-export function applyLayerState(map: maplibregl.Map, layers: LayerVisibility, opacity: LayerOpacity) {
+/** The saturation a raster is shot at, before the slider: the imagery and the old sheets are toned down. */
+const BASE_SATURATION: Partial<Record<keyof LayerOpacity, number>> = { satellite: -0.3, historical: -0.2 }
+
+export function applyLayerState(map: maplibregl.Map, layers: LayerVisibility, opacity: LayerOpacity, saturation: Partial<Record<keyof LayerOpacity, number>> = {}) {
   if (!map.isStyleLoaded() && !map.getStyle()) return
   for (const l of map.getStyle().layers) {
     const meta = (l as { metadata?: { group?: keyof LayerVisibility; opacityKey?: keyof LayerOpacity } }).metadata
     if (!meta?.group) continue
     const on = layers[meta.group]
     map.setLayoutProperty(l.id, 'visibility', on ? 'visible' : 'none')
-    if (meta.opacityKey && l.type === 'raster') map.setPaintProperty(l.id, 'raster-opacity', opacity[meta.opacityKey])
+    if (meta.opacityKey && l.type === 'raster') {
+      map.setPaintProperty(l.id, 'raster-opacity', opacity[meta.opacityKey])
+      const sat = saturation[meta.opacityKey]
+      if (sat != null) map.setPaintProperty(l.id, 'raster-saturation', Math.max(-1, Math.min(1, sat)))
+      else if (BASE_SATURATION[meta.opacityKey] != null || l.id === meta.opacityKey) map.setPaintProperty(l.id, 'raster-saturation', BASE_SATURATION[meta.opacityKey] ?? 0)
+    }
     if (meta.opacityKey && l.type === 'color-relief') map.setPaintProperty(l.id, 'color-relief-opacity', opacity[meta.opacityKey])
     if (meta.opacityKey === 'forest' && l.type === 'fill') map.setPaintProperty(l.id, 'fill-opacity', opacity.forest)
   }

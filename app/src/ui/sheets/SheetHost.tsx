@@ -7,7 +7,6 @@ const ScoringSheet = lazy(() => import('./ScoringSheet'))
 const PinsSheet = lazy(() => import('./PinsSheet'))
 const HuntLogSheet = lazy(() => import('./HuntLogSheet'))
 const SettingsSheet = lazy(() => import('./SettingsSheet'))
-const SettingsMoreSheet = lazy(() => import('./SettingsMoreSheet'))
 const ButtonsSheet = lazy(() => import('./ButtonsSheet'))
 const OfflineSheet = lazy(() => import('./OfflineSheet'))
 const LayersSheet = lazy(() => import('./LayersSheet'))
@@ -19,7 +18,6 @@ const TITLES: Record<SheetKind, string> = {
   pins: 'Pins',
   huntlog: 'Hunt log',
   settings: 'Settings',
-  settingsMore: 'More',
   buttons: '',
   offline: 'Maps on this phone',
   layers: '',
@@ -37,8 +35,6 @@ function panel(s: Sheet): ReactNode {
       return <HuntLogSheet />
     case 'settings':
       return <SettingsSheet />
-    case 'settingsMore':
-      return <SettingsMoreSheet />
     case 'buttons':
       return <ButtonsSheet />
     case 'offline':

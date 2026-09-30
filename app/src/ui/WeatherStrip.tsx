@@ -6,7 +6,7 @@ import { selectedPlace, homePlace, usePlacesStore } from '../state/placesStore'
 import { useSpotsStore } from '../state/spotsStore'
 import { pickTarget } from '../state/viewsStore'
 import { useGpsStore } from '../tracking/gpsStore'
-import { cachedPointForecast, compass, fetchPointForecast, hourAt, hourRow, isThunder, pointForecast, type HourRow, type PointForecast } from '../weather/openMeteo'
+import { cachedPointForecast, fetchPointForecast, hourAt, hourRow, isThunder, pointForecast, type HourRow, type PointForecast } from '../weather/openMeteo'
 import { forecastStale, onWeatherRefreshed, refreshWeather } from '../weather/refresh'
 import { skyGlyphSvg } from '../weather/skyGlyph'
 import { moonPhase } from '../weather/moon'
@@ -15,24 +15,24 @@ import { ensureProfile, onProfile } from '../weather/boundaryLayer'
 import { onWeatherGrid } from '../weather/windGrid'
 import { drainWindow, groundAirAround, loadMicro, onMicro, REGIME_TIP } from '../weather/micro/model'
 import { useWindChecks } from '../weather/micro/windChecks'
-import { bestWindow } from '../spots/dayPlan'
 import { activityBar } from '../spots/grades'
 import { FISH_TARGETS, HUNT_TARGETS, TARGET_NAMES, type Target } from '../spots/types'
-import { agoLabel, clockShort, dayLabel, dayShort, floorHourMs, hourAmPm, hourShort, isToday, startOfDayMs } from '../time'
+import { agoLabel, clockShort, dayLabel, dayShort, floorHourMs, hourAmPm, hourShort, startOfDayMs } from '../time'
 import { IconCheck, IconChevronDown, IconChevronUp, IconDots } from './icons'
 import AppMenu from './AppMenu'
+import { useMapUpdates } from '../offline/updates'
 import { useLookTick } from './useLookTick'
 import { useTapOff } from './tapOff'
 import './strip.css'
 
 /**
- * The outlook strip at the top of the map. Folded (the default) it is
- * today's sky and range, the weather now, over the hour row that runs
- * unbroken through the night to the end of the forecast, each cell
- * carrying a thin green bar for the quarry's activity then. Open, the
- * quarry chip and the week's best window take the head, a day row comes
- * in above the hours, and a thin blue line marks the hours the ground's
- * cold air drains. Tapping a day
+ * The outlook strip at the top of the map. Its head is what you are after
+ * (the quarry chip), Now while the planning time is not now, and ⋯.
+ * Folded (the default, the active screen) that head sits over the hour
+ * row, which runs unbroken through the night to the end of the forecast,
+ * each cell carrying a thin green bar for the quarry's activity then.
+ * Open (planning), a day row comes in above the hours and a thin blue
+ * line marks the hours the ground's cold air drains. Tapping a day
  * or an hour sets the app-wide planning time; tapping the picked hour
  * again opens its detail inside the strip (gusts, feel, the quarry's
  * grade, the ground air), and `more ›` the rest (sun, legal light, moon,
@@ -155,6 +155,7 @@ export default function WeatherStrip() {
   const plans = useSpotsStore((s) => s.plans)
   const hourScores = useSpotsStore((s) => s.hours)
   const checks = useWindChecks((s) => s.checks)
+  const newMaps = useMapUpdates((s) => s.pending.length)
   useLookTick()
   useHourTick()
 
@@ -204,8 +205,6 @@ export default function WeatherStrip() {
   const todayIdx = forecast ? forecast.daily.date.findIndex((d) => new Date(`${d}T00:00`).getTime() === todayMs) : -1
   // a cache that no longer reaches today is no outlook
   const f = todayIdx >= 0 ? forecast : null
-  const lastHourMs = f ? Date.parse(f.hourly.time[f.hourly.time.length - 1]) : 0
-  const nowHour = f && now <= lastHourMs + H ? hourAt(f, now) : null
 
   const days = useMemo(() => {
     if (!f) return []
@@ -242,7 +241,6 @@ export default function WeatherStrip() {
 
   const plansByDay = useMemo(() => new Map(plans.map((p) => [p.dayStartMs, p])), [plans])
   const scoreByMs = useMemo(() => new Map(hourScores.map((h) => [h.ms, h])), [hourScores])
-  const best = useMemo(() => bestWindow(plans), [plans])
 
   const activeHourMs = planTimeMs == null ? floorNow : floorHourMs(planTimeMs)
   const selDayMs = startOfDayMs(planTimeMs ?? now)
@@ -359,7 +357,6 @@ export default function WeatherStrip() {
 
   const emptyText = online ? 'Fetching the outlook…' : 'No outlook cached'
 
-  const bestOn = best != null && planTimeMs != null && planTimeMs >= best.win.startMs && planTimeMs <= best.win.endMs
   const quarryRow = (t: Target) => (
     <button
       key={t}
@@ -380,72 +377,38 @@ export default function WeatherStrip() {
     </button>
   )
 
-  // folded, the head is today in one line; open, the quarry and the week's best
-  const head = !stripOpen ? (
-    <div className="wx-head wx-today">
-      <button className="wx-todaybtn" onClick={() => setStripOpen(true)} aria-label="Open the strip">
-        {f ? (
-          <>
-            <b>{dayLabel(todayMs)}</b>
-            <SkyGlyph code={f.daily.weatherCode[todayIdx]} />
-            <b>{temp(f.daily.tMaxC[todayIdx])}°</b>
-            <span className="dim">{temp(f.daily.tMinC[todayIdx])}°</span>
-            {nowHour && (
-              <>
-                <span className="dim">·</span>
-                <span>now {temp(nowHour.tempC)}°</span>
-                <WindArrow deg={nowHour.windDir} />
-                <span>
-                  {compass(nowHour.windDir)} {wind(nowHour.windKmh)}
-                </span>
-              </>
-            )}
-          </>
-        ) : (
-          <span className="wxfold-empty">{emptyText}</span>
+  // the head, folded or open: what you are after, Now while the planning
+  // time is not now, ⋯; folded, a chevron opens the days and the rest
+  const head = (
+    <div className="wx-head">
+      <span className="wx-quarry" ref={quarryRef}>
+        <button className="wx-chip" onClick={() => setQuarryOpen((o) => !o)} aria-haspopup="menu" aria-expanded={quarryOpen}>
+          {TARGET_NAMES[target]} <span className="dim">▾</span>
+        </button>
+        {quarryOpen && (
+          <div className="menu-pop" role="menu" aria-label="What you are after">
+            {HUNT_TARGETS.map(quarryRow)}
+            <div className="wx-menu-rule" />
+            {FISH_TARGETS.map(quarryRow)}
+          </div>
         )}
-        <IconChevronDown size={18} />
-      </button>
+      </span>
+      <span className="wx-spacer" />
       {planTimeMs != null && (
         <button className="wx-now" onClick={() => setPlanTime(null)}>
           Now
         </button>
       )}
-      <button className="wxfold-dots" {...dots} aria-label="More">
+      {!stripOpen && (
+        <button className="wx-open" onClick={() => setStripOpen(true)} aria-label="Open the strip">
+          <IconChevronDown size={18} />
+        </button>
+      )}
+      <button className={`wxfold-dots${newMaps ? ' has-new' : ''}`} {...dots} aria-label="More">
         <IconDots />
       </button>
       <AppMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
     </div>
-  ) : (
-    <div className="wx-head">
-        <span className="wx-quarry" ref={quarryRef}>
-          <button className="wx-chip" onClick={() => setQuarryOpen((o) => !o)} aria-haspopup="menu" aria-expanded={quarryOpen}>
-            {TARGET_NAMES[target]} <span className="dim">▾</span>
-          </button>
-          {quarryOpen && (
-            <div className="menu-pop" role="menu" aria-label="What you are after">
-              {HUNT_TARGETS.map(quarryRow)}
-              <div className="wx-menu-rule" />
-              {FISH_TARGETS.map(quarryRow)}
-            </div>
-          )}
-        </span>
-        {best && (
-          <button className={`linklike wx-best${bestOn ? ' on' : ''}`} onClick={() => setPlanTime(Math.max(best.win.atMs, floorHourMs()))}>
-            best {isToday(best.plan.dayStartMs) ? 'today' : dayShort(best.plan.dayStartMs)} {best.win.slot} ›
-          </button>
-        )}
-        <span className="wx-spacer" />
-        {planTimeMs != null && (
-          <button className="wx-now" onClick={() => setPlanTime(null)}>
-            Now
-          </button>
-        )}
-        <button className="wxfold-dots" {...dots} aria-label="More">
-          <IconDots />
-        </button>
-        <AppMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
-      </div>
   )
 
   return (
@@ -453,7 +416,7 @@ export default function WeatherStrip() {
       {stale && <span className="wxstrip-stale" />}
       {head}
       {!f ? (
-        stripOpen && <div className="wxstrip-empty">{emptyText}</div>
+        <div className="wxstrip-empty">{emptyText}</div>
       ) : (
         <>
           {stripOpen && (
