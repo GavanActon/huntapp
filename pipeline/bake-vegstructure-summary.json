@@ -1,152 +1,152 @@
 {
  "brush / alder (BSH)": {
-  "cells": 96,
-  "stands": 3,
+  "cells": 304,
+  "stands": 6,
   "canopy_height": {
-   "p25": 3.376,
-   "median": 4.717,
-   "p75": 10.288
+   "p25": 3.534,
+   "median": 5.854,
+   "p75": 10.848
   },
   "canopy_cover": {
-   "p25": 0.133,
-   "median": 0.276,
-   "p75": 0.449
+   "p25": 0.136,
+   "median": 0.319,
+   "p75": 0.52
   },
   "understory": {
-   "p25": 0.544,
-   "median": 0.69,
-   "p75": 0.782
+   "p25": 0.543,
+   "median": 0.713,
+   "p75": 0.799
   },
   "understory_pad": {
-   "p25": 0.628,
-   "median": 0.937,
-   "p75": 1.218
+   "p25": 0.627,
+   "median": 0.999,
+   "p75": 1.283
   },
   "density": {
-   "p25": 29.897,
-   "median": 34.655,
-   "p75": 63.607
+   "p25": 29.688,
+   "median": 41.198,
+   "p75": 56.045
   }
  },
  "mature closed conifer (origin <=1945, cc>=70)": {
-  "cells": 29167,
-  "stands": 44,
+  "cells": 54289,
+  "stands": 59,
   "canopy_height": {
-   "p25": 12.869,
-   "median": 14.753,
-   "p75": 16.592
+   "p25": 13.5,
+   "median": 15.569,
+   "p75": 17.696
   },
   "canopy_cover": {
-   "p25": 0.578,
-   "median": 0.692,
+   "p25": 0.591,
+   "median": 0.709,
    "p75": 0.82
   },
   "understory": {
-   "p25": 0.245,
-   "median": 0.379,
-   "p75": 0.568
+   "p25": 0.25,
+   "median": 0.39,
+   "p75": 0.575
   },
   "understory_pad": {
-   "p25": 0.225,
-   "median": 0.381,
-   "p75": 0.671
+   "p25": 0.23,
+   "median": 0.395,
+   "p75": 0.685
   },
   "density": {
-   "p25": 33.57,
-   "median": 35.78,
-   "p75": 40.035
+   "p25": 32.98,
+   "median": 36.52,
+   "p75": 52.33
   }
  },
  "mature hardwood-leading (origin <=1960)": {
-  "cells": 17390,
-  "stands": 22,
+  "cells": 20473,
+  "stands": 29,
   "canopy_height": {
-   "p25": 14.507,
-   "median": 17.589,
-   "p75": 20.883
+   "p25": 14.85,
+   "median": 17.791,
+   "p75": 21.01
   },
   "canopy_cover": {
-   "p25": 0.724,
-   "median": 0.835,
-   "p75": 0.92
+   "p25": 0.727,
+   "median": 0.831,
+   "p75": 0.916
   },
   "understory": {
-   "p25": 0.418,
-   "median": 0.592,
+   "p25": 0.412,
+   "median": 0.588,
    "p75": 0.747
   },
   "understory_pad": {
-   "p25": 0.433,
-   "median": 0.718,
+   "p25": 0.424,
+   "median": 0.71,
    "p75": 1.1
   },
   "density": {
-   "p25": 33.06,
-   "median": 36.505,
-   "p75": 47.97
+   "p25": 33.27,
+   "median": 37.58,
+   "p75": 60.97
   }
  },
  "mature open conifer (origin <=1945, cc<60)": {
-  "cells": 15579,
-  "stands": 17,
+  "cells": 22838,
+  "stands": 32,
   "canopy_height": {
-   "p25": 10.111,
-   "median": 12.683,
-   "p75": 15.836
+   "p25": 10.763,
+   "median": 13.223,
+   "p75": 15.924
   },
   "canopy_cover": {
-   "p25": 0.382,
-   "median": 0.594,
-   "p75": 0.836
+   "p25": 0.389,
+   "median": 0.552,
+   "p75": 0.766
   },
   "understory": {
-   "p25": 0.242,
-   "median": 0.371,
-   "p75": 0.558
+   "p25": 0.24,
+   "median": 0.359,
+   "p75": 0.53
   },
   "understory_pad": {
-   "p25": 0.222,
-   "median": 0.371,
-   "p75": 0.652
+   "p25": 0.22,
+   "median": 0.356,
+   "p75": 0.604
   },
   "density": {
-   "p25": 33.39,
-   "median": 35.71,
-   "p75": 45.7
+   "p25": 32.75,
+   "median": 35.92,
+   "p75": 51.562
   }
  },
  "open muskeg (OMS)": {
-  "cells": 580,
-  "stands": 12,
+  "cells": 715,
+  "stands": 15,
   "canopy_height": {
    "p25": 0.0,
-   "median": 3.471,
-   "p75": 6.433
+   "median": 2.92,
+   "p75": 5.863
   },
   "canopy_cover": {
    "p25": 0.0,
-   "median": 0.015,
-   "p75": 0.108
+   "median": 0.01,
+   "p75": 0.086
   },
   "understory": {
-   "p25": 0.027,
-   "median": 0.117,
-   "p75": 0.325
+   "p25": 0.038,
+   "median": 0.147,
+   "p75": 0.349
   },
   "understory_pad": {
-   "p25": 0.022,
-   "median": 0.099,
-   "p75": 0.315
+   "p25": 0.031,
+   "median": 0.128,
+   "p75": 0.343
   },
   "density": {
-   "p25": 31.198,
-   "median": 32.645,
-   "p75": 34.993
+   "p25": 30.87,
+   "median": 32.56,
+   "p75": 36.65
   }
  },
  "water (FRI WAT)": {
-  "cells": 85,
-  "stands": 3,
+  "cells": 91,
+  "stands": 5,
   "canopy_height": {
    "p25": 0.0,
    "median": 0.0,
@@ -159,18 +159,18 @@
   },
   "understory": {
    "p25": 0.001,
-   "median": 0.004,
-   "p75": 0.016
+   "median": 0.005,
+   "p75": 0.029
   },
   "understory_pad": {
    "p25": 0.001,
-   "median": 0.003,
-   "p75": 0.013
+   "median": 0.004,
+   "p75": 0.024
   },
   "density": {
-   "p25": 29.42,
-   "median": 31.98,
-   "p75": 33.15
+   "p25": 28.575,
+   "median": 31.89,
+   "p75": 33.08
   }
  },
  "young forest, origin 1985+ or cut/burn": {
@@ -203,13 +203,13 @@
   }
  },
  "water (DEM-flattened)": {
-  "cells": 21840,
-  "share_with_any_value": 0.0261
+  "cells": 28179,
+  "share_with_any_value": 0.0292
  },
  "_fri_vs_lidar": {
-  "stands": 84,
-  "height_r": 0.76,
-  "height_median_diff_m (lidar2021 - fri2010)": 0.24,
-  "closure_vs_cover_r": 0.345
+  "stands": 120,
+  "height_r": 0.727,
+  "height_median_diff_m (lidar2021 - fri2010)": 0.62,
+  "closure_vs_cover_r": 0.45
  }
 }

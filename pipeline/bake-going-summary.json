@@ -8,61 +8,66 @@
   9.95
  ],
  "elevation_from_lidar": 1.0,
- "bush_from_lidar_of_land": 0.347,
+ "bush_from_lidar_of_land": 0.453,
  "estimate_to_lidar": [
   {
    "estimate": 0.15000000596046448,
-   "lidar_median": 0.44122254848480225,
-   "cells": 32581
+   "lidar_median": 0.4453132152557373,
+   "cells": 33738
+  },
+  {
+   "estimate": 0.30000001192092896,
+   "lidar_median": 0.48062342405319214,
+   "cells": 1589
   },
   {
    "estimate": 0.4000000059604645,
-   "lidar_median": 0.38743868470191956,
-   "cells": 21147
+   "lidar_median": 0.3770892024040222,
+   "cells": 34785
   },
   {
    "estimate": 0.44999998807907104,
-   "lidar_median": 0.3090468645095825,
-   "cells": 2236
+   "lidar_median": 0.32216641306877136,
+   "cells": 6025
   },
   {
    "estimate": 0.5,
-   "lidar_median": 0.4901901185512543,
-   "cells": 26923
+   "lidar_median": 0.4781927764415741,
+   "cells": 30527
   },
   {
    "estimate": 0.550000011920929,
-   "lidar_median": 0.4181419610977173,
-   "cells": 102940
+   "lidar_median": 0.41224563121795654,
+   "cells": 135851
   },
   {
    "estimate": 0.6499999761581421,
-   "lidar_median": 0.5869421362876892,
-   "cells": 22641
+   "lidar_median": 0.5858882665634155,
+   "cells": 31380
   },
   {
    "estimate": 0.75,
-   "lidar_median": 0.513516902923584,
-   "cells": 2762
+   "lidar_median": 0.5687942504882812,
+   "cells": 5116
   },
   {
    "estimate": 0.8500000238418579,
-   "lidar_median": 0.5630894303321838,
-   "cells": 9031
+   "lidar_median": 0.5625398755073547,
+   "cells": 9085
   },
   {
    "estimate": 0.949999988079071,
-   "lidar_median": 0.45102763175964355,
-   "cells": 816
+   "lidar_median": 0.46254926919937134,
+   "cells": 852
   }
  ],
  "bush_land_percentiles": {
-  "10": 0.322,
-  "25": 0.441,
-  "50": 0.492,
-  "75": 0.585,
-  "90": 0.587,
-  "99": 0.837
+  "10": 0.281,
+  "25": 0.446,
+  "50": 0.483,
+  "75": 0.584,
+  "90": 0.627,
+  "99": 0.854
  },
  "rough_m_land_percentiles": {
   "10": 0.02,
@@ -73,12 +78,12 @@
   "99": 0.099
  },
  "ground": {
-  "upland": 464381,
-  "water": 42606,
-  "marsh": 6899,
-  "open peatland": 10655,
-  "swamp": 162620,
+  "upland": 464491,
+  "water": 42539,
+  "marsh": 6895,
+  "open peatland": 10669,
+  "swamp": 162594,
   "road": 2925,
-  "stream": 4381
+  "stream": 4354
  }
 }

@@ -100,8 +100,12 @@ LiDAR (Leica SPL100), project White Lake 2021, flown 18–29 Sep 2021.
   grids), `understory-<region>.pmtiles` (z14–16) and, from the same grid,
   `lanes-<region>.pmtiles` for the Bow view (open ground clear, thick bush
   dark; `--lanes` re-renders only that one, in seconds).
-- Coverage so far: 26 of the core's 90 tiles (2 km around camp plus four
-  check tiles, 7.4 GB). The whole core is 26 GB.
+- Coverage so far: 34 of the core's 90 tiles (2 km around camp, the eight
+  tiles round the rest of Pickle Lake's shore, four check tiles; 9.7 GB).
+  The whole core is 26 GB. On a metered link, `fetch_pointcloud.py --band`
+  fetches only a shore band or a circle of a tile (its COPC nodes at every
+  level, so the points there are complete) at a quarter to a third of the
+  tile's bytes; `--list` prints the exact cost first from the tile indexes.
 
 **Method.** Height is the return's z minus the provider's 0.5 m DEM of the
 same tile (bilinear).
