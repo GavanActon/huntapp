@@ -21,8 +21,9 @@ import { checkWeight, metresBetween, STRENGTH_KMH, useWindChecks } from './windC
  *   thermals   cold-air drainage and pooling after the sun goes and the
  *              sky clears; upslope flow on sun-heated slopes; lake and
  *              land breezes from the land–lake temperature contrast
- *   canopy     the head-height fraction under the trees, and the shelter
- *              and eddies downwind of a tree line
+ *   canopy     the head-height fraction under the trees, the shelter and
+ *              eddies downwind of a tree line, and the channelling along a
+ *              slot between two of them
  *   checks     the hunter's own wind checks nearby, blended in
  *
  * and a direction spread (sigma) from the ground speed, the stability, the
@@ -129,6 +130,7 @@ export function loadMicro(): Promise<Habitat | null> {
         scales[k] = g.scale(n)
       })
       grid = g
+      slotAxis = null
       for (const cb of listeners) cb()
       return g
     })
@@ -223,6 +225,115 @@ interface Eval {
 const EDGE_STEPS = [15, 30, 45, 60, 90, 120, 160, 200]
 const _reg = new Float32Array(2)
 
+// ---------------------------------------------------------------- slots in the trees
+
+/**
+ * A slot: a long narrow opening with walls of trees down both sides, like
+ * the bog corridors and old cutlines here. A wind across it is blocked and
+ * the along-slot part runs the length of it, so the air at head height
+ * follows the slot whatever the forecast says (forced channelling, as in a
+ * valley: Whiteman & Doran 1993, and gap and street-canyon flow).
+ *
+ * The shape of a cell's opening never changes, so each one is worked out
+ * the first time it is asked for and kept for as long as the grid is.
+ */
+const SLOT_DIRS = 24
+const SLOT_STEP = 15
+const SLOT_CAP = 300
+
+// −1 not worked out yet, −2 not a slot, else the long axis in degrees, 0…179
+let slotAxis: Int16Array | null = null
+let slotWall = new Float32Array(0)
+let slotOpen = new Int8Array(0)
+/** fetch in SLOT_DIRS bearings, in SLOT_STEP steps */
+let slotFetch = new Uint8Array(0)
+
+interface Slot {
+  /** the long axis, 0…179: the air runs along it either way */
+  axis: number
+  /** across the slot, m */
+  width: number
+  /** the walls down the sides, m */
+  wall: number
+  /** +1 when the open end is the axis bearing, −1 when it is the other */
+  openSign: number
+}
+
+/** Metres to the first stand over 6 m along a bearing; water and open
+ *  ground count as open, and so does the edge of the grid. */
+function fetchTo(g: Habitat, i: number, brg: number): number {
+  for (let x = SLOT_STEP; x <= SLOT_CAP; x += SLOT_STEP) {
+    const j = g.offset(i, brg, x)
+    if (j < 0) return SLOT_CAP
+    if (b(K_TREEH, j) >= 6) return x
+  }
+  return SLOT_CAP
+}
+
+/** The tree-line ramp: full shelter within 3 tree heights, recovered by 10. */
+function shelterOf(fetch: number, wall: number): number {
+  const rel = fetch / Math.max(wall, 1)
+  if (rel < 3) return 0.25
+  if (rel < 10) return 0.25 + (0.75 * (rel - 3)) / 7
+  return 1
+}
+
+function slotFetchAt(i: number, brg: number): number {
+  const k = ((Math.round(brg / SLOT_STEP) % SLOT_DIRS) + SLOT_DIRS) % SLOT_DIRS
+  return slotFetch[i * SLOT_DIRS + k] * SLOT_STEP
+}
+
+function slotAt(g: Habitat, i: number): Slot | null {
+  if (!slotAxis) {
+    slotAxis = new Int16Array(g.size).fill(-1)
+    slotWall = new Float32Array(g.size)
+    slotOpen = new Int8Array(g.size)
+    slotFetch = new Uint8Array(g.size * SLOT_DIRS)
+  }
+  const done = slotAxis[i]
+  if (done === -2) return null
+  const base = i * SLOT_DIRS
+  const half = SLOT_DIRS / 2
+  if (done < 0) {
+    for (let k = 0; k < SLOT_DIRS; k++) slotFetch[base + k] = fetchTo(g, i, k * SLOT_STEP) / SLOT_STEP
+    let k0 = 0
+    let long = -1
+    for (let k = 0; k < half; k++) {
+      const l = slotFetch[base + k] + slotFetch[base + k + half]
+      if (l > long) {
+        long = l
+        k0 = k
+      }
+    }
+    const kp = (k0 + half / 2) % half
+    const across = slotFetch[base + kp] + slotFetch[base + kp + half]
+    let wall = 0
+    for (const k of [kp, kp + half]) {
+      const j = g.offset(i, k * SLOT_STEP, slotFetch[base + k] * SLOT_STEP)
+      const hj = j >= 0 ? b(K_TREEH, j) : 0
+      if (hj >= 6) wall = Math.max(wall, hj)
+    }
+    if (!wall) wall = 13
+    // long enough against its width, and narrow enough for the walls to hold the cross flow
+    if (long < 2.5 * across || across * SLOT_STEP >= 6 * wall + 30) {
+      slotAxis[i] = -2
+      return null
+    }
+    slotAxis[i] = k0 * SLOT_STEP
+    slotWall[i] = wall
+    slotOpen[i] = slotFetch[base + k0] >= slotFetch[base + k0 + half] ? 1 : -1
+  }
+  const axis = slotAxis[i]
+  const kp = (axis / SLOT_STEP + half / 2) % half
+  return { axis, width: (slotFetch[base + kp] + slotFetch[base + kp + half]) * SLOT_STEP, wall: slotWall[i], openSign: slotOpen[i] }
+}
+
+/** "NW–SE": the axis named from the end nearer north. */
+function slotLine(axis: number): string {
+  const a = axis <= 90 ? axis : axis + 180
+  return `${compass(a)}–${compass(a + 180)}`
+}
+
 function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edges = true): Eval | null {
   // regional 10 m wind
   let U: number
@@ -268,8 +379,11 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   const cf = b(K_CANOPY, i)
   let shelter = 1
   let swirl = false
+  let slotSwirl = false
   let edgeNote: string | null = null
-  if (edges && th === 0 && mech10 > 0.5) {
+  let walls = 0
+  const open = edges && th === 0 && mech10 > 0.5
+  if (open) {
     const from = towardOf(e10, n10) + 180
     for (const x of EDGE_STEPS) {
       const j = g.offset(i, from, x)
@@ -289,7 +403,6 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
       }
     }
     // a small opening, trees close on three sides or more: it swirls
-    let walls = 0
     for (const brg of [0, 90, 180, 270]) {
       for (const x of [15, 30, 45]) {
         const j = g.offset(i, brg, x)
@@ -307,10 +420,42 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   }
   // a stable surface layer thins the wind toward the ground well below
   // the neutral log law (Monin–Obukhov: u2/u10 ≈ 0.4–0.5 on a clear calm night)
-  const gm = cf * shelter * (th === 0 ? 1 - 0.45 * s : 1)
-  const mechE = e10 * gm
-  const mechN = n10 * gm
-  const mechG = mech10 * gm
+  const gm = cf * (th === 0 ? 1 - 0.45 * s : 1)
+  let mechE = e10 * gm * shelter
+  let mechN = n10 * gm * shelter
+  // a slot in the trees: the along-slot part of the wind runs the length of
+  // it, the cross part is held off by the wall it comes from, and some of
+  // what is blocked leaves by the open end. This takes the place of the
+  // plain shelter behind one tree line.
+  const slot = open ? slotAt(g, i) : null
+  if (slot) {
+    const axE = Math.sin(slot.axis * RAD)
+    const axN = Math.cos(slot.axis * RAD)
+    const along = e10 * axE + n10 * axN
+    const crossE = e10 - along * axE
+    const crossN = n10 - along * axN
+    const cross = Math.hypot(crossE, crossN)
+    const fCross = slotFetchAt(i, cross > 1e-6 ? towardOf(crossE, crossN) + 180 : 0)
+    // inside three tree heights of the wall it comes from, the cross flow is
+    // a weak return eddy the other way
+    let shCross = fCross < 3 * slot.wall ? -0.1 : shelterOf(fCross, slot.wall)
+    if (walls >= 3) shCross = Math.min(shCross, 0.5)
+    // the along flow gathers down the slot, so it keeps more than it would
+    // behind a plain edge, and never nothing
+    const shAlong = Math.max(0.6, shelterOf(slotFetchAt(i, along < 0 ? slot.axis : slot.axis + 180), slot.wall))
+    const alongH = along * shAlong + slot.openSign * 0.3 * cross
+    mechE = gm * (alongH * axE + crossE * shCross)
+    mechN = gm * (alongH * axN + crossN * shCross)
+    slotSwirl = slot.width < 5 * slot.wall && Math.abs(along) < cross
+    swirl = slotSwirl
+    // funnelling when the along-slot flow is what is left; a wind square across
+    // the slot leaves only the return eddy and the pump, an unsteady drift
+    if (reasons) {
+      const funnels = Math.abs(alongH) >= 2 * cross * Math.abs(shCross)
+      edgeNote = `a ${Math.round(slot.width / 10) * 10} m slot in the trees running ${slotLine(slot.axis)}: ${funnels ? 'the wind funnels along it toward the' : 'the wind across it swirls, drifting toward the'} ${compass(towardOf(mechE, mechN))}`
+    }
+  }
+  const mechG = Math.hypot(mechE, mechN)
 
   // mechanical mixing wipes out the thermal flows
   const mixNight = Math.exp(-Math.max(0, mech10 - 5) / 8)
@@ -414,7 +559,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   else if (settled && (regime === 'drainage' || mechG < 1.5)) regime = 'pooled'
 
   // ---- spread ----
-  let sigma = 12 + 70 * Math.exp(-Ug / 0.6) + 20 * s * Math.exp(-Ug / 1.0) + 15 * lay.convective + (inTrees ? 8 : 0) + (swirl ? 40 : 0)
+  let sigma = 12 + 70 * Math.exp(-Ug / 0.6) + 20 * s * Math.exp(-Ug / 1.0) + 15 * lay.convective + (inTrees ? 8 : 0) + (swirl ? 40 : 0) + (slotSwirl ? 25 : 0)
   const thermal = kat + ana + brz
   const fracMech = mechG / (mechG + thermal + 1e-6)
   if (lay.ensDirSd != null) sigma = Math.hypot(sigma, fracMech * lay.ensDirSd * 0.7)

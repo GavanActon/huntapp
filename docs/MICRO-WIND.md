@@ -46,18 +46,31 @@ off the forecast direction.
 Sherman (1978) and WindNinja's conservation-of-mass solver (Forthofer et al.
 2014), in two dimensions.
 
-- **First guess** `u0 = s(x)·U`. The speed ratio `s` is the log law through
-  a 60 m blending height, from the local roughness length to the mosaic's
-  (`z0_ref = 0.5 m`). ln z0 is smoothed over ~90 m because roughness takes
-  fetch to take hold. Water z0 is 0.0002 m, open bog 0.03 m, shrub 0.2 m,
-  forest 0.1·h (0.3–2.5 m). s runs from 0.7 (forest) to 1.37 (open lake).
+- **First guess** `u0 = U`, uniform: the solve sees the terrain only.
+- **Roughness**, applied after the solve: `u = s(x)·u_terrain`. The speed
+  ratio `s` is the log law through a 60 m blending height, from the local
+  roughness length to the mosaic's (`z0_ref = 0.5 m`). ln z0 is smoothed
+  over ~90 m because roughness takes fetch to take hold. Water z0 is
+  0.0002 m, open bog 0.03 m, shrub 0.2 m, forest 0.1·h (0.3–2.5 m). s runs
+  from 0.7 (forest) to 1.37 (open lake). Until 2026-10-01 the ratio was in
+  the first guess, so a lake's speed-up had to be fed by air pulled in
+  sideways across the shore, and the wind bent toward the upwind shore and
+  off the downwind one; in the real air it comes down from above (an
+  internal boundary layer) that a layer this thin cannot carry. Three
+  quarters of the neutral turning was that artefact.
 - **Layer**: the air between the ground and a lid of depth
   `H = lid + (large-scale terrain − terrain)`.
-  - NEUTRAL: 250 m over the ~3 km terrain. The air goes over hills,
-    ±10° turning, 0.8–1.3× speed.
+  - NEUTRAL: 250 m over the ~3 km terrain. The air goes over hills, and on
+    this low shield hardly turns: measured over the whole grid (2026-10-01)
+    the turn is 0.8° at the median, 2° at the 90th percentile, 18° at most.
+    0.8–1.4× speed with the roughness.
   - STABLE: 50 m over the ~1 km terrain. The air goes round and channels.
-    Exposed ridge tops catch the wind aloft (up to ~2×), valleys go slack,
-    ±20° turning.
+    Exposed ridge tops catch the wind aloft (up to ~2.3×), valleys go
+    slack; the turn is 3° at the median, 11° at the 90th percentile, up to
+    60° on the flanks of the biggest hills. The browser blends toward this
+    by `stable`, so by day, with any wind, the terrain steers the air very
+    little; what turns the head-height wind in the bush is the trees (§4
+    and §5).
 - **Solve**: find the field closest to u0 that conserves mass in the layer,
   `u = u0 + ∇λ`, `∇·(H∇λ) = −∇·(H u0)`, with λ = 0 on the edges. It uses
   finite volumes on face fluxes, one sparse LU per lid, and residual
@@ -125,14 +138,63 @@ Sherman (1978) and WindNinja's conservation-of-mass solver (Forthofer et al.
 - **Small openings**: trees within 45 m on three sides or more means the
   air swirls.
 
-### 5. Direction spread and the scent cone
+### 5. Slots and gaps
+
+A long narrow opening with trees down both sides — a bog corridor, an old
+cutline, a creek run — does not take the wind the way a plain open cell
+does. The cross-slot component is blocked by the wall it comes from and its
+return eddy is weak; the along-slot component runs the length of it. So the
+slot, not the forecast, sets the direction at head height. This is forced
+channelling, the same mechanism as in a valley (Whiteman & Doran 1993), with
+the geometry of gap and street-canyon flow (Oke 1988).
+
+- **Finding the slot** (once per cell, kept for as long as the grid is
+  loaded): for an open cell (`treeH == 0`), the fetch to the first stand
+  over 6 m in 24 bearings, 15 m steps to 300 m — water and open ground count
+  as open, and so does the edge of the grid. The axis is the opposite pair
+  with the longest combined fetch L; W is the combined fetch across it; the
+  walls are the two cells across (13 m if neither is a stand). It is a slot
+  when `L ≥ 2.5 W` and `W < 6·wall + 30 m`. The open end is the end of the
+  axis with the longer fetch.
+- **Along**: the along-axis part of the local 10 m wind, times the tree-line
+  ramp for the fetch to the end it comes from, but never under 0.6. The
+  along flow gathers down the whole length of the slot rather than starting
+  again behind one edge.
+- **Across**: within 3 tree heights of the wall it comes from, a weak return
+  eddy the other way (−0.1); beyond that the usual 0.25 → 1 ramp. Still cut
+  to 0.5 in a small opening.
+- **The pump**: 30% of the blocked cross flow leaves by the open end and
+  adds to the along flow.
+- **Unsteady** when `W < 5·wall` and the cross part is the bigger one: the
+  direction is the residue of two flows, so +25° of spread on top of the
+  swirl.
+
+This replaces the plain shelter product for a slot cell; every other cell
+keeps the tree-line rule above.
+
+**The case it came from** (2026-09-29, about 18:06 EDT, 48.95406,
+−85.55121). HRDPS: from 191° at 17 km/h, gusts 38–44, 80% cloud, neutral.
+The ground: open wetland, `treeH` 0, canopy 0.72, 80 m off Pickle Lake, and
+a slot — axis 120/300, 60 m wide, 14 m walls, 300 m of fetch to the NW and
+90 m to the SE, 15–45 m every other way. Gavan: the wind was "lots of, to
+the 306", breezy to windy and swinging. The old rule said 2 km/h toward the
+N, "15 m downwind of a 13 m tree line: sheltered" — about 65° out. The slot
+rule says 4.8 km/h toward 288°, 18° out, and in the right part of the
+compass for the first time. **One evening, one cell**: that is all the
+validation there is.
+
+On the calm decoupled evening the model was built on the rule changes
+nothing that matters: at that cell the mechanical part stays under
+0.6 km/h either way and drainage still decides the regime.
+
+### 6. Direction spread and the scent cone
 
 - **Spread (1-sigma)**, clamped 8–110°: 12° + 70°·exp(−U/0.6 m/s) for low
   wind meander (Mahrt 2007), plus
   - stable meander,
   - convective swings,
   - canopy +8°,
-  - swirl +40°,
+  - swirl +40°, and +25° more in an unsteady slot,
   - the ensemble spread for the regional share.
 
   A nearby wind check narrows it by a quarter.
@@ -201,7 +263,7 @@ Sherman (1978) and WindNinja's conservation-of-mass solver (Forthofer et al.
   - Because particles sample the field where they are, the cone bends
     along drainage, stalls in a settled bog and turns at a tree line.
 
-### 6. Wind checks
+### 7. Wind checks
 
 - **The check**: a puff of powder, two taps (which way it goes, how hard).
   The model's own call for that spot and minute is saved first.
@@ -217,6 +279,10 @@ Sherman (1978) and WindNinja's conservation-of-mass solver (Forthofer et al.
 - **Not validated in the field yet.** The constants are from the literature
   and one evening's check. The wind checks exist to measure and correct
   it; keep logging them.
+- The slot rule too is one evening at one cell (2026-09-29), and it is the
+  biggest single change to a head-height direction the model makes. About a
+  fifth of the open ground in the core reads as a slot, so it wants checks
+  in a few of them before it is trusted.
 - 2D mass consistency is a diagnostic model, not a flow solver. It gets
   speed-up, channelling and blocking. It does not get separation in the lee
   of steep ridges, which this low-relief shield mostly lacks.
@@ -261,6 +327,8 @@ Sherman (1978) and WindNinja's conservation-of-mass solver (Forthofer et al.
   39:2701–2711.
 - Mahrt, L. 2007. Weak-wind mesoscale meandering in the nocturnal boundary
   layer. Environ. Fluid Mech. 7:331–347.
+- Oke, T.R. 1988. Street design and urban canopy layer climate. Energy and
+  Buildings 11:103–113.
 - Sandu, I., Beljaars, A., Bechtold, P., Mauritsen, T., Balsamo, G. 2013.
   Why is it so difficult to represent stably stratified conditions in
   numerical weather prediction (NWP) models? J. Adv. Model. Earth Syst.
@@ -270,3 +338,6 @@ Sherman (1978) and WindNinja's conservation-of-mass solver (Forthofer et al.
 - Stull, R.B. 1988. An Introduction to Boundary Layer Meteorology. Kluwer.
 - Whiteman, C.D. 2000. Mountain Meteorology: Fundamentals and
   Applications. Oxford University Press.
+- Whiteman, C.D., Doran, J.C. 1993. The relationship between overlying
+  synoptic-scale flows and winds within a valley. J. Appl. Meteor.
+  32:1669–1682.

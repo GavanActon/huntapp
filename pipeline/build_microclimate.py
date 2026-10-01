@@ -13,12 +13,14 @@ Four parts, one per layer of docs/MICRO-WIND.md:
 1. TERRAIN AND ROUGHNESS (mass-consistent downscaling, Sherman 1978; the
    idea behind WindNinja's conservation-of-mass solver). The air between
    the ground and a lid is a layer of depth H; the first guess u0 is the
-   regional wind scaled by local roughness (log law through a 60 m blending
-   height); the answer is the closest field to u0 that conserves mass in
-   the layer: u = u0 + grad(l), div(H grad l) = -div(H u0). Hills thin the
-   layer and the air speeds over or goes round; lakes and bogs are smooth,
-   so flux crowds onto them. Two lids: NEUTRAL (250 m, air goes over) and
-   STABLE (50 m over the valleys, air goes round and channels). The
+   regional wind, uniform; the answer is the closest field to u0 that
+   conserves mass in the layer: u = u0 + grad(l), div(H grad l) =
+   -div(H u0). Hills thin the layer and the air speeds over or goes round.
+   The local roughness (log law through a 60 m blending height: lakes and
+   bogs fast, forest slow) scales the result afterwards, outside the solve,
+   since that extra air comes down from above, not in from the sides.
+   Two lids: NEUTRAL (250 m, air goes over) and STABLE (50 m over the
+   valleys, air goes round and channels). The
    operator is linear in u0, so a wind from the east and one from the north
    are the only solves: any direction is cos*east + sin*north. That is
    eight small bands for every wind the forecast can bring.
@@ -279,10 +281,18 @@ def main() -> None:
     z0 = roughness(cover, height)
     s = speed_ratio(z0)
     print(f"  roughness speed ratio {s.min():.2f}–{s.max():.2f} (lakes fast, forest slow) · {time.time() - t0:.0f}s")
+    # The solve sees the terrain only (a uniform first guess), and the
+    # roughness speed ratio is put on afterwards. With the ratio in the first
+    # guess, a lake's speed-up had to be fed by air pulled in sideways across
+    # the shore, and the wind bent toward the upwind shore and off the
+    # downwind one; the air really comes down from above (an internal
+    # boundary layer), which a layer this thin cannot carry. Measured
+    # 2026-10-01: three quarters of the neutral turning was that artefact.
+    ones = np.ones_like(s)
     print("  neutral layer (air goes over the hills)")
-    neutral = solve_basis(dem, s, LID_NEUTRAL, big_sigma=100)  # ~3 km
+    neutral = [a * s for a in solve_basis(dem, ones, LID_NEUTRAL, big_sigma=100)]  # ~3 km
     print("  stable layer (air goes round and down the valleys)")
-    stable = solve_basis(dem, s, LID_STABLE, big_sigma=35)  # ~1 km
+    stable = [a * s for a in solve_basis(dem, ones, LID_STABLE, big_sigma=35)]  # ~1 km
     print(f"  solved · {time.time() - t0:.0f}s")
 
     # ---- 2. thermals ----
