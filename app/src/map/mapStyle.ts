@@ -39,6 +39,13 @@ function tag<T extends LayerSpecification>(l: T, group: keyof LayerVisibility, o
 
 const vis = (on: boolean) => ({ visibility: on ? 'visible' : 'none' }) as const
 
+/** The baked 1 m LiDAR shade lightens flat ground: a white veil, which is
+ *  the grey of the Terrain view over the dark base. Over the imagery that
+ *  veil washes the photo pale and the hillsides with it, so there its light
+ *  side is toned down to a grey (`raster-brightness-max`); the shaded side
+ *  and the fine lines of the skid trails are unchanged. */
+export const lidarShadeBrightness = (layers: LayerVisibility) => (layers.satellite ? 0.5 : 1)
+
 /** [lines to keep, index lines] for a contour interval. A line's `step` is
  *  the coarsest of 10/5/2/1 that divides its elevation, so `step >= interval`
  *  keeps every interval-th metre; index lines are every fifth of those. */
@@ -136,10 +143,15 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   }
   addRaster('satellite', { 'raster-saturation': -0.3 })
   // Two switches over the elevation tiles. Elevation colours: the heights
-  // coloured, lakes as water. Hillshade: the shade, drawn from the heights
-  // for the wide view, then the crisp baked grey 1 m LiDAR shade near camp
-  // from z13.5, the one that shows old skid trails and ditches; the
-  // DEM-drawn shade has 1.6 m pixels and a smoothing light, and loses them.
+  // coloured, lakes as water. Hillshade: the shade drawn from the heights,
+  // which carries the hillsides at every zoom, and over it from z13.5 the
+  // crisp baked grey 1 m LiDAR shade near camp, the one that shows old skid
+  // trails and ditches; the DEM-drawn shade has 1.6 m pixels and a smoothing
+  // light, and loses them. The DEM shade used to fade out under the LiDAR
+  // one, but that one is mostly a light veil on these gentle slopes (it only
+  // turns dark past ~15°), so the hillsides went with it on zooming in
+  // (Gavan, 2026-09-29, Bow view), and outside the core there was nothing
+  // to take over at all.
   const dem = has('dem')
   if (dem) {
     sources.dem = { type: 'raster-dem', url: 'pmtiles://dem', encoding: 'mapbox', tileSize: 256, attribution: 'MRDEM, HRDEM LiDAR © Natural Resources Canada' }
@@ -169,8 +181,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
             'hillshade-illumination-altitude': [30, 30, 30, 30],
             'hillshade-highlight-color': ['rgba(255,250,235,0.35)', 'rgba(255,250,235,0.45)', 'rgba(255,250,235,0.35)', 'rgba(255,250,235,0.2)'],
             'hillshade-shadow-color': ['rgba(16,20,12,0.6)', 'rgba(16,20,12,0.8)', 'rgba(16,20,12,0.6)', 'rgba(16,20,12,0.35)'],
-            // fading out where the grey LiDAR shade takes over, so the core is not shaded twice
-            'hillshade-exaggeration': has('hillshadeLidar') ? ['interpolate', ['linear'], ['zoom'], 13.3, 0.85, 14, 0.25] : 0.85,
+            'hillshade-exaggeration': 0.85,
           },
         } as LayerSpecification,
         'hillshade',
@@ -190,7 +201,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
         ),
       )
   } else addRaster('hillshade')
-  // the 1 m LiDAR shade rides above the 30 m one where it is baked (the
+  // the 1 m LiDAR shade rides above the DEM-drawn one where it is baked (the
   // core, z14+); both answer to the one Hillshade switch and slider
   if (has('hillshadeLidar')) {
     sources.hillshadeLidar = { type: 'raster', url: 'pmtiles://hillshadeLidar', tileSize: 256, minzoom: 14 }
@@ -202,7 +213,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
           source: 'hillshadeLidar',
           minzoom: 13.5,
           layout: vis(o.layers.hillshade),
-          paint: { 'raster-opacity': o.opacity.hillshade, 'raster-resampling': 'linear' },
+          paint: { 'raster-opacity': o.opacity.hillshade, 'raster-resampling': 'linear', 'raster-brightness-max': lidarShadeBrightness(o.layers) },
         },
         'hillshade',
         'hillshade',

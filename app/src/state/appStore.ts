@@ -221,6 +221,9 @@ export interface AppState {
   setLowPower: (v: boolean) => void
   textSize: SizeStop
   setTextSize: (v: SizeStop) => void
+  /** your initials, on the wind checks you share with the party */
+  who: string
+  setWho: (v: string) => void
   /** The app-wide planning time (ms) picked on the strip; null = now. */
   planTimeMs: number | null
   setPlanTime: (ms: number | null) => void
@@ -288,6 +291,8 @@ export const useAppStore = create<AppState>()(
       setLowPower: (lowPower) => set({ lowPower }),
       textSize: 'auto',
       setTextSize: (textSize) => set({ textSize }),
+      who: '',
+      setWho: (who) => set({ who: who.trim().slice(0, 12) }),
       planTimeMs: null,
       setPlanTime: (planTimeMs) => set({ planTimeMs }),
 
@@ -348,6 +353,7 @@ export const useAppStore = create<AppState>()(
         hotButtons: s.hotButtons,
         leftHanded: s.leftHanded,
         buttonLabels: s.buttonLabels,
+        who: s.who,
         onboarded: s.onboarded,
       }),
       merge: (persisted, current) => {

@@ -27,8 +27,8 @@ import { checkWeight, metresBetween, STRENGTH_KMH, useWindChecks } from './windC
  *   checks     the hunter's own wind checks nearby, blended in
  *
  * and a direction spread (sigma) from the ground speed, the stability, the
- * canopy, edge eddies and the ensemble's disagreement: a scent cone, not
- * a line. Every number is a model's, and the reasons say which part
+ * canopy, edge eddies, how gusty the hour is and the ensemble's
+ * disagreement: a scent cone, not a line. Every number is a model's, and the reasons say which part
  * decided it.
  */
 
@@ -75,6 +75,10 @@ export interface GroundWind {
   /** true when the ground air has come loose from the wind above */
   decoupled: boolean
   swirl: boolean
+  /** the wind comes down in bursts: a strong gust factor with wind to gust */
+  gusty: boolean
+  /** what a gust reaches at head height, km/h */
+  gustKmh: number
   regionalKmh: number
   regionalDir: number
   /** local wind at 10 m over the surface (terrain and roughness only) */
@@ -168,6 +172,8 @@ interface Ctx {
   regional: ((lon: number, lat: number, out: Float32Array) => boolean) | null
   fallback: { kmh: number; dir: number } | null
   waterC: number
+  /** gust over mean at 10 m this hour, 1–3; 1 when the forecast says nothing */
+  gf: number
   checks: ReturnType<typeof useWindChecks.getState>['checks']
 }
 
@@ -189,8 +195,14 @@ function makeCtx(ms: number): Ctx {
     regional: windSampler(ms),
     fallback: h ? { kmh: h.windKmh, dir: h.windDir } : Number.isFinite(lay.w10) && Number.isFinite(lay.d10) ? { kmh: lay.w10, dir: lay.d10 } : null,
     waterC,
+    gf: h && Number.isFinite(h.gustKmh) ? clamp(h.gustKmh / Math.max(1, h.windKmh), 1, 3) : 1,
     checks: useWindChecks.getState().checks,
   }
+}
+
+/** How much harder a gust blows than the mean at 10 m this minute, 1–3. */
+export function groundGust(ms: number): number {
+  return makeCtx(ms).gf
 }
 
 function b(k: number, i: number): number {
@@ -214,6 +226,7 @@ interface Eval {
   sigma: number
   regime: Regime
   swirl: boolean
+  gusty: boolean
   parts: Part[]
   reasons: string[] | null
   local10: number
@@ -355,7 +368,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     // off the grid: an open-ground profile, nothing local
     const f = 0.7 * (1 - 0.6 * lay.stable)
     const sp = U * f
-    return { e: Ue * f, n: Un * f, sigma: 15 + 60 * Math.exp(-sp / 3.6 / 0.6), regime: sp < 0.8 ? 'calm' : 'wind', swirl: false, parts: [{ key: 'terrain', kmh: sp, toward: (dirFrom + 180) % 360 }], reasons, local10: U, U, dirFrom, inGrid: false }
+    return { e: Ue * f, n: Un * f, sigma: 15 + 60 * Math.exp(-sp / 3.6 / 0.6), regime: sp < 0.8 ? 'calm' : 'wind', swirl: false, gusty: ctx.gf >= 1.8 && U >= 8, parts: [{ key: 'terrain', kmh: sp, toward: (dirFrom + 180) % 360 }], reasons, local10: U, U, dirFrom, inGrid: false }
   }
 
   // ---- terrain and roughness: the two lids, blended by stability ----
@@ -456,6 +469,8 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     }
   }
   const mechG = Math.hypot(mechE, mechN)
+  // enough wind, and enough of a gust factor, that the air comes down in bursts
+  const gusty = ctx.gf >= 1.8 && mech10 >= 8
 
   // mechanical mixing wipes out the thermal flows
   const mixNight = Math.exp(-Math.max(0, mech10 - 5) / 8)
@@ -514,11 +529,29 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   let E = mechE + kE + aE + bE
   let N = mechN + kN + aN + bN
 
-  // ---- the hunter's own checks nearby ----
+  // ---- the hunters' checks nearby ----
+  // Each check nearby is averaged into the model's vector at its weight
+  // (windChecks.ts: by time and distance), every check counting the same,
+  // so with several people's checks the side with more of them carries it.
+  // Where the checks disagree with each other (the wind swinging between
+  // two checks, or two people feeling different things) the average alone
+  // would read as a steady wind down the middle, or cancel to a calm: the
+  // circular spread of the checks' own directions (the resultant length R
+  // of their unit vectors, the usual measure for wind directions) is held
+  // as a floor on sigma instead, scaled by how much of the answer the
+  // checks make up. Checks that agree tighten the spread; checks that
+  // disagree open it.
   let wsum = 0
   let oE = 0
   let oN = 0
+  let uE = 0
+  let uN = 0
+  let wdir = 0
+  let nChecks = 0
+  const who = new Set<string>()
   let nearest: { min: number; m: number; ago: boolean } | null = null
+  // a check logged as swinging holds the spread open at its own arc
+  let swingFloor = 0
   for (const c of ctx.checks) {
     const w = checkWeight(c, lon, lat, ctx.ms)
     if (w < 0.03) continue
@@ -527,6 +560,15 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     oE += w * ce
     oN += w * cn
     wsum += w
+    nChecks++
+    who.add(c.by || 'you')
+    if (c.dirFrom != null && c.strength !== 'calm') {
+      const [ue, un] = vec(1, c.dirFrom + 180)
+      uE += w * ue
+      uN += w * un
+      wdir += w
+    }
+    if (c.swingDeg) swingFloor = Math.max(swingFloor, (w * c.swingDeg) / 2)
     const mins = Math.round(Math.abs(ctx.ms - c.ts) / 60_000)
     if (!nearest || mins < nearest.min) nearest = { min: mins, m: Math.round(metresBetween(lon, lat, c.lon, c.lat)), ago: c.ts <= ctx.ms }
   }
@@ -534,6 +576,10 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     E = (E + oE) / (1 + wsum)
     N = (N + oN) / (1 + wsum)
   }
+  // the checks' own spread about their mean direction: R = 1 all one way, 0 every way
+  const R = wdir > 0 ? Math.hypot(uE, uN) / wdir : 1
+  const checkSpread = R < 0.999 ? (Math.sqrt(-2 * Math.log(Math.max(R, 1e-3))) * 180) / Math.PI : 0
+  const checkFloor = (checkSpread * wsum) / (1 + wsum)
 
   const sp = Math.hypot(E, N)
   const Ug = sp / 3.6
@@ -562,9 +608,13 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   let sigma = 12 + 70 * Math.exp(-Ug / 0.6) + 20 * s * Math.exp(-Ug / 1.0) + 15 * lay.convective + (inTrees ? 8 : 0) + (swirl ? 40 : 0) + (slotSwirl ? 25 : 0)
   const thermal = kat + ana + brz
   const fracMech = mechG / (mechG + thermal + 1e-6)
+  // gusty air swings more: a gust factor of 2.5 means the along-wind
+  // fluctuation is about 0.6 of the mean (Wieringa 1973)
+  sigma += 12 * clamp(ctx.gf - 1.5, 0, 1) * fracMech
   if (lay.ensDirSd != null) sigma = Math.hypot(sigma, fracMech * lay.ensDirSd * 0.7)
-  if (wsum > 0.3) sigma *= 0.75
-  sigma = clamp(sigma, 8, 110)
+  // nearby checks that agree tighten the spread; a swing, or checks that disagree, hold it open
+  if (wsum > 0.3 && !swingFloor && checkSpread < 25) sigma *= 0.75
+  sigma = clamp(Math.max(sigma, swingFloor, checkFloor), 8, 110)
 
   const parts: Part[] = []
   if (withReasons && mechG > 0.05) parts.push({ key: 'terrain', kmh: mechG, toward: towardOf(mechE, mechN) })
@@ -577,6 +627,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     if (s > 0.5 && dT > 0.5) reasons.push(`Air at the ground is ${dT.toFixed(1)}° colder than at 80 m: it has come loose from the ${Math.round(lay.w80)} km/h wind above`)
     else if (s > 0.3) reasons.push('The air is settling: the forecast wind reaches the ground only in gusts')
     if (lay.convective > 0.4) reasons.push('Sun-driven mixing: the wind comes down in gusts and swings')
+    if (gusty) reasons.push(`Gusts to ${Math.round(U * ctx.gf)} km/h at 10 m: the wind comes down in bursts and swings`)
     const ratio = local10 / Math.max(0.1, U)
     const turn = Math.abs((((towardOf(e10, n10) - (dirFrom + 180)) % 360) + 540) % 360 - 180)
     if (ratio > 1.15) reasons.push(`Terrain and open ground speed the wind up about ${Math.round((ratio - 1) * 100)}% here`)
@@ -589,14 +640,22 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     if (inTrees) reasons.push(`In ${Math.round(th)} m trees: head-height wind about ${Math.round(cf * 100)}% of the wind over them`)
     if (edgeNote) reasons.push(edgeNote[0].toUpperCase() + edgeNote.slice(1))
     if (lay.ensDirSd != null && lay.ensDirSd > 35 && fracMech > 0.4) reasons.push(`Forecast models disagree on the direction (±${Math.round(lay.ensDirSd)}°)`)
-    if (nearest) reasons.push(`Blended with your wind check ${nearest.m < 20 ? 'here' : `${nearest.m} m away`}, ${nearest.min} min ${nearest.ago ? 'before' : 'after'} this time`)
+    if (nearest && nChecks === 1) reasons.push(`Blended with ${who.has('you') ? 'your' : `${[...who][0]}'s`} wind check ${nearest.m < 20 ? 'here' : `${nearest.m} m away`}, ${nearest.min} min ${nearest.ago ? 'before' : 'after'} this time`)
+    else if (nearest) {
+      const people = who.size > 1 ? ` from ${who.size} people (${[...who].join(', ')})` : ''
+      reasons.push(
+        checkSpread >= 25
+          ? `Blended with ${nChecks} wind checks nearby${people}, which disagree by about ±${Math.round(checkSpread)}°: the spread is held open that wide, and the side with more checks carries the direction`
+          : `Blended with ${nChecks} wind checks nearby${people}, agreeing within about ±${Math.round(Math.max(checkSpread, 5))}°; the nearest ${nearest.m < 20 ? 'here' : `${nearest.m} m away`}, ${nearest.min} min ${nearest.ago ? 'before' : 'after'} this time`,
+      )
+    }
     if (lay.source === 'estimate') reasons.push('No layering forecast cached: stability estimated from the sky and the wind')
   }
 
-  return { e: E, n: N, sigma, regime, swirl, parts, reasons, local10, U, dirFrom, inGrid: true }
+  return { e: E, n: N, sigma, regime, swirl, gusty, parts, reasons, local10, U, dirFrom, inGrid: true }
 }
 
-function headlineOf(ev: Eval, kmh: number, dirFrom: number): string {
+function headlineOf(ev: Eval, kmh: number, dirFrom: number, gustKmh: number): string {
   const to = compass((dirFrom + 180) % 360)
   switch (ev.regime) {
     case 'calm':
@@ -612,7 +671,7 @@ function headlineOf(ev: Eval, kmh: number, dirFrom: number): string {
     case 'landBreeze':
       return `Land breeze off the shore toward the ${to}`
     default:
-      return `Wind from the ${compass(dirFrom)}, ${Math.round(kmh)} km/h at head height`
+      return `Wind from the ${compass(dirFrom)}, ${Math.round(kmh)} km/h at head height${ev.gusty ? `, gusts to ${Math.round(gustKmh)}` : ''}`
   }
 }
 
@@ -623,6 +682,8 @@ export function groundWind(lon: number, lat: number, ms: number): GroundWind | n
   if (!ev) return null
   const kmh = Math.hypot(ev.e, ev.n)
   const dirFrom = (towardOf(ev.e, ev.n) + 180) % 360
+  // a gust gets through the shelter that thins the mean, so it is the mean × the factor
+  const gustKmh = kmh * ctx.gf
   return {
     kmh,
     dirFrom,
@@ -630,11 +691,13 @@ export function groundWind(lon: number, lat: number, ms: number): GroundWind | n
     regime: ev.regime,
     decoupled: ctx.lay.stable > 0.5,
     swirl: ev.swirl,
+    gusty: ev.gusty,
+    gustKmh,
     regionalKmh: ev.U,
     regionalDir: ev.dirFrom,
     local10Kmh: ev.local10,
     parts: ev.parts,
-    headline: headlineOf(ev, kmh, dirFrom),
+    headline: headlineOf(ev, kmh, dirFrom, gustKmh),
     reasons: ev.reasons ?? [],
     layering: ctx.lay,
     inGrid: ev.inGrid,

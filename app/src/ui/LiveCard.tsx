@@ -43,7 +43,7 @@ function drainLine(lon: number, lat: number, now: number): string | null {
   return null
 }
 
-/** A row's lead words (bold) and the rest: 'Wind check 6:05 · …' → ['Wind check', ' 6:05 · …']. */
+/** A row's lead words (bold) and the rest: 'Wind sharpened 6:05 · …' → ['Wind sharpened', ' 6:05 · …']. */
 function lead(s: string): [string, string] {
   const m = /^(.+?)(?= \d{1,2}:\d{2}| · )/.exec(s)
   return m ? [m[1], s.slice(m[1].length)] : [s, '']
@@ -213,7 +213,7 @@ export default function LiveCard(): JSX.Element | null {
         </div>
         {livePlume && <Row text={scentRow(livePlume)} onTap={toScent} />}
         {!livePlume && scentText && <Row text={scentText} />}
-        {check && <Row text={`Wind check ${clockShort(check.check.ts)} · pulling ${Math.round(check.pull * 100)}% · till ~${clockShort(checkSpentAt(check.check))}`} />}
+        {check && <Row text={`Wind sharpened ${clockShort(check.check.ts)} · pulling ${Math.round(check.pull * 100)}% · till ~${clockShort(checkSpentAt(check.check))}`} />}
         {drain && <Row text={drain} />}
         {party && <Row text={party.head} onTap={toScent} />}
         {party?.drift && <span className="lc-line lc-amber">{party.drift}</span>}

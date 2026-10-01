@@ -221,3 +221,15 @@
   flex: 1;
   min-width: 0;
 }
+
+/* a short text field on a row: the initials */
+.st-row .st-text {
+  width: 72px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--c-border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--c-text);
+  font: inherit;
+  text-align: center;
+}

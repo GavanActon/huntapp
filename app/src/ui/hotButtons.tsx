@@ -127,8 +127,8 @@ export const HOT_DEFS: Record<HotId, HotDef> = {
   },
   windcheck: {
     id: 'windcheck',
-    name: 'Wind check',
-    short: 'Check',
+    name: 'Sharpen the wind',
+    short: 'Sharpen',
     Icon: IconPowder,
     useActive: () => useCheckForm((s) => s.at != null),
     onTap: () => {

@@ -2,6 +2,7 @@ import { useEffect, type JSX } from 'react'
 import { downloadFiles, mapsStatus, useDownloads } from '../../offline/downloads'
 import { checkMapUpdates, useMapUpdates } from '../../offline/updates'
 import { CONTOUR_INTERVALS, useAppStore } from '../../state/appStore'
+import GuideSection from '../panels/GuideSection'
 import './settings.css'
 
 const TEXT_SIZES = [
@@ -16,7 +17,8 @@ const STREAK_W: Record<(typeof STOPS)[number], number> = { auto: 0, standard: 1.
 
 /**
  * Settings, one level deep: the maps on the phone, the buttons, the hand,
- * units and text, then the wind flow's knobs and the contour interval. The
+ * units and text, then the wind flow's knobs and the contour interval, and
+ * HuntOS, the field guide, folded at the foot. The
  * download runs in offline/downloads.ts, so closing the sheet does not stop
  * it. The host draws the title row.
  */
@@ -39,6 +41,8 @@ export default function SettingsSheet(): JSX.Element {
   const setFlowTuning = useAppStore((s) => s.setFlowTuning)
   const windLevel = useAppStore((s) => s.windLevel)
   const setWindLevel = useAppStore((s) => s.setWindLevel)
+  const who = useAppStore((s) => s.who)
+  const setWho = useAppStore((s) => s.setWho)
   const pushSheet = useAppStore((s) => s.pushSheet)
   // what the Maps row reads: re-rendered when any of it moves
   useAppStore((s) => s.online)
@@ -110,6 +114,12 @@ export default function SettingsSheet(): JSX.Element {
         </div>
       </div>
       <label className="st-row">
+        <span>
+          Your initials <span className="dim">· on the wind checks you share</span>
+        </span>
+        <input type="text" className="st-text" value={who} maxLength={12} placeholder="GA" onChange={(e) => setWho(e.target.value)} aria-label="Your initials" />
+      </label>
+      <label className="st-row">
         <span>Low power</span>
         <input type="checkbox" className="switch" checked={lowPower} onChange={(e) => setLowPower(e.target.checked)} />
       </label>
@@ -169,6 +179,9 @@ export default function SettingsSheet(): JSX.Element {
           ))}
         </div>
       </div>
+
+      <div className="st-sec">HuntOS</div>
+      <GuideSection />
     </div>
   )
 }

@@ -153,6 +153,67 @@
   color: var(--c-text-faint);
 }
 
+/* HuntOS, the field guide, in Settings: folded sections, prose inside */
+.about-sec > summary,
+.guide-sec > summary {
+  cursor: pointer;
+  padding: 8px 4px;
+  font-size: 13.5px;
+  font-weight: 600;
+  list-style: none;
+}
+.about-sec > summary::before,
+.guide-sec > summary::before {
+  content: '▸ ';
+  font-size: 11px;
+  color: var(--c-text-dim);
+}
+.about-sec[open] > summary::before,
+.guide-sec[open] > summary::before {
+  content: '▾ ';
+}
+.about-sec > p {
+  margin: 0 4px 8px 16px;
+}
+.guide-search {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 4px 0 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--c-border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--c-text);
+  font: inherit;
+  font-size: 13.5px;
+}
+.guide-pre {
+  padding: 0 4px 6px;
+}
+.guide-sec > p,
+.guide-sec > ul,
+.guide-sec > ol,
+.guide-pre p {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--c-text);
+  margin: 0 4px 8px 16px;
+}
+.guide-sec > ul,
+.guide-sec > ol {
+  padding-left: 18px;
+}
+.guide-sec li {
+  margin-bottom: 6px;
+}
+.guide-sec li ul,
+.guide-sec li ol {
+  margin-top: 4px;
+  padding-left: 18px;
+}
+.guide code {
+  font-size: 12px;
+}
 .wxcell {
   position: relative; /* anchors the thunder corner mark */
   /* ten across the visible row (nine 3px gaps), however many hours exist */
@@ -1037,6 +1098,19 @@
   margin-left: 0;
   width: 34px;
   height: 34px;
+}
+
+/* where the first leg starts: you, or the first point tapped */
+
+.measure-card .tb-head .chip-pick {
+  padding: 3px 9px;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.chip-pick:disabled,
+.chip-pick.chip-dim {
+  opacity: 0.4;
 }
 
 .measure-total {
