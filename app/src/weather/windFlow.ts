@@ -45,6 +45,157 @@ interface FieldGrid {
   live: boolean
   /** the map as drawn under each cell, 0 black to 1 white; null until the next render fills it */
   lum: Float32Array | null
+  /** how hard the eddies turn in each cell, css px/s; 0 where the air runs straight */
+  swirl: Float32Array | null
+}
+
+// ---------------------------------------------------------------- swirl
+
+/**
+ * Where the ground model says the air swirls (a tree-line eddy, a small
+ * opening, a slot across the wind) the mean alone draws a slow straight
+ * drift: the opposite of what is going on. So those cells get an eddy field
+ * on top of the mean, and settled or calm air a gentler one (scent hangs
+ * and spreads every way). The spread alone is not the cue: at head height
+ * under a light gusty wind it is wide nearly everywhere, and the whole map
+ * would turn. The eddies are curl noise (the rotated gradient of a smooth noise
+ * potential, so they turn without piling up anywhere), a fixed size on the
+ * screen, cross-faded between two slices every SWIRL_PERIOD ms so they turn
+ * over. An idiom for "it swirls here", not a map of where the rotor sits.
+ */
+/** the eddies in settled or calm air, as a share of a swirl cell's */
+const SWIRL_CALM = 0.6
+/** the eddy's wavelength on the screen, css px */
+const SWIRL_SCALE = 56
+/** the swirl grid's step, css px (finer than the wind's, so an eddy has a few nodes across) */
+const SWIRL_STEP = 14
+const SWIRL_PERIOD = 4000
+/** the slowest swirl, in near calm, css px/s; faster air eddies faster */
+const SWIRL_FLOOR = 14
+
+/** The eddy strength for a cell: the sampler's swirl mark (1 swirls, 0.5 settled, 0 straight) and the mean's speed. */
+function swirlAmp(mark: number, pxps: number): number {
+  const k = mark >= 1 ? 1 : mark > 0 ? SWIRL_CALM : 0
+  return k * (0.9 * pxps + SWIRL_FLOOR)
+}
+
+// 2D gradient noise (Perlin's lattice, a fixed permutation): smooth, zero-mean, about ±0.7
+const PERM = new Uint8Array(512)
+{
+  let s = 0x2f6e2b1
+  const p = Array.from({ length: 256 }, (_, i) => i)
+  for (let i = 255; i > 0; i--) {
+    s = (s * 1103515245 + 12345) & 0x7fffffff
+    const j = s % (i + 1)
+    const x = p[i]
+    p[i] = p[j]
+    p[j] = x
+  }
+  for (let i = 0; i < 512; i++) PERM[i] = p[i & 255]
+}
+const GRAD = [1, 1, -1, 1, 1, -1, -1, -1, 1, 0, -1, 0, 0, 1, 0, -1]
+const fade = (u: number) => u * u * u * (u * (u * 6 - 15) + 10)
+function noise2(x: number, y: number): number {
+  const X = Math.floor(x)
+  const Y = Math.floor(y)
+  const fx = x - X
+  const fy = y - Y
+  const xi = X & 255
+  const yi = Y & 255
+  const g = (h: number, dx: number, dy: number) => {
+    const k = (h & 7) * 2
+    return GRAD[k] * dx + GRAD[k + 1] * dy
+  }
+  const a = PERM[xi] + yi
+  const b = PERM[xi + 1] + yi
+  const u = fade(fx)
+  const v = fade(fy)
+  const n00 = g(PERM[a], fx, fy)
+  const n10 = g(PERM[b], fx - 1, fy)
+  const n01 = g(PERM[a + 1], fx, fy - 1)
+  const n11 = g(PERM[b + 1], fx - 1, fy - 1)
+  return (n00 + u * (n10 - n00)) * (1 - v) + (n01 + u * (n11 - n01)) * v
+}
+
+interface SwirlGrid {
+  cols: number
+  rows: number
+  /** two slices of the eddy field, unit RMS, each (cols × rows) × (x, y) */
+  ux0: Float32Array
+  uy0: Float32Array
+  ux1: Float32Array
+  uy1: Float32Array
+  t0: number
+  seed: number
+}
+
+/** One slice: the curl of the noise potential on the grid, normalised to unit RMS. */
+function swirlSlice(g: SwirlGrid, seed: number, ux: Float32Array, uy: Float32Array) {
+  const n = g.cols * g.rows
+  const psi = new Float32Array(n)
+  // each slice looks at its own patch of the noise, so a new one is unrelated to the last
+  const ox = (seed * 977) % 4096
+  const oy = (seed * 1409) % 4096
+  for (let r = 0; r < g.rows; r++) for (let c = 0; c < g.cols; c++) psi[r * g.cols + c] = noise2((c * SWIRL_STEP + ox) / SWIRL_SCALE, (r * SWIRL_STEP + oy) / SWIRL_SCALE)
+  let ss = 0
+  for (let r = 0; r < g.rows; r++) {
+    for (let c = 0; c < g.cols; c++) {
+      const i = r * g.cols + c
+      const l = psi[r * g.cols + Math.max(0, c - 1)]
+      const rt = psi[r * g.cols + Math.min(g.cols - 1, c + 1)]
+      const up = psi[Math.max(0, r - 1) * g.cols + c]
+      const dn = psi[Math.min(g.rows - 1, r + 1) * g.cols + c]
+      // v = (dpsi/dy, -dpsi/dx): along the potential's contours
+      ux[i] = dn - up
+      uy[i] = -(rt - l)
+      ss += ux[i] * ux[i] + uy[i] * uy[i]
+    }
+  }
+  const rms = Math.sqrt(ss / n) || 1
+  for (let i = 0; i < n; i++) {
+    ux[i] /= rms
+    uy[i] /= rms
+  }
+}
+
+function makeSwirl(w: number, h: number, now: number): SwirlGrid {
+  const cols = Math.ceil(w / SWIRL_STEP) + 2
+  const rows = Math.ceil(h / SWIRL_STEP) + 2
+  const n = cols * rows
+  const g: SwirlGrid = { cols, rows, ux0: new Float32Array(n), uy0: new Float32Array(n), ux1: new Float32Array(n), uy1: new Float32Array(n), t0: now, seed: (now / 1000) | 0 }
+  swirlSlice(g, g.seed, g.ux0, g.uy0)
+  swirlSlice(g, g.seed + 1, g.ux1, g.uy1)
+  return g
+}
+
+/** Roll the slices on when the period is up: the second becomes the first, a fresh one comes in. */
+function rollSwirl(g: SwirlGrid, now: number) {
+  // back from a long sleep: one roll, not one per period missed
+  if (now - g.t0 >= 2 * SWIRL_PERIOD) g.t0 = now - ((now - g.t0) % SWIRL_PERIOD) - SWIRL_PERIOD
+  while (now - g.t0 >= SWIRL_PERIOD) {
+    g.ux0.set(g.ux1)
+    g.uy0.set(g.uy1)
+    g.seed++
+    swirlSlice(g, g.seed + 1, g.ux1, g.uy1)
+    g.t0 += SWIRL_PERIOD
+  }
+}
+
+/** The eddy at a point, both slices cross-faded by the phase, into out[0..1]. */
+function sampleSwirl(g: SwirlGrid, x: number, y: number, phase: number, out: Float32Array): void {
+  const fx = Math.min(g.cols - 1.001, Math.max(0, x / SWIRL_STEP))
+  const fy = Math.min(g.rows - 1.001, Math.max(0, y / SWIRL_STEP))
+  const x0 = Math.floor(fx)
+  const y0 = Math.floor(fy)
+  const tx = fx - x0
+  const ty = fy - y0
+  const i = y0 * g.cols + x0
+  const bi = (a: Float32Array) => (a[i] * (1 - tx) + a[i + 1] * tx) * (1 - ty) + (a[i + g.cols] * (1 - tx) + a[i + g.cols + 1] * tx) * ty
+  // a smooth cross-fade; the two slices are unrelated, so the mix dips a
+  // little in the middle, which reads as the eddies breathing
+  const m = phase * phase * (3 - 2 * phase)
+  out[0] = bi(g.ux0) * (1 - m) + bi(g.ux1) * m
+  out[1] = bi(g.uy0) * (1 - m) + bi(g.uy1) * m
 }
 
 /** Streak tones: light over the dark imagery, brighter still over a mid base
@@ -97,13 +248,14 @@ function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
   const rows = Math.ceil(h / FIELD_STEP) + 1
   const vx = new Float32Array(cols * rows)
   const vy = new Float32Array(cols * rows)
+  const swirl = new Float32Array(cols * rows)
   let live = false
   const speedMul = useAppStore.getState().flowTuning.windSpeed
   // at ground level: the head-height model (drainage, shelter, breezes),
   // slow air drawn a little faster so a creeping drainage still reads
   const ground = useAppStore.getState().windLevel === 'ground' && microGrid() ? groundSampler(atMs) : null
   const wind = windSampler(atMs)
-  const out = new Float32Array(3)
+  const out = new Float32Array(4)
   // a map turned heading up turns the screen: a true bearing shows turned back by the map's
   const turn = (map.getBearing() * Math.PI) / 180
   const cb = Math.cos(turn)
@@ -120,6 +272,7 @@ function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
         const un = out[1] / (kmh / 3.6)
         vx[r * cols + c] = (ue * cb - un * sb) * pxps
         vy[r * cols + c] = -(ue * sb + un * cb) * pxps
+        swirl[r * cols + c] = swirlAmp(out[3], pxps)
         live = true
       }
     }
@@ -138,7 +291,8 @@ function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
       }
     }
   }
-  const f: FieldGrid = { step: FIELD_STEP, cols, rows, vx, vy, live, lum: null }
+  // the forecast field carries no spread, so no eddies at that level
+  const f: FieldGrid = { step: FIELD_STEP, cols, rows, vx, vy, live, lum: null, swirl: ground ? swirl : null }
   if (live) sampleLuminance(map, f)
   return f
 }
@@ -178,6 +332,8 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
   let field = buildField(map, w, h, atMs())
   if (!field.live) return { stop: () => {}, rebase: () => {}, dead: true }
   const fieldOff = { x: 0, y: 0 }
+  const swirl = makeSwirl(w, h, performance.now())
+  const eddy = new Float32Array(2)
 
   const canvas = document.createElement('canvas')
   canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;'
@@ -302,6 +458,9 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
     const dt = Math.min(0.05, (now - drawnAt) / 1000)
     drawnAt = now
     const tune = useAppStore.getState().flowTuning
+    const amps = tune.windSwirl ? field.swirl : null
+    if (amps) rollSwirl(swirl, now)
+    const phase = (now - swirl.t0) / SWIRL_PERIOD
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.globalCompositeOperation = 'destination-in'
@@ -320,9 +479,21 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
     const lum = field.lum
     for (let i = 0; i < active; i++) {
       age[i] += dt
-      sampleField(field, px[i] - fieldOff.x, py[i] - fieldOff.y, vel)
-      const vx = vel[0]
-      const vy = vel[1]
+      const fx = px[i] - fieldOff.x
+      const fy = py[i] - fieldOff.y
+      sampleField(field, fx, fy, vel)
+      let vx = vel[0]
+      let vy = vel[1]
+      if (amps) {
+        const sc = Math.min(field.cols - 1, Math.max(0, (fx / field.step) | 0))
+        const sr = Math.min(field.rows - 1, Math.max(0, (fy / field.step) | 0))
+        const amp = amps[sr * field.cols + sc]
+        if (amp > 0.5) {
+          sampleSwirl(swirl, fx, fy, phase, eddy)
+          vx += amp * eddy[0]
+          vy += amp * eddy[1]
+        }
+      }
       const nx = px[i] + vx * dt
       const ny = py[i] + vy * dt
       const sx = M.a * nx + M.c * ny + M.e

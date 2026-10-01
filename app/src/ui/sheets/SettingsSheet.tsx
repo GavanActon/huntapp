@@ -169,6 +169,10 @@ export default function SettingsSheet(): JSX.Element {
         </span>
         <input type="range" min={86} max={97} step={1} value={Math.round(tune.windTrail * 100)} onChange={(e) => setFlowTuning({ windTrail: Number(e.target.value) / 100 })} aria-label="Trail" />
       </div>
+      <label className="st-row">
+        <span>Eddies where the air swirls</span>
+        <input type="checkbox" className="switch" checked={tune.windSwirl} onChange={(e) => setFlowTuning({ windSwirl: e.target.checked })} />
+      </label>
       <div className="st-row">
         <span>Wind flow at</span>
         <div className="seg" role="radiogroup" aria-label="Wind flow at">

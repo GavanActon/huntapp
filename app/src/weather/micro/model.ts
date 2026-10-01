@@ -757,7 +757,10 @@ export function groundForScoring(ms: number, lon: number, lat: number, full = fa
 }
 
 /** A fast sampler for particles and plumes: out = [east m/s, north m/s,
- *  sigma degrees]. Null when there is no wind at all to start from. */
+ *  sigma degrees] and, when the array has room, out[3]: 1 where the air
+ *  swirls (an eddy behind a tree line, a small opening, a slot across the
+ *  wind), 0.5 where it has settled or gone calm, else 0. Null when there is
+ *  no wind at all to start from. */
 export type GroundSampler = (lon: number, lat: number, out: Float32Array) => boolean
 export function groundSampler(ms: number): GroundSampler | null {
   const ctx = makeCtx(ms)
@@ -768,6 +771,7 @@ export function groundSampler(ms: number): GroundSampler | null {
     out[0] = ev.e / 3.6
     out[1] = ev.n / 3.6
     out[2] = ev.sigma
+    out[3] = ev.swirl ? 1 : ev.regime === 'calm' || ev.regime === 'pooled' ? 0.5 : 0
     return true
   }
 }
