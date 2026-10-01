@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { CORE } from '../config'
 import { devlog } from '../devlog'
+import { getMap } from '../map/mapController'
 import { useMeasureStore } from '../measure/measureStore'
 import { habitat } from '../spots/habitatGrid'
 import { isFish } from '../spots/types'
@@ -275,6 +276,42 @@ function onAnswer(g: Going, m: FromWorker) {
   })
   const pick = Math.min(useRoutes.getState().pick, routes.length - 1)
   useRoutes.setState({ status: 'ready', routes, pick, oneWay: a.note === 'one way' })
+  fitRoutes(routes)
+}
+
+/** The whole route in view above the card: the map fits the three ways,
+ *  padded for the strip and the bottom bar, and stops following you. */
+function fitRoutes(routes: DrawnRoute[]) {
+  const m = getMap()
+  if (!m || !routes.length) return
+  let w = Infinity
+  let s = Infinity
+  let e = -Infinity
+  let n = -Infinity
+  for (const r of routes)
+    for (const [lon, lat] of r.coords) {
+      w = Math.min(w, lon)
+      e = Math.max(e, lon)
+      s = Math.min(s, lat)
+      n = Math.max(n, lat)
+    }
+  if (!Number.isFinite(w)) return
+  useAppStore.getState().setFollow(false)
+  const bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--barh'))
+  const pad = { top: 130, bottom: (Number.isFinite(bar) ? bar : 0) + 40, left: 30, right: 30 }
+  const room = m.getContainer().clientHeight - 60
+  if (pad.top + pad.bottom > room) {
+    const k = Math.max(0, room) / (pad.top + pad.bottom)
+    pad.top = Math.round(pad.top * k)
+    pad.bottom = Math.round(pad.bottom * k)
+  }
+  m.fitBounds(
+    [
+      [w, s],
+      [e, n],
+    ],
+    { padding: pad, maxZoom: 16, duration: 500 },
+  )
 }
 
 function schedule() {
