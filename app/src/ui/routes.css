@@ -7,7 +7,10 @@
 .route-card .tb-head .icon-btn { margin-left: 0; width: 34px; height: 34px; }
 .route-card .tb-head .icon-btn:disabled { opacity: 0.35; }
 
-.rt-ends { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 4px; font-size: 12.5px; color: var(--c-text-dim); }
+.rt-ends { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--c-text-dim); }
+.rt-end { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.rt-end > .dim { min-width: 34px; }
+.rt-end .chip-pick { font-size: 12px; padding: 5px 10px; }
 .rt-ends b { color: var(--c-text); font-weight: 600; }
 .rt-ends .rt-clear { margin-left: auto; font-size: 12.5px; }
 

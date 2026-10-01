@@ -213,8 +213,9 @@ export function initRouteLayer() {
       const place = map.getLayer('places-pt') ? map.queryRenderedFeatures(e.point, { layers: ['places-pt'] })[0] : undefined
       const id = place?.properties?.id as string | undefined
       const p = id ? usePlacesStore.getState().places.find((q) => q.id === id) : undefined
-      if (p) return s.setTo({ lon: p.lon, lat: p.lat, kind: 'place', name: p.name })
-      s.setTo({ lon: e.lngLat.lng, lat: e.lngLat.lat, kind: 'map', name: '' })
+      const end = p ? { lon: p.lon, lat: p.lat, kind: 'place' as const, name: p.name } : { lon: e.lngLat.lng, lat: e.lngLat.lat, kind: 'map' as const, name: '' }
+      if (s.picking === 'from') s.setFrom(end)
+      else s.setTo(end)
     })
     map.on('mouseenter', 'routes-hit', () => {
       if (useRoutes.getState().open) map.getCanvas().style.cursor = 'pointer'

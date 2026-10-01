@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useAppStore } from '../state/appStore'
+import { useGpsStore } from '../tracking/gpsStore'
 import { useSpotsStore } from '../state/spotsStore'
 import { TARGET_NAMES } from '../spots/types'
 import { formatDistance } from '../measure/measureMath'
-import { clearRoutes, closeRoutes, huntBlocked, ROUTE_COLOURS, ROUTE_LETTERS, useRoutes, type RouteMode } from '../routes/routeStore'
+import { campEnd, clearRoutes, closeRoutes, huntBlocked, ROUTE_COLOURS, ROUTE_LETTERS, useRoutes, youEnd, type RouteMode } from '../routes/routeStore'
 import { approachText, endName, height, lidarText, routeFacts, routeLine, routeTag, routeTime, timeParts } from '../routes/routeText'
 import { IconMinus, IconPlus, IconSwap } from './icons'
 
@@ -31,7 +32,11 @@ export default function RouteCard() {
   const pick = useRoutes((s) => s.pick)
   const oneWay = useRoutes((s) => s.oneWay)
   const stayDry = useRoutes((s) => s.stayDry)
-  const { setMode, setPick, setStayDry, swap } = useRoutes.getState()
+  const picking = useRoutes((s) => s.picking)
+  const { setMode, setPick, setStayDry, swap, setFrom, setTo, setPicking } = useRoutes.getState()
+  const locating = useGpsStore((s) => s.locating)
+  useGpsStore((s) => s.fix)
+  const you = youEnd()
   const units = useAppStore((s) => s.units)
   const paceKmh = useAppStore((s) => s.paceKmh)
   const setPaceKmh = useAppStore((s) => s.setPaceKmh)
@@ -81,16 +86,33 @@ export default function RouteCard() {
         </button>
       </div>
       <div className="rt-ends">
-        From <b>{from?.name ?? '…'}</b>
-        {to ? (
-          <>
-            {' '}
-            to <b>{toName}</b>{stayDry ? ' · staying dry' : ''}
+        <span className="rt-end">
+          <span className="dim">From</span>
+          <button className={`chip-pick${from?.kind === 'you' ? ' chip-on' : ''}`} disabled={!you} onClick={() => you && setFrom(you)} title={!you && !locating ? 'Turn location on' : undefined}>
+            You
+          </button>
+          <button className={`chip-pick${from?.kind === 'camp' ? ' chip-on' : ''}`} onClick={() => setFrom(campEnd())}>
+            Camp
+          </button>
+          <button className={`chip-pick${picking === 'from' ? ' chip-on' : from && (from.kind === 'map' || from.kind === 'place') ? ' chip-on' : ''}`} onClick={() => setPicking(picking === 'from' ? 'to' : 'from')}>
+            {picking === 'from' ? 'Tap the map…' : from?.kind === 'place' ? from.name : from?.kind === 'map' ? 'The map' : 'Tap the map'}
+          </button>
+        </span>
+        <span className="rt-end">
+          <span className="dim">To</span>
+          <button className={`chip-pick${to?.kind === 'camp' ? ' chip-on' : ''}`} onClick={() => setTo(campEnd())}>
+            Camp
+          </button>
+          <button className={`chip-pick${picking === 'to' && !to ? ' chip-on' : to && to.kind !== 'camp' ? ' chip-on' : ''}`} onClick={() => setPicking('to')}>
+            {to && to.kind !== 'camp' ? toName : picking === 'to' ? 'Tap the map…' : 'Tap the map'}
+          </button>
+          {to && (
             <button className="linklike rt-clear" onClick={clearRoutes}>
               Clear
             </button>
-          </>
-        ) : null}
+          )}
+          {stayDry && <span className="dim">· staying dry</span>}
+        </span>
       </div>
       {blocked && <div className="rt-note">{blocked}</div>}
       {msg != null ? (

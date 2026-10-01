@@ -79,6 +79,9 @@ interface RouteState {
   setTo: (e: RouteEnd) => void
   setFrom: (e: RouteEnd) => void
   swap: () => void
+  /** which end the next map tap sets (to, unless From · Tap the map was chosen) */
+  picking: 'from' | 'to'
+  setPicking: (p: 'from' | 'to') => void
 }
 
 export const useRoutes = create<RouteState>()(
@@ -97,8 +100,10 @@ export const useRoutes = create<RouteState>()(
       setPick: (pick) => set({ pick }),
       setMode: (mode) => set({ mode }),
       setStayDry: (stayDry) => set({ stayDry }),
-      setTo: (to) => set({ to }),
-      setFrom: (from) => set({ from }),
+      setTo: (to) => set({ to, picking: 'to' }),
+      setFrom: (from) => set({ from, picking: 'to' }),
+      picking: 'to',
+      setPicking: (picking) => set({ picking }),
       swap: () => {
         const { from, to } = get()
         if (from && to) set({ from: to, to: from })
@@ -112,12 +117,23 @@ export function inGrid(lon: number, lat: number): boolean {
   return lon >= CORE.west && lon <= CORE.east && lat >= CORE.south && lat <= CORE.north
 }
 
-/** Where a route starts with nothing better: you, with a fix good enough and near camp; else camp. */
-export function defaultFrom(): RouteEnd {
-  const fix = useGpsStore.getState().fix
-  if (fix && (fix.sigma ?? fix.accuracy) <= 50 && inGrid(fix.lon, fix.lat)) return { lon: fix.lon, lat: fix.lat, kind: 'you', name: 'You' }
+/** You, as a route end: the fix, while location is on and it falls in the grid. */
+export function youEnd(): RouteEnd | null {
+  const g = useGpsStore.getState()
+  const fix = g.fix
+  if (!g.locating || !fix || (fix.sigma ?? fix.accuracy) > 150 || !inGrid(fix.lon, fix.lat)) return null
+  return { lon: fix.lon, lat: fix.lat, kind: 'you', name: 'You' }
+}
+
+/** Camp, as a route end. */
+export function campEnd(): RouteEnd {
   const camp = homePlace()
   return { lon: camp.lon, lat: camp.lat, kind: 'camp', name: camp.name }
+}
+
+/** Where a route starts with nothing better: you, with location on; else camp. */
+export function defaultFrom(): RouteEnd {
+  return youEnd() ?? campEnd()
 }
 
 /** Open the card; with a point, that is where you are going. */
@@ -125,11 +141,12 @@ export function openRoutes(to?: { lon: number; lat: number; name?: string; kind?
   useMeasureStore.getState().stop()
   useAppStore.getState().closeSheet()
   const s = useRoutes.getState()
-  // from you means from where you are now
-  const from = !s.from || s.from.kind === 'you' || (to && s.from.kind === 'camp') ? defaultFrom() : s.from
+  // from you whenever location is on; a from you picked by hand (a tap, a place) stays
+  const from = youEnd() ?? (s.from && s.from.kind !== 'you' ? s.from : campEnd())
   useRoutes.setState({
     open: true,
     from,
+    picking: 'to',
     ...(to ? { to: { lon: to.lon, lat: to.lat, kind: to.kind ?? 'map', name: to.name ?? '' } } : {}),
     pick: to ? 0 : s.pick,
   })
