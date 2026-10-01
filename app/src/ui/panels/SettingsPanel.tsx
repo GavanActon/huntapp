@@ -1,6 +1,7 @@
 import { CONTOUR_INTERVALS, useAppStore } from '../../state/appStore'
 import { currentTextStop, phoneTextStop } from '../textScale'
 import OfflinePanel from './OfflinePanel'
+import GuideSection from './GuideSection'
 
 export default function SettingsPanel() {
   const units = useAppStore((s) => s.units)
@@ -9,6 +10,8 @@ export default function SettingsPanel() {
   const setTextSize = useAppStore((s) => s.setTextSize)
   const wxStrip = useAppStore((s) => s.wxStrip)
   const setWxStrip = useAppStore((s) => s.setWxStrip)
+  const who = useAppStore((s) => s.who)
+  const setWho = useAppStore((s) => s.setWho)
   const phoneStop = phoneTextStop()
   const windFlowOpacity = useAppStore((s) => s.windFlowOpacity)
   const setWindFlowOpacity = useAppStore((s) => s.setWindFlowOpacity)
@@ -55,6 +58,13 @@ export default function SettingsPanel() {
           <span className="row-desc">Days and hours over the map</span>
         </div>
         <input type="checkbox" className="switch" checked={wxStrip} onChange={(e) => setWxStrip(e.target.checked)} />
+      </label>
+      <label className="row">
+        <div className="row-text">
+          <span className="row-title">Your initials</span>
+          <span className="row-desc">On the wind checks you share with the party</span>
+        </div>
+        <input type="text" className="text-input" value={who} maxLength={12} placeholder="GA" onChange={(e) => setWho(e.target.value)} style={{ width: 72 }} />
       </label>
 
       <div className="panel-section">Terrain</div>
@@ -117,6 +127,9 @@ export default function SettingsPanel() {
         </div>
         <input type="checkbox" className="switch" checked={lowPower} onChange={(e) => setLowPower(e.target.checked)} />
       </label>
+
+      <div className="panel-section" id="huntos">HuntOS · how we hunt here</div>
+      <GuideSection />
 
       <div className="panel-section" id="maps-offline">Maps offline</div>
       <OfflinePanel />

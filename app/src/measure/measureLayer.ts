@@ -8,8 +8,9 @@ import type {
 } from 'maplibre-gl'
 import { getMap, onEachMap, withMap } from '../map/mapController'
 import { useAppStore } from '../state/appStore'
+import { useGpsStore } from '../tracking/gpsStore'
 import { formatBearing, formatDistance, legsOf } from './measureMath'
-import { useMeasureStore } from './measureStore'
+import { fixLeads, measurePoints, useMeasureStore } from './measureStore'
 
 /**
  * The measuring tool on the map: tap to drop points, and every leg
@@ -97,10 +98,14 @@ function addLayers(map: MlMap) {
 }
 
 function buildFc(): FeatureCollection {
-  const { active, points } = useMeasureStore.getState()
-  if (!active) return emptyFc()
+  if (!useMeasureStore.getState().active) return emptyFc()
 
-  const pts = points.map((p, i) => (drag && drag.idx === i ? drag.lngLat : p))
+  // the fix, when it leads, is point 0 of the line but none of the tapped
+  // points: everything the finger touches is shifted past it
+  const lead = fixLeads() ? 1 : 0
+  const d = drag
+  const line = measurePoints()
+  const pts = d ? line.map((p, i) => (i === d.idx + lead ? d.lngLat : p)) : line
   const features: Feature[] = []
 
   if (pts.length >= 2) {
@@ -124,11 +129,12 @@ function buildFc(): FeatureCollection {
       })
     }
   }
-  for (let i = 0; i < pts.length; i++) {
+  // where you stand is already drawn, by the position dot
+  for (let i = lead; i < pts.length; i++) {
     features.push({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: pts[i] },
-      properties: { kind: 'point', idx: i },
+      properties: { kind: 'point', idx: i - lead },
     })
   }
   return { type: 'FeatureCollection', features }
@@ -248,10 +254,19 @@ export function initMeasureLayer() {
   })
 
   useMeasureStore.subscribe((s, prev) => {
-    if (s.points === prev.points && s.active === prev.active) return
+    if (s.points === prev.points && s.active === prev.active && s.from === prev.from) return
     const live = getMap()
     if (live && layersOn === live) render(live)
     else withMap(render)
+  })
+
+  // starting from you means the first leg follows you: every fix redraws it
+  useGpsStore.subscribe((s, prev) => {
+    if (s.fix === prev.fix) return
+    const m = useMeasureStore.getState()
+    if (!m.active || m.from !== 'you') return
+    const live = getMap()
+    if (live && layersOn === live) render(live)
   })
 
   // leg labels are written in the user's units — redraw when those change

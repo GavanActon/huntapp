@@ -16,6 +16,10 @@ import { onWeatherRefreshed } from '../weather/refresh'
  * into the next day. Tapping a day jumps the hour row to that morning;
  * tapping a day or an hour sets the app-wide planning time. The strip is
  * about the selected place, or the camp, or the phone's position.
+ *
+ * Folded (the chevron), it is one chip: the place and the day and hour
+ * being planned, nothing of the weather; a tap opens it all again. Either
+ * the weather is wanted, and it is all there, or it is not, and it is gone.
  */
 
 const REFRESH_MS = 30 * 60_000
@@ -91,6 +95,8 @@ export function stripSubject(): { lon: number; lat: number; name: string } {
 
 export default function WeatherStrip() {
   const enabled = useAppStore((s) => s.wxStrip)
+  const folded = useAppStore((s) => s.wxStripMin)
+  const setFolded = useAppStore((s) => s.setWxStripMin)
   const planTimeMs = useAppStore((s) => s.planTimeMs)
   const setPlanTime = useAppStore((s) => s.setPlanTime)
   const units = useAppStore((s) => s.units)
@@ -176,6 +182,17 @@ export default function WeatherStrip() {
 
   if (!enabled) return null
 
+  if (folded) {
+    const at = planTimeMs == null ? 'now' : `${startOfDayMs(planTimeMs) === startOfDayMs(now) ? 'Today' : DAYS[new Date(planTimeMs).getDay()]} ${hourLabel(new Date(planTimeMs))}`
+    return (
+      <div className="wxstrip wxstrip-folded">
+        <button className="chip glass" onClick={() => setFolded(false)} aria-label="Open the outlook">
+          {name || 'Outlook'} · {at}
+        </button>
+      </div>
+    )
+  }
+
   const temp = (c: number) => (units === 'imperial' ? Math.round(c * 1.8 + 32) : Math.round(c))
   const wind = (k: number) => (units === 'imperial' ? Math.round(k * 0.621371) : Math.round(k))
   const activeHourMs = planTimeMs == null ? floorNow : planTimeMs - (planTimeMs % 3600_000)
@@ -193,6 +210,11 @@ export default function WeatherStrip() {
           )}
         </span>
       )}
+      <button className="wxstrip-fold" onClick={() => setFolded(true)} aria-label="Fold the outlook away">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 10l5-5 5 5" />
+        </svg>
+      </button>
       {!forecast ? (
         <div className="wxstrip-empty">{online ? 'Fetching the outlook…' : 'No outlook cached'}</div>
       ) : (

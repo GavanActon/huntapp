@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState, type CSSProperties, type ReactNode, type Ref } from 'react'
 import MapView from './map/MapView'
 import { withMap } from './map/mapController'
 import { useAppStore, type SheetTab } from './state/appStore'
@@ -7,7 +7,7 @@ import { toggleLocate } from './tracking/gpsService'
 import { initTextScale } from './ui/textScale'
 import BottomSheet from './ui/BottomSheet'
 import WeatherStrip from './ui/WeatherStrip'
-import { IconCompass, IconEar, IconLayers, IconLocate, IconPlaces, IconRoute, IconRuler, IconScent, IconSliders, IconTarget, IconWind } from './ui/icons'
+import { IconCompass, IconEar, IconHeat, IconLayers, IconLocate, IconPlaces, IconPuff, IconRoute, IconRuler, IconScent, IconSliders, IconTarget, IconWind } from './ui/icons'
 import MeasureCard from './ui/MeasureCard'
 import RouteCard from './ui/RouteCard'
 import { closeRoutes, initRoutes, openRoutes, useRoutes } from './routes/routeStore'
@@ -17,7 +17,14 @@ import { initScentLayer, useScent } from './weather/micro/scent'
 import { initCheckLayer } from './weather/micro/checkLayer'
 import { initMapUpdates, useMapUpdates } from './offline/updates'
 import { initHunting, useHunting } from './hunting/hunting'
-import { initMoveLayer } from './hunting/moveLayer'
+import { heardThisHunt, initMoveLayer } from './hunting/moveLayer'
+import { useHuntLog } from './log/huntLog'
+import { useSpotsStore } from './state/spotsStore'
+import { useUsableFix } from './tracking/hereFix'
+import { checkReachM, useWindChecks } from './weather/micro/windChecks'
+import { useCheckForm } from './ui/WindCheckCard'
+import { releaseTools } from './ui/tools'
+import { haptic } from './ui/haptics'
 import HeardCard, { useHeardForm } from './ui/HeardCard'
 import { initMeasureLayer } from './measure/measureLayer'
 import { useMeasureStore } from './measure/measureStore'
@@ -111,16 +118,107 @@ function useFabRoom(): number {
   return room
 }
 
+/** Held for this long, a button does its other thing (a long press). */
+const LONG_MS = 450
+
+/**
+ * One hot button. A tap does the thing; a long press (where there is one)
+ * opens what sits behind it, the card or the tab; a mark at the corner says
+ * something is set behind it (people placed, a check in effect, a route
+ * kept) while the card is away. The press cancels on a slide, so a drag
+ * across the map that starts on a button is not a press.
+ */
+function Fab({
+  icon,
+  label,
+  active,
+  mark,
+  onTap,
+  onLong,
+  className = '',
+  style,
+  btnRef,
+}: {
+  icon: ReactNode
+  label: string
+  active?: boolean
+  mark?: boolean
+  onTap: () => void
+  onLong?: () => void
+  className?: string
+  style?: CSSProperties
+  btnRef?: Ref<HTMLButtonElement>
+}) {
+  const timer = useRef<number | null>(null)
+  const fired = useRef(false)
+  const clear = () => {
+    if (timer.current != null) window.clearTimeout(timer.current)
+    timer.current = null
+  }
+  return (
+    <button
+      ref={btnRef}
+      className={`fab${active ? ' active' : ''}${className ? ` ${className}` : ''}`}
+      style={style}
+      aria-pressed={active}
+      aria-label={label}
+      onPointerDown={() => {
+        fired.current = false
+        if (!onLong) return
+        clear()
+        timer.current = window.setTimeout(() => {
+          fired.current = true
+          haptic('confirm')
+          onLong()
+        }, LONG_MS)
+      }}
+      onPointerUp={clear}
+      onPointerLeave={clear}
+      onPointerCancel={clear}
+      onContextMenu={(e) => e.preventDefault()}
+      onClick={() => {
+        // the long press has done its thing: the tap that ends it is not another
+        if (fired.current) return void (fired.current = false)
+        onTap()
+      }}
+    >
+      {icon}
+      {mark && <span className="fab-mark" />}
+    </button>
+  )
+}
+
+/**
+ * The hot buttons, two columns above the dock. Right, top to bottom: Heard
+ * (out hunting), Sharpen the wind, Scent, Wind flow, Compass, Location. Left,
+ * above the view pill: Heat, Measure, Route. The two columns share the
+ * same rows. A tab sheet covers them; a card that takes the map's tap
+ * (measure, route, a check, a moose, a log entry) puts the left column
+ * away and the right one steps out beside the card when it runs short of
+ * room under the strip.
+ */
 function FabStack() {
   const follow = useAppStore((s) => s.follow)
+  const sheetTab = useAppStore((s) => s.sheetTab)
   const locating = useGpsStore((s) => s.locating)
   const headingUp = useGpsStore((s) => s.headingUp)
   const measuring = useMeasureStore((s) => s.active)
   const routing = useRoutes((s) => s.open)
+  const kept = useRoutes((s) => s.kept != null)
   const windOn = useAppStore((s) => s.layers.windFlow)
   const hunting = useHunting((s) => s.on)
-  const coneOn = useScent((s) => s.people.some((p) => p.live))
-  const coneWanted = useHunting((s) => s.cone)
+  const people = useScent((s) => s.people.length)
+  const hidden = useScent((s) => s.hidden)
+  const card = useScent((s) => s.card)
+  const placing = useScent((s) => s.adding || s.moving != null)
+  const checking = useCheckForm((s) => s.at != null || s.arming)
+  const hearing = useHeardForm((s) => s.open)
+  const logging = useLogForm((s) => s.at != null)
+  const checks = useWindChecks((s) => s.checks)
+  const planMs = useAppStore((s) => s.planTimeMs)
+  const heat = useSpotsStore((s) => s.heat)
+  const entries = useHuntLog((s) => s.entries)
+  const hereNow = useUsableFix()
   const [offNorth, setOffNorth] = useState(false)
   const compassBtn = useRef<HTMLButtonElement>(null)
   const room = useFabRoom()
@@ -136,88 +234,132 @@ function FabStack() {
       apply()
     })
   }, [])
-  const fabs = [
-    // out hunting: your scent cone, on until this hides it, and a moose heard
+  // a tab sheet covers the buttons
+  if (sheetTab) return null
+  const checksOn = checks.some((c) => checkReachM(c, planMs ?? Date.now()) > 0)
+  const heard = hunting && entries.length > 0 && heardThisHunt().length > 0
+  const tool = measuring || routing || checking || hearing || logging || placing
+  const openTab = (t: SheetTab) => useAppStore.getState().setSheetTab(t)
+
+  const right = [
     hunting && (
-      <button
-        key="cone"
-        className={`fab ${coneWanted ? 'active' : ''}`}
-        onClick={() => useHunting.getState().setCone(!coneWanted)}
-        aria-pressed={coneWanted}
-        aria-label={coneWanted ? 'Hide your scent cone' : 'Show your scent cone'}
-        style={coneWanted && !coneOn ? { opacity: 0.7 } : undefined}
-      >
-        <IconScent />
-      </button>
+      <Fab
+        key="heard"
+        icon={<IconEar />}
+        label={hearing ? 'Close' : 'Heard a moose'}
+        active={hearing}
+        mark={heard && !hearing}
+        onTap={() => {
+          if (hearing) return useHeardForm.getState().close()
+          releaseTools('heard')
+          useHeardForm.getState().show()
+        }}
+        onLong={() => openTab('places')}
+      />
     ),
-    hunting && (
-      <button key="heard" className="fab" onClick={() => useHeardForm.getState().show()} aria-label="Heard a moose">
-        <IconEar />
-      </button>
-    ),
-    // the three best ways to a place on foot
-    <button
-      key="route"
-      className={`fab ${routing ? 'active' : ''}`}
-      onClick={() => (routing ? closeRoutes() : openRoutes())}
-      aria-pressed={routing}
-      aria-label={routing ? 'Close routes' : 'Routes: the best ways there on foot'}
-    >
-      <IconRoute />
-    </button>,
-    <button
-      key="measure"
-      className={`fab ${measuring ? 'active' : ''}`}
-      onClick={() => {
-        if (measuring) return useMeasureStore.getState().stop()
-        useAppStore.getState().setSheetTab(null)
-        useMeasureStore.getState().start()
+    <Fab
+      key="check"
+      icon={<IconPuff />}
+      label={checking ? 'Close' : 'Sharpen the wind: log what the air really does here'}
+      active={checking}
+      mark={checksOn && !checking}
+      onTap={() => {
+        if (checking) return useCheckForm.getState().close()
+        releaseTools('check')
+        if (hereNow) useCheckForm.getState().open(hereNow.lon, hereNow.lat, 'where you stand')
+        else useCheckForm.getState().arm()
       }}
-      aria-label="Measure distance"
-    >
-      <IconRuler />
-    </button>,
-    <button
+      onLong={() => openTab('weather')}
+    />,
+    <Fab
+      key="scent"
+      icon={<IconScent />}
+      label={people ? (hidden ? 'Show the scent cones' : 'Hide the scent cones') : 'Scent cone'}
+      active={people > 0 && !hidden}
+      mark={people > 0 && !card}
+      onTap={() => {
+        const sc = useScent.getState()
+        if (sc.people.length) return sc.setHidden(!sc.hidden)
+        releaseTools('scent')
+        if (hereNow) sc.show(hereNow.lon, hereNow.lat)
+        else {
+          sc.setAdding(true)
+          sc.setCard(true)
+        }
+      }}
+      onLong={() => {
+        const sc = useScent.getState()
+        if (!sc.people.length) return
+        sc.setCard(true)
+        sc.setHidden(false)
+      }}
+    />,
+    // the wind over the map, on and off from here in any view (hunting keeps the track itself)
+    <Fab key="wind" icon={<IconWind />} label={windOn ? 'Hide the wind flow' : 'Show the wind flow'} active={windOn} onTap={() => useAppStore.getState().setLayer('windFlow', !windOn)} />,
+    <Fab
       key="compass"
-      ref={compassBtn}
-      className="fab"
+      btnRef={compassBtn}
+      icon={<IconCompass />}
+      label="Reset north"
       style={{ opacity: offNorth ? 1 : 0.55 }}
-      onClick={() => {
+      onTap={() => {
         useGpsStore.getState().setHeadingUp(false)
         withMap((m) => m.easeTo({ bearing: 0, pitch: 0 }))
       }}
-      aria-label="Reset north"
-    >
-      <IconCompass />
-    </button>,
-    // the wind over the map, on and off from here in any view (hunting keeps the track itself)
-    <button
-      key="wind"
-      className={`fab ${windOn ? 'active' : ''}`}
-      onClick={() => useAppStore.getState().setLayer('windFlow', !windOn)}
-      aria-pressed={windOn}
-      aria-label={windOn ? 'Hide the wind flow' : 'Show the wind flow'}
-    >
-      <IconWind />
-    </button>,
-    <button
+    />,
+    <Fab
       key="locate"
-      className={`fab ${locating && follow ? 'active' : ''}${headingUp ? ' fab-heading' : ''}`}
+      icon={<IconLocate />}
+      label={!locating ? 'Show my position' : !follow ? 'Follow my position' : headingUp ? 'Turn location off' : 'Turn the map the way I face'}
+      active={locating && follow}
+      className={headingUp ? 'fab-heading' : ''}
       style={locating && !follow ? { opacity: 0.8, outline: '1.5px solid var(--c-accent)' } : undefined}
-      onClick={toggleLocate}
-      aria-label={!locating ? 'Show my position' : !follow ? 'Follow my position' : headingUp ? 'Turn location off' : 'Turn the map the way I face'}
-    >
-      <IconLocate />
-    </button>,
+      onTap={toggleLocate}
+    />,
   ].filter(Boolean)
-  // a card up leaves less room than the stack needs: the top ones step out to a column
+
+  const left = [
+    <Fab key="heat" icon={<IconHeat />} label={heat ? 'Hide the heat map' : 'Show the heat map'} active={heat} onTap={() => useSpotsStore.getState().setHeat(!heat)} onLong={() => openTab('spots')} />,
+    <Fab
+      key="measure"
+      icon={<IconRuler />}
+      label="Measure distance"
+      active={measuring}
+      onTap={() => {
+        if (measuring) return useMeasureStore.getState().stop()
+        releaseTools('measure')
+        useMeasureStore.getState().start()
+      }}
+    />,
+    // the three best ways to a place on foot
+    <Fab
+      key="route"
+      icon={<IconRoute />}
+      label={routing ? 'Close routes' : 'Routes: the best ways there on foot'}
+      active={routing}
+      mark={kept && !routing}
+      onTap={() => {
+        if (routing) return closeRoutes()
+        releaseTools('route')
+        openRoutes()
+      }}
+    />,
+  ]
+  // a card up leaves less room than the right column needs: the top ones step out to a column
   // beside it rather than run up under the weather strip
-  const split = Math.max(0, fabs.length - room)
+  const split = Math.max(0, right.length - room)
   return (
-    <div className="fabstack">
-      {split > 0 && <div className="fabcol">{fabs.slice(0, split)}</div>}
-      <div className="fabcol">{fabs.slice(split)}</div>
-    </div>
+    <>
+      <div className="fabstack">
+        {split > 0 && <div className="fabcol">{right.slice(0, split)}</div>}
+        <div className="fabcol">{right.slice(split)}</div>
+      </div>
+      {!tool && (
+        <div className="fabstack fabstack-left">
+          <div className="fabcol">{left}</div>
+        </div>
+      )}
+    </>
   )
 }
 

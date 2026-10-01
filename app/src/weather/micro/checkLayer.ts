@@ -5,8 +5,9 @@ import { onEachMap } from '../../map/mapController'
 import { closeOnTapOff } from '../../map/tapPopup'
 import { useAppStore } from '../../state/appStore'
 import { timeLabel } from '../../time'
+import { toolOwnsTap } from '../../ui/tools'
 import { compass } from '../openMeteo'
-import { checkPull, checkReachM, checkSpentAt, useWindChecks, verdict, type WindCheck } from './windChecks'
+import { checkPull, checkReachM, checkSpentAt, towardWords, useWindChecks, verdict, type WindCheck } from './windChecks'
 
 /**
  * The wind checks still in effect, on the map. Each is an arrow where it
@@ -167,7 +168,7 @@ function esc(s: string): string {
 
 /** What a check says and how much it still counts, for its popup. */
 function popupHtml(c: WindCheck, at: number): string {
-  const felt = c.dirFrom == null ? 'calm' : `toward ${compass((c.dirFrom + 180) % 360)}, ${c.strength}`
+  const felt = c.dirFrom == null ? 'calm' : `toward ${towardWords((c.dirFrom + 180) % 360, c.swingDeg)}, ${c.strength}`
   const v = verdict(c)
   const model = c.model
     ? `<li>The model had ${c.model.kmh < 1 ? 'near calm' : `toward ${compass((c.model.dirFrom + 180) % 360)}`}${v ? ` · <b class="gc-verdict gc-${v}">${v === 'agree' ? 'agreed' : v === 'close' ? 'close' : 'missed'}</b>` : ''}</li>`
@@ -177,7 +178,7 @@ function popupHtml(c: WindCheck, at: number): string {
   const spent = checkSpentAt(c)
   const when = useAppStore.getState().planTimeMs == null ? 'now' : 'at the planned time'
   return (
-    `<div class="pg-head"><span>Wind check · ${esc(timeLabel(c.ts))}</span></div>` +
+    `<div class="pg-head"><span>Wind sharpened · ${esc(timeLabel(c.ts))}${c.by ? ` · ${esc(c.by)}` : ''}</span></div>` +
     `<ul class="pp-reasons"><li>You felt: ${esc(felt)}</li>${model}` +
     `<li>In effect ${when}: ${pull}% of the ground wind here, less farther out, to about ${reach} m (the ring)</li>` +
     `<li>${spent > at ? `Fades out by ${esc(timeLabel(spent))}` : 'About spent'}</li></ul>` +
@@ -206,6 +207,10 @@ function openPopup(map: MlMap, id: string) {
   popup = p
 }
 
+/** owned as the finger went down: the map's own click handler runs before this
+ *  one and has spent the tap by then — the person is sat down and adding is off */
+let taken = false
+
 let wired = false
 export function initCheckLayer() {
   if (wired) return
@@ -225,7 +230,10 @@ export function initCheckLayer() {
     map.on('styledata', () => {
       if (!map.getSource(SRC)) refresh()
     })
+    map.on('mousedown', () => (taken = toolOwnsTap()))
+    map.on('touchstart', () => (taken = toolOwnsTap()))
     map.on('click', 'windchecks-hit', (e) => {
+      if (taken || toolOwnsTap()) return
       const id = e.features?.[0]?.properties?.id as string | undefined
       if (id) openPopup(map, id)
     })

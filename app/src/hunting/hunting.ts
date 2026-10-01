@@ -14,10 +14,11 @@ import { useScent } from '../weather/micro/scent'
  * Hunting mode: out in the bush, not planning at camp. One tap puts the
  * map on you and keeps it there, records the track, puts on the Bow view
  * (open lanes and the old skid trails), and draws your scent cone from
- * where you stand, following you. The cone has its own button on the map
- * to hide it and bring it back; the moose you hear go on the map from the
- * button beside it (HeardCard), with the way he is moving and where he is
- * likely to swing round to wind you (moveLayer).
+ * where you stand, following you. The Scent button on the map hides every
+ * cone and brings them back (scent.ts `hidden`: you stay placed, so the
+ * moose's swing still knows where your scent goes); the moose you hear go
+ * on the map from the Heard button (HeardCard), with the way he is moving
+ * and where he is likely to swing round to wind you (moveLayer).
  *
  * It is made for the phone coming out of a pocket, a look, and back in:
  * the screen sleeps as usual, and a web app gets no fixes then, so each
@@ -37,26 +38,21 @@ interface Before {
 interface HuntingState {
   on: boolean
   startedAt: number | null
-  /** the cone on your position: on when hunting starts, with a button to hide it */
-  cone: boolean
   /** the track this hunt records */
   trackId: string | null
   /** the map as it was, put back when hunting stops */
   before: Before | null
-  setCone: (v: boolean) => void
 }
 
 export const useHunting = create<HuntingState>()(
   persist(
-    (set) => ({
+    (): HuntingState => ({
       on: false,
       startedAt: null,
-      cone: true,
       trackId: null,
       before: null,
-      setCone: (cone) => set({ cone }),
     }),
-    { name: 'huntapp-hunting', partialize: (s) => ({ on: s.on, startedAt: s.startedAt, cone: s.cone, trackId: s.trackId, before: s.before }) },
+    { name: 'huntapp-hunting', partialize: (s) => ({ on: s.on, startedAt: s.startedAt, trackId: s.trackId, before: s.before }) },
   ),
 )
 
@@ -78,7 +74,10 @@ export function startHunting() {
   withMap((m) => m.jumpTo({ zoom: Math.max(m.getZoom(), 15.5), ...(fix ? { center: [fix.lon, fix.lat] as [number, number] } : {}) }))
   const tr = useTrackStore.getState()
   if (!tr.recordingId) tr.start()
-  useHunting.setState({ on: true, startedAt: Date.now(), cone: true, trackId: useTrackStore.getState().recordingId, before })
+  // the cones come on with the hunt, whatever the last sit left them
+  useScent.getState().setHidden(false)
+  useScent.getState().setCard(true)
+  useHunting.setState({ on: true, startedAt: Date.now(), trackId: useTrackStore.getState().recordingId, before })
 }
 
 export function stopHunting() {
@@ -100,12 +99,13 @@ function metres(a: { lon: number; lat: number }, b: { lon: number; lat: number }
   return Math.hypot((a.lon - b.lon) * 111_320 * Math.cos((a.lat * Math.PI) / 180), (a.lat - b.lat) * 110_574)
 }
 
-/** The cone on you: put there with the first good fix, moved once you have walked 10 m. */
+/** The cone on you: put there with the first good fix, moved once you have walked 10 m.
+ *  You stay placed while the hunt is on, hidden or not: the swing is routed on your scent as drawn. */
 function syncCone() {
   const h = useHunting.getState()
   const sc = useScent.getState()
   const k = sc.people.findIndex((p) => p.live)
-  if (!h.on || !h.cone) {
+  if (!h.on) {
     if (k >= 0) sc.removeLive()
     return
   }
@@ -125,12 +125,7 @@ export function initHunting() {
     if (s.fix !== p.fix) syncCone()
   })
   useHunting.subscribe((s, p) => {
-    if (s.on !== p.on || s.cone !== p.cone) syncCone()
-  })
-  // the card's close button hides the cone, same as the map's button
-  useScent.subscribe((s, p) => {
-    const h = useHunting.getState()
-    if (h.on && h.cone && p.people.some((x) => x.live) && !s.people.some((x) => x.live)) useHunting.setState({ cone: false })
+    if (s.on !== p.on) syncCone()
   })
   const h = useHunting.getState()
   if (!h.on) return

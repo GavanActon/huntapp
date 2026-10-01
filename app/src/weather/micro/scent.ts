@@ -8,7 +8,7 @@ import { useAppStore } from '../../state/appStore'
 import { compass } from '../openMeteo'
 import { onProfile } from '../boundaryLayer'
 import { onWeatherGrid } from '../windGrid'
-import { groundSampler, groundStability, loadMicro, microGrid, onMicro, type GroundSampler } from './model'
+import { groundGust, groundSampler, groundStability, loadMicro, microGrid, onMicro, type GroundSampler } from './model'
 import { useWindChecks } from './windChecks'
 
 /**
@@ -22,6 +22,9 @@ import { useWindChecks } from './windChecks'
  *   - each moves with the local ground wind where it is, plus turbulent
  *     gusts (a Langevin walk, Lagrangian time scale 20 s) whose size grows
  *     with the wind and the direction spread;
+ *   - on a gusty hour the sit runs in bursts of about 15 s at the hour's
+ *     gust factor, stirring harder, with slower lulls between them, so
+ *     scent goes out in pushes rather than at one steady rate;
  *   - the whole plume meanders: the mean direction wanders with the local
  *     sigma on a ~2.5 min time scale, in six independent realisations, so
  *     the picture is the chance scent reaches a place, not one guess;
@@ -86,6 +89,8 @@ const TOTAL_S = 900
 const DT = 5
 const REALISATIONS = 6
 const PER_REAL = 120
+/** mean length of a gust burst, s */
+const BURST_S = 15
 /** a hunter on the ground gives off scent at about chest height; a deer's nose is near 1 m */
 export const GROUND_H = 1.5
 const NOSE_H = 1
@@ -191,6 +196,7 @@ export function simulatePlume(
   ms: number,
   height = GROUND_H,
   sample: GroundSampler | null = cellSampler(ms),
+  gust = groundGust(ms),
 ): { plume: Plume; grid: Float32Array; tracks: PlumeTracks } | null {
   if (!sample) return null
   const { stable, convective } = groundStability(ms)
@@ -212,6 +218,15 @@ export function simulatePlume(
   const tracks: PlumeTracks = { steps: STEPS, x: new Float32Array(NP * STEPS), y: new Float32Array(NP * STEPS), k0: new Int16Array(NP), k1: new Int16Array(NP) }
   const TL = 20
   const TM = 150
+  // gusts: the sit is spent in bursts and lulls, a share GFRAC of it in a
+  // burst of about BURST_S, where the wind runs at the hour's gust factor
+  // and stirs harder. The lulls are slower by as much, so the sit's mean
+  // speed is about what it was.
+  const gusty = gust > 1.1
+  const GFRAC = Math.min(0.35, Math.max(0, (gust - 1) / 3))
+  const lullMul = Math.max(0.3, (1 - GFRAC * gust) / (1 - GFRAC))
+  const pEnd = DT / BURST_S
+  const pStart = (DT * GFRAC) / (BURST_S * (1 - GFRAC))
   for (let r = 0; r < REALISATIONS; r++) {
     // the meander angle through the sit (radians), an OU process
     const steps = Math.ceil(TOTAL_S / DT) + 1
@@ -219,6 +234,16 @@ export function simulatePlume(
     const sm = ((srcSigma * 0.8) * Math.PI) / 180
     phi[0] = gauss(rnd) * sm
     for (let k = 1; k < steps; k++) phi[k] = phi[k - 1] * (1 - DT / TM) + sm * Math.sqrt((2 * DT) / TM) * gauss(rnd)
+    // whether the air is gusting at each step: a two-state chain everyone in
+    // this realisation shares, since a gust comes through the whole plume
+    const burst = new Uint8Array(steps)
+    if (gusty) {
+      let on = rnd() < GFRAC
+      for (let k = 0; k < steps; k++) {
+        on = on ? rnd() >= pEnd : rnd() < pStart
+        burst[k] = on ? 1 : 0
+      }
+    }
     for (let p = 0; p < PER_REAL; p++) {
       const t0 = rnd() * RELEASE_S
       const id = r * PER_REAL + p
@@ -236,11 +261,12 @@ export function simulatePlume(
         if (!sample(lon + x / kx, lat + y / ky, out)) break
         const c = Math.cos(phi[k])
         const s = Math.sin(phi[k])
+        const gm = burst[k] ? gust : gusty ? lullMul : 1
         // rotate the mean wind by the meander (east/north frame, clockwise positive)
-        const u = out[0] * c + out[1] * s
-        const v = -out[0] * s + out[1] * c
+        const u = (out[0] * c + out[1] * s) * gm
+        const v = (-out[0] * s + out[1] * c) * gm
         const spd = Math.sqrt(u * u + v * v)
-        const sigT = 0.1 + 0.35 * spd + 0.25 * spd * Math.sin(Math.min(80, out[2]) * (Math.PI / 180))
+        const sigT = (0.1 + 0.35 * spd + 0.25 * spd * Math.sin(Math.min(80, out[2]) * (Math.PI / 180))) * (burst[k] ? 1.5 : 1)
         up = up * (1 - DT / TL) + sigT * Math.sqrt((2 * DT) / TL) * gauss(rnd)
         vp = vp * (1 - DT / TL) + sigT * Math.sqrt((2 * DT) / TL) * gauss(rnd)
         x += (u + up) * DT
@@ -604,6 +630,14 @@ export interface Sitter {
   live?: boolean
 }
 
+/** Close enough to where you stand that a person put there is you, not a second cone on top. */
+const SAME_SPOT_M = 15
+
+/** Metres between two places, near enough over a sit's distances. */
+function metresApart(a: { lon: number; lat: number }, b: { lon: number; lat: number }): number {
+  return Math.hypot((a.lon - b.lon) * 111_320 * Math.cos((a.lat * Math.PI) / 180), (a.lat - b.lat) * 110_574)
+}
+
 interface ScentState {
   /** everyone sitting, numbered 1, 2, 3 … in this order */
   people: Sitter[]
@@ -615,6 +649,14 @@ interface ScentState {
   pick: number
   /** the next tap on the map places another person */
   adding: boolean
+  /** the next tap on the map is where this person goes */
+  moving: number | null
+  /** the cones are off the map; everyone stays where they sit */
+  hidden: boolean
+  /** the card is up; minimised, the people and their cones stay and the map's button carries a mark */
+  card: boolean
+  /** the distances between the people, drawn on the map */
+  distances: boolean
   view: ScentView
   /** where a new person sits: the last choice */
   height: number
@@ -628,6 +670,10 @@ interface ScentState {
   removeLive: () => void
   setPick: (k: number) => void
   setAdding: (v: boolean) => void
+  setMoving: (k: number | null) => void
+  setHidden: (v: boolean) => void
+  setCard: (v: boolean) => void
+  setDistances: (v: boolean) => void
   clear: () => void
   setView: (v: ScentView) => void
   /** the picked person's height, and the next one's */
@@ -642,34 +688,47 @@ export const useScent = create<ScentState>()(
       group: null,
       pick: 0,
       adding: false,
+      moving: null,
+      hidden: false,
+      card: true,
+      distances: false,
       view: 'cloud',
       height: GROUND_H,
-      show: (lon, lat) => set({ people: [{ lon, lat, height: get().height }], plumes: [], group: null, pick: 0, adding: false }),
+      show: (lon, lat) => set({ people: [{ lon, lat, height: get().height }], plumes: [], group: null, pick: 0, adding: false, moving: null, hidden: false, card: true }),
       add: (lon, lat) => {
-        const people = [...get().people, { lon, lat, height: get().height }]
-        set({ people, pick: people.length - 1, adding: false })
+        const { people, height } = get()
+        // out hunting your own cone is already here: a person on the spot is you, picked, not a second cone
+        const mine = people.findIndex((p) => p.live && metresApart(p, { lon, lat }) <= SAME_SPOT_M)
+        if (mine >= 0) return set({ pick: mine, adding: false, moving: null })
+        const next = [...people, { lon, lat, height }]
+        set({ people: next, pick: next.length - 1, adding: false, moving: null, card: true })
       },
-      move: (k, lon, lat) => set({ people: get().people.map((p, i) => (i === k ? { ...p, lon, lat } : p)) }),
+      move: (k, lon, lat) => set({ people: get().people.map((p, i) => (i === k ? { ...p, lon, lat } : p)), moving: null }),
+      // your cone coming on is a request to see it, so hidden cones come back with it
       putLive: (lon, lat) => set({ people: [{ lon, lat, height: get().height, live: true }, ...get().people.filter((p) => !p.live)], pick: 0 }),
       removeLive: () => {
         const rest = get().people.filter((p) => !p.live)
         if (!rest.length) return get().clear()
-        if (rest.length < get().people.length) set({ people: rest, pick: 0 })
+        if (rest.length < get().people.length) set({ people: rest, pick: 0, moving: null })
       },
       remove: (k) => {
         const { people, pick } = get()
         const rest = people.filter((_, i) => i !== k)
         if (!rest.length) return get().clear()
-        set({ people: rest, pick: pick > k ? pick - 1 : Math.min(pick, rest.length - 1) })
+        set({ people: rest, pick: pick > k ? pick - 1 : Math.min(pick, rest.length - 1), moving: null })
       },
       setPick: (pick) => set({ pick }),
-      setAdding: (adding) => set({ adding }),
-      clear: () => set({ people: [], plumes: [], group: null, pick: 0, adding: false }),
+      setAdding: (adding) => set({ adding, moving: adding ? null : get().moving }),
+      setMoving: (moving) => set({ moving, adding: moving == null ? get().adding : false }),
+      setHidden: (hidden) => set({ hidden }),
+      setCard: (card) => set({ card }),
+      setDistances: (distances) => set({ distances }),
+      clear: () => set({ people: [], plumes: [], group: null, pick: 0, adding: false, moving: null, hidden: false, card: true }),
       setView: (view) => set({ view }),
       setHeight: (height) => set({ height, people: get().people.map((p, i) => (i === get().pick ? { ...p, height } : p)) }),
     }),
     // the choices stick; the people and their cones are for this sit only
-    { name: 'huntapp-scent', partialize: (s) => ({ view: s.view, height: s.height }) },
+    { name: 'huntapp-scent', partialize: (s) => ({ view: s.view, height: s.height, distances: s.distances }) },
   ),
 )
 
@@ -690,6 +749,47 @@ function removeCloud(map: MlMap) {
 function removeEdges(map: MlMap) {
   for (const id of EDGE_LAYERS) if (map.getLayer(id)) map.removeLayer(id)
   if (map.getSource(EDGES)) map.removeSource(EDGES)
+}
+
+const DIST = 'scent-dist'
+const DIST_LAYERS = ['scent-dist-label', 'scent-dist-line']
+
+/** The distances between the people, as an option: a thin line between each pair
+ *  (up to four people; a chain past that) with the metres at its middle. Drawn
+ *  whether or not the cones are, since it is about the setup, not the air. */
+function syncDistances(map: MlMap, people: Sitter[]) {
+  const { distances } = useScent.getState()
+  if (!distances || people.length < 2) {
+    for (const id of DIST_LAYERS) if (map.getLayer(id)) map.removeLayer(id)
+    if (map.getSource(DIST)) map.removeSource(DIST)
+    return
+  }
+  const pairs: [number, number][] = []
+  if (people.length <= 4) for (let i = 0; i < people.length; i++) for (let j = i + 1; j < people.length; j++) pairs.push([i, j])
+  else for (let i = 1; i < people.length; i++) pairs.push([i - 1, i])
+  const imperial = useAppStore.getState().units === 'imperial'
+  const features: Feature[] = []
+  for (const [i, j] of pairs) {
+    const a = people[i]
+    const b = people[j]
+    const m = metresApart(a, b)
+    const t = imperial ? `${Math.round(m * 1.09361)} yd` : `${Math.round(m)} m`
+    features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[a.lon, a.lat], [b.lon, b.lat]] }, properties: {} })
+    features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [(a.lon + b.lon) / 2, (a.lat + b.lat) / 2] }, properties: { t } })
+  }
+  const data: FeatureCollection = { type: 'FeatureCollection', features }
+  const src = map.getSource(DIST) as GeoJSONSource | undefined
+  if (src) return src.setData(data)
+  map.addSource(DIST, { type: 'geojson', data })
+  map.addLayer({ id: 'scent-dist-line', type: 'line', source: DIST, filter: ['==', ['geometry-type'], 'LineString'], paint: { 'line-color': 'rgba(255,255,255,0.75)', 'line-width': 1.2, 'line-dasharray': [2, 2] } })
+  map.addLayer({
+    id: 'scent-dist-label',
+    type: 'symbol',
+    source: DIST,
+    filter: ['==', ['geometry-type'], 'Point'],
+    layout: { 'text-field': ['get', 't'], 'text-font': ['Noto Sans Medium'], 'text-size': 11.5, 'text-allow-overlap': true, 'text-ignore-placement': true },
+    paint: { 'text-color': '#ffffff', 'text-halo-color': 'rgba(20,10,4,0.9)', 'text-halo-width': 1.5 },
+  })
 }
 
 /** Everyone's scent together, shaded; a little fainter under each person's own edge. */
@@ -872,8 +972,9 @@ export function scentAt(lon: number, lat: number): number | null {
 export const SCENT_NOTICE = NOTICE
 
 function draw(map: MlMap) {
-  const { people, view } = useScent.getState()
+  const { people, view, hidden } = useScent.getState()
   syncMarkers(people.length ? map : null)
+  syncDistances(map, people)
   if (!people.length) {
     drawn = null
     removeLayers(map)
@@ -891,6 +992,14 @@ function draw(map: MlMap) {
   }
   const f = combine(people, runs)
   drawn = f
+  // the cones hidden: nothing on the map but the people, though the card's
+  // lines and the moose's swing still know where scent goes
+  if (hidden) {
+    removeLayers(map)
+    particles.stop()
+    useScent.setState({ plumes, group: people.length > 1 ? groupOf(f, runs) : null })
+    return
+  }
   const v = drawnView(view, people.length)
   if (v === 'particles') {
     removeLayers(map)
@@ -1225,8 +1334,8 @@ export function initScentLayer() {
   }
   // a new style drops the cloud and the edges (the particles and the people are not in the style)
   const lost = (map: MlMap) => {
-    const { people, view } = useScent.getState()
-    return people.length > 0 && drawnView(view, people.length) !== 'particles' && !map.getSource(SRC)
+    const { people, view, hidden } = useScent.getState()
+    return people.length > 0 && ((!hidden && drawnView(view, people.length) !== 'particles' && !map.getSource(SRC)) || (useScent.getState().distances && people.length > 1 && !map.getSource(DIST)))
   }
   onEachMap((map) => {
     map.on('styledata', () => {
@@ -1252,11 +1361,12 @@ export function initScentLayer() {
         // the first person waits for the ground model, so their cone is not drawn twice
         if (s.people.length && !p.people.length) void loadMicro().then(schedule)
         else schedule()
-      } else if (s.people.length && s.view !== p.view) schedule()
+      } else if (s.people.length && (s.view !== p.view || s.hidden !== p.hidden || s.distances !== p.distances)) schedule()
       else if (s.people.length && s.pick !== p.pick) syncMarkers(getMap())
     })
     useAppStore.subscribe((s, p) => {
       if (s.planTimeMs !== p.planTimeMs && useScent.getState().people.length) schedule()
+      if (s.units !== p.units && useScent.getState().distances && useScent.getState().people.length > 1) schedule()
       if (s.lowPower !== p.lowPower) particles.wake()
     })
     document.addEventListener('visibilitychange', () => {

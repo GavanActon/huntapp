@@ -128,6 +128,12 @@ interface AppState {
   setTextSize: (v: SizeStop) => void
   wxStrip: boolean
   setWxStrip: (v: boolean) => void
+  /** the strip folded to one chip: the place and the planned hour, nothing of the weather */
+  wxStripMin: boolean
+  setWxStripMin: (v: boolean) => void
+  /** your initials, on the wind checks you share with the party */
+  who: string
+  setWho: (v: string) => void
   /** The app-wide planning time (ms) picked on the strip; null = now. */
   planTimeMs: number | null
   setPlanTime: (ms: number | null) => void
@@ -177,6 +183,10 @@ export const useAppStore = create<AppState>()(
       setTextSize: (textSize) => set({ textSize }),
       wxStrip: true,
       setWxStrip: (wxStrip) => set({ wxStrip }),
+      wxStripMin: false,
+      setWxStripMin: (wxStripMin) => set({ wxStripMin }),
+      who: '',
+      setWho: (who) => set({ who: who.trim().slice(0, 12) }),
       planTimeMs: null,
       setPlanTime: (planTimeMs) => set({ planTimeMs }),
 
@@ -220,6 +230,8 @@ export const useAppStore = create<AppState>()(
         lowPower: s.lowPower,
         textSize: s.textSize,
         wxStrip: s.wxStrip,
+        wxStripMin: s.wxStripMin,
+        who: s.who,
         onboarded: s.onboarded,
       }),
       merge: (persisted, current) => {

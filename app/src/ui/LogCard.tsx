@@ -124,7 +124,7 @@ export default function LogCard() {
             The map had this spot at {Math.round(m.score * 100)}: better than {Math.round(m.percentile * 100)}% of the ground around it.
           </div>
         )}
-        <div className="gc-note">{saved.what === 'nothing' ? 'Nudges the map down here for a few days.' : 'Pulls the Spots map toward here for the next two weeks. The log and the tally are in Places.'}</div>
+        {/* what a log entry does to the map is under Layers, "About what is drawn" */}
       </div>
     )
   }

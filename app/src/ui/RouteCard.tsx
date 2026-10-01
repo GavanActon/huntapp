@@ -3,9 +3,9 @@ import { useAppStore } from '../state/appStore'
 import { useSpotsStore } from '../state/spotsStore'
 import { TARGET_NAMES } from '../spots/types'
 import { formatDistance } from '../measure/measureMath'
-import { clearRoutes, closeRoutes, huntBlocked, ROUTE_COLOURS, ROUTE_LETTERS, useRoutes, type RouteMode } from '../routes/routeStore'
+import { clearRoutes, closeRoutes, cycleFrom, huntBlocked, ROUTE_COLOURS, ROUTE_LETTERS, useRoutes, type RouteEnd, type RouteMode } from '../routes/routeStore'
 import { approachText, endName, height, lidarText, routeFacts, routeLine, routeTag, routeTime, timeParts } from '../routes/routeText'
-import { IconClose, IconMinus, IconPlus, IconSwap } from './icons'
+import { IconClose, IconLocate, IconMinus, IconPin, IconPlus, IconStar, IconSwap } from './icons'
 
 /**
  * Route mode's card, docked above the tabs like the ruler's. First the
@@ -29,6 +29,7 @@ export default function RouteCard() {
   const pick = useRoutes((s) => s.pick)
   const oneWay = useRoutes((s) => s.oneWay)
   const stayDry = useRoutes((s) => s.stayDry)
+  const arming = useRoutes((s) => s.arming)
   const { setMode, setPick, setStayDry, swap } = useRoutes.getState()
   const units = useAppStore((s) => s.units)
   const paceKmh = useAppStore((s) => s.paceKmh)
@@ -61,6 +62,8 @@ export default function RouteCard() {
   else if (status === 'no-way') msg = 'No way there on foot: water all round?'
   else if (status === 'no-grid') msg = 'Routes need the going grid: download the maps in Settings, or open the app online once.'
   else if (!routes.length) msg = 'Finding the ways…'
+  // while the From chip waits for its tap, the ends line is the only instruction
+  if (arming) msg = null
 
   return (
     <div className="tripbuilder glass route-card">
@@ -81,11 +84,24 @@ export default function RouteCard() {
         </button>
       </div>
       <div className="rt-ends">
-        From <b>{from?.name ?? '…'}</b>
-        {to ? (
+        <button className={`rt-chip${arming ? ' rt-armed' : ''}`} onClick={cycleFrom} aria-label="Where the route starts">
+          <em>From</em>
+          <b>{arming ? '?' : <FromEnd end={from} />}</b>
+        </button>
+        {arming ? (
           <>
-            {' '}
-            to <b>{toName}</b> · drag either end{stayDry ? ' · staying dry' : ''}
+            tap the map
+            <button className="linklike rt-clear" onClick={cycleFrom}>
+              cancel
+            </button>
+          </>
+        ) : to ? (
+          <>
+            <span className="rt-chip">
+              <em>To</em>
+              <b>{toName}</b>
+            </span>
+            {stayDry ? 'staying dry' : null}
             <button className="linklike rt-clear" onClick={clearRoutes}>
               Clear
             </button>
@@ -151,6 +167,30 @@ export default function RouteCard() {
       )}
     </div>
   )
+}
+
+/** What the From chip says: you, camp, a place by name, or a point tapped on the map. */
+function FromEnd({ end }: { end: RouteEnd | null }) {
+  if (!end) return <>…</>
+  if (end.kind === 'you')
+    return (
+      <>
+        <IconLocate size={11} /> You
+      </>
+    )
+  if (end.kind === 'camp')
+    return (
+      <>
+        <IconStar size={11} /> {end.name}
+      </>
+    )
+  if (end.kind === 'place')
+    return (
+      <>
+        <IconPin size={11} /> {end.name}
+      </>
+    )
+  return <>Map</>
 }
 
 function RouteWhy() {

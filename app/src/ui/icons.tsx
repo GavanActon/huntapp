@@ -327,3 +327,24 @@ export const IconEar = (p: IconProps) => (
     <path d="M9.5 9.3a2.5 2.5 0 0 1 5 0c0 1.3-1.2 1.8-1.7 2.7" />
   </svg>
 )
+
+/** A flame: the Spots heat map. */
+export const IconHeat = (p: IconProps) => (
+  <svg width={S(p)} height={S(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">
+    <path d="M12 21c-3.6 0-6-2.5-6-5.8 0-2.6 1.6-4.3 2.8-6 .3 1.3 1 2.2 2 2.6-.4-3 .7-6.3 3.4-8.3 0 3 1.5 4.2 2.9 6 1.3 1.6 1.9 3 1.9 5 0 3.6-2.6 6.5-7 6.5z" />
+    <path d="M12 21c-1.6 0-2.7-1.2-2.7-2.7 0-1.4 1-2.2 1.7-3.3.6 1 1.4 1.2 2 1.2.6 1 1 1.3 1 2.1 0 1.5-.9 2.7-2 2.7z" opacity="0.7" />
+  </svg>
+)
+
+/** A puff of powder going with the wind: tuning the wind to what you felt. */
+export const IconPuff = (p: IconProps) => (
+  <svg width={S(p)} height={S(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+    <path d="M4 17h5M3 13h8" />
+    <circle cx="15" cy="9" r="1.2" fill="currentColor" stroke="none" />
+    <circle cx="19" cy="7" r="1" fill="currentColor" stroke="none" opacity="0.8" />
+    <circle cx="18" cy="12" r="1.1" fill="currentColor" stroke="none" opacity="0.7" />
+    <circle cx="14" cy="14" r="0.9" fill="currentColor" stroke="none" opacity="0.6" />
+    <circle cx="21" cy="11" r="0.8" fill="currentColor" stroke="none" opacity="0.5" />
+    <path d="M12 6h2.5" opacity="0.8" />
+  </svg>
+)

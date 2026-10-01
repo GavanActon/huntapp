@@ -3,8 +3,10 @@ import type { Feature, FeatureCollection } from 'geojson'
 import { getMap, onEachMap, withMap } from '../map/mapController'
 import { closeOnTapOff } from '../map/tapPopup'
 import { formatDistance } from '../measure/measureMath'
+import { useMeasureStore } from '../measure/measureStore'
 import { useAppStore } from '../state/appStore'
 import { usePlacesStore } from '../state/placesStore'
+import { useScent } from '../weather/micro/scent'
 import { clearRoutes, openRoutes, ROUTE_COLOURS, ROUTE_LETTERS, useRoutes, type RouteEnd } from './routeStore'
 import { endName, height, routeTime } from './routeText'
 import '../ui/routes.css'
@@ -199,10 +201,24 @@ export function initRouteLayer() {
         [e.point.x - 6, e.point.y - 6],
         [e.point.x + 6, e.point.y + 6],
       ]
-      // the card closed: only the kept route answers a tap (the map's popup stands aside for it, MapView)
+      // the card closed: only the kept route answers a tap (the map's popup stands aside for it, MapView),
+      // and it in turn stands aside for the ruler and for someone being placed or moved
       if (!s.open) {
+        const sc = useScent.getState()
+        if (useMeasureStore.getState().active || sc.adding || sc.moving != null) return
         if (s.kept && map.queryRenderedFeatures(e.point, { layers: ['routes-hit'] }).length) showKept(map, [e.lngLat.lng, e.lngLat.lat])
         return
+      }
+      const atPlace = () => {
+        const f = map.getLayer('places-pt') ? map.queryRenderedFeatures(e.point, { layers: ['places-pt'] })[0] : undefined
+        const id = f?.properties?.id as string | undefined
+        return id ? usePlacesStore.getState().places.find((q) => q.id === id) : undefined
+      }
+      // the From chip is waiting: this tap says where you start, wherever it lands
+      if (s.arming === 'from') {
+        const p = atPlace()
+        s.setFrom(p ? { lon: p.lon, lat: p.lat, kind: 'place', name: p.name } : { lon: e.lngLat.lng, lat: e.lngLat.lat, kind: 'map', name: 'Start' })
+        return s.setArming(null)
       }
       const hit = map.queryRenderedFeatures(box, { layers: ['routes-hit'] })
       if (hit.length) {
@@ -210,9 +226,7 @@ export function initRouteLayer() {
         const ks = hit.map((f) => f.properties?.k as number)
         return s.setPick(ks.includes(s.pick) ? s.pick : ks[0])
       }
-      const place = map.getLayer('places-pt') ? map.queryRenderedFeatures(e.point, { layers: ['places-pt'] })[0] : undefined
-      const id = place?.properties?.id as string | undefined
-      const p = id ? usePlacesStore.getState().places.find((q) => q.id === id) : undefined
+      const p = atPlace()
       if (p) return s.setTo({ lon: p.lon, lat: p.lat, kind: 'place', name: p.name })
       s.setTo({ lon: e.lngLat.lng, lat: e.lngLat.lat, kind: 'map', name: '' })
     })

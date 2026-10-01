@@ -7,7 +7,7 @@ import { ensureWeatherGrid } from '../weather/windGrid'
 
 /**
  * The ground air in a tapped point's "more": the air at head height
- * there, one headline and a tag (decoupled, swirly), its reasons, and
+ * there, one headline and a tag (decoupled, swirly, gusty), its reasons, and
  * logging what the wind is actually doing. The scent cone is the
  * popup's own button, up front.
  */
@@ -32,11 +32,11 @@ export function attachTapGround(el: HTMLElement, lon: number, lat: number, close
     }
     const imperial = useAppStore.getState().units === 'imperial'
     const spd = imperial ? `${(g.kmh * 0.621371).toFixed(1)} mph` : `${g.kmh.toFixed(1)} km/h`
-    const tags = [g.decoupled ? 'decoupled' : '', g.swirl ? 'swirly' : '', g.sigmaDeg >= 60 ? `±${Math.round(g.sigmaDeg)}°` : ''].filter(Boolean)
+    const tags = [g.decoupled ? 'decoupled' : '', g.swirl ? 'swirly' : '', g.gusty ? 'gusty' : '', g.sigmaDeg >= 60 ? `±${Math.round(g.sigmaDeg)}°` : ''].filter(Boolean)
     el.innerHTML =
       `<div class="pg-head">${arrow((g.dirFrom + 180) % 360)}<span>Ground: ${esc(g.headline)}</span>${tags.map((t) => `<em class="pg-tag">${esc(t)}</em>`).join('')}</div>` +
       `<ul>${g.reasons.map((r) => `<li>${esc(r)}</li>`).join('')}<li>Head height ${esc(spd)} · forecast ${Math.round(g.regionalKmh)} km/h at 10 m${g.inGrid ? '' : ' · outside the ground model'}</li></ul>` +
-      `<div class="pg-acts"><button class="linklike pg-check" type="button">log wind here</button></div>`
+      `<div class="pg-acts"><button class="linklike pg-check" type="button">sharpen the wind here</button></div>`
     el.querySelector('.pg-check')?.addEventListener('click', () => {
       useCheckForm.getState().open(lon, lat, 'tapped spot')
       closePopup()

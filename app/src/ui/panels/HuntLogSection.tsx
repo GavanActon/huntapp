@@ -1,17 +1,35 @@
 import { getMap } from '../../map/mapController'
 import { SOUND_NAMES, SPECIES_NAMES, tallies, useHuntLog, WHAT_NAMES, type LogEntry } from '../../log/huntLog'
+import { startOfDayMs } from '../../time'
 import { compass } from '../../weather/openMeteo'
 import { IconLocate, IconShare, IconTrash } from '../icons'
 
 /**
  * The hunt log in Places: the model's report card first (where the
- * sightings fell on its map, 50 = no better than chance), then the entries,
- * newest first, and a CSV to take home.
+ * sightings fell on its map, 50 = no better than chance), then today's
+ * entries, newest first, and the earlier days each folded up under their
+ * date, and a CSV to take home.
  */
 
 function when(ts: number): string {
   const d = new Date(ts)
-  return d.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  return d.toLocaleString(undefined, { hour: 'numeric', minute: '2-digit' })
+}
+
+function dayLabel(dayMs: number): string {
+  return new Date(dayMs).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
+/** The entries by day, newest day first, newest entry first within it. */
+function byDay(entries: LogEntry[]): { day: number; entries: LogEntry[] }[] {
+  const days = new Map<number, LogEntry[]>()
+  for (const e of [...entries].sort((a, b) => b.ts - a.ts)) {
+    const d = startOfDayMs(e.ts)
+    const list = days.get(d)
+    if (list) list.push(e)
+    else days.set(d, [e])
+  }
+  return [...days].sort((a, b) => b[0] - a[0]).map(([day, entries]) => ({ day, entries }))
 }
 
 function csv(entries: LogEntry[]): string {
@@ -82,7 +100,9 @@ export default function HuntLogSection() {
           {t.n > 0 && t.n < 10 ? ' · too few to judge yet' : ''}
         </div>
       ))}
-      {[...entries].reverse().map((e) => (
+      {byDay(entries).map(({ day, entries: es }) => {
+        const today = day === startOfDayMs(Date.now())
+        const rows = es.map((e) => (
         <div key={e.id} className="track-row">
           <div className="row-text">
             <span className="row-title">
@@ -108,7 +128,17 @@ export default function HuntLogSection() {
             <IconTrash size={16} />
           </button>
         </div>
-      ))}
+        ))
+        if (today) return <div key={day}>{rows}</div>
+        return (
+          <details key={day} className="log-day">
+            <summary className="row-desc">
+              {dayLabel(day)} · {es.length} {es.length === 1 ? 'entry' : 'entries'}
+            </summary>
+            {rows}
+          </details>
+        )
+      })}
       <button className="linklike" style={{ margin: '6px 4px' }} onClick={() => void exportCsv(entries)}>
         <IconShare size={14} /> Export the log (CSV)
       </button>

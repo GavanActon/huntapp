@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { CORE } from '../config'
 import { devlog } from '../devlog'
+import { haversineM } from '../measure/measureMath'
 import { useMeasureStore } from '../measure/measureStore'
 import { habitat } from '../spots/habitatGrid'
 import { isFish } from '../spots/types'
@@ -9,6 +10,7 @@ import { useAppStore } from '../state/appStore'
 import { homePlace } from '../state/placesStore'
 import { useSpotsStore } from '../state/spotsStore'
 import { useGpsStore } from '../tracking/gpsStore'
+import { usableFix } from '../tracking/hereFix'
 import { groundSampler } from '../weather/micro/model'
 import { cellAt, cellCentre, loadGoing, type Going } from './goingGrid'
 import { HUNT, HUNT_STYLE } from './walkModel'
@@ -34,6 +36,8 @@ import { askWorker } from './workerClient'
 export type RouteMode = 'easy' | 'hunt'
 export const ROUTE_LETTERS = ['A', 'B', 'C']
 export const ROUTE_COLOURS = ['#3fc8ff', '#c792ff', '#ffe066']
+/** How far you have to have walked before a route from you is found again. */
+const MOVED_M = 25
 
 export interface RouteEnd {
   lon: number
@@ -73,6 +77,9 @@ interface RouteState {
   oneWay: boolean
   /** the picked route, left on the map after the card closes */
   kept: KeptRoute | null
+  /** the From chip is waiting for a tap on the map to say where you start */
+  arming: 'from' | null
+  setArming: (a: 'from' | null) => void
   setPick: (k: number) => void
   setMode: (m: RouteMode) => void
   setStayDry: (v: boolean) => void
@@ -94,6 +101,8 @@ export const useRoutes = create<RouteState>()(
       pick: 0,
       oneWay: false,
       kept: null,
+      arming: null,
+      setArming: (arming) => set({ arming }),
       setPick: (pick) => set({ pick }),
       setMode: (mode) => set({ mode }),
       setStayDry: (stayDry) => set({ stayDry }),
@@ -101,7 +110,9 @@ export const useRoutes = create<RouteState>()(
       setFrom: (from) => set({ from }),
       swap: () => {
         const { from, to } = get()
-        if (from && to) set({ from: to, to: from })
+        if (!from || !to) return
+        // you cannot be walked to: the way back starts where you were
+        set({ from: to, to: from.kind === 'you' ? { ...from, kind: 'map', name: 'Where you were' } : from, arming: null })
       },
     }),
     { name: 'huntapp-routes', partialize: (s) => ({ from: s.from, to: s.to, mode: s.mode, stayDry: s.stayDry, kept: s.kept }) },
@@ -112,12 +123,30 @@ export function inGrid(lon: number, lat: number): boolean {
   return lon >= CORE.west && lon <= CORE.east && lat >= CORE.south && lat <= CORE.north
 }
 
-/** Where a route starts with nothing better: you, with a fix good enough and near camp; else camp. */
-export function defaultFrom(): RouteEnd {
-  const fix = useGpsStore.getState().fix
-  if (fix && (fix.sigma ?? fix.accuracy) <= 50 && inGrid(fix.lon, fix.lat)) return { lon: fix.lon, lat: fix.lat, kind: 'you', name: 'You' }
+/** You, when the fix is good enough and on ground the router knows; else null. */
+export function youFrom(): RouteEnd | null {
+  const f = usableFix()
+  return f && inGrid(f.lon, f.lat) ? { lon: f.lon, lat: f.lat, kind: 'you', name: 'You' } : null
+}
+
+function campFrom(): RouteEnd {
   const camp = homePlace()
   return { lon: camp.lon, lat: camp.lat, kind: 'camp', name: camp.name }
+}
+
+/** Where a route starts with nothing better: you, with a fix good enough and near camp; else camp. */
+export function defaultFrom(): RouteEnd {
+  return youFrom() ?? campFrom()
+}
+
+/** The From chip, tapped: you, then camp, then a point on the map — and
+ *  while it waits for that point, another tap calls it off. */
+export function cycleFrom() {
+  const s = useRoutes.getState()
+  if (s.arming) return useRoutes.setState({ arming: null })
+  if (s.from?.kind === 'you') return useRoutes.setState({ from: campFrom() })
+  if (s.from?.kind === 'camp') return useRoutes.setState({ arming: 'from' })
+  useRoutes.setState({ from: defaultFrom() })
 }
 
 /** Open the card; with a point, that is where you are going. */
@@ -130,6 +159,7 @@ export function openRoutes(to?: { lon: number; lat: number; name?: string; kind?
   useRoutes.setState({
     open: true,
     from,
+    arming: null,
     ...(to ? { to: { lon: to.lon, lat: to.lat, kind: to.kind ?? 'map', name: to.name ?? '' } } : {}),
     pick: to ? 0 : s.pick,
   })
@@ -143,6 +173,7 @@ export function closeRoutes() {
     open: false,
     routes: [],
     status: 'idle',
+    arming: null,
     kept: r ? { coords: r.coords, k: s.pick, mode: s.mode, timeS: r.timeS, distM: r.distM, climbM: r.climbM, from: s.from?.name ?? '', to: s.to?.name ?? '' } : s.kept,
   })
 }
@@ -284,6 +315,16 @@ export function initRoutes() {
   useSpotsStore.subscribe((s, p) => {
     const r = useRoutes.getState()
     if (r.open && r.mode === 'hunt' && (s.result !== p.result || s.target !== p.target)) schedule()
+  })
+  // from you means from where you are now: once you have walked a little way
+  // the route is found again from there. A fix that goes leaves the last one.
+  useGpsStore.subscribe((s, p) => {
+    if (s.fix === p.fix) return
+    const r = useRoutes.getState()
+    if (!r.open || r.from?.kind !== 'you') return
+    const you = youFrom()
+    if (!you || haversineM(you.lon, you.lat, r.from.lon, r.from.lat) < MOVED_M) return
+    r.setFrom(you)
   })
   // the ruler and the route card share the tap: one at a time
   useMeasureStore.subscribe((s, p) => {

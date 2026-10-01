@@ -10,7 +10,7 @@ import { useMeasureStore } from '../measure/measureStore'
 import { explainPoint } from '../spots/scoring'
 import { useSpotsStore } from '../state/spotsStore'
 import { TARGET_NAMES } from '../spots/types'
-import { buildMapStyle, contourFilters } from './mapStyle'
+import { buildMapStyle, contourFilters, lidarShadeBrightness } from './mapStyle'
 import { offlineComplete, registerAllDataFiles, sourceModes } from './pmtilesRegistry'
 import { attachTapWeather } from './tapWeather'
 import { attachTapGround } from './tapGround'
@@ -18,7 +18,10 @@ import { closeOnTapOff } from './tapPopup'
 import { showPlacePopup } from './placePopup'
 import { useScent } from '../weather/micro/scent'
 import { useLogForm } from '../ui/LogCard'
+import { useCheckForm } from '../ui/WindCheckCard'
+import { useHeardForm } from '../ui/HeardCard'
 import { openRoutes, useRoutes } from '../routes/routeStore'
+import { toolOwnsTap } from '../ui/tools'
 
 import type { FeatureCollection } from 'geojson'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -184,8 +187,8 @@ export default function MapView() {
       // tap a place: your own pin says what it is, with Delete (placePopup); the camp
       // and the lakes select and open Places; tap the map: a popup with the spot and Save
       m.on('click', 'places-pt', (e) => {
-        // the ruler, a person being placed and the route card each own the tap
-        if (useMeasureStore.getState().active || useScent.getState().adding || useRoutes.getState().open) return
+        // the ruler, a person being placed or moved, a check, a moose and the route card each own the tap
+        if (toolOwnsTap()) return
         const id = e.features?.[0]?.properties?.id as string | undefined
         const p = id ? usePlacesStore.getState().places.find((q) => q.id === id) : undefined
         if (!p) return
@@ -196,9 +199,17 @@ export default function MapView() {
       m.on('click', (e) => {
         if (useMeasureStore.getState().active) return // the ruler owns the tap
         if (useRoutes.getState().open) return // so does the route card (routes/routeLayer)
+        // a wind check being logged: the tap is where the powder went, or what is ahead
+        if (useCheckForm.getState().at) return useCheckForm.getState().mapTap(e.lngLat.lng, e.lngLat.lat)
+        // the Sharpen button with no fix: the tap is where the check is made
+        if (useCheckForm.getState().arming) return useCheckForm.getState().open(e.lngLat.lng, e.lngLat.lat, 'tapped spot')
+        // a moose being logged: the tap is where it was
+        if (useHeardForm.getState().open) return useHeardForm.getState().mapTap(e.lngLat.lng, e.lngLat.lat)
         const scent = useScent.getState()
         // placing another person: the tap is where they sit
         if (scent.adding) return scent.add(e.lngLat.lng, e.lngLat.lat)
+        // moving one: the tap is where they go
+        if (scent.moving != null) return scent.move(scent.moving, e.lngLat.lng, e.lngLat.lat)
         // a place, a wind check or a kept route has its own tap
         const hit = m.queryRenderedFeatures(e.point, { layers: ['places-pt', 'windchecks-hit', 'routes-hit'].filter((id) => m.getLayer(id)) })
         if (hit.length) return
@@ -324,4 +335,5 @@ export function applyLayerState(map: maplibregl.Map, layers: LayerVisibility, op
     if (meta.opacityKey && l.type === 'color-relief') map.setPaintProperty(l.id, 'color-relief-opacity', opacity[meta.opacityKey])
     if (meta.opacityKey === 'forest' && l.type === 'fill') map.setPaintProperty(l.id, 'fill-opacity', opacity.forest)
   }
+  if (map.getLayer('hillshade-lidar')) map.setPaintProperty('hillshade-lidar', 'raster-brightness-max', lidarShadeBrightness(layers))
 }

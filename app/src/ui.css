@@ -207,6 +207,108 @@
 
 /* no fix, no home dock: the numbers are for a default nobody chose — the
    accent says it's a tap, the star says what the tap does */
+/* "About what is drawn" in Layers, and HuntOS in Settings: folded sections, prose inside */
+.about-sec > summary,
+.guide-sec > summary {
+  cursor: pointer;
+  padding: 8px 4px;
+  font-size: 13.5px;
+  font-weight: 600;
+  list-style: none;
+}
+.about-sec > summary::before,
+.guide-sec > summary::before {
+  content: '▸ ';
+  font-size: 11px;
+  color: var(--c-text-dim);
+}
+.about-sec[open] > summary::before,
+.guide-sec[open] > summary::before {
+  content: '▾ ';
+}
+.about-sec > p {
+  margin: 0 4px 8px 16px;
+}
+.guide-search {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 4px 0 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--c-border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--c-text);
+  font: inherit;
+  font-size: 13.5px;
+}
+.guide-pre {
+  padding: 0 4px 6px;
+}
+.guide-sec > p,
+.guide-sec > ul,
+.guide-sec > ol,
+.guide-pre p {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--c-text);
+  margin: 0 4px 8px 16px;
+}
+.guide-sec > ul,
+.guide-sec > ol {
+  padding-left: 18px;
+}
+.guide-sec li {
+  margin-bottom: 6px;
+}
+.guide-sec li ul,
+.guide-sec li ol {
+  margin-top: 4px;
+  padding-left: 18px;
+}
+.guide code {
+  font-size: 12px;
+}
+
+/* the hunt log's earlier days, folded up under their date */
+.log-day > summary {
+  cursor: pointer;
+  padding: 6px 4px;
+  list-style: none;
+}
+.log-day > summary::before {
+  content: '▸ ';
+  font-size: 11px;
+}
+.log-day[open] > summary::before {
+  content: '▾ ';
+}
+
+/* folded: one chip with the place and the planned hour, and the chevron that folds it */
+.wxstrip-folded {
+  align-self: center;
+  padding: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+.wxstrip-folded .chip {
+  font-size: 12.5px;
+  padding: 6px 12px;
+}
+.wxstrip-fold {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  width: 26px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  color: var(--c-text-dim, #9fb3a8);
+  background: none;
+  border: none;
+  padding: 0;
+  z-index: 1;
+}
 .wxstrip-nudge {
   color: var(--c-accent);
 }
@@ -414,6 +516,28 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+/* the left column: Heat, Measure, Route, one row up from the view pill (which has the bottom
+   row, views.css), so its buttons sit level with the right column's */
+.fabstack-left {
+  right: auto;
+  left: calc(var(--sal, 0px) + 12px);
+  bottom: calc(var(--barh, 170px) + 12px + 46px + 12px);
+}
+.fab {
+  position: relative;
+}
+/* something is set behind the button while its card is away: people placed, a check in effect, a route kept */
+.fab-mark {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--c-accent);
+  border: 1.5px solid #0f1a12;
+  pointer-events: none;
 }
 
 /* ---------- bottom bar: tab dock + instruments ---------- */
@@ -1703,6 +1827,19 @@
   margin-left: 0;
   width: 34px;
   height: 34px;
+}
+
+/* where the first leg starts: you, or the first point tapped */
+
+.measure-card .tb-head .chip-pick {
+  padding: 3px 9px;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.chip-pick:disabled,
+.chip-pick.chip-dim {
+  opacity: 0.4;
 }
 
 .measure-total {

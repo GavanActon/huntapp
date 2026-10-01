@@ -6,8 +6,9 @@ import { useAppStore } from '../state/appStore'
 import { drawnView, GROUND_H, groupSummary, personColour, plumeSummary, SCENT_HEIGHTS, useScent, type ScentView } from '../weather/micro/scent'
 import { checkSpentAt, strongestCheck, useWindChecks } from '../weather/micro/windChecks'
 import { timeLabel } from '../time'
-import WindCheckCard, { useCheckForm } from './WindCheckCard'
-import { IconClose } from './icons'
+import { useUsableFix } from '../tracking/hereFix'
+import WindCheckCard, { CheckArmCard, useCheckForm } from './WindCheckCard'
+import { IconClose, IconMinus, IconScent } from './icons'
 import './ground.css'
 
 // the wind check lives in its own card; the form store is still found here
@@ -21,7 +22,9 @@ export { useCheckForm }
  * where the scent goes and how far. With two or more, the head is what
  * they scent together and whose scent drifts over whom; one of them is
  * picked (a tap on their number, here or on the map) for their own line
- * and where they sit, and each one drags about on the map.
+ * and where they sit, and each one drags about on the map, or Move puts
+ * the next tap where they go. The icon beside the × takes the cones off
+ * the map and leaves everyone sitting.
  *
  * Out hunting the card is the glance for a phone just out of a pocket: your
  * scent in a line, and the moose you last heard (where, how long ago, which
@@ -52,23 +55,15 @@ const VIEWS: { v: ScentView; name: string; many?: boolean }[] = [
   { v: 'people', name: 'By person', many: true },
 ]
 
-function note(v: ScentView, many: boolean): string {
-  if (v === 'people') return "Each person's noticeable edge in their own colour, over everyone's scent together."
-  if (v === 'particles')
-    return many
-      ? "Everyone's scent drifting off them, warmest where it adds up at a deer's nose; the dashed line is where it stops being noticeable."
-      : "Each puff is scent drifting off you, widening as it goes and warmest where it is strong at a deer's nose; the dashed line is where it stops being noticeable."
-  return many
-    ? "Everyone's scent together at a deer's nose: where cones overlap it adds up. Drag a number to move them."
-    : "Scent at a deer's nose: deep orange is strong, the pale wash only a trace."
-}
-
 function ScentCard() {
   const people = useScent((s) => s.people)
   const plumes = useScent((s) => s.plumes)
   const group = useScent((s) => s.group)
   const pick = useScent((s) => s.pick)
   const adding = useScent((s) => s.adding)
+  const moving = useScent((s) => s.moving)
+  const hidden = useScent((s) => s.hidden)
+  const distances = useScent((s) => s.distances)
   const view = useScent((s) => s.view)
   // the ground they scent is given in the user's units
   useAppStore((s) => s.units)
@@ -77,7 +72,9 @@ function ScentCard() {
   useLookTick()
   useSwing((s) => s.swing)
   const moves = hunting ? readMoves() : null
-  const { clear, setView, setHeight, setPick, setAdding, remove } = useScent.getState()
+  // a fix worth trusting: then setting someone up where you stand is one tap
+  const hereNow = useUsableFix()
+  const { clear, setView, setHeight, setPick, setAdding, setMoving, setHidden, setCard, setDistances, add, move, remove } = useScent.getState()
   const n = people.length
   const many = n > 1
   const k = Math.min(pick, n - 1)
@@ -87,7 +84,7 @@ function ScentCard() {
   const g = many && group ? groupSummary(group, people) : null
   const live = people.some((p) => p.live)
   const who = (i: number) => (people[i]?.live ? 'You' : `${i + 1}`)
-  const title = live && !many ? 'Your scent · now' : many ? `Scent · ${n} people · 10 min sit` : 'Scent cone · 10 min sit'
+  const title = n === 0 ? 'Scent cone' : live && !many ? 'Your scent · now' : many ? `Scent · ${n} people · 10 min sit` : 'Scent cone · 10 min sit'
   // a wind check correcting the air where this cone starts: said, so a stale one is not trusted blind
   const checks = useWindChecks((s) => s.checks)
   const planMs = useAppStore((s) => s.planTimeMs)
@@ -103,7 +100,7 @@ function ScentCard() {
     ) : (
       <div className="gc-line">{plume ? plumeSummary(plume) : 'Working out the ground wind…'}</div>
     )
-  if (hunting && live && !more && !adding)
+  if (hunting && live && !more && !adding && moving == null)
     return (
       <div className="tripbuilder glass ground-card gc-compact">
         <div className="tb-head">
@@ -112,9 +109,9 @@ function ScentCard() {
           <button className="linklike gc-more" onClick={() => setMore(true)}>
             more
           </button>
-          {/* your cone only, as the map's button does: anyone placed beside you stays */}
-          <button className="icon-btn" onClick={() => useHunting.getState().setCone(false)} aria-label="Hide your scent cone">
-            <IconClose size={16} />
+          {/* the card goes, the people and the cones stay: the Scent button carries a mark, a long press brings it back */}
+          <button className="icon-btn" onClick={() => useScent.getState().setCard(false)} aria-label="Minimise">
+            <IconMinus size={16} />
           </button>
         </div>
         {lines}
@@ -126,6 +123,14 @@ function ScentCard() {
       + Person
     </button>
   )
+  // the next tap sits someone down or moves them; "here" is the same thing in
+  // one tap, for when the dot is under the card or off the screen
+  const placing = adding || moving != null
+  const placeHere = () => {
+    if (!hereNow) return
+    if (moving != null) move(moving, hereNow.lon, hereNow.lat)
+    else add(hereNow.lon, hereNow.lat)
+  }
   return (
     <div className="tripbuilder glass ground-card">
       <div className="tb-head">
@@ -136,14 +141,37 @@ function ScentCard() {
             less
           </button>
         )}
+        {n > 0 && (
+          <button
+            className={`icon-btn${hidden ? ' icon-btn-on' : ''}`}
+            onClick={() => setHidden(!hidden)}
+            aria-pressed={hidden}
+            aria-label={hidden ? 'Show the cones' : 'Hide the cones'}
+          >
+            <IconScent size={16} />
+          </button>
+        )}
+        {n > 0 && (
+          <button className="icon-btn" onClick={() => setCard(false)} aria-label="Minimise">
+            <IconMinus size={16} />
+          </button>
+        )}
         <button className="icon-btn" onClick={clear} aria-label={many ? "Hide everyone's scent" : 'Hide scent cone'}>
           <IconClose size={16} />
         </button>
       </div>
-      {adding ? (
+      {placing ? (
         <div className="gc-line">
-          Tap the map where {n + 1} sits ·{' '}
-          <button className="linklike" onClick={() => setAdding(false)}>
+          Tap the map where {moving != null ? `${moving + 1} goes` : `${n + 1} sits`} ·{' '}
+          {hereNow && (
+            <>
+              <button className="linklike" onClick={placeHere}>
+                here
+              </button>{' '}
+              ·{' '}
+            </>
+          )}
+          <button className="linklike" onClick={() => (moving != null ? setMoving(null) : setAdding(false))}>
             cancel
           </button>
         </div>
@@ -168,10 +196,22 @@ function ScentCard() {
           </div>
           {addBtn}
           {!people[k]?.live && (
+            <button
+              className={`chip chip-pick${moving === k ? ' chip-on' : ''}`}
+              onClick={() => setMoving(moving === k ? null : k)}
+              aria-pressed={moving === k}
+            >
+              Move
+            </button>
+          )}
+          {!people[k]?.live && (
             <button className="linklike gc-remove" onClick={() => remove(k)}>
               Remove {k + 1}
             </button>
           )}
+          <button className={`chip chip-pick${distances ? ' chip-on' : ''}`} onClick={() => setDistances(!distances)} aria-pressed={distances}>
+            Distances
+          </button>
         </div>
       )}
       {many && <div className="gc-note gc-one">{plume ? `${who(k)}: ${plumeSummary(plume)}` : `${who(k)}: working out…`}</div>}
@@ -192,11 +232,12 @@ function ScentCard() {
         </div>
         {!many && addBtn}
       </div>
-      <div className="gc-note">
-        {note(shown, many)} Follows the ground model, not the forecast arrow.
-        {checked &&
-          ` Your wind check at ${timeLabel(checked.check.ts)} makes up ${Math.round(checked.pull * 100)}% of the wind ${many ? `where ${who(k) === 'You' ? 'you sit' : `${k + 1} sits`}` : 'here'}, fading out by ${timeLabel(checkSpentAt(checked.check))} (its ring on the map).`}
-      </div>
+      {/* what the colours and the views mean is under Layers, "About what is drawn" */}
+      {checked && (
+        <div className="gc-note">
+          Your check at {timeLabel(checked.check.ts)} makes up {Math.round(checked.pull * 100)}% of the wind {many ? `where ${who(k) === 'You' ? 'you sit' : `${k + 1} sits`}` : 'here'}, fading out by {timeLabel(checkSpentAt(checked.check))}.
+        </div>
+      )}
     </div>
   )
 }
@@ -219,10 +260,14 @@ function MovesCard() {
 
 export default function GroundCard() {
   const checking = useCheckForm((s) => s.at != null)
-  const scent = useScent((s) => s.people.length > 0)
+  const arming = useCheckForm((s) => s.arming)
+  const scent = useScent((s) => s.people.length > 0 || s.adding)
+  const card = useScent((s) => s.card)
   const hunting = useHunting((s) => s.on)
   if (checking) return <WindCheckCard />
-  if (scent) return <ScentCard />
+  if (arming) return <CheckArmCard />
+  // minimised, the people and the cones stay; the Scent button carries a mark and a long press brings it back
+  if (scent && card) return <ScentCard />
   if (hunting) return <MovesCard />
   return null
 }
