@@ -96,10 +96,39 @@ const BURST_S = 15
 /** a hunter on the ground gives off scent at about chest height; a deer's nose is near 1 m */
 export const GROUND_H = 1.5
 const NOSE_H = 1
-/** concentration bands, as a share of the plume core 20–40 m out */
-const STRONG = 0.2
-const NOTICE = 0.04
-const TRACE = 0.01
+/**
+ * Concentration bands, as a share of the plume core 20–40 m out, as
+ * modelled: strong, noticeable, a faint trace. The card's slider slides
+ * them (riskBands): conservative counts scent sooner and the cone grows,
+ * aggressive only what is strong, and the cone shrinks.
+ */
+const BANDS = { strong: 0.2, notice: 0.04, trace: 0.01 }
+let STRONG = BANDS.strong
+let NOTICE = BANDS.notice
+let TRACE = BANDS.trace
+/** the direction spread the plume meanders with, as a multiple of the ground model's */
+let SPREAD = 1
+
+/**
+ * The slider, 0 (conservative) … 1 (aggressive), 0.5 as modelled. One
+ * step either way is a third or three times on the bands (the nose works
+ * on ratios), and the meander is 30% wider at the conservative end, 30%
+ * tighter at the aggressive one: the cone drawn for a hunter who takes
+ * no chances, or one who plays the wind as the model has it.
+ */
+export function riskBands(risk: number): { strong: number; notice: number; trace: number; spread: number } {
+  const r = Math.min(1, Math.max(0, risk))
+  const f = Math.pow(3, 2 * r - 1)
+  return { strong: BANDS.strong * f, notice: BANDS.notice * f, trace: BANDS.trace * f, spread: 1 + 0.3 * (1 - 2 * r) }
+}
+
+function applyRisk(risk: number): void {
+  const b = riskBands(risk)
+  STRONG = b.strong
+  NOTICE = b.notice
+  TRACE = b.trace
+  SPREAD = b.spread
+}
 
 /**
  * Vertical spread σz (m) after x metres of travel: the Briggs (1973)
@@ -208,7 +237,7 @@ export function simulatePlume(
   const ky = 110_574
   const out = new Float32Array(3)
   if (!sample(lon, lat, out)) return null
-  const srcSigma = out[2]
+  const srcSigma = out[2] * SPREAD
   const srcSpeed = Math.hypot(out[0], out[1])
   const rnd = mulberry32(Math.round(lon * 1e4) * 73856093 ^ Math.round(lat * 1e4) * 19349663 ^ Math.round(ms / 60_000))
   const raw = new Float32Array(N * N)
@@ -268,7 +297,7 @@ export function simulatePlume(
         const u = (out[0] * c + out[1] * s) * gm
         const v = (-out[0] * s + out[1] * c) * gm
         const spd = Math.sqrt(u * u + v * v)
-        const sigT = (0.1 + 0.35 * spd + 0.25 * spd * Math.sin(Math.min(80, out[2]) * (Math.PI / 180))) * (burst[k] ? 1.5 : 1)
+        const sigT = (0.1 + 0.35 * spd + 0.25 * spd * Math.sin(Math.min(80, out[2] * SPREAD) * (Math.PI / 180))) * (burst[k] ? 1.5 : 1)
         up = up * (1 - DT / TL) + sigT * Math.sqrt((2 * DT) / TL) * gauss(rnd)
         vp = vp * (1 - DT / TL) + sigT * Math.sqrt((2 * DT) / TL) * gauss(rnd)
         x += (u + up) * DT
@@ -662,6 +691,8 @@ interface ScentState {
   view: ScentView
   /** where a new person sits: the last choice */
   height: number
+  /** the cone's slider, 0 conservative … 1 aggressive (riskBands) */
+  risk: number
   /** start over: one person, here */
   show: (lon: number, lat: number) => void
   add: (lon: number, lat: number) => void
@@ -680,6 +711,7 @@ interface ScentState {
   setView: (v: ScentView) => void
   /** the picked person's height, and the next one's */
   setHeight: (h: number) => void
+  setRisk: (r: number) => void
 }
 
 export const useScent = create<ScentState>()(
@@ -696,6 +728,7 @@ export const useScent = create<ScentState>()(
       distances: false,
       view: 'cloud',
       height: GROUND_H,
+      risk: 0.5,
       show: (lon, lat) => set({ people: [{ lon, lat, height: get().height }], plumes: [], group: null, pick: 0, adding: false, moving: null, hidden: false, card: true }),
       add: (lon, lat) => {
         const { people, height } = get()
@@ -728,11 +761,16 @@ export const useScent = create<ScentState>()(
       clear: () => set({ people: [], plumes: [], group: null, pick: 0, adding: false, moving: null, hidden: false, card: true }),
       setView: (view) => set({ view }),
       setHeight: (height) => set({ height, people: get().people.map((p, i) => (i === get().pick ? { ...p, height } : p)) }),
+      setRisk: (risk) => set({ risk: Math.min(1, Math.max(0, risk)) }),
     }),
     // the choices stick; the people and their cones are for this sit only
-    { name: 'huntapp-scent', partialize: (s) => ({ view: s.view, height: s.height, distances: s.distances }) },
+    { name: 'huntapp-scent', partialize: (s) => ({ view: s.view, height: s.height, distances: s.distances, risk: s.risk }) },
   ),
 )
+applyRisk(useScent.getState().risk)
+useScent.subscribe((s, p) => {
+  if (s.risk !== p.risk) applyRisk(s.risk)
+})
 
 const SRC = 'scent-img'
 const EDGES = 'scent-edges'
@@ -967,7 +1005,7 @@ function runsFor(people: Sitter[], ms: number): (PlumeRun | null)[] {
 let drawn: Frame | null = null
 
 /** Scent at a nose at a point as last drawn, everyone together, as a share of the plume core
- *  (noticeable from SCENT_NOTICE); null off the drawn ground or with no cone. */
+ *  (noticeable from scentNotice()); null off the drawn ground or with no cone. */
 export function scentAt(lon: number, lat: number): number | null {
   const f = drawn
   if (!f) return null
@@ -976,7 +1014,8 @@ export function scentAt(lon: number, lat: number): number | null {
   if (x < 0 || y < 0 || x >= f.w || y >= f.h) return null
   return f.grid[y * f.w + x]
 }
-export const SCENT_NOTICE = NOTICE
+/** The noticeable band's floor as the slider has it now. */
+export const scentNotice = (): number => NOTICE
 
 function draw(map: MlMap) {
   const { people, view, hidden } = useScent.getState()
@@ -1400,7 +1439,8 @@ export function initScentLayer() {
         // the first person waits for the ground model, so their cone is not drawn twice
         if (s.people.length && !p.people.length) void loadMicro().then(schedule)
         else schedule()
-      } else if (s.people.length && (s.view !== p.view || s.hidden !== p.hidden || s.distances !== p.distances)) schedule()
+      } else if (s.risk !== p.risk) airChanged()
+      else if (s.people.length && (s.view !== p.view || s.hidden !== p.hidden || s.distances !== p.distances)) schedule()
       else if (s.people.length && s.pick !== p.pick) syncMarkers(getMap())
     })
     useAppStore.subscribe((s, p) => {

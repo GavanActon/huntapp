@@ -1,21 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAppStore } from '../state/appStore'
-import { currentView, useViews, viewsFor, type MapView } from '../state/viewsStore'
+import { currentView, splitViews, useViews, type MapView } from '../state/viewsStore'
 import { IconCheck, IconChevronDown, IconLayers, IconTrash } from './icons'
 import { useTapOff } from './tapOff'
 import './views.css'
 
 /**
  * The view pill, bottom left: the name of the view the map is showing
- * ("Scout"), and a menu of the mode's views. The first four built-ins sit
- * at the top; `More ›` unfolds the rest and the saved ones; `Edit this
- * view ›` opens the layers sheet. No modes here: the quarry chip on the
- * strip sets hunting or fishing. The menu's open state lives in the app
- * store (viewMenuOpen) so the hot column can step out from under it.
+ * ("Scout"), and a menu of the mode's views. The pinned views sit at the
+ * top in the user's order; `More ›` unfolds the rest, then `Edit this
+ * view ›` (the layers sheet) and `Arrange views ›` (the Views sheet, which
+ * stars and drags the pinned). No modes here: the quarry chip on the strip sets hunting or
+ * fishing. The menu's open state lives in the app store (viewMenuOpen) so
+ * the hot column can step out from under it.
  */
-
-/** built-ins shown before `More ›` */
-const FIRST = 4
 
 export default function ViewPill() {
   // the four reads currentView() depends on, so the name follows every change
@@ -25,6 +23,7 @@ export default function ViewPill() {
   const lastViewId = useViews((s) => s.lastViewId)
   const apply = useViews((s) => s.apply)
   const remove = useViews((s) => s.remove)
+  const pinned = useViews((s) => s.pinned)
   const open = useAppStore((s) => s.viewMenuOpen)
   const setOpen = useAppStore((s) => s.setViewMenuOpen)
   const openSheet = useAppStore((s) => s.openSheet)
@@ -32,9 +31,7 @@ export default function ViewPill() {
   const box = useRef<HTMLDivElement>(null)
 
   const on = useMemo(() => currentView(), [layers, mode, saved, lastViewId])
-  const views = useMemo(() => viewsFor(mode, saved), [mode, saved])
-  const first = views.filter((v) => v.builtIn).slice(0, FIRST)
-  const rest = views.filter((v) => !first.includes(v))
+  const { top: first, rest } = useMemo(() => splitViews(mode, saved, pinned), [mode, saved, pinned])
 
   // the pill leaves the screen with the menu up (a sheet opens): the hot
   // column must come back
@@ -79,27 +76,39 @@ export default function ViewPill() {
       {open && (
         <div className="viewpill-menu glass" role="menu" aria-label="Views">
           {first.map(row)}
-          {rest.length > 0 &&
-            (more ? (
-              rest.map(row)
-            ) : (
-              <button className="viewpill-name viewpill-more" role="menuitem" onClick={() => setMore(true)}>
-                <span>More</span>
+          {more ? (
+            <>
+              {rest.map(row)}
+              <div className="viewpill-divider" />
+              <button
+                className="viewpill-name"
+                role="menuitem"
+                onClick={() => {
+                  close()
+                  openSheet({ kind: 'layers' })
+                }}
+              >
+                <span>Edit this view</span>
                 <span className="dim">›</span>
               </button>
-            ))}
-          <div className="viewpill-divider" />
-          <button
-            className="viewpill-name"
-            role="menuitem"
-            onClick={() => {
-              close()
-              openSheet({ kind: 'layers' })
-            }}
-          >
-            <span>Edit this view</span>
-            <span className="dim">›</span>
-          </button>
+              <button
+                className="viewpill-name"
+                role="menuitem"
+                onClick={() => {
+                  close()
+                  openSheet({ kind: 'views' })
+                }}
+              >
+                <span>Arrange views</span>
+                <span className="dim">›</span>
+              </button>
+            </>
+          ) : (
+            <button className="viewpill-name viewpill-more" role="menuitem" onClick={() => setMore(true)}>
+              <span>More</span>
+              <span className="dim">›</span>
+            </button>
+          )}
         </div>
       )}
       <button className="viewpill glass" onClick={() => (open ? close() : setOpen(true))} aria-expanded={open} aria-label="View">

@@ -7,7 +7,9 @@ const ScoringSheet = lazy(() => import('./ScoringSheet'))
 const PinsSheet = lazy(() => import('./PinsSheet'))
 const HuntLogSheet = lazy(() => import('./HuntLogSheet'))
 const SettingsSheet = lazy(() => import('./SettingsSheet'))
+const GuideSheet = lazy(() => import('./GuideSheet'))
 const ButtonsSheet = lazy(() => import('./ButtonsSheet'))
+const ViewsSheet = lazy(() => import('./ViewsSheet'))
 const OfflineSheet = lazy(() => import('./OfflineSheet'))
 const LayersSheet = lazy(() => import('./LayersSheet'))
 
@@ -18,7 +20,9 @@ const TITLES: Record<SheetKind, string> = {
   pins: 'Pins',
   huntlog: 'Hunt log',
   settings: 'Settings',
+  guide: 'HuntOS',
   buttons: '',
+  views: '',
   offline: 'Maps on this phone',
   layers: '',
 }
@@ -35,8 +39,12 @@ function panel(s: Sheet): ReactNode {
       return <HuntLogSheet />
     case 'settings':
       return <SettingsSheet />
+    case 'guide':
+      return <GuideSheet />
     case 'buttons':
       return <ButtonsSheet />
+    case 'views':
+      return <ViewsSheet />
     case 'offline':
       return <OfflineSheet />
     case 'layers':
@@ -57,13 +65,13 @@ export default function SheetHost(): JSX.Element | null {
   if (!sheet) return null
   const stacked = depth > 1
   const action =
-    sheet.kind === 'settings' ? (
+    sheet.kind === 'settings' || sheet.kind === 'guide' ? (
       <button className="sheet-done" onClick={closeSheet}>
         Done
       </button>
     ) : undefined
-  // Map buttons draws its own heading row, Done in it (back to Settings): no host row, no ‹ Back
-  const own = sheet.kind === 'buttons'
+  // Map buttons and Views draw their own heading row, Done in it (back to Settings): no host row, no ‹ Back
+  const own = sheet.kind === 'buttons' || sheet.kind === 'views'
   return (
     <BottomSheet
       snapKey={sheet.kind}

@@ -256,6 +256,16 @@ nothing that matters: at that cell the mechanical part stays under
     reduced motion.
   - The bands are relative strength, not a deer detection threshold:
     no published data maps these ratios to detection.
+  - **Conservative … aggressive** (2026-10-01): a slider on the scent
+    card, kept across sits. The middle is the model as above. Toward
+    conservative the three bands slide down together, to a third at the
+    end (noticeable from 1.3% of the core), and the meander is 30% wider:
+    the cone of a hunter who assumes scent counts sooner and the wind
+    wanders more than modelled. Toward aggressive they slide up to three
+    times (noticeable from 12%) and the meander is 30% tighter. The
+    cone's reach, its edge, the party's overlap and where a moose has
+    your wind (the swing) all follow the slider; the regional and ground
+    wind do not.
   - 2026-09-26 check at camp, 4.4 km/h daytime breeze: the old picture
     ran to the 700 m grid edge; now it's noticeable to 150 m, with a
     trace to 350 m.
