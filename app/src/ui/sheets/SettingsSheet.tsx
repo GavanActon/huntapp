@@ -2,6 +2,7 @@ import { useEffect, type JSX } from 'react'
 import { downloadFiles, mapsStatus, useDownloads } from '../../offline/downloads'
 import { checkMapUpdates, useMapUpdates } from '../../offline/updates'
 import { CONTOUR_INTERVALS, useAppStore } from '../../state/appStore'
+import GuideSection from '../panels/GuideSection'
 import './settings.css'
 
 const TEXT_SIZES = [
@@ -16,7 +17,8 @@ const STREAK_W: Record<(typeof STOPS)[number], number> = { auto: 0, standard: 1.
 
 /**
  * Settings, one level deep: the maps on the phone, the buttons, the hand,
- * units and text, then the wind flow's knobs and the contour interval. The
+ * units and text, then the wind flow's knobs and the contour interval, and
+ * HuntOS, the field guide, folded at the foot. The
  * download runs in offline/downloads.ts, so closing the sheet does not stop
  * it. The host draws the title row.
  */
@@ -75,10 +77,6 @@ export default function SettingsSheet(): JSX.Element {
       )}
       <button className="st-row" onClick={() => pushSheet({ kind: 'buttons' })}>
         <span>Map buttons</span>
-        <span className="dim">›</span>
-      </button>
-      <button className="st-row" onClick={() => pushSheet({ kind: 'views' })}>
-        <span>Views</span>
         <span className="dim">›</span>
       </button>
       <div className="st-row">
@@ -194,6 +192,8 @@ export default function SettingsSheet(): JSX.Element {
         </div>
       </div>
 
+      <div className="st-sec">HuntOS</div>
+      <GuideSection />
     </div>
   )
 }
