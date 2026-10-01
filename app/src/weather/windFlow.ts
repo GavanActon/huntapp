@@ -43,7 +43,54 @@ interface FieldGrid {
   vx: Float32Array // css px/s
   vy: Float32Array
   live: boolean
+  /** the map as drawn under each cell, 0 black to 1 white; null until the next render fills it */
+  lum: Float32Array | null
 }
+
+/** Streak tones: light over the dark imagery, brighter still over a mid base
+ *  (a lake in the elevation colours), dark ink over a pale one (the grey
+ *  LiDAR shade, the topo sheet, the relief's land). */
+const TONES = 3
+const TONE_LIGHT = 0
+const TONE_BRIGHT = 1
+const TONE_DARK = 2
+const toneOf = (lum: number) => (lum < 0.3 ? TONE_LIGHT : lum < 0.45 ? TONE_BRIGHT : TONE_DARK)
+
+let lumCanvas: HTMLCanvasElement | null = null
+
+/**
+ * Read the map under the field, one luminance per cell, so each streak can
+ * take the tone that shows against what it crosses: a lake and the land
+ * beside it, in the same view, want different inks. The GL canvas can only
+ * be read while it is being drawn: inside a 'render' event, never after.
+ */
+function readLuminance(map: MlMap, f: FieldGrid) {
+  const c = (lumCanvas ??= document.createElement('canvas'))
+  try {
+    c.width = f.cols
+    c.height = f.rows
+    const g = c.getContext('2d', { willReadFrequently: true })
+    if (!g) return
+    g.imageSmoothingEnabled = true
+    g.imageSmoothingQuality = 'high'
+    g.drawImage(map.getCanvas(), 0, 0, f.cols, f.rows)
+    const d = g.getImageData(0, 0, f.cols, f.rows).data
+    const lum = f.lum ?? new Float32Array(f.cols * f.rows)
+    for (let i = 0; i < lum.length; i++) lum[i] = (0.2126 * d[i * 4] + 0.7152 * d[i * 4 + 1] + 0.0722 * d[i * 4 + 2]) / 255
+    f.lum = lum
+  } catch {
+    f.lum = null
+  }
+}
+
+/** A first reading for a fresh field, on the next render. */
+function sampleLuminance(map: MlMap, f: FieldGrid) {
+  map.once('render', () => readLuminance(map, f))
+  map.triggerRepaint()
+}
+
+/** Renders at least this far apart are read again, for tiles landing after the field was built. */
+const LUM_EVERY_MS = 500
 
 function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
   const cols = Math.ceil(w / FIELD_STEP) + 1
@@ -91,7 +138,9 @@ function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
       }
     }
   }
-  return { step: FIELD_STEP, cols, rows, vx, vy, live }
+  const f: FieldGrid = { step: FIELD_STEP, cols, rows, vx, vy, live, lum: null }
+  if (live) sampleLuminance(map, f)
+  return f
 }
 
 function sampleField(f: FieldGrid, x: number, y: number, out: Float32Array): void {
@@ -150,7 +199,7 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
   const px = new Float32Array(N)
   const py = new Float32Array(N)
   const vel = new Float32Array(2)
-  const bands: Path2D[] = new Array(ALPHA_BANDS)
+  const bands: Path2D[] = new Array(ALPHA_BANDS * TONES)
   const age = new Float32Array(N)
   const life = new Float32Array(N)
 
@@ -262,7 +311,13 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
     ctx.setTransform(dpr * M.a, dpr * M.b, dpr * M.c, dpr * M.d, dpr * M.e, dpr * M.f)
 
     const level = opts.level() * Math.min(1, (now - born) / 900)
-    for (let b = 0; b < ALPHA_BANDS; b++) bands[b] = new Path2D()
+    for (let b = 0; b < ALPHA_BANDS * TONES; b++) bands[b] = new Path2D()
+    // until the map under the field has been read: dark ink on a pale base
+    // (topo, the elevation colours, the shade alone), light over the rest
+    const ly = useAppStore.getState().layers
+    const pale = !ly.satellite && (ly.topo || ly.relief || ly.hillshade)
+    const fallback = pale ? TONE_DARK : TONE_LIGHT
+    const lum = field.lum
     for (let i = 0; i < active; i++) {
       age[i] += dt
       sampleField(field, px[i] - fieldOff.x, py[i] - fieldOff.y, vel)
@@ -279,28 +334,46 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
       }
       const spd = Math.hypot(vx, vy)
       const band = Math.min(ALPHA_BANDS - 1, ((spd / 130) * ALPHA_BANDS) | 0)
-      const path = bands[band]
+      let tone = fallback
+      if (lum) {
+        const fc = Math.min(field.cols - 1, Math.max(0, ((px[i] - fieldOff.x) / field.step) | 0))
+        const fr = Math.min(field.rows - 1, Math.max(0, ((py[i] - fieldOff.y) / field.step) | 0))
+        tone = toneOf(lum[fr * field.cols + fc])
+      }
+      const path = bands[tone * ALPHA_BANDS + band]
       path.moveTo(px[i], py[i])
       path.lineTo(nx, ny)
       px[i] = nx
       py[i] = ny
     }
     ctx.lineWidth = streakPx
-    // on a pale base (topo, the elevation colours, the shade alone) the
-    // streaks go dark, else they stay light over the imagery and the bush
-    const ly = useAppStore.getState().layers
-    const pale = !ly.satellite && (ly.topo || ly.relief || ly.hillshade)
-    const light = pale ? 32 : 62
-    for (let b = 0; b < ALPHA_BANDS; b++) {
-      const alpha = (0.22 + ((b + 0.5) / ALPHA_BANDS) * 0.4) * level * (pale ? 1.25 : 1)
-      ctx.strokeStyle = `hsla(${tune.windHue}, ${tune.windSat}%, ${light}%, ${Math.min(1, alpha)})`
-      ctx.stroke(bands[b])
+    // the same hue in three inks: light, brighter, and a dark one that
+    // reads on pale ground
+    for (let tone = 0; tone < TONES; tone++) {
+      const light = tone === TONE_DARK ? 24 : tone === TONE_BRIGHT ? 80 : 62
+      const sat = tone === TONE_DARK ? 90 : tone === TONE_BRIGHT ? Math.round(tune.windSat * 0.7) : tune.windSat
+      const boost = tone === TONE_DARK ? 1.25 : tone === TONE_BRIGHT ? 1.1 : 1
+      for (let b = 0; b < ALPHA_BANDS; b++) {
+        const alpha = (0.22 + ((b + 0.5) / ALPHA_BANDS) * 0.4) * level * boost
+        ctx.strokeStyle = `hsla(${tune.windHue}, ${sat}%, ${light}%, ${Math.min(1, alpha)})`
+        ctx.stroke(bands[tone * ALPHA_BANDS + b])
+      }
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     raf = requestAnimationFrame(frame)
   }
   raf = requestAnimationFrame(frame)
   const offQuality = onQuality(() => rebase())
+  // the map drawn again while the frame still matches the screen (tiles
+  // landing, a view's layers switched): read what is under the field again
+  let lumAt = 0
+  const onRender = () => {
+    const now = performance.now()
+    if (now - lumAt < LUM_EVERY_MS || !same(anchor.current(map), IDENTITY)) return
+    lumAt = now
+    readLuminance(map, field)
+  }
+  map.on('render', onRender)
 
   return {
     dead: false,
@@ -308,6 +381,7 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
     stop: () => {
       cancelAnimationFrame(raf)
       offQuality()
+      map.off('render', onRender)
       canvas.remove()
     },
   }

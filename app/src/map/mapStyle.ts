@@ -46,6 +46,34 @@ const vis = (on: boolean) => ({ visibility: on ? 'visible' : 'none' }) as const
  *  and the fine lines of the skid trails are unchanged. */
 export const lidarShadeBrightness = (layers: LayerVisibility) => (layers.satellite ? 0.5 : 1)
 
+/** What the contour lines sit on: the view's base, read off its layers,
+ *  topmost raster first. The wind streaks read the drawn map instead
+ *  (windFlow.ts), since a lake and the land beside it want different inks. */
+export type BaseTone = 'imagery' | 'topo' | 'relief' | 'shade'
+export function baseTone(layers: LayerVisibility): BaseTone {
+  if (layers.topo) return 'topo'
+  if (layers.relief) return 'relief'
+  if (layers.hillshade && !layers.satellite) return 'shade'
+  return 'imagery'
+}
+
+export interface ContourInk {
+  line: string
+  index: string
+  text: string
+  halo: string
+}
+/** The contour ink by base: tan over the dark imagery; burnt orange on the
+ *  grey LiDAR shade and the topo sheet, where tan washes out; umber on the
+ *  elevation colours, whose own high ground is tan, with the label and its
+ *  halo swapped to dark on cream. */
+export const CONTOUR_INK: Record<BaseTone, ContourInk> = {
+  imagery: { line: 'rgba(214,170,110,0.55)', index: 'rgba(228,186,124,0.85)', text: 'rgba(240,206,150,0.95)', halo: 'rgba(10,20,12,0.9)' },
+  shade: { line: 'rgba(188,98,28,0.72)', index: 'rgba(200,102,24,0.95)', text: 'rgba(255,236,200,1)', halo: 'rgba(70,32,8,0.9)' },
+  topo: { line: 'rgba(188,98,28,0.72)', index: 'rgba(200,102,24,0.95)', text: 'rgba(255,236,200,1)', halo: 'rgba(70,32,8,0.9)' },
+  relief: { line: 'rgba(72,42,18,0.6)', index: 'rgba(60,32,12,0.9)', text: 'rgba(46,26,10,1)', halo: 'rgba(244,236,214,0.9)' },
+}
+
 /** [lines to keep, index lines] for a contour interval. A line's `step` is
  *  the coarsest of 10/5/2/1 that divides its elevation, so `step >= interval`
  *  keeps every interval-th metre; index lines are every fifth of those. */
@@ -278,6 +306,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   if (has('contours')) {
     sources.contours = { type: 'vector', url: 'pmtiles://contours', minzoom: 14, maxzoom: 16 }
     const [keep, index, labelled] = contourFilters(o.contourInterval)
+    const ink = CONTOUR_INK[baseTone(o.layers)]
     const line = { source: 'contours', 'source-layer': 'contours', minzoom: 13.5 } as const
     rasters.push(
       tag(
@@ -288,7 +317,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
           filter: keep,
           layout: vis(o.layers.contours),
           paint: {
-            'line-color': 'rgba(214,170,110,0.55)',
+            'line-color': ink.line,
             'line-width': ['interpolate', ['linear'], ['zoom'], 14, 0.5, 16, 0.8],
           },
         },
@@ -302,7 +331,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
           filter: index,
           layout: vis(o.layers.contours),
           paint: {
-            'line-color': 'rgba(228,186,124,0.85)',
+            'line-color': ink.index,
             'line-width': ['interpolate', ['linear'], ['zoom'], 14, 1, 16, 1.6],
           },
         },
@@ -323,7 +352,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
             'symbol-spacing': 260,
             'text-max-angle': 30,
           },
-          paint: { 'text-color': 'rgba(240,206,150,0.95)', 'text-halo-color': 'rgba(10,20,12,0.9)', 'text-halo-width': 1.2 },
+          paint: { 'text-color': ink.text, 'text-halo-color': ink.halo, 'text-halo-width': 1.2 },
         },
         'contours',
       ),
