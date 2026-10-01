@@ -57,6 +57,29 @@
   background: rgba(63, 200, 255, 0.32);
 }
 
+/* the heat map, beside the quarry it is for: dim off, the chip's light on */
+.wx-heat {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  color: var(--c-text-dim);
+}
+
+.wx-heat.on {
+  background: rgba(63, 200, 255, 0.2);
+  border-color: rgba(63, 200, 255, 0.6);
+  color: #c8f0ff;
+}
+
+.wx-heat:active {
+  background: rgba(63, 200, 255, 0.32);
+}
+
 /* the check beside the picked quarry */
 .wx-menu-check {
   margin-left: auto;

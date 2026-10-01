@@ -18,7 +18,7 @@ import { useWindChecks } from '../weather/micro/windChecks'
 import { activityBar } from '../spots/grades'
 import { FISH_TARGETS, HUNT_TARGETS, TARGET_NAMES, type Target } from '../spots/types'
 import { agoLabel, clockShort, dayLabel, dayShort, floorHourMs, hourAmPm, hourShort, startOfDayMs } from '../time'
-import { IconCheck, IconChevronDown, IconChevronUp, IconDots } from './icons'
+import { IconCheck, IconChevronDown, IconChevronUp, IconDots, IconHeat } from './icons'
 import AppMenu from './AppMenu'
 import { useMapUpdates } from '../offline/updates'
 import { useLookTick } from './useLookTick'
@@ -152,6 +152,8 @@ export default function WeatherStrip() {
   const selectedId = usePlacesStore((s) => s.selectedId)
   const hasFix = useGpsStore((s) => s.fix != null)
   const target = useSpotsStore((s) => s.target)
+  const heat = useSpotsStore((s) => s.heat)
+  const setHeat = useSpotsStore((s) => s.setHeat)
   const plans = useSpotsStore((s) => s.plans)
   const hourScores = useSpotsStore((s) => s.hours)
   const checks = useWindChecks((s) => s.checks)
@@ -377,8 +379,9 @@ export default function WeatherStrip() {
     </button>
   )
 
-  // the head, folded or open: what you are after, Now while the planning
-  // time is not now, ⋯; folded, a chevron opens the days and the rest
+  // the head, folded or open: what you are after, the heat map for it, Now
+  // while the planning time is not now, ⋯; folded, a chevron opens the days
+  // and the rest
   const head = (
     <div className="wx-head">
       <span className="wx-quarry" ref={quarryRef}>
@@ -393,6 +396,9 @@ export default function WeatherStrip() {
           </div>
         )}
       </span>
+      <button className={`wx-heat${heat ? ' on' : ''}`} onClick={() => setHeat(!heat)} aria-pressed={heat} aria-label="Heat map">
+        <IconHeat size={16} />
+      </button>
       <span className="wx-spacer" />
       {planTimeMs != null && (
         <button className="wx-now" onClick={() => setPlanTime(null)}>

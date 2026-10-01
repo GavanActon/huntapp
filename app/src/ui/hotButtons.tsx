@@ -7,17 +7,16 @@ import { useMeasureStore } from '../measure/measureStore'
 import { closeRoutes, openRoutes, useRoutes } from '../routes/routeStore'
 import { useAppStore, type HotId, type LayerVisibility } from '../state/appStore'
 import { usePlacesStore } from '../state/placesStore'
-import { useSpotsStore } from '../state/spotsStore'
 import { useGpsStore } from '../tracking/gpsStore'
 import { useScent } from '../weather/micro/scent'
 import { useHeardForm } from './HeardCard'
 import { useCheckForm } from './WindCheckCard'
-import { IconBattery, IconBush, IconCrew, IconDepth, IconEar, IconHeat, IconLanes, IconPin, IconPowder, IconRadar, IconRoute, IconRuler, IconScent, IconWind } from './icons'
+import { IconBattery, IconBush, IconCrew, IconDepth, IconEar, IconLanes, IconPin, IconPowder, IconRadar, IconRoute, IconRuler, IconScent, IconWind } from './icons'
 import { logWindHere } from './logWindHere'
 
 /**
- * The hot buttons: what the left column can hold (Map buttons picks up to
- * four per mode). Each knows its icon, its two names (the editor's and the
+ * The hot buttons: what either column can hold (Map buttons picks up to
+ * four per side per mode). Each knows its icon, its two names (the editor's and the
  * short one under the button), whether it reads as on, and what a tap
  * does. The on state is always read from the store it acts on, so a
  * button agrees with the map whichever way the thing was switched.
@@ -94,17 +93,6 @@ export const HOT_DEFS: Record<HotId, HotDef> = {
       m.start(you ? [fix.lon, fix.lat] : undefined, you ? 'you' : undefined)
     },
   },
-  heat: {
-    id: 'heat',
-    name: 'Heat map',
-    short: 'Heat',
-    Icon: IconHeat,
-    useActive: () => useSpotsStore((s) => s.heat),
-    onTap: () => {
-      const st = useSpotsStore.getState()
-      st.setHeat(!st.heat)
-    },
-  },
   scent: {
     id: 'scent',
     name: 'Scent cone',
@@ -175,12 +163,12 @@ export const HOT_DEFS: Record<HotId, HotDef> = {
 }
 
 /** Every hot button, in the order the editor's Add chips list them. */
-export const HOT_ORDER: HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'heat', 'person', 'pin', 'understory', 'lanes', 'bathy', 'radar', 'lowPower']
+export const HOT_ORDER: HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'person', 'pin', 'understory', 'lanes', 'bathy', 'radar', 'lowPower']
 
 const HOLD_MS = 450
 
 /** A long press on a button: its own settings. The wind flow's knobs, your
- *  scent in full, the layers for the heat map; the rest open Map buttons. */
+ *  scent in full, the layers sheet for a layer; the rest open Map buttons. */
 function holdAction(id: HotId): () => void {
   const st = useAppStore.getState()
   switch (id) {
@@ -188,7 +176,6 @@ function holdAction(id: HotId): () => void {
       return () => st.openSheet({ kind: 'settings' })
     case 'scent':
       return () => st.setTopCard({ kind: 'scent' })
-    case 'heat':
     case 'understory':
     case 'lanes':
     case 'bathy':

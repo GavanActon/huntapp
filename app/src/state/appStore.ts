@@ -35,17 +35,18 @@ export const topSheet = (s: AppState): Sheet | null => s.sheets[s.sheets.length 
 export type TopCard = { kind: 'scent' } | { kind: 'outing'; id: string }
 
 /** The buttons either column can hold, picked in Map buttons. My location
- *  is not one of them: it is always at the foot of the near column. */
-export type HotId = 'windcheck' | 'scent' | 'heard' | 'windflow' | 'routes' | 'measure' | 'heat' | 'person' | 'pin' | 'understory' | 'lanes' | 'bathy' | 'radar' | 'lowPower'
+ *  is not one of them: it is always at the foot of the near column. Nor is
+ *  the heat map: it sits on the strip's head beside the quarry chip. */
+export type HotId = 'windcheck' | 'scent' | 'heard' | 'windflow' | 'routes' | 'measure' | 'person' | 'pin' | 'understory' | 'lanes' | 'bathy' | 'radar' | 'lowPower'
 export const HOT_MAX = 4
 /** The two columns: `near` is the thumb's side (right, or left for a left hand), `far` the other. */
 export type HotSide = 'near' | 'far'
 export type HotSets = Record<HotSide, HotId[]>
 export const DEFAULT_HOT: Record<'hunt' | 'fish', HotSets> = {
-  hunt: { near: ['windcheck', 'scent', 'heard', 'windflow'], far: ['routes', 'measure', 'heat'] },
-  fish: { near: ['pin', 'bathy', 'windflow'], far: ['routes', 'measure', 'heat'] },
+  hunt: { near: ['heard', 'windcheck', 'scent', 'windflow'], far: ['routes', 'measure', 'lanes', 'person'] },
+  fish: { near: ['pin', 'bathy', 'windflow'], far: ['routes', 'measure'] },
 }
-const HOT_IDS: readonly HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'heat', 'person', 'pin', 'understory', 'lanes', 'bathy', 'radar', 'lowPower']
+const HOT_IDS: readonly HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'person', 'pin', 'understory', 'lanes', 'bathy', 'radar', 'lowPower']
 
 /** Known ids only, each once, at most HOT_MAX. */
 function cleanHot(ids: readonly unknown[]): HotId[] {
@@ -309,7 +310,7 @@ export const useAppStore = create<AppState>()(
       // v3: the default layers are the Scout view's; the old defaults, never touched, become them
       // v4: two button columns (near and far), Wind flow, Routes and Measure among them; the one-column sets go
       // v5: the wind flow sits just above My location; the v4 defaults are replaced
-      version: 5,
+      version: 6,
       migrate: (persisted, from) => {
         const p = (persisted ?? {}) as Partial<AppState>
         if (from < 1) {
@@ -325,7 +326,8 @@ export const useAppStore = create<AppState>()(
           const untouched = (Object.keys(DEFAULT_LAYERS) as (keyof LayerVisibility)[]).every((k) => k === 'windFlow' || !!old[k] === !!LAYERS_V2[k])
           if (untouched) delete p.layers
         }
-        if (from < 5) delete (p as { hotButtons?: unknown }).hotButtons
+        // 6: the heat map left the columns for the strip, and the defaults changed
+        if (from < 6) delete (p as { hotButtons?: unknown }).hotButtons
         return p as AppState
       },
       partialize: (s) => ({
