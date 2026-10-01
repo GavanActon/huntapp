@@ -1,5 +1,6 @@
 import maplibregl, { type Map as MlMap } from 'maplibre-gl'
 import { useAppStore } from '../state/appStore'
+import { windVerdict, windsLabel } from '../spots/standWinds'
 import { usePlacesStore, type SavedPlace } from '../state/placesStore'
 import { agoLabel } from '../time'
 import { closeOnTapOff } from './tapPopup'
@@ -25,9 +26,12 @@ let open: maplibregl.Popup | null = null
 export function showPlacePopup(map: MlMap, p: SavedPlace) {
   open?.remove()
   const el = document.createElement('div')
+  // a stand with its good winds set: how the next sit's ground wind reads against them
+  const v = windVerdict(p)
   el.innerHTML =
     `<div class="mp-head"><b>${esc(p.name)}</b><span>${esc(p.kind)}</span></div>` +
-    `<div class="mp-sub">dropped ${esc(agoLabel(Date.now() - p.savedAt))}</div>` +
+    `<div class="mp-sub">dropped ${esc(agoLabel(Date.now() - p.savedAt))}${p.winds?.length ? ` · winds ${esc(windsLabel(p.winds))}` : ''}</div>` +
+    (v ? `<div class="mp-sub pw-verdict pw-${v.grade}">${esc(v.text)}</div>` : '') +
     (p.note ? `<div class="mp-note">${esc(p.note)}</div>` : '') +
     `<div class="pp-acts"><button class="mp-danger pl-delete">Delete</button><button class="mp-plain pl-open">Open</button></div>`
   const pop = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, closeOnClick: false, offset: 10, maxWidth: '240px' })

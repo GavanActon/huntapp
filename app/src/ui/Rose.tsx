@@ -24,29 +24,36 @@ export const sector = (deg: number) => (Math.round((((deg % 360) + 360) % 360) /
 export default function Rose({
   turn,
   value,
+  lit,
+  inward = false,
   onPick,
   label,
   children,
 }: {
   turn: number
   value: number | null
+  /** several arrows lit at once (a stand's good winds), besides `value` */
+  lit?: number[]
+  /** arrows point in at the middle: a wind blowing FROM each point, not a way to go */
+  inward?: boolean
   onPick: (deg: number) => void
   label: (b: number) => string
   children: ReactNode
 }) {
   const on = value == null ? null : sector(value)
+  const isOn = (b: number) => on === b || (lit?.some((d) => sector(d) === b) ?? false)
   return (
     <div className="gc-rose">
       {ROSE.map((b) => (
         <button
           key={b}
-          className={`gc-dir${on === b ? ' gc-on' : ''}${b === 0 ? ' gc-north' : ''}`}
+          className={`gc-dir${isOn(b) ? ' gc-on' : ''}${b === 0 ? ' gc-north' : ''}`}
           style={{ ['--a' as string]: `${b - turn}deg` }}
           onClick={() => onPick(b)}
           aria-label={label(b)}
-          aria-pressed={on === b}
+          aria-pressed={isOn(b)}
         >
-          <Arrow toward={b - turn} size={16} />
+          <Arrow toward={b - turn + (inward ? 180 : 0)} size={16} />
           <span>{compass(b)}</span>
         </button>
       ))}

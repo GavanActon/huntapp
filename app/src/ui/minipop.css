@@ -8,3 +8,10 @@
 .mp-note { margin-top: 4px; font-size: 12px; color: var(--c-text); white-space: pre-wrap; max-height: 20vh; overflow-y: auto; }
 .pp-acts .mp-danger { background: rgba(255, 107, 107, 0.14); border: 1px solid rgba(255, 107, 107, 0.55); color: var(--c-text); }
 .pp-acts .mp-plain { background: transparent; border: 1px solid var(--c-border-strong); color: var(--c-text); }
+
+/* a stand's wind verdict in its popup (colours as in the Pins list) */
+.depth-popup .pw-verdict { font-weight: 600; }
+.depth-popup .pw-good { color: #9be36a; }
+.depth-popup .pw-edge { color: var(--c-warn); }
+.depth-popup .pw-wrong { color: #ff8a80; }
+.depth-popup .pw-calm { color: #a7c7e7; }
