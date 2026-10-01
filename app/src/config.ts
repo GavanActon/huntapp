@@ -138,6 +138,9 @@ export interface PlaceDef {
   lat: number
   kind: 'camp' | 'lake' | 'landing' | 'stand' | 'trail'
   note?: string
+  /** the winds this stand hunts well on: compass sectors the wind blows
+   *  FROM, 0 = N, 1 = NE … 7 = NW (spots/standWinds.ts) */
+  winds?: number[]
 }
 
 /** Preset places. The first is the camp: on the peninsula on the west shore

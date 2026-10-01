@@ -3,9 +3,13 @@ import type { Map as MlMap } from 'maplibre-gl'
 import { onEachMap } from '../map/mapController'
 import { useAppStore } from '../state/appStore'
 import { nearestInBounds } from '../config'
+import { useMeasureStore } from '../measure/measureStore'
+import { useRoutes } from '../routes/routeStore'
+import { useScent } from '../weather/micro/scent'
 import { useGpsStore, type Fix } from './gpsStore'
 import { useCompass } from './compass'
 import { useCheckForm } from '../ui/WindCheckCard'
+import { useHeardForm } from '../ui/HeardCard'
 
 /**
  * You on the map: a dot with an accuracy ring, a beam the way the phone
@@ -13,7 +17,7 @@ import { useCheckForm } from '../ui/WindCheckCard'
  * with follow on, the camera eases to each fix (clamped to the region, so
  * a fix on the highway in shows the nearest edge of the chart rather than
  * a blank); heading up, the map turns with the compass. Tapping the dot
- * logs the wind where you stand.
+ * sharpens the wind where you stand.
  */
 
 let marker: maplibregl.Marker | null = null
@@ -41,11 +45,33 @@ function dotElement(): HTMLDivElement {
       <circle cx="48" cy="48" r="7" fill="#3fc8ff" stroke="#ffffff" stroke-width="2.5" filter="url(#meglow)"/>
       <circle class="me-hit" cx="48" cy="48" r="20" fill="transparent"/>
     </svg>`
-  // the dot itself is the quickest way to say what the wind is doing here
+  // the dot itself is the quickest way to say what the wind is doing here,
+  // unless a tool has the tap: the ruler and the route card take it through
+  // as a map tap, and a person being placed or moved goes right on the fix
   el.addEventListener('click', (e) => {
-    e.stopPropagation()
     const f = useGpsStore.getState().fix
-    if (f) useCheckForm.getState().open(f.lon, f.lat, 'where you stand')
+    if (!f) return
+    if (useMeasureStore.getState().active || useRoutes.getState().open) return
+    // a check already being logged: the dot does not start another under it
+    if (useCheckForm.getState().at) return e.stopPropagation()
+    // a moose being placed: a tap on you is nothing, he is not where you stand
+    if (useHeardForm.getState().open) return e.stopPropagation()
+    // the Sharpen button waiting for a spot: you are the spot
+    if (useCheckForm.getState().arming) {
+      e.stopPropagation()
+      return useCheckForm.getState().open(f.lon, f.lat, 'where you stand')
+    }
+    const scent = useScent.getState()
+    if (scent.moving != null) {
+      e.stopPropagation()
+      return scent.move(scent.moving, f.lon, f.lat)
+    }
+    if (scent.adding) {
+      e.stopPropagation()
+      return scent.add(f.lon, f.lat)
+    }
+    e.stopPropagation()
+    useCheckForm.getState().open(f.lon, f.lat, 'where you stand')
   })
   return el
 }
@@ -84,6 +110,7 @@ function place(map: MlMap, fix: Fix) {
   beam()
   sizeRing(map, fix)
 }
+
 
 /** The beam the way the phone faces (the marker turns with the map, so this is a true bearing). */
 function beam() {

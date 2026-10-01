@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { compass } from '../openMeteo'
 
 /**
  * Wind checks: what the hunter actually felt, with the model's own call
@@ -9,6 +10,10 @@ import { persist } from 'zustand/middleware'
  * (model.ts blends it in by time and distance), and it scores the model,
  * so over a season the app can say how often it gets a stand right.
  *
+ * In breezy air the powder goes now one way, now another, so a check can
+ * hold an arc instead of one direction: dirFrom is its middle and swingDeg
+ * how wide it swung. The arrow on the map still points down the middle.
+ *
  * A new check replaces the ones before it within SUPERSEDE_M: the air
  * there is what was felt last, and one arrow shows where you stand, not a
  * pile of them pointing every way. The old ones stay in the log, scored,
@@ -16,6 +21,12 @@ import { persist } from 'zustand/middleware'
  *
  * Kept on the phone (localStorage); a camp weather station can later add
  * checks with source 'station'.
+ *
+ * A party's checks combine: each phone shares its checks as a file (the
+ * Weather tab), the others take it in, and every check counts the same in
+ * the blend, so where two people disagree the one with more checks nearby
+ * carries it, and the model says so. Each check carries who made it (`by`,
+ * the initials in Settings) so the tally can be read per person.
  */
 
 export type Strength = 'calm' | 'drift' | 'light' | 'breezy' | 'windy'
@@ -42,10 +53,14 @@ export interface WindCheck {
   ts: number
   lon: number
   lat: number
-  /** blowing FROM, degrees; null for calm */
+  /** blowing FROM, degrees; null for calm. A swinging check holds the middle of its arc. */
   dirFrom: number | null
+  /** the powder went now one way, now another: the arc it swung through, 45–180° about dirFrom */
+  swingDeg?: number
   strength: Strength
   note?: string
+  /** who made it: the initials in Settings; a partner's checks keep theirs */
+  by?: string
   source: 'hand' | 'station'
   /** what the ground model said at that place and minute, before the check */
   model?: ModelCall
@@ -59,13 +74,15 @@ export const SUPERSEDE_M = 100
 interface ChecksState {
   checks: WindCheck[]
   add: (c: Omit<WindCheck, 'id'>) => WindCheck
+  /** a partner's checks, by id: the ones already here are left alone */
+  merge: (cs: WindCheck[]) => number
   remove: (id: string) => void
   clear: () => void
 }
 
 export const useWindChecks = create<ChecksState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       checks: [],
       add: (c) => {
         const check = { ...c, id: `wc${c.ts.toString(36)}${Math.random().toString(36).slice(2, 6)}` }
@@ -74,12 +91,25 @@ export const useWindChecks = create<ChecksState>()(
         set((s) => ({ checks: [...s.checks.map((o) => (replaced(o) ? { ...o, until: c.ts } : o)), check].slice(-500) }))
         return check
       },
+      merge: (cs) => {
+        const have = new Set(get().checks.map((c) => c.id))
+        const fresh = cs.filter((c) => c && typeof c.id === 'string' && !have.has(c.id) && Number.isFinite(c.ts) && Number.isFinite(c.lon) && Number.isFinite(c.lat))
+        if (fresh.length) set((s) => ({ checks: [...s.checks, ...fresh].sort((a, b) => a.ts - b.ts).slice(-500) }))
+        return fresh.length
+      },
       remove: (id) => set((s) => ({ checks: s.checks.filter((c) => c.id !== id) })),
       clear: () => set({ checks: [] }),
     }),
     { name: 'huntapp-windchecks' },
   ),
 )
+
+/** The way the powder went, in compass points: "NW", or the two ends of the
+ *  arc, "NW–N", for a check that swung. `toward` is the way it blows to. */
+export function towardWords(toward: number, swingDeg?: number): string {
+  if (!swingDeg) return compass(toward)
+  return `${compass(toward - swingDeg / 2)}–${compass(toward + swingDeg / 2)}`
+}
 
 export function angleDiff(a: number, b: number): number {
   return Math.abs((((a - b) % 360) + 540) % 360 - 180)
@@ -132,7 +162,8 @@ export function checkSpentAt(c: WindCheck): number {
 }
 
 /** Did the model get it? Direction within 45° (or both calm-ish) is a hit,
- *  within 90° close, else a miss. */
+ *  within 90° close, else a miss. A swinging check is judged on its arc:
+ *  inside it (and half a sector past each end) is a hit, 45° more close. */
 export function verdict(c: WindCheck): 'agree' | 'close' | 'miss' | null {
   const m = c.model
   if (!m) return null
@@ -140,6 +171,10 @@ export function verdict(c: WindCheck): 'agree' | 'close' | 'miss' | null {
   const modelCalm = m.kmh < 1
   if (obsCalm || modelCalm) return obsCalm === modelCalm ? 'agree' : m.kmh < 2.5 && c.strength !== 'breezy' && c.strength !== 'windy' ? 'close' : 'miss'
   const d = angleDiff(c.dirFrom!, m.dirFrom)
+  if (c.swingDeg) {
+    const out = Math.max(0, d - c.swingDeg / 2)
+    return out <= 22.5 ? 'agree' : out <= 67.5 ? 'close' : 'miss'
+  }
   return d <= 45 ? 'agree' : d <= 90 ? 'close' : 'miss'
 }
 

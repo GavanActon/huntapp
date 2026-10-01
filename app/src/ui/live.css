@@ -73,32 +73,46 @@
   padding-top: 2px;
 }
 
-/* + Person · Clear (also cancel while placing) */
-.lc-btns {
-  display: flex;
-  gap: 8px;
-  padding-top: 8px;
-}
-
-.lc-btn {
-  display: inline-flex;
+/* the party's bar: one line at the left, the height and corners of the
+   folded strip; the count, then + Person and Clear as plain words (cancel
+   lit while placing) */
+.livecard.lc-party {
+  align-self: flex-start;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: rgba(126, 178, 224, 0.1);
-  border: 1px solid rgba(126, 178, 224, 0.22);
-  color: var(--c-text);
-  font-weight: 600;
-  font-size: calc(14px * var(--ui-scale));
+  gap: 2px;
+  height: 44px;
+  padding: 0 4px 0 12px;
+  border-radius: 8px;
   white-space: nowrap;
 }
 
-.lc-btn.lc-btn-on {
-  background: var(--c-accent-dim);
-  border-color: var(--c-accent);
+.lc-party-n {
+  padding: 0 10px 0 0;
+  color: var(--c-text);
+  font-weight: 700;
+  text-align: left;
+}
+
+.lc-act {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
   color: var(--c-accent);
+  font-weight: 650;
+  font-size: calc(13px * var(--ui-scale));
+}
+
+.lc-party-n:active,
+.lc-act:active {
+  background: rgba(126, 178, 224, 0.1);
+  transform: none;
+}
+
+.lc-act.lc-act-on {
+  background: var(--c-accent-dim);
 }
 
 /* ---------- Your scent ---------- */
@@ -163,4 +177,19 @@
   display: flex;
   gap: 8px;
   padding-top: 10px;
+}
+
+/* Clear in Your scent: a boxed button */
+.lc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(126, 178, 224, 0.1);
+  border: 1px solid rgba(126, 178, 224, 0.22);
+  color: var(--c-text);
+  font-weight: 600;
+  font-size: calc(14px * var(--ui-scale));
+  white-space: nowrap;
 }

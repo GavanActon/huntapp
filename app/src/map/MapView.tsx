@@ -11,7 +11,7 @@ import { explainPoint } from '../spots/scoring'
 import { spotGrade, spotGradeWords } from '../spots/grades'
 import { useSpotsStore } from '../state/spotsStore'
 import { TARGET_NAMES } from '../spots/types'
-import { buildMapStyle, contourFilters } from './mapStyle'
+import { baseTone, buildMapStyle, CONTOUR_INK, contourFilters } from './mapStyle'
 import { offlineComplete, registerAllDataFiles, sourceModes } from './pmtilesRegistry'
 import { attachTapWeather } from './tapWeather'
 import { closeOnTapOff } from './tapPopup'
@@ -331,5 +331,13 @@ export function applyLayerState(map: maplibregl.Map, layers: LayerVisibility, op
     }
     if (meta.opacityKey && l.type === 'color-relief') map.setPaintProperty(l.id, 'color-relief-opacity', opacity[meta.opacityKey])
     if (meta.opacityKey === 'forest' && l.type === 'fill') map.setPaintProperty(l.id, 'fill-opacity', opacity.forest)
+  }
+  // the contour ink follows the base the view puts under it
+  if (map.getLayer('contour-line')) {
+    const ink = CONTOUR_INK[baseTone(layers)]
+    map.setPaintProperty('contour-line', 'line-color', ink.line)
+    map.setPaintProperty('contour-index', 'line-color', ink.index)
+    map.setPaintProperty('contour-label', 'text-color', ink.text)
+    map.setPaintProperty('contour-label', 'text-halo-color', ink.halo)
   }
 }

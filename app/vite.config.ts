@@ -51,7 +51,8 @@ function dataManifest(): Plugin {
 export default defineConfig({
   base: process.env.BASE_PATH ?? '/',
   build: { target: ['es2022', 'safari16'] },
-  server: { host: true, allowedHosts: true },
+  // docs/HUNTOS.md sits beside app/, bundled into Settings as the guide
+  server: { host: true, allowedHosts: true, fs: { allow: ['..'] } },
   preview: { host: true, allowedHosts: true },
   plugins: [
     ...(process.env.HTTPS_DEV ? [basicSsl()] : []),

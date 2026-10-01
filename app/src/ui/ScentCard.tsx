@@ -78,7 +78,7 @@ export default function ScentCard(): JSX.Element | null {
         )}
         {check && (
           <div className="scent-line">
-            <span className="dim">Wind check {clockShort(check.check.ts)}</span> pulls it {Math.round(check.pull * 100)}% toward what you felt{' '}
+            <span className="dim">Wind sharpened {clockShort(check.check.ts)}</span> pulls it {Math.round(check.pull * 100)}% toward what you felt{' '}
             <span className="dim">· fades by ~{clockShort(checkSpentAt(check.check))}</span>
           </div>
         )}

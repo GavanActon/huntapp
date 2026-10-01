@@ -1,10 +1,20 @@
-import { useState, type JSX } from 'react'
+import { useEffect, useMemo, useState, type JSX } from 'react'
 import type { PlaceDef } from '../../config'
+import { useHuntLog, type LogEntry } from '../../log/huntLog'
 import { getMap } from '../../map/mapController'
 import { isDroppedPin } from '../../map/placePopup'
+import { compass8 } from '../../spots/conditions'
+import { loadHabitat, onHabitat } from '../../spots/habitatGrid'
 import { fromHome } from '../../spots/scoring'
+import { huntedLine, huntedWinds, sectorOf, suggestWinds, windsLabel, windVerdict } from '../../spots/standWinds'
 import { homePlace, usePlacesStore, type SavedPlace } from '../../state/placesStore'
+import { ensureProfile, onProfile } from '../../weather/boundaryLayer'
+import { loadMicro, onMicro } from '../../weather/micro/model'
+import { useWindChecks } from '../../weather/micro/windChecks'
+import { ensureWeatherGrid, onWeatherGrid } from '../../weather/windGrid'
 import { IconLocate, IconPin, IconTrash } from '../icons'
+import Rose from '../Rose'
+import '../ground.css'
 import './log.css'
 
 const KINDS: PlaceDef['kind'][] = ['camp', 'lake', 'landing', 'stand', 'trail']
@@ -13,6 +23,11 @@ const KINDS: PlaceDef['kind'][] = ['camp', 'lake', 'landing', 'stand', 'trail']
  * Pins: the camp, the lakes, the stands and landings, and the pins dropped
  * on the map. Tapping a row picks it (the map eases there, the strip
  * retargets); tapping the picked row again, or Clear, lets it go.
+ *
+ * A stand can carry its good winds (spots/standWinds.ts): the row then
+ * says how the ground wind at the next sit reads against them, and the
+ * editor has the rose to set them, a suggestion from the bake, and the
+ * winds the log says it has been sat on.
  */
 export default function PinsSheet(): JSX.Element {
   const places = usePlacesStore((s) => s.places)
@@ -22,6 +37,22 @@ export default function PinsSheet(): JSX.Element {
   const remove = usePlacesStore((s) => s.remove)
   const add = usePlacesStore((s) => s.add)
   const [editing, setEditing] = useState<string | null>(null)
+  const checks = useWindChecks((s) => s.checks)
+  const entries = useHuntLog((s) => s.entries)
+  // the ground model, the layering profile, the wind grid and the habitat bake land on their own time
+  const [tick, setTick] = useState(0)
+  useEffect(() => {
+    const bump = () => setTick((t) => t + 1)
+    void Promise.all([loadMicro(), ensureProfile(), ensureWeatherGrid(), loadHabitat()]).then(bump)
+    const offs = [onMicro(bump), onProfile(bump), onWeatherGrid(bump), onHabitat(bump)]
+    return () => offs.forEach((o) => o())
+  }, [])
+  // one verdict per stand with winds, for the moment the sheet is looked at
+  const verdicts = useMemo(() => {
+    const now = Date.now()
+    return new Map(places.filter((p) => p.winds?.length).map((p) => [p.id, windVerdict(p, now)]))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [places, tick, checks])
   // pins dropped from the map and never named or written on: cleared together
   const dropped = places.filter(isDroppedPin)
   const home = homePlace()
@@ -80,6 +111,7 @@ export default function PinsSheet(): JSX.Element {
                     ))}
                   </select>
                   <textarea className="pe-note" placeholder="Note" value={p.note ?? ''} onChange={(e) => update(p.id, { note: e.target.value })} />
+                  <WindsEditor p={p} tick={tick} entries={entries} onChange={(winds) => update(p.id, { winds })} />
                 </div>
                 <div className="saved-actions">
                   <button className="btn-secondary" onClick={() => setEditing(null)}>
@@ -105,8 +137,10 @@ export default function PinsSheet(): JSX.Element {
                 <span className="row-title">{p.name}</span>
                 <span className="row-desc">
                   {where(p)}
+                  {p.winds?.length ? ` · winds ${windsLabel(p.winds)}` : ''}
                   {p.note ? ` · ${p.note}` : ''}
                 </span>
+                {verdicts.get(p.id) && <span className={`row-desc pw-verdict pw-${verdicts.get(p.id)!.grade}`}>{verdicts.get(p.id)!.text}</span>}
               </button>
               <button className="icon-btn" aria-label="Edit" onClick={() => setEditing(p.id)}>
                 <IconPin size={16} />
@@ -118,6 +152,46 @@ export default function PinsSheet(): JSX.Element {
           )
         })}
       </div>
+    </div>
+  )
+}
+
+/**
+ * The stand's good winds: tap the arrows the wind blows FROM that still
+ * hunt here. Suggest fills it from the bake's feeding side; the log's own
+ * tally of winds sat on sits under it.
+ */
+function WindsEditor({ p, tick, entries, onChange }: { p: SavedPlace; tick: number; entries: LogEntry[]; onChange: (winds: number[] | undefined) => void }): JSX.Element {
+  const winds = p.winds ?? []
+  // tick: the bake may land after the editor opens; entries: a new log entry retallies
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const suggested = useMemo(() => suggestWinds(p.lon, p.lat), [p.lon, p.lat, tick])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const hunted = useMemo(() => huntedLine(huntedWinds(p)), [p, entries])
+  const toggle = (deg: number) => {
+    const k = sectorOf(deg)
+    const next = winds.includes(k) ? winds.filter((w) => w !== k) : [...winds, k].sort((a, b) => a - b)
+    onChange(next.length ? next : undefined)
+  }
+  return (
+    <div className="pe-winds">
+      <div className="pe-winds-head">
+        <span>Good winds</span>
+        {suggested && (
+          <button className="linklike" onClick={() => onChange(suggested)}>
+            Suggest
+          </button>
+        )}
+        {winds.length > 0 && (
+          <button className="linklike" onClick={() => onChange(undefined)}>
+            Clear
+          </button>
+        )}
+      </div>
+      <Rose turn={0} value={null} lit={winds.map((k) => k * 45)} inward onPick={toggle} label={(b) => `wind from the ${compass8(b)}`}>
+        <span className="pe-winds-mid">{winds.length ? windsLabel(winds) : 'tap where the wind blows from'}</span>
+      </Rose>
+      {hunted && <div className="pe-winds-hunted">{hunted}</div>}
     </div>
   )
 }

@@ -2,17 +2,21 @@ import { useEffect, useRef, useState } from 'react'
 import { create } from 'zustand'
 import { compass } from '../weather/openMeteo'
 import { groundWind, loadMicro } from '../weather/micro/model'
-import { checkPull, checkSpentAt, useWindChecks, verdict, type Strength, type WindCheck } from '../weather/micro/windChecks'
+import { checkPull, checkSpentAt, towardWords, useWindChecks, verdict, type Strength, type WindCheck } from '../weather/micro/windChecks'
 import { clockShort } from '../time'
+import { useAppStore } from '../state/appStore'
 import { requestCompass, startCompass, stopCompass, useCompass } from '../tracking/compass'
-import Rose, { Arrow } from './Rose'
+import Rose, { Arrow, sector } from './Rose'
 import { useTapOff } from './tapOff'
 import './ground.css'
 
 /**
- * A wind check, in the bottom bar: which way the powder goes and how hard,
- * then Save. The model's own call for that spot and minute is saved beside
- * it before the check can sway it.
+ * Sharpening the wind: a check of what the air really does, in the bottom
+ * bar. Which way the powder goes and how hard, then Save. The model's own
+ * call for that spot and minute is saved beside it before the check can
+ * sway it. "Sharpen" rather than "check" on the buttons (Gavan: the name
+ * should say you are making it better): the ground wind, the cones and
+ * the swing get truer where you are.
  *
  * The rose turns with the phone when it has a compass, so the arrow to tap
  * is the one pointing where the powder really goes, not a compass point to
@@ -20,54 +24,129 @@ import './ground.css'
  * up (a compass heading lights its nearest arrow), and Save always answers:
  * saved (one line: the model's verdict, the pull and when it fades), or
  * what is still missing. Tapping off it closes it, as does Done.
+ *
+ * Once an arrow is picked the rose stops turning, so the arrow stays under
+ * the finger that picked it and the phone can go back in a pocket. Tap a
+ * second arrow and the check holds both: the powder swinging between them,
+ * saved as the middle and the width of the arc.
  */
 
 interface CheckForm {
   at: { lon: number; lat: number; label: string } | null
+  /** the Sharpen button with no fix to stand on: the next tap on the map is where the check is made */
+  arming: boolean
+  /** "ahead" tapped: the next tap on the map is what is in front of you */
+  aim: boolean
+  /** the last tap on the map while the form is up, numbered so each one counts */
+  tap: { lon: number; lat: number; n: number } | null
   open: (lon: number, lat: number, label: string) => void
+  arm: () => void
+  setAim: (v: boolean) => void
+  /** the map's tap, while the form owns it */
+  mapTap: (lon: number, lat: number) => void
   close: () => void
 }
-export const useCheckForm = create<CheckForm>((set) => ({
+export const useCheckForm = create<CheckForm>((set, get) => ({
   at: null,
+  arming: false,
+  aim: false,
+  tap: null,
   open: (lon, lat, label) => {
     // from the tap that opened the form: iOS only grants the compass from one
     void requestCompass()
-    set({ at: { lon, lat, label } })
+    set({ at: { lon, lat, label }, arming: false, aim: false, tap: null })
   },
-  close: () => set({ at: null }),
+  arm: () => {
+    void requestCompass()
+    set({ at: null, arming: true, aim: false, tap: null })
+  },
+  setAim: (aim) => set({ aim }),
+  mapTap: (lon, lat) => set({ tap: { lon, lat, n: (get().tap?.n ?? 0) + 1 } }),
+  close: () => set({ at: null, arming: false, aim: false, tap: null }),
 }))
+
+/** Bearing from the check's spot to a point on the map, degrees true. */
+function bearingTo(from: { lon: number; lat: number }, lon: number, lat: number): number {
+  const dx = (lon - from.lon) * 111_320 * Math.cos((from.lat * Math.PI) / 180)
+  const dy = (lat - from.lat) * 110_574
+  return ((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360
+}
 
 const STRENGTHS: Strength[] = ['calm', 'drift', 'light', 'breezy', 'windy']
 
 export default function WindCheckCard() {
   const at = useCheckForm((s) => s.at)!
+  const aim = useCheckForm((s) => s.aim)
+  const tap = useCheckForm((s) => s.tap)
   const close = useCheckForm((s) => s.close)
   const add = useWindChecks((s) => s.add)
   const heading = useCompass((s) => s.heading)
   const status = useCompass((s) => s.status)
   const [toward, setToward] = useState<number | null>(null)
+  const [swing, setSwing] = useState<number | null>(null)
   const [strength, setStrength] = useState<Strength | null>(null)
   const [missing, setMissing] = useState<string | null>(null)
   const [saved, setSaved] = useState<WindCheck | null>(null)
   const [saving, setSaving] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   useTapOff(ref, true, close)
+  /** where the rose stood when the first arrow was picked */
+  const held = useRef<number | null>(null)
+  /** the way you face, from a tap on the map ahead of you: the rose turns to it, compass or no compass */
+  const [facing, setFacing] = useState<number | null>(null)
 
   useEffect(() => {
     startCompass()
     return () => stopCompass()
   }, [])
 
-  // the rose turns so its top is where the phone points
+  // the rose turns so its top is where the phone points, or where a tap on
+  // the map ahead of you said you face, and holds still from the first pick
+  // on: the picked arrow stays where the finger left it
   const live = status === 'on' && heading != null
-  const turn = live ? heading : 0
+  const spin = facing ?? (live ? heading : 0)
   const calm = strength === 'calm'
+  const picked = toward != null && !calm
+  const turn = picked && held.current != null ? held.current : spin
+  // a swing: the middle of the arc, and how wide it is
+  const spread = picked && swing != null ? ((swing - toward + 540) % 360) - 180 : 0
+  const mid = toward == null ? 0 : (((toward + spread / 2) % 360) + 360) % 360
+  const swingDeg = spread ? Math.min(180, Math.max(45, Math.round(Math.abs(spread)))) : undefined
 
   const pick = (deg: number) => {
-    setToward(Math.round(((deg % 360) + 360) % 360))
+    const d = Math.round(((deg % 360) + 360) % 360)
+    if (!picked) {
+      held.current = spin
+      setToward(d)
+      setSwing(null)
+    } else if (sector(d) === sector(toward)) {
+      // the arrow already picked: any swing on it goes
+      setSwing(null)
+    } else if (swing == null) {
+      // a second arrow: the powder swings between the two
+      setSwing(d)
+    } else {
+      // a third (or the swing end again): that one alone now
+      setToward(d)
+      setSwing(null)
+    }
     if (calm) setStrength(null)
     setMissing(null)
   }
+
+  // a tap on the map: with "ahead" armed it is what is in front of you, and
+  // the rose turns to it; otherwise it is where the powder went, as good as
+  // an arrow and no compass needed
+  const tapN = tap?.n ?? 0
+  useEffect(() => {
+    if (!tap || saved) return
+    const brg = bearingTo(at, tap.lon, tap.lat)
+    if (aim) {
+      setFacing(brg)
+      useCheckForm.getState().setAim(false)
+    } else pick(brg)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tapN])
 
   const save = async () => {
     if (!strength && toward == null) return setMissing('Tap the arrow the powder follows, then how hard it is blowing (or calm)')
@@ -88,8 +167,10 @@ export default function WindCheckCard() {
       ts: now,
       lon: at.lon,
       lat: at.lat,
-      dirFrom: calm || toward == null ? null : (toward + 180) % 360,
+      dirFrom: calm || toward == null ? null : (mid + 180) % 360,
+      swingDeg: calm ? undefined : swingDeg,
       strength,
+      ...(useAppStore.getState().who ? { by: useAppStore.getState().who } : {}),
       source: 'hand',
       model: g ? { dirFrom: g.dirFrom, kmh: g.kmh, regime: g.regime, sigmaDeg: g.sigmaDeg } : undefined,
     })
@@ -103,7 +184,7 @@ export default function WindCheckCard() {
     return (
       <div className="tripbuilder glass ground-card" ref={ref}>
         <div className="tb-head">
-          <span className="tb-title">Wind check</span>
+          <span className="tb-title">Wind sharpened</span>
           <button className="sheet-done" style={{ marginLeft: 'auto' }} onClick={close}>
             Done
           </button>
@@ -125,24 +206,34 @@ export default function WindCheckCard() {
   return (
     <div className="tripbuilder glass ground-card" ref={ref}>
       <div className="tb-head">
-        <span className="tb-title">Wind check · {at.label}</span>
+        <span className="tb-title">Sharpen the wind · {at.label}</span>
       </div>
       <div className="gc-q">Which way does the powder go?</div>
-      <Rose turn={turn} value={calm ? null : toward} onPick={pick} label={(b) => `toward ${compass(b)}`}>
+      <Rose turn={turn} value={calm ? null : toward} swing={calm ? null : swing} onPick={pick} label={(b) => `toward ${compass(b)}`}>
         {calm ? (
           <span className="gc-mid-word">calm</span>
         ) : toward != null ? (
           <span className="gc-mid-pick">
-            <Arrow toward={toward - turn} size={30} />
-            <b>{compass(toward)}</b>
+            <Arrow toward={mid - turn} size={30} />
+            <b>{towardWords(mid, swingDeg)}</b>
           </span>
-        ) : live ? (
-          <button className="gc-lock" onClick={() => pick(heading)}>
+        ) : (
+          // "ahead": the next tap on the map is what is in front of you, and the
+          // rose turns to face it. The phone's compass cannot be trusted for this
+          // (held up to point, it wanders), the map can.
+          <button className={`gc-lock${aim ? ' gc-lock-on' : ''}`} onClick={() => useCheckForm.getState().setAim(!aim)} aria-pressed={aim}>
             <Arrow toward={0} size={20} />
-            <span>ahead</span>
+            <span>{aim ? 'cancel' : 'ahead'}</span>
           </button>
-        ) : null}
+        )}
       </Rose>
+      {picked && swing != null && (
+        <div className="gc-line">
+          toward {compass(toward)}, swinging to {compass(swing)}
+        </div>
+      )}
+      {/* how the rose works is under Layers, "About what is drawn"; "ahead" armed is the one thing said here */}
+      {!picked && aim && <div className="gc-note">Tap the map in front of you</div>}
       <div className="gc-q">How hard?</div>
       <div className="gc-strength">
         {STRENGTHS.map((s) => (
@@ -161,7 +252,7 @@ export default function WindCheckCard() {
       </div>
       {missing && <div className="gc-missing">{missing}</div>}
       <button className="btn-primary" disabled={saving} onClick={() => void save()}>
-        {saving ? 'Saving…' : 'Save check'}
+        {saving ? 'Saving…' : 'Save'}
       </button>
     </div>
   )

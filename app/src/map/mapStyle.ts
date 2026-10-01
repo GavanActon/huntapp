@@ -39,6 +39,41 @@ function tag<T extends LayerSpecification>(l: T, group: keyof LayerVisibility, o
 
 const vis = (on: boolean) => ({ visibility: on ? 'visible' : 'none' }) as const
 
+/** The baked 1 m LiDAR shade lightens flat ground: a white veil, which is
+ *  the grey of the Terrain view over the dark base. Over the imagery that
+ *  veil washes the photo pale and the hillsides with it, so there its light
+ *  side is toned down to a grey (`raster-brightness-max`); the shaded side
+ *  and the fine lines of the skid trails are unchanged. */
+export const lidarShadeBrightness = (layers: LayerVisibility) => (layers.satellite ? 0.5 : 1)
+
+/** What the contour lines sit on: the view's base, read off its layers,
+ *  topmost raster first. The wind streaks read the drawn map instead
+ *  (windFlow.ts), since a lake and the land beside it want different inks. */
+export type BaseTone = 'imagery' | 'topo' | 'relief' | 'shade'
+export function baseTone(layers: LayerVisibility): BaseTone {
+  if (layers.topo) return 'topo'
+  if (layers.relief) return 'relief'
+  if (layers.hillshade && !layers.satellite) return 'shade'
+  return 'imagery'
+}
+
+export interface ContourInk {
+  line: string
+  index: string
+  text: string
+  halo: string
+}
+/** The contour ink by base: tan over the dark imagery; burnt orange on the
+ *  grey LiDAR shade and the topo sheet, where tan washes out; umber on the
+ *  elevation colours, whose own high ground is tan, with the label and its
+ *  halo swapped to dark on cream. */
+export const CONTOUR_INK: Record<BaseTone, ContourInk> = {
+  imagery: { line: 'rgba(214,170,110,0.55)', index: 'rgba(228,186,124,0.85)', text: 'rgba(240,206,150,0.95)', halo: 'rgba(10,20,12,0.9)' },
+  shade: { line: 'rgba(188,98,28,0.72)', index: 'rgba(200,102,24,0.95)', text: 'rgba(255,236,200,1)', halo: 'rgba(70,32,8,0.9)' },
+  topo: { line: 'rgba(188,98,28,0.72)', index: 'rgba(200,102,24,0.95)', text: 'rgba(255,236,200,1)', halo: 'rgba(70,32,8,0.9)' },
+  relief: { line: 'rgba(72,42,18,0.6)', index: 'rgba(60,32,12,0.9)', text: 'rgba(46,26,10,1)', halo: 'rgba(244,236,214,0.9)' },
+}
+
 /** [lines to keep, index lines] for a contour interval. A line's `step` is
  *  the coarsest of 10/5/2/1 that divides its elevation, so `step >= interval`
  *  keeps every interval-th metre; index lines are every fifth of those. */
@@ -136,10 +171,15 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   }
   addRaster('satellite', { 'raster-saturation': -0.3 })
   // Two switches over the elevation tiles. Elevation colours: the heights
-  // coloured, lakes as water. Hillshade: the shade, drawn from the heights
-  // for the wide view, then the crisp baked grey 1 m LiDAR shade near camp
-  // from z13.5, the one that shows old skid trails and ditches; the
-  // DEM-drawn shade has 1.6 m pixels and a smoothing light, and loses them.
+  // coloured, lakes as water. Hillshade: the shade drawn from the heights,
+  // which carries the hillsides at every zoom, and over it from z13.5 the
+  // crisp baked grey 1 m LiDAR shade near camp, the one that shows old skid
+  // trails and ditches; the DEM-drawn shade has 1.6 m pixels and a smoothing
+  // light, and loses them. The DEM shade used to fade out under the LiDAR
+  // one, but that one is mostly a light veil on these gentle slopes (it only
+  // turns dark past ~15°), so the hillsides went with it on zooming in
+  // (Gavan, 2026-09-29, Bow view), and outside the core there was nothing
+  // to take over at all.
   const dem = has('dem')
   if (dem) {
     sources.dem = { type: 'raster-dem', url: 'pmtiles://dem', encoding: 'mapbox', tileSize: 256, attribution: 'MRDEM, HRDEM LiDAR © Natural Resources Canada' }
@@ -169,8 +209,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
             'hillshade-illumination-altitude': [30, 30, 30, 30],
             'hillshade-highlight-color': ['rgba(255,250,235,0.35)', 'rgba(255,250,235,0.45)', 'rgba(255,250,235,0.35)', 'rgba(255,250,235,0.2)'],
             'hillshade-shadow-color': ['rgba(16,20,12,0.6)', 'rgba(16,20,12,0.8)', 'rgba(16,20,12,0.6)', 'rgba(16,20,12,0.35)'],
-            // fading out where the grey LiDAR shade takes over, so the core is not shaded twice
-            'hillshade-exaggeration': has('hillshadeLidar') ? ['interpolate', ['linear'], ['zoom'], 13.3, 0.85, 14, 0.25] : 0.85,
+            'hillshade-exaggeration': 0.85,
           },
         } as LayerSpecification,
         'hillshade',
@@ -190,7 +229,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
         ),
       )
   } else addRaster('hillshade')
-  // the 1 m LiDAR shade rides above the 30 m one where it is baked (the
+  // the 1 m LiDAR shade rides above the DEM-drawn one where it is baked (the
   // core, z14+); both answer to the one Hillshade switch and slider
   if (has('hillshadeLidar')) {
     sources.hillshadeLidar = { type: 'raster', url: 'pmtiles://hillshadeLidar', tileSize: 256, minzoom: 14 }
@@ -202,7 +241,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
           source: 'hillshadeLidar',
           minzoom: 13.5,
           layout: vis(o.layers.hillshade),
-          paint: { 'raster-opacity': o.opacity.hillshade, 'raster-resampling': 'linear' },
+          paint: { 'raster-opacity': o.opacity.hillshade, 'raster-resampling': 'linear', 'raster-brightness-max': lidarShadeBrightness(o.layers) },
         },
         'hillshade',
         'hillshade',
@@ -267,6 +306,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   if (has('contours')) {
     sources.contours = { type: 'vector', url: 'pmtiles://contours', minzoom: 14, maxzoom: 16 }
     const [keep, index, labelled] = contourFilters(o.contourInterval)
+    const ink = CONTOUR_INK[baseTone(o.layers)]
     const line = { source: 'contours', 'source-layer': 'contours', minzoom: 13.5 } as const
     rasters.push(
       tag(
@@ -277,7 +317,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
           filter: keep,
           layout: vis(o.layers.contours),
           paint: {
-            'line-color': 'rgba(214,170,110,0.55)',
+            'line-color': ink.line,
             'line-width': ['interpolate', ['linear'], ['zoom'], 14, 0.5, 16, 0.8],
           },
         },
@@ -291,7 +331,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
           filter: index,
           layout: vis(o.layers.contours),
           paint: {
-            'line-color': 'rgba(228,186,124,0.85)',
+            'line-color': ink.index,
             'line-width': ['interpolate', ['linear'], ['zoom'], 14, 1, 16, 1.6],
           },
         },
@@ -312,7 +352,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
             'symbol-spacing': 260,
             'text-max-angle': 30,
           },
-          paint: { 'text-color': 'rgba(240,206,150,0.95)', 'text-halo-color': 'rgba(10,20,12,0.9)', 'text-halo-width': 1.2 },
+          paint: { 'text-color': ink.text, 'text-halo-color': ink.halo, 'text-halo-width': 1.2 },
         },
         'contours',
       ),

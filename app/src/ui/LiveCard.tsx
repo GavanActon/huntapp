@@ -43,7 +43,7 @@ function drainLine(lon: number, lat: number, now: number): string | null {
   return null
 }
 
-/** A row's lead words (bold) and the rest: 'Wind check 6:05 · …' → ['Wind check', ' 6:05 · …']. */
+/** A row's lead words (bold) and the rest: 'Wind sharpened 6:05 · …' → ['Wind sharpened', ' 6:05 · …']. */
 function lead(s: string): [string, string] {
   const m = /^(.+?)(?= \d{1,2}:\d{2}| · )/.exec(s)
   return m ? [m[1], s.slice(m[1].length)] : [s, '']
@@ -114,42 +114,35 @@ export default function LiveCard(): JSX.Element | null {
   // ---- placing someone: the next map tap puts them there
   if (adding)
     return (
-      <div className="livecard" ref={ref}>
-        <span className="lc-line">Tap where {people.length + 1} sits</span>
-        <div className="lc-btns">
-          <button className="lc-btn lc-btn-on" onClick={() => setAdding(false)}>
-            cancel
+      <div className="livecard lc-party" ref={ref}>
+        <span className="lc-party-n">Tap where {people.length + 1} sits</span>
+        <button className="lc-act lc-act-on" onClick={() => setAdding(false)}>
+          cancel
+        </button>
+        {placed.length > 0 && (
+          <button className="lc-act" onClick={clearPlaced}>
+            Clear
           </button>
-          {placed.length > 0 && (
-            <button className="lc-btn" onClick={clearPlaced}>
-              Clear
-            </button>
-          )}
-        </div>
+        )}
       </div>
     )
 
-  // ---- a party placed (with or without your own cone): the sitters' line,
-  // whose scent drifts over whom, + Person and Clear
+  // ---- a party placed (with or without your own cone): one bar like the
+  // folded strip, how many sit, + Person and Clear; the count opens Your
+  // scent, where the area, whose scent drifts over whom and the rest live
   if (placed.length) {
-    const p0 = plumes[0] ?? null
-    const head = party ? party.head : p0 ? scentLine(p0) : 'Scent · working out…'
+    const n = people.length
     return (
-      <div className="livecard" ref={ref}>
-        <button className="lc-row" onClick={toScent}>
-          <span>{head}</span>
-          <span className="dim">›</span>
+      <div className="livecard lc-party" ref={ref}>
+        <button className="lc-party-n" onClick={toScent}>
+          {n} {n === 1 ? 'sitter' : 'sitters'}
         </button>
-        {party?.drift && <span className="lc-line lc-amber">{party.drift}</span>}
-        {moves && <span className="lc-line lc-amber">{movesLine(moves)}</span>}
-        <div className="lc-btns">
-          <button className="lc-btn" onClick={() => setAdding(true)}>
-            + Person
-          </button>
-          <button className="lc-btn" onClick={clearPlaced}>
-            Clear
-          </button>
-        </div>
+        <button className="lc-act" onClick={() => setAdding(true)}>
+          + Person
+        </button>
+        <button className="lc-act" onClick={clearPlaced}>
+          Clear
+        </button>
       </div>
     )
   }
@@ -213,7 +206,7 @@ export default function LiveCard(): JSX.Element | null {
         </div>
         {livePlume && <Row text={scentRow(livePlume)} onTap={toScent} />}
         {!livePlume && scentText && <Row text={scentText} />}
-        {check && <Row text={`Wind check ${clockShort(check.check.ts)} · pulling ${Math.round(check.pull * 100)}% · till ~${clockShort(checkSpentAt(check.check))}`} />}
+        {check && <Row text={`Wind sharpened ${clockShort(check.check.ts)} · pulling ${Math.round(check.pull * 100)}% · till ~${clockShort(checkSpentAt(check.check))}`} />}
         {drain && <Row text={drain} />}
         {party && <Row text={party.head} onTap={toScent} />}
         {party?.drift && <span className="lc-line lc-amber">{party.drift}</span>}

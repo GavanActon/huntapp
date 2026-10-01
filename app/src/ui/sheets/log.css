@@ -188,3 +188,53 @@
   padding: 4px 8px;
   align-self: flex-start;
 }
+
+/* a stand's good winds and the verdict for the next sit */
+.pins .pw-verdict {
+  font-size: calc(12px * var(--ui-scale));
+  font-weight: 600;
+  color: var(--c-text-dim);
+}
+
+.pins .pw-good { color: #9be36a; }
+.pins .pw-edge { color: var(--c-warn); }
+.pins .pw-wrong { color: #ff8a80; }
+.pins .pw-calm { color: #a7c7e7; }
+
+.pins .pe-winds {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 6px;
+}
+
+.pins .pe-winds-head {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  font-size: calc(12.5px * var(--ui-scale));
+  color: var(--c-text-dim);
+}
+
+.pins .pe-winds-head span {
+  flex: 1;
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.pins .pe-winds .gc-rose {
+  width: 150px;
+  height: 150px;
+}
+
+.pins .pe-winds-mid {
+  display: block;
+  max-width: 64px;
+  font-size: 11px;
+  color: var(--c-text-dim);
+}
+
+.pins .pe-winds-hunted {
+  font-size: calc(11.5px * var(--ui-scale));
+  color: var(--c-text-dim);
+}
