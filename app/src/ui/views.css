@@ -36,6 +36,9 @@
   background: var(--c-surface-heavy);
   display: flex;
   flex-direction: column;
+  /* as many pinned as the user likes: the menu scrolls before it leaves the screen */
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
   animation: rise-in 0.15s ease;
 }
 .viewpill-row {

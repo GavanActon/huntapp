@@ -31,7 +31,7 @@ import { GROUND } from '../routes/walkModel'
 import { Heap, MOVES, sf, type GoingGridData } from '../routes/router'
 
 export const SWING = {
-  /** scent a moose notices: the scent model's NOTICE, a share of the plume core 20-40 m out */
+  /** scent a moose notices when the request gives none: the scent model's NOTICE as modelled, a share of the plume core 20-40 m out */
   notice: 0.04,
   /** scent nearer you than this is not a swing: he would be on top of you */
   minM: 40,
@@ -66,6 +66,8 @@ export interface SwingRequest {
   cols: number
   /** scent at a moose's nose over that window, row-major, as a share of the plume core */
   scent: Float32Array
+  /** the share he notices, as the scent card's slider has it; SWING.notice when left out */
+  notice?: number
   ways: SwingWay[]
 }
 
@@ -213,12 +215,13 @@ export function findSwing(g: GoingGridData, q: SwingRequest): SwingAnswer {
   const start = toLocal(q.from)
   const you = toLocal(q.you)
   if (start < 0 || you < 0) return { onIt: false, paths: [] }
-  if (q.scent[start] >= SWING.notice) return { onIt: true, paths: [] }
+  const notice = q.notice ?? SWING.notice
+  if (q.scent[start] >= notice) return { onIt: true, paths: [] }
   const yr = Math.floor(you / q.cols)
   const yc = you % q.cols
   const goal = new Uint8Array(q.rows * q.cols)
   for (let j = 0; j < goal.length; j++) {
-    if (q.scent[j] < SWING.notice) continue
+    if (q.scent[j] < notice) continue
     const d = Math.hypot((Math.floor(j / q.cols) - yr) * g.dy, ((j % q.cols) - yc) * g.dx)
     if (d >= SWING.minM) goal[j] = 1
   }

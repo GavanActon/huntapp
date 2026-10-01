@@ -11,7 +11,7 @@ import { clockShort } from '../time'
 import { useGpsStore } from '../tracking/gpsStore'
 import { compass } from '../weather/openMeteo'
 import { groundWind } from '../weather/micro/model'
-import { SCENT_NOTICE, scentAt, useScent } from '../weather/micro/scent'
+import { scentAt, scentNotice, useScent } from '../weather/micro/scent'
 import { SWING, type SwingRequest } from './swing'
 
 /**
@@ -270,6 +270,7 @@ function swingRequest(g: Going, r: MoveRead, from: number, you: number): SwingRe
   const cols = c1 - c0 + 1
   const scent = new Float32Array(rows * cols)
   // the cone as drawn when it is yours; its noticeable edge is where he has you
+  const notice = scentNotice()
   let found = 0
   if (useScent.getState().people.some((p) => p.live)) {
     for (let lr = 0; lr < rows; lr++)
@@ -278,7 +279,7 @@ function swingRequest(g: Going, r: MoveRead, from: number, you: number): SwingRe
         const v = scentAt(lon, lat)
         if (v == null) continue
         scent[lr * cols + lc] = v
-        if (v >= SCENT_NOTICE && metresTo(r.you, { lon, lat }) >= SWING.minM) found++
+        if (v >= notice && metresTo(r.you, { lon, lat }) >= SWING.minM) found++
       }
   }
   // no cone (hidden, or too thin to notice past 40 m): downwind on the ground wind
@@ -302,6 +303,7 @@ function swingRequest(g: Going, r: MoveRead, from: number, you: number): SwingRe
     rows,
     cols,
     scent,
+    notice,
     ways: [
       { turn: 1, wall: (r.bearing + half + 180) % 360 },
       { turn: -1, wall: (r.bearing + half) % 360 },

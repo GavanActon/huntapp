@@ -14,6 +14,10 @@ import { isFish, type Target } from '../spots/types'
  * so a switch flipped in Layers shows as "custom" without anything going
  * stale.
  *
+ * `pinned` is the user's pick of views for the top of the pill menu, in the
+ * order they want them (the Views sheet: a star pins, a drag orders); the
+ * rest wait under `More ›`. A fresh phone pins the first few built-ins.
+ *
  * The wind flow, the bush and lanes shades, the lake depths, the radar and
  * the heat map are not part of a view's match (VIEW_LOOSE_KEYS): they have
  * their own buttons on the map and stay as those buttons left them
@@ -44,11 +48,17 @@ export const BUILT_IN: MapView[] = [
   { id: 'hunt-bow', name: 'Bow', mode: 'hunt', builtIn: true, heat: false, opacity: { ...DEFAULT_OPACITY, hillshade: 0.35, satellite: 1 }, layers: L(['satellite', 'hillshade', 'lanes', 'contours', 'roads']) },
   { id: 'hunt-terrain', name: 'Terrain', mode: 'hunt', builtIn: true, heat: false, opacity: { ...DEFAULT_OPACITY, hillshade: 0.9 }, layers: L(['hillshade', 'contours', 'roads']) },
   { id: 'hunt-sit', name: 'Sit', mode: 'hunt', builtIn: true, heat: false, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'contours', 'roads']) },
-  { id: 'hunt-relief', name: 'Relief', mode: 'hunt', builtIn: true, heat: false, opacity: { ...DEFAULT_OPACITY, hillshade: 0.7 }, layers: L(['relief', 'hillshade', 'contours', 'roads']) },
+  { id: 'hunt-relief', name: 'Topo', mode: 'hunt', builtIn: true, heat: false, opacity: { ...DEFAULT_OPACITY, hillshade: 0.7 }, layers: L(['relief', 'hillshade', 'contours', 'roads']) },
   { id: 'hunt-land', name: 'Land', mode: 'hunt', builtIn: true, heat: false, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'crown', 'wmu', 'camps', 'parks', 'roads']) },
   { id: 'fish-lake', name: 'Lake', mode: 'fish', builtIn: true, heat: true, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'bathy']) },
   { id: 'fish-chart', name: 'Chart', mode: 'fish', builtIn: true, heat: true, opacity: DEFAULT_OPACITY, layers: L(['bathy', 'topo']) },
 ]
+
+/** The views pinned at the top of the pill menu on a fresh phone. */
+export const DEFAULT_PINNED: Record<Mode, string[]> = {
+  hunt: ['hunt-relief', 'hunt-bow', 'hunt-bush', 'hunt-terrain'],
+  fish: ['fish-lake', 'fish-chart'],
+}
 
 /** Layers a view's match ignores: each has its own button on the map. */
 export const VIEW_LOOSE_KEYS: (keyof LayerVisibility)[] = ['windFlow', 'understory', 'lanes', 'bathy', 'weather']
@@ -61,12 +71,18 @@ interface ViewsState {
   lastTarget: Record<Mode, Target>
   /** the view last applied or saved; the pill's name and the editor's base */
   lastViewId: string | null
+  /** per mode, the views at the top of the pill menu, in order; the rest sit under More */
+  pinned: Record<Mode, string[]>
   setMode: (m: Mode) => void
   apply: (v: MapView) => void
   saveCurrent: (name: string) => MapView
   /** rewrite a saved view's layers, strengths and heat from the map as it is now */
   update: (id: string) => void
   remove: (id: string) => void
+  /** pin a view to the top of the menu (at the end of the pinned), or take it back under More */
+  togglePin: (id: string) => void
+  /** the pinned views of a mode in a new order (the Views sheet's drag) */
+  setPinned: (mode: Mode, ids: string[]) => void
 }
 
 export const useViews = create<ViewsState>()(
@@ -76,6 +92,7 @@ export const useViews = create<ViewsState>()(
       saved: [],
       lastTarget: { hunt: 'moose', fish: 'walleye' },
       lastViewId: 'hunt-scout',
+      pinned: { hunt: [...DEFAULT_PINNED.hunt], fish: [...DEFAULT_PINNED.fish] },
       setMode: (mode) => {
         const s = get()
         if (mode === s.mode) return
@@ -83,8 +100,9 @@ export const useViews = create<ViewsState>()(
         const lastTarget = { ...s.lastTarget, [s.mode]: sp.target }
         set({ mode, lastTarget })
         if (isFish(sp.target) !== (mode === 'fish')) sp.setTarget(lastTarget[mode])
-        // the mode's first view, so the map follows the day's purpose
-        const first = viewsFor(mode)[0]
+        // the mode's first pinned view, so the map follows the day's purpose
+        const { top, rest } = splitViews(mode)
+        const first = top[0] ?? rest[0]
         if (first) get().apply(first)
       },
       apply: (v) => {
@@ -104,15 +122,50 @@ export const useViews = create<ViewsState>()(
         const heat = useSpotsStore.getState().heat
         set((s) => ({ saved: s.saved.map((v) => (v.id === id ? { ...v, layers: { ...a.layers }, opacity: { ...a.opacity }, heat } : v)) }))
       },
-      remove: (id) => set((s) => ({ saved: s.saved.filter((v) => v.id !== id), lastViewId: s.lastViewId === id ? null : s.lastViewId })),
+      remove: (id) =>
+        set((s) => ({
+          saved: s.saved.filter((v) => v.id !== id),
+          lastViewId: s.lastViewId === id ? null : s.lastViewId,
+          pinned: { hunt: s.pinned.hunt.filter((x) => x !== id), fish: s.pinned.fish.filter((x) => x !== id) },
+        })),
+      togglePin: (id) => {
+        const s = get()
+        const v = [...BUILT_IN, ...s.saved].find((x) => x.id === id)
+        if (!v) return
+        const ids = s.pinned[v.mode]
+        const next = ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]
+        set({ pinned: { ...s.pinned, [v.mode]: next } })
+      },
+      setPinned: (mode, ids) => set((s) => ({ pinned: { ...s.pinned, [mode]: ids } })),
     }),
-    { name: 'huntapp-views', partialize: (s) => ({ mode: s.mode, saved: s.saved, lastTarget: s.lastTarget, lastViewId: s.lastViewId }) },
+    {
+      name: 'huntapp-views',
+      // 1: the pinned views (the top of the pill menu) are the user's to pick and order
+      // 2: the hunting default is Topo, Bow, Bush, Terrain; a v1 list never touched follows it
+      version: 2,
+      migrate: (persisted, from) => {
+        const p = (persisted ?? {}) as Partial<ViewsState>
+        if (!p.pinned) p.pinned = { hunt: [...DEFAULT_PINNED.hunt], fish: [...DEFAULT_PINNED.fish] }
+        else if (from < 2 && p.pinned.hunt.join() === 'hunt-scout,hunt-bush,hunt-bow,hunt-terrain') p.pinned = { ...p.pinned, hunt: [...DEFAULT_PINNED.hunt] }
+        return p as ViewsState
+      },
+      partialize: (s) => ({ mode: s.mode, saved: s.saved, lastTarget: s.lastTarget, lastViewId: s.lastViewId, pinned: s.pinned }),
+    },
   ),
 )
 
 /** The views on offer in a mode: built in first, then the user's. */
 export function viewsFor(mode: Mode, saved = useViews.getState().saved): MapView[] {
   return [...BUILT_IN.filter((v) => v.mode === mode), ...saved.filter((v) => v.mode === mode)]
+}
+
+/** A mode's views split for the pill menu: `top`, the pinned ones in the
+ *  user's order (ids that no longer exist are dropped), and `rest`, the
+ *  others, built in first, for under `More ›`. */
+export function splitViews(mode: Mode, saved = useViews.getState().saved, pinned = useViews.getState().pinned): { top: MapView[]; rest: MapView[] } {
+  const all = viewsFor(mode, saved)
+  const top = pinned[mode].map((id) => all.find((v) => v.id === id)).filter((v): v is MapView => !!v)
+  return { top, rest: all.filter((v) => !top.includes(v)) }
 }
 
 /** The view the map is showing now, if any: the layers match, leaving out

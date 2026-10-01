@@ -154,6 +154,38 @@
   font-size: calc(13px * var(--ui-scale));
 }
 
+/* the cone's slider: conservative at the left, aggressive at the right */
+.sc-slider {
+  width: 100%;
+  max-width: 320px;
+  margin: 4px 0 0;
+  appearance: none;
+  -webkit-appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(255, 157, 77, 0.55), rgba(126, 178, 224, 0.25));
+}
+
+.sc-slider::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--c-accent);
+  border: 3px solid var(--c-bg-raised);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+
+.sc-slider-ends {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 320px;
+  font-size: calc(11px * var(--ui-scale));
+  color: var(--c-text-dim);
+}
+
 /* the party: everyone's number, the picked one lit, Remove N at the right */
 .sc-people {
   display: flex;

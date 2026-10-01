@@ -1,12 +1,13 @@
 import { useRef, type JSX } from 'react'
 import { useMapUpdates } from '../offline/updates'
 import { useAppStore, type Sheet } from '../state/appStore'
-import { IconClock, IconGear, IconGrid, IconPin } from './icons'
+import { IconBook, IconClock, IconGear, IconGrid, IconLayers, IconPin } from './icons'
 import { useTapOff } from './tapOff'
 
 /**
- * The ⋯ menu behind the strip: Hunt log, Pins and Settings, with the
- * new-maps count beside Settings when the server has some. It hangs under
+ * The ⋯ menu behind the strip: Hunt log, Pins, Map buttons, Views, HuntOS
+ * (the field guide) and Settings, with the new-maps count beside Settings
+ * when the server has some. It hangs under
  * the right end of whatever is position: relative around it (the folded
  * line, or the open strip's header); a tap anywhere else closes it.
  */
@@ -35,6 +36,16 @@ export default function AppMenu({ open, onClose }: { open: boolean; onClose: () 
       <button className="wx-menu-row" role="menuitem" onClick={() => go({ kind: 'buttons' })}>
         <IconGrid />
         Map buttons
+        <span className="dim">›</span>
+      </button>
+      <button className="wx-menu-row" role="menuitem" onClick={() => go({ kind: 'views' })}>
+        <IconLayers />
+        Views
+        <span className="dim">›</span>
+      </button>
+      <button className="wx-menu-row" role="menuitem" onClick={() => go({ kind: 'guide' })}>
+        <IconBook />
+        HuntOS
         <span className="dim">›</span>
       </button>
       <button className="wx-menu-row" role="menuitem" onClick={() => go({ kind: 'settings' })}>

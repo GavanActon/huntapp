@@ -233,3 +233,74 @@
   font: inherit;
   text-align: center;
 }
+
+/* ---------- Views: pinned at the top, the rest under More ---------- */
+
+.viewedit-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(126, 178, 224, 0.1);
+  color: var(--c-text);
+  font-size: calc(15px * var(--ui-scale));
+  border-radius: 8px;
+}
+
+.viewedit-row.lifted {
+  background: var(--c-accent-dim);
+}
+
+/* no text selection or scroll while a row is under the finger */
+.viewedit-list.dragging {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.viewedit-name {
+  flex: 1;
+  min-width: 0;
+}
+
+/* three bars: the drag handle, a thumb-sized target */
+.viewedit-grip {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  cursor: grab;
+  touch-action: none;
+  color: var(--c-text-faint);
+}
+
+.viewedit-grip i {
+  width: 16px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+}
+
+.viewedit-grip.blank {
+  cursor: default;
+  touch-action: auto;
+}
+
+.viewedit-star {
+  flex: none;
+  display: flex;
+  padding: 8px;
+  color: var(--c-text-faint);
+}
+
+.viewedit-star.on {
+  color: var(--c-warn);
+}
+
+.viewedit-trash {
+  width: 32px;
+  height: 32px;
+}

@@ -10,7 +10,9 @@ export type Sheet =
   | { kind: 'pins' }
   | { kind: 'huntlog' }
   | { kind: 'settings' }
+  | { kind: 'guide' }
   | { kind: 'buttons' }
+  | { kind: 'views' }
   | { kind: 'offline' }
   | { kind: 'layers' }
 export type SheetKind = Sheet['kind']
@@ -22,7 +24,9 @@ export const SHEET_HALF_PCT: Record<SheetKind, number> = {
   pins: 46,
   huntlog: 44,
   settings: 72,
+  guide: 72,
   buttons: 66,
+  views: 66,
   offline: 60,
   layers: 80,
 }

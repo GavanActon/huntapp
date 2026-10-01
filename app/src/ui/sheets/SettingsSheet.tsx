@@ -2,7 +2,6 @@ import { useEffect, type JSX } from 'react'
 import { downloadFiles, mapsStatus, useDownloads } from '../../offline/downloads'
 import { checkMapUpdates, useMapUpdates } from '../../offline/updates'
 import { CONTOUR_INTERVALS, useAppStore } from '../../state/appStore'
-import GuideSection from '../panels/GuideSection'
 import './settings.css'
 
 const TEXT_SIZES = [
@@ -17,8 +16,7 @@ const STREAK_W: Record<(typeof STOPS)[number], number> = { auto: 0, standard: 1.
 
 /**
  * Settings, one level deep: the maps on the phone, the buttons, the hand,
- * units and text, then the wind flow's knobs and the contour interval, and
- * HuntOS, the field guide, folded at the foot. The
+ * units and text, then the wind flow's knobs and the contour interval. The
  * download runs in offline/downloads.ts, so closing the sheet does not stop
  * it. The host draws the title row.
  */
@@ -77,6 +75,10 @@ export default function SettingsSheet(): JSX.Element {
       )}
       <button className="st-row" onClick={() => pushSheet({ kind: 'buttons' })}>
         <span>Map buttons</span>
+        <span className="dim">›</span>
+      </button>
+      <button className="st-row" onClick={() => pushSheet({ kind: 'views' })}>
+        <span>Views</span>
         <span className="dim">›</span>
       </button>
       <div className="st-row">
@@ -169,10 +171,18 @@ export default function SettingsSheet(): JSX.Element {
         </span>
         <input type="range" min={86} max={97} step={1} value={Math.round(tune.windTrail * 100)} onChange={(e) => setFlowTuning({ windTrail: Number(e.target.value) / 100 })} aria-label="Trail" />
       </div>
-      <label className="st-row">
-        <span>Eddies where the air swirls</span>
-        <input type="checkbox" className="switch" checked={tune.windSwirl} onChange={(e) => setFlowTuning({ windSwirl: e.target.checked })} />
-      </label>
+      <div className="st-row">
+        <span>
+          Streaks <span className="dim">· eddies where the air swirls, or the straight drift</span>
+        </span>
+        <div className="seg" role="radiogroup" aria-label="Streaks">
+          {([true, false] as const).map((on) => (
+            <button key={String(on)} className={tune.windSwirl === on ? 'seg-on' : ''} role="radio" aria-checked={tune.windSwirl === on} onClick={() => setFlowTuning({ windSwirl: on })}>
+              {on ? 'Eddies' : 'Straight'}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="st-row">
         <span>Wind flow at</span>
         <div className="seg" role="radiogroup" aria-label="Wind flow at">
@@ -184,8 +194,6 @@ export default function SettingsSheet(): JSX.Element {
         </div>
       </div>
 
-      <div className="st-sec">HuntOS</div>
-      <GuideSection />
     </div>
   )
 }

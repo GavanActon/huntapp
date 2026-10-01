@@ -13,9 +13,11 @@ import './live.css'
  * the map (and both columns) still there. What the cone rests on, in
  * three lines: the wind at head height against the forecast, the wind
  * check pulling it while one does, and how wide and how far it goes. Then
- * the knobs: where you sit (the ground, or a stand), how it is drawn, and
- * with a party placed, whose line it is, Remove and Clear (+ Person is the
- * live card's, and the map popup's Scent). ‹ Back returns the live card.
+ * the knobs: where you sit (the ground, or a stand), the cone's slider from
+ * conservative (scent counts sooner, a bigger cone) to aggressive (only
+ * what is strong), how it is drawn, and with a party placed, whose line it
+ * is, Remove and Clear (+ Person is the live card's, and the map popup's
+ * Scent). ‹ Back returns the live card.
  */
 
 const VIEWS: { v: ScentView; name: string; many?: boolean }[] = [
@@ -31,6 +33,7 @@ export default function ScentCard(): JSX.Element | null {
   const group = useScent((s) => s.group)
   const pick = useScent((s) => s.pick)
   const view = useScent((s) => s.view)
+  const risk = useScent((s) => s.risk)
   const checks = useWindChecks((s) => s.checks)
   const planTimeMs = useAppStore((s) => s.planTimeMs)
   const units = useAppStore((s) => s.units)
@@ -42,7 +45,7 @@ export default function ScentCard(): JSX.Element | null {
   }, [n, setTopCard])
   if (!n) return null
 
-  const { setView, setHeight, setPick, remove } = useScent.getState()
+  const { setView, setHeight, setPick, setRisk, remove } = useScent.getState()
   const many = n > 1
   const k = Math.min(Math.max(0, pick), n - 1)
   const at = people[k]
@@ -130,6 +133,24 @@ export default function ScentCard(): JSX.Element | null {
                 {h === GROUND_H ? 'Ground' : `Stand ${h} m`}
               </button>
             ))}
+          </div>
+        </div>
+        <div className="sc-sec">
+          <span className="sc-sec-name">Cone</span>
+          <input
+            className="sc-slider"
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={risk}
+            onChange={(e) => setRisk(Number(e.target.value))}
+            aria-label="Cone: conservative to aggressive"
+            aria-valuetext={risk < 0.3 ? 'conservative' : risk > 0.7 ? 'aggressive' : 'as modelled'}
+          />
+          <div className="sc-slider-ends">
+            <span>Conservative</span>
+            <span>Aggressive</span>
           </div>
         </div>
         <div className="sc-sec">
