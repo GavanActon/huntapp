@@ -25,7 +25,9 @@
   flex: 1;
 }
 
-/* the quarry chip, and its menu hung under its left edge */
+/* the quarry chip, and its menu hung under its left edge. The chip, the heat
+   toggle, Now and best share the hour cells' shape (the tile radius, no
+   border, the accent outline for "on") so the head reads as the strip's. */
 .wx-quarry {
   position: relative;
   display: inline-flex;
@@ -42,18 +44,20 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(63, 200, 255, 0.2);
-  border: 1px solid rgba(63, 200, 255, 0.6);
-  color: #c8f0ff;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: var(--r-tile);
+  background: var(--c-accent-dim);
+  outline: 1.5px solid var(--c-accent);
+  outline-offset: -1.5px;
+  color: var(--c-accent);
   font-size: calc(12px * var(--ui-scale));
   font-weight: 600;
   white-space: nowrap;
 }
 
 .wx-chip:active {
-  color: #c8f0ff;
+  color: var(--c-accent);
   background: rgba(63, 200, 255, 0.32);
 }
 
@@ -65,15 +69,16 @@
   justify-content: center;
   width: 28px;
   height: 26px;
-  border-radius: 999px;
-  border: 1px solid transparent;
+  border-radius: var(--r-tile);
+  background: rgba(18, 32, 45, 0.65);
   color: var(--c-text-dim);
 }
 
 .wx-heat.on {
-  background: rgba(63, 200, 255, 0.2);
-  border-color: rgba(63, 200, 255, 0.6);
-  color: #c8f0ff;
+  background: var(--c-accent-dim);
+  outline: 1.5px solid var(--c-accent);
+  outline-offset: -1.5px;
+  color: var(--c-accent);
 }
 
 .wx-heat:active {
@@ -99,7 +104,7 @@
   min-width: 0;
   padding: 3px 8px;
   margin-left: -4px;
-  border-radius: 999px;
+  border-radius: var(--r-tile);
   font-size: calc(12px * var(--ui-scale));
   font-weight: 650;
   white-space: nowrap;
@@ -125,7 +130,7 @@
 .wx-now {
   flex: none;
   padding: 3px 9px;
-  border-radius: 999px;
+  border-radius: var(--r-tile);
   background: rgba(63, 200, 255, 0.18);
   color: var(--c-accent);
   font-size: calc(11px * var(--ui-scale));

@@ -69,6 +69,7 @@ export const DATA_FILES: DataFileDef[] = [
   { key: 'hillshadeLidar', file: `hillshade-lidar-${REGION.id}.pmtiles`, kind: 'raster', label: 'LiDAR hillshade (1 m)' },
   { key: 'dem', file: `dem-${REGION.id}.pmtiles`, kind: 'raster', label: 'Elevation (1 m LiDAR, 30 m around)' },
   { key: 'contours', file: `contours-${REGION.id}.pmtiles`, kind: 'vector', label: 'LiDAR contours (1 m)' },
+  { key: 'contoursWide', file: `contours-wide-${REGION.id}.pmtiles`, kind: 'vector', label: 'Contours (10 m, whole region)' },
   { key: 'forest', file: `forest-${REGION.id}.pmtiles`, kind: 'vector', label: 'Forest cover' },
   { key: 'understory', file: `understory-${REGION.id}.pmtiles`, kind: 'raster', label: 'Bush thickness (LiDAR)' },
   { key: 'lanes', file: `lanes-${REGION.id}.pmtiles`, kind: 'raster', label: 'Shooting lanes (LiDAR)' },

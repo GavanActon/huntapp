@@ -13,7 +13,9 @@
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  border-radius: 999px;
+  /* the strip's own corners (ui.css .wxstrip), not a capsule: the pill and
+     the strip are the same family of control */
+  border-radius: 8px;
   border: 1px solid var(--c-border-strong);
   color: var(--c-text);
   font: inherit;

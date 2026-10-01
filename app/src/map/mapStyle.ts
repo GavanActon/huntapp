@@ -299,6 +299,74 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
     )
   }
 
+  const ink = CONTOUR_INK[baseTone(o.layers)]
+  // ---- region contours (10 m from the 30 m MRDEM, z8+) ----
+  // The coarse picture of the ground, so zooming out or looking past the
+  // core keeps the hills outlined (Gavan, 2026-10-01: the elevation went
+  // with the zoom). The bake thins by zoom (50 m lines to z9, 20 m to z11,
+  // 10 m from z12); step >= 50 is the index line, labelled from z12. Where
+  // the 1 m LiDAR lines take over (the core, z13.5+) the parts tagged
+  // `core` drop out so the two bakes never double up.
+  if (has('contoursWide')) {
+    sources.contoursWide = { type: 'vector', url: 'pmtiles://contoursWide', minzoom: 8, maxzoom: 14 }
+    const outsideLidar = (f: FilterSpecification): FilterSpecification =>
+      has('contours') ? (['step', ['zoom'], f, 13.5, ['all', f, ['==', ['get', 'core'], 0]]] as unknown as FilterSpecification) : f
+    const index: FilterSpecification = ['>=', ['get', 'step'], 50]
+    const thin: FilterSpecification = ['<', ['get', 'step'], 50]
+    const wide = { source: 'contoursWide', 'source-layer': 'contours' } as const
+    rasters.push(
+      tag(
+        {
+          id: 'contour-wide-line',
+          type: 'line',
+          ...wide,
+          filter: outsideLidar(thin),
+          layout: vis(o.layers.contours),
+          paint: {
+            'line-color': ink.line,
+            'line-opacity': 0.8,
+            'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.4, 14, 0.7],
+          },
+        },
+        'contours',
+      ),
+      tag(
+        {
+          id: 'contour-wide-index',
+          type: 'line',
+          ...wide,
+          filter: outsideLidar(index),
+          layout: vis(o.layers.contours),
+          paint: {
+            'line-color': ink.index,
+            'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.6, 12, 1, 14, 1.4],
+          },
+        },
+        'contours',
+      ),
+      tag(
+        {
+          id: 'contour-wide-label',
+          type: 'symbol',
+          ...wide,
+          minzoom: 12,
+          filter: outsideLidar(index),
+          layout: {
+            ...vis(o.layers.contours),
+            'symbol-placement': 'line',
+            'text-field': ['to-string', ['get', 'elev']],
+            'text-font': FONT,
+            'text-size': 10,
+            'symbol-spacing': 300,
+            'text-max-angle': 30,
+          },
+          paint: { 'text-color': ink.text, 'text-halo-color': ink.halo, 'text-halo-width': 1.2 },
+        },
+        'contours',
+      ),
+    )
+  }
+
   // ---- LiDAR contours (core only, z14+) ----
   // The bake holds every whole metre; the interval is a filter, so the
   // Settings knob switches instantly and offline. Every fifth line is an
@@ -306,7 +374,6 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   if (has('contours')) {
     sources.contours = { type: 'vector', url: 'pmtiles://contours', minzoom: 14, maxzoom: 16 }
     const [keep, index, labelled] = contourFilters(o.contourInterval)
-    const ink = CONTOUR_INK[baseTone(o.layers)]
     const line = { source: 'contours', 'source-layer': 'contours', minzoom: 13.5 } as const
     rasters.push(
       tag(

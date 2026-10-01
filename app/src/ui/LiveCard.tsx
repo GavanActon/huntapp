@@ -9,7 +9,7 @@ import { TARGET_NAMES } from '../spots/types'
 import { clockShort, dayShort, hourShort, isToday, startOfDayMs } from '../time'
 import { useGpsStore } from '../tracking/gpsStore'
 import { drainWindow } from '../weather/micro/model'
-import { clearPlaced, groupSummary, scentLine, scentRow, sittersLine, useScent } from '../weather/micro/scent'
+import { clearPlaced, groupSummary, sittersLine, useScent } from '../weather/micro/scent'
 import { checkSpentAt, strongestCheck, useWindChecks } from '../weather/micro/windChecks'
 import { IconChevronDown, IconChevronUp } from './icons'
 import { useTapOff } from './tapOff'
@@ -147,11 +147,13 @@ export default function LiveCard(): JSX.Element | null {
     )
   }
 
-  // ---- line 1: your scent
+  // ---- line 1: your scent. The cone on the map says where it goes and
+  // how far; the line is the way into its knobs, with the hour when the
+  // cone is for another one, and whether a wind check pulls it
   let scentText: string | null = null
   let when: string | null = null
   if (livePlume) {
-    scentText = scentLine(livePlume)
+    scentText = 'Your scent'
     if (planTimeMs != null) when = `${isToday(planTimeMs) ? '' : `${dayShort(planTimeMs)} `}${hourShort(planTimeMs)}`
   } else if (live) scentText = 'Scent · working out…'
   else if (cone) {
@@ -175,8 +177,7 @@ export default function LiveCard(): JSX.Element | null {
 
   // ---- folded to a chip
   if (folded && !open) {
-    // 'Scent → SE' without its reach; 'Scent · waiting for a fix' whole
-    const parts = [livePlume ? scentLine(livePlume).split(' · ')[0] : scentText, moves ? movesChip(moves) : null].filter((p): p is string => p != null)
+    const parts = [scentText, moves ? movesChip(moves) : null].filter((p): p is string => p != null)
     if (parts.length)
       return (
         <button className="livecard-chip" onClick={() => setLiveFolded(false)}>
@@ -204,7 +205,7 @@ export default function LiveCard(): JSX.Element | null {
             {planTimeMs == null ? 'Now' : isToday(planTimeMs) ? 'Today' : dayShort(planTimeMs)} <span className="dim">· {planTimeMs == null ? clockShort(now) : hourShort(planTimeMs)}</span>
           </span>
         </div>
-        {livePlume && <Row text={scentRow(livePlume)} onTap={toScent} />}
+        {livePlume && <Row text="Your scent" onTap={toScent} />}
         {!livePlume && scentText && <Row text={scentText} />}
         {check && <Row text={`Wind sharpened ${clockShort(check.check.ts)} · pulling ${Math.round(check.pull * 100)}% · till ~${clockShort(checkSpentAt(check.check))}`} />}
         {drain && <Row text={drain} />}
