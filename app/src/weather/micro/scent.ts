@@ -725,7 +725,7 @@ export const useScent = create<ScentState>()(
       moving: null,
       hidden: false,
       card: true,
-      distances: false,
+      distances: true,
       view: 'cloud',
       height: GROUND_H,
       risk: 0.5,
@@ -764,7 +764,17 @@ export const useScent = create<ScentState>()(
       setRisk: (risk) => set({ risk: Math.min(1, Math.max(0, risk)) }),
     }),
     // the choices stick; the people and their cones are for this sit only
-    { name: 'huntapp-scent', partialize: (s) => ({ view: s.view, height: s.height, distances: s.distances, risk: s.risk }) },
+    {
+      name: 'huntapp-scent',
+      // v1: the distances between sitters are on unless turned off from here
+      version: 1,
+      migrate: (p, from) => {
+        const s = (p ?? {}) as Record<string, unknown>
+        if (from < 1) delete s.distances
+        return s as never
+      },
+      partialize: (s) => ({ view: s.view, height: s.height, distances: s.distances, risk: s.risk }),
+    },
   ),
 )
 applyRisk(useScent.getState().risk)

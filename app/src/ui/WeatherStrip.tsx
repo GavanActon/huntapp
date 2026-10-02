@@ -171,6 +171,8 @@ export default function WeatherStrip() {
   const [refreshing, setRefreshing] = useState(false)
   const [groundTick, setGroundTick] = useState(0)
   const [drains, setDrains] = useState<DrainRun[]>([])
+  /** the day whose hours are in the middle of the row as it scrolls */
+  const [viewDayMs, setViewDayMs] = useState<number | null>(null)
 
   // the subject's forecast: cache first, refetched on the half hour and after a sweep
   useEffect(() => {
@@ -255,6 +257,32 @@ export default function WeatherStrip() {
 
   // bring the picked hour into view when it lands off-screen (a day tap, the strip opening)
   const cellsRef = useRef<HTMLDivElement>(null)
+  // as the hours scroll, the day they belong to lights in the day row
+  useEffect(() => {
+    const row = cellsRef.current
+    if (!row || !stripOpen) return
+    let raf = 0
+    const read = () => {
+      raf = 0
+      const mid = row.scrollLeft + row.clientWidth / 2
+      let best: HTMLElement | null = null
+      for (const el of Array.from(row.children) as HTMLElement[]) {
+        if (el.offsetLeft - row.offsetLeft <= mid) best = el
+        else break
+      }
+      const ms = best ? Number(best.dataset.ms) : NaN
+      setViewDayMs(Number.isFinite(ms) ? startOfDayMs(ms) : null)
+    }
+    const onScroll = () => {
+      if (!raf) raf = window.requestAnimationFrame(read)
+    }
+    row.addEventListener('scroll', onScroll, { passive: true })
+    read()
+    return () => {
+      row.removeEventListener('scroll', onScroll)
+      if (raf) window.cancelAnimationFrame(raf)
+    }
+  }, [stripOpen, hours.length])
   useEffect(() => {
     const row = cellsRef.current
     if (!row) return
@@ -433,7 +461,7 @@ export default function WeatherStrip() {
               return (
                 <button
                   key={d.start}
-                  className={`wxday${d.start === selDayMs ? ' wxday-on' : ''}`}
+                  className={`wxday${d.start === selDayMs ? ' wxday-on' : ''}${d.start === viewDayMs && d.start !== selDayMs ? ' wxday-view' : ''}`}
                   onClick={() => setPlanTime(d.start === todayMs ? null : d.start + DAY_FROM_H * H)}
                 >
                   <span className="wxday-name">
