@@ -139,6 +139,7 @@ python pipeline/survey_depth.py --all               # lake sheets to depth (afte
 python pipeline/build_habitat.py                    # again: picks the survey depths up
 python pipeline/build_depth_bands.py                # the map's depth bands
 py -3.14 pipeline/build_going.py                    # the routes' going grid (after build_habitat.py and build_vegstructure.py)
+py -3.14 pipeline/build_vector_tiles.py             # forest stands and the places themes as vector tiles (after build_forest.py and build_vectors.py)
 ```
 
 The sheets come from `https://ftp.maps.canada.ca/pub/nrcan_rncan/raster/`

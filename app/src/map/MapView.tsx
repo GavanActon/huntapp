@@ -5,13 +5,13 @@ import { BASE_GEO, baseGeoFile, DATA_BASE, DATA_FILES, GEO_THEMES, geoFile, HOME
 import { getStoredFile } from '../offline/fileStore'
 import { useAppStore, type LayerOpacity, type LayerVisibility } from '../state/appStore'
 import { usePlacesStore } from '../state/placesStore'
-import { geoUrls, setMap, withMap } from './mapController'
+import { geoUrls, onFirstIdle, setMap, withMap } from './mapController'
 import { useMeasureStore } from '../measure/measureStore'
 import { explainPoint } from '../spots/scoring'
 import { spotGrade, spotGradeWords } from '../spots/grades'
 import { useSpotsStore } from '../state/spotsStore'
 import { TARGET_NAMES } from '../spots/types'
-import { baseTone, buildMapStyle, CONTOUR_INK, contourFilters } from './mapStyle'
+import { baseTone, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo } from './mapStyle'
 import { offlineComplete, registerAllDataFiles, sourceModes } from './pmtilesRegistry'
 import { attachTapWeather } from './tapWeather'
 import { closeOnTapOff } from './tapPopup'
@@ -332,6 +332,8 @@ export function applyLayerState(map: maplibregl.Map, layers: LayerVisibility, op
     if (meta.opacityKey && l.type === 'color-relief') map.setPaintProperty(l.id, 'color-relief-opacity', opacity[meta.opacityKey])
     if (meta.opacityKey === 'forest' && l.type === 'fill') map.setPaintProperty(l.id, 'fill-opacity', opacity.forest)
   }
+  // a switch gone on before the first idle: its source gets its file now
+  flushDeferredGeo(map, layers)
   // the contour ink follows the base the view puts under it
   if (map.getLayer('contour-line')) {
     const ink = CONTOUR_INK[baseTone(layers)]

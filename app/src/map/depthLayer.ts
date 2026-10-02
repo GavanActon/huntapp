@@ -1,6 +1,7 @@
 import type { FeatureCollection } from 'geojson'
 import type { GeoJSONSource, Map as MlMap } from 'maplibre-gl'
 import { geoUrls, onEachMap } from './mapController'
+import { deferredGeo } from './mapStyle'
 import { habitat, onHabitat } from '../spots/habitatGrid'
 import { useAppStore } from '../state/appStore'
 
@@ -127,8 +128,10 @@ function addLayers(m: MlMap) {
   // under the survey sheets' ink where it exists, else under the overlays
   const before = m.getLayer('bathy-sheets') ? 'bathy-sheets' : m.getStyle().layers.find((l) => l.id === 'bathy-line' || l.id === 'wmu-line' || l.type === 'symbol')?.id
   if (bandsUrl) {
-    // smooth bands, clipped to the shore: antialiased edges
-    m.addSource(SRC, { type: 'geojson', data: bandsUrl, attribution: 'Depths: MNR lake surveys 1978–79 · estimates elsewhere' })
+    // smooth bands, clipped to the shore: antialiased edges. With the
+    // switch off the file waits until it goes on (mapStyle.deferredGeo)
+    if (!on) deferredGeo.set(SRC, { url: bandsUrl, group: 'bathy' })
+    m.addSource(SRC, { type: 'geojson', data: on ? bandsUrl : { type: 'FeatureCollection', features: [] }, attribution: 'Depths: MNR lake surveys 1978–79 · estimates elsewhere' })
     m.addLayer({ id: 'depth-est-fill', type: 'fill', source: SRC, layout: vis, paint: { 'fill-color': bandColor() as never, 'fill-antialias': true }, metadata: { group: 'bathy' } }, before)
   } else {
     m.addSource(SRC, { type: 'geojson', data: buildFc() })
