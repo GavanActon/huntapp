@@ -61,7 +61,8 @@
   background: rgba(var(--c-accent-rgb), 0.32);
 }
 
-/* the heat map, beside the quarry it is for: dim off, the chip's light on */
+/* the heat map, beside the quarry it is for, and the Outdoor sun beside
+   that: dim off, the chip's light on */
 .wx-heat {
   flex: none;
   display: inline-flex;
@@ -74,11 +75,15 @@
   color: var(--c-text-dim);
 }
 
+.wx-theme {
+  margin-left: -4px;
+}
+
 .wx-heat.on {
-  background: var(--c-accent-dim);
+  background: var(--c-accent);
   outline: 1.5px solid var(--c-accent);
   outline-offset: -1.5px;
-  color: var(--c-accent);
+  color: var(--c-on-accent);
 }
 
 .wx-heat:active {

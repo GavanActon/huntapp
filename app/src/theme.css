@@ -5,27 +5,29 @@
 
 :root {
   /* the dark neutral: the map's own forest black */
-  --c-bg: #0f1a12;
-  --c-bg-rgb: 15, 26, 18;
-  --c-bg-raised: #172519;
-  --c-surface: rgba(17, 28, 20, 0.82);
-  --c-surface-heavy: rgba(13, 22, 16, 0.94);
+  --c-bg: #0a100b;
+  --c-bg-rgb: 10, 16, 11;
+  --c-bg-raised: #141c15;
+  /* near black, nearly opaque: the chrome must stand off the map in daylight */
+  --c-surface: rgba(10, 16, 11, 0.9);
+  --c-surface-heavy: rgba(7, 12, 8, 0.97);
   /* a strip cell, and one after dark */
-  --c-cell: rgba(22, 36, 25, 0.7);
-  --c-cell-night: rgba(8, 14, 10, 0.82);
+  --c-cell: rgba(18, 27, 19, 0.88);
+  --c-cell-night: rgba(3, 6, 4, 0.92);
   /* the ink borders and hover washes are drawn in: a sage */
-  --c-ink-rgb: 176, 204, 168;
-  --c-border: rgba(var(--c-ink-rgb), 0.14);
-  --c-border-strong: rgba(var(--c-ink-rgb), 0.28);
-  --c-text: #eef5ea;
-  --c-text-dim: #a4b7a2;
-  --c-text-faint: #728a74;
+  --c-ink-rgb: 190, 214, 182;
+  --c-border: rgba(var(--c-ink-rgb), 0.22);
+  --c-border-strong: rgba(var(--c-ink-rgb), 0.42);
+  --c-text: #f3f8ef;
+  --c-text-dim: #bccbb7;
+  --c-text-faint: #879b85;
 
   /* the accent is a light camo sage, the Bow view's own tones: picked, on, go */
-  --c-accent: #c3cfa4;
-  --c-accent-rgb: 195, 207, 164;
-  --c-accent-dim: rgba(var(--c-accent-rgb), 0.18);
-  --c-on-accent: #1a2015;
+  --c-accent: #d3dfb4;
+  --c-accent-rgb: 211, 223, 180;
+  /* the wash under a picked row or hour: strong enough to read as picked */
+  --c-accent-dim: rgba(var(--c-accent-rgb), 0.3);
+  --c-on-accent: #121709;
   /* cyan is for air and water only: the wind, the drains, the ground air */
   --c-wind: #4fc7ff;
   --c-wind-rgb: 79, 199, 255;
@@ -88,7 +90,7 @@
   --c-text-faint: #66745f;
   --c-accent: #5a6b3e;
   --c-accent-rgb: 90, 107, 62;
-  --c-accent-dim: rgba(var(--c-accent-rgb), 0.16);
+  --c-accent-dim: rgba(var(--c-accent-rgb), 0.22);
   --c-on-accent: #ffffff;
   --c-wind: #0b6fae;
   --c-wind-rgb: 11, 111, 174;
@@ -201,19 +203,18 @@ button:disabled {
   transition: transform 0.15s ease, background 0.2s ease, color 0.2s ease;
 }
 
-/* on: the accent's wash over the surface (not instead of it, or the map
-   shows through an Outdoor button) */
+/* on: the accent itself, with dark ink, so a pressed button is never in doubt */
 .fab.active {
-  box-shadow: var(--shadow-fab), inset 0 0 0 46px var(--c-accent-dim);
-  color: var(--c-accent);
-  border-color: rgba(var(--c-accent-rgb), 0.4);
+  background: var(--c-accent);
+  color: var(--c-on-accent);
+  border-color: var(--c-accent);
 }
 
 /* the wind flow's button is lit in the wind's own ink, not the accent */
 .fab.hotbtn[data-hot='windflow'].active {
-  box-shadow: var(--shadow-fab), inset 0 0 0 46px rgba(var(--c-wind-rgb), 0.16);
-  color: var(--c-wind);
-  border-color: rgba(var(--c-wind-rgb), 0.4);
+  background: var(--c-wind);
+  color: var(--c-on-accent);
+  border-color: var(--c-wind);
 }
 
 .fab svg {
