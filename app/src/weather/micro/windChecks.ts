@@ -14,10 +14,23 @@ import { compass } from '../openMeteo'
  * hold an arc instead of one direction: dirFrom is its middle and swingDeg
  * how wide it swung. The arrow on the map still points down the middle.
  *
- * A new check replaces the ones before it within SUPERSEDE_M: the air
- * there is what was felt last, and one arrow shows where you stand, not a
- * pile of them pointing every way. The old ones stay in the log, scored,
- * but stop counting (and drawing) from the moment the new one was made.
+ * A second puff where you stand, minutes after the first, is the same
+ * check watched longer, not a new one: it folds in (SERIES_M, SERIES_MS).
+ * The folded check keeps every puff's direction, and from those comes the
+ * arc and how steady the air is: puffs that go the same way say steady,
+ * puffs every way say swirly, with no question asked. A check with one
+ * puff can still say it swings, with a second arrow on the rose.
+ *
+ * Otherwise a new check replaces the ones before it within SUPERSEDE_M:
+ * the air there is what was felt last, and one arrow shows where you
+ * stand, not a pile of them pointing every way. The old ones stay in the
+ * log, scored, but stop counting (and drawing) from the moment the new
+ * one was made.
+ *
+ * Two optional answers ride on a check. "Treetops moving, calm here" is
+ * the ground air come loose from the wind above (decoupled), the one
+ * thing the layering model most needs checking. "Same as a while ago" is
+ * a wind that has held, so the check is trusted for longer.
  *
  * Kept on the phone (localStorage); a camp weather station can later add
  * checks with source 'station'.
@@ -46,6 +59,12 @@ export interface ModelCall {
   kmh: number
   regime: string
   sigmaDeg: number
+  /** the model had the ground air come loose from the wind above */
+  decoupled?: boolean
+  /** the cell was a slot in the trees: its own lesson, apart from the regime's */
+  slot?: boolean
+  /** the season's correction the call already carried (bias.ts), so the lesson is taken from the raw call */
+  bias?: { deg: number; ratio: number }
 }
 
 export interface WindCheck {
@@ -58,6 +77,14 @@ export interface WindCheck {
   /** the powder went now one way, now another: the arc it swung through, 45–180° about dirFrom */
   swingDeg?: number
   strength: Strength
+  /** puffs folded into this check (1 or absent: a single puff) */
+  puffs?: number
+  /** each puff's direction, blowing FROM; null for a puff that hung (a lull) */
+  dirs?: (number | null)[]
+  /** optional: treetops moving while the air here is calm (true), or moving the same (false) */
+  aloft?: boolean
+  /** optional: the wind here has been the same for a while */
+  held?: boolean
   note?: string
   /** who made it: the initials in Settings; a partner's checks keep theirs */
   by?: string
@@ -70,6 +97,61 @@ export interface WindCheck {
 
 /** A newer check this close replaces an older one. */
 export const SUPERSEDE_M = 100
+/** A puff this close and this soon after the last one folds into it. */
+export const SERIES_M = 40
+export const SERIES_MS = 6 * 60_000
+
+/** The arc a set of puff directions spans about their mean, degrees (0 for one). */
+function puffSpread(dirs: number[]): { mean: number; arc: number } {
+  if (!dirs.length) return { mean: 0, arc: 0 }
+  let e = 0
+  let n = 0
+  for (const d of dirs) {
+    e += Math.sin((d * Math.PI) / 180)
+    n += Math.cos((d * Math.PI) / 180)
+  }
+  const mean = ((Math.atan2(e, n) * 180) / Math.PI + 360) % 360
+  let worst = 0
+  for (const d of dirs) worst = Math.max(worst, angleDiff(d, mean))
+  return { mean, arc: worst * 2 }
+}
+
+/** A puff folded into the check it continues: the arc and the strength from every puff so far. */
+function fold(prev: WindCheck, puff: Omit<WindCheck, 'id'>): WindCheck {
+  const dirs = [...(prev.dirs ?? [prev.dirFrom]), puff.strength === 'calm' ? null : puff.dirFrom]
+  const moving = dirs.filter((d): d is number => d != null)
+  const { mean, arc } = puffSpread(moving)
+  // the swing is the arc the puffs spanned, or what either puff said it swung
+  const said = Math.max(prev.swingDeg ?? 0, puff.swingDeg ?? 0)
+  const swing = Math.max(said, arc >= 20 ? Math.max(45, Math.round(arc)) : 0)
+  // the wind is what moved the powder; a lull is a lull
+  const strongest = [prev.strength, puff.strength].sort((a, b) => STRENGTH_KMH[b] - STRENGTH_KMH[a])[0]
+  return {
+    ...prev,
+    dirFrom: moving.length ? Math.round(mean) : null,
+    swingDeg: moving.length && swing ? Math.min(180, swing) : undefined,
+    strength: moving.length ? strongest : 'calm',
+    puffs: (prev.puffs ?? 1) + 1,
+    dirs,
+    ...(puff.aloft != null ? { aloft: puff.aloft } : {}),
+    ...(puff.held != null ? { held: puff.held } : {}),
+    ...(puff.note ? { note: prev.note ? `${prev.note} · ${puff.note}` : puff.note } : {}),
+  }
+}
+
+export type Steadiness = 'steady' | 'wavering' | 'swirly'
+
+/** How steady the air was through a check's puffs: null for a single puff that did not say. */
+export function steadiness(c: WindCheck): Steadiness | null {
+  const n = c.puffs ?? 1
+  if (n < 2) return c.swingDeg ? (c.swingDeg >= 90 ? 'swirly' : 'wavering') : null
+  const lulls = (c.dirs ?? []).filter((d) => d == null).length
+  if (c.dirFrom == null) return 'steady'
+  const arc = c.swingDeg ?? 0
+  if (arc >= 90 || lulls * 2 >= n) return 'swirly'
+  if (arc >= 45 || lulls) return 'wavering'
+  return 'steady'
+}
 
 interface ChecksState {
   checks: WindCheck[]
@@ -85,6 +167,13 @@ export const useWindChecks = create<ChecksState>()(
     (set, get) => ({
       checks: [],
       add: (c) => {
+        // another puff of the check just made here: the same check, watched longer
+        const prev = c.source === 'hand' ? get().checks.find((o) => o.until == null && o.source === 'hand' && (o.by ?? '') === (c.by ?? '') && c.ts - o.ts >= 0 && c.ts - o.ts <= SERIES_MS && metresBetween(o.lon, o.lat, c.lon, c.lat) <= SERIES_M) : undefined
+        if (prev) {
+          const folded = fold(prev, c)
+          set((s) => ({ checks: s.checks.map((o) => (o.id === prev.id ? folded : o)) }))
+          return folded
+        }
         const check = { ...c, id: `wc${c.ts.toString(36)}${Math.random().toString(36).slice(2, 6)}` }
         // the earlier checks here stop counting now
         const replaced = (o: WindCheck) => o.until == null && o.ts <= c.ts && o.source === c.source && metresBetween(o.lon, o.lat, c.lon, c.lat) <= SUPERSEDE_M
@@ -125,15 +214,24 @@ const LEN_M = 300
 const MAX_MS = 2 * 3600_000
 const MAX_M = 800
 
+/** A check's time scale: a wind that has held for a while is trusted twice as long. */
+function tauOf(c: WindCheck): number {
+  return c.held ? 2 * TAU_MS : TAU_MS
+}
+function maxOf(c: WindCheck): number {
+  return c.held ? 1.5 * MAX_MS : MAX_MS
+}
+
 /** How far a check reaches: 40 min and 300 m e-folding, nothing past 2 h
- *  or 800 m. Returns the weight (0 = out of reach). */
+ *  or 800 m (80 min and 3 h for a wind that had held). Returns the weight
+ *  (0 = out of reach). */
 export function checkWeight(c: WindCheck, lon: number, lat: number, ms: number): number {
   if (c.until != null && ms >= c.until) return 0
   const dt = Math.abs(ms - c.ts)
-  if (dt > MAX_MS) return 0
+  if (dt > maxOf(c)) return 0
   const d = metresBetween(lon, lat, c.lon, c.lat)
   if (d > MAX_M) return 0
-  return Math.exp(-dt / TAU_MS) * Math.exp(-d / LEN_M)
+  return Math.exp(-dt / tauOf(c)) * Math.exp(-d / LEN_M)
 }
 
 /** A check's share of the ground wind at a spot and moment: model.ts
@@ -152,13 +250,20 @@ const W_SHOWN = PULL_SHOWN / (1 - PULL_SHOWN)
 export function checkReachM(c: WindCheck, ms: number): number {
   if (c.until != null && ms >= c.until) return 0
   const dt = Math.abs(ms - c.ts)
-  if (dt > MAX_MS) return 0
-  return Math.max(0, Math.min(MAX_M, LEN_M * (Math.log(1 / W_SHOWN) - dt / TAU_MS)))
+  if (dt > maxOf(c)) return 0
+  return Math.max(0, Math.min(MAX_M, LEN_M * (Math.log(1 / W_SHOWN) - dt / tauOf(c))))
 }
 
 /** When a check stops making up PULL_SHOWN of the wind even where it was made. */
 export function checkSpentAt(c: WindCheck): number {
-  return Math.min(c.until ?? Infinity, c.ts + Math.min(MAX_MS, TAU_MS * Math.log(1 / W_SHOWN)))
+  return Math.min(c.until ?? Infinity, c.ts + Math.min(maxOf(c), tauOf(c) * Math.log(1 / W_SHOWN)))
+}
+
+/** Did the model call the layering? Only for a check that said what the
+ *  treetops were doing: a hit when both say decoupled or both say not. */
+export function aloftVerdict(c: WindCheck): 'agree' | 'miss' | null {
+  if (c.aloft == null || c.model?.decoupled == null) return null
+  return c.aloft === c.model.decoupled ? 'agree' : 'miss'
 }
 
 /** Did the model get it? Direction within 45° (or both calm-ish) is a hit,

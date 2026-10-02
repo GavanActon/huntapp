@@ -11,7 +11,7 @@ import { useGpsStore } from '../tracking/gpsStore'
 import { showOutingTrack } from '../tracking/trackLayer'
 import { useTrackStore } from '../tracking/trackStore'
 import { showOutingChecks } from '../weather/micro/checkLayer'
-import { useWindChecks, verdict, type WindCheck } from '../weather/micro/windChecks'
+import { steadiness, towardWords, useWindChecks, verdict, type WindCheck } from '../weather/micro/windChecks'
 import { compass } from '../weather/openMeteo'
 import { IconLocate, IconTrash } from './icons'
 import { useTapOff } from './tapOff'
@@ -97,7 +97,8 @@ function entryDesc(e: LogEntry): string {
 }
 
 function checkTitle(c: WindCheck): string {
-  return `${clockShort(c.ts)} · ${c.dirFrom == null ? 'calm' : `toward ${compass((c.dirFrom + 180) % 360)}, ${c.strength}`}`
+  const steady = steadiness(c)
+  return `${clockShort(c.ts)} · ${c.dirFrom == null ? 'calm' : `toward ${towardWords((c.dirFrom + 180) % 360, c.swingDeg)}, ${c.strength}`}${steady ? `, ${steady}` : ''}${(c.puffs ?? 1) > 1 ? ` · ${c.puffs} puffs` : ''}`
 }
 
 /** '4 heard · bull seen · 2 wind checks', from what the outing holds. */

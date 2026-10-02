@@ -332,6 +332,38 @@ nothing that matters: at that cell the mechanical part stays under
   `w·arc/2` for each blended check — and the quarter tightening a nearby
   check usually brings is skipped: a check that says "it swings" is not
   evidence of a steady wind.
+- **Puffs in a series** (2026-10-02): a second puff within 40 m and
+  6 min of the last check folds into it instead of replacing it. The
+  folded check keeps every puff's direction (`dirs`, null for a puff that
+  hung), and from those the arc (the spread about the mean, at least 45°
+  once it is 20° or more) and how steady the air was: `steady`,
+  `wavering` (arc 45° or a lull) or `swirly` (arc 90° or lulls half the
+  time). Swirl is read off the puffs, no question asked; the two-arrow
+  swing on the rose stays for a single puff that saw it. The model call
+  saved is the first puff's, the verdict is judged on the arc.
+- **Optional answers** (2026-10-02), two chips under the strength: "treetops
+  moving, calm here" is the ground air decoupled from the wind above, the
+  one direct test of layer 1 (saved as `aloft`, scored against the model's
+  `decoupled`; the tally reads "the layering called right N of M"); "same
+  as a while ago" (`held`) doubles the check's time scale (80 min, 3 h) so
+  a wind that has held is trusted longer. Where you stand (open, trees,
+  edge) is not asked: the habitat grid knows.
+- **Lessons** (2026-10-02, `micro/bias.ts`): a check used to be a patch
+  and the model believed what it had before. Now each check is also a
+  lesson. Its residual against the model's RAW call (before any correction
+  that call already carried, kept as `model.bias`) is charged to the layer
+  that decided the call: the regime (wind, drainage, pooled, upslope,
+  breezes, calm), or the slot rule where the cell was a slot
+  (`model.slot`). Per lesson the weighted residuals give a turn and a
+  speed ratio, applied to the model's own vector in every cell of that
+  regime before the nearby checks blend in, so one check in a slot turns
+  every slot. Priors and forgetting keep a puff from swinging it: four
+  pseudo-checks of zero bias in the mean, a 14-day e-folding on each
+  check's weight, a swinging check at half weight, the turn capped at
+  ±45° and the ratio within 0.5–2. Below 5° and 15% nothing is applied.
+  The reasons say "Turned 18° clockwise by 6 wind checks in plain wind
+  this season"; the hunt log's "How the map is doing" tallies hits by
+  lesson and shows what each has learned.
 - **Scoring**: agree within 45° (or both calm), close within 90°. The
   Weather tab shows the running tally.
 - A camp station can later post checks with `source: 'station'`.
@@ -353,6 +385,10 @@ nothing that matters: at that cell the mechanical part stays under
   inversion forms or breaks) comes from HRDPS's 2 m and 80 m temperatures,
   and HRDPS itself is weakest in exactly those stable hours.
 - Layering is one point for the whole region.
+- A lesson is one turn and one ratio per regime for the whole region. A
+  bias that is really one stand's (a slot the rule misreads) is spread over
+  every cell of its regime until checks elsewhere pull it back. Per-place
+  lessons want more checks than a season gives.
 - The lake temperature is an estimate. The breeze strength is only as good
   as that.
 
@@ -365,6 +401,12 @@ nothing that matters: at that cell the mechanical part stays under
    constants.
 3. Use the ground wind in the Spots site score (scent geometry per cell)
    instead of the regional direction.
+5. Lessons that fit a knob, not a turn: the slot gain, the inversion's
+   timing, the canopy factor, each from the residuals of the checks that
+   layer decided. The per-regime turn is the first step toward it.
+6. The model asking: when two regimes are close in a cell (drainage against
+   the regional wind at dusk) a nudge to check the wind there, since those
+   transition checks are the ones that fit timing.
 4. Large-eddy simulation (PALM, Leibniz Universität Hannover) of the
    top stands for typical dawn and dusk cases, baked like the rest.
 

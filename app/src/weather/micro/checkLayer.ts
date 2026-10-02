@@ -6,7 +6,7 @@ import { closeOnTapOff } from '../../map/tapPopup'
 import { useAppStore } from '../../state/appStore'
 import { timeLabel } from '../../time'
 import { compass } from '../openMeteo'
-import { checkPull, checkReachM, checkSpentAt, towardWords, useWindChecks, verdict, type WindCheck } from './windChecks'
+import { aloftVerdict, checkPull, checkReachM, checkSpentAt, steadiness, towardWords, useWindChecks, verdict, type WindCheck } from './windChecks'
 
 /**
  * The wind checks still in effect, on the map. Each is an arrow where it
@@ -195,10 +195,13 @@ function esc(s: string): string {
 
 /** What a check says and how much it still counts, for its popup (the model's verdict is in the outing's rows). */
 function popupHtml(c: WindCheck, at: number): string {
-  const felt = c.dirFrom == null ? 'calm' : `toward ${towardWords((c.dirFrom + 180) % 360, c.swingDeg)}, ${c.strength}`
+  const steady = steadiness(c)
+  const puffs = c.puffs ?? 1
+  const felt = `${c.dirFrom == null ? 'calm' : `toward ${towardWords((c.dirFrom + 180) % 360, c.swingDeg)}, ${c.strength}`}${steady ? `, ${steady}` : ''}${puffs > 1 ? ` (${puffs} puffs)` : ''}${c.aloft ? ' · treetops moving' : ''}${c.held ? ' · had held a while' : ''}`
   const v = verdict(c)
+  const av = aloftVerdict(c)
   const model = c.model
-    ? `<li>The model had ${c.model.kmh < 1 ? 'near calm' : `toward ${compass((c.model.dirFrom + 180) % 360)}`}${v ? ` · <b class="gc-verdict gc-${v}">${v === 'agree' ? 'agreed' : v === 'close' ? 'close' : 'missed'}</b>` : ''}</li>`
+    ? `<li>The model had ${c.model.kmh < 1 ? 'near calm' : `toward ${compass((c.model.dirFrom + 180) % 360)}`}${v ? ` · <b class="gc-verdict gc-${v}">${v === 'agree' ? 'agreed' : v === 'close' ? 'close' : 'missed'}</b>` : ''}${av ? `; the air ${c.model.decoupled ? 'come loose from the wind above' : 'mixed with the wind above'} · <b class="gc-verdict gc-${av}">${av === 'agree' ? 'agreed' : 'missed'}</b>` : ''}</li>`
     : ''
   const pull = Math.round(checkPull(c, c.lon, c.lat, at) * 100)
   const reach = Math.round(checkReachM(c, at) / 10) * 10

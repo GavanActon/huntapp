@@ -238,3 +238,9 @@
   font-size: calc(11.5px * var(--ui-scale));
   color: var(--c-text-dim);
 }
+
+/* the wind checks' scoreboard: a line per lesson under the tally */
+.log-report .log-lesson {
+  padding-left: 12px;
+  font-size: calc(12.5px * var(--ui-scale));
+}
