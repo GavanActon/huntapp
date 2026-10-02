@@ -42,18 +42,34 @@ export const PROFILES: readonly QualityProfile[] = [
 ]
 
 // Frames on a 60 Hz phone are 16.7 ms. Sustained past SLOW the phone is
-// dropping to forty a second or worse; back under FAST for a good while it
-// has room again. The holds keep the dial from hunting.
+// dropping to forty a second or worse; a good while with no slow frames and
+// a fast one now, it has room again. The holds keep the dial from hunting.
+//
+// Stepping back up used to need an UNBROKEN fast run: one long frame (a
+// tile decoding, a sheet opening), a glance that paused the loop, even a
+// frame in the middle band started the wait over. In real use something
+// like that comes every few seconds, so the dial only ever moved one way
+// and the streaks thinned out until the app was restarted. Now only slow
+// frames restart the wait, and a step up that turns out to be wrong makes
+// the next one wait longer, so a phone that can carry one level less does
+// not flip between the two.
 const SLOW_MS = 24
 const FAST_MS = 18
 const SLOW_HOLD_MS = 1500
 const FAST_HOLD_MS = 6000
+const FAST_HOLD_MAX_MS = 60_000
+/** A step up that has stood this long was right: the hold goes back down. */
+const STOOD_MS = 20_000
 
 let level = 0
 let ema = 16.7
 let lastAt = 0
 let slowSince = 0
-let fastSince = 0
+/** the last frame that read slow (or the last step either way) */
+let slowAt = 0
+/** whether the last step was up, and how long after the last slow frame the next one waits */
+let lastUp = false
+let upHold = FAST_HOLD_MS
 const listeners = new Set<(level: number) => void>()
 
 export function qualityLevel(): number {
@@ -72,10 +88,13 @@ export function onQuality(cb: (level: number) => void): () => void {
 
 function setLevel(l: number, now: number) {
   if (l === level) return
-  devlog('flow', `quality ${l > level ? '↓' : '↑'} ${l} · frames ${ema.toFixed(1)} ms`)
+  // stepped up and slow again soon after: the next step up waits longer
+  if (l > level && lastUp && now - slowAt < STOOD_MS) upHold = Math.min(FAST_HOLD_MAX_MS, upHold * 2)
+  lastUp = l < level
+  devlog('flow', `quality ${l > level ? '↓' : '↑'} ${l} · frames ${ema.toFixed(1)} ms · next up after ${upHold / 1000} s`)
   level = l
   slowSince = 0
-  fastSince = 0
+  slowAt = now
   lastAt = now
   for (const cb of listeners) cb(level)
 }
@@ -90,23 +109,19 @@ export function reportFrame(dtMs: number, now: number) {
     ema = dtMs > 250 ? ema : dtMs
     lastAt = now
     slowSince = 0
-    fastSince = 0
     return
   }
   lastAt = now
   ema += (dtMs - ema) * 0.08
   if (ema > SLOW_MS) {
-    fastSince = 0
+    slowAt = now
     if (!slowSince) slowSince = now
     else if (now - slowSince > SLOW_HOLD_MS && level < PROFILES.length - 1) setLevel(level + 1, now)
-  } else if (ema < FAST_MS) {
-    slowSince = 0
-    if (!fastSince) fastSince = now
-    else if (now - fastSince > FAST_HOLD_MS && level > 0) setLevel(level - 1, now)
-  } else {
-    slowSince = 0
-    fastSince = 0
+    return
   }
+  slowSince = 0
+  if (level > 0 && ema < FAST_MS && now - slowAt > upHold) setLevel(level - 1, now)
+  else if (lastUp && upHold !== FAST_HOLD_MS && now - slowAt > STOOD_MS) upHold = FAST_HOLD_MS
 }
 
 /** Smoothed frame interval, for the report. */
