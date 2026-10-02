@@ -1,38 +1,61 @@
 /* ============================================================
-   Sandies design system — dark-first marine UI
+   Huntapp design tokens — a dark forest chrome over the map,
+   with an Outdoor variant (opaque bone, dark ink) for daylight
    ============================================================ */
 
 :root {
-  /* palette */
-  --c-bg: #0a1522;
-  --c-bg-raised: #101e2e;
-  --c-surface: rgba(14, 27, 42, 0.78);
-  --c-surface-heavy: rgba(12, 23, 36, 0.92);
-  --c-border: rgba(126, 178, 224, 0.14);
-  --c-border-strong: rgba(126, 178, 224, 0.28);
-  --c-text: #eaf3fb;
-  --c-text-dim: #8fa9bf;
-  --c-text-faint: #5c7a89;
-  --c-accent: #3fc8ff;
-  --c-accent-dim: rgba(63, 200, 255, 0.16);
+  /* the dark neutral: the map's own forest black */
+  --c-bg: #0a100b;
+  --c-bg-rgb: 10, 16, 11;
+  --c-bg-raised: #141c15;
+  /* near black, nearly opaque: the chrome must stand off the map in daylight */
+  --c-surface: rgba(10, 16, 11, 0.9);
+  --c-surface-heavy: rgba(7, 12, 8, 0.97);
+  /* a strip cell, and one after dark */
+  --c-cell: rgba(18, 27, 19, 0.88);
+  --c-cell-night: rgba(3, 6, 4, 0.92);
+  /* the ink borders and hover washes are drawn in: a sage */
+  --c-ink-rgb: 190, 214, 182;
+  --c-border: rgba(var(--c-ink-rgb), 0.22);
+  --c-border-strong: rgba(var(--c-ink-rgb), 0.42);
+  --c-text: #f3f8ef;
+  --c-text-dim: #bccbb7;
+  --c-text-faint: #879b85;
+
+  /* the accent is a light camo sage, the Bow view's own tones: picked, on, go */
+  --c-accent: #d3dfb4;
+  --c-accent-rgb: 211, 223, 180;
+  /* the wash under a picked row or hour: strong enough to read as picked */
+  --c-accent-dim: rgba(var(--c-accent-rgb), 0.3);
+  --c-on-accent: #121709;
+  /* cyan is for air and water only: the wind, the drains, the ground air */
+  --c-wind: #4fc7ff;
+  --c-wind-rgb: 79, 199, 255;
+  /* a good score, a prime hour */
+  --c-good: #86d97a;
+  --c-good-rgb: 134, 217, 122;
+  /* a fair score: bone, between the green and the grey */
+  --c-fair: #cfccb4;
+  /* the trail behind you */
   --c-track: #59e0b8;
-  --c-warn: #ffb454;
+  /* a warning is clay, never a yellow */
+  --c-warn: #e2845a;
   --c-danger: #ff6b6b;
 
   /* depth ramp reference (matches map raster) */
   --c-shallow: #7fd4e8;
   --c-deep: #08263e;
 
-  /* shape + depth */
-  --r-lg: 22px;
-  --r-md: 16px;
-  --r-sm: 10px;
-  --blur: 20px;
-  --shadow-panel: 0 8px 32px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(126, 178, 224, 0.08) inset;
+  /* three corners: a tile, a card, a menu; the round buttons are exempt */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 18px;
+  --glass-filter: blur(20px) saturate(1.3);
+  --shadow-panel: 0 8px 32px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(var(--c-ink-rgb), 0.08) inset;
   --shadow-fab: 0 4px 16px rgba(0, 0, 0, 0.5);
-  --shadow-accent: 0 6px 22px rgba(63, 200, 255, 0.22);
+  --shadow-accent: 0 6px 22px rgba(var(--c-accent-rgb), 0.22);
 
-  /* motion: one curve and two durations for everything that isn't the chart */
+  /* motion: one curve and two durations for everything that isn't the map */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --dur-fast: 0.13s;
   --dur: 0.22s;
@@ -47,6 +70,41 @@
     -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue',
     sans-serif;
   color-scheme: dark;
+}
+
+/* Outdoor (Settings): for sun on the phone. Opaque surfaces, no glass,
+   dark ink on bone, the same accents darkened to hold their contrast. */
+:root[data-theme='outdoor'] {
+  --c-bg: #f3f0e7;
+  --c-bg-rgb: 243, 240, 231;
+  --c-bg-raised: #ffffff;
+  --c-surface: rgba(248, 246, 240, 0.97);
+  --c-surface-heavy: rgba(252, 251, 247, 0.99);
+  --c-cell: rgba(255, 255, 255, 0.92);
+  --c-cell-night: rgba(216, 212, 200, 0.92);
+  --c-ink-rgb: 38, 52, 36;
+  --c-border: rgba(var(--c-ink-rgb), 0.18);
+  --c-border-strong: rgba(var(--c-ink-rgb), 0.36);
+  --c-text: #121a10;
+  --c-text-dim: #3f4d3a;
+  --c-text-faint: #66745f;
+  --c-accent: #5a6b3e;
+  --c-accent-rgb: 90, 107, 62;
+  --c-accent-dim: rgba(var(--c-accent-rgb), 0.22);
+  --c-on-accent: #ffffff;
+  --c-wind: #0b6fae;
+  --c-wind-rgb: 11, 111, 174;
+  --c-good: #2f7d2a;
+  --c-good-rgb: 47, 125, 42;
+  --c-fair: #6f6f4e;
+  --c-track: #0f8a6a;
+  --c-warn: #b0532a;
+  --c-danger: #b8262c;
+  --glass-filter: none;
+  --shadow-panel: 0 4px 16px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(var(--c-ink-rgb), 0.08);
+  --shadow-fab: 0 3px 10px rgba(0, 0, 0, 0.28);
+  --shadow-accent: 0 6px 22px rgba(var(--c-accent-rgb), 0.18);
+  color-scheme: light;
 }
 
 * {
@@ -78,8 +136,8 @@ body {
 
 .glass {
   background: var(--c-surface);
-  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
-  backdrop-filter: blur(var(--blur)) saturate(1.4);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
   border: 1px solid var(--c-border);
   box-shadow: var(--shadow-panel);
 }
@@ -137,18 +195,26 @@ button:disabled {
   display: grid;
   place-items: center;
   background: var(--c-surface);
-  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
-  backdrop-filter: blur(var(--blur)) saturate(1.4);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
   border: 1px solid var(--c-border);
   box-shadow: var(--shadow-fab);
   color: var(--c-text);
   transition: transform 0.15s ease, background 0.2s ease, color 0.2s ease;
 }
 
+/* on: the accent itself, with dark ink, so a pressed button is never in doubt */
 .fab.active {
-  background: var(--c-accent-dim);
-  color: var(--c-accent);
-  border-color: rgba(63, 200, 255, 0.4);
+  background: var(--c-accent);
+  color: var(--c-on-accent);
+  border-color: var(--c-accent);
+}
+
+/* the wind flow's button is lit in the wind's own ink, not the accent */
+.fab.hotbtn[data-hot='windflow'].active {
+  background: var(--c-wind);
+  color: var(--c-on-accent);
+  border-color: var(--c-wind);
 }
 
 .fab svg {
@@ -162,20 +228,9 @@ button:disabled {
   font: inherit;
 }
 
-.maplibregl-ctrl-attrib {
-  background: rgba(10, 21, 34, 0.6) !important;
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  border-radius: 8px 0 0 0;
-}
-
-.maplibregl-ctrl-attrib a {
-  color: var(--c-text-dim) !important;
-  font-size: 10px;
-}
-
+/* the credits live under Settings → Map credits; only the scale stays on the map */
 .maplibregl-ctrl-scale {
-  background: rgba(10, 21, 34, 0.55) !important;
+  background: rgba(var(--c-bg-rgb), 0.55) !important;
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   border: none !important;

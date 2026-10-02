@@ -21,10 +21,11 @@ const DAY = 86_400_000
 const HOLD_MS = 350
 const SLOP_PX = 8
 
-/** The oldest entry the map shows, by the Past hunts setting: today, the week, or everything. */
+/** The oldest entry the map shows, by the Past hunts setting: none at all, today, the week, or everything. */
 function shownSince(): number {
   const now = Date.now()
   const v = useAppStore.getState().pastHunts
+  if (v === 'none') return Infinity
   if (v === 'today') return startOfDayMs(now)
   if (v === 'week') return now - 7 * DAY
   return 0

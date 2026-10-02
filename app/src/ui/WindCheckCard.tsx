@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { create } from 'zustand'
 import { compass } from '../weather/openMeteo'
 import { groundWind, loadMicro } from '../weather/micro/model'
-import { checkPull, checkSpentAt, towardWords, useWindChecks, verdict, type Strength, type WindCheck } from '../weather/micro/windChecks'
+import { checkPull, checkSpentAt, steadiness, towardWords, useWindChecks, verdict, type Strength, type WindCheck } from '../weather/micro/windChecks'
 import { clockShort } from '../time'
 import { useAppStore } from '../state/appStore'
 import { requestCompass, startCompass, stopCompass, useCompass } from '../tracking/compass'
@@ -85,6 +85,10 @@ export default function WindCheckCard() {
   const [toward, setToward] = useState<number | null>(null)
   const [swing, setSwing] = useState<number | null>(null)
   const [strength, setStrength] = useState<Strength | null>(null)
+  /** optional: treetops moving while it is calm here (the air decoupled) */
+  const [aloft, setAloft] = useState(false)
+  /** optional: the wind here has been the same for a while */
+  const [heldOn, setHeldOn] = useState(false)
   const [missing, setMissing] = useState<string | null>(null)
   const [saved, setSaved] = useState<WindCheck | null>(null)
   const [saving, setSaving] = useState(false)
@@ -170,9 +174,11 @@ export default function WindCheckCard() {
       dirFrom: calm || toward == null ? null : (mid + 180) % 360,
       swingDeg: calm ? undefined : swingDeg,
       strength,
+      ...(aloft ? { aloft: true } : {}),
+      ...(heldOn ? { held: true } : {}),
       ...(useAppStore.getState().who ? { by: useAppStore.getState().who } : {}),
       source: 'hand',
-      model: g ? { dirFrom: g.dirFrom, kmh: g.kmh, regime: g.regime, sigmaDeg: g.sigmaDeg } : undefined,
+      model: g ? { dirFrom: g.dirFrom, kmh: g.kmh, regime: g.regime, sigmaDeg: g.sigmaDeg, decoupled: g.decoupled, slot: g.inSlot, ...(g.bias ? { bias: g.bias } : {}) } : undefined,
     })
     setSaving(false)
     setSaved(c)
@@ -181,6 +187,8 @@ export default function WindCheckCard() {
   if (saved) {
     const v = verdict(saved)
     const pull = Math.round(checkPull(saved, saved.lon, saved.lat, Date.now()) * 100)
+    const puffs = saved.puffs ?? 1
+    const steady = steadiness(saved)
     return (
       <div className="tripbuilder glass ground-card" ref={ref}>
         <div className="tb-head">
@@ -189,6 +197,12 @@ export default function WindCheckCard() {
             Done
           </button>
         </div>
+        {puffs > 1 && (
+          <div className="gc-line">
+            Puff {puffs} of this check: {saved.dirFrom == null ? 'calm' : `toward ${towardWords((saved.dirFrom + 180) % 360, saved.swingDeg)}`}
+            {steady ? `, ${steady}` : ''}
+          </div>
+        )}
         <div className="gc-line">
           Saved
           {v && (
@@ -249,6 +263,16 @@ export default function WindCheckCard() {
             {s}
           </button>
         ))}
+      </div>
+      {/* optional, and worth more than they look: the treetops question is the layering model's one real test */}
+      <div className="gc-q">If you noticed</div>
+      <div className="gc-strength">
+        <button className={`chip-pick${aloft ? ' chip-on' : ''}`} onClick={() => setAloft((v) => !v)} aria-pressed={aloft}>
+          treetops moving, calm here
+        </button>
+        <button className={`chip-pick${heldOn ? ' chip-on' : ''}`} onClick={() => setHeldOn((v) => !v)} aria-pressed={heldOn}>
+          same as a while ago
+        </button>
       </div>
       {missing && <div className="gc-missing">{missing}</div>}
       <button className="btn-primary" disabled={saving} onClick={() => void save()}>

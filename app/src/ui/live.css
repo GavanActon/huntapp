@@ -36,12 +36,12 @@
   width: 32px;
   height: 32px;
   margin: -6px -8px -6px 0;
-  border-radius: 8px;
+  border-radius: var(--r-md);
   color: var(--c-text-dim);
 }
 
 .lc-fold:active {
-  background: rgba(126, 178, 224, 0.1);
+  background: rgba(var(--c-ink-rgb), 0.1);
   transform: none;
 }
 
@@ -83,7 +83,7 @@
   gap: 2px;
   height: 44px;
   padding: 0 4px 0 12px;
-  border-radius: 8px;
+  border-radius: var(--r-md);
   white-space: nowrap;
 }
 
@@ -99,7 +99,7 @@
   align-items: center;
   height: 32px;
   padding: 0 10px;
-  border-radius: 8px;
+  border-radius: var(--r-md);
   color: var(--c-accent);
   font-weight: 650;
   font-size: calc(13px * var(--ui-scale));
@@ -107,7 +107,7 @@
 
 .lc-party-n:active,
 .lc-act:active {
-  background: rgba(126, 178, 224, 0.1);
+  background: rgba(var(--c-ink-rgb), 0.1);
   transform: none;
 }
 
@@ -163,7 +163,7 @@
   -webkit-appearance: none;
   height: 4px;
   border-radius: 2px;
-  background: linear-gradient(90deg, rgba(255, 157, 77, 0.55), rgba(126, 178, 224, 0.25));
+  background: linear-gradient(90deg, rgba(255, 157, 77, 0.55), rgba(var(--c-ink-rgb), 0.25));
 }
 
 .sc-slider::-webkit-slider-thumb {
@@ -217,9 +217,9 @@
   align-items: center;
   justify-content: center;
   padding: 10px 14px;
-  border-radius: 12px;
-  background: rgba(126, 178, 224, 0.1);
-  border: 1px solid rgba(126, 178, 224, 0.22);
+  border-radius: var(--r-md);
+  background: rgba(var(--c-ink-rgb), 0.1);
+  border: 1px solid rgba(var(--c-ink-rgb), 0.22);
   color: var(--c-text);
   font-weight: 600;
   font-size: calc(14px * var(--ui-scale));

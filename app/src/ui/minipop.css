@@ -2,7 +2,7 @@
    what it is in a line or two, then its actions. It sits in the tap popup's
    frame (.depth-popup) and uses its button row (.pp-acts). */
 .mp-head { display: flex; align-items: baseline; gap: 7px; font-size: 12.5px; color: var(--c-text-dim); }
-.mp-head i { flex: none; width: 10px; height: 10px; border-radius: 50%; align-self: center; box-shadow: 0 0 0 2px rgba(6, 14, 24, 0.9); }
+.mp-head i { flex: none; width: 10px; height: 10px; border-radius: 50%; align-self: center; box-shadow: 0 0 0 2px rgba(var(--c-bg-rgb), 0.9); }
 .mp-head b { font-size: 15px; color: var(--c-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mp-sub { margin-top: 2px; font-size: 12px; color: var(--c-text-dim); }
 .mp-note { margin-top: 4px; font-size: 12px; color: var(--c-text); white-space: pre-wrap; max-height: 20vh; overflow-y: auto; }

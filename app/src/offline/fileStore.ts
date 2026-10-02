@@ -70,13 +70,30 @@ export function listStored(): StoredFileInfo[] {
   return out
 }
 
+/** The charts directory, opened once: start-up asks for some 25 files at
+ *  once, and on an iPhone each getDirectory + getDirectoryHandle pair is
+ *  its own slow trip into the file system. A miss (no directory yet) is
+ *  not kept, so the first download can still create it. */
+let dirHandle: Promise<FileSystemDirectoryHandle | null> | null = null
+
 async function opfsDir(create: boolean): Promise<FileSystemDirectoryHandle | null> {
-  try {
-    const root = await navigator.storage.getDirectory()
-    return await root.getDirectoryHandle(DIR, { create })
-  } catch {
-    return null
+  if (dirHandle) {
+    const h = await dirHandle
+    if (h) return h
+    dirHandle = null
   }
+  const open = (async () => {
+    try {
+      const root = await navigator.storage.getDirectory()
+      return await root.getDirectoryHandle(DIR, { create })
+    } catch {
+      return null
+    }
+  })()
+  dirHandle = open
+  const h = await open
+  if (!h) dirHandle = null
+  return h
 }
 
 /** Returns the stored file as a Blob (random-access via .slice), or null. */

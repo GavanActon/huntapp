@@ -12,7 +12,7 @@ import type { FeatureCollection } from 'geojson'
 import { inRegion, REGION, SPOTS_RADIUS_M } from '../config'
 import { devlog } from '../devlog'
 import { initDigInMarker } from '../map/diginMarker'
-import { getMap, onEachMap, withMap } from '../map/mapController'
+import { getMap, onEachMap, onFirstIdle, withMap } from '../map/mapController'
 import { useMeasureStore } from '../measure/measureStore'
 import { useRoutes } from '../routes/routeStore'
 import { useAppStore } from '../state/appStore'
@@ -27,7 +27,7 @@ import { habitat, loadHabitat, onHabitat, COVER } from './habitatGrid'
 import { scoreTarget } from './scoring'
 import { loadMicro, onMicro } from '../weather/micro/model'
 import { useScent } from '../weather/micro/scent'
-import { onProfile } from '../weather/boundaryLayer'
+import { ensureProfile, onProfile } from '../weather/boundaryLayer'
 import { useWindChecks } from '../weather/micro/windChecks'
 import { isFish } from './types'
 
@@ -228,11 +228,11 @@ const EDGE_DARKEN = 0.5
 /** In-place 3×3 tent smooth (1-2-1) of `f`, only ever mixing cells of the
  *  wanted class (water or not), with the weights renormalised so a cell
  *  next to the other class keeps its value. */
-function smooth(f: Float32Array, cover: Uint8Array, water: boolean, cols: number, rows: number) {
+function smooth(f: Float32Array, cover: Uint8Array, water: boolean, cols: number, rows: number, r0: number, r1: number, c0: number, c1: number) {
   const src = Float32Array.from(f)
   const K = [1, 2, 1]
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
+  for (let r = r0; r < r1; r++) {
+    for (let c = c0; c < c1; c++) {
       const i = r * cols + c
       if ((cover[i] === COVER.water) !== water) continue
       let acc = 0
@@ -262,6 +262,22 @@ function paint(scores: Float32Array | null, water: boolean, near: { lon: number;
   const { cols, rows } = h
   const W = cols * UP
   const H = rows * UP
+  // the painted window: nothing shows past a third beyond the radius, so
+  // only those cells (and their pixels) are worked, not the whole region
+  const ni = h.index(near.lon, near.lat)
+  const [nr, nc] = ni >= 0 ? h.rc(ni) : [rows >> 1, cols >> 1]
+  const rx = SPOTS_RADIUS_M / h.cellM[0]
+  const ry = SPOTS_RADIUS_M / h.cellM[1]
+  const PAD = 2 // room for the smooth
+  const wr0 = Math.max(0, Math.floor(nr - 1.34 * ry) - PAD)
+  const wr1 = Math.min(rows, Math.ceil(nr + 1.34 * ry) + PAD + 1)
+  const wc0 = Math.max(0, Math.floor(nc - 1.34 * rx) - PAD)
+  const wc1 = Math.min(cols, Math.ceil(nc + 1.34 * rx) + PAD + 1)
+  const px0 = wc0 * UP
+  const py0 = wr0 * UP
+  const pw = (wc1 - wc0) * UP
+  const ph = (wr1 - wr0) * UP
+  ctx.clearRect(0, 0, W, H)
   const img = ctx.createImageData(W, H)
   const d = img.data
   if (scores) {
@@ -270,47 +286,43 @@ function paint(scores: Float32Array | null, water: boolean, near: { lon: number;
     const tone = new Float32Array(cols * rows)
     const wash = new Float32Array(cols * rows)
     const cover = h.raw('cover') as Uint8Array
-    const ni = h.index(near.lon, near.lat)
-    const [nr, nc] = ni >= 0 ? h.rc(ni) : [rows >> 1, cols >> 1]
-    const rx = SPOTS_RADIUS_M / h.cellM[0]
-    const ry = SPOTS_RADIUS_M / h.cellM[1]
-    for (let i = 0; i < scores.length; i++) {
-      const isWater = cover[i] === COVER.water
-      if (isWater !== water) continue
-      const r = (i / cols) | 0
-      const c = i - r * cols
-      // 1 inside the radius, gone by a third past it
-      const dist = Math.sqrt(((r - nr) / ry) ** 2 + ((c - nc) / rx) ** 2)
-      const fade = dist <= 1 ? 1 : Math.max(0, 1 - (dist - 1) * 3)
-      if (fade <= 0) continue
-      const s = scores[i]
-      if (s < 0.45) {
-        wash[i] = fade
-        continue
+    for (let r = wr0; r < wr1; r++)
+      for (let c = wc0; c < wc1; c++) {
+        const i = r * cols + c
+        const isWater = cover[i] === COVER.water
+        if (isWater !== water) continue
+        // 1 inside the radius, gone by a third past it
+        const dist = Math.sqrt(((r - nr) / ry) ** 2 + ((c - nc) / rx) ** 2)
+        const fade = dist <= 1 ? 1 : Math.max(0, 1 - (dist - 1) * 3)
+        if (fade <= 0) continue
+        const s = scores[i]
+        if (s < 0.45) {
+          wash[i] = fade
+          continue
+        }
+        // only the top of the range lights up: a heat map that covers the bush says nothing
+        cov[i] = fade
+        tone[i] = Math.min(1, (s - 0.45) / 0.45)
       }
-      // only the top of the range lights up: a heat map that covers the bush says nothing
-      cov[i] = fade
-      tone[i] = Math.min(1, (s - 0.45) / 0.45)
-    }
     // a light 3×3 smooth of coverage and wash among same-class cells, so
     // the 30 m lattice does not read as stair-steps at low zoom; water and
     // land never blend, and tone is left alone so the bands stay honest
     // tone rides on coverage so an off cell never pulls a neighbour's colour down
     for (let i = 0; i < tone.length; i++) tone[i] *= cov[i]
     for (let k = 0; k < 2; k++) {
-      smooth(tone, cover, water, cols, rows)
-      smooth(cov, cover, water, cols, rows)
-      smooth(wash, cover, water, cols, rows)
+      smooth(tone, cover, water, cols, rows, wr0, wr1, wc0, wc1)
+      smooth(cov, cover, water, cols, rows, wr0, wr1, wc0, wc1)
+      smooth(wash, cover, water, cols, rows, wr0, wr1, wc0, wc1)
     }
     for (let i = 0; i < tone.length; i++) tone[i] = cov[i] > 1e-4 ? tone[i] / cov[i] : 0
     const level = new Uint8Array(W * H)
     const cova = new Float32Array(W * H)
-    for (let y = 0; y < H; y++) {
+    for (let y = py0; y < py0 + ph; y++) {
       const fy = (y + 0.5) / UP - 0.5
       const r0 = Math.max(0, Math.min(rows - 1, Math.floor(fy)))
       const r1 = Math.min(rows - 1, r0 + 1)
       const wy = Math.max(0, Math.min(1, fy - r0))
-      for (let x = 0; x < W; x++) {
+      for (let x = px0; x < px0 + pw; x++) {
         const fx = (x + 0.5) / UP - 0.5
         const c0 = Math.max(0, Math.min(cols - 1, Math.floor(fx)))
         const c1 = Math.min(cols - 1, c0 + 1)
@@ -346,8 +358,8 @@ function paint(scores: Float32Array | null, water: boolean, near: { lon: number;
       }
     }
     // a dark line where a band steps up to the next (the higher side), one canvas pixel wide
-    for (let y = 1; y < H; y++) {
-      for (let x = 1; x < W; x++) {
+    for (let y = Math.max(1, py0); y < Math.min(H - 1, py0 + ph); y++) {
+      for (let x = Math.max(1, px0); x < Math.min(W - 1, px0 + pw); x++) {
         const p = y * W + x
         const l = level[p]
         if (!l) continue
@@ -361,7 +373,7 @@ function paint(scores: Float32Array | null, water: boolean, near: { lon: number;
       }
     }
   }
-  ctx.putImageData(img, 0, 0)
+  ctx.putImageData(img, 0, 0, px0, py0, pw, ph)
   const m = getMap()
   const src = m?.getSource(HEAT_SRC) as (ImageSource & { play?: () => void; pause?: () => void }) | undefined
   // a canvas source with animate:false needs a nudge to re-read
@@ -413,6 +425,18 @@ async function recompute() {
     s.setHours(hourScores(f, s.target, recent, null, s.weights, Date.now()))
     return s.setResult(null, c, 'no-grid', plans)
   }
+  // the site rules read the ground wind and the wind profile: with either
+  // still on its way the whole pass would only be done again when it
+  // lands (both are cached after the first call, and answer at once
+  // offline or with no file)
+  await loadMicro()
+  await ensureProfile()
+  // the loads above tell their listeners, and every listener asks for a
+  // pass: this one has already read what they brought, so the asks since
+  // the last pass read its inputs are what counts, not the asks since it
+  // was scheduled
+  if (inputsGen === scoredGen) return
+  scoredGen = inputsGen
   const m = getMap()
   if (m) ensureSources(m)
   const t0 = performance.now()
@@ -432,12 +456,28 @@ async function recompute() {
   pins(mm)
 }
 
+/** Until when a scoring pass is held back: the map's first settled frame
+ *  (or a moment after a map is made). The grids, the forecast and the
+ *  wind profile all land in the first seconds and each asked for a pass,
+ *  so the phone scored and painted three to five times, every one of
+ *  them a main-thread block of half a second or more while the tiles were
+ *  trying to draw. Held, they fold into one pass after the chart is up. */
+let holdUntil = 0
+/** Counts every ask for a pass; a pass notes the count as it reads its
+ *  inputs, and a later ask that finds the count unchanged is a no-op. */
+let inputsGen = 0
+let scoredGen = -1
+
 function schedule() {
+  inputsGen++
   if (timer != null) clearTimeout(timer)
-  timer = window.setTimeout(() => {
-    timer = null
-    void recompute()
-  }, 120)
+  timer = window.setTimeout(
+    () => {
+      timer = null
+      void recompute()
+    },
+    Math.max(120, holdUntil - performance.now()),
+  )
 }
 
 let wired = false
@@ -451,6 +491,12 @@ export function initSpotsLayer() {
       canvas = null
     })
     if (habitat()) ensureSources(m)
+    holdUntil = performance.now() + 2500
+    onFirstIdle(m, () => {
+      holdUntil = 0
+      // a pass waiting on the hold runs now, not at the hold's end
+      if (timer != null) schedule()
+    })
     schedule()
   })
   withMap(() => {

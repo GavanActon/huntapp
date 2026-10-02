@@ -1,6 +1,6 @@
 import { gpxDoc, trackToGpx, trkXml, useTrackStore, type Track, type TrackPoint } from '../tracking/trackStore'
 import { compass } from '../weather/openMeteo'
-import { useWindChecks, verdict, type WindCheck } from '../weather/micro/windChecks'
+import { steadiness, towardWords, useWindChecks, verdict, type WindCheck } from '../weather/micro/windChecks'
 import { clockShort } from '../time'
 import { SOUND_NAMES, SPECIES_NAMES, useHuntLog, WHAT_NAMES, type LogEntry } from './huntLog'
 import { outingChecks, outingEntries, outingTitle, type Outing } from './outings'
@@ -92,9 +92,17 @@ function entryWpt(e: LogEntry): string {
 }
 
 function checkWpt(c: WindCheck): string {
-  const felt = c.dirFrom == null ? 'calm' : `toward ${compass((c.dirFrom + 180) % 360)}, ${c.strength}`
+  const steady = steadiness(c)
+  const felt = `${c.dirFrom == null ? 'calm' : `toward ${towardWords((c.dirFrom + 180) % 360, c.swingDeg)}, ${c.strength}`}${steady ? `, ${steady}` : ''}`
   const v = verdict(c)
-  const desc = [c.model ? `model: from ${compass(c.model.dirFrom)} ${Math.round(c.model.kmh)} km/h, ${c.model.regime}` : '', v ? (v === 'agree' ? 'agreed' : v === 'close' ? 'close' : 'missed') : '', c.note ?? '']
+  const desc = [
+    (c.puffs ?? 1) > 1 ? `${c.puffs} puffs` : '',
+    c.aloft ? 'treetops moving' : '',
+    c.held ? 'had held a while' : '',
+    c.model ? `model: from ${compass(c.model.dirFrom)} ${Math.round(c.model.kmh)} km/h, ${c.model.regime}${c.model.slot ? ' (slot)' : ''}${c.model.decoupled ? ', decoupled' : ''}` : '',
+    v ? (v === 'agree' ? 'agreed' : v === 'close' ? 'close' : 'missed') : '',
+    c.note ?? '',
+  ]
     .filter(Boolean)
     .join(' · ')
   return wpt(c.lon, c.lat, c.ts, `Wind check ${clockShort(c.ts)} · ${felt}`, desc, 'windcheck')

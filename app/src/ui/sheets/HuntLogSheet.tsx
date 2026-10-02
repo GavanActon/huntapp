@@ -7,7 +7,8 @@ import { getMap } from '../../map/mapController'
 import { useAppStore } from '../../state/appStore'
 import { useGpsStore } from '../../tracking/gpsStore'
 import { useTrackStore } from '../../tracking/trackStore'
-import { useWindChecks, verdict } from '../../weather/micro/windChecks'
+import { aloftVerdict, useWindChecks, verdict } from '../../weather/micro/windChecks'
+import { biasMatters, biasWords, LESSON_WORDS, lessonScores } from '../../weather/micro/bias'
 import { useLogForm } from '../LogCard'
 import { useTapOff } from '../tapOff'
 import './log.css'
@@ -44,6 +45,8 @@ export default function HuntLogSheet(): JSX.Element {
 
   const scored = checks.filter((c) => c.source === 'hand' && verdict(c) != null)
   const hits = scored.filter((c) => verdict(c) === 'agree').length
+  const aloftN = checks.filter((c) => aloftVerdict(c) != null).length
+  const aloftHits = checks.filter((c) => aloftVerdict(c) === 'agree').length
   const tally = tallies(entries)
 
   return (
@@ -111,6 +114,21 @@ export default function HuntLogSheet(): JSX.Element {
           {scored.length > 0 && (
             <div>
               <b>Wind checks</b> · model {hits}/{scored.length} agreed
+              {lessonScores(scored, verdict).map((r) => {
+                const n = r.agree + r.close + r.miss
+                const w = LESSON_WORDS[r.lesson]
+                return (
+                  <div key={r.lesson} className="log-lesson">
+                    {w[0].toUpperCase() + w.slice(1)}: {r.agree} of {n} agreed{r.close ? `, ${r.close} close` : ''}
+                    {biasMatters(r.bias) ? ` · ${biasWords(r.bias, r.lesson).replace(/ this season$/, '')}` : n < 5 ? ' · too few to learn from yet' : ''}
+                  </div>
+                )
+              })}
+              {aloftN > 0 && (
+                <div className="log-lesson">
+                  Treetops against the ground: the layering called right {aloftHits} of {aloftN}
+                </div>
+              )}
             </div>
           )}
         </div>

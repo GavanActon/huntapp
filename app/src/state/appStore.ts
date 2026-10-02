@@ -192,8 +192,8 @@ export interface AppState {
   buttonLabels: boolean
   setButtonLabels: (v: boolean) => void
   /** how far back the log's dots show on the map; persisted */
-  pastHunts: 'today' | 'week' | 'all'
-  setPastHunts: (v: 'today' | 'week' | 'all') => void
+  pastHunts: 'none' | 'today' | 'week' | 'all'
+  setPastHunts: (v: 'none' | 'today' | 'week' | 'all') => void
 
   layers: LayerVisibility
   setLayer: (k: keyof LayerVisibility, v: boolean) => void
@@ -229,6 +229,9 @@ export interface AppState {
   setLowPower: (v: boolean) => void
   textSize: SizeStop
   setTextSize: (v: SizeStop) => void
+  /** Outdoor: opaque bone chrome and dark ink for sun on the phone; persisted */
+  outdoor: boolean
+  setOutdoor: (v: boolean) => void
   /** your initials, on the wind checks you share with the party */
   who: string
   setWho: (v: string) => void
@@ -257,7 +260,9 @@ export const useAppStore = create<AppState>()(
       popSheet: () => set((st) => ({ sheets: st.sheets.slice(0, -1) })),
       closeSheet: () => set({ sheets: [] }),
       topCard: null,
-      setTopCard: (topCard) => set({ topCard }),
+      // a top card takes the slot under the strip: the strip folds so the
+      // card lands above the button columns, not under them
+      setTopCard: (topCard) => set(topCard ? { topCard, stripOpen: false } : { topCard }),
 
       stripOpen: false,
       setStripOpen: (stripOpen) => set({ stripOpen }),
@@ -301,6 +306,8 @@ export const useAppStore = create<AppState>()(
       setLowPower: (lowPower) => set({ lowPower }),
       textSize: 'auto',
       setTextSize: (textSize) => set({ textSize }),
+      outdoor: false,
+      setOutdoor: (outdoor) => set({ outdoor }),
       who: '',
       setWho: (who) => set({ who: who.trim().slice(0, 12) }),
       planTimeMs: null,
@@ -359,6 +366,7 @@ export const useAppStore = create<AppState>()(
         windLevel: s.windLevel,
         lowPower: s.lowPower,
         textSize: s.textSize,
+        outdoor: s.outdoor,
         stripOpen: s.stripOpen,
         hotButtons: s.hotButtons,
         leftHanded: s.leftHanded,

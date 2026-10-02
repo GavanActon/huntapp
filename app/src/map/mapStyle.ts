@@ -1,5 +1,6 @@
 import { DARK, layers as basemapLayers } from '@protomaps/basemaps'
-import type { ExpressionSpecification, FilterSpecification, LayerSpecification, StyleSpecification } from 'maplibre-gl'
+import type { FeatureCollection } from 'geojson'
+import type { ExpressionSpecification, FilterSpecification, GeoJSONSource, LayerSpecification, Map as MlMap, StyleSpecification } from 'maplibre-gl'
 import { LIVE_RASTER, LIVE_VECTOR } from '../sources'
 import type { ContourInterval, LayerOpacity, LayerVisibility } from '../state/appStore'
 
@@ -38,6 +39,27 @@ function tag<T extends LayerSpecification>(l: T, group: keyof LayerVisibility, o
 }
 
 const vis = (on: boolean) => ({ visibility: on ? 'visible' : 'none' }) as const
+
+const EMPTY_FC: FeatureCollection = { type: 'FeatureCollection', features: [] }
+
+/** GeoJSON sources whose layers are all switched off when the style is
+ *  built start empty, with the real file noted here: MapLibre fetches and
+ *  indexes a GeoJSON source the moment it is added, hidden or not, and the
+ *  forest stands alone are 5 MB. They are filled in once the map has drawn
+ *  its first settled frame, or the moment their switch goes on
+ *  (flushDeferredGeo), whichever comes first. */
+export const deferredGeo = new Map<string, { url: string; group: keyof LayerVisibility }>()
+
+/** Give the deferred sources their data: all of them, or with `layers`
+ *  only those whose group is now on. */
+export function flushDeferredGeo(map: MlMap, layers?: LayerVisibility) {
+  for (const [id, { url, group }] of deferredGeo) {
+    if (layers && !layers[group]) continue
+    const src = map.getSource(id) as GeoJSONSource | undefined
+    if (src) src.setData(url)
+    deferredGeo.delete(id)
+  }
+}
 
 /** The baked 1 m LiDAR shade lightens flat ground: a white veil, which is
  *  the grey of the Terrain view over the dark base. Over the imagery that
@@ -114,6 +136,13 @@ const HALO = { 'text-halo-color': 'rgba(10,20,12,0.92)', 'text-halo-width': 1.2 
 export function buildMapStyle(o: StyleOpts): StyleSpecification {
   const sources: StyleSpecification['sources'] = {}
   const has = (k: string) => o.available.has(k)
+  deferredGeo.clear()
+  // a GeoJSON source's data: the file when a layer of its group is on, else empty for now
+  const geoData = (id: string, url: string, group: keyof LayerVisibility) => {
+    if (o.layers[group]) return url
+    deferredGeo.set(id, { url, group })
+    return EMPTY_FC
+  }
 
   // ---- base ----
   let base: LayerSpecification[]
@@ -184,7 +213,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   if (dem) {
     sources.dem = { type: 'raster-dem', url: 'pmtiles://dem', encoding: 'mapbox', tileSize: 256, attribution: 'MRDEM, HRDEM LiDAR © Natural Resources Canada' }
     const lakes = o.geo.get('waterbody')
-    if (lakes) sources.lakes = { type: 'geojson', data: lakes, attribution: '© Ontario MNRF' }
+    if (lakes) sources.lakes = { type: 'geojson', data: geoData('lakes', lakes, 'relief'), attribution: '© Ontario MNRF' }
     rasters.push(
       tag(
         {
@@ -447,15 +476,16 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
     const live = t in LIVE_VECTOR ? LIVE_VECTOR[t as keyof typeof LIVE_VECTOR] : undefined
     const baked = o.geo.get(t)
     if (baked) {
-      sources[`geo-${t}`] = { type: 'geojson', data: baked, attribution: live?.attribution ?? '© Ontario MNRF' }
+      sources[`geo-${t}`] = { type: 'geojson', data: geoData(`geo-${t}`, baked, t), attribution: live?.attribution ?? '© Ontario MNRF' }
       return { source: `geo-${t}` }
     }
     if (!live) return null
-    sources[`live-${t}`] = { type: 'geojson', data: live.url, attribution: live.attribution }
+    sources[`live-${t}`] = { type: 'geojson', data: geoData(`live-${t}`, live.url, t), attribution: live.attribution }
     return { source: `live-${t}` }
   }
 
-  // Forest cover: FRI stand polygons by cover group, age as label.
+  // Forest cover: FRI stand polygons by cover group; the species-and-year
+  // code as a label only in close (Dig in says it in words at any zoom).
   const forest = themeSource('forest')
   if (forest) {
     vectors.push(
@@ -488,7 +518,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
           id: 'forest-label',
           type: 'symbol',
           ...forest,
-          minzoom: 13,
+          minzoom: 15,
           layout: {
             ...vis(o.layers.forest),
             'text-field': ['concat', ['coalesce', ['get', 'species'], ''], ' ', ['coalesce', ['to-string', ['get', 'year']], '']],

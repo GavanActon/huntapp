@@ -27,6 +27,12 @@ import { currentTextStop } from '../ui/textScale'
 const FIELD_STEP = 28 // css px between wind samples
 const ALPHA_BANDS = 12
 
+/** The streaks fade out below zoom 15: in close the eddies and the slots
+ *  read; far out the sheet of them only hides the map. */
+function zoomFade(z: number): number {
+  return Math.min(1, Math.max(0.3, (z - 13) / 2))
+}
+
 /** Streak width by the size setting, css px; auto follows the text size (Settings). */
 const STREAK_PX = { standard: 1.2, large: 2, larger: 2.8 } as const
 let streakPx: number = STREAK_PX.standard
@@ -220,7 +226,11 @@ function readLuminance(map: MlMap, f: FieldGrid) {
   try {
     c.width = f.cols
     c.height = f.rows
-    const g = c.getContext('2d', { willReadFrequently: true })
+    // not willReadFrequently: that keeps this canvas on the CPU, and then
+    // drawImage has to read the whole GL frame back to scale it down (a
+    // full-screen readback and a pipeline stall on every call). On the GPU
+    // the scale is a texture copy and only the cols×rows pixels are read.
+    const g = c.getContext('2d')
     if (!g) return
     g.imageSmoothingEnabled = true
     g.imageSmoothingQuality = 'high'
@@ -240,8 +250,12 @@ function sampleLuminance(map: MlMap, f: FieldGrid) {
   map.triggerRepaint()
 }
 
-/** Renders at least this far apart are read again, for tiles landing after the field was built. */
-const LUM_EVERY_MS = 500
+/** Renders at least this far apart are read again while the map is still
+ *  drawing (an archive that never idles): a fallback, since every read is a
+ *  GPU sync. The usual re-read is one per 'idle', when the tiles have landed. */
+const LUM_EVERY_MS = 2000
+/** Reads asked for by the map going idle are at least this far apart. */
+const LUM_MIN_GAP_MS = 1000
 
 function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
   const cols = Math.ceil(w / FIELD_STEP) + 1
@@ -469,7 +483,7 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
     ctx.globalCompositeOperation = 'source-over'
     ctx.setTransform(dpr * M.a, dpr * M.b, dpr * M.c, dpr * M.d, dpr * M.e, dpr * M.f)
 
-    const level = opts.level() * Math.min(1, (now - born) / 900)
+    const level = opts.level() * Math.min(1, (now - born) / 900) * zoomFade(map.getZoom())
     for (let b = 0; b < ALPHA_BANDS * TONES; b++) bands[b] = new Path2D()
     // until the map under the field has been read: dark ink on a pale base
     // (topo, the elevation colours, the shade alone), light over the rest
@@ -544,7 +558,38 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
     lumAt = now
     readLuminance(map, field)
   }
+  // the map settled (every tile in): one read on the next render, which
+  // is when the GL canvas can be read. While tiles are landing the map
+  // renders continuously, so the render clock alone read it every half
+  // second through the whole load, each a GPU stall.
+  let ownIdle = false
+  let lumTimer = 0
+  const readNext = () => {
+    lumAt = performance.now()
+    ownIdle = true
+    map.once('render', () => readLuminance(map, field))
+    map.triggerRepaint()
+  }
+  const onIdle = () => {
+    // the repaint asked for in readNext ends in an idle of its own: skip
+    // that one (a clock would not do: a read slower than the gap loops)
+    if (ownIdle) {
+      ownIdle = false
+      return
+    }
+    if (!same(anchor.current(map), IDENTITY)) return
+    // while tiles land the idles come in bursts: a read a second at most,
+    // the last burst's read kept so the settled map is what was read
+    const wait = LUM_MIN_GAP_MS - (performance.now() - lumAt)
+    if (wait <= 0) readNext()
+    else if (!lumTimer)
+      lumTimer = window.setTimeout(() => {
+        lumTimer = 0
+        if (same(anchor.current(map), IDENTITY)) readNext()
+      }, wait)
+  }
   map.on('render', onRender)
+  map.on('idle', onIdle)
 
   return {
     dead: false,
@@ -553,6 +598,8 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
       cancelAnimationFrame(raf)
       offQuality()
       map.off('render', onRender)
+      map.off('idle', onIdle)
+      clearTimeout(lumTimer)
       canvas.remove()
     },
   }

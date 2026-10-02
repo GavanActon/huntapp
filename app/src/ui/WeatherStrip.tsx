@@ -18,7 +18,7 @@ import { useWindChecks } from '../weather/micro/windChecks'
 import { activityBar } from '../spots/grades'
 import { FISH_TARGETS, HUNT_TARGETS, TARGET_NAMES, type Target } from '../spots/types'
 import { agoLabel, clockShort, dayLabel, dayShort, floorHourMs, hourAmPm, hourShort, startOfDayMs } from '../time'
-import { IconCheck, IconChevronDown, IconChevronUp, IconDots, IconHeat } from './icons'
+import { IconCheck, IconChevronDown, IconChevronUp, IconDots, IconHeat, IconSun } from './icons'
 import AppMenu from './AppMenu'
 import { useMapUpdates } from '../offline/updates'
 import { useLookTick } from './useLookTick'
@@ -149,6 +149,8 @@ export default function WeatherStrip() {
   const setPlanTime = useAppStore((s) => s.setPlanTime)
   const units = useAppStore((s) => s.units)
   const online = useAppStore((s) => s.online)
+  const outdoor = useAppStore((s) => s.outdoor)
+  const setOutdoor = useAppStore((s) => s.setOutdoor)
   const selectedId = usePlacesStore((s) => s.selectedId)
   const hasFix = useGpsStore((s) => s.fix != null)
   const target = useSpotsStore((s) => s.target)
@@ -427,7 +429,10 @@ export default function WeatherStrip() {
       <button className={`wx-heat${heat ? ' on' : ''}`} onClick={() => setHeat(!heat)} aria-pressed={heat} aria-label="Heat map">
         <IconHeat size={16} />
       </button>
-      <span className="wx-spacer" />
+      <button className={`wx-heat wx-theme${outdoor ? ' on' : ''}`} onClick={() => setOutdoor(!outdoor)} aria-pressed={outdoor} aria-label="Outdoor · light chrome for sun">
+        <IconSun size={16} />
+      </button>
+      {f ? <span className="wx-spacer" /> : <span className="wx-spacer wxstrip-empty">{emptyText}</span>}
       {planTimeMs != null && (
         <button className="wx-now" onClick={() => setPlanTime(null)}>
           Now
@@ -449,9 +454,7 @@ export default function WeatherStrip() {
     <div className="wxstrip glass">
       {stale && <span className="wxstrip-stale" />}
       {head}
-      {!f ? (
-        <div className="wxstrip-empty">{emptyText}</div>
-      ) : (
+      {f && (
         <>
           {stripOpen && (
           <div className="wxstrip-days">

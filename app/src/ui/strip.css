@@ -46,7 +46,7 @@
   gap: 4px;
   height: 26px;
   padding: 0 10px;
-  border-radius: var(--r-tile);
+  border-radius: var(--r-sm);
   background: var(--c-accent-dim);
   outline: 1.5px solid var(--c-accent);
   outline-offset: -1.5px;
@@ -58,10 +58,11 @@
 
 .wx-chip:active {
   color: var(--c-accent);
-  background: rgba(63, 200, 255, 0.32);
+  background: rgba(var(--c-accent-rgb), 0.32);
 }
 
-/* the heat map, beside the quarry it is for: dim off, the chip's light on */
+/* the heat map, beside the quarry it is for, and the Outdoor sun beside
+   that: dim off, the chip's light on */
 .wx-heat {
   flex: none;
   display: inline-flex;
@@ -69,20 +70,24 @@
   justify-content: center;
   width: 28px;
   height: 26px;
-  border-radius: var(--r-tile);
-  background: rgba(18, 32, 45, 0.65);
+  border-radius: var(--r-sm);
+  background: var(--c-cell);
   color: var(--c-text-dim);
 }
 
+.wx-theme {
+  margin-left: -4px;
+}
+
 .wx-heat.on {
-  background: var(--c-accent-dim);
+  background: var(--c-accent);
   outline: 1.5px solid var(--c-accent);
   outline-offset: -1.5px;
-  color: var(--c-accent);
+  color: var(--c-on-accent);
 }
 
 .wx-heat:active {
-  background: rgba(63, 200, 255, 0.32);
+  background: rgba(var(--c-accent-rgb), 0.32);
 }
 
 /* the check beside the picked quarry */
@@ -95,7 +100,7 @@
 .wx-menu-rule {
   height: 1px;
   margin: 4px 0;
-  background: rgba(126, 178, 224, 0.16);
+  background: rgba(var(--c-ink-rgb), 0.16);
 }
 
 /* best Tue morning › — lit while the planning time sits in that window */
@@ -104,7 +109,7 @@
   min-width: 0;
   padding: 3px 8px;
   margin-left: -4px;
-  border-radius: var(--r-tile);
+  border-radius: var(--r-sm);
   font-size: calc(12px * var(--ui-scale));
   font-weight: 650;
   white-space: nowrap;
@@ -130,8 +135,8 @@
 .wx-now {
   flex: none;
   padding: 3px 9px;
-  border-radius: var(--r-tile);
-  background: rgba(63, 200, 255, 0.18);
+  border-radius: var(--r-sm);
+  background: rgba(var(--c-accent-rgb), 0.18);
   color: var(--c-accent);
   font-size: calc(11px * var(--ui-scale));
   font-weight: 700;
@@ -150,13 +155,13 @@
 
 /* the picked hour's detail: the words that carry colour */
 .wx-ground {
-  color: #a9c1ff;
+  color: var(--c-wind);
   font-weight: 700;
 }
 
 .wx-grade-prime,
 .wx-grade-good {
-  color: var(--c-track);
+  color: var(--c-good);
 }
 
 .wx-grade-fair {

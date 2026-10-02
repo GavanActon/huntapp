@@ -10,6 +10,7 @@ import { cachedPointForecast, compass, hourAt } from '../openMeteo'
 import { sunPosition } from '../sun'
 import { onWeatherGrid, windGridInfo, windSampler } from '../windGrid'
 import { checkWeight, metresBetween, STRENGTH_KMH, useWindChecks } from './windChecks'
+import { biasFor, biasMatters, biasWords, learnBiases, type Bias, type Lesson } from './bias'
 
 /**
  * The ground wind: the air a hunter feels at head height, at a point and a
@@ -88,6 +89,10 @@ export interface GroundWind {
   reasons: string[]
   layering: Layering
   inGrid: boolean
+  /** the cell is a slot in the trees: the slot rule decided the direction */
+  inSlot: boolean
+  /** the season's lesson applied to this call (bias.ts), if it was worth applying */
+  bias: { deg: number; ratio: number } | null
 }
 
 // ---------------------------------------------------------------- the grid
@@ -175,6 +180,8 @@ interface Ctx {
   /** gust over mean at 10 m this hour, 1–3; 1 when the forecast says nothing */
   gf: number
   checks: ReturnType<typeof useWindChecks.getState>['checks']
+  /** what the season's checks have taught, by lesson (bias.ts) */
+  biases: Map<Lesson, Bias>
 }
 
 function makeCtx(ms: number): Ctx {
@@ -197,6 +204,7 @@ function makeCtx(ms: number): Ctx {
     waterC,
     gf: h && Number.isFinite(h.gustKmh) ? clamp(h.gustKmh / Math.max(1, h.windKmh), 1, 3) : 1,
     checks: useWindChecks.getState().checks,
+    biases: learnBiases(useWindChecks.getState().checks, ms),
   }
 }
 
@@ -233,6 +241,8 @@ interface Eval {
   U: number
   dirFrom: number
   inGrid: boolean
+  slot: boolean
+  bias: Bias | null
 }
 
 const EDGE_STEPS = [15, 30, 45, 60, 90, 120, 160, 200]
@@ -368,7 +378,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     // off the grid: an open-ground profile, nothing local
     const f = 0.7 * (1 - 0.6 * lay.stable)
     const sp = U * f
-    return { e: Ue * f, n: Un * f, sigma: 15 + 60 * Math.exp(-sp / 3.6 / 0.6), regime: sp < 0.8 ? 'calm' : 'wind', swirl: false, gusty: ctx.gf >= 1.8 && U >= 8, parts: [{ key: 'terrain', kmh: sp, toward: (dirFrom + 180) % 360 }], reasons, local10: U, U, dirFrom, inGrid: false }
+    return { e: Ue * f, n: Un * f, sigma: 15 + 60 * Math.exp(-sp / 3.6 / 0.6), regime: sp < 0.8 ? 'calm' : 'wind', swirl: false, gusty: ctx.gf >= 1.8 && U >= 8, parts: [{ key: 'terrain', kmh: sp, toward: (dirFrom + 180) % 360 }], reasons, local10: U, U, dirFrom, inGrid: false, slot: false, bias: null }
   }
 
   // ---- terrain and roughness: the two lids, blended by stability ----
@@ -529,6 +539,42 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   let E = mechE + kE + aE + bE
   let N = mechN + kN + aN + bN
 
+  // ---- which part decides it ----
+  let regime: Regime = 'wind'
+  const mags: [Regime, number][] = [
+    ['wind', mechG],
+    [pool > 0.3 ? 'pooled' : 'drainage', kat],
+    ['upslope', ana],
+    [brzKind === 'land' ? 'landBreeze' : 'lakeBreeze', brz],
+  ]
+  let best = -1
+  for (const [r, m] of mags)
+    if (m > best) {
+      best = m
+      regime = r
+    }
+  // low, flat ground on a settling night keeps its own cold air: a frost
+  // pocket, whether or not it is a closed hollow (open bogs above all)
+  const settled = (pool > 0.3 || (lowness > 0.25 && b(K_THSLOPE, i) < 1.5)) && Math.max(s, cool) > 0.4
+  const spOwn = Math.hypot(E, N)
+  if (spOwn < 0.8) regime = settled ? 'pooled' : 'calm'
+  else if (settled && (regime === 'drainage' || mechG < 1.5)) regime = 'pooled'
+
+  // ---- the season's lesson ----
+  // What the wind checks have taught about calls like this one (bias.ts):
+  // a turn and a speed ratio for the regime, or for the slot rule where
+  // the cell is a slot. Applied to the model's own vector before the
+  // checks nearby blend in, so a check made now still corrects locally on
+  // top of it.
+  const lesson: Lesson = slot ? 'slot' : regime
+  const lessonBias = biasFor(ctx.biases, lesson)
+  const applied = biasMatters(lessonBias) && spOwn >= 0.8
+  if (applied) {
+    const [bE2, bN2] = vec(spOwn * lessonBias.ratio, towardOf(E, N) + lessonBias.deg)
+    E = bE2
+    N = bN2
+  }
+
   // ---- the hunters' checks nearby ----
   // Each check nearby is averaged into the model's vector at its weight
   // (windChecks.ts: by time and distance), every check counting the same,
@@ -584,26 +630,6 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   const sp = Math.hypot(E, N)
   const Ug = sp / 3.6
 
-  // ---- which part decides it ----
-  let regime: Regime = 'wind'
-  const mags: [Regime, number][] = [
-    ['wind', mechG],
-    [pool > 0.3 ? 'pooled' : 'drainage', kat],
-    ['upslope', ana],
-    [brzKind === 'land' ? 'landBreeze' : 'lakeBreeze', brz],
-  ]
-  let best = -1
-  for (const [r, m] of mags)
-    if (m > best) {
-      best = m
-      regime = r
-    }
-  // low, flat ground on a settling night keeps its own cold air: a frost
-  // pocket, whether or not it is a closed hollow (open bogs above all)
-  const settled = (pool > 0.3 || (lowness > 0.25 && b(K_THSLOPE, i) < 1.5)) && Math.max(s, cool) > 0.4
-  if (sp < 0.8) regime = settled ? 'pooled' : 'calm'
-  else if (settled && (regime === 'drainage' || mechG < 1.5)) regime = 'pooled'
-
   // ---- spread ----
   let sigma = 12 + 70 * Math.exp(-Ug / 0.6) + 20 * s * Math.exp(-Ug / 1.0) + 15 * lay.convective + (inTrees ? 8 : 0) + (swirl ? 40 : 0) + (slotSwirl ? 25 : 0)
   const thermal = kat + ana + brz
@@ -639,6 +665,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     if (brz > 0.3) reasons.push(brzKind === 'lake' ? `Land warmer than the lake by ${Math.round(lay.t2 - ctx.waterC)}°: an onshore lake breeze toward the ${compass(brzTo)}` : `Land colder than the lake: air drifts off the shore toward the ${compass(brzTo)}`)
     if (inTrees) reasons.push(`In ${Math.round(th)} m trees: head-height wind about ${Math.round(cf * 100)}% of the wind over them`)
     if (edgeNote) reasons.push(edgeNote[0].toUpperCase() + edgeNote.slice(1))
+    if (applied) reasons.push(biasWords(lessonBias, lesson))
     if (lay.ensDirSd != null && lay.ensDirSd > 35 && fracMech > 0.4) reasons.push(`Forecast models disagree on the direction (±${Math.round(lay.ensDirSd)}°)`)
     if (nearest && nChecks === 1) reasons.push(`Blended with ${who.has('you') ? 'your' : `${[...who][0]}'s`} wind check ${nearest.m < 20 ? 'here' : `${nearest.m} m away`}, ${nearest.min} min ${nearest.ago ? 'before' : 'after'} this time`)
     else if (nearest) {
@@ -652,7 +679,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     if (lay.source === 'estimate') reasons.push('No layering forecast cached: stability estimated from the sky and the wind')
   }
 
-  return { e: E, n: N, sigma, regime, swirl, gusty, parts, reasons, local10, U, dirFrom, inGrid: true }
+  return { e: E, n: N, sigma, regime, swirl, gusty, parts, reasons, local10, U, dirFrom, inGrid: true, slot: !!slot, bias: applied ? lessonBias : null }
 }
 
 function headlineOf(ev: Eval, kmh: number, dirFrom: number, gustKmh: number): string {
@@ -701,6 +728,8 @@ export function groundWind(lon: number, lat: number, ms: number): GroundWind | n
     reasons: ev.reasons ?? [],
     layering: ctx.lay,
     inGrid: ev.inGrid,
+    inSlot: ev.slot,
+    bias: ev.bias ? { deg: ev.bias.deg, ratio: ev.bias.ratio } : null,
   }
 }
 

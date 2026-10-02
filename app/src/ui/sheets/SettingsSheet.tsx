@@ -1,4 +1,7 @@
-import { useEffect, useState, type JSX } from 'react'
+import { useEffect, useMemo, useState, type JSX } from 'react'
+import { getMap } from '../../map/mapController'
+import { clearDevlog, devlogCount, devlogOn, lastUpload, onDevlog, setDevlog, shareDevlog, uploadDevlog } from '../../devlog'
+import { BUILD } from '../../diagnostics'
 import { downloadFiles, mapsStatus, useDownloads } from '../../offline/downloads'
 import { checkMapUpdates, useMapUpdates } from '../../offline/updates'
 import { CONTOUR_INTERVALS, useAppStore } from '../../state/appStore'
@@ -61,6 +64,92 @@ function WeatherRow({ online }: { online: boolean }): JSX.Element {
   )
 }
 
+/** Every credit the map's sources carry, once each, as plain words. */
+function mapCredits(): string[] {
+  const style = getMap()?.getStyle()
+  const out: string[] = []
+  for (const src of Object.values(style?.sources ?? {})) {
+    const a = (src as { attribution?: string }).attribution
+    if (!a) continue
+    for (const part of a.split('|')) {
+      const t = part.replace(/<[^>]+>/g, '').trim()
+      if (t && !out.includes(t)) out.push(t)
+    }
+  }
+  return out
+}
+
+/**
+ * The dev log: off for everyone until switched on here; then a count of
+ * what it holds and the ways out — Upload for a code and a link (the
+ * Sandies API keeps it a month), Share as a file, Copy link, Clear.
+ */
+function DevlogRows(): JSX.Element {
+  const [, tick] = useState(0)
+  const [note, setNote] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => onDevlog(() => tick((n) => n + 1)), [])
+  const on = devlogOn()
+  const last = lastUpload()
+
+  const upload = async () => {
+    setBusy(true)
+    setNote(null)
+    try {
+      const u = await uploadDevlog()
+      setNote(`Uploaded · code ${u.code}`)
+    } catch (e) {
+      setNote(`Upload failed · ${e instanceof Error ? e.message : 'no answer'}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+  const share = async () => {
+    const r = await shareDevlog()
+    setNote(r === 'shared' ? 'Shared' : r === 'copied' ? 'Copied' : 'Could not share')
+  }
+  const copyLink = async () => {
+    if (!last) return
+    try {
+      await navigator.clipboard.writeText(last.url)
+      setNote('Link copied')
+    } catch {
+      setNote(last.url)
+    }
+  }
+
+  return (
+    <>
+      <label className="st-row st-devlog">
+        <span>
+          Dev log
+          <small className="dim">{on ? `${devlogCount()} lines · boots, freezes, sheets, errors, what the modules say` : 'what the app is doing, for a bug that leaves no trace · includes your position'}</small>
+        </span>
+        <input type="checkbox" className="switch" checked={on} onChange={(e) => setDevlog(e.target.checked)} />
+      </label>
+      {on && (
+        <div className="st-acts">
+          <button className="btn-primary" disabled={busy} onClick={() => void upload()}>
+            {busy ? 'Uploading…' : 'Upload log'}
+          </button>
+          <button className="st-more" onClick={() => void share()}>
+            Share
+          </button>
+          {last && (
+            <button className="st-more" onClick={() => void copyLink()}>
+              Link · {last.code}
+            </button>
+          )}
+          <button className="st-more dim" onClick={() => clearDevlog()}>
+            Clear
+          </button>
+          {note && <span className="st-note dim">{note}</span>}
+        </div>
+      )}
+    </>
+  )
+}
+
 /**
  * Settings, one level deep: the maps on the phone, the weather, the buttons, the hand,
  * units and text, then the wind flow's knobs and the contour interval. The
@@ -71,6 +160,8 @@ export default function SettingsSheet(): JSX.Element {
   const units = useAppStore((s) => s.units)
   const setUnits = useAppStore((s) => s.setUnits)
   const textSize = useAppStore((s) => s.textSize)
+  const outdoor = useAppStore((s) => s.outdoor)
+  const setOutdoor = useAppStore((s) => s.setOutdoor)
   const setTextSize = useAppStore((s) => s.setTextSize)
   const lowPower = useAppStore((s) => s.lowPower)
   const setLowPower = useAppStore((s) => s.setLowPower)
@@ -102,6 +193,7 @@ export default function SettingsSheet(): JSX.Element {
   }, [])
 
   const maps = mapsStatus()
+  const credits = useMemo(mapCredits, [])
 
   return (
     <div className="settings">
@@ -174,13 +266,19 @@ export default function SettingsSheet(): JSX.Element {
       <div className="st-row">
         <span>Past hunts on the map</span>
         <div className="seg" role="radiogroup" aria-label="Past hunts on the map">
-          {(['today', 'week', 'all'] as const).map((v) => (
+          {(['none', 'today', 'week', 'all'] as const).map((v) => (
             <button key={v} className={pastHunts === v ? 'seg-on' : ''} role="radio" aria-checked={pastHunts === v} onClick={() => setPastHunts(v)}>
-              {v === 'today' ? 'Today' : v === 'week' ? '7 days' : 'All'}
+              {v === 'none' ? 'None' : v === 'today' ? 'Today' : v === 'week' ? '7 days' : 'All'}
             </button>
           ))}
         </div>
       </div>
+      <label className="st-row">
+        <span>
+          Outdoor <span className="dim">· for sun on the phone</span>
+        </span>
+        <input type="checkbox" className="switch" checked={outdoor} onChange={(e) => setOutdoor(e.target.checked)} />
+      </label>
       <label className="st-row">
         <span>Low power</span>
         <input type="checkbox" className="switch" checked={lowPower} onChange={(e) => setLowPower(e.target.checked)} />
@@ -254,6 +352,23 @@ export default function SettingsSheet(): JSX.Element {
         </div>
       </div>
 
+      <div className="st-sec">Something wrong?</div>
+      <DevlogRows />
+      <details className="st-credits">
+        <summary className="st-row">
+          <span>Map credits</span>
+          <span className="dim">›</span>
+        </summary>
+        <ul>
+          {credits.map((c) => (
+            <li key={c}>{c}</li>
+          ))}
+          <li>© MapLibre</li>
+        </ul>
+      </details>
+      <div className="st-build dim numeral">
+        Build {BUILD.sha} · {new Date(BUILD.at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+      </div>
     </div>
   )
 }
