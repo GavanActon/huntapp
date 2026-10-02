@@ -26,10 +26,12 @@ import { create } from 'zustand'
  * a half are kept, the turn in them is fitted and taken out (swinging round
  * on your feet is not the compass whirling) and what wanders about that
  * turn is measured: past 30°, or when iOS calls its own accuracy worse than
- * that, the heading is left where it was and `steady` goes false until the
- * readings have sat inside 15° for a second. A held rose beats a spinning
- * one; after a hard turn it takes a couple of seconds to believe itself
- * again.
+ * 60° (it often says 30–50° outdoors with the phone fine), the heading is
+ * left where it was and `steady` goes false until the readings have sat
+ * inside 15° for a second. A held rose beats a spinning one; after a hard
+ * turn it takes a couple of seconds to believe itself again. With no heading
+ * yet the first reading is published anyway, unsteady or not: a rose turned
+ * roughly the right way beats one stuck at north while the phone settles.
  */
 
 /** Magnetic declination at the camp, degrees (west negative). WMM2025
@@ -74,6 +76,8 @@ const TAU_S = 0.6
 const STEP_DEG = 1.5
 const WINDOW_MS = 1500
 const WHIRL_DEG = 30
+/** iOS's own accuracy figure, degrees, past which the reading is not worth having */
+const ACC_BAD_DEG = 60
 const SETTLED_DEG = 15
 const SETTLED_MS = 1000
 
@@ -145,7 +149,7 @@ function onEvent(e: OrientationEvt) {
     }
     spread = Math.sqrt(v / n)
   }
-  const bad = acc != null && (acc < 0 || acc > WHIRL_DEG)
+  const bad = acc != null && (acc < 0 || acc > ACC_BAD_DEG)
   const st = useCompass.getState()
   let steady = st.steady
   if (spread > WHIRL_DEG || bad) {
@@ -161,7 +165,7 @@ function onEvent(e: OrientationEvt) {
   const patch: Partial<CompassState> = {}
   if (st.status !== 'on') patch.status = 'on'
   if (st.steady !== steady) patch.steady = steady
-  if (steady) {
+  if (steady || st.heading == null) {
     const heading = (Math.atan2(sx, sy) / rad + 360) % 360
     if (st.heading == null || Math.abs(((heading - st.heading + 540) % 360) - 180) > STEP_DEG) patch.heading = heading
   }

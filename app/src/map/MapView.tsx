@@ -19,6 +19,7 @@ import { DROPPED_NAME, showPlacePopup } from './placePopup'
 import { useScent } from '../weather/micro/scent'
 import { useRoutes } from '../routes/routeStore'
 import { useHeardForm } from '../ui/HeardCard'
+import { useCheckForm } from '../ui/WindCheckCard'
 import { showLogPopup } from '../log/logLayer'
 import { useHuntLog } from '../log/huntLog'
 
@@ -210,6 +211,9 @@ export default function MapView() {
         if (scent.adding) return scent.add(e.lngLat.lng, e.lngLat.lat)
         // Heard pressed: the tap is where it was; what it was comes next
         if (useHeardForm.getState().placing) return useHeardForm.getState().show({ lon: e.lngLat.lng, lat: e.lngLat.lat })
+        // "ahead" armed on the wind check: the tap is what is in front of you
+        const cf = useCheckForm.getState()
+        if (cf.at && cf.aim) return cf.mapTap(e.lngLat.lng, e.lngLat.lat)
         // a place, a numbered pin, a wind check or a kept route has its own tap
         const hit = m.queryRenderedFeatures(e.point, { layers: ['places-pt', 'spots-pin', 'windchecks-hit', 'routes-hit', 'huntlog-dot'].filter((id) => m.getLayer(id)) })
         if (hit.length) return

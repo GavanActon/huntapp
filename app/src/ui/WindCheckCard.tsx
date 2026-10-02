@@ -29,6 +29,10 @@ import './ground.css'
  * the finger that picked it and the phone can go back in a pocket. Tap a
  * second arrow and the check holds both: the powder swinging between them,
  * saved as the middle and the width of the arc.
+ *
+ * "ahead" in the middle arms the next tap on the map as what is in front
+ * of you: the rose turns to face it (map/MapView.tsx hands the tap over,
+ * and the tap off the card that would close it is off while it waits).
  */
 
 interface CheckForm {
@@ -93,7 +97,8 @@ export default function WindCheckCard() {
   const [saved, setSaved] = useState<WindCheck | null>(null)
   const [saving, setSaving] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-  useTapOff(ref, true, close)
+  // a tap off the card closes it, except while "ahead" waits for one on the map
+  useTapOff(ref, !aim, close)
   /** where the rose stood when the first arrow was picked */
   const held = useRef<number | null>(null)
   /** the way you face, from a tap on the map ahead of you: the rose turns to it, compass or no compass */
