@@ -2650,13 +2650,139 @@
   transform: translateX(-50%);
 }
 
-.hotcol > .fab.hotbtn {
+/* a button's slot: the circle (its word hangs under it, so the slot leaves
+   room) and, held, its drawer */
+.hotslot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   margin-bottom: 16px;
 }
 
 /* names off in Settings: the circles close up */
-.hotcol > .fab.hotbtn.no-label {
+.hotslot.no-label {
   margin-bottom: 0;
+}
+
+/* the drawer: beside the held button, toward the map, its foot level with
+   the circle's so it grows upward from the bottom of the screen */
+.hotdrawer {
+  position: absolute;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: max-content;
+  min-width: 170px;
+  max-width: calc(100vw - 150px);
+  padding: 6px;
+  border-radius: 14px;
+  background: var(--c-surface);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
+  backdrop-filter: blur(var(--blur)) saturate(1.4);
+  border: 1px solid var(--c-border);
+  box-shadow: var(--shadow-fab);
+  color: var(--c-text);
+  font-size: calc(13px * var(--ui-scale));
+}
+
+.toolcol .hotdrawer {
+  right: calc(100% + 10px);
+}
+
+.leftstack .hotdrawer {
+  left: calc(100% + 10px);
+}
+
+.app-lefty .toolcol .hotdrawer {
+  right: auto;
+  left: calc(100% + 10px);
+}
+
+.app-lefty .leftstack .hotdrawer {
+  left: auto;
+  right: calc(100% + 10px);
+}
+
+.hd-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 38px;
+  padding: 0 6px;
+}
+
+.hd-row > span:first-child {
+  font-weight: 600;
+  color: var(--c-text-dim);
+  white-space: nowrap;
+}
+
+.hotdrawer .seg button {
+  padding: 5px 10px;
+}
+
+.hotdrawer input[type='range'] {
+  width: 104px;
+  min-width: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(126, 178, 224, 0.25);
+}
+
+.hotdrawer input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--c-accent);
+  border: 3px solid var(--c-bg-raised);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+
+.hd-act {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 8px;
+  border-radius: 9px;
+  font-weight: 650;
+  color: var(--c-text);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.hd-act:disabled {
+  opacity: 0.4;
+}
+
+.hd-act.on {
+  background: var(--c-accent-dim);
+  color: var(--c-accent);
+}
+
+.hd-step {
+  display: flex;
+  gap: 6px;
+}
+
+.hd-step button {
+  width: 36px;
+  height: 34px;
+  border-radius: 8px;
+  background: rgba(126, 178, 224, 0.12);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--c-text);
 }
 
 /* the word keeps its taps: one landing beside the circle must not fall

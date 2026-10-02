@@ -167,28 +167,10 @@ export const HOT_ORDER: HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'r
 
 const HOLD_MS = 450
 
-/** A long press on a button: its own settings. The wind flow's knobs, your
- *  scent in full, the layers sheet for a layer; the rest open Map buttons. */
-function holdAction(id: HotId): () => void {
-  const st = useAppStore.getState()
-  switch (id) {
-    case 'windflow':
-      return () => st.openSheet({ kind: 'settings' })
-    case 'scent':
-      return () => st.setTopCard({ kind: 'scent' })
-    case 'understory':
-    case 'lanes':
-    case 'bathy':
-    case 'radar':
-      return () => st.openSheet({ kind: 'layers' })
-    default:
-      return () => st.openSheet({ kind: 'buttons' })
-  }
-}
-
 /** A hot button in the column: the round .fab with its short word hung under
- *  it. A tap does its thing; a press and hold opens its settings. */
-export function HotButton({ id }: { id: HotId }): JSX.Element {
+ *  it. A tap does its thing (`onTap`, the def's by default); a press and hold
+ *  is `onHold`, the column's drawer (ui/HotDrawer.tsx). */
+export function HotButton({ id, onHold, onTap }: { id: HotId; onHold: () => void; onTap?: () => void }): JSX.Element {
   const d = HOT_DEFS[id]
   const on = d.useActive()
   const labels = useAppStore((s) => s.buttonLabels)
@@ -200,7 +182,7 @@ export function HotButton({ id }: { id: HotId }): JSX.Element {
     timer.current = window.setTimeout(() => {
       held.current = true
       if (navigator.vibrate) navigator.vibrate(12)
-      holdAction(id)()
+      onHold()
     }, HOLD_MS)
   }
   const up = () => window.clearTimeout(timer.current)
@@ -214,7 +196,7 @@ export function HotButton({ id }: { id: HotId }): JSX.Element {
       onContextMenu={(e) => e.preventDefault()}
       onClick={() => {
         if (held.current) return (held.current = false)
-        d.onTap()
+        ;(onTap ?? d.onTap)()
       }}
       aria-pressed={on}
       aria-label={d.name}
