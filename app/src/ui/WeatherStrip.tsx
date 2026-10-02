@@ -18,7 +18,7 @@ import { useWindChecks } from '../weather/micro/windChecks'
 import { activityBar } from '../spots/grades'
 import { FISH_TARGETS, HUNT_TARGETS, TARGET_NAMES, type Target } from '../spots/types'
 import { agoLabel, clockShort, dayLabel, dayShort, floorHourMs, hourAmPm, hourShort, startOfDayMs } from '../time'
-import { IconCheck, IconChevronDown, IconChevronUp, IconDots, IconGrid, IconGridOff, IconHeat, IconSun } from './icons'
+import { IconCheck, IconChevronDown, IconChevronUp, IconDots, IconGrid, IconGridOff, IconHeat, IconPin, IconSun, IconTrack } from './icons'
 import AppMenu from './AppMenu'
 import { useMapUpdates } from '../offline/updates'
 import { useLookTick } from './useLookTick'
@@ -152,6 +152,10 @@ export default function WeatherStrip() {
   const outdoor = useAppStore((s) => s.outdoor)
   const hotHidden = useAppStore((s) => s.hotHidden)
   const setHotHidden = useAppStore((s) => s.setHotHidden)
+  const showPins = useAppStore((s) => s.showPins)
+  const setShowPins = useAppStore((s) => s.setShowPins)
+  const showTracks = useAppStore((s) => s.showTracks)
+  const setShowTracks = useAppStore((s) => s.setShowTracks)
   const setOutdoor = useAppStore((s) => s.setOutdoor)
   const selectedId = usePlacesStore((s) => s.selectedId)
   const hasFix = useGpsStore((s) => s.fix != null)
@@ -436,6 +440,12 @@ export default function WeatherStrip() {
       </button>
       <button className={`wx-heat wx-theme${hotHidden ? ' on' : ''}`} onClick={() => setHotHidden(!hotHidden)} aria-pressed={hotHidden} aria-label={hotHidden ? 'Show the map buttons' : 'Hide the map buttons'}>
         {hotHidden ? <IconGridOff size={16} /> : <IconGrid size={16} />}
+      </button>
+      <button className={`wx-heat wx-theme${showPins ? ' on' : ''}`} onClick={() => setShowPins(!showPins)} aria-pressed={showPins} aria-label={showPins ? 'Hide pins' : 'Show pins'}>
+        <IconPin size={16} />
+      </button>
+      <button className={`wx-heat wx-theme${showTracks ? ' on' : ''}`} onClick={() => setShowTracks(!showTracks)} aria-pressed={showTracks} aria-label={showTracks ? 'Hide tracks' : 'Show tracks'}>
+        <IconTrack size={16} />
       </button>
       {f ? <span className="wx-spacer" /> : <span className="wx-spacer wxstrip-empty">{emptyText}</span>}
       {planTimeMs != null && (

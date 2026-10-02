@@ -4,6 +4,7 @@ import { devlog } from '../devlog'
 import { BASE_GEO, baseGeoFile, DATA_BASE, DATA_FILES, GEO_THEMES, geoFile, HOME, MAX_BOUNDS } from '../config'
 import { getStoredFile } from '../offline/fileStore'
 import { useAppStore, type LayerOpacity, type LayerVisibility } from '../state/appStore'
+import { placeColour } from '../state/pinColours'
 import { usePlacesStore } from '../state/placesStore'
 import { geoUrls, onFirstIdle, setMap, withMap } from './mapController'
 import { useMeasureStore } from '../measure/measureStore'
@@ -45,12 +46,11 @@ function loadView(): SavedView | null {
   }
 }
 
-const PLACE_COLORS: Record<string, string> = {
-  camp: '#ffb454',
-  lake: '#3fc8ff',
-  landing: '#59e0b8',
-  stand: '#ff8a80',
-  trail: '#c9a227',
+
+/** The pins' three layers, shown or hidden together (the strip's toggle). */
+const PIN_LAYERS = ['pins-halo', 'pins-pt', 'pins-label']
+function applyPins(m: maplibregl.Map, on: boolean) {
+  for (const id of PIN_LAYERS) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none')
 }
 
 function placesGeoJson(): FeatureCollection {
@@ -61,7 +61,7 @@ function placesGeoJson(): FeatureCollection {
       type: 'Feature',
       id: p.id,
       geometry: { type: 'Point', coordinates: [p.lon, p.lat] },
-      properties: { id: p.id, name: p.name, kind: p.kind, color: PLACE_COLORS[p.kind] ?? '#ffb454', selected: p.id === s.selectedId },
+      properties: { id: p.id, name: p.name, kind: p.kind, color: placeColour(p), selected: p.id === s.selectedId },
     })),
   }
 }
@@ -155,29 +155,32 @@ export default function MapView() {
       // the GeoJSON of the layers that are off waits for the first settled frame
       onFirstIdle(m, () => flushDeferredGeo(m))
       withMap((map) => {
-        if (map !== m || m.getSource('places')) return
-        // saved / preset places ride on top of everything
-        m.addSource('places', { type: 'geojson', data: placesGeoJson() })
+        if (map !== m || m.getSource('pins')) return
+        // saved / preset places ride on top of everything. The source is
+        // 'pins': 'places' is the baked archive's (camps, WMUs, roads), and
+        // sharing its name left the pins unadded and every drop throwing.
+        m.addSource('pins', { type: 'geojson', data: placesGeoJson() })
         m.addLayer({
-          id: 'places-halo',
+          id: 'pins-halo',
           type: 'circle',
-          source: 'places',
+          source: 'pins',
           filter: ['==', ['get', 'selected'], true],
           paint: { 'circle-radius': 12, 'circle-color': 'rgba(63,200,255,0.25)' },
         })
         m.addLayer({
-          id: 'places-pt',
+          id: 'pins-pt',
           type: 'circle',
-          source: 'places',
+          source: 'pins',
           paint: { 'circle-radius': 6, 'circle-color': ['get', 'color'], 'circle-stroke-color': '#0f1a12', 'circle-stroke-width': 2 },
         })
         m.addLayer({
-          id: 'places-label',
+          id: 'pins-label',
           type: 'symbol',
-          source: 'places',
+          source: 'pins',
           layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Medium'], 'text-size': 12, 'text-offset': [0, 1.1], 'text-anchor': 'top' },
           paint: { 'text-color': '#eef5ea', 'text-halo-color': 'rgba(10,20,12,0.95)', 'text-halo-width': 1.4 },
         })
+        applyPins(m, useAppStore.getState().showPins)
       })
 
       m.on('moveend', () => {
@@ -193,7 +196,7 @@ export default function MapView() {
       // tap a place: your own pin says what it is, with Delete (placePopup);
       // the camp and the lakes are presets and open Dig in on themselves.
       // Tap the map: a three-line popup, Dig in behind it
-      m.on('click', 'places-pt', (e) => {
+      m.on('click', 'pins-pt', (e) => {
         // the ruler, a person being placed and the route card each own the tap
         if (useMeasureStore.getState().active || useScent.getState().adding || useRoutes.getState().open) return
         const id = e.features?.[0]?.properties?.id as string | undefined
@@ -215,7 +218,7 @@ export default function MapView() {
         const cf = useCheckForm.getState()
         if (cf.at && cf.aim) return cf.mapTap(e.lngLat.lng, e.lngLat.lat)
         // a place, a numbered pin, a wind check or a kept route has its own tap
-        const hit = m.queryRenderedFeatures(e.point, { layers: ['places-pt', 'spots-pin', 'windchecks-hit', 'routes-hit', 'huntlog-dot'].filter((id) => m.getLayer(id)) })
+        const hit = m.queryRenderedFeatures(e.point, { layers: ['pins-pt', 'spots-pin', 'windchecks-hit', 'routes-hit', 'huntlog-dot'].filter((id) => m.getLayer(id)) })
         if (hit.length) return
         const { lng, lat } = e.lngLat
         const el = document.createElement('div')
@@ -245,10 +248,11 @@ export default function MapView() {
           else sc.show(lng, lat)
           popup.remove()
         })
-        // a pin, dropped and left alone: nothing selected, no sheet
+        // a pin: its own popup takes over, the name and colour right there
         el.querySelector('.pp-save')?.addEventListener('click', () => {
-          usePlacesStore.getState().add({ name: DROPPED_NAME, lon: lng, lat, kind: 'stand' })
+          const sp = usePlacesStore.getState().add({ name: DROPPED_NAME, lon: lng, lat, kind: 'stand' })
           popup.remove()
+          showPlacePopup(m, sp)
         })
         el.querySelector('.pp-digin')?.addEventListener('click', () => {
           popup.remove()
@@ -267,8 +271,8 @@ export default function MapView() {
         const entry = id ? useHuntLog.getState().entries.find((x) => x.id === id) : undefined
         if (entry) showLogPopup(m, entry)
       })
-      m.on('mouseenter', 'places-pt', () => (m.getCanvas().style.cursor = 'pointer'))
-      m.on('mouseleave', 'places-pt', () => (m.getCanvas().style.cursor = ''))
+      m.on('mouseenter', 'pins-pt', () => (m.getCanvas().style.cursor = 'pointer'))
+      m.on('mouseleave', 'pins-pt', () => (m.getCanvas().style.cursor = ''))
       m.on('webglcontextlost', () => devlog('map', 'webgl context lost'))
       m.on('error', (e) => devlog('map', `error · ${(e as { error?: Error }).error?.message ?? String(e)}`))
     })()
@@ -277,6 +281,9 @@ export default function MapView() {
     const unsubLayers = useAppStore.subscribe((s, prev) => {
       if (!map || (s.layers === prev.layers && s.opacity === prev.opacity && s.saturation === prev.saturation)) return
       applyLayerState(map, s.layers, s.opacity, s.saturation)
+    })
+    const unsubPins = useAppStore.subscribe((s, prev) => {
+      if (map && s.showPins !== prev.showPins) applyPins(map, s.showPins)
     })
     // the contour interval is a filter on the three contour layers
     const unsubContours = useAppStore.subscribe((s, prev) => {
@@ -287,13 +294,14 @@ export default function MapView() {
       map.setFilter('contour-label', labelled)
     })
     const unsubPlaces = usePlacesStore.subscribe(() => {
-      const src = map?.getSource('places') as maplibregl.GeoJSONSource | undefined
-      src?.setData(placesGeoJson())
+      const src = map?.getSource('pins')
+      if (src && 'setData' in src) (src as maplibregl.GeoJSONSource).setData(placesGeoJson())
     })
 
     return () => {
       cancelled = true
       unsubLayers()
+      unsubPins()
       unsubContours()
       unsubPlaces()
       setMap(null)

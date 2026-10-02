@@ -197,6 +197,11 @@ export interface AppState {
   /** both hot columns off the map (the strip's toggle beside Outdoor); persisted */
   hotHidden: boolean
   setHotHidden: (v: boolean) => void
+  /** the pins (saved places) on the map, and the walked tracks: the strip's two toggles; persisted */
+  showPins: boolean
+  setShowPins: (v: boolean) => void
+  showTracks: boolean
+  setShowTracks: (v: boolean) => void
   /** how far back the log's dots show on the map; persisted */
   pastHunts: 'none' | 'today' | 'week' | 'all'
   setPastHunts: (v: 'none' | 'today' | 'week' | 'all') => void
@@ -284,6 +289,10 @@ export const useAppStore = create<AppState>()(
       setButtonLabels: (buttonLabels) => set({ buttonLabels }),
       hotHidden: false,
       setHotHidden: (hotHidden) => set({ hotHidden }),
+      showPins: true,
+      setShowPins: (showPins) => set({ showPins }),
+      showTracks: true,
+      setShowTracks: (showTracks) => set({ showTracks }),
       pastHunts: 'all',
       setPastHunts: (pastHunts) => set({ pastHunts }),
 
@@ -380,6 +389,8 @@ export const useAppStore = create<AppState>()(
         leftHanded: s.leftHanded,
         buttonLabels: s.buttonLabels,
         hotHidden: s.hotHidden,
+        showPins: s.showPins,
+        showTracks: s.showTracks,
         pastHunts: s.pastHunts,
         who: s.who,
         onboarded: s.onboarded,
