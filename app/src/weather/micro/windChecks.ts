@@ -46,12 +46,21 @@ export type Strength = 'calm' | 'drift' | 'light' | 'breezy' | 'windy'
 
 /** What each word means at head height, km/h. */
 export const STRENGTH_KMH: Record<Strength, number> = { calm: 0.3, drift: 1.5, light: 5, breezy: 12, windy: 22 }
+/** What to look for, at each step: the face, the powder, the leaves, the
+ *  branches (Beaufort 0–4, read at head height in the bush). */
+export const STRENGTH_CUE: Record<Strength, string> = {
+  calm: 'nothing on the face · powder falls straight',
+  drift: 'powder hangs, then creeps · just on the face',
+  light: 'felt on the face · leaves rustle',
+  breezy: 'leaves and twigs moving · powder streams away',
+  windy: 'small branches swaying · a hat wants to go',
+}
 export const STRENGTH_LABEL: Record<Strength, string> = {
   calm: 'Dead calm',
   drift: 'Drift: powder hangs, then creeps',
-  light: 'Light: feel it on the face',
-  breezy: 'Breezy: leaves moving',
-  windy: 'Windy: branches moving',
+  light: 'Light: felt on the face, leaves rustle',
+  breezy: 'Breezy: leaves and twigs moving',
+  windy: 'Windy: small branches swaying',
 }
 
 export interface ModelCall {
