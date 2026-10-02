@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { devlog } from '../devlog'
 import { useTapOff } from './tapOff'
 
 /** The detents promise the map most of the screen, so the sheet sizes
@@ -69,6 +70,11 @@ export default function BottomSheet({
 
   useTapOff(sheetRef, true, onClose)
 
+  // the dev log: what opened at what height, for the sheet that opens full
+  useEffect(() => {
+    devlog('sheet', `open ${snapKey} at ${halfPct}%`)
+  }, [snapKey, halfPct])
+
   /** Write the height straight to the node: a drag has to track the finger,
    *  and a render per frame cannot. */
   function applyHeight(pct: number) {
@@ -104,18 +110,25 @@ export default function BottomSheet({
   }
   function onPointerUp() {
     if (!drag.current) return
+    const start = drag.current.startPct
     drag.current = null
     sheetRef.current?.classList.remove('sheet-dragging')
     const h = livePct.current
-    // dragged well below where it rests: that's a dismiss
-    const snap = h < halfPct - 14 ? halfPct : h < 68 ? halfPct : FULL_PCT
-    if (h < halfPct - 14) onClose()
+    // judged from where the drag began: a short pull either way goes back
+    // to that detent (a scroll that starts on the title row must not open
+    // the sheet full), a long pull up opens it full, well below the rest
+    // dismisses
+    const close = h < halfPct - 14
+    const snap = close ? halfPct : h > start + 12 ? FULL_PCT : h < start - 12 ? halfPct : start >= 68 ? FULL_PCT : halfPct
+    devlog('sheet', `drag ${snapKey} ${Math.round(start)} → ${Math.round(h)} → ${close ? 'close' : `${snap}%`}`)
+    if (close) onClose()
     applyHeight(snap)
     setHeightPct(snap)
   }
 
   function onFocusIn(e: React.FocusEvent) {
     if (!isField(e.target)) return
+    devlog('sheet', `focus ${snapKey} ${e.target.tagName.toLowerCase()}${e.target instanceof HTMLInputElement ? `[${e.target.type}]` : ''} → full`)
     if (beforeKeyboard.current == null) beforeKeyboard.current = livePct.current
     applyHeight(FULL_PCT)
     setHeightPct(FULL_PCT)
@@ -148,6 +161,7 @@ export default function BottomSheet({
           className="sheet-handle"
           onClick={() => {
             const next = livePct.current >= 68 ? halfPct : FULL_PCT
+            devlog('sheet', `handle ${snapKey} → ${next}%`)
             applyHeight(next)
             setHeightPct(next)
           }}

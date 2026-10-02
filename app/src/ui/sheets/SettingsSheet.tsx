@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type JSX } from 'react'
 import { getMap } from '../../map/mapController'
+import { clearDevlog, devlogCount, devlogOn, lastUpload, onDevlog, setDevlog, shareDevlog, uploadDevlog } from '../../devlog'
+import { BUILD } from '../../diagnostics'
 import { downloadFiles, mapsStatus, useDownloads } from '../../offline/downloads'
 import { checkMapUpdates, useMapUpdates } from '../../offline/updates'
 import { CONTOUR_INTERVALS, useAppStore } from '../../state/appStore'
@@ -75,6 +77,77 @@ function mapCredits(): string[] {
     }
   }
   return out
+}
+
+/**
+ * The dev log: off for everyone until switched on here; then a count of
+ * what it holds and the ways out — Upload for a code and a link (the
+ * Sandies API keeps it a month), Share as a file, Copy link, Clear.
+ */
+function DevlogRows(): JSX.Element {
+  const [, tick] = useState(0)
+  const [note, setNote] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => onDevlog(() => tick((n) => n + 1)), [])
+  const on = devlogOn()
+  const last = lastUpload()
+
+  const upload = async () => {
+    setBusy(true)
+    setNote(null)
+    try {
+      const u = await uploadDevlog()
+      setNote(`Uploaded · code ${u.code}`)
+    } catch (e) {
+      setNote(`Upload failed · ${e instanceof Error ? e.message : 'no answer'}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+  const share = async () => {
+    const r = await shareDevlog()
+    setNote(r === 'shared' ? 'Shared' : r === 'copied' ? 'Copied' : 'Could not share')
+  }
+  const copyLink = async () => {
+    if (!last) return
+    try {
+      await navigator.clipboard.writeText(last.url)
+      setNote('Link copied')
+    } catch {
+      setNote(last.url)
+    }
+  }
+
+  return (
+    <>
+      <label className="st-row">
+        <span>
+          Dev log
+          <small className="dim">{on ? `${devlogCount()} lines · boots, freezes, sheets, errors, what the modules say` : 'what the app is doing, for a bug that leaves no trace · includes your position'}</small>
+        </span>
+        <input type="checkbox" className="switch" checked={on} onChange={(e) => setDevlog(e.target.checked)} />
+      </label>
+      {on && (
+        <div className="st-acts">
+          <button className="btn-primary" disabled={busy} onClick={() => void upload()}>
+            {busy ? 'Uploading…' : 'Upload log'}
+          </button>
+          <button className="st-more" onClick={() => void share()}>
+            Share
+          </button>
+          {last && (
+            <button className="st-more" onClick={() => void copyLink()}>
+              Link · {last.code}
+            </button>
+          )}
+          <button className="st-more dim" onClick={() => clearDevlog()}>
+            Clear
+          </button>
+          {note && <span className="st-note dim">{note}</span>}
+        </div>
+      )}
+    </>
+  )
 }
 
 /**
@@ -279,6 +352,8 @@ export default function SettingsSheet(): JSX.Element {
         </div>
       </div>
 
+      <div className="st-sec">Something wrong?</div>
+      <DevlogRows />
       <details className="st-credits">
         <summary className="st-row">
           <span>Map credits</span>
@@ -291,6 +366,9 @@ export default function SettingsSheet(): JSX.Element {
           <li>© MapLibre</li>
         </ul>
       </details>
+      <div className="st-build dim numeral">
+        Build {BUILD.sha} · {new Date(BUILD.at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+      </div>
     </div>
   )
 }

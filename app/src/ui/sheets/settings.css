@@ -339,3 +339,25 @@
   font-size: calc(12px * var(--ui-scale));
   line-height: 1.5;
 }
+
+/* the dev log's buttons under its switch, and the build line at the foot */
+.st-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 4px 0 12px;
+}
+.st-acts .btn-primary {
+  margin: 0;
+  padding: 8px 16px;
+}
+.st-note {
+  flex-basis: 100%;
+  font-size: calc(12.5px * var(--ui-scale));
+}
+.st-build {
+  padding: 14px 0 4px;
+  text-align: center;
+  font-size: calc(11.5px * var(--ui-scale));
+}

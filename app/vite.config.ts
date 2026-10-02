@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -48,8 +49,25 @@ function dataManifest(): Plugin {
 }
 
 // BASE_PATH lets the same build target a GitHub Pages project site (e.g. /huntapp/)
+/** The short git sha and the build time, stamped into the bundle for the
+ *  dev log and its snapshot: a log that names its commit is one you can
+ *  read against the code. */
+function buildStamp(): { sha: string; at: string } {
+  const sha =
+    process.env.GITHUB_SHA ??
+    (() => {
+      try {
+        return execSync('git rev-parse HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
+      } catch {
+        return 'local'
+      }
+    })()
+  return { sha: sha.slice(0, 7), at: new Date().toISOString() }
+}
+
 export default defineConfig({
   base: process.env.BASE_PATH ?? '/',
+  define: { __BUILD__: JSON.stringify(buildStamp()) },
   build: { target: ['es2022', 'safari16'] },
   // docs/HUNTOS.md sits beside app/, bundled into Settings as the guide
   server: { host: true, allowedHosts: true, fs: { allow: ['..'] } },
