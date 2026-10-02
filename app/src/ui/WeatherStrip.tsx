@@ -399,7 +399,7 @@ export default function WeatherStrip() {
       <button className={`wx-heat${heat ? ' on' : ''}`} onClick={() => setHeat(!heat)} aria-pressed={heat} aria-label="Heat map">
         <IconHeat size={16} />
       </button>
-      <span className="wx-spacer" />
+      {f ? <span className="wx-spacer" /> : <span className="wx-spacer wxstrip-empty">{emptyText}</span>}
       {planTimeMs != null && (
         <button className="wx-now" onClick={() => setPlanTime(null)}>
           Now
@@ -421,9 +421,7 @@ export default function WeatherStrip() {
     <div className="wxstrip glass">
       {stale && <span className="wxstrip-stale" />}
       {head}
-      {!f ? (
-        <div className="wxstrip-empty">{emptyText}</div>
-      ) : (
+      {f && (
         <>
           {stripOpen && (
           <div className="wxstrip-days">

@@ -4,6 +4,8 @@ import './map/mapBearing' // keeps the rotate listener registered: the compass a
 import { useAppStore } from './state/appStore'
 import { useGpsStore } from './tracking/gpsStore'
 import { initTextScale } from './ui/textScale'
+import { initTheme } from './ui/theme'
+import { releaseArmed } from './ui/tools'
 import WeatherStrip from './ui/WeatherStrip'
 import LiveCard from './ui/LiveCard'
 import TopCardHost from './ui/TopCardHost'
@@ -86,7 +88,13 @@ export default function App() {
     return () => ro.disconnect()
   }, [])
 
+  // a sheet over the map: nothing waits for a map tap any more
   useEffect(() => {
+    if (sheetOpen) releaseArmed()
+  }, [sheetOpen])
+
+  useEffect(() => {
+    initTheme()
     initTextScale()
     initMeasureLayer()
     initWindFlow()

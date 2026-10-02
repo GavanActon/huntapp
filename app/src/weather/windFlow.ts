@@ -27,6 +27,12 @@ import { currentTextStop } from '../ui/textScale'
 const FIELD_STEP = 28 // css px between wind samples
 const ALPHA_BANDS = 12
 
+/** The streaks fade out below zoom 15: in close the eddies and the slots
+ *  read; far out the sheet of them only hides the map. */
+function zoomFade(z: number): number {
+  return Math.min(1, Math.max(0.3, (z - 13) / 2))
+}
+
 /** Streak width by the size setting, css px; auto follows the text size (Settings). */
 const STREAK_PX = { standard: 1.2, large: 2, larger: 2.8 } as const
 let streakPx: number = STREAK_PX.standard
@@ -477,7 +483,7 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
     ctx.globalCompositeOperation = 'source-over'
     ctx.setTransform(dpr * M.a, dpr * M.b, dpr * M.c, dpr * M.d, dpr * M.e, dpr * M.f)
 
-    const level = opts.level() * Math.min(1, (now - born) / 900)
+    const level = opts.level() * Math.min(1, (now - born) / 900) * zoomFade(map.getZoom())
     for (let b = 0; b < ALPHA_BANDS * TONES; b++) bands[b] = new Path2D()
     // until the map under the field has been read: dark ink on a pale base
     // (topo, the elevation colours, the shade alone), light over the rest

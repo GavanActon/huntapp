@@ -207,6 +207,7 @@ export function HotButton({ id }: { id: HotId }): JSX.Element {
   return (
     <button
       className={`fab hotbtn${on ? ' active' : ''}${labels ? '' : ' no-label'}`}
+      data-hot={id}
       onPointerDown={down}
       onPointerUp={up}
       onPointerLeave={up}

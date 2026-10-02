@@ -15,7 +15,7 @@
   padding: 10px 14px;
   /* the strip's own corners (ui.css .wxstrip), not a capsule: the pill and
      the strip are the same family of control */
-  border-radius: 8px;
+  border-radius: var(--r-md);
   border: 1px solid var(--c-border-strong);
   color: var(--c-text);
   font: inherit;
@@ -33,7 +33,7 @@
   z-index: 12;
   width: 230px;
   padding: 8px;
-  border-radius: 18px;
+  border-radius: var(--r-lg);
   border: 1px solid var(--c-border-strong);
   background: var(--c-surface-heavy);
   display: flex;
@@ -46,7 +46,7 @@
 .viewpill-row {
   display: flex;
   align-items: center;
-  border-radius: 10px;
+  border-radius: var(--r-md);
 }
 .viewpill-row.on {
   background: var(--c-accent-dim);
@@ -59,7 +59,7 @@
   gap: 10px;
   text-align: left;
   padding: 10px;
-  border-radius: 10px;
+  border-radius: var(--r-md);
   background: transparent;
   border: 0;
   color: var(--c-text);
@@ -76,7 +76,7 @@
   color: var(--c-accent);
 }
 .viewpill-name:active {
-  background: rgba(126, 178, 224, 0.1);
+  background: rgba(var(--c-ink-rgb), 0.1);
   transform: none;
 }
 .viewpill-more {
@@ -89,6 +89,6 @@
 }
 .viewpill-divider {
   height: 1px;
-  background: rgba(126, 178, 224, 0.16);
+  background: rgba(var(--c-ink-rgb), 0.16);
   margin: 4px 0;
 }

@@ -476,15 +476,16 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
     const live = t in LIVE_VECTOR ? LIVE_VECTOR[t as keyof typeof LIVE_VECTOR] : undefined
     const baked = o.geo.get(t)
     if (baked) {
-      sources[`geo-${t}`] = { type: 'geojson', data: baked, attribution: live?.attribution ?? '© Ontario MNRF' }
+      sources[`geo-${t}`] = { type: 'geojson', data: geoData(`geo-${t}`, baked, t), attribution: live?.attribution ?? '© Ontario MNRF' }
       return { source: `geo-${t}` }
     }
     if (!live) return null
-    sources[`live-${t}`] = { type: 'geojson', data: live.url, attribution: live.attribution }
+    sources[`live-${t}`] = { type: 'geojson', data: geoData(`live-${t}`, live.url, t), attribution: live.attribution }
     return { source: `live-${t}` }
   }
 
-  // Forest cover: FRI stand polygons by cover group, age as label.
+  // Forest cover: FRI stand polygons by cover group; the species-and-year
+  // code as a label only in close (Dig in says it in words at any zoom).
   const forest = themeSource('forest')
   if (forest) {
     vectors.push(
@@ -517,7 +518,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
           id: 'forest-label',
           type: 'symbol',
           ...forest,
-          minzoom: 13,
+          minzoom: 15,
           layout: {
             ...vis(o.layers.forest),
             'text-field': ['concat', ['coalesce', ['get', 'species'], ''], ' ', ['coalesce', ['to-string', ['get', 'year']], '']],

@@ -1,15 +1,9 @@
 /* ============================================================
-   Sandies — component styles
+   Huntapp — component styles (the tokens are in theme.css)
    ============================================================ */
 
-/* One square language everywhere (§0.5): ~6 px tiles, ~5 px rows. The pill
-   era's 999px radii are gone; the circular map FABs are chart furniture and
-   exempt. The old --cond-good/mod/rough traffic light is retired — magnitude
-   colour comes from the sea-state ramp, inline (§1.2). */
-:root {
-  --r-tile: 6px;
-  --r-row: 5px;
-}
+/* One square language: --r-sm tiles and chips, --r-md cards and the strip,
+   --r-lg menus. The round map buttons are the one exemption. */
 
 .app {
   position: relative;
@@ -68,7 +62,7 @@
   flex-direction: column;
   gap: 2px;
   padding: 4px;
-  border-radius: 8px;
+  border-radius: var(--r-md);
   animation: rise-in 0.25s ease;
 }
 
@@ -101,11 +95,11 @@
   justify-content: center;
   gap: 1px;
   padding: 3px 0 4px;
-  border-radius: var(--r-tile);
+  border-radius: var(--r-sm);
   /* soft shared pane under a confident colour bar — the "current, refined"
      skin: no cell borders, the ramp does the talking, selection is the one
      outline on screen */
-  background: rgba(18, 32, 45, 0.65);
+  background: var(--c-cell);
   border-top: 3.5px solid transparent;
   font-size: 9.5px;
   font-weight: 700;
@@ -147,14 +141,12 @@
 }
 
 .wxstrip-empty {
-  padding: 8px 0 9px;
   text-align: center;
-  font-size: 11px;
+  font-size: calc(12px * var(--ui-scale));
   color: var(--c-text-faint);
 }
 
 /* HuntOS, the field guide, in its own sheet: folded sections, prose inside */
-.about-sec > summary,
 .guide-sec > summary {
   cursor: pointer;
   padding: 8px 4px;
@@ -162,25 +154,21 @@
   font-weight: 600;
   list-style: none;
 }
-.about-sec > summary::before,
 .guide-sec > summary::before {
   content: '▸ ';
   font-size: 11px;
   color: var(--c-text-dim);
 }
-.about-sec[open] > summary::before,
 .guide-sec[open] > summary::before {
   content: '▾ ';
 }
-.about-sec > p {
-  margin: 0 4px 8px 16px;
-}
+
 .guide-search {
   width: 100%;
   box-sizing: border-box;
   margin: 4px 0 6px;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: var(--r-md);
   border: 1px solid var(--c-border);
   background: rgba(255, 255, 255, 0.05);
   color: var(--c-text);
@@ -225,8 +213,8 @@
   align-items: center;
   gap: 2px;
   padding: 5px 0 6px;
-  border-radius: var(--r-tile);
-  background: rgba(18, 32, 45, 0.65);
+  border-radius: var(--r-sm);
+  background: var(--c-cell);
   border-top: 3.5px solid transparent;
   color: var(--c-text-dim);
   font-size: 10px;
@@ -235,7 +223,7 @@
 
 /* after dark: a shade deeper, so the night reads as a stretch of the row */
 .wxcell-night {
-  background: rgba(6, 12, 20, 0.8);
+  background: var(--c-cell-night);
 }
 
 /* the day turns over: the cell names the new day and a rule marks the seam */
@@ -281,11 +269,7 @@
   margin: 0 1.5px;
 }
 
-/* Hour and day cells take their border colour from the sea-state ramp,
-   inline — see WeatherStrip. The good/amber/rough classes that used to live
-   here graded your trip, which is the thing the ramp replaced. */
-
-/* Rain and lightning ride the cells as corner MARKS, not rows (§0.6): the
+/* Rain and lightning ride the cells as corner MARKS, not rows: the
    strip is the app's densest surface and its height is spoken for. ⚡ is
    amber — the loud one — and never the red reserved for issued warnings. */
 .wx-bolt {
@@ -340,21 +324,16 @@
 
 .chip {
   padding: 6px 12px;
-  border-radius: var(--r-tile);
+  border-radius: var(--r-sm);
   font-size: 12px;
   font-weight: 600;
   background: var(--c-surface-heavy);
   border: 1px solid var(--c-border);
   color: var(--c-text-dim);
-  -webkit-backdrop-filter: blur(var(--blur));
-  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
   animation: rise-in 0.25s ease;
   white-space: nowrap;
-}
-
-.chip-ok {
-  color: var(--c-track);
-  border-color: rgba(89, 224, 184, 0.35);
 }
 
 .chip-warn {
@@ -369,9 +348,9 @@
   left: 0;
   right: 0;
   bottom: 0;
-  /* 8px sides: every pane — strip, card, dock, sheet — shares one width */
+  /* 8px sides: every pane — strip, card, bar, sheet — shares one width */
   /* half the safe-area inset, not all of it: the full inset + 10px left a
-     dead band under the dock on phones with a home indicator. The dock may
+     dead band under the bar on phones with a home indicator. The bar may
      overlap the indicator's outer fringe; its tap targets stay above it. */
   padding: 0 8px calc(var(--sab) / 2 + 6px);
   display: flex;
@@ -385,45 +364,6 @@
   pointer-events: auto;
 }
 
-.instruments {
-  display: flex;
-  align-items: center;
-  border-radius: 8px;
-  padding: 10px 14px;
-  gap: 10px;
-}
-
-/* inside the live trip card: a row under the leg, not a pane of its own */
-.instruments.inst-embedded {
-  margin-top: 8px;
-  padding: 8px 0 0;
-  border-radius: 0;
-  border-top: 1px solid rgba(126, 178, 224, 0.1);
-}
-
-.inst-embedded .inst-value {
-  font-size: 22px;
-}
-
-/* the live card folded to a line: heading, time left, the pill */
-.tb-folded .leg-head {
-  gap: 8px;
-}
-
-.leg-fold-time {
-  margin-left: auto;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--c-text);
-  white-space: nowrap;
-}
-
-.leg-fold-time small {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--c-text-dim);
-}
-
 .inst {
   flex: 1;
   display: flex;
@@ -431,45 +371,6 @@
   align-items: center;
   gap: 0;
   min-width: 0;
-}
-
-.inst-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--c-text-faint);
-}
-
-.inst-value {
-  font-size: 28px;
-  font-weight: 700;
-  line-height: 1.1;
-  color: var(--c-text);
-}
-
-.inst-unit {
-  font-size: 10px;
-  color: var(--c-text-dim);
-}
-
-/* the cone ahead, under the depth: quiet numbers, amber under the skipper's
-   own shallow figure (their limit, never the app's) */
-.inst-ahead {
-  margin-top: 2px;
-  font-size: 10.5px;
-  font-weight: 600;
-  color: var(--c-text-faint);
-  white-space: nowrap;
-}
-
-.inst-ahead.shallow {
-  color: var(--c-warn);
-}
-
-.inst-divider {
-  width: 1px;
-  height: 34px;
-  background: var(--c-border);
 }
 
 /* a slow fade in and out: the locate button while the GPS is still looking */
@@ -483,46 +384,7 @@
   }
 }
 
-/* ---------- vessel marker ---------- */
-
-.vessel {
-  width: 40px;
-  height: 40px;
-}
-
 /* ---------- depth tap popup ---------- */
-
-.depth-popup .maplibregl-popup-content {
-  /* see-through enough to keep the ground under it; the blur keeps the
-     numbers readable over busy terrain */
-  background: rgba(12, 23, 36, 0.6);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-sm);
-  padding: 6px 10px 7px;
-  min-width: 232px;
-  box-shadow: var(--shadow-fab);
-}
-
-.depth-popup .maplibregl-popup-tip {
-  border-top-color: rgba(12, 23, 36, 0.6) !important;
-  border-bottom-color: rgba(12, 23, 36, 0.6) !important;
-}
-
-.depth-popup-value {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--c-text);
-  font-variant-numeric: tabular-nums;
-}
-
-.depth-popup-value span {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--c-text-dim);
-  margin-left: 3px;
-}
 
 .depth-popup-wx {
   display: flex;
@@ -550,39 +412,16 @@
 
 /* tap a course point → offer to remove it */
 
-.via-popup .maplibregl-popup-content {
-  background: var(--c-surface-heavy);
-  -webkit-backdrop-filter: blur(var(--blur));
-  backdrop-filter: blur(var(--blur));
-  border: 1px solid var(--c-border-strong);
-  border-radius: var(--r-sm);
-  padding: 0;
-  box-shadow: var(--shadow-fab);
-}
-
-.via-popup .maplibregl-popup-tip {
-  border-top-color: var(--c-surface-heavy) !important;
-  border-bottom-color: var(--c-surface-heavy) !important;
-}
-
-.via-remove-btn {
-  display: block;
-  padding: 10px 14px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--c-danger);
-}
-
 /* ---------- bottom sheet ---------- */
 
 .sheet {
   position: absolute;
-  /* the same 8px sides as the outlook strip and the dock */
+  /* the same 8px sides as the outlook strip and the bottom bar */
   left: 8px;
   right: 8px;
   bottom: 0;
   z-index: 20;
-  border-radius: 10px 10px 0 0;
+  border-radius: var(--r-md) var(--r-md) 0 0;
   border-bottom: none;
   display: flex;
   flex-direction: column;
@@ -662,7 +501,7 @@
   align-items: center;
   gap: 12px;
   padding: 11px 4px;
-  border-bottom: 1px solid rgba(126, 178, 224, 0.08);
+  border-bottom: 1px solid rgba(var(--c-ink-rgb), 0.08);
 }
 
 .row:last-child {
@@ -707,8 +546,8 @@
   -webkit-appearance: none;
   width: 50px;
   height: 30px;
-  border-radius: 15px;
-  background: rgba(126, 178, 224, 0.18);
+  border-radius: var(--r-lg);
+  background: rgba(var(--c-ink-rgb), 0.18);
   position: relative;
   transition: background 0.2s;
   flex-shrink: 0;
@@ -739,14 +578,14 @@
 
 .seg {
   display: flex;
-  background: rgba(126, 178, 224, 0.12);
-  border-radius: 9px;
+  background: rgba(var(--c-ink-rgb), 0.12);
+  border-radius: var(--r-md);
   padding: 2px;
 }
 
 .seg button {
   padding: 5px 16px;
-  border-radius: 7px;
+  border-radius: var(--r-sm);
   font-size: 13px;
   font-weight: 600;
   color: var(--c-text-dim);
@@ -764,7 +603,7 @@
   display: grid;
   place-items: center;
   color: var(--c-text-dim);
-  background: rgba(126, 178, 224, 0.1);
+  background: rgba(var(--c-ink-rgb), 0.1);
   flex-shrink: 0;
 }
 
@@ -785,7 +624,7 @@
   -webkit-appearance: none;
   height: 4px;
   border-radius: 2px;
-  background: rgba(126, 178, 224, 0.25);
+  background: rgba(var(--c-ink-rgb), 0.25);
 }
 
 .layer-opacity input[type='range']::-webkit-slider-thumb {
@@ -808,9 +647,9 @@
   justify-content: center;
   gap: 8px;
   padding: 12px;
-  border-radius: 7px;
+  border-radius: var(--r-sm);
   background: var(--c-accent);
-  color: #06253a;
+  color: var(--c-on-accent);
   font-size: 15px;
   font-weight: 700;
   transition: opacity 0.2s;
@@ -823,7 +662,7 @@
 .dl-bar {
   height: 6px;
   border-radius: 3px;
-  background: rgba(126, 178, 224, 0.15);
+  background: rgba(var(--c-ink-rgb), 0.15);
   overflow: hidden;
 }
 
@@ -839,37 +678,7 @@
   text-align: center;
 }
 
-/* ---------- trip planner ---------- */
-
-.chip-danger {
-  color: var(--c-danger);
-  border-color: rgba(255, 107, 107, 0.4);
-}
-
-.chip-accent {
-  color: var(--c-accent);
-  border-color: rgba(63, 200, 255, 0.4);
-}
-
-/* invitation to keep a map-picked start around */
-.dest-save-start {
-  color: var(--c-track);
-  border-style: dashed;
-  border-color: rgba(89, 224, 184, 0.45);
-}
-
-.dest-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-radius: var(--r-tile);
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--c-text-dim);
-  background: rgba(126, 178, 224, 0.1);
-  border: 1px solid transparent;
-}
+/* ---------- the bottom-bar cards: a note field ---------- */
 
 .trip-name-input {
   width: 100%;
@@ -883,90 +692,7 @@
   outline: none;
 }
 
-.trip-table {
-  display: flex;
-  flex-direction: column;
-  font-size: 13px;
-  color: var(--c-text-dim);
-}
-
-.trip-row {
-  display: grid;
-  grid-template-columns: 62px 1fr 1.25fr 52px;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 2px 7px 10px;
-  border-left: 3px solid transparent;
-  border-bottom: 1px solid rgba(126, 178, 224, 0.07);
-}
-
-.trip-row:last-child {
-  border-bottom: none;
-}
-
-.trip-row b {
-  color: var(--c-text);
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.trip-time {
-  font-weight: 600;
-  color: var(--c-text);
-  white-space: nowrap;
-}
-
-.trip-phase {
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.trip-row {
-  width: 100%;
-  text-align: left;
-  background: none;
-  border-right: none;
-  border-top: none;
-  font-size: 13px;
-  color: var(--c-text-dim);
-}
-
-.trip-expanded {
-  background: rgba(63, 200, 255, 0.06);
-}
-
-.leg-forecast {
-  padding: 4px 8px 12px 13px;
-  border-left: 3px solid var(--c-accent-dim);
-  background: rgba(63, 200, 255, 0.04);
-}
-
-.leg-forecast-title {
-  padding: 8px 0 4px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--c-accent);
-}
-
-.trip-name {
-  background: none;
-  border: none;
-  padding: 0;
-  text-align: left;
-  cursor: pointer;
-}
-
 /* course-editing hint under the destination chips */
-
-.route-edit-note {
-  padding: 0 0 10px;
-  font-size: 12px;
-  color: var(--c-text-faint);
-}
 
 .linklike {
   display: inline;
@@ -986,7 +712,7 @@
   display: grid;
   place-items: center;
   color: var(--c-text-dim);
-  background: rgba(126, 178, 224, 0.14);
+  background: rgba(var(--c-ink-rgb), 0.14);
   flex-shrink: 0;
 }
 
@@ -994,16 +720,16 @@
   opacity: 0.35;
 }
 
-/* ---------- trip builder: the map-facing where-from/where-to card ---------- */
+/* ---------- the bottom-bar card (Heard, Sharpen, Log, Measure, Route) ---------- */
 
 .tripbuilder {
   align-self: stretch;
-  border-radius: 8px;
+  border-radius: var(--r-md);
   padding: 8px 12px 10px;
   display: flex;
   flex-direction: column;
-  /* tight on purpose: the rest card must stay under ~35% of the screen so
-     the chart keeps its dominance (§2.3) */
+  /* tight on purpose: the card must stay under ~35% of the screen so the
+     map keeps its dominance */
   gap: 6px;
   animation: rise-in 0.25s ease;
 }
@@ -1025,24 +751,6 @@
   color: var(--c-text);
 }
 
-/* one swipeable line of chips per question — the map stays in view */
-.tb-chips {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  min-width: 0;
-}
-
-.tb-chips::-webkit-scrollbar {
-  display: none;
-}
-
-.tb-chips .dest-chip {
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
 .tb-facts {
   display: flex;
   flex-wrap: wrap;
@@ -1055,38 +763,14 @@
   color: var(--c-text);
 }
 
-.tb-dim {
-  color: var(--c-text-faint);
-}
-
 .tb-hint {
   font-size: 11.5px;
   color: var(--c-text-faint);
 }
 
-.tb-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 2px;
-}
-
 /* sliders button while its setup card is up */
 
-.icon-btn-on {
-  color: var(--c-accent);
-  background: var(--c-accent-dim);
-  border-radius: 8px;
-}
-
 /* under way, the card collapses to the live leg — swipe up for what's left */
-
-.tripcard-live {
-  /* the live leg stacks: heading, the two numbers, then the far end */
-  flex-direction: column;
-  align-items: stretch;
-  gap: 4px;
-  border-left: 4px solid transparent;
-}
 
 /* ---------- measuring tool ---------- */
 
@@ -1108,8 +792,7 @@
   font-size: 12px;
 }
 
-.chip-pick:disabled,
-.chip-pick.chip-dim {
+.chip-pick:disabled {
   opacity: 0.4;
 }
 
@@ -1127,86 +810,7 @@
   opacity: 0.35;
 }
 
-/* ---------- the dock bar: who the screen is about (§2.3) ---------- */
-
-/* The subject header — and at rest with no plan, nearly the whole card: the
-   strip above already carries every condition, so the dock only names the
-   subject and gets out of the chart's way. */
-.dock-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 2px 2px;
-}
-
-.dock-head .who {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--c-text);
-}
-
-/* the plan's day, right beside the name — a fact, not a countdown (§0.4) */
-.dock-head .head-day {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--c-accent);
-}
-
-.dock-head .meta {
-  font-size: 10.5px;
-  color: var(--c-text-faint);
-  white-space: nowrap;
-}
-
-/* a spot header carries speed + ✕; push them to the right edge */
-.dock-head .speed-chip {
-  margin-left: auto;
-}
-
-.dock-head .head-x {
-  width: 26px;
-  height: 26px;
-}
-
-/* thunder due today: the one loud thing (§0.6) — amber, never the red that
-   belongs to issued warnings (§1.3) */
-.storm-chip {
-  margin-left: auto;
-  border: 1px solid rgba(255, 180, 84, 0.55);
-  background: rgba(255, 180, 84, 0.1);
-  border-radius: var(--r-row);
-  padding: 1px 7px 2px;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--c-warn);
-  white-space: nowrap;
-}
-
-/* with the ✕ group present, the storm chip rides between name and controls */
-.storm-chip + .speed-chip {
-  margin-left: 0;
-}
-
-/* ---------- raised: the note, the run, the jump list (L2) ---------- */
-
-/* tiny uppercase section caps inside the raised card */
-.cap-row {
-  margin: 10px 2px 4px;
-  font-size: 8.5px;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--c-text-faint);
-}
-
-/* the hand-written exposure note — the one sentence allowed, L2 only (§1.5) */
-/* the chart cannot draw: WebGL is missing, and the empty pane needs a reason */
+/* the map cannot draw: WebGL is missing, and the empty pane needs a reason */
 .map-nogl {
   display: flex;
   align-items: center;
@@ -1214,98 +818,10 @@
   padding: 24px;
 }
 
-.nogl {
-  max-width: 30rem;
-  color: var(--c-text-dim);
-  font-size: 13.5px;
-  line-height: 1.55;
-}
-
-.nogl h2 {
-  margin: 0 0 10px;
-  font-size: 17px;
-  color: var(--c-text);
-}
-
-.nogl p {
-  margin: 0 0 10px;
-}
-
-.nogl b {
-  color: var(--c-text);
-  font-weight: 600;
-}
-
-/* where the run starts from: one swipeable line, like every other question */
-.from-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 2px 4px;
-}
-
-.from-label {
-  flex-shrink: 0;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--c-text-faint);
-}
-
-.dest-chip.on {
-  color: var(--c-text);
-  background: rgba(63, 200, 255, 0.16);
-  border-color: var(--c-accent);
-}
-
 /* the jump list: the other spots as square tiles, calmest first (§3.3) */
 /* "inside the limits you set" — quiet, and never present until they're set */
 
-.limits-set {
-  align-self: flex-start;
-  margin-top: 6px;
-  font-size: 11.5px;
-  color: var(--c-accent);
-  padding: 4px 2px;
-}
-
-.limits-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--c-border);
-}
-
-.limits-lab {
-  font-size: 10.5px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--c-text-faint);
-}
-
-.limits-step {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12.5px;
-}
-
 /* ---------- the trip window: two chips, the strip as their keypad ---------- */
-
-/* cruise speed, in place on the card rather than behind a popover */
-.speed-chip {
-  font-size: 11.5px;
-  color: var(--c-text-dim);
-  border: 1px solid var(--c-border-strong);
-  border-radius: var(--r-row);
-  padding: 2px 9px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
 
 .speed-step {
   display: inline-flex;
@@ -1314,168 +830,11 @@
   font-size: 12px;
   border: 1px solid var(--c-accent);
   background: var(--c-accent-dim);
-  border-radius: var(--r-row);
+  border-radius: var(--r-sm);
   padding: 2px 8px;
 }
 
 /* ---------- the live leg: time left, arrival, the far end ---------- */
-
-.leg-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.leg-title {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--c-text-faint);
-}
-
-/* End trip, rehomed from the retired route drawer. A quiet chip in the head
-   row: the space-between layout parks it mid-row, well clear of the hide ✕,
-   so a miss on either lands on nothing. */
-.leg-body {
-  display: block;
-  width: 100%;
-  text-align: left;
-}
-
-.leg-main {
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
-}
-
-/* time left dominates — the only number that works at the wheel */
-.leg-big {
-  font-size: 34px;
-  font-weight: 700;
-  line-height: 0.95;
-  letter-spacing: -0.035em;
-}
-
-.leg-big small {
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0;
-  color: var(--c-text-dim);
-}
-
-.leg-arr {
-  padding-bottom: 3px;
-}
-
-.leg-k {
-  display: block;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-  color: var(--c-text-faint);
-}
-
-.leg-v {
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-
-/* the leg behind the boat: a hairline that fills, in the course's own blue */
-.leg-progress-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 6px 0 2px;
-}
-
-.leg-progress {
-  flex: 1;
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(126, 178, 224, 0.18);
-  overflow: hidden;
-}
-
-.leg-progress i {
-  display: block;
-  height: 100%;
-  border-radius: 2px;
-  background: var(--c-accent);
-  transition: width var(--dur) var(--ease-out);
-}
-
-.leg-pct {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--c-text-dim);
-  min-width: 30px;
-  text-align: right;
-}
-
-.tb-folded .leg-progress-row {
-  margin: 4px 0 0;
-}
-
-/* a number moved — amber, because nothing is wrong, it just isn't the plan */
-.leg-late {
-  color: var(--c-warn);
-}
-
-.leg-drift {
-  font-style: normal;
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--c-warn);
-  border: 1px solid rgba(255, 180, 84, 0.5);
-  border-radius: var(--r-row);
-  padding: 0 5px;
-  margin-left: 5px;
-  vertical-align: 2px;
-}
-
-/* the far end: context, below a divider, never something you steer by */
-.leg-far {
-  display: flex;
-  align-items: baseline;
-  gap: 7px;
-  margin-top: 7px;
-  padding-top: 7px;
-  border-top: 1px solid var(--c-border);
-}
-
-.leg-far .leg-k {
-  display: inline;
-}
-
-.leg-far .leg-v {
-  font-size: 13px;
-}
-
-.leg-far-note {
-  font-size: 11px;
-  color: var(--c-text-dim);
-}
-
-.leg-note {
-  display: block;
-  margin-top: 5px;
-  font-size: 11px;
-  color: var(--c-warn);
-  line-height: 1.4;
-}
-
-.leg-note.leg-dim {
-  color: var(--c-text-faint);
-}
-
-/* ahead of the promise — worth knowing, but not a warning */
-.leg-drift.leg-early {
-  color: var(--c-track);
-  border-color: rgba(89, 224, 184, 0.5);
-}
 
 /* ---------- swipe up for more, with a real button for everyone else ---------- */
 
@@ -1498,47 +857,9 @@
   background: var(--c-accent);
 }
 
-/* the card's only action is Start trip now — Details moved to the swipe.
-   Slimmer than the panel version: the dock card is fighting for chart room. */
-.tb-actions .btn-primary:only-child {
-  flex: 1;
-  padding: 9px;
-  font-size: 14px;
-}
-
 /* ---------- one dock surface, two detents (§2.3) ---------- */
 
-/* Raised, the SAME card grows — this replaced the route drawer that used to
-   open on top of it. The chrome above the scroll area (head, chips, facts)
-   stays put; everything the raise revealed scrolls inside, and the cap keeps
-   a band of chart visible even at full height. */
-.tripbuilder.tb-raised {
-  /* stops short of the outlook strip: it stays visible because it is still
-     the window chips' keypad while the card is up */
-  max-height: calc(62vh - var(--sab));
-}
-
-.tb-scroll {
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  border-top: 1px solid var(--c-border);
-  margin-top: 2px;
-  padding-top: 4px;
-}
-
 /* ---------- saved-trip admin: the tail of the raised list ---------- */
-
-.saved-pick {
-  padding: 8px 0 2px;
-}
-
-.saved-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-}
 
 .saved-actions {
   display: inline-flex;
@@ -1563,20 +884,6 @@
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
-}
-
-/* The MapLibre controls sit clear of the bottom chrome: the scale above the
-   bar (and the left stack), the attribution folded to its (i) at the left
-   of My location so it never lands under the buttons. (.map-root in the
-   selector: maplibre-gl.css loads after this file and sets the same
-   corners to 0.) */
-.map-root .maplibregl-ctrl-bottom-left {
-  bottom: calc(var(--barh, 0px) + var(--sab) + 6px);
-}
-
-.map-root .maplibregl-ctrl-bottom-right {
-  bottom: calc(var(--sab) + 4px);
-  right: calc(var(--sar, 0px) + 68px);
 }
 
 .maplibregl-ctrl-attrib.maplibregl-compact {
@@ -1624,18 +931,11 @@
   /* the row and its route button are one unit — same height, by decree */
   min-height: 48px;
   border: 1px solid var(--c-border);
-  border-radius: var(--r-tile);
-  background: rgba(16, 31, 47, 0.45);
+  border-radius: var(--r-sm);
+  background: rgba(var(--c-bg-rgb), 0.45);
   padding: 5px 9px;
   color: var(--c-text);
   text-align: left;
-}
-
-.pg-top {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  min-width: 0;
 }
 
 .place-go .nm {
@@ -1647,63 +947,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.pg-top > b {
-  margin-left: auto;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-/* the second line: how far, and what the water is doing now */
-.pg-info {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 11.5px;
-  color: var(--c-text-dim);
-  white-space: nowrap;
-}
-
-.pg-info b {
-  font-weight: 700;
-}
-
-/* the sky, top-right of the row: icon + droplet + bolt when earned */
-.pg-sky {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--c-text-dim);
-}
-
-.pg-sky em {
-  font-style: normal;
-  font-size: 10px;
-  line-height: 1;
-}
-
-/* the route button: the one action a row offers besides looking — sized for
-   a thumb on a moving boat */
-.place-route {
-  align-self: stretch;
-  width: 48px;
-  min-height: 48px;
-  flex: none;
-  border: 1px solid var(--c-border-strong);
-  border-radius: var(--r-tile);
-  background: rgba(16, 31, 47, 0.45);
-  color: var(--c-accent);
-}
-
-.place-hint {
-  text-align: center;
-  font-size: 11px;
-  color: var(--c-text-faint);
-  border: 1px dashed var(--c-border);
-  border-radius: var(--r-tile);
-  padding: 7px;
 }
 
 /* the water-tap popup's two square actions: Go explores, Save keeps */
@@ -1720,7 +963,7 @@
   font-size: 12px;
   font-weight: 600;
   padding: 6px 0;
-  border-radius: var(--r-tile);
+  border-radius: var(--r-sm);
   cursor: pointer;
 }
 
@@ -1790,20 +1033,9 @@
 
 .place-row-edit {
   border: 1px solid var(--c-border);
-  border-radius: var(--r-tile);
-  background: rgba(16, 31, 47, 0.45);
+  border-radius: var(--r-sm);
+  background: rgba(var(--c-bg-rgb), 0.45);
   padding: 6px 8px 6px 10px;
-}
-
-/* the quiet star beside the home place's name in the everyday list */
-.pg-home {
-  display: inline-flex;
-  color: var(--c-warn);
-  margin-left: 4px;
-}
-
-.pg-home svg {
-  fill: currentColor;
 }
 
 .pe-fields {
@@ -1839,472 +1071,16 @@
 
 /* ---------- the sentence: from -> to, the trip's headline ---------- */
 
-.sentence-head {
-  display: flex;
-  align-items: stretch;
-  gap: 5px;
-}
-
-.end-chip {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-tile);
-  background: rgba(18, 32, 45, 0.65);
-  padding: 5px 9px;
-  text-align: left;
-  color: var(--c-text);
-}
-
-.end-chip em {
-  font-style: normal;
-  font-size: 8.5px;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--c-text-faint);
-}
-
-.end-chip b {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 13px;
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.end-from b { color: var(--c-track) }
-.end-to b { color: var(--c-accent) }
-.end-chip.end-open { border-color: var(--c-track) }
-
-.swap-ends {
-  flex: none;
-  align-self: center;
-  width: 30px;
-  height: 30px;
-  display: grid;
-  place-items: center;
-  border-radius: var(--r-tile);
-  border: 1px solid var(--c-border);
-  color: var(--c-text-dim);
-  background: transparent;
-}
-
-.sentence-head .head-x { align-self: center }
-
-.dock-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 2px 2px 0;
-  min-height: 20px;
-}
-
-.from-ask {
-  flex-basis: 100%;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--c-text);
-  padding: 1px 2px 3px;
-}
-
 /* ---------- chips arm, surfaces answer ---------- */
-
-.end-chip.end-armed {
-  border-color: var(--c-accent);
-  background: var(--c-accent-dim);
-  box-shadow: 0 0 0 3px rgba(63, 200, 255, 0.14);
-}
-
-/* Start, never out of reach: a control, not a prompt */
-.tb-actions-quiet {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.start-quiet {
-  margin-left: auto;
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-tile);
-  background: transparent;
-  color: var(--c-track);
-  font-size: 12px;
-  font-weight: 600;
-  padding: 5px 12px;
-}
-
-.start-quiet:disabled {
-  opacity: 0.4;
-}
-
-/* the sheet answering an armed slot */
-.slot-head {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  padding: 2px 2px 0;
-}
-
-.slot-q {
-  font-size: 13px;
-  font-weight: 700;
-}
-
-/* the two answers above the list: where the boat is, and anywhere on the chart */
-.place-opt {
-  width: 100%;
-  border-style: dashed;
-  border-color: var(--c-border-strong);
-}
-
-.place-opt .pg-top {
-  color: var(--c-accent);
-}
-
-.place-opt .nm {
-  color: var(--c-text);
-}
-
-.place-opt:disabled {
-  opacity: 0.45;
-}
-
-.pg-pin {
-  display: inline-flex;
-  color: var(--c-accent);
-}
 
 /* ---------- first run (§10): welcome cards + first-voyage card ---------- */
 
-.welcome {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  background: rgba(6, 12, 19, 0.72);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
-  display: grid;
-  place-items: center;
-}
-
-.welcome-card {
-  width: min(340px, 86vw);
-  background: var(--c-surface-heavy);
-  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
-  backdrop-filter: blur(var(--blur)) saturate(1.4);
-  border: 1px solid var(--c-border-strong);
-  border-radius: 6px;
-  box-shadow: var(--shadow-panel);
-  padding: 30px 24px 20px;
-  text-align: center;
-  animation: rise-in 0.3s ease-out;
-}
-
-.welcome-glyph {
-  font-size: 40px;
-  line-height: 1;
-  margin-bottom: 16px;
-}
-
-.welcome-card h2 {
-  font-size: 21px;
-  line-height: 1.2;
-  margin-bottom: 10px;
-  text-wrap: balance;
-}
-
-.welcome-card p {
-  font-size: 14.5px;
-  line-height: 1.55;
-  color: var(--c-text-dim);
-}
-
-.welcome-next {
-  margin-top: 20px;
-  background: var(--c-accent);
-  color: #06121c;
-  font-weight: 700;
-  font-size: 15px;
-  padding: 11px 28px;
-  border-radius: 6px;
-}
-
-/* the quiet way out — same weight as the old Skip, under the button so a
-   thumb that wants the chart doesn't have to find a corner */
-.welcome-later {
-  display: block;
-  margin: 12px auto 0;
-  font-size: 13px;
-  letter-spacing: 0.06em;
-  color: var(--c-text-dim);
-  padding: 6px 14px;
-}
-
 /* ---------- read-the-water guide (§10.4) ---------- */
-
-.ng-card {
-  width: min(360px, 90vw);
-  text-align: left;
-  padding: 24px 20px 18px;
-}
-
-.ng-card h2 {
-  font-size: 19px;
-  text-align: center;
-  margin-bottom: 16px;
-}
-
-.ng-anatomy {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-}
-
-.ng-cell {
-  flex-shrink: 0;
-  width: 54px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 7px 4px 8px;
-  border-radius: 5px;
-  background: var(--c-bg-raised);
-  border: 1px solid var(--c-border-strong);
-  /* the colour is set inline — the sample wears the ramp band its 0.4 m lands in */
-  border-top: 2px solid #b9efad;
-}
-
-.ng-cell-h {
-  font-size: 11px;
-  color: var(--c-text-dim);
-}
-
-.ng-cell-w {
-  font-size: 19px;
-  font-weight: 700;
-}
-
-.ng-cell-s {
-  font-size: 10.5px;
-  color: var(--c-text-dim);
-}
-
-.ng-legend {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-}
-
-.ng-lr {
-  display: flex;
-  gap: 10px;
-  align-items: baseline;
-  font-size: 12px;
-  color: var(--c-text-dim);
-  line-height: 1.4;
-}
-
-.ng-k {
-  flex-shrink: 0;
-  width: 44px;
-  text-align: right;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--c-text);
-}
-
-.ng-ramp {
-  margin-top: 16px;
-}
-
-/* the sea-state ramp with the height each band begins at under its edge —
-   the legend in the numbers guide and the live preview under the Settings
-   slider are the same drawing (ui/SeaRamp.tsx) */
-.sea-ramp-bar {
-  display: flex;
-  height: 10px;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.sea-ramp-bar i {
-  flex: 1;
-}
-
-.sea-ramp-ticks {
-  position: relative;
-  height: 13px;
-  margin-top: 3px;
-  font-size: 10px;
-  color: var(--c-text-dim);
-}
-
-.sea-ramp-ticks span {
-  position: absolute;
-  transform: translateX(-50%);
-  white-space: nowrap;
-}
-
-/* the scale row keeps a title, unlike the opacity sliders it borrows from */
-.sea-scale-row {
-  padding-top: 11px;
-  border-bottom: 0;
-}
-
-.sea-scale-preview {
-  padding: 2px 4px 12px;
-  border-bottom: 1px solid rgba(126, 178, 224, 0.08);
-}
-
-.ng-ramp-labels {
-  display: flex;
-  gap: 8px;
-  justify-content: space-between;
-  align-items: baseline;
-  font-size: 10.5px;
-  color: var(--c-text-dim);
-  margin-top: 5px;
-}
-
-.ng-ramp-labels span:nth-child(2) {
-  text-align: center;
-  flex: 1;
-}
-
-.ng-depth {
-  margin-top: 14px;
-}
-
-.ng-card .welcome-next {
-  display: block;
-  margin: 18px auto 0;
-}
-
-/* ---------- circles: Boats out ---------- */
-.circle-fields { gap: 8px; }
-.circle-fields input[type='text'] {
-  flex: 1 1 0;
-  min-width: 0;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(233, 242, 250, 0.18);
-  background: rgba(8, 20, 34, 0.55);
-  color: inherit;
-  font: inherit;
-}
-.circle-fields input[type='text']:focus-visible { outline: 2px solid #3fc8ff; outline-offset: 1px; }
-.circle-actions { display: flex; gap: 14px; align-items: center; }
 
 /* the invite card: the code first — it is what always works — then the
    text ready to copy, then the ways to send it */
-.circle-invite {
-  display: grid;
-  gap: 8px;
-  padding: 6px 16px 12px;
-  border-bottom: 1px solid rgba(233, 242, 250, 0.1);
-}
-.circle-code {
-  font-size: 17px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-  color: var(--c-accent);
-  user-select: all;
-  -webkit-user-select: all;
-}
-.circle-invite-text {
-  width: 100%;
-  resize: none;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(233, 242, 250, 0.18);
-  background: rgba(8, 20, 34, 0.55);
-  color: var(--c-text-dim);
-  font: inherit;
-  font-size: 12.5px;
-  line-height: 1.4;
-}
-.circle-invite-note { font-size: 0.86rem; color: var(--c-track); }
+
 .linklike.dim { color: var(--c-text-dim); }
-.circle-note { padding: 4px 16px 10px; font-size: 0.86rem; line-height: 1.4; }
-.circle-note.dim { opacity: 0.6; }
-.circle-optin { border-top: 1px solid rgba(233, 242, 250, 0.1); }
-
-/* the Crew sheet: the roster in three groups, then the crews themselves.
-   Rows sit in the sheet's own 16px gutter, so they carry the panel's 4px */
-.crew .bo-row { padding: 9px 4px; border-bottom: 1px solid rgba(126, 178, 224, 0.08); }
-.crew .bo-row:last-child { border-bottom: none; }
-.crew .bo-name { font-size: 15px; }
-.crew .bo-what { font-size: 14.5px; }
-.crew .bo-what b { color: var(--c-text); font-weight: 600; }
-.crew .bo-row.ashore .bo-name { color: var(--c-text-dim); }
-/* the boat's own colour, on the chart and beside its name */
-.crew-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; box-shadow: 0 0 0 1.5px rgba(8, 20, 34, 0.6); }
-.crew .ashore .crew-dot { opacity: 0.55; }
-
-/* ---------- the log: trips, not files ---------- */
-.log-stats { display: flex; gap: 6px; padding: 0 0 6px; }
-.stat { display: flex; flex-direction: column; gap: 1px; flex: 1; padding: 8px 10px; border: 1px solid var(--c-border); border-radius: var(--r-tile); background: rgba(16, 31, 47, 0.45); }
-.stat .v { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
-.stat .k { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--c-text-faint); }
-.lines-head { display: flex; justify-content: space-between; align-items: baseline; }
-.lines-head .meta { text-transform: none; letter-spacing: 0; font-weight: 500; }
-.log-month { margin-top: 12px; }
-.log-entry .row-text { padding: 0; }
-.log-entry .row { border-bottom: 1px solid rgba(126, 178, 224, 0.08); }
-.log-open > .row { border-bottom: none; }
-.log-detail { padding: 2px 4px 12px; border-bottom: 1px solid rgba(126, 178, 224, 0.08); display: flex; flex-direction: column; gap: 6px; }
-.log-detail .tb-facts { padding: 0 0 2px; }
-.log-marks-head { margin-top: 6px; }
-.log-mark { padding: 7px 0; }
-.log-mark .row-desc { display: flex; align-items: center; gap: 8px; }
-.mark-note { flex: 1; min-width: 0; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(233, 242, 250, 0.14); background: rgba(8, 20, 34, 0.45); color: var(--c-text); font: inherit; font-size: 12.5px; }
-.mark-note::placeholder { color: var(--c-text-faint); }
-.log-actions { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
-.log-actions .chip { display: inline-flex; align-items: center; gap: 5px; animation: none; }
-.log-delete { margin-left: auto; width: 34px; height: 34px; }
-/* the Mark button under way: beside the distance pill */
-.mark-btn { width: 44px; height: 38px; border-radius: var(--r-tile); border: 1px solid rgba(63, 200, 255, 0.45); background: rgba(63, 200, 255, 0.1); color: var(--c-accent); display: grid; place-items: center; flex: none; transition: background var(--dur) ease, transform var(--dur-fast) var(--ease-out); }
-.mark-btn.mark-hit { background: rgba(255, 180, 84, 0.3); border-color: var(--c-warn); color: var(--c-warn); }
-.pg-line { color: var(--c-track); }
-
-.boats-out { padding: 6px 0 4px; border-bottom: 1px solid rgba(233, 242, 250, 0.1); margin-bottom: 6px; }
-.bo-head { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 16px 4px; font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.75; }
-.bo-meta { text-transform: none; letter-spacing: 0; opacity: 0.8; }
-.bo-empty { padding: 4px 16px 8px; opacity: 0.6; }
-.bo-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-areas: 'name age' 'what what';
-  gap: 2px 10px;
-  width: 100%;
-  padding: 8px 16px;
-  text-align: left;
-  background: none;
-  border: 0;
-  color: inherit;
-  font: inherit;
-}
-.bo-row:disabled { opacity: 0.6; }
-.bo-name { grid-area: name; font-weight: 600; }
-.bo-age { grid-area: age; opacity: 0.65; font-size: 0.86rem; }
-.bo-what { grid-area: what; opacity: 0.85; font-size: 0.92rem; }
-
-.boat-popup .boat-card { display: grid; gap: 2px; min-width: 180px; }
-.boat-card-who { font-weight: 700; }
-.boat-card-what { font-size: 0.92rem; }
-.boat-card-age { font-size: 0.8rem; opacity: 0.65; }
-.boat-popup .maplibregl-popup-content { white-space: normal; max-width: min(300px, 78vw); }
-.boat-popup .boat-card-what { white-space: normal; }
 
 /* ---------- polish pass: press, settle, arrive ---------- */
 
@@ -2313,9 +1089,7 @@
 .wxday,
 .chip,
 .place-go,
-.bo-row,
-.row,
-.fv-row {
+.row {
   transition:
     transform var(--dur-fast) var(--ease-out),
     background-color var(--dur) ease,
@@ -2328,9 +1102,8 @@
   transform: scale(0.94);
   transition-duration: 0.06s;
 }
-.place-go:active,
-.bo-row:active {
-  background: rgba(126, 178, 224, 0.1);
+.place-go:active {
+  background: rgba(var(--c-ink-rgb), 0.1);
   transform: none;
 }
 .fab:active {
@@ -2338,7 +1111,7 @@
 }
 .icon-btn:active {
   transform: scale(0.9);
-  background: rgba(126, 178, 224, 0.18);
+  background: rgba(var(--c-ink-rgb), 0.18);
 }
 
 /* the one primary action carries the accent's light */
@@ -2347,7 +1120,7 @@
 }
 .btn-primary:active {
   transform: scale(0.975);
-  box-shadow: 0 2px 10px rgba(63, 200, 255, 0.18);
+  box-shadow: 0 2px 10px rgba(var(--c-accent-rgb), 0.18);
 }
 .btn-primary:disabled {
   box-shadow: none;
@@ -2386,24 +1159,14 @@
     opacity: 1;
   }
 }
-.maplibregl-popup {
-  animation: popup-in 0.16s var(--ease-out) both;
-}
 
 @media (prefers-reduced-motion: reduce) {
-  .sheet .panel,
-.maplibregl-popup {
+  .sheet .panel {
     animation: none;
   }
 }
 
 /* ---------- report a problem ---------- */
-
-.report-actions {
-  display: flex;
-  gap: 10px;
-  padding: 4px 0 6px;
-}
 
 .btn-secondary {
   flex: 1;
@@ -2412,9 +1175,9 @@
   justify-content: center;
   gap: 8px;
   padding: 12px;
-  border-radius: 7px;
-  border: 1px solid rgba(126, 178, 224, 0.28);
-  background: rgba(126, 178, 224, 0.08);
+  border-radius: var(--r-sm);
+  border: 1px solid rgba(var(--c-ink-rgb), 0.28);
+  background: rgba(var(--c-ink-rgb), 0.08);
   color: var(--c-text);
   font-size: 15px;
   font-weight: 600;
@@ -2422,156 +1185,11 @@
 
 /* ---------- the mark: an emoji in the crew colour, and its flair ---------- */
 
-.mk-wrap { display: inline-flex; flex: 0 0 auto; }
-.mk {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  line-height: 1;
-  vertical-align: middle;
-}
-.mk-e { position: relative; }
 @keyframes mk-pulse { 0% { transform: scale(1); opacity: 0.7; } 100% { transform: scale(2); opacity: 0; } }
-.mk-pulse { position: absolute; inset: 0; border-radius: 50%; border: 2px solid currentColor; animation: mk-pulse 1.8s ease-out infinite; }
+
 @keyframes mk-twinkle { 0%, 100% { opacity: 0.15; transform: scale(0.5); } 50% { opacity: 1; transform: scale(1); } }
-.mk-spark { position: absolute; color: #fff; animation: mk-twinkle 1.6s ease-in-out infinite; }
+
 @keyframes mk-rise { 0% { transform: translateY(0); opacity: 0; } 20% { opacity: 0.9; } 100% { transform: translateY(-24px); opacity: 0; } }
-.mk-bub { position: absolute; border-radius: 50%; background: rgba(234, 243, 251, 0.85); animation: mk-rise 2.4s ease-out infinite; }
-.mk-wake {
-  position: absolute;
-  right: 100%;
-  top: 50%;
-  transform: translateY(-50%);
-  border-radius: 2px;
-  background: linear-gradient(90deg, rgba(234, 243, 251, 0), rgba(234, 243, 251, 0.75));
-}
-.mk-halo { position: absolute; border-radius: 50%; border: 1.5px solid currentColor; opacity: 0.8; }
-@media (prefers-reduced-motion: reduce) {
-  .mk-pulse, .mk-spark, .mk-bub { animation: none; }
-}
-
-/* the Crew rows wear the mark down their left, spanning both lines */
-.crew .bo-row {
-  grid-template-columns: auto 1fr auto;
-  grid-template-areas: 'ic name age' 'ic what what';
-  column-gap: 10px;
-  align-items: center;
-}
-.crew .bo-ic { grid-area: ic; display: flex; }
-.crew .ashore .bo-ic { opacity: 0.55; }
-.boat-card-who { display: flex; align-items: center; gap: 8px; }
-
-/* the skipper card: a sheet over everything, once at the door, then from
-   the last row of Crew */
-.skipper {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  background: rgba(6, 12, 19, 0.55);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-.skipper-sheet {
-  width: calc(100% - 16px);
-  max-width: 480px;
-  max-height: calc(100dvh - 24px);
-  display: flex;
-  flex-direction: column;
-  border-radius: 10px 10px 0 0;
-  border-bottom: none;
-  animation: rise-in 0.2s cubic-bezier(0.3, 1, 0.4, 1);
-}
-.skipper-sheet .sheet-titlerow { padding-top: 14px; }
-.skipper-sheet .sheet-body > .row-desc { padding: 0 2px; }
-.sk-preview { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px 0 10px; }
-.sk-who { font-size: 15px; font-weight: 600; }
-.sk-section { margin-top: 14px; display: flex; justify-content: space-between; align-items: baseline; }
-.sk-section .meta { text-transform: none; letter-spacing: 0; font-weight: 500; }
-.sk-pick { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; padding: 10px 0 4px; }
-.sk-chip {
-  position: relative;
-  height: 44px;
-  border-radius: 10px;
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  line-height: 1;
-  color: var(--c-text);
-  padding: 0;
-  overflow: visible;
-}
-.sk-chip.on { border: 2px solid var(--c-accent); box-shadow: var(--shadow-accent); }
-.sk-chip.fl { height: 58px; }
-.sk-chip.fl .mk-wrap { margin-bottom: 10px; }
-.sk-chip.wake .mk-wrap { margin-left: 22px; }
-.sk-chip .sk-l { position: absolute; left: 0; right: 0; bottom: 3px; text-align: center; font-size: 9.5px; letter-spacing: 0.02em; color: var(--c-text-dim); }
-.sk-emoji-in { font-size: 20px !important; padding: 5px 10px !important; }
-.sk-swatches { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; padding: 10px 0 4px; }
-.sk-swatch {
-  position: relative;
-  height: 44px;
-  border-radius: 10px;
-  border: 1px solid rgba(8, 20, 34, 0.5);
-  box-shadow: 0 0 0 1px rgba(126, 178, 224, 0.14);
-  padding: 0;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: #06253a;
-}
-.sk-swatch.on { box-shadow: 0 0 0 2px var(--c-accent), var(--shadow-accent); }
-.sk-swatch.any { background: conic-gradient(#ff7ac6, #ffd166, #a3e635, #5ec8ff, #c58bff, #ff7ac6); }
-.sk-swatch.any input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
-.sk-swatch.any span { pointer-events: none; }
-.sk-note { padding: 6px 4px 0; font-size: 12.5px; line-height: 1.4; color: var(--c-text-dim); }
-/* the one field the crew needs: lit until it is filled */
-.circle-fields input.sk-needed { border-color: rgba(63, 200, 255, 0.55); box-shadow: 0 0 0 3px rgba(63, 200, 255, 0.12); }
-.sk-note.sk-need { color: var(--c-accent); padding-top: 14px; }
-.sk-btn:disabled { opacity: 0.5; box-shadow: none; }
-.crew .bo-need { width: 100%; text-align: left; color: inherit; font: inherit; background: var(--c-accent-dim); border: 1px solid rgba(63, 200, 255, 0.35); border-radius: var(--r-tile); padding: 10px 12px; margin: 2px 0 8px; }
-.crew .bo-need .row-title { color: var(--c-accent); }
-.sk-row { width: 100%; text-align: left; background: none; border-radius: 8px; color: inherit; font: inherit; }
-.sk-row:active { background: rgba(126, 178, 224, 0.08); transform: none; }
-.sk-row .row-text { flex: 1 1 0; }
-.sk-chev { flex: 0 0 auto; color: var(--c-text-dim); margin-right: 2px; }
-.sk-btn { width: 100%; margin-top: 18px; flex: none; }
-.sk-btn.quiet { background: var(--c-accent-dim); color: var(--c-accent); box-shadow: none; }
-.sk-water {
-  height: 150px;
-  margin-top: 14px;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 28px;
-  background:
-    radial-gradient(130px 80px at 80% 84%, #163f5c 0%, rgba(22, 63, 92, 0) 100%),
-    radial-gradient(100px 70px at 10% 18%, #144060 0%, rgba(20, 64, 96, 0) 100%),
-    linear-gradient(160deg, #0f3350, #08263e);
-}
-.sk-water-text { display: flex; flex-direction: column; gap: 4px; }
-.sk-seg { display: flex; border-radius: 8px; border: 1px solid var(--c-border-strong); overflow: hidden; font-size: 13px; font-weight: 600; }
-.sk-seg button { padding: 6px 12px; color: var(--c-text-dim); background: none; border: none; border-radius: 0; }
-.sk-seg button.on { background: var(--c-accent-dim); color: var(--c-text); }
-
-/* Settings › Boat: whether the screen is being kept on */
-.wake-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; background: var(--c-text-faint); }
-.wake-dot.on { background: var(--c-track); box-shadow: 0 0 8px rgba(89, 224, 184, 0.5); }
-.wake-dot.refused, .wake-dot.unsupported { background: var(--c-warn); }
-
-/* Settings: the dev log's small row of links under its buttons */
-.devlog-actions { padding: 4px 4px 8px; flex-wrap: wrap; row-gap: 4px; }
 
 /* ============================================================
    One screen: the chrome
@@ -2661,7 +1279,9 @@
   font-weight: 700;
   line-height: 1.1;
   color: var(--c-text);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  padding: 1px 7px;
+  border-radius: var(--r-sm);
+  background: rgba(var(--c-bg-rgb), 0.74);
   white-space: nowrap;
 }
 
@@ -2707,8 +1327,8 @@
   position: relative;
   display: flex;
   background: var(--c-surface);
-  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
-  backdrop-filter: blur(var(--blur)) saturate(1.4);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
   border: 1px solid var(--c-border);
   box-shadow: var(--shadow-panel);
   color: var(--c-text);
@@ -2721,7 +1341,7 @@
   flex-direction: column;
   gap: 3px;
   padding: 8px 10px;
-  border-radius: 10px;
+  border-radius: var(--r-md);
 }
 
 /* folded to one line: a pill at the left, the map under the rest */
@@ -2731,7 +1351,7 @@
   align-items: center;
   gap: 7px;
   padding: 9px 14px;
-  border-radius: 999px;
+  border-radius: var(--r-md);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -2744,7 +1364,7 @@
   overscroll-behavior: contain;
   gap: 0;
   padding: 10px 14px 12px;
-  border-radius: 18px;
+  border-radius: var(--r-lg);
   background: var(--c-surface-heavy);
 }
 
@@ -2778,9 +1398,9 @@
   vertical-align: middle;
   margin-left: 7px;
   padding: 2px 7px;
-  border-radius: 999px;
-  background: rgba(89, 224, 184, 0.16);
-  color: var(--c-track);
+  border-radius: var(--r-md);
+  background: rgba(var(--c-good-rgb), 0.16);
+  color: var(--c-good);
   font-weight: 700;
   line-height: 1.3;
 }
@@ -2809,7 +1429,7 @@
   width: 100%;
   padding: 11px 0;
   border: 0;
-  border-top: 1px solid rgba(126, 178, 224, 0.1);
+  border-top: 1px solid rgba(var(--c-ink-rgb), 0.1);
   color: var(--c-text);
   text-align: left;
   line-height: 1.3;
@@ -2833,7 +1453,7 @@
 .digin-row:active,
 .menu-row:active,
 .wx-menu-row:active {
-  background: rgba(126, 178, 224, 0.1);
+  background: rgba(var(--c-ink-rgb), 0.1);
   transform: none;
 }
 
@@ -2846,10 +1466,10 @@
   display: flex;
   flex-direction: column;
   padding: 10px 0 0;
-  border-radius: 18px;
+  border-radius: var(--r-lg);
   background: var(--c-surface-heavy);
-  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
-  backdrop-filter: blur(var(--blur)) saturate(1.4);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
   border: 1px solid var(--c-border);
   box-shadow: var(--shadow-panel);
   color: var(--c-text);
@@ -2905,51 +1525,6 @@
 
 /* ---------- the strip: folded line, open header, bars, drains, detail ---------- */
 
-/* folded: one 44 px line — today, now, ⌄ and then ⋯ at its right end */
-.wxfold {
-  position: relative;
-  z-index: 2; /* its ⋯ menu drops over the live card (see .wxstrip) */
-  align-self: stretch;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 44px;
-  padding: 0 10px;
-  border-radius: 8px;
-  background: var(--c-surface);
-  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
-  backdrop-filter: blur(var(--blur)) saturate(1.4);
-  border: 1px solid var(--c-border);
-  box-shadow: var(--shadow-panel);
-  color: var(--c-text);
-  white-space: nowrap;
-}
-
-/* the line itself is a button beside the ⋯ button: it takes the width and
-   carries the ⌄ at its far end */
-.wxfold > button:not(.wxfold-dots) {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  height: 100%;
-  padding: 0;
-  color: inherit;
-  text-align: left;
-  overflow: hidden;
-}
-
-.wxfold > button:not(.wxfold-dots) > svg:last-child {
-  margin-left: auto;
-  flex: none;
-  color: var(--c-text-dim);
-}
-
-.wxfold b {
-  font-weight: 700;
-}
-
 /* the ⋯ button, a glyph or an IconDots, at the right end of its row */
 .wxfold-dots,
 .sheet-dots {
@@ -2989,12 +1564,12 @@
   min-width: 190px;
   margin-top: 6px;
   padding: 8px;
-  border-radius: 16px;
+  border-radius: var(--r-lg);
   display: flex;
   flex-direction: column;
   background: var(--c-surface-heavy);
-  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
-  backdrop-filter: blur(var(--blur)) saturate(1.4);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
   border: 1px solid var(--c-border-strong);
   box-shadow: var(--shadow-panel);
   animation: rise-in 0.15s ease;
@@ -3011,7 +1586,7 @@
   gap: 10px;
   width: 100%;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: var(--r-md);
   color: var(--c-text);
   text-align: left;
   white-space: nowrap;
@@ -3046,8 +1621,8 @@
   right: 0;
   bottom: 0;
   height: 2.5px;
-  border-radius: 0 0 var(--r-tile) var(--r-tile);
-  background: rgba(89, 224, 184, var(--bar, 0));
+  border-radius: 0 0 var(--r-sm) var(--r-sm);
+  background: rgba(var(--c-good-rgb), var(--bar, 0));
   pointer-events: none;
 }
 
@@ -3061,7 +1636,7 @@
   right: -2px;
   bottom: -5px;
   height: 2px;
-  background: rgba(76, 116, 240, 0.85);
+  background: rgba(var(--c-wind-rgb), 0.75);
   pointer-events: none;
 }
 
@@ -3071,7 +1646,7 @@
   top: 3px;
   font-weight: 700;
   line-height: 1;
-  color: #a9c1ff;
+  color: var(--c-wind);
   white-space: nowrap;
 }
 
@@ -3086,7 +1661,7 @@
   gap: 5px;
   margin-top: 2px;
   padding: 8px 6px 4px;
-  border-top: 1px solid rgba(126, 178, 224, 0.18);
+  border-top: 1px solid rgba(var(--c-ink-rgb), 0.18);
   color: var(--c-text);
   text-align: left;
   line-height: 1.3;
@@ -3105,7 +1680,7 @@
   flex-direction: column;
   gap: 4px;
   padding-top: 5px;
-  border-top: 1px dashed rgba(126, 178, 224, 0.14);
+  border-top: 1px dashed rgba(var(--c-ink-rgb), 0.14);
   color: var(--c-text-dim);
 }
 
@@ -3172,9 +1747,9 @@
 .sheet-done {
   flex: none;
   padding: 6px 14px;
-  border-radius: 12px;
-  background: rgba(126, 178, 224, 0.1);
-  border: 1px solid rgba(126, 178, 224, 0.22);
+  border-radius: var(--r-md);
+  background: rgba(var(--c-ink-rgb), 0.1);
+  border: 1px solid rgba(var(--c-ink-rgb), 0.22);
   color: var(--c-text);
   font-weight: 600;
   white-space: nowrap;
@@ -3190,9 +1765,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(89, 224, 184, 0.18);
-  border: 1.5px solid var(--c-track);
-  color: var(--c-track);
+  background: rgba(var(--c-good-rgb), 0.18);
+  border: 1.5px solid var(--c-good);
+  color: var(--c-good);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
@@ -3204,7 +1779,7 @@
 }
 
 .digin-score.poor {
-  background: rgba(126, 178, 224, 0.08);
+  background: rgba(var(--c-ink-rgb), 0.08);
   border-color: var(--c-text-faint);
   color: var(--c-text-dim);
 }
@@ -3241,11 +1816,11 @@
 }
 
 .digin-bar > :first-child {
-  border-radius: 6px 0 0 6px;
+  border-radius: var(--r-sm) 0 0 var(--r-sm);
 }
 
 .digin-bar > :last-child {
-  border-radius: 0 6px 6px 0;
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
 }
 
 .digin-tick {
@@ -3276,7 +1851,7 @@
   gap: 12px;
   width: 100%;
   padding: 8px 0;
-  border-bottom: 1px solid rgba(126, 178, 224, 0.1);
+  border-bottom: 1px solid rgba(var(--c-ink-rgb), 0.1);
   color: var(--c-text);
   text-align: left;
 }
@@ -3311,7 +1886,7 @@
   align-items: center;
   gap: 12px;
   padding: 8px 0;
-  border-bottom: 1px solid rgba(126, 178, 224, 0.1);
+  border-bottom: 1px solid rgba(var(--c-ink-rgb), 0.1);
   color: var(--c-text-faint);
 }
 
@@ -3367,9 +1942,9 @@ button.hotedit-empty {
   align-items: center;
   gap: 6px;
   padding: 6px 11px;
-  border-radius: 999px;
-  background: rgba(126, 178, 224, 0.1);
-  border: 1px solid rgba(126, 178, 224, 0.2);
+  border-radius: var(--r-md);
+  background: rgba(var(--c-ink-rgb), 0.1);
+  border: 1px solid rgba(var(--c-ink-rgb), 0.2);
   color: var(--c-text);
   font-weight: 600;
   white-space: nowrap;
@@ -3415,13 +1990,6 @@ button.hotedit-empty {
 
 .wxcell-wave em {
   font-size: calc(9.5px * var(--ui-scale));
-}
-
-/* the period on its own line under the height (Settings › Display) */
-.wxcell-per {
-  font-size: calc(9px * var(--ui-scale));
-  color: var(--c-text-faint);
-  margin-top: -1px;
 }
 
 .wxday {
@@ -3506,15 +2074,6 @@ button.hotedit-empty {
   }
 }
 
-/* the live card's one number, and the doors' names */
-.leg-big {
-  font-size: calc(34px * var(--ui-scale));
-}
-
-.leg-fold-time {
-  font-size: calc(15px * var(--ui-scale));
-}
-
 /* the one-screen chrome (the "one screen" section above holds the layout) */
 .hotbtn-label {
   font-size: calc(10.5px * var(--ui-scale));
@@ -3558,10 +2117,6 @@ button.hotedit-empty {
 .hotedit-slot,
 .hotedit-locked {
   font-size: calc(15px * var(--ui-scale));
-}
-
-.wxfold {
-  font-size: calc(14px * var(--ui-scale));
 }
 
 .wx-head {
@@ -3619,19 +2174,10 @@ button.hotedit-empty {
 
 /* ---- Spots: where to be for the target at the planning time ---- */
 
-.chip-pick { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 999px; border: 1px solid rgba(126, 178, 224, 0.18); background: rgba(255, 255, 255, 0.04); color: var(--c-text-dim); font-size: 13px; }
+.chip-pick { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: var(--r-md); border: 1px solid rgba(var(--c-ink-rgb), 0.18); background: rgba(255, 255, 255, 0.04); color: var(--c-text-dim); font-size: 13px; }
 .chip-pick.chip-on { background: var(--c-accent-dim); color: var(--c-accent); border-color: var(--c-accent); font-weight: 600; }
 .chip-pick input { margin: 0; accent-color: var(--c-accent); }
-.verdict { border-radius: 14px; padding: 12px 12px 10px; background: rgba(255, 255, 255, 0.04); border-left: 4px solid var(--c-text-faint); display: flex; flex-direction: column; gap: 8px; }
-.verdict.v-go { border-left-color: #59e0b8; }
-.verdict.v-ok { border-left-color: #ffb454; }
-.verdict.v-no { border-left-color: #ff8a80; }
-
-.vf-row { display: grid; grid-template-columns: 52px 1fr; gap: 8px; align-items: baseline; font-size: 13px; color: var(--c-text); }
-.vf-mult { font-variant-numeric: tabular-nums; text-align: right; color: var(--c-text-faint); font-weight: 600; }
-.vf-mult.up { color: #59e0b8; }
-.vf-mult.down { color: #ff8a80; }
-.vf-label em { font-style: normal; color: var(--c-text-faint); }
+.verdict { border-radius: var(--r-lg); padding: 12px 12px 10px; background: rgba(255, 255, 255, 0.04); border-left: 4px solid var(--c-text-faint); display: flex; flex-direction: column; gap: 8px; }
 
 .spots-legend { display: inline-flex; align-items: center; gap: 3px; padding: 0 6px; font-size: 11.5px; color: var(--c-text-faint); }
 .spots-legend i { width: 14px; height: 9px; border-radius: 2px; display: inline-block; }
@@ -3642,7 +2188,7 @@ button.hotedit-empty {
 
 /* the tap popup's game line: the score in its grade's colour */
 
-.pp-score { font-size: 18px; font-weight: 700; min-width: 30px; text-align: center; padding: 1px 6px; border-radius: 6px; background: rgba(255, 255, 255, 0.06); }
+.pp-score { font-size: 18px; font-weight: 700; min-width: 30px; text-align: center; padding: 1px 6px; border-radius: var(--r-sm); background: rgba(255, 255, 255, 0.06); }
 
 .pp-top { color: #ff8a80; }
 .pp-good { color: var(--c-warn); }
@@ -3655,5 +2201,32 @@ button.hotedit-empty {
 
 /* you on the map */
 .me { width: 40px; height: 40px; }
-.me-ring { border-radius: 50%; background: rgba(63, 200, 255, 0.12); border: 1px solid rgba(63, 200, 255, 0.35); pointer-events: none; }
+.me-ring { border-radius: 50%; background: rgba(var(--c-accent-rgb), 0.12); border: 1px solid rgba(var(--c-accent-rgb), 0.35); pointer-events: none; }
 
+/* ---------- MapLibre's own classes: the popup frame and the controls ---------- */
+
+.depth-popup .maplibregl-popup-content {
+  /* see-through enough to keep the ground under it; the blur keeps the
+     numbers readable over busy terrain */
+  background: rgba(12, 23, 36, 0.6);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  padding: 6px 10px 7px;
+  min-width: 232px;
+  box-shadow: var(--shadow-fab);
+}
+
+.depth-popup .maplibregl-popup-tip {
+  border-top-color: rgba(12, 23, 36, 0.6) !important;
+  border-bottom-color: rgba(12, 23, 36, 0.6) !important;
+}
+
+.map-root .maplibregl-ctrl-bottom-left {
+  bottom: calc(var(--barh, 0px) + var(--sab) + 6px);
+}
+
+.maplibregl-popup {
+  animation: popup-in 0.16s var(--ease-out) both;
+}

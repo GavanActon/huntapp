@@ -1,4 +1,5 @@
-import { useEffect, useState, type JSX } from 'react'
+import { useEffect, useMemo, useState, type JSX } from 'react'
+import { getMap } from '../../map/mapController'
 import { downloadFiles, mapsStatus, useDownloads } from '../../offline/downloads'
 import { checkMapUpdates, useMapUpdates } from '../../offline/updates'
 import { CONTOUR_INTERVALS, useAppStore } from '../../state/appStore'
@@ -61,6 +62,21 @@ function WeatherRow({ online }: { online: boolean }): JSX.Element {
   )
 }
 
+/** Every credit the map's sources carry, once each, as plain words. */
+function mapCredits(): string[] {
+  const style = getMap()?.getStyle()
+  const out: string[] = []
+  for (const src of Object.values(style?.sources ?? {})) {
+    const a = (src as { attribution?: string }).attribution
+    if (!a) continue
+    for (const part of a.split('|')) {
+      const t = part.replace(/<[^>]+>/g, '').trim()
+      if (t && !out.includes(t)) out.push(t)
+    }
+  }
+  return out
+}
+
 /**
  * Settings, one level deep: the maps on the phone, the weather, the buttons, the hand,
  * units and text, then the wind flow's knobs and the contour interval. The
@@ -71,6 +87,8 @@ export default function SettingsSheet(): JSX.Element {
   const units = useAppStore((s) => s.units)
   const setUnits = useAppStore((s) => s.setUnits)
   const textSize = useAppStore((s) => s.textSize)
+  const outdoor = useAppStore((s) => s.outdoor)
+  const setOutdoor = useAppStore((s) => s.setOutdoor)
   const setTextSize = useAppStore((s) => s.setTextSize)
   const lowPower = useAppStore((s) => s.lowPower)
   const setLowPower = useAppStore((s) => s.setLowPower)
@@ -100,6 +118,7 @@ export default function SettingsSheet(): JSX.Element {
   }, [])
 
   const maps = mapsStatus()
+  const credits = useMemo(mapCredits, [])
 
   return (
     <div className="settings">
@@ -168,6 +187,12 @@ export default function SettingsSheet(): JSX.Element {
           Your initials <span className="dim">· on the wind checks you share</span>
         </span>
         <input type="text" className="st-text" value={who} maxLength={12} placeholder="GA" onChange={(e) => setWho(e.target.value)} aria-label="Your initials" />
+      </label>
+      <label className="st-row">
+        <span>
+          Outdoor <span className="dim">· for sun on the phone</span>
+        </span>
+        <input type="checkbox" className="switch" checked={outdoor} onChange={(e) => setOutdoor(e.target.checked)} />
       </label>
       <label className="st-row">
         <span>Low power</span>
@@ -242,6 +267,18 @@ export default function SettingsSheet(): JSX.Element {
         </div>
       </div>
 
+      <details className="st-credits">
+        <summary className="st-row">
+          <span>Map credits</span>
+          <span className="dim">›</span>
+        </summary>
+        <ul>
+          {credits.map((c) => (
+            <li key={c}>{c}</li>
+          ))}
+          <li>© MapLibre</li>
+        </ul>
+      </details>
     </div>
   )
 }

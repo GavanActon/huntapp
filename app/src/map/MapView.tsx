@@ -136,7 +136,8 @@ export default function MapView() {
           maxBounds: MAX_BOUNDS,
           minZoom: 7,
           maxZoom: 18,
-          attributionControl: { compact: true },
+          // the credits are under Settings → Map credits, off the map
+          attributionControl: false,
           pitchWithRotate: false,
         })
       } catch {
@@ -146,24 +147,12 @@ export default function MapView() {
       const m = map
       if (import.meta.env.DEV) (window as unknown as { __map?: unknown }).__map = m
 
-      // the credits start folded to their (i): MapLibre opens a compact
-      // attribution the first time a source has something to say, so fold
-      // it then, once (its own listeners run first, being registered first)
-      const foldAttrib = () => {
-        const d = el.querySelector('details.maplibregl-ctrl-attrib.maplibregl-compact')
-        if (!d) return
-        d.classList.remove('maplibregl-compact-show')
-        d.removeAttribute('open')
-        m.off('styledata', foldAttrib)
-        m.off('sourcedata', foldAttrib)
-      }
-      m.on('styledata', foldAttrib)
-      m.on('sourcedata', foldAttrib)
-
       // the controller hands the map to the layer modules once the style is
       // parsed ('style.load'), not 'load': a live tile source that never
       // finishes would otherwise hold every layer back
       setMap(m)
+      // the GeoJSON of the layers that are off waits for the first settled frame
+      onFirstIdle(m, () => flushDeferredGeo(m))
       withMap((map) => {
         if (map !== m || m.getSource('places')) return
         // saved / preset places ride on top of everything
