@@ -693,6 +693,8 @@ interface ScentState {
   height: number
   /** the cone's slider, 0 conservative … 1 aggressive (riskBands) */
   risk: number
+  /** how strongly the cone is drawn, 0.1 … 1: the cloud's opacity, the puffs' alpha */
+  strength: number
   /** start over: one person, here */
   show: (lon: number, lat: number) => void
   add: (lon: number, lat: number) => void
@@ -712,6 +714,7 @@ interface ScentState {
   /** the picked person's height, and the next one's */
   setHeight: (h: number) => void
   setRisk: (r: number) => void
+  setStrength: (v: number) => void
 }
 
 export const useScent = create<ScentState>()(
@@ -729,6 +732,7 @@ export const useScent = create<ScentState>()(
       view: 'cloud',
       height: GROUND_H,
       risk: 0.5,
+      strength: 1,
       show: (lon, lat) => set({ people: [{ lon, lat, height: get().height }], plumes: [], group: null, pick: 0, adding: false, moving: null, hidden: false, card: true }),
       add: (lon, lat) => {
         const { people, height } = get()
@@ -762,6 +766,7 @@ export const useScent = create<ScentState>()(
       setView: (view) => set({ view }),
       setHeight: (height) => set({ height, people: get().people.map((p, i) => (i === get().pick ? { ...p, height } : p)) }),
       setRisk: (risk) => set({ risk: Math.min(1, Math.max(0, risk)) }),
+      setStrength: (strength) => set({ strength: Math.min(1, Math.max(0.1, strength)) }),
     }),
     // the choices stick; the people and their cones are for this sit only
     {
@@ -773,7 +778,7 @@ export const useScent = create<ScentState>()(
         if (from < 1) delete s.distances
         return s as never
       },
-      partialize: (s) => ({ view: s.view, height: s.height, distances: s.distances, risk: s.risk }),
+      partialize: (s) => ({ view: s.view, height: s.height, distances: s.distances, risk: s.risk, strength: s.strength }),
     },
   ),
 )
@@ -842,6 +847,18 @@ function syncDistances(map: MlMap, people: Sitter[]) {
   })
 }
 
+/** The cloud's opacity: the card's Strength, a little fainter under each person's own edge. */
+function cloudOpacity(dim: boolean): number {
+  return (dim ? 0.6 : 0.9) * useScent.getState().strength
+}
+
+/** The Strength slider moved: the cloud already drawn takes it at once (the puffs read it each frame). */
+function applyStrength(map: MlMap | null) {
+  if (!map?.getLayer('scent-layer')) return
+  const { view, people } = useScent.getState()
+  map.setPaintProperty('scent-layer', 'raster-opacity', cloudOpacity(drawnView(view, people.length) === 'people'))
+}
+
 /** Everyone's scent together, shaded; a little fainter under each person's own edge. */
 function drawCloud(map: MlMap, f: Frame, dim: boolean) {
   const url = renderPng(f.grid, f.w, f.h)
@@ -855,7 +872,7 @@ function drawCloud(map: MlMap, f: Frame, dim: boolean) {
       map.getLayer('scent-edge-casing') ? 'scent-edge-casing' : undefined,
     )
   }
-  map.setPaintProperty('scent-layer', 'raster-opacity', dim ? 0.6 : 0.9)
+  map.setPaintProperty('scent-layer', 'raster-opacity', cloudOpacity(dim))
 }
 
 /** How far scent is noticeable, to 10 m: '180 m', or '> 700 m' off the grid. */
@@ -1206,7 +1223,9 @@ const particles = (() => {
         sx.drawImage(shade[Math.round(v * (SHADES - 1))], q.x / 2 - half, q.y / 2 - half, 2 * half, 2 * half)
       }
     sx.globalAlpha = 1
+    ctx.globalAlpha = useScent.getState().strength
     ctx.drawImage(soft, 0, 0, w, h)
+    ctx.globalAlpha = 1
     // where it stops being noticeable: the cone's own edge, not a ring
     if (edge) {
       const trace = (o: Outline) => {
@@ -1436,6 +1455,7 @@ export function initScentLayer() {
         if (s.people.length && !p.people.length) void loadMicro().then(schedule)
         else schedule()
       } else if (s.risk !== p.risk) airChanged()
+      else if (s.strength !== p.strength) applyStrength(getMap())
       else if (s.people.length && (s.view !== p.view || s.hidden !== p.hidden || s.distances !== p.distances)) schedule()
       else if (s.people.length && s.pick !== p.pick) syncMarkers(getMap())
     })

@@ -34,6 +34,7 @@ export default function ScentCard(): JSX.Element | null {
   const pick = useScent((s) => s.pick)
   const view = useScent((s) => s.view)
   const risk = useScent((s) => s.risk)
+  const strength = useScent((s) => s.strength)
   const checks = useWindChecks((s) => s.checks)
   const planTimeMs = useAppStore((s) => s.planTimeMs)
   const units = useAppStore((s) => s.units)
@@ -45,7 +46,7 @@ export default function ScentCard(): JSX.Element | null {
   }, [n, setTopCard])
   if (!n) return null
 
-  const { setView, setHeight, setPick, setRisk, remove } = useScent.getState()
+  const { setView, setHeight, setPick, setRisk, setStrength, remove } = useScent.getState()
   const many = n > 1
   const k = Math.min(Math.max(0, pick), n - 1)
   const at = people[k]
@@ -162,6 +163,12 @@ export default function ScentCard(): JSX.Element | null {
               </button>
             ))}
           </div>
+        </div>
+        <div className="sc-sec">
+          <span className="sc-sec-name">
+            Strength <span className="numeral">· {Math.round(strength * 100)}%</span>
+          </span>
+          <input className="sc-slider" type="range" min={10} max={100} step={5} value={Math.round(strength * 100)} onChange={(e) => setStrength(Number(e.target.value) / 100)} aria-label="Strength" />
         </div>
         {placed && (
           <div className="sc-btns">

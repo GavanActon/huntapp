@@ -17,8 +17,9 @@ import { useTapOff } from './tapOff'
  * A hot button's drawer: a press and hold slides it out beside the button,
  * toward the map, with the things that button rarely needs — its knobs,
  * an undo, the way to its sheet. The far column's drawers carry more, the
- * thumb's side stays thin. Every drawer ends in Map buttons, the editor.
- * A tap off closes it; a row that goes somewhere closes it first.
+ * thumb's side stays thin. Map buttons, the editor, is the ⋯ menu's, not
+ * a row in every drawer. A tap off closes it; a row that goes somewhere
+ * closes it first.
  */
 
 type Opt<T> = readonly [T, string]
@@ -106,9 +107,12 @@ function ScentRows({ go }: RowsProps) {
   const view = useScent((s) => s.view)
   const setView = useScent((s) => s.setView)
   const placed = useScent((s) => s.people.some((p) => !p.live))
+  const strength = useScent((s) => s.strength)
+  const setStrength = useScent((s) => s.setStrength)
   const setTopCard = useAppStore((s) => s.setTopCard)
   return (
     <>
+      <Slider label="Strength" value={Math.round(strength * 100)} min={10} max={100} step={5} onChange={(v) => setStrength(v / 100)} />
       <Seg label="Height" value={height} options={HEIGHTS} onPick={setHeight} />
       <Seg label="View" value={view === 'people' ? 'cloud' : view} options={[['cloud', 'Cloud'], ['particles', 'Particles']] as const} onPick={setView} />
       <Act onTap={go(() => useScent.getState().setAdding(true))}>+ Person</Act>
@@ -305,7 +309,6 @@ function rows(id: HotId, go: RowsProps['go']): JSX.Element | null {
 
 /** The drawer beside a held hot button. `within` is the element a tap must land outside of to close it (the button and the drawer). */
 export default function HotDrawer({ id, within, onClose }: { id: HotId; within: RefObject<HTMLElement | null>; onClose: () => void }): JSX.Element {
-  const openSheet = useAppStore((s) => s.openSheet)
   useTapOff(within, true, onClose)
   const go = (f: () => void) => () => {
     onClose()
@@ -314,9 +317,6 @@ export default function HotDrawer({ id, within, onClose }: { id: HotId; within: 
   return (
     <div className="hotdrawer" role="menu">
       {rows(id, go)}
-      <Act onTap={go(() => openSheet({ kind: 'buttons' }))}>
-        Map buttons <span className="dim">›</span>
-      </Act>
     </div>
   )
 }

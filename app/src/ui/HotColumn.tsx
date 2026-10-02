@@ -10,11 +10,12 @@ export default function HotColumn({ side }: { side: HotSide }): JSX.Element | nu
   const mode = useViews((s) => s.mode)
   const ids = useAppStore((s) => s.hotButtons[mode][side])
   const labels = useAppStore((s) => s.buttonLabels)
+  const hidden = useAppStore((s) => s.hotHidden)
   const [open, setOpen] = useState<HotId | null>(null)
   useEffect(() => {
     if (open && !ids.includes(open)) setOpen(null)
   }, [ids, open])
-  if (!ids.length) return null
+  if (!ids.length || hidden) return null
   return (
     <div className="hotcol">
       {ids.slice(0, HOT_MAX).map((id) => (

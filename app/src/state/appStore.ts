@@ -194,6 +194,9 @@ export interface AppState {
   /** the word under each hot button; persisted */
   buttonLabels: boolean
   setButtonLabels: (v: boolean) => void
+  /** both hot columns off the map (the strip's toggle beside Outdoor); persisted */
+  hotHidden: boolean
+  setHotHidden: (v: boolean) => void
   /** how far back the log's dots show on the map; persisted */
   pastHunts: 'none' | 'today' | 'week' | 'all'
   setPastHunts: (v: 'none' | 'today' | 'week' | 'all') => void
@@ -279,6 +282,8 @@ export const useAppStore = create<AppState>()(
       setLeftHanded: (leftHanded) => set({ leftHanded }),
       buttonLabels: true,
       setButtonLabels: (buttonLabels) => set({ buttonLabels }),
+      hotHidden: false,
+      setHotHidden: (hotHidden) => set({ hotHidden }),
       pastHunts: 'all',
       setPastHunts: (pastHunts) => set({ pastHunts }),
 
@@ -374,6 +379,7 @@ export const useAppStore = create<AppState>()(
         hotButtons: s.hotButtons,
         leftHanded: s.leftHanded,
         buttonLabels: s.buttonLabels,
+        hotHidden: s.hotHidden,
         pastHunts: s.pastHunts,
         who: s.who,
         onboarded: s.onboarded,

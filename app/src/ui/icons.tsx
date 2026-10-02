@@ -464,6 +464,17 @@ export const IconGrid = (p: IconProps) => (
   </svg>
 )
 
+/** The map buttons hidden: the slots struck through. */
+export const IconGridOff = (p: IconProps) => (
+  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="4" y="4" width="6.5" height="6.5" rx="3.25" />
+    <rect x="13.5" y="4" width="6.5" height="6.5" rx="3.25" />
+    <rect x="4" y="13.5" width="6.5" height="6.5" rx="3.25" />
+    <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="3.25" />
+    <path d="M3 21L21 3" />
+  </svg>
+)
+
 /** The hunt log: a clock turning back. */
 export const IconClock = (p: IconProps) => (
   <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
