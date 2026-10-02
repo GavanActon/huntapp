@@ -348,6 +348,20 @@
   border-color: rgba(255, 180, 84, 0.35);
 }
 
+/* heading up: the way you face, read at the top */
+.chip-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--c-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* the compass is being turned too fast to trust: the last good heading, dimmed */
+.chip-dim {
+  opacity: 0.55;
+}
+
 /* ---------- bottom bar: the tool and form cards ---------- */
 
 .bottombar {
