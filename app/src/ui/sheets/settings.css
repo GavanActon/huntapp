@@ -59,13 +59,15 @@
 }
 
 /* the Weather row: the name over its one-line status, Refresh at the right */
-.st-weather > span:first-child {
+.st-weather > span:first-child,
+.st-devlog > span:first-child {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.st-weather small {
+.st-weather small,
+.st-devlog small {
   color: var(--c-text-dim);
   line-height: 1.3;
 }

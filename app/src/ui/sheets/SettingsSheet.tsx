@@ -120,7 +120,7 @@ function DevlogRows(): JSX.Element {
 
   return (
     <>
-      <label className="st-row">
+      <label className="st-row st-devlog">
         <span>
           Dev log
           <small className="dim">{on ? `${devlogCount()} lines · boots, freezes, sheets, errors, what the modules say` : 'what the app is doing, for a bug that leaves no trace · includes your position'}</small>
