@@ -84,8 +84,8 @@ function ensureSources(m: MlMap) {
   // The heat goes under the LiDAR shade (transparent where flat) so the
   // relief shows through the hot patches, and under the contours and every
   // line and label; the pins ride on top, under the places.
-  const heatBefore = (['hillshade-lidar', 'topo', 'historical', 'places-halo'] as const).find((id) => m.getLayer(id))
-  const before = m.getLayer('places-halo') ? 'places-halo' : undefined
+  const heatBefore = (['hillshade-lidar', 'topo', 'historical', 'pins-halo'] as const).find((id) => m.getLayer(id))
+  const before = m.getLayer('pins-halo') ? 'pins-halo' : undefined
   m.addLayer({ id: 'spots-heat', type: 'raster', source: HEAT_SRC, paint: { 'raster-opacity': 0.8, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } }, heatBefore)
   m.addSource(PINS_SRC, { type: 'geojson', data: empty() })
   if (!m.hasImage('spot-pin')) m.addImage('spot-pin', pinImage(), { pixelRatio: 2 })

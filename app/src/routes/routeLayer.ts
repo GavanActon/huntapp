@@ -210,7 +210,7 @@ export function initRouteLayer() {
         const ks = hit.map((f) => f.properties?.k as number)
         return s.setPick(ks.includes(s.pick) ? s.pick : ks[0])
       }
-      const place = map.getLayer('places-pt') ? map.queryRenderedFeatures(e.point, { layers: ['places-pt'] })[0] : undefined
+      const place = map.getLayer('pins-pt') ? map.queryRenderedFeatures(e.point, { layers: ['pins-pt'] })[0] : undefined
       const id = place?.properties?.id as string | undefined
       const p = id ? usePlacesStore.getState().places.find((q) => q.id === id) : undefined
       const end = p ? { lon: p.lon, lat: p.lat, kind: 'place' as const, name: p.name } : { lon: e.lngLat.lng, lat: e.lngLat.lat, kind: 'map' as const, name: '' }

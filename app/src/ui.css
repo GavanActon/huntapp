@@ -1068,6 +1068,38 @@
   gap: 1px;
 }
 
+/* a pin's colour: a row of swatches in its popup and in the Pins editor, its dot in the list */
+.pin-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 2px;
+}
+
+.pin-swatch {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--sw);
+  border: 2px solid rgba(var(--c-bg-rgb), 0.9);
+  box-shadow: 0 0 0 1px var(--c-border-strong);
+  cursor: pointer;
+}
+
+.pin-swatch.on {
+  box-shadow: 0 0 0 2px var(--c-text);
+}
+
+.pin-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px rgba(var(--c-bg-rgb), 0.9);
+}
+
 .pe-name {
   text-align: left;
   font-size: 13px;

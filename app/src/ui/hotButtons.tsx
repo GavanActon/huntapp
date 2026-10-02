@@ -2,7 +2,7 @@ import { useRef, type JSX } from 'react'
 import { inRegion } from '../config'
 import { toggleCone, useHunting } from '../hunting/hunting'
 import { getMap } from '../map/mapController'
-import { DROPPED_NAME } from '../map/placePopup'
+import { DROPPED_NAME, showPlacePopup } from '../map/placePopup'
 import { useMeasureStore } from '../measure/measureStore'
 import { closeRoutes, openRoutes, useRoutes } from '../routes/routeStore'
 import { useAppStore, type HotId, type LayerVisibility } from '../state/appStore'
@@ -35,21 +35,26 @@ export interface HotDef {
 
 const off = () => false
 
-/** A pin where you are (in the region), else at the middle of the map. Never selected: the strip and heat stay put. */
+/** A pin at the middle of the map (your exact position while the map
+ *  follows you) and its popup open on it, so the drop is seen and the name
+ *  and colour are a tap away. Never selected: the strip and heat stay put. */
 function dropPin() {
-  const fix = useGpsStore.getState().fix
+  const map = getMap()
+  if (!map) return
+  const { fix, locating } = useGpsStore.getState()
+  const following = locating && useAppStore.getState().follow
   let lon: number
   let lat: number
-  if (fix && inRegion(fix.lon, fix.lat)) {
+  if (fix && following && inRegion(fix.lon, fix.lat)) {
     lon = fix.lon
     lat = fix.lat
   } else {
-    const c = getMap()?.getCenter()
-    if (!c) return
+    const c = map.getCenter()
     lon = c.lng
     lat = c.lat
   }
-  usePlacesStore.getState().add({ name: DROPPED_NAME, lon, lat, kind: 'stand' })
+  const sp = usePlacesStore.getState().add({ name: DROPPED_NAME, lon, lat, kind: 'stand' })
+  showPlacePopup(map, sp)
 }
 
 /** A map layer as a hot button: on when the layer is. */
