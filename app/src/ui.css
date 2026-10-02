@@ -135,7 +135,7 @@
 
 /* the day whose hours are under the finger as the row scrolls */
 .wxday-view {
-  outline: 1.5px solid rgba(63, 200, 255, 0.45);
+  outline: 1.5px solid rgba(var(--c-accent-rgb), 0.45);
 }
 
 .wxday-on {
