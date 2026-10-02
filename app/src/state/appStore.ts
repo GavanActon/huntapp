@@ -41,21 +41,24 @@ export type TopCard = { kind: 'scent' } | { kind: 'outing'; id: string }
 /** The buttons either column can hold, picked in Map buttons. My location
  *  is not one of them: it is always at the foot of the near column. Nor is
  *  the heat map: it sits on the strip's head beside the quarry chip. */
-export type HotId = 'windcheck' | 'scent' | 'heard' | 'windflow' | 'routes' | 'measure' | 'person' | 'pin' | 'understory' | 'lanes' | 'bathy' | 'radar' | 'lowPower'
+export type HotId = 'windcheck' | 'scent' | 'heard' | 'windflow' | 'routes' | 'measure' | 'contours' | 'pin' | 'understory' | 'lanes' | 'bathy' | 'radar' | 'lowPower'
 export const HOT_MAX = 4
 /** The two columns: `near` is the thumb's side (right, or left for a left hand), `far` the other. */
 export type HotSide = 'near' | 'far'
 export type HotSets = Record<HotSide, HotId[]>
 export const DEFAULT_HOT: Record<'hunt' | 'fish', HotSets> = {
-  hunt: { near: ['heard', 'windcheck', 'scent', 'windflow'], far: ['routes', 'measure', 'lanes', 'person'] },
+  hunt: { near: ['heard', 'windcheck', 'scent', 'windflow'], far: ['routes', 'measure', 'lanes', 'contours'] },
   fish: { near: ['pin', 'bathy', 'windflow'], far: ['routes', 'measure'] },
 }
-const HOT_IDS: readonly HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'person', 'pin', 'understory', 'lanes', 'bathy', 'radar', 'lowPower']
+const HOT_IDS: readonly HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'contours', 'pin', 'understory', 'lanes', 'bathy', 'radar', 'lowPower']
+/** Buttons that were: a saved layout keeps its slot (Person became the contour lines, 2026-10-02; + Person lives on the live card and the map popup). */
+const HOT_RENAMED: Record<string, HotId> = { person: 'contours' }
 
 /** Known ids only, each once, at most HOT_MAX. */
 function cleanHot(ids: readonly unknown[]): HotId[] {
   const out: HotId[] = []
-  for (const id of ids) {
+  for (const raw of ids) {
+    const id = typeof raw === 'string' && raw in HOT_RENAMED ? HOT_RENAMED[raw] : raw
     if (!HOT_IDS.includes(id as HotId) || out.includes(id as HotId)) continue
     out.push(id as HotId)
     if (out.length >= HOT_MAX) break

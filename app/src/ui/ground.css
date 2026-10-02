@@ -65,6 +65,13 @@
   mask-image: radial-gradient(closest-side, transparent 52%, #000 57%);
 }
 .gc-strength .chip-pick { min-height: 36px; padding-left: 12px; padding-right: 12px; touch-action: manipulation; }
+/* How hard?: one row per step, the word and what to look for beside it */
+.gc-cues { flex-direction: column; gap: 4px; }
+.gc-cues .chip-pick { justify-content: flex-start; gap: 10px; width: 100%; min-height: 40px; padding: 6px 12px; }
+.gc-cues .chip-pick b { flex: none; width: 58px; text-transform: capitalize; font-weight: 700; color: var(--c-text); }
+.gc-cues .chip-pick span { flex: 1; min-width: 0; text-align: left; font-size: calc(12.5px * var(--ui-scale)); line-height: 1.25; }
+.gc-cues .chip-pick.chip-on b, .gc-cues .chip-pick.chip-on span { color: var(--c-on-accent); }
+.gc-cues .chip-pick.chip-on { background: var(--c-accent); }
 .gc-mid-pick { display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--c-accent); font-size: 13px; }
 .gc-mid-word { font-size: 12px; color: var(--c-text-dim); }
 .gc-missing { margin: 4px 0 2px; font-size: 12.5px; font-weight: 600; color: #ffb3a8; }

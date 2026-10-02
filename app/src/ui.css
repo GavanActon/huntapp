@@ -1357,6 +1357,7 @@
 
 .hotdrawer .seg button {
   padding: 5px 10px;
+  white-space: nowrap;
 }
 
 .hotdrawer input[type='range'] {

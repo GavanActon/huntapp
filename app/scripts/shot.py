@@ -1,5 +1,5 @@
 """Screenshot the dev app with Playwright (python): python scripts/shot.py <url> <out.png> [actions]
-actions: "click:<selector>;wait:<ms>;text:<button text>" separated by ;"""
+actions: "click:<selector>;wait:<ms>;text:<button text>;hold:<selector>" separated by ;"""
 import sys, time
 from playwright.sync_api import sync_playwright
 
@@ -26,6 +26,10 @@ with sync_playwright() as p:
             elif verb == 'scroll':
                 page.mouse.move(215, 700); page.mouse.wheel(0, int(arg))
             elif verb == 'key': page.keyboard.press(arg)
+            elif verb == 'hold':
+                # a press and hold on an element: pointer down, 700 ms, up
+                bb = page.locator(arg).first.bounding_box()
+                page.mouse.move(bb['x'] + bb['width'] / 2, bb['y'] + bb['height'] / 2); page.mouse.down(); time.sleep(0.7); page.mouse.up()
         except Exception as e:
             logs.append(f'[actfail] {act}: {str(e)[:120]}')
         time.sleep(1.5)

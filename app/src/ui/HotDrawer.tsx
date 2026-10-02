@@ -1,4 +1,4 @@
-import { type JSX, type ReactNode, type RefObject } from 'react'
+import { useEffect, type JSX, type ReactNode, type RefObject } from 'react'
 import { inRegion } from '../config'
 import { heardThisHunt } from '../hunting/moveLayer'
 import { useHuntLog, type LogSpecies } from '../log/huntLog'
@@ -6,7 +6,7 @@ import { snapshot } from '../log/snapshot'
 import { useMeasureStore } from '../measure/measureStore'
 import { campEnd, clearRoutes, useRoutes, youEnd } from '../routes/routeStore'
 import { isFish } from '../spots/types'
-import { useAppStore, type HotId, type LayerOpacity } from '../state/appStore'
+import { CONTOUR_INTERVALS, useAppStore, type HotId, type LayerOpacity } from '../state/appStore'
 import { useSpotsStore } from '../state/spotsStore'
 import { useGpsStore } from '../tracking/gpsStore'
 import { clearPlaced, SCENT_HEIGHTS, useScent } from '../weather/micro/scent'
@@ -105,12 +105,16 @@ function ScentRows({ go }: RowsProps) {
   const setHeight = useScent((s) => s.setHeight)
   const view = useScent((s) => s.view)
   const setView = useScent((s) => s.setView)
+  const placed = useScent((s) => s.people.some((p) => !p.live))
   const setTopCard = useAppStore((s) => s.setTopCard)
   return (
     <>
       <Seg label="Height" value={height} options={HEIGHTS} onPick={setHeight} />
       <Seg label="View" value={view === 'people' ? 'cloud' : view} options={[['cloud', 'Cloud'], ['particles', 'Particles']] as const} onPick={setView} />
       <Act onTap={go(() => useScent.getState().setAdding(true))}>+ Person</Act>
+      <Act disabled={!placed} onTap={go(clearPlaced)}>
+        Clear sitters
+      </Act>
       <Act onTap={go(() => setTopCard({ kind: 'scent' }))}>
         Scent card <span className="dim">›</span>
       </Act>
@@ -118,22 +122,21 @@ function ScentRows({ go }: RowsProps) {
   )
 }
 
-function PersonRows({ go }: RowsProps) {
-  const height = useScent((s) => s.height)
-  const setHeight = useScent((s) => s.setHeight)
-  const distances = useScent((s) => s.distances)
-  const setDistances = useScent((s) => s.setDistances)
-  const placed = useScent((s) => s.people.some((p) => !p.live))
-  const setTopCard = useAppStore((s) => s.setTopCard)
+const INTERVALS: readonly Opt<(typeof CONTOUR_INTERVALS)[number]>[] = CONTOUR_INTERVALS.map((m) => [m, `${m} m`] as const)
+
+/** The contour lines' interval, the lines redrawing as it is picked; the lines come on so the pick can be seen. */
+function ContourRows({ go }: RowsProps) {
+  const m = useAppStore((s) => s.contourInterval)
+  const setInterval = useAppStore((s) => s.setContourInterval)
+  const openSheet = useAppStore((s) => s.openSheet)
+  useEffect(() => {
+    useAppStore.getState().setLayer('contours', true)
+  }, [])
   return (
     <>
-      <Seg label="Height" value={height} options={HEIGHTS} onPick={setHeight} />
-      <Switch label="Distances" on={distances} onChange={setDistances} />
-      <Act disabled={!placed} onTap={go(clearPlaced)}>
-        Clear sitters
-      </Act>
-      <Act onTap={go(() => setTopCard({ kind: 'scent' }))}>
-        Scent card <span className="dim">›</span>
+      <Seg label="Lines every" value={m} options={INTERVALS} onPick={setInterval} />
+      <Act onTap={go(() => openSheet({ kind: 'layers' }))}>
+        Layers <span className="dim">›</span>
       </Act>
     </>
   )
@@ -278,8 +281,8 @@ function rows(id: HotId, go: RowsProps['go']): JSX.Element | null {
       return <WindFlowRows go={go} />
     case 'scent':
       return <ScentRows go={go} />
-    case 'person':
-      return <PersonRows go={go} />
+    case 'contours':
+      return <ContourRows go={go} />
     case 'heard':
       return <HeardRows go={go} />
     case 'windcheck':

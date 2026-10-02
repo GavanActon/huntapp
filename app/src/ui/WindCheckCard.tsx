@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { create } from 'zustand'
 import { compass } from '../weather/openMeteo'
 import { groundWind, loadMicro } from '../weather/micro/model'
-import { checkPull, checkSpentAt, steadiness, towardWords, useWindChecks, verdict, type Strength, type WindCheck } from '../weather/micro/windChecks'
+import { checkPull, checkSpentAt, steadiness, towardWords, useWindChecks, verdict, type Strength, type WindCheck, STRENGTH_CUE } from '../weather/micro/windChecks'
 import { clockShort } from '../time'
 import { useAppStore } from '../state/appStore'
 import { requestCompass, startCompass, stopCompass, useCompass } from '../tracking/compass'
@@ -254,7 +254,8 @@ export default function WindCheckCard() {
       {/* how the rose works is under Layers, "About what is drawn"; "ahead" armed is the one thing said here */}
       {!picked && aim && <div className="gc-note">Tap the map in front of you</div>}
       <div className="gc-q">How hard?</div>
-      <div className="gc-strength">
+      {/* each step with what to look for: the face, the powder, the leaves, the branches */}
+      <div className="gc-strength gc-cues">
         {STRENGTHS.map((s) => (
           <button
             key={s}
@@ -265,7 +266,8 @@ export default function WindCheckCard() {
             }}
             aria-pressed={strength === s}
           >
-            {s}
+            <b>{s}</b>
+            <span>{STRENGTH_CUE[s]}</span>
           </button>
         ))}
       </div>

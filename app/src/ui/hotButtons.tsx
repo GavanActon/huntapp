@@ -11,7 +11,7 @@ import { useGpsStore } from '../tracking/gpsStore'
 import { useScent } from '../weather/micro/scent'
 import { useHeardForm } from './HeardCard'
 import { useCheckForm } from './WindCheckCard'
-import { IconBattery, IconBush, IconCrew, IconDepth, IconEar, IconLanes, IconPin, IconPowder, IconRadar, IconRoute, IconRuler, IconScent, IconWind } from './icons'
+import { IconBattery, IconBush, IconContour, IconDepth, IconEar, IconLanes, IconPin, IconPowder, IconRadar, IconRoute, IconRuler, IconScent, IconWind } from './icons'
 import { logWindHere } from './logWindHere'
 
 /**
@@ -114,17 +114,7 @@ export const HOT_DEFS: Record<HotId, HotDef> = {
     // tap, then tap the map where it was, then say what it was
     onTap: () => useHeardForm.getState().arm(),
   },
-  person: {
-    id: 'person',
-    name: 'Person',
-    short: 'Person',
-    Icon: IconCrew,
-    useActive: () => useScent((s) => s.adding),
-    onTap: () => {
-      const st = useScent.getState()
-      st.setAdding(!st.adding)
-    },
-  },
+  contours: layerDef('contours', 'contours', 'LiDAR contours', 'Contours', IconContour),
   windcheck: {
     id: 'windcheck',
     name: 'Sharpen the wind',
@@ -163,7 +153,7 @@ export const HOT_DEFS: Record<HotId, HotDef> = {
 }
 
 /** Every hot button, in the order the editor's Add chips list them. */
-export const HOT_ORDER: HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'person', 'pin', 'understory', 'lanes', 'bathy', 'radar', 'lowPower']
+export const HOT_ORDER: HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'contours', 'pin', 'understory', 'lanes', 'bathy', 'radar', 'lowPower']
 
 const HOLD_MS = 450
 
