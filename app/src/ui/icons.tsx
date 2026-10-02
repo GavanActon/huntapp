@@ -417,6 +417,15 @@ export const IconDepth = (p: IconProps) => (
   </svg>
 )
 
+/** LiDAR contours: three lines following the same hill, closer up the slope. */
+export const IconContour = (p: IconProps) => (
+  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2.5 17.5c3.5 0 4.5-5 8-5s4.5 3.5 7 3.5 3-1.5 4-1.5" />
+    <path d="M2.5 13c3-.5 4-5.5 7.5-5.5s4 3 7 3 3.5-1.2 4.5-1.2" opacity=".75" />
+    <path d="M4.5 8.5c2-.6 3-3.5 5.5-3.5s3.5 2 6 2 3-1 4-1" opacity=".5" />
+  </svg>
+)
+
 /** Radar: the sweep, and an echo. */
 export const IconRadar = (p: IconProps) => (
   <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

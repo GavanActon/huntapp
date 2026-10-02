@@ -1270,13 +1270,60 @@
   transform: translateX(-50%);
 }
 
-.hotcol > .fab.hotbtn {
+/* each button sits in a slot: the slot takes the room for the word under
+   the circle, and holds the picker a long press opens beside it */
+.hotslot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   margin-bottom: 16px;
 }
 
 /* names off in Settings: the circles close up */
-.hotcol > .fab.hotbtn.no-label {
+.hotslot.no-label {
   margin-bottom: 0;
+}
+
+/* the picker: a row of chips level with the button, toward the middle of the screen */
+.hot-pop {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: var(--r-lg);
+  background: var(--c-surface-heavy);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+  border: 1px solid var(--c-border-strong);
+  box-shadow: var(--shadow-panel);
+  white-space: nowrap;
+  animation: rise-in 0.15s ease;
+}
+
+.hot-pop-right {
+  left: calc(100% + 8px);
+}
+
+.hot-pop-left {
+  right: calc(100% + 8px);
+}
+
+.hot-pop-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text-dim);
+  padding-right: 2px;
+}
+
+.hot-pop .chip-pick {
+  min-height: 36px;
+  padding: 6px 12px;
+  touch-action: manipulation;
 }
 
 /* the word keeps its taps: one landing beside the circle must not fall
