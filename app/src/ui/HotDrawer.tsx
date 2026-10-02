@@ -9,7 +9,7 @@ import { isFish } from '../spots/types'
 import { CONTOUR_INTERVALS, useAppStore, type HotId, type LayerOpacity } from '../state/appStore'
 import { useSpotsStore } from '../state/spotsStore'
 import { useGpsStore } from '../tracking/gpsStore'
-import { clearPlaced, SCENT_HEIGHTS, useScent } from '../weather/micro/scent'
+import { SCENT_HEIGHTS, useScent } from '../weather/micro/scent'
 import { useWindChecks } from '../weather/micro/windChecks'
 import { useTapOff } from './tapOff'
 
@@ -88,10 +88,13 @@ function WindFlowRows({ go }: RowsProps) {
   const setOp = useAppStore((s) => s.setWindFlowOpacity)
   const lowPower = useAppStore((s) => s.lowPower)
   const setLowPower = useAppStore((s) => s.setLowPower)
+  const swirl = useAppStore((s) => s.flowTuning.windSwirl)
+  const setFlowTuning = useAppStore((s) => s.setFlowTuning)
   const openSheet = useAppStore((s) => s.openSheet)
   return (
     <>
       <Seg label="Wind at" value={level} options={[['ground', 'Ground'], ['forecast', 'Forecast']] as const} onPick={setLevel} />
+      <Seg label="Streaks" value={swirl ? 'eddies' : 'straight'} options={[['eddies', 'Eddies'], ['straight', 'Straight']] as const} onPick={(v) => setFlowTuning({ windSwirl: v === 'eddies' })} />
       <Slider label="Strength" value={Math.round(op * 100)} min={10} max={100} step={5} onChange={(v) => setOp(v / 100)} />
       <Switch label="Low power" on={lowPower} onChange={setLowPower} />
       <Act onTap={go(() => openSheet({ kind: 'settings' }))}>
@@ -101,27 +104,19 @@ function WindFlowRows({ go }: RowsProps) {
   )
 }
 
-function ScentRows({ go }: RowsProps) {
+/** The cone's knobs only: + Person, Clear sitters and the card are the scent card's own (2026-10-02). */
+function ScentRows() {
   const height = useScent((s) => s.height)
   const setHeight = useScent((s) => s.setHeight)
   const view = useScent((s) => s.view)
   const setView = useScent((s) => s.setView)
-  const placed = useScent((s) => s.people.some((p) => !p.live))
   const strength = useScent((s) => s.strength)
   const setStrength = useScent((s) => s.setStrength)
-  const setTopCard = useAppStore((s) => s.setTopCard)
   return (
     <>
       <Slider label="Strength" value={Math.round(strength * 100)} min={10} max={100} step={5} onChange={(v) => setStrength(v / 100)} />
       <Seg label="Height" value={height} options={HEIGHTS} onPick={setHeight} />
       <Seg label="View" value={view === 'people' ? 'cloud' : view} options={[['cloud', 'Cloud'], ['particles', 'Particles']] as const} onPick={setView} />
-      <Act onTap={go(() => useScent.getState().setAdding(true))}>+ Person</Act>
-      <Act disabled={!placed} onTap={go(clearPlaced)}>
-        Clear sitters
-      </Act>
-      <Act onTap={go(() => setTopCard({ kind: 'scent' }))}>
-        Scent card <span className="dim">›</span>
-      </Act>
     </>
   )
 }
@@ -284,7 +279,7 @@ function rows(id: HotId, go: RowsProps['go']): JSX.Element | null {
     case 'windflow':
       return <WindFlowRows go={go} />
     case 'scent':
-      return <ScentRows go={go} />
+      return <ScentRows />
     case 'contours':
       return <ContourRows go={go} />
     case 'heard':
