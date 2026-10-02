@@ -1,7 +1,9 @@
-import { useEffect, type JSX } from 'react'
+import { useEffect, useState, type JSX } from 'react'
 import { downloadFiles, mapsStatus, useDownloads } from '../../offline/downloads'
 import { checkMapUpdates, useMapUpdates } from '../../offline/updates'
 import { CONTOUR_INTERVALS, useAppStore } from '../../state/appStore'
+import { agoLabel, dayTimeLabel } from '../../time'
+import { campForecast, hrdpsRunLabel, nextWeatherUpdateMs, onWeatherRefreshed, refreshWeather, useWeatherStatus } from '../../weather/refresh'
 import './settings.css'
 
 const TEXT_SIZES = [
@@ -15,7 +17,52 @@ const STOPS = ['auto', 'standard', 'large', 'larger'] as const
 const STREAK_W: Record<(typeof STOPS)[number], number> = { auto: 0, standard: 1.5, large: 2.6, larger: 3.7 }
 
 /**
- * Settings, one level deep: the maps on the phone, the buttons, the hand,
+ * The weather on the phone: when it was last brought in, when the next
+ * model run lands (the moment the app fetches again by itself, given
+ * signal), and a Refresh for when the signal is here now. Brief: the
+ * forecast itself is the strip's.
+ */
+function WeatherRow({ online }: { online: boolean }): JSX.Element {
+  const st = useWeatherStatus()
+  const [, setTick] = useState(0)
+  // the ages move: once a minute, and the moment a sweep brings something in
+  useEffect(() => {
+    const t = window.setInterval(() => setTick((n) => n + 1), 60_000)
+    const off = onWeatherRefreshed(() => setTick((n) => n + 1))
+    return () => {
+      window.clearInterval(t)
+      off()
+    }
+  }, [])
+
+  const f = campForecast()
+  const now = Date.now()
+  let line: string
+  if (st.busy) line = 'Updating…'
+  else if (!f) line = online ? 'No outlook yet · fetching' : 'No outlook yet · fetches when there is signal'
+  else {
+    const next = nextWeatherUpdateMs() ?? now
+    const run = f.hrdpsHours ? `HRDPS ${hrdpsRunLabel(f.fetchedAt)}` : 'blend'
+    const when = next <= now ? (online ? 'a newer run is in' : 'a newer run is in · fetches when there is signal') : `next run lands ~${dayTimeLabel(next)}`
+    line = `Updated ${agoLabel(now - f.fetchedAt)} · ${run} · ${when}`
+    if (st.lastFailAt && st.lastFailAt > f.fetchedAt) line += ` · last try failed ${agoLabel(now - st.lastFailAt)}`
+  }
+
+  return (
+    <div className="st-row st-weather">
+      <span>
+        Weather
+        <small className={st.lastError && st.lastFailAt && (!f || st.lastFailAt > f.fetchedAt) ? 'warn' : 'dim'}>{line}</small>
+      </span>
+      <button className="st-more" disabled={st.busy || !online} onClick={() => void refreshWeather('settings', true)}>
+        {st.busy ? 'Updating…' : 'Refresh'}
+      </button>
+    </div>
+  )
+}
+
+/**
+ * Settings, one level deep: the maps on the phone, the weather, the buttons, the hand,
  * units and text, then the wind flow's knobs and the contour interval. The
  * download runs in offline/downloads.ts, so closing the sheet does not stop
  * it. The host draws the title row.
@@ -44,8 +91,8 @@ export default function SettingsSheet(): JSX.Element {
   const who = useAppStore((s) => s.who)
   const setWho = useAppStore((s) => s.setWho)
   const pushSheet = useAppStore((s) => s.pushSheet)
-  // what the Maps row reads: re-rendered when any of it moves
-  useAppStore((s) => s.online)
+  // what the Maps and Weather rows read: re-rendered when any of it moves
+  const online = useAppStore((s) => s.online)
   useMapUpdates((s) => s.pending)
   const dl = useDownloads()
 
@@ -75,6 +122,7 @@ export default function SettingsSheet(): JSX.Element {
           </div>
         </div>
       )}
+      <WeatherRow online={online} />
       <button className="st-row" onClick={() => pushSheet({ kind: 'buttons' })}>
         <span>Map buttons</span>
         <span className="dim">›</span>
