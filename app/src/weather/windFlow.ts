@@ -331,6 +331,9 @@ interface EngineOpts {
 interface Engine {
   stop: () => void
   rebase: () => void
+  /** Resample the wind under the view, keeping the trails and the
+   *  particles. False when there is no wind to sample any more. */
+  refield: () => boolean
   dead: boolean
 }
 
@@ -344,7 +347,7 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
   const atMs = () => useAppStore.getState().planTimeMs ?? Date.now()
 
   let field = buildField(map, w, h, atMs())
-  if (!field.live) return { stop: () => {}, rebase: () => {}, dead: true }
+  if (!field.live) return { stop: () => {}, rebase: () => {}, refield: () => false, dead: true }
   const fieldOff = { x: 0, y: 0 }
   const swirl = makeSwirl(w, h, performance.now())
   const eddy = new Float32Array(2)
@@ -357,9 +360,22 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
   let dpr = 0
   const wantDpr = () => Math.min(qualityProfile().trailDpr, window.devicePixelRatio || 1)
   const setDpr = (d: number) => {
+    // a resize clears a canvas: the trails go through the carrier
+    const keep = dpr > 0
+    if (keep) {
+      cctx.setTransform(1, 0, 0, 1, 0, 0)
+      cctx.clearRect(0, 0, carrier.width, carrier.height)
+      cctx.drawImage(canvas, 0, 0)
+    }
     dpr = d
-    canvas.width = carrier.width = Math.round(w * d)
-    canvas.height = carrier.height = Math.round(h * d)
+    canvas.width = Math.round(w * d)
+    canvas.height = Math.round(h * d)
+    if (keep) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.drawImage(carrier, 0, 0, canvas.width, canvas.height)
+    }
+    carrier.width = canvas.width
+    carrier.height = canvas.height
     ctx.lineCap = 'round'
   }
   setDpr(wantDpr())
@@ -446,6 +462,19 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
     sizeActive()
     const d = wantDpr()
     if (d !== dpr) setDpr(d)
+  }
+
+  // the air changed, not the view (a grid landed, the planning time moved,
+  // the level switched): a new field under the particles already flying,
+  // their trails kept. A restart would clear the canvas and fade in again.
+  const refield = () => {
+    if (!isIdentity(anchor.current(map))) rebase()
+    const f = buildField(map, w, h, atMs())
+    if (!f.live) return false
+    field = f
+    fieldOff.x = 0
+    fieldOff.y = 0
+    return true
   }
 
   const frame = (now: number) => {
@@ -594,6 +623,7 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
   return {
     dead: false,
     rebase,
+    refield,
     stop: () => {
       cancelAnimationFrame(raf)
       offQuality()
@@ -626,6 +656,22 @@ function syncAmbient(map: MlMap) {
     const eng = startEngine(map, { warm: wasLive, level: () => useAppStore.getState().windFlowOpacity })
     if (eng.dead) return // no grid yet: onWeatherGrid retries
     ambient = eng
+  })
+}
+
+/** The wind data changed under a running layer: resample it in place.
+ *  Without this every grid landing on load restarted the engine, and the
+ *  streaks faded in three times a second apart. */
+function refreshAmbient(map: MlMap) {
+  const eng = ambient
+  if (!eng) {
+    syncAmbient(map)
+    return
+  }
+  const ground = useAppStore.getState().windLevel === 'ground'
+  void Promise.all([ensureWeatherGrid(), ground ? Promise.all([loadMicro(), ensureProfile()]) : null]).then(() => {
+    if (ambient !== eng) return
+    if (!eng.refield()) syncAmbient(map)
   })
 }
 
@@ -662,24 +708,23 @@ export function initWindFlow() {
       if (m) syncAmbient(m)
     }
     document.addEventListener('visibilitychange', cur)
+    const fresh = () => {
+      const m = getMap()
+      if (m) refreshAmbient(m)
+    }
     useAppStore.subscribe((s, prev) => {
-      if (
-        s.layers.windFlow !== prev.layers.windFlow ||
-        s.lowPower !== prev.lowPower ||
-        s.planTimeMs !== prev.planTimeMs ||
-        s.flowTuning.windDensity !== prev.flowTuning.windDensity ||
-        s.flowTuning.windSpeed !== prev.flowTuning.windSpeed ||
-        s.windLevel !== prev.windLevel
-      )
-        cur()
+      // the switches and the particle count need a new engine
+      if (s.layers.windFlow !== prev.layers.windFlow || s.lowPower !== prev.lowPower || s.flowTuning.windDensity !== prev.flowTuning.windDensity) cur()
+      // the air under it only needs resampling
+      else if (s.planTimeMs !== prev.planTimeMs || s.flowTuning.windSpeed !== prev.flowTuning.windSpeed || s.windLevel !== prev.windLevel) fresh()
     })
-    onWeatherGrid(cur)
+    onWeatherGrid(fresh)
     // at "now" the air drifts between hours; a planned time stands still
     onWeatherTick(() => {
-      if (useAppStore.getState().planTimeMs == null) cur()
+      if (useAppStore.getState().planTimeMs == null) fresh()
     })
-    onMicro(cur)
-    onProfile(cur)
-    useWindChecks.subscribe(cur)
+    onMicro(fresh)
+    onProfile(fresh)
+    useWindChecks.subscribe(fresh)
   })
 }
