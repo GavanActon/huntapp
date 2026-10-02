@@ -2,7 +2,9 @@ import { useEffect, useRef } from 'react'
 import MapView from './map/MapView'
 import './map/mapBearing' // keeps the rotate listener registered: the compass and the wind arrows read it
 import { useAppStore } from './state/appStore'
+import { useCompass } from './tracking/compass'
 import { useGpsStore } from './tracking/gpsStore'
+import { compass } from './weather/openMeteo'
 import { initTextScale } from './ui/textScale'
 import { initTheme } from './ui/theme'
 import { releaseArmed } from './ui/tools'
@@ -38,14 +40,27 @@ import ViewPill from './ui/ViewPill'
 import { initDepthLayer } from './map/depthLayer'
 import { initSpotsLayer } from './spots/spotsLayer'
 
-/** Only what has gone wrong: offline with maps missing, or no location. */
+/** What has gone wrong (offline with maps missing, no location), and with
+ *  the map turned the way you face, the heading: the way that is up. */
 function TopBar() {
   const online = useAppStore((s) => s.online)
   const offlineReady = useAppStore((s) => s.offlineReady)
   const gpsStatus = useGpsStore((s) => s.status)
   const gpsError = useGpsStore((s) => s.lastError)
+  const headingUp = useGpsStore((s) => s.headingUp)
+  // whole degrees: the compass reads many times a second, the chip redraws when the degree changes
+  const heading = useCompass((s) => (s.heading == null ? null : Math.round(s.heading) % 360))
+  const steady = useCompass((s) => s.steady)
   return (
     <div className="topbar">
+      {headingUp && heading != null && (
+        <span className={`chip chip-heading${steady ? '' : ' chip-dim'}`}>
+          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+            <path d="M5 0.5 L9 9.5 L5 7.5 L1 9.5 Z" fill="currentColor" />
+          </svg>
+          {compass(heading)} · {heading}°
+        </span>
+      )}
       {/* offline with every map saved is the normal state at camp: nothing to say */}
       {!online && !offlineReady && <span className="chip chip-warn">Offline · some maps not saved</span>}
       {gpsStatus === 'denied' && <span className="chip chip-warn">Location denied</span>}
