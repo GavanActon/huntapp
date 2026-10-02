@@ -133,6 +133,11 @@
   color: var(--c-accent);
 }
 
+/* the day whose hours are under the finger as the row scrolls */
+.wxday-view {
+  outline: 1.5px solid rgba(63, 200, 255, 0.45);
+}
+
 .wxday-on {
   outline: 1.5px solid var(--c-accent);
   outline-offset: -1.5px;

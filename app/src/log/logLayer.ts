@@ -1,6 +1,8 @@
 import maplibregl, { type GeoJSONSource, type Map as MlMap, type MapLayerMouseEvent, type MapLayerTouchEvent } from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
 import { onEachMap } from '../map/mapController'
+import { useAppStore } from '../state/appStore'
+import { startOfDayMs } from '../time'
 import { closeOnTapOff } from '../map/tapPopup'
 import { fmtCoord } from '../map/MapView'
 import { agoLabel, hourMinShort } from '../time'
@@ -19,11 +21,21 @@ const DAY = 86_400_000
 const HOLD_MS = 350
 const SLOP_PX = 8
 
+/** The oldest entry the map shows, by the Past hunts setting: today, the week, or everything. */
+function shownSince(): number {
+  const now = Date.now()
+  const v = useAppStore.getState().pastHunts
+  if (v === 'today') return startOfDayMs(now)
+  if (v === 'week') return now - 7 * DAY
+  return 0
+}
+
 function features(entries: LogEntry[]): FeatureCollection {
   const now = Date.now()
+  const since = shownSince()
   return {
     type: 'FeatureCollection',
-    features: entries.map((e) => ({
+    features: entries.filter((e) => e.ts >= since).map((e) => ({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [e.lon, e.lat] },
       properties: {
@@ -191,13 +203,18 @@ export function initLogLayer() {
     map.on('mouseenter', 'huntlog-dot', () => (map.getCanvas().style.cursor = 'pointer'))
     map.on('mouseleave', 'huntlog-dot', () => (map.getCanvas().style.cursor = ''))
   })
-  useHuntLog.subscribe((s, p) => {
-    if (s.entries !== p.entries && current) {
-      try {
-        ensure(current)
-      } catch {
-        /* not ready yet: styledata adds it */
-      }
+  const redraw = () => {
+    if (!current) return
+    try {
+      ensure(current)
+    } catch {
+      /* not ready yet: styledata adds it */
     }
+  }
+  useHuntLog.subscribe((s, p) => {
+    if (s.entries !== p.entries) redraw()
+  })
+  useAppStore.subscribe((s, p) => {
+    if (s.pastHunts !== p.pastHunts) redraw()
   })
 }

@@ -96,6 +96,8 @@ export default function SettingsSheet(): JSX.Element {
   const setLeftHanded = useAppStore((s) => s.setLeftHanded)
   const buttonLabels = useAppStore((s) => s.buttonLabels)
   const setButtonLabels = useAppStore((s) => s.setButtonLabels)
+  const pastHunts = useAppStore((s) => s.pastHunts)
+  const setPastHunts = useAppStore((s) => s.setPastHunts)
   const contourInterval = useAppStore((s) => s.contourInterval)
   const setContourInterval = useAppStore((s) => s.setContourInterval)
   const windFlowOpacity = useAppStore((s) => s.windFlowOpacity)
@@ -188,6 +190,16 @@ export default function SettingsSheet(): JSX.Element {
         </span>
         <input type="text" className="st-text" value={who} maxLength={12} placeholder="GA" onChange={(e) => setWho(e.target.value)} aria-label="Your initials" />
       </label>
+      <div className="st-row">
+        <span>Past hunts on the map</span>
+        <div className="seg" role="radiogroup" aria-label="Past hunts on the map">
+          {(['today', 'week', 'all'] as const).map((v) => (
+            <button key={v} className={pastHunts === v ? 'seg-on' : ''} role="radio" aria-checked={pastHunts === v} onClick={() => setPastHunts(v)}>
+              {v === 'today' ? 'Today' : v === 'week' ? '7 days' : 'All'}
+            </button>
+          ))}
+        </div>
+      </div>
       <label className="st-row">
         <span>
           Outdoor <span className="dim">· for sun on the phone</span>

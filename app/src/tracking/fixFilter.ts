@@ -35,6 +35,12 @@ const AGREE_M = 20
 const HOLD_N = 3
 /** a fix this old when it arrives is the phone's memory, not a fix */
 const STALE_MS = 20_000
+/** standing still the estimate still breathes; the drawn position moves only
+ *  once it has gone this far (more under a poor fix), so the dot, the cone
+ *  and the track hold where you sit instead of creeping about */
+const DEAD_MIN_M = 4
+const DEAD_MAX_M = 15
+const DEAD_FRAC = 0.4
 
 export type DropReason = 'stale' | 'jump'
 
@@ -48,6 +54,9 @@ export class FixFilter {
   private v = -1
   private ts = 0
   private held: Fix[] = []
+  /** the position last given out (the estimate once it has moved past the deadband) */
+  private outLon = 0
+  private outLat = 0
 
   reset() {
     this.v = -1
@@ -86,11 +95,19 @@ export class FixFilter {
     this.v = raw.accuracy * raw.accuracy
     this.ts = raw.ts
     this.held = []
+    this.outLon = this.lon
+    this.outLat = this.lat
     return this.out(raw)
   }
 
   private out(raw: Fix): Fix {
-    return { ...raw, lon: this.lon, lat: this.lat, sigma: Math.sqrt(this.v) }
+    const dead = Math.min(DEAD_MAX_M, Math.max(DEAD_MIN_M, DEAD_FRAC * raw.accuracy))
+    const moved = Math.hypot((this.lon - this.outLon) * kx(this.lat), (this.lat - this.outLat) * KY)
+    if (moved >= dead) {
+      this.outLon = this.lon
+      this.outLat = this.lat
+    }
+    return { ...raw, lon: this.outLon, lat: this.outLat, sigma: Math.sqrt(this.v) }
   }
 
   private metres(f: Fix): number {

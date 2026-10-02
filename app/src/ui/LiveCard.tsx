@@ -9,11 +9,12 @@ import { TARGET_NAMES } from '../spots/types'
 import { clockShort, dayShort, hourShort, isToday, startOfDayMs } from '../time'
 import { useGpsStore } from '../tracking/gpsStore'
 import { drainWindow } from '../weather/micro/model'
-import { clearPlaced, groupSummary, sittersLine, useScent } from '../weather/micro/scent'
+import { clearPlaced, groupSummary, sittersLine, useScent, type Plume } from '../weather/micro/scent'
 import { checkSpentAt, strongestCheck, useWindChecks } from '../weather/micro/windChecks'
 import { IconChevronDown, IconChevronUp } from './icons'
 import { useTapOff } from './tapOff'
 import { useLookTick } from './useLookTick'
+import { compass } from '../weather/openMeteo'
 import './live.css'
 
 /**
@@ -64,6 +65,13 @@ function Row({ text, amber, onTap }: { text: string; amber?: boolean; onTap?: ()
       <span className="dim">›</span>
     </button>
   )
+}
+
+/** The cone in a few words: `Scent → SE · 180 m`, or `Scent spreads · 70 m` in near calm. */
+function briefScent(p: Plume): string {
+  const reach = p.beyond ? '700+ m' : `${Math.round(p.reach / 10) * 10} m`
+  if (p.calm && p.mainShare < 0.35) return `Scent spreads · ${reach}`
+  return `Scent → ${compass(p.mainToward)} · ${reach}`
 }
 
 export default function LiveCard(): JSX.Element | null {
@@ -153,7 +161,7 @@ export default function LiveCard(): JSX.Element | null {
   let scentText: string | null = null
   let when: string | null = null
   if (livePlume) {
-    scentText = 'Your scent'
+    scentText = briefScent(livePlume)
     if (planTimeMs != null) when = `${isToday(planTimeMs) ? '' : `${dayShort(planTimeMs)} `}${hourShort(planTimeMs)}`
   } else if (live) scentText = 'Scent · working out…'
   else if (cone) {
@@ -205,7 +213,7 @@ export default function LiveCard(): JSX.Element | null {
             {planTimeMs == null ? 'Now' : isToday(planTimeMs) ? 'Today' : dayShort(planTimeMs)} <span className="dim">· {planTimeMs == null ? clockShort(now) : hourShort(planTimeMs)}</span>
           </span>
         </div>
-        {livePlume && <Row text="Your scent" onTap={toScent} />}
+        {livePlume && scentText && <Row text={scentText} onTap={toScent} />}
         {!livePlume && scentText && <Row text={scentText} />}
         {check && <Row text={`Wind sharpened ${clockShort(check.check.ts)} · pulling ${Math.round(check.pull * 100)}% · till ~${clockShort(checkSpentAt(check.check))}`} />}
         {drain && <Row text={drain} />}

@@ -191,6 +191,9 @@ export interface AppState {
   /** the word under each hot button; persisted */
   buttonLabels: boolean
   setButtonLabels: (v: boolean) => void
+  /** how far back the log's dots show on the map; persisted */
+  pastHunts: 'today' | 'week' | 'all'
+  setPastHunts: (v: 'today' | 'week' | 'all') => void
 
   layers: LayerVisibility
   setLayer: (k: keyof LayerVisibility, v: boolean) => void
@@ -273,6 +276,8 @@ export const useAppStore = create<AppState>()(
       setLeftHanded: (leftHanded) => set({ leftHanded }),
       buttonLabels: true,
       setButtonLabels: (buttonLabels) => set({ buttonLabels }),
+      pastHunts: 'all',
+      setPastHunts: (pastHunts) => set({ pastHunts }),
 
       layers: DEFAULT_LAYERS,
       setLayer: (k, v) => set((s) => ({ layers: { ...s.layers, [k]: v } })),
@@ -366,6 +371,7 @@ export const useAppStore = create<AppState>()(
         hotButtons: s.hotButtons,
         leftHanded: s.leftHanded,
         buttonLabels: s.buttonLabels,
+        pastHunts: s.pastHunts,
         who: s.who,
         onboarded: s.onboarded,
       }),
