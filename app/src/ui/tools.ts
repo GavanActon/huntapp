@@ -1,5 +1,6 @@
 import { useScent } from '../weather/micro/scent'
 import { useHeardForm } from './HeardCard'
+import { useCheckForm } from './WindCheckCard'
 
 /**
  * A button that waits for a map tap (Person, Scent with no fix, Heard)
@@ -12,4 +13,6 @@ export function releaseArmed(): void {
   if (sc.adding) sc.setAdding(false)
   const hf = useHeardForm.getState()
   if (hf.placing) hf.arm()
+  const cf = useCheckForm.getState()
+  if (cf.aim) cf.setAim(false)
 }
