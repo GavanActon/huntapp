@@ -119,7 +119,9 @@ export default function BottomSheet({
     // the sheet full), a long pull up opens it full, well below the rest
     // dismisses
     const close = h < halfPct - 14
-    const snap = close ? halfPct : h > start + 12 ? FULL_PCT : h < start - 12 ? halfPct : start >= 68 ? FULL_PCT : halfPct
+    // (the sheets that rest at 72 or 80% used to count as full at 68: a
+    // scroll begun on their title row sent them to 88)
+    const snap = close ? halfPct : h > start + 12 ? FULL_PCT : h < start - 12 ? halfPct : start
     devlog('sheet', `drag ${snapKey} ${Math.round(start)} → ${Math.round(h)} → ${close ? 'close' : `${snap}%`}`)
     if (close) onClose()
     applyHeight(snap)
