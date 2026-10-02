@@ -192,8 +192,8 @@ export interface AppState {
   buttonLabels: boolean
   setButtonLabels: (v: boolean) => void
   /** how far back the log's dots show on the map; persisted */
-  pastHunts: 'today' | 'week' | 'all'
-  setPastHunts: (v: 'today' | 'week' | 'all') => void
+  pastHunts: 'none' | 'today' | 'week' | 'all'
+  setPastHunts: (v: 'none' | 'today' | 'week' | 'all') => void
 
   layers: LayerVisibility
   setLayer: (k: keyof LayerVisibility, v: boolean) => void

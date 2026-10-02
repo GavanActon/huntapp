@@ -1778,9 +1778,9 @@
 }
 
 .digin-score.fair {
-  background: rgba(230, 220, 180, 0.14);
-  border-color: #e6dcb4;
-  color: #e6dcb4;
+  background: rgba(207, 204, 180, 0.14);
+  border-color: var(--c-fair);
+  color: var(--c-fair);
 }
 
 .digin-score.poor {
@@ -2197,7 +2197,7 @@ button.hotedit-empty {
 
 .pp-top { color: #ff8a80; }
 .pp-good { color: var(--c-warn); }
-.pp-fair { color: #e6dcb4; }
+.pp-fair { color: var(--c-fair); }
 .pp-poor { color: var(--c-text-faint); }
 
 .pp-reasons { margin: 6px 0 0 14px; padding: 0; }

@@ -25,9 +25,9 @@
 }
 
 .pp-game .pp-score.pp-fair {
-  background: rgba(230, 220, 180, 0.14);
-  border-color: #e6dcb4;
-  color: #e6dcb4;
+  background: rgba(207, 204, 180, 0.14);
+  border-color: var(--c-fair);
+  color: var(--c-fair);
 }
 
 .pp-game .pp-score.pp-poor {

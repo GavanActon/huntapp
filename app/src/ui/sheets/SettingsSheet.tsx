@@ -193,9 +193,9 @@ export default function SettingsSheet(): JSX.Element {
       <div className="st-row">
         <span>Past hunts on the map</span>
         <div className="seg" role="radiogroup" aria-label="Past hunts on the map">
-          {(['today', 'week', 'all'] as const).map((v) => (
+          {(['none', 'today', 'week', 'all'] as const).map((v) => (
             <button key={v} className={pastHunts === v ? 'seg-on' : ''} role="radio" aria-checked={pastHunts === v} onClick={() => setPastHunts(v)}>
-              {v === 'today' ? 'Today' : v === 'week' ? '7 days' : 'All'}
+              {v === 'none' ? 'None' : v === 'today' ? 'Today' : v === 'week' ? '7 days' : 'All'}
             </button>
           ))}
         </div>

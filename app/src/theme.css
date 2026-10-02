@@ -21,20 +21,23 @@
   --c-text-dim: #a4b7a2;
   --c-text-faint: #728a74;
 
-  /* the accent is the amber of the heat pins and the camp: picked, on, go */
-  --c-accent: #f0b64e;
-  --c-accent-rgb: 240, 182, 78;
-  --c-accent-dim: rgba(var(--c-accent-rgb), 0.16);
-  --c-on-accent: #1b1306;
+  /* the accent is a light camo sage, the Bow view's own tones: picked, on, go */
+  --c-accent: #c3cfa4;
+  --c-accent-rgb: 195, 207, 164;
+  --c-accent-dim: rgba(var(--c-accent-rgb), 0.18);
+  --c-on-accent: #1a2015;
   /* cyan is for air and water only: the wind, the drains, the ground air */
   --c-wind: #4fc7ff;
   --c-wind-rgb: 79, 199, 255;
   /* a good score, a prime hour */
   --c-good: #86d97a;
   --c-good-rgb: 134, 217, 122;
+  /* a fair score: bone, between the green and the grey */
+  --c-fair: #cfccb4;
   /* the trail behind you */
   --c-track: #59e0b8;
-  --c-warn: #ff9440;
+  /* a warning is clay, never a yellow */
+  --c-warn: #e2845a;
   --c-danger: #ff6b6b;
 
   /* depth ramp reference (matches map raster) */
@@ -83,16 +86,17 @@
   --c-text: #121a10;
   --c-text-dim: #3f4d3a;
   --c-text-faint: #66745f;
-  --c-accent: #b05c0c;
-  --c-accent-rgb: 176, 92, 12;
-  --c-accent-dim: rgba(var(--c-accent-rgb), 0.14);
+  --c-accent: #5a6b3e;
+  --c-accent-rgb: 90, 107, 62;
+  --c-accent-dim: rgba(var(--c-accent-rgb), 0.16);
   --c-on-accent: #ffffff;
   --c-wind: #0b6fae;
   --c-wind-rgb: 11, 111, 174;
   --c-good: #2f7d2a;
   --c-good-rgb: 47, 125, 42;
+  --c-fair: #6f6f4e;
   --c-track: #0f8a6a;
-  --c-warn: #b4480a;
+  --c-warn: #b0532a;
   --c-danger: #b8262c;
   --glass-filter: none;
   --shadow-panel: 0 4px 16px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(var(--c-ink-rgb), 0.08);

@@ -39,7 +39,7 @@
 .ground-day .gd-wind { color: var(--c-text-dim); white-space: nowrap; }
 .ground-day .gd-now { background: rgba(var(--c-ink-rgb), 0.08); }
 .gd-drain b, .gd-pool b { color: var(--c-wind); }
-.gd-up b { color: #ffc27a; }
+.gd-up b { color: var(--c-warn); }
 .gd-breeze b { color: #9fe0d0; }
 .checks-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: 6px; }
 .checks-list .ck-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 4px 2px; border-bottom: 1px solid var(--c-border); }
