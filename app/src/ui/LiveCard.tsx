@@ -10,7 +10,8 @@ import { clockShort, dayShort, hourShort, isToday, startOfDayMs } from '../time'
 import { useGpsStore } from '../tracking/gpsStore'
 import { drainWindow } from '../weather/micro/model'
 import { clearPlaced, groupSummary, sittersLine, useScent, type Plume } from '../weather/micro/scent'
-import { checkSpentAt, strongestCheck, useWindChecks } from '../weather/micro/windChecks'
+import { checkSpentAt, strongestCheck, useWindChecks, verdict } from '../weather/micro/windChecks'
+import { logWindHere } from './logWindHere'
 import { IconChevronDown, IconChevronUp } from './icons'
 import { useTapOff } from './tapOff'
 import { useLookTick } from './useLookTick'
@@ -113,6 +114,14 @@ export default function LiveCard(): JSX.Element | null {
   const planMs = planTimeMs ?? now
   const { setAdding } = useScent.getState()
   const check = live ? strongestCheck(checks, live.lon, live.lat, planMs) : null
+  // the moment to ask for a check: the last one has faded to a quarter, it
+  // missed and 20 min have passed, or a sit has none at all
+  let nudge: string | null = null
+  if (live && planTimeMs == null) {
+    if (!check) nudge = 'No wind check this sit · sharpen the wind'
+    else if (verdict(check.check) === 'miss' && now - check.check.ts > 20 * 60_000) nudge = `The map missed here at ${clockShort(check.check.ts)} · check again`
+    else if (check.pull < 0.25) nudge = 'Wind check fading · sharpen again'
+  }
   const party = people.length > 1 && group ? { head: sittersLine(group, people.length), drift: groupSummary(group, people).drift } : null
   const toScent = () => {
     setOpen(false)
@@ -216,6 +225,7 @@ export default function LiveCard(): JSX.Element | null {
         {livePlume && scentText && <Row text={scentText} onTap={toScent} />}
         {!livePlume && scentText && <Row text={scentText} />}
         {check && <Row text={`Wind sharpened ${clockShort(check.check.ts)} · pulling ${Math.round(check.pull * 100)}% · till ~${clockShort(checkSpentAt(check.check))}`} />}
+        {nudge && <Row text={nudge} onTap={logWindHere} />}
         {drain && <Row text={drain} />}
         {party && <Row text={party.head} onTap={toScent} />}
         {party?.drift && <span className="lc-line lc-amber">{party.drift}</span>}

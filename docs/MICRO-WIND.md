@@ -366,6 +366,18 @@ nothing that matters: at that cell the mechanical part stays under
   lesson and shows what each has learned.
 - **Scoring**: agree within 45° (or both calm), close within 90°. The
   Weather tab shows the running tally.
+- **How many, how often** (Gavan's question, 2026-10-02): a check leads
+  the ground wind where it was made for ~40 min (pull 50% at the spot and
+  minute, 27% at 40 min, 10% at ~90 min, nothing past 2 h), so a sit wants
+  one at the start, one ~40 min on and one at any shift; puffs within
+  6 min and 40 m fold into one check (the swing). A lesson has PRIOR_N = 4
+  phantom checks of zero bias, so n checks apply n/(n+4) of the mean
+  residual (1 → 20%, 4 → 50%, 12 → 75%), with a 14-day e-folding: four or
+  five checks per regime per week teaches it, then maintenance. The
+  "Wind sharpened" card says the verdict, the pull, the lesson's tally and
+  when to check next; the live card asks for a check when the last one has
+  faded below a quarter, when it missed and 20 min have passed, or when a
+  sit has none. HuntOS §3 says the same for the hunter.
 - A camp station can later post checks with `source: 'station'`.
 - The phone's barometer is not available to a web app.
 
