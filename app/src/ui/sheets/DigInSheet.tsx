@@ -148,9 +148,10 @@ export default function DigInSheet({ lon, lat }: { lon: number; lat: number }): 
   const open = lines?.filter((l) => l.m >= 80).map((l) => compass(l.bearing)) ?? []
   const thick = lines?.filter((l) => l.m < 35).map((l) => compass(l.bearing)) ?? []
   const dist = (m: number) => (units === 'imperial' ? `${Math.round(m * 1.0936)} yd` : `${Math.round(m)} m`)
+  // "80 m+ NE, E · under 35 m W": how far the bush lets you see, by direction
   const seeWords = lines
-    ? [open.length ? `open ${open.join(', ')}` : '', thick.length ? `thick ${thick.join(', ')}` : ''].filter(Boolean).join(' · ') ||
-      `${dist(Math.min(...lines.map((l) => l.m)))}–${dist(Math.max(...lines.map((l) => l.m)))}`
+    ? [open.length ? `${dist(80)}+ ${open.join(', ')}` : '', thick.length ? `under ${dist(35)} ${thick.join(', ')}` : ''].filter(Boolean).join(' · ') ||
+      `${dist(Math.min(...lines.map((l) => l.m)))}–${dist(Math.max(...lines.map((l) => l.m)))} all round`
     : ''
 
   // ---- the ⋯ menu
@@ -192,7 +193,7 @@ export default function DigInSheet({ lon, lat }: { lon: number; lat: number }): 
   const seeRow = (opened: boolean) => (
     <button className="digin-row" aria-expanded={opened} onClick={() => setSeeOpen(!opened)}>
       <span>
-        <b>See</b> <span className="dim">·</span> {seeWords}
+        <b>Sight lines</b> <span className="dim">·</span> {seeWords}
       </span>
       <span className="dim">{opened ? '⌄' : '›'}</span>
     </button>

@@ -112,6 +112,22 @@ morning counts. Lay it out rather than wander.
   day when nothing is moving anyway. Walk the edges, the shore, the cut
   lines; read the sign (section 4); puff powder in the places you mean to
   sit and log it (Sharpen the wind), so the model is right there by evening.
+- **Checking the forecast against your face.** Every Sharpen saves what
+  the map said for that spot and minute before it takes your puff, and
+  grades itself: agreed (within 45°), close (within 90°) or missed. Your
+  check then leads the wind where you stand, half the answer at the spot
+  and the minute, fading over about forty minutes and three hundred
+  metres, gone in two hours. It is also a lesson: a miss is charged to the
+  kind of air that made the call (plain wind, draining air, a slot, a
+  breeze) and turns every cell of that kind a little. One check moves it
+  a fifth of the way, four checks half, a dozen three quarters, and it
+  forgets over two weeks. So: a puff when you settle on the stand, another
+  about forty minutes on, and one the moment it shifts (a puff within six
+  minutes of the last folds into the same check, which is how a swing is
+  recorded). When the map missed, check again in twenty or thirty minutes;
+  if the wind has held, say so ("same as a while ago") and the check is
+  trusted twice as long. Four or five checks in each kind of air over the
+  week is what teaches the map; after that it is maintenance.
   Sort the sits into morning sits (below the animal, across the slope)
   and evening sits (above him, out of the pooling air).
 - **Each sit is a plan of three things:** where the moose is likely to be

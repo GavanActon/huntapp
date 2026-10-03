@@ -18,7 +18,7 @@ import { useWindChecks } from '../weather/micro/windChecks'
 import { activityBar } from '../spots/grades'
 import { FISH_TARGETS, HUNT_TARGETS, TARGET_NAMES, type Target } from '../spots/types'
 import { agoLabel, clockShort, dayLabel, dayShort, floorHourMs, hourAmPm, hourShort, startOfDayMs } from '../time'
-import { IconCheck, IconChevronDown, IconChevronUp, IconDots, IconHeat, IconSun } from './icons'
+import { IconCheck, IconChevronDown, IconChevronUp, IconDots, IconGrid, IconGridOff, IconHeat, IconPin, IconSun, IconTrack } from './icons'
 import AppMenu from './AppMenu'
 import { useMapUpdates } from '../offline/updates'
 import { useLookTick } from './useLookTick'
@@ -150,12 +150,41 @@ export default function WeatherStrip() {
   const units = useAppStore((s) => s.units)
   const online = useAppStore((s) => s.online)
   const outdoor = useAppStore((s) => s.outdoor)
+  const hotHidden = useAppStore((s) => s.hotHidden)
+  const setHotHidden = useAppStore((s) => s.setHotHidden)
+  const showPins = useAppStore((s) => s.showPins)
+  const setShowPins = useAppStore((s) => s.setShowPins)
+  const showTracks = useAppStore((s) => s.showTracks)
+  const setShowTracks = useAppStore((s) => s.setShowTracks)
   const setOutdoor = useAppStore((s) => s.setOutdoor)
   const selectedId = usePlacesStore((s) => s.selectedId)
   const hasFix = useGpsStore((s) => s.fix != null)
   const target = useSpotsStore((s) => s.target)
   const heat = useSpotsStore((s) => s.heat)
   const setHeat = useSpotsStore((s) => s.setHeat)
+  const heatScale = useSpotsStore((s) => s.heatScale)
+  const setHeatScale = useSpotsStore((s) => s.setHeatScale)
+  const heatStrength = useSpotsStore((s) => s.heatStrength)
+  const setHeatStrength = useSpotsStore((s) => s.setHeatStrength)
+  const stripButtons = useAppStore((s) => s.stripButtons)
+  // a press and hold on the heat button: how it is coloured
+  const [heatMenu, setHeatMenu] = useState(false)
+  const heatRef = useRef<HTMLSpanElement>(null)
+  const heatHold = useRef(0)
+  const heatHeld = useRef(false)
+  useTapOff(heatRef, heatMenu, () => setHeatMenu(false))
+  const heatDown = () => {
+    heatHeld.current = false
+    window.clearTimeout(heatHold.current)
+    heatHold.current = window.setTimeout(() => {
+      heatHeld.current = true
+      if (navigator.vibrate) navigator.vibrate(12)
+      setHeatMenu(true)
+    }, 450)
+  }
+  const heatUp = () => window.clearTimeout(heatHold.current)
+  const big = stripButtons === 'large'
+  const ico = big ? 20 : 16
   const plans = useSpotsStore((s) => s.plans)
   const hourScores = useSpotsStore((s) => s.hours)
   const checks = useWindChecks((s) => s.checks)
@@ -413,7 +442,7 @@ export default function WeatherStrip() {
   // while the planning time is not now, ⋯; folded, a chevron opens the days
   // and the rest
   const head = (
-    <div className="wx-head">
+    <div className={`wx-head${big ? ' wx-head-lg' : ''}`}>
       <span className="wx-quarry" ref={quarryRef}>
         <button className="wx-chip" onClick={() => setQuarryOpen((o) => !o)} aria-haspopup="menu" aria-expanded={quarryOpen}>
           {TARGET_NAMES[target]} <span className="dim">▾</span>
@@ -426,11 +455,57 @@ export default function WeatherStrip() {
           </div>
         )}
       </span>
-      <button className={`wx-heat${heat ? ' on' : ''}`} onClick={() => setHeat(!heat)} aria-pressed={heat} aria-label="Heat map">
-        <IconHeat size={16} />
-      </button>
+      <span className="wx-quarry" ref={heatRef}>
+        <button
+          className={`wx-heat${heat ? ' on' : ''}`}
+          onPointerDown={heatDown}
+          onPointerUp={heatUp}
+          onPointerLeave={heatUp}
+          onPointerCancel={heatUp}
+          onContextMenu={(e) => e.preventDefault()}
+          onClick={() => {
+            if (heatHeld.current) return (heatHeld.current = false)
+            setHeat(!heat)
+          }}
+          aria-pressed={heat}
+          aria-label="Heat map · hold for its colouring"
+        >
+          <IconHeat size={ico} />
+        </button>
+        {heatMenu && (
+          <div className="menu-pop wx-heatmenu" role="menu" aria-label="Heat map colouring">
+            <div className="hd-row">
+              <span>Colour by</span>
+              <div className="seg" role="radiogroup" aria-label="Colour by">
+                <button className={heatScale === 'day' ? 'seg-on' : ''} role="radio" aria-checked={heatScale === 'day'} onClick={() => setHeatScale('day')}>
+                  Day's best
+                </button>
+                <button className={heatScale === 'fixed' ? 'seg-on' : ''} role="radio" aria-checked={heatScale === 'fixed'} onClick={() => setHeatScale('fixed')}>
+                  Fixed
+                </button>
+              </div>
+            </div>
+            <div className="wx-heathint">{heatScale === 'day' ? 'The best of this day lights up, even a poor one. The scores stay as they are.' : 'Only stands that score well light up; a poor day can be dark.'}</div>
+            <div className="hd-row">
+              <span>
+                Strength <span className="numeral dim">· {Math.round(heatStrength * 100)}%</span>
+              </span>
+              <input type="range" min={50} max={150} step={10} value={Math.round(heatStrength * 100)} onChange={(e) => setHeatStrength(Number(e.target.value) / 100)} aria-label="Strength" />
+            </div>
+          </div>
+        )}
+      </span>
       <button className={`wx-heat wx-theme${outdoor ? ' on' : ''}`} onClick={() => setOutdoor(!outdoor)} aria-pressed={outdoor} aria-label="Outdoor · light chrome for sun">
-        <IconSun size={16} />
+        <IconSun size={ico} />
+      </button>
+      <button className={`wx-heat wx-theme${hotHidden ? ' on' : ''}`} onClick={() => setHotHidden(!hotHidden)} aria-pressed={hotHidden} aria-label={hotHidden ? 'Show the map buttons' : 'Hide the map buttons'}>
+        {hotHidden ? <IconGridOff size={ico} /> : <IconGrid size={ico} />}
+      </button>
+      <button className={`wx-heat wx-theme${showPins ? ' on' : ''}`} onClick={() => setShowPins(!showPins)} aria-pressed={showPins} aria-label={showPins ? 'Hide pins' : 'Show pins'}>
+        <IconPin size={16} />
+      </button>
+      <button className={`wx-heat wx-theme${showTracks ? ' on' : ''}`} onClick={() => setShowTracks(!showTracks)} aria-pressed={showTracks} aria-label={showTracks ? 'Hide tracks' : 'Show tracks'}>
+        <IconTrack size={16} />
       </button>
       {f ? <span className="wx-spacer" /> : <span className="wx-spacer wxstrip-empty">{emptyText}</span>}
       {planTimeMs != null && (

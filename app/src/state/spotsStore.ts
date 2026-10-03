@@ -9,6 +9,7 @@ import { DEFAULT_WEIGHTS, type WeightKey, type Weights } from '../spots/weights'
 /** How much of the reasoning to show: the verdict alone, the short case,
  *  or every factor, reason and note. */
 export type SpotsDetail = 'brief' | 'normal' | 'full'
+export type HeatScale = 'day' | 'fixed'
 export const DETAIL_NAMES: Record<SpotsDetail, string> = { brief: 'Brief', normal: 'Normal', full: 'Full' }
 
 interface SpotsState {
@@ -18,6 +19,14 @@ interface SpotsState {
   /** draw the heat map on the map */
   heat: boolean
   setHeat: (v: boolean) => void
+  /** what the heat's colours are measured against: the day's own best
+   *  ('day': the top of the range lights up, so a poor day still says where
+   *  to go) or the fixed scale the scores use ('fixed') */
+  heatScale: HeatScale
+  setHeatScale: (v: HeatScale) => void
+  /** how boldly the heat is painted, 0.5 … 1.5 */
+  heatStrength: number
+  setHeatStrength: (v: number) => void
   /** the old wedge cone at the pin: retired, always false (the live scent cone took its place) */
   scent: boolean
   /** how much of the reasoning to show */
@@ -49,6 +58,10 @@ export const useSpotsStore = create<SpotsState>()(
       setTarget: (target) => set({ target }),
       heat: true,
       setHeat: (heat) => set({ heat }),
+      heatScale: 'day',
+      setHeatScale: (heatScale) => set({ heatScale }),
+      heatStrength: 1,
+      setHeatStrength: (v) => set({ heatStrength: Math.max(0.5, Math.min(1.5, v)) }),
       scent: false,
       detail: 'normal',
       setDetail: (detail) => set({ detail }),
@@ -67,7 +80,7 @@ export const useSpotsStore = create<SpotsState>()(
     }),
     {
       name: 'huntapp-spots',
-      partialize: (s) => ({ target: s.target, heat: s.heat, detail: s.detail, weights: s.weights }),
+      partialize: (s) => ({ target: s.target, heat: s.heat, heatScale: s.heatScale, heatStrength: s.heatStrength, detail: s.detail, weights: s.weights }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<SpotsState>
         return { ...current, ...p, weights: { ...DEFAULT_WEIGHTS, ...(p.weights ?? {}) }, scent: false }

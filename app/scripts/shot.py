@@ -26,6 +26,13 @@ with sync_playwright() as p:
             elif verb == 'scroll':
                 page.mouse.move(215, 700); page.mouse.wheel(0, int(arg))
             elif verb == 'key': page.keyboard.press(arg)
+            elif verb == 'tap':
+                x, y = [int(v) for v in arg.split(',')]
+                page.mouse.click(x, y)
+            elif verb == 'dbl':
+                # two quick taps at x,y css px
+                x, y = [int(v) for v in arg.split(',')]
+                page.mouse.click(x, y); time.sleep(0.15); page.mouse.click(x, y)
             elif verb == 'hold':
                 # a press and hold on an element: pointer down, 700 ms, up
                 bb = page.locator(arg).first.bounding_box()

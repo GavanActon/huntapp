@@ -9,7 +9,7 @@ import { isFish } from '../spots/types'
 import { CONTOUR_INTERVALS, useAppStore, type HotId, type LayerOpacity } from '../state/appStore'
 import { useSpotsStore } from '../state/spotsStore'
 import { useGpsStore } from '../tracking/gpsStore'
-import { clearPlaced, SCENT_HEIGHTS, useScent } from '../weather/micro/scent'
+import { SCENT_HEIGHTS, useScent } from '../weather/micro/scent'
 import { useWindChecks } from '../weather/micro/windChecks'
 import { useTapOff } from './tapOff'
 
@@ -17,8 +17,9 @@ import { useTapOff } from './tapOff'
  * A hot button's drawer: a press and hold slides it out beside the button,
  * toward the map, with the things that button rarely needs — its knobs,
  * an undo, the way to its sheet. The far column's drawers carry more, the
- * thumb's side stays thin. Every drawer ends in Map buttons, the editor.
- * A tap off closes it; a row that goes somewhere closes it first.
+ * thumb's side stays thin. Map buttons, the editor, is the ⋯ menu's, not
+ * a row in every drawer. A tap off closes it; a row that goes somewhere
+ * closes it first.
  */
 
 type Opt<T> = readonly [T, string]
@@ -87,10 +88,13 @@ function WindFlowRows({ go }: RowsProps) {
   const setOp = useAppStore((s) => s.setWindFlowOpacity)
   const lowPower = useAppStore((s) => s.lowPower)
   const setLowPower = useAppStore((s) => s.setLowPower)
+  const swirl = useAppStore((s) => s.flowTuning.windSwirl)
+  const setFlowTuning = useAppStore((s) => s.setFlowTuning)
   const openSheet = useAppStore((s) => s.openSheet)
   return (
     <>
       <Seg label="Wind at" value={level} options={[['ground', 'Ground'], ['forecast', 'Forecast']] as const} onPick={setLevel} />
+      <Seg label="Streaks" value={swirl ? 'eddies' : 'straight'} options={[['eddies', 'Eddies'], ['straight', 'Straight']] as const} onPick={(v) => setFlowTuning({ windSwirl: v === 'eddies' })} />
       <Slider label="Strength" value={Math.round(op * 100)} min={10} max={100} step={5} onChange={(v) => setOp(v / 100)} />
       <Switch label="Low power" on={lowPower} onChange={setLowPower} />
       <Act onTap={go(() => openSheet({ kind: 'settings' }))}>
@@ -100,24 +104,19 @@ function WindFlowRows({ go }: RowsProps) {
   )
 }
 
-function ScentRows({ go }: RowsProps) {
+/** The cone's knobs only: + Person, Clear sitters and the card are the scent card's own (2026-10-02). */
+function ScentRows() {
   const height = useScent((s) => s.height)
   const setHeight = useScent((s) => s.setHeight)
   const view = useScent((s) => s.view)
   const setView = useScent((s) => s.setView)
-  const placed = useScent((s) => s.people.some((p) => !p.live))
-  const setTopCard = useAppStore((s) => s.setTopCard)
+  const strength = useScent((s) => s.strength)
+  const setStrength = useScent((s) => s.setStrength)
   return (
     <>
+      <Slider label="Strength" value={Math.round(strength * 100)} min={10} max={100} step={5} onChange={(v) => setStrength(v / 100)} />
       <Seg label="Height" value={height} options={HEIGHTS} onPick={setHeight} />
       <Seg label="View" value={view === 'people' ? 'cloud' : view} options={[['cloud', 'Cloud'], ['particles', 'Particles']] as const} onPick={setView} />
-      <Act onTap={go(() => useScent.getState().setAdding(true))}>+ Person</Act>
-      <Act disabled={!placed} onTap={go(clearPlaced)}>
-        Clear sitters
-      </Act>
-      <Act onTap={go(() => setTopCard({ kind: 'scent' }))}>
-        Scent card <span className="dim">›</span>
-      </Act>
     </>
   )
 }
@@ -280,7 +279,7 @@ function rows(id: HotId, go: RowsProps['go']): JSX.Element | null {
     case 'windflow':
       return <WindFlowRows go={go} />
     case 'scent':
-      return <ScentRows go={go} />
+      return <ScentRows />
     case 'contours':
       return <ContourRows go={go} />
     case 'heard':
@@ -305,7 +304,6 @@ function rows(id: HotId, go: RowsProps['go']): JSX.Element | null {
 
 /** The drawer beside a held hot button. `within` is the element a tap must land outside of to close it (the button and the drawer). */
 export default function HotDrawer({ id, within, onClose }: { id: HotId; within: RefObject<HTMLElement | null>; onClose: () => void }): JSX.Element {
-  const openSheet = useAppStore((s) => s.openSheet)
   useTapOff(within, true, onClose)
   const go = (f: () => void) => () => {
     onClose()
@@ -314,9 +312,6 @@ export default function HotDrawer({ id, within, onClose }: { id: HotId; within: 
   return (
     <div className="hotdrawer" role="menu">
       {rows(id, go)}
-      <Act onTap={go(() => openSheet({ kind: 'buttons' }))}>
-        Map buttons <span className="dim">›</span>
-      </Act>
     </div>
   )
 }

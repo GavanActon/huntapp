@@ -3,6 +3,7 @@ import { create } from 'zustand'
 import { compass } from '../weather/openMeteo'
 import { groundWind, loadMicro } from '../weather/micro/model'
 import { checkPull, checkSpentAt, steadiness, towardWords, useWindChecks, verdict, type Strength, type WindCheck, STRENGTH_CUE } from '../weather/micro/windChecks'
+import { LESSON_WORDS, lessonOf, lessonScores, PRIOR_N, biasMatters, biasWords } from '../weather/micro/bias'
 import { clockShort } from '../time'
 import { useAppStore } from '../state/appStore'
 import { requestCompass, startCompass, stopCompass, useCompass } from '../tracking/compass'
@@ -189,11 +190,23 @@ export default function WindCheckCard() {
     setSaved(c)
   }
 
+  // ---- saved: what the map said against what you felt, what the check
+  // does now, what it teaches, and when to check again
   if (saved) {
     const v = verdict(saved)
     const pull = Math.round(checkPull(saved, saved.lon, saved.lat, Date.now()) * 100)
     const puffs = saved.puffs ?? 1
     const steady = steadiness(saved)
+    const m = saved.model
+    const felt = saved.dirFrom == null || saved.strength === 'calm' ? 'calm' : `toward ${towardWords((saved.dirFrom + 180) % 360, saved.swingDeg)}, ${saved.strength}`
+    const said = m ? (m.kmh < 1 ? 'calm' : `toward ${compass((m.dirFrom + 180) % 360)} at ${Math.round(m.kmh)}`) : null
+    const lesson = lessonOf(saved)
+    const score = lesson ? lessonScores(useWindChecks.getState().checks, verdict).find((r) => r.lesson === lesson) : undefined
+    const n = score ? score.agree + score.close + score.miss : 0
+    const next =
+      v === 'miss'
+        ? 'Check again in 20 or 30 min: if it has held, say "same as a while ago" and it is trusted twice as long.'
+        : 'Check again in about 40 min, or the moment it shifts: a puff within 6 min folds into this one as a swing.'
     return (
       <div className="tripbuilder glass ground-card" ref={ref}>
         <div className="tb-head">
@@ -209,15 +222,24 @@ export default function WindCheckCard() {
           </div>
         )}
         <div className="gc-line">
-          Saved
-          {v && (
+          {v ? (
             <>
-              {' '}
-              · model <b className={`gc-verdict gc-${v}`}>{v === 'agree' ? 'agreed' : v === 'close' ? 'close' : 'missed'}</b>
+              The map <b className={`gc-verdict gc-${v}`}>{v === 'agree' ? 'agreed' : v === 'close' ? 'was close' : 'missed'}</b> · it said {said}, you felt {felt}
             </>
-          )}{' '}
-          · pulling {pull}% · till {clockShort(checkSpentAt(saved))}
+          ) : (
+            <>Saved without the map's call (it had not loaded) · you felt {felt}</>
+          )}
         </div>
+        <div className="gc-line">
+          Leads the ground wind here <b>{pull}%</b> now · fades by ~{clockShort(checkSpentAt(saved))}
+        </div>
+        {lesson && score && (
+          <div className="gc-note">
+            {LESSON_WORDS[lesson][0].toUpperCase() + LESSON_WORDS[lesson].slice(1)}: agreed {score.agree}, close {score.close}, missed {score.miss} this season
+            {biasMatters(score.bias) ? ` · the map is ${biasWords(score.bias, lesson).replace(/^./, (c) => c.toLowerCase()).replace(/ by \d+ wind checks? in .*$/, '')} for it` : n < PRIOR_N ? ` · about ${PRIOR_N} checks before this kind of air turns the map much` : ''}
+          </div>
+        )}
+        <div className="gc-note">{next}</div>
       </div>
     )
   }

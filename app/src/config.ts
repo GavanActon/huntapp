@@ -139,6 +139,8 @@ export interface PlaceDef {
   lat: number
   kind: 'camp' | 'lake' | 'landing' | 'stand' | 'trail'
   note?: string
+  /** its dot on the map, picked in its popup or the Pins editor; the kind's colour until then (state/pinColours.ts) */
+  color?: string
   /** the winds this stand hunts well on: compass sectors the wind blows
    *  FROM, 0 = N, 1 = NE … 7 = NW (spots/standWinds.ts) */
   winds?: number[]

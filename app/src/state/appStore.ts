@@ -194,6 +194,17 @@ export interface AppState {
   /** the word under each hot button; persisted */
   buttonLabels: boolean
   setButtonLabels: (v: boolean) => void
+  /** both hot columns off the map (the strip's toggle beside Outdoor); persisted */
+  hotHidden: boolean
+  setHotHidden: (v: boolean) => void
+  /** the strip's row of toggles (heat, Outdoor, the hiders), normal or large; persisted */
+  stripButtons: 'normal' | 'large'
+  setStripButtons: (v: 'normal' | 'large') => void
+  /** the pins (saved places) on the map, and the walked tracks: the strip's two toggles; persisted */
+  showPins: boolean
+  setShowPins: (v: boolean) => void
+  showTracks: boolean
+  setShowTracks: (v: boolean) => void
   /** how far back the log's dots show on the map; persisted */
   pastHunts: 'none' | 'today' | 'week' | 'all'
   setPastHunts: (v: 'none' | 'today' | 'week' | 'all') => void
@@ -279,6 +290,14 @@ export const useAppStore = create<AppState>()(
       setLeftHanded: (leftHanded) => set({ leftHanded }),
       buttonLabels: true,
       setButtonLabels: (buttonLabels) => set({ buttonLabels }),
+      hotHidden: false,
+      setHotHidden: (hotHidden) => set({ hotHidden }),
+      stripButtons: 'normal',
+      setStripButtons: (stripButtons) => set({ stripButtons }),
+      showPins: true,
+      setShowPins: (showPins) => set({ showPins }),
+      showTracks: true,
+      setShowTracks: (showTracks) => set({ showTracks }),
       pastHunts: 'all',
       setPastHunts: (pastHunts) => set({ pastHunts }),
 
@@ -374,6 +393,10 @@ export const useAppStore = create<AppState>()(
         hotButtons: s.hotButtons,
         leftHanded: s.leftHanded,
         buttonLabels: s.buttonLabels,
+        hotHidden: s.hotHidden,
+        stripButtons: s.stripButtons,
+        showPins: s.showPins,
+        showTracks: s.showTracks,
         pastHunts: s.pastHunts,
         who: s.who,
         onboarded: s.onboarded,

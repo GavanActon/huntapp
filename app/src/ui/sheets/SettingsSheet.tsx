@@ -160,6 +160,8 @@ export default function SettingsSheet(): JSX.Element {
   const units = useAppStore((s) => s.units)
   const setUnits = useAppStore((s) => s.setUnits)
   const textSize = useAppStore((s) => s.textSize)
+  const stripButtons = useAppStore((s) => s.stripButtons)
+  const setStripButtons = useAppStore((s) => s.setStripButtons)
   const outdoor = useAppStore((s) => s.outdoor)
   const setOutdoor = useAppStore((s) => s.setOutdoor)
   const setTextSize = useAppStore((s) => s.setTextSize)
@@ -253,6 +255,16 @@ export default function SettingsSheet(): JSX.Element {
           {TEXT_SIZES.map(([t, label]) => (
             <button key={t} className={textSize === t ? 'seg-on' : ''} role="radio" aria-checked={textSize === t} onClick={() => setTextSize(t)}>
               {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="st-row">
+        <span>Top row buttons</span>
+        <div className="seg" role="radiogroup" aria-label="Top row buttons">
+          {(['normal', 'large'] as const).map((t) => (
+            <button key={t} className={stripButtons === t ? 'seg-on' : ''} role="radio" aria-checked={stripButtons === t} onClick={() => setStripButtons(t)}>
+              {t === 'normal' ? 'Normal' : 'Large'}
             </button>
           ))}
         </div>

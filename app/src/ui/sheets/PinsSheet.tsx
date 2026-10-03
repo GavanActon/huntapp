@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type JSX } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type JSX } from 'react'
 import type { PlaceDef } from '../../config'
 import { useHuntLog, type LogEntry } from '../../log/huntLog'
 import { getMap } from '../../map/mapController'
@@ -7,6 +7,7 @@ import { compass8 } from '../../spots/conditions'
 import { loadHabitat, onHabitat } from '../../spots/habitatGrid'
 import { fromHome } from '../../spots/scoring'
 import { huntedLine, huntedWinds, sectorOf, suggestWinds, windsLabel, windVerdict } from '../../spots/standWinds'
+import { PIN_COLOURS, placeColour } from '../../state/pinColours'
 import { homePlace, usePlacesStore, type SavedPlace } from '../../state/placesStore'
 import { ensureProfile, onProfile } from '../../weather/boundaryLayer'
 import { loadMicro, onMicro } from '../../weather/micro/model'
@@ -110,6 +111,11 @@ export default function PinsSheet(): JSX.Element {
                       </option>
                     ))}
                   </select>
+                  <div className="pin-swatches">
+                    {PIN_COLOURS.map((c) => (
+                      <button key={c} className={`pin-swatch${placeColour(p) === c ? ' on' : ''}`} style={{ '--sw': c } as CSSProperties} aria-label={`Colour ${c}`} aria-pressed={placeColour(p) === c} onClick={() => update(p.id, { color: c })} />
+                    ))}
+                  </div>
                   <textarea className="pe-note" placeholder="Note" value={p.note ?? ''} onChange={(e) => update(p.id, { note: e.target.value })} />
                   <WindsEditor p={p} tick={tick} entries={entries} onChange={(winds) => update(p.id, { winds })} />
                 </div>
@@ -134,7 +140,10 @@ export default function PinsSheet(): JSX.Element {
           return (
             <div key={p.id} className={`place-row${on ? ' place-current' : ''}`}>
               <button className="row-text place-go" aria-pressed={on} onClick={() => tap(p)}>
-                <span className="row-title">{p.name}</span>
+                <span className="row-title">
+                  <i className="pin-dot" style={{ background: placeColour(p) }} />
+                  {p.name}
+                </span>
                 <span className="row-desc">
                   {where(p)}
                   {p.winds?.length ? ` · winds ${windsLabel(p.winds)}` : ''}

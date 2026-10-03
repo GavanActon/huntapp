@@ -84,8 +84,8 @@ function ensureSources(m: MlMap) {
   // The heat goes under the LiDAR shade (transparent where flat) so the
   // relief shows through the hot patches, and under the contours and every
   // line and label; the pins ride on top, under the places.
-  const heatBefore = (['hillshade-lidar', 'topo', 'historical', 'places-halo'] as const).find((id) => m.getLayer(id))
-  const before = m.getLayer('places-halo') ? 'places-halo' : undefined
+  const heatBefore = (['hillshade-lidar', 'topo', 'historical', 'pins-halo'] as const).find((id) => m.getLayer(id))
+  const before = m.getLayer('pins-halo') ? 'pins-halo' : undefined
   m.addLayer({ id: 'spots-heat', type: 'raster', source: HEAT_SRC, paint: { 'raster-opacity': 0.8, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } }, heatBefore)
   m.addSource(PINS_SRC, { type: 'geojson', data: empty() })
   if (!m.hasImage('spot-pin')) m.addImage('spot-pin', pinImage(), { pixelRatio: 2 })
@@ -214,7 +214,16 @@ function empty(): FeatureCollection {
  *  the canvas is filled at UP× with bilinear blends between cell centres
  *  and the bands cut from the blended field: smooth iso-lines, not
  *  stair-steps, and the water line only ever feathers by one cell. */
-const BAND_ALPHA = [0, 0.32, 0.55, 0.82]
+const BAND_ALPHA = [0, 0.4, 0.62, 0.86]
+/** The fixed scale: scores under this are wash; the ramp runs from here over the span. */
+const FIXED_LO = 0.45
+const FIXED_SPAN = 0.45
+/** The day's scale: wash below the median of the cells in the radius, the
+ *  ramp from there to the 97th percentile. Only used when the day has a
+ *  range worth showing. */
+const DAY_LO_Q = 0.5
+const DAY_HI_Q = 0.97
+const DAY_MIN_SPAN = 0.06
 const BAND_RGB: [number, number, number][] = [
   [0, 0, 0],
   [255, 214, 90],
@@ -255,7 +264,26 @@ function smooth(f: Float32Array, cover: Uint8Array, water: boolean, cols: number
   }
 }
 
+/** What paint last drew, so a change to the colouring repaints without a scoring pass. */
+let lastPaint: { scores: Float32Array | null; water: boolean; near: { lon: number; lat: number } } | null = null
+
+function repaint() {
+  if (lastPaint) paint(lastPaint.scores, lastPaint.water, lastPaint.near)
+}
+
+/** The wash line and the ramp over it for this paint: the fixed scale, or
+ *  the day's own among the cells that will show. */
+function heatRange(scores: Float32Array, cells: number[]): { lo: number; span: number } {
+  if (useSpotsStore.getState().heatScale !== 'day' || cells.length < 50) return { lo: FIXED_LO, span: FIXED_SPAN }
+  const vals = Float32Array.from(cells, (i) => scores[i]).sort()
+  const q = (p: number) => vals[Math.min(vals.length - 1, Math.floor(p * (vals.length - 1)))]
+  const lo = q(DAY_LO_Q)
+  const span = q(DAY_HI_Q) - lo
+  return span >= DAY_MIN_SPAN ? { lo, span } : { lo: FIXED_LO, span: FIXED_SPAN }
+}
+
 function paint(scores: Float32Array | null, water: boolean, near: { lon: number; lat: number }) {
+  lastPaint = { scores, water, near }
   const h = habitat()
   if (!canvas || !h) return
   const ctx = canvas.getContext('2d')!
@@ -286,6 +314,8 @@ function paint(scores: Float32Array | null, water: boolean, near: { lon: number;
     const tone = new Float32Array(cols * rows)
     const wash = new Float32Array(cols * rows)
     const cover = h.raw('cover') as Uint8Array
+    const fades = new Float32Array(cols * rows)
+    const cells: number[] = []
     for (let r = wr0; r < wr1; r++)
       for (let c = wc0; c < wc1; c++) {
         const i = r * cols + c
@@ -295,14 +325,24 @@ function paint(scores: Float32Array | null, water: boolean, near: { lon: number;
         const dist = Math.sqrt(((r - nr) / ry) ** 2 + ((c - nc) / rx) ** 2)
         const fade = dist <= 1 ? 1 : Math.max(0, 1 - (dist - 1) * 3)
         if (fade <= 0) continue
+        fades[i] = fade
+        if (dist <= 1) cells.push(i)
+      }
+    // only the top of the range lights up: a heat map that covers the bush
+    // says nothing. The range is the day's own or the fixed scale (heatRange).
+    const { lo, span } = heatRange(scores, cells)
+    for (let r = wr0; r < wr1; r++)
+      for (let c = wc0; c < wc1; c++) {
+        const i = r * cols + c
+        const fade = fades[i]
+        if (fade <= 0) continue
         const s = scores[i]
-        if (s < 0.45) {
+        if (s < lo) {
           wash[i] = fade
           continue
         }
-        // only the top of the range lights up: a heat map that covers the bush says nothing
         cov[i] = fade
-        tone[i] = Math.min(1, (s - 0.45) / 0.45)
+        tone[i] = Math.min(1, (s - lo) / span)
       }
     // a light 3×3 smooth of coverage and wash among same-class cells, so
     // the 30 m lattice does not read as stair-steps at low zoom; water and
@@ -317,6 +357,7 @@ function paint(scores: Float32Array | null, water: boolean, near: { lon: number;
     for (let i = 0; i < tone.length; i++) tone[i] = cov[i] > 1e-4 ? tone[i] / cov[i] : 0
     const level = new Uint8Array(W * H)
     const cova = new Float32Array(W * H)
+    const bold = useSpotsStore.getState().heatStrength
     for (let y = py0; y < py0 + ph; y++) {
       const fy = (y + 0.5) / UP - 0.5
       const r0 = Math.max(0, Math.min(rows - 1, Math.floor(fy)))
@@ -345,7 +386,7 @@ function paint(scores: Float32Array | null, water: boolean, near: { lon: number;
           cova[p] = a
         }
         // heat over wash
-        const ha = level[p] ? BAND_ALPHA[level[p]] * a : 0
+        const ha = level[p] ? Math.min(0.95, BAND_ALPHA[level[p]] * bold) * a : 0
         const wa = w * WASH_ALPHA * (1 - ha)
         const oa = ha + wa
         if (oa <= 0.002) continue
@@ -510,6 +551,8 @@ export function initSpotsLayer() {
     onWeatherRefreshed(() => schedule())
     useSpotsStore.subscribe((s, prev) => {
       if (s.target !== prev.target || s.heat !== prev.heat || s.weights !== prev.weights) schedule()
+      // the colouring alone changed: the same scores, painted again
+      else if (s.heatScale !== prev.heatScale || s.heatStrength !== prev.heatStrength) repaint()
     })
     useAppStore.subscribe((s, prev) => {
       if (s.planTimeMs !== prev.planTimeMs || s.online !== prev.online) schedule()
