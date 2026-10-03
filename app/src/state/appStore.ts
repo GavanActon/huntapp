@@ -197,6 +197,9 @@ export interface AppState {
   /** both hot columns off the map (the strip's toggle beside Outdoor); persisted */
   hotHidden: boolean
   setHotHidden: (v: boolean) => void
+  /** the strip's row of toggles (heat, Outdoor, the hiders), normal or large; persisted */
+  stripButtons: 'normal' | 'large'
+  setStripButtons: (v: 'normal' | 'large') => void
   /** the pins (saved places) on the map, and the walked tracks: the strip's two toggles; persisted */
   showPins: boolean
   setShowPins: (v: boolean) => void
@@ -289,6 +292,8 @@ export const useAppStore = create<AppState>()(
       setButtonLabels: (buttonLabels) => set({ buttonLabels }),
       hotHidden: false,
       setHotHidden: (hotHidden) => set({ hotHidden }),
+      stripButtons: 'normal',
+      setStripButtons: (stripButtons) => set({ stripButtons }),
       showPins: true,
       setShowPins: (showPins) => set({ showPins }),
       showTracks: true,
@@ -389,6 +394,7 @@ export const useAppStore = create<AppState>()(
         leftHanded: s.leftHanded,
         buttonLabels: s.buttonLabels,
         hotHidden: s.hotHidden,
+        stripButtons: s.stripButtons,
         showPins: s.showPins,
         showTracks: s.showTracks,
         pastHunts: s.pastHunts,

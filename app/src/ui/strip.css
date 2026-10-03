@@ -79,6 +79,37 @@
   margin-left: -4px;
 }
 
+/* Settings › Top row buttons: Large */
+.wx-head-lg .wx-heat {
+  width: 38px;
+  height: 34px;
+}
+
+/* the heat button's hold menu: how the heat is coloured */
+.wx-heatmenu {
+  min-width: 250px;
+  padding: 6px 4px;
+}
+
+.wx-heatmenu .hd-row {
+  min-height: 36px;
+}
+
+.wx-heatmenu .seg button {
+  padding: 4px 9px;
+  white-space: nowrap;
+}
+
+.wx-heatmenu input[type='range'] {
+  width: 120px;
+}
+
+.wx-heathint {
+  padding: 0 6px 6px;
+  font-size: calc(11.5px * var(--ui-scale));
+  color: var(--c-text-dim);
+}
+
 .wx-heat.on {
   background: var(--c-accent);
   outline: 1.5px solid var(--c-accent);
