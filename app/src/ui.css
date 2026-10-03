@@ -1361,6 +1361,39 @@
   font-size: calc(13px * var(--ui-scale));
 }
 
+/* held: the button ringed and its drawer edged in the accent, so the two
+   read as one. An outline set off the circle, so it still shows on a
+   button already lit. The strip's held buttons (heat, marks): strip.css. */
+.hotslot.held > .fab {
+  outline: 2.5px solid var(--c-accent);
+  outline-offset: 3px;
+}
+
+.hotslot.held > .hotdrawer,
+.wx-heatmenu,
+.wx-marksmenu {
+  border-color: var(--c-accent);
+  box-shadow: var(--shadow-fab), 0 0 12px rgba(var(--c-accent-rgb), 0.35);
+}
+
+/* a hold menu's head: the button's whole name (and icon), for someone
+   still learning what each one is */
+.hd-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 6px 6px;
+  border-bottom: 1px solid rgba(var(--c-ink-rgb), 0.1);
+  margin-bottom: 2px;
+  font-weight: 700;
+  color: var(--c-accent);
+  white-space: nowrap;
+}
+
+.hd-title svg {
+  flex: none;
+}
+
 .toolcol .hotdrawer {
   right: calc(100% + 10px);
 }

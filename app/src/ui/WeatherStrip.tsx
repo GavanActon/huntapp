@@ -486,7 +486,7 @@ export default function WeatherStrip() {
       </span>
       <span className="wx-quarry" ref={heatRef}>
         <button
-          className={`wx-heat${heat ? ' on' : ''}`}
+          className={`wx-heat${heat ? ' on' : ''}${heatMenu ? ' held' : ''}`}
           {...heatHold.bind}
           onClick={heatHold.tap(() => setHeat(!heat))}
           aria-pressed={heat}
@@ -496,6 +496,10 @@ export default function WeatherStrip() {
         </button>
         {heatMenu && (
           <div className="menu-pop wx-heatmenu" role="menu" aria-label="Heat map colouring">
+            <div className="hd-title">
+              <IconHeat size={16} />
+              Heat map
+            </div>
             <div className="hd-row">
               <span>Colour by</span>
               <div className="seg" role="radiogroup" aria-label="Colour by">
@@ -525,7 +529,7 @@ export default function WeatherStrip() {
       </button>
       <span className="wx-quarry" ref={marksRef}>
         <button
-          className={`wx-heat wx-theme${marksOn ? ' on' : ''}`}
+          className={`wx-heat wx-theme${marksOn ? ' on' : ''}${marksMenu ? ' held' : ''}`}
           {...marksHold.bind}
           onClick={marksHold.tap(tapMarks)}
           aria-pressed={marksOn}
@@ -535,6 +539,10 @@ export default function WeatherStrip() {
         </button>
         {marksMenu && (
           <div className="menu-pop wx-marksmenu" role="menu" aria-label="Marks on the map">
+            <div className="hd-title">
+              <IconPin size={16} />
+              Marks on the map
+            </div>
             {MARK_KINDS.map((k) => (
               <button key={k} className="menu-row" role="menuitemcheckbox" aria-checked={marks[k]} onClick={() => setMark(k, !marks[k])}>
                 {MARK_NAMES[k]}

@@ -11,6 +11,7 @@ import { useSpotsStore } from '../state/spotsStore'
 import { useGpsStore } from '../tracking/gpsStore'
 import { SCENT_HEIGHTS, useScent } from '../weather/micro/scent'
 import { useWindChecks } from '../weather/micro/windChecks'
+import { HOT_DEFS } from './hotButtons'
 import { useTapOff } from './tapOff'
 
 /**
@@ -302,15 +303,22 @@ function rows(id: HotId, go: RowsProps['go']): JSX.Element | null {
   }
 }
 
-/** The drawer beside a held hot button. `within` is the element a tap must land outside of to close it (the button and the drawer). */
+/** The drawer beside a held hot button, headed by the button's full name
+ *  and icon: someone learning the buttons can tell what this one is. `within`
+ *  is the element a tap must land outside of to close it (the button and the drawer). */
 export default function HotDrawer({ id, within, onClose }: { id: HotId; within: RefObject<HTMLElement | null>; onClose: () => void }): JSX.Element {
   useTapOff(within, true, onClose)
   const go = (f: () => void) => () => {
     onClose()
     f()
   }
+  const d = HOT_DEFS[id]
   return (
-    <div className="hotdrawer" role="menu">
+    <div className="hotdrawer" role="menu" aria-label={d.name}>
+      <div className="hd-title">
+        <d.Icon size={16} />
+        {d.name}
+      </div>
       {rows(id, go)}
     </div>
   )
