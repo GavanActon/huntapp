@@ -236,7 +236,7 @@ export default function WindCheckCard() {
         {lesson && score && (
           <div className="gc-note">
             {LESSON_WORDS[lesson][0].toUpperCase() + LESSON_WORDS[lesson].slice(1)}: agreed {score.agree}, close {score.close}, missed {score.miss} this season
-            {biasMatters(score.bias) ? ` · ${biasWords(score.bias, lesson).replace(/^./, (c) => c.toLowerCase())}` : n < PRIOR_N ? ` · about ${PRIOR_N} checks before this kind of air turns the map much` : ''}
+            {biasMatters(score.bias) ? ` · the map is ${biasWords(score.bias, lesson).replace(/^./, (c) => c.toLowerCase()).replace(/ by \d+ wind checks? in .*$/, '')} for it` : n < PRIOR_N ? ` · about ${PRIOR_N} checks before this kind of air turns the map much` : ''}
           </div>
         )}
         <div className="gc-note">{next}</div>
