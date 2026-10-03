@@ -1,4 +1,5 @@
 import { useRef, type JSX } from 'react'
+import { openHuntLog } from '../log/logView'
 import { useMapUpdates } from '../offline/updates'
 import { useAppStore, type Sheet } from '../state/appStore'
 import { IconBook, IconClock, IconGear, IconGrid, IconLayers, IconPin } from './icons'
@@ -23,7 +24,14 @@ export default function AppMenu({ open, onClose }: { open: boolean; onClose: () 
   }
   return (
     <div className="wx-menu" ref={ref} role="menu" aria-label="More">
-      <button className="wx-menu-row" role="menuitem" onClick={() => go({ kind: 'huntlog' })}>
+      <button
+        className="wx-menu-row"
+        role="menuitem"
+        onClick={() => {
+          onClose()
+          openHuntLog()
+        }}
+      >
         <IconClock />
         Hunt log
         <span className="dim">›</span>

@@ -2476,6 +2476,9 @@ button.hotedit-empty {
   bottom: calc(var(--barh, 0px) + var(--sab) + 6px);
 }
 
+/* every popup over the map's own drawing: the wind streaks' and the scent's
+   canvases (z-index 2) and the scent's people (3) went over it (2026-10-03) */
 .maplibregl-popup {
+  z-index: 5;
   animation: popup-in 0.16s var(--ease-out) both;
 }

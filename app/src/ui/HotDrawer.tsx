@@ -2,6 +2,7 @@ import { useEffect, type JSX, type ReactNode, type RefObject } from 'react'
 import { inRegion } from '../config'
 import { heardThisHunt } from '../hunting/moveLayer'
 import { useHuntLog, type LogSpecies } from '../log/huntLog'
+import { openHuntLog } from '../log/logView'
 import { snapshot } from '../log/snapshot'
 import { useMeasureStore } from '../measure/measureStore'
 import { campEnd, clearRoutes, useRoutes, youEnd } from '../routes/routeStore'
@@ -155,7 +156,6 @@ function HeardRows({ go }: RowsProps) {
   const entries = useHuntLog((s) => s.entries)
   const locating = useGpsStore((s) => s.locating)
   const fix = useGpsStore((s) => s.fix)
-  const openSheet = useAppStore((s) => s.openSheet)
   const here = locating && fix && inRegion(fix.lon, fix.lat) ? fix : null
   const es = entries.length ? heardThisHunt() : []
   const last = es[es.length - 1]
@@ -177,7 +177,8 @@ function HeardRows({ go }: RowsProps) {
       <Act disabled={!last} onTap={() => last && useHuntLog.getState().remove(last.id)}>
         Undo last sound
       </Act>
-      <Act onTap={go(() => openSheet({ kind: 'huntlog' }))}>
+      {/* the log opens on what was heard */}
+      <Act onTap={go(() => openHuntLog('heard'))}>
         Hunt log <span className="dim">›</span>
       </Act>
     </>
@@ -186,14 +187,14 @@ function HeardRows({ go }: RowsProps) {
 
 function WindCheckRows({ go }: RowsProps) {
   const checks = useWindChecks((s) => s.checks)
-  const openSheet = useAppStore((s) => s.openSheet)
   const last = checks[checks.length - 1]
   return (
     <>
       <Act disabled={!last} onTap={() => last && useWindChecks.getState().remove(last.id)}>
         Undo last check
       </Act>
-      <Act onTap={go(() => openSheet({ kind: 'huntlog' }))}>
+      {/* the log opens on the wind checks */}
+      <Act onTap={go(() => openHuntLog('wind'))}>
         Hunt log <span className="dim">›</span>
       </Act>
     </>

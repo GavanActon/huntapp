@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type JSX, type ReactNode } from 'react'
 import { useHunting } from '../hunting/hunting'
 import { heardThisHunt, movesChip, movesLine, readMoves, soundRow, useSwing } from '../hunting/moveLayer'
+import { openHuntLog } from '../log/logView'
 import { useAppStore } from '../state/appStore'
 import { useSpotsStore } from '../state/spotsStore'
 import { spotGradeWords } from '../spots/grades'
@@ -88,7 +89,6 @@ export default function LiveCard(): JSX.Element | null {
   const folded = useAppStore((s) => s.liveFolded)
   const setLiveFolded = useAppStore((s) => s.setLiveFolded)
   const setTopCard = useAppStore((s) => s.setTopCard)
-  const openSheet = useAppStore((s) => s.openSheet)
   const fix = useGpsStore((s) => s.fix)
   const target = useSpotsStore((s) => s.target)
   const conditions = useSpotsStore((s) => s.conditions)
@@ -235,7 +235,8 @@ export default function LiveCard(): JSX.Element | null {
             className="lc-row"
             onClick={() => {
               setOpen(false)
-              openSheet({ kind: 'huntlog' })
+              // the earlier sounds: the log on what was heard
+              openHuntLog('heard')
             }}
           >
             <span className="dim">{es.length - 1} earlier</span>

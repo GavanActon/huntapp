@@ -11,8 +11,8 @@ import { useGpsStore } from '../tracking/gpsStore'
 import { showOutingTrack } from '../tracking/trackLayer'
 import { useTrackStore } from '../tracking/trackStore'
 import { showOutingChecks } from '../weather/micro/checkLayer'
-import { steadiness, towardWords, useWindChecks, verdict, type WindCheck } from '../weather/micro/windChecks'
-import { compass } from '../weather/openMeteo'
+import { useWindChecks, verdict, type WindCheck } from '../weather/micro/windChecks'
+import { checkWords, entryDetail } from '../log/eventText'
 import { IconLocate, IconTrash } from './icons'
 import { useTapOff } from './tapOff'
 import './ground.css'
@@ -84,21 +84,8 @@ function entryTitle(e: LogEntry): string {
   return `${SPECIES_NAMES[e.species]}${e.count && e.count > 1 ? ` ×${e.count}` : ''}${e.kind ? ` (${e.kind})` : ''} · ${e.sound ? SOUND_NAMES[e.sound].toLowerCase() : WHAT_NAMES[e.what].toLowerCase()}`
 }
 
-function entryDesc(e: LogEntry): string {
-  return [
-    clockShort(e.ts),
-    e.from ? `${Math.round(e.from.distM / 10) * 10} m ${compass(e.from.bearing)}` : '',
-    e.wx ? `${Math.round(e.wx.tempC)}°C, ${Math.round(e.wx.windKmh)} km/h from ${compass(e.wx.windDir)}` : '',
-    e.model ? `map ${Math.round(e.model.score * 100)}, beat ${Math.round(e.model.percentile * 100)}%` : '',
-    e.note ?? '',
-  ]
-    .filter(Boolean)
-    .join(' · ')
-}
-
 function checkTitle(c: WindCheck): string {
-  const steady = steadiness(c)
-  return `${clockShort(c.ts)} · ${c.dirFrom == null ? 'calm' : `toward ${towardWords((c.dirFrom + 180) % 360, c.swingDeg)}, ${c.strength}`}${steady ? `, ${steady}` : ''}${(c.puffs ?? 1) > 1 ? ` · ${c.puffs} puffs` : ''}`
+  return `${clockShort(c.ts)} · ${checkWords(c)}`
 }
 
 /** '4 heard · bull seen · 2 wind checks', from what the outing holds. */
@@ -174,6 +161,7 @@ export default function OutingCard({ id }: { id: string }): JSX.Element | null {
   const from = o?.startMs
   const to = o?.endMs
 
+  // back to the log as it was left (log/logView.ts): the same filter, the same days open
   const back = () => {
     setTopCard(null)
     openSheet({ kind: 'huntlog' })
@@ -278,7 +266,7 @@ export default function OutingCard({ id }: { id: string }): JSX.Element | null {
         {open &&
           rows.map((r) =>
             r.kind === 'entry' ? (
-              <Row key={r.e.id} lon={r.e.lon} lat={r.e.lat} title={entryTitle(r.e)} desc={entryDesc(r.e)} onDelete={() => confirm('Delete this entry?') && removeEntry(r.e.id)} />
+              <Row key={r.e.id} lon={r.e.lon} lat={r.e.lat} title={entryTitle(r.e)} desc={entryDetail(r.e)} onDelete={() => confirm('Delete this entry?') && removeEntry(r.e.id)} />
             ) : (
               <Row key={r.c.id} lon={r.c.lon} lat={r.c.lat} title={checkTitle(r.c)} badge={verdict(r.c)} desc={r.c.note} onDelete={() => confirm('Delete this wind check?') && removeCheck(r.c.id)} />
             ),

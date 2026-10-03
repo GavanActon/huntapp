@@ -220,7 +220,8 @@ function popupHtml(c: WindCheck, at: number): string {
 
 let popup: maplibregl.Popup | null = null
 
-function openPopup(map: MlMap, id: string) {
+/** A check's popup: what it felt, how much it still pulls, remove. The arrow's tap, and a Hunt log row's. */
+export function showCheckPopup(map: MlMap, id: string): void {
   const c = useWindChecks.getState().checks.find((x) => x.id === id)
   if (!c) return
   popup?.remove()
@@ -261,7 +262,7 @@ export function initCheckLayer() {
     })
     map.on('click', 'windchecks-hit', (e) => {
       const id = e.features?.[0]?.properties?.id as string | undefined
-      if (id) openPopup(map, id)
+      if (id) showCheckPopup(map, id)
     })
     map.on('mouseenter', 'windchecks-hit', () => (map.getCanvas().style.cursor = 'pointer'))
     map.on('mouseleave', 'windchecks-hit', () => (map.getCanvas().style.cursor = ''))
