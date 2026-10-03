@@ -137,8 +137,8 @@ export default function MapView() {
           maxBounds: MAX_BOUNDS,
           minZoom: 7,
           maxZoom: 18,
-          // two taps are the map's info (below), not a zoom: pinch to zoom
-          doubleClickZoom: false,
+          // a tap whose finger drifts a little is still a tap (the default 3 px loses thumbs)
+          clickTolerance: 6,
           // the credits are under Settings → Map credits, off the map
           attributionControl: false,
           pitchWithRotate: false,
@@ -197,15 +197,67 @@ export default function MapView() {
 
       // tap a place: your own pin says what it is, with Delete (placePopup);
       // the camp and the lakes are presets and open Dig in on themselves.
-      // Tap the map TWICE: a three-line popup, Dig in behind it. One tap
-      // used to do it, and a finger brushing the screen or a hand passing
-      // over it opened popups nobody asked for (Gavan's dad, 2026-10-02);
-      // the armed tools above still take their one tap. The second tap must
-      // land within TAP_MS and TAP_PX of the first: iOS fires no dblclick
-      // for touch, so the pair is counted here.
-      const TAP_MS = 350
-      const TAP_PX = 30
-      let lastTap: { t: number; x: number; y: number } | null = null
+      // Tap the map: a three-line popup, Dig in behind it. A double tap
+      // zooms (MapLibre's own, 500 ms and 30 px), so the popup waits
+      // TAP_WAIT_MS for a second tap before it opens, and a zoom starting
+      // under the finger cancels it. A brush of the screen is not a tap: two
+      // fingers, a palm-sized contact, a press longer than a tap, or a touch
+      // right after a pan or a pinch all pass (Gavan's dad, 2026-10-02). The
+      // armed tools above still take their one tap, at once.
+      const TAP_WAIT_MS = 350
+      const PRESS_MS = 350
+      const PALM_PX = 22
+      const SETTLE_MS = 400
+      type TouchGesture = { downAt: number; multi: boolean; palm: boolean }
+      let touching: TouchGesture | null = null
+      let lastTouch: (TouchGesture & { upAt: number }) | null = null
+      let movedAt = 0
+      let tapTimer = 0
+      let lastTapAt = 0
+      m.on('touchstart', (e) => {
+        const ts = e.originalEvent.touches
+        if (!touching) touching = { downAt: performance.now(), multi: false, palm: false }
+        if (ts.length > 1) touching.multi = true
+        for (const t of Array.from(ts)) if (Math.max(t.radiusX || 0, t.radiusY || 0) > PALM_PX) touching.palm = true
+      })
+      m.on('touchend', (e) => {
+        if (e.originalEvent.touches.length || !touching) return
+        lastTouch = { ...touching, upAt: performance.now() }
+        touching = null
+      })
+      m.on('touchcancel', () => (touching = null))
+      for (const ev of ['dragend', 'zoomend', 'rotateend', 'pitchend'] as const)
+        m.on(ev, (e) => {
+          if (e.originalEvent) movedAt = performance.now()
+        })
+      // a zoom starting under the finger is the double tap: nothing opens
+      m.on('zoomstart', (e) => {
+        if (e.originalEvent) {
+          window.clearTimeout(tapTimer)
+          tapTimer = 0
+        }
+      })
+      /** A tap meant as one: not a brush, not a palm, not a press, not the tail of a pan. */
+      const deliberate = (now: number) => {
+        if (now - movedAt < SETTLE_MS) return false
+        const t = lastTouch
+        // a mouse click has no touch of its own; a touch's click follows its touchend within a moment
+        if (!t || now - t.upAt > 700) return true
+        return !t.multi && !t.palm && t.upAt - t.downAt <= PRESS_MS
+      }
+      const tapped = (lngLat: maplibregl.LngLat) => {
+        const now = performance.now()
+        if (!deliberate(now)) return
+        window.clearTimeout(tapTimer)
+        tapTimer = 0
+        // the second tap of a double: the map zooms, nothing opens
+        if (now - lastTapAt < TAP_WAIT_MS) {
+          lastTapAt = 0
+          return
+        }
+        lastTapAt = now
+        tapTimer = window.setTimeout(() => openInfo(lngLat), TAP_WAIT_MS)
+      }
       m.on('click', 'pins-pt', (e) => {
         // the ruler, a person being placed and the route card each own the tap
         if (useMeasureStore.getState().active || useScent.getState().adding || useRoutes.getState().open) return
@@ -230,11 +282,11 @@ export default function MapView() {
         // a place, a numbered pin, a wind check or a kept route has its own tap
         const hit = m.queryRenderedFeatures(e.point, { layers: ['pins-pt', 'spots-pin', 'windchecks-hit', 'routes-hit', 'huntlog-dot'].filter((id) => m.getLayer(id)) })
         if (hit.length) return
-        const now = performance.now()
-        const second = lastTap != null && now - lastTap.t <= TAP_MS && Math.hypot(e.point.x - lastTap.x, e.point.y - lastTap.y) <= TAP_PX
-        lastTap = second ? null : { t: now, x: e.point.x, y: e.point.y }
-        if (!second) return
-        const { lng, lat } = e.lngLat
+        tapped(e.lngLat)
+      })
+      /** The info popup at a point: the weather there, the score while the heat is on, then the actions. */
+      const openInfo = (lngLat: maplibregl.LngLat) => {
+        const { lng, lat } = lngLat
         const el = document.createElement('div')
         // one glance: the weather there, the game score, then Scent, Pin and
         // Dig in. Everything else is the sheet's.
@@ -278,7 +330,7 @@ export default function MapView() {
           popup.remove()
           useHeardForm.getState().show({ lon: lng, lat })
         })
-      })
+      }
       // a log entry (a moose heard, a sighting): what and when, Delete, and press-and-hold to move it
       m.on('click', 'huntlog-dot', (e) => {
         if (useMeasureStore.getState().active || useScent.getState().adding || useRoutes.getState().open) return
