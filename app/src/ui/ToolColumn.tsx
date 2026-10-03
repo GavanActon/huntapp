@@ -11,7 +11,8 @@ import './ground.css'
 /**
  * The near column, under the thumb: the compass on top only while the map
  * is turned (a tap puts north back up), your high-use buttons, a gap, and
- * My location, which is always there and always at the foot.
+ * My location, which is always there and always at the foot. The buttons
+ * line up with the far column's across the screen (ui.css, the foot).
  */
 export default function ToolColumn(): JSX.Element {
   const bearing = useMapBearing((s) => s.bearing)
@@ -39,7 +40,6 @@ export default function ToolColumn(): JSX.Element {
         </button>
       )}
       <HotColumn side="near" />
-      <div className="toolgap" />
       <button className={locateClass} style={locating && !follow ? { opacity: 0.8, outline: '1.5px solid var(--c-accent)' } : undefined} onClick={toggleLocate} aria-label={locateLabel}>
         <IconLocate />
       </button>

@@ -1152,8 +1152,7 @@ const particles = (() => {
     return sprites
   }
 
-  const still = () =>
-    useAppStore.getState().lowPower || !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.visibilityState !== 'visible'
+  const still = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.visibilityState !== 'visible'
 
   function ensureCanvas(m: MlMap) {
     if (canvas && canvas.parentElement === m.getContainer()) return
@@ -1335,7 +1334,7 @@ const particles = (() => {
       canvas = null
       soft = null
     },
-    /** the tab came back, or low power changed */
+    /** the tab came back */
     wake() {
       if (state && !raf) raf = requestAnimationFrame(frame)
     },
@@ -1462,7 +1461,6 @@ export function initScentLayer() {
     useAppStore.subscribe((s, p) => {
       if (s.planTimeMs !== p.planTimeMs && useScent.getState().people.length) schedule()
       if (s.units !== p.units && useScent.getState().distances && useScent.getState().people.length > 1) schedule()
-      if (s.lowPower !== p.lowPower) particles.wake()
     })
     document.addEventListener('visibilitychange', () => {
       particles.wake()

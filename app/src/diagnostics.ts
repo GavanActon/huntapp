@@ -121,7 +121,7 @@ export async function buildSnapshot(): Promise<string> {
     `GPS: ${gpsLine}${gps.lastError ? ` · last error: ${gps.lastError}` : ''}`,
     `Mode: ${views.mode} · view ${currentView()?.name ?? 'custom'} · quarry ${spots.target} · heat ${yn(spots.heat)}`,
     `Layers: ${layersOn || 'none'}`,
-    `Chrome: outdoor ${yn(app.outdoor)} · text ${app.textSize} · thumb ${app.leftHanded ? 'left' : 'right'} · labels ${yn(app.buttonLabels)} · low power ${yn(app.lowPower)}`,
+    `Chrome: outdoor ${yn(app.outdoor)} · text ${app.textSize} · thumb ${app.leftHanded ? 'left' : 'right'} · labels ${yn(app.buttonLabels)}`,
     `Strip: ${app.stripOpen ? 'open' : 'folded'} · plan time ${app.planTimeMs ? new Date(app.planTimeMs).toString() : 'now'}`,
     `Sheets: ${app.sheets.length ? app.sheets.map((s) => s.kind).join(' › ') : 'none'} · top card ${app.topCard?.kind ?? 'none'}`,
     ``,

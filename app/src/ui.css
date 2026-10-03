@@ -226,6 +226,7 @@
   color: var(--c-text-dim);
   font-size: 10px;
   line-height: 1.1;
+  -webkit-touch-callout: none; /* a press and hold opens the hour's whole detail */
 }
 
 /* after dark: a shade deeper, so the night reads as a stretch of the row */
@@ -1287,6 +1288,23 @@
   pointer-events: auto;
 }
 
+/* the far side's foot: the 10 gap and the pill in a 60px box, sitting at
+   its bottom, so the buttons above sit level with the near column's
+   (.toolcol > .hotcol) whatever the text size. The empty top of the box
+   leaves the map its taps; the pill's menu still hangs off the pill. */
+.leftstack > .leftfoot {
+  min-height: 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: inherit;
+  pointer-events: none;
+}
+
+.leftfoot > * {
+  pointer-events: auto;
+}
+
 .hotcol {
   display: flex;
   flex-direction: column;
@@ -1412,11 +1430,14 @@
   right: calc(100% + 10px);
 }
 
+/* a row too wide for the drawer (a narrow phone, large text: the contour
+   interval's 10 m ran off the edge) puts its choices under the label */
 .hd-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 4px 12px;
   min-height: 38px;
   padding: 0 6px;
 }
@@ -1430,6 +1451,11 @@
 .hotdrawer .seg button {
   padding: 5px 10px;
   white-space: nowrap;
+}
+
+/* the wind's line-thickness choices draw the line they set */
+.streak-a {
+  display: block;
 }
 
 .hotdrawer input[type='range'] {
@@ -1519,8 +1545,11 @@
   transition: bottom 0.18s ease-out;
 }
 
-.toolgap {
-  height: 14px;
+/* the foot: 70px under each column's buttons, so the two columns' buttons
+   sit level across the screen (2026-10-03, they were 35px apart). Here
+   12 + the 12 gap + My location's 46; the far side's is .leftstack's. */
+.toolcol > .hotcol {
+  margin-bottom: 12px;
 }
 
 /* a left hand: the near column and the pill's stack swap sides */

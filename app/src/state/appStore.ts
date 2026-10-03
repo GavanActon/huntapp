@@ -41,7 +41,7 @@ export type TopCard = { kind: 'scent' } | { kind: 'outing'; id: string }
 /** The buttons either column can hold, picked in Map buttons. My location
  *  is not one of them: it is always at the foot of the near column. Nor is
  *  the heat map: it sits on the strip's head beside the quarry chip. */
-export type HotId = 'windcheck' | 'scent' | 'heard' | 'windflow' | 'routes' | 'measure' | 'contours' | 'pin' | 'understory' | 'lanes' | 'bathy' | 'radar' | 'lowPower'
+export type HotId = 'windcheck' | 'scent' | 'heard' | 'windflow' | 'routes' | 'measure' | 'contours' | 'pin' | 'understory' | 'lanes' | 'bathy' | 'radar'
 export const HOT_MAX = 4
 /** The two columns: `near` is the thumb's side (right, or left for a left hand), `far` the other. */
 export type HotSide = 'near' | 'far'
@@ -50,7 +50,8 @@ export const DEFAULT_HOT: Record<'hunt' | 'fish', HotSets> = {
   hunt: { near: ['heard', 'windcheck', 'scent', 'windflow'], far: ['routes', 'measure', 'lanes', 'contours'] },
   fish: { near: ['pin', 'bathy', 'windflow'], far: ['routes', 'measure'] },
 }
-const HOT_IDS: readonly HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'contours', 'pin', 'understory', 'lanes', 'bathy', 'radar', 'lowPower']
+// Low power was taken out 2026-10-03: a saved layout holding it drops it here (unknown ids)
+const HOT_IDS: readonly HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'contours', 'pin', 'understory', 'lanes', 'bathy', 'radar']
 /** Buttons that were: a saved layout keeps its slot (Person became the contour lines, 2026-10-02; + Person lives on the live card and the map popup). */
 const HOT_RENAMED: Record<string, HotId> = { person: 'contours' }
 
@@ -250,9 +251,6 @@ export interface AppState {
   /** Which wind the flow layer draws: the ground model at head height, or HRDPS at 10 m. */
   windLevel: 'ground' | 'forecast'
   setWindLevel: (v: 'ground' | 'forecast') => void
-  /** Stills the wind for a long day on one battery. */
-  lowPower: boolean
-  setLowPower: (v: boolean) => void
   textSize: SizeStop
   setTextSize: (v: SizeStop) => void
   /** Outdoor: opaque bone chrome and dark ink for sun on the phone; persisted */
@@ -337,8 +335,6 @@ export const useAppStore = create<AppState>()(
       setFlowTuning: (t) => set((s) => ({ flowTuning: { ...s.flowTuning, ...t } })),
       windLevel: 'ground',
       setWindLevel: (windLevel) => set({ windLevel }),
-      lowPower: false,
-      setLowPower: (lowPower) => set({ lowPower }),
       textSize: 'auto',
       setTextSize: (textSize) => set({ textSize }),
       outdoor: false,
@@ -368,7 +364,8 @@ export const useAppStore = create<AppState>()(
       // v4: two button columns (near and far), Wind flow, Routes and Measure among them; the one-column sets go
       // v5: the wind flow sits just above My location; the v4 defaults are replaced
       // v7: the pins and tracks toggles became the marks: both off is all hidden
-      version: 7,
+      // v8: low power is gone
+      version: 8,
       migrate: (persisted, from) => {
         const p = (persisted ?? {}) as Partial<AppState>
         if (from < 1) {
@@ -392,6 +389,7 @@ export const useAppStore = create<AppState>()(
           delete old.showPins
           delete old.showTracks
         }
+        if (from < 8) delete (p as { lowPower?: boolean }).lowPower
         return p as AppState
       },
       partialize: (s) => ({
@@ -406,7 +404,6 @@ export const useAppStore = create<AppState>()(
         windFlowOpacity: s.windFlowOpacity,
         flowTuning: s.flowTuning,
         windLevel: s.windLevel,
-        lowPower: s.lowPower,
         textSize: s.textSize,
         outdoor: s.outdoor,
         stripOpen: s.stripOpen,

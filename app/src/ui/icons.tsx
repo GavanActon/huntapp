@@ -437,15 +437,6 @@ export const IconRadar = (p: IconProps) => (
   </svg>
 )
 
-/** Low power: a battery down to its last bar. */
-export const IconBattery = (p: IconProps) => (
-  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="2.5" y="7" width="17" height="10" rx="2" />
-    <path d="M21.5 10.5v3" />
-    <rect x="5" y="9.5" width="4" height="5" rx=".8" fill="currentColor" stroke="none" />
-  </svg>
-)
-
 /** Settings. */
 export const IconGear = (p: IconProps) => (
   <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

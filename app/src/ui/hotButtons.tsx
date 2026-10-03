@@ -11,7 +11,7 @@ import { useGpsStore } from '../tracking/gpsStore'
 import { useScent } from '../weather/micro/scent'
 import { useHeardForm } from './HeardCard'
 import { useCheckForm } from './WindCheckCard'
-import { IconBattery, IconBush, IconContour, IconDepth, IconEar, IconLanes, IconPin, IconPowder, IconRadar, IconRoute, IconRuler, IconScent, IconWind } from './icons'
+import { IconBush, IconContour, IconDepth, IconEar, IconLanes, IconPin, IconPowder, IconRadar, IconRoute, IconRuler, IconScent, IconWind } from './icons'
 import { logWindHere } from './logWindHere'
 
 /**
@@ -144,21 +144,10 @@ export const HOT_DEFS: Record<HotId, HotDef> = {
   lanes: layerDef('lanes', 'lanes', 'Shooting lanes', 'Lanes', IconLanes),
   bathy: layerDef('bathy', 'bathy', 'Lake depths', 'Depths', IconDepth),
   radar: layerDef('radar', 'weather', 'Radar', 'Radar', IconRadar),
-  lowPower: {
-    id: 'lowPower',
-    name: 'Low power',
-    short: 'Power',
-    Icon: IconBattery,
-    useActive: () => useAppStore((s) => s.lowPower),
-    onTap: () => {
-      const st = useAppStore.getState()
-      st.setLowPower(!st.lowPower)
-    },
-  },
 }
 
 /** Every hot button, in the order the editor's Add chips list them. */
-export const HOT_ORDER: HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'contours', 'pin', 'understory', 'lanes', 'bathy', 'radar', 'lowPower']
+export const HOT_ORDER: HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'contours', 'pin', 'understory', 'lanes', 'bathy', 'radar']
 
 const HOLD_MS = 450
 

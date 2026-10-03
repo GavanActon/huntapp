@@ -36,7 +36,8 @@ import './strip.css'
  * or an hour sets the app-wide planning time; tapping the picked hour
  * again opens its detail inside the strip (gusts, feel, the quarry's
  * grade, the ground air), and `more ›` the rest (sun, legal light, moon,
- * the forecast's source and age). The strip is about the selected place,
+ * the forecast's source and age). A press and hold on any hour picks it
+ * and opens all of that at once. The strip is about the selected place,
  * or the phone's position, or the camp.
  */
 
@@ -309,10 +310,28 @@ export default function WeatherStrip() {
   const activeHourMs = planTimeMs == null ? floorNow : floorHourMs(planTimeMs)
   const selDayMs = startOfDayMs(planTimeMs ?? now)
 
-  // the detail follows the picked hour; a fold or a new pick closes it
+  // a press and hold on an hour: pick it and open its detail whole, the
+  // `more ›` part already out. A tap on the picked hour stays brief.
+  const heldHour = useRef<number | null>(null)
+  const pressedHour = useRef(0)
+  const hourHold = useHold(() => {
+    const ms = pressedHour.current
+    if (ms === activeHourMs) {
+      setDetailMs(ms)
+      setMore(true)
+      return
+    }
+    // a new pick: the effect below opens it once the hour has moved
+    heldHour.current = ms
+    setPlanTime(ms === floorNow ? null : ms)
+  })
+
+  // the detail follows the picked hour; a fold or a new pick closes it, unless the pick was a hold
   useEffect(() => {
-    setDetailMs(null)
-    setMore(false)
+    const held = heldHour.current === activeHourMs
+    heldHour.current = null
+    setDetailMs(held ? activeHourMs : null)
+    setMore(held)
   }, [activeHourMs, stripOpen])
 
   // bring the picked hour into view when it lands off-screen (a day tap, the strip opening)
@@ -617,7 +636,12 @@ export default function WeatherStrip() {
                   key={ms}
                   data-ms={ms}
                   className={`wxcell${ms === activeHourMs ? ' wx-active' : ''}${isNight(ms) ? ' wxcell-night' : ''}${midnight ? ' wxcell-midnight' : ''}`}
-                  onClick={() => tapHour(ms)}
+                  {...hourHold.bind}
+                  onPointerDown={() => {
+                    pressedHour.current = ms
+                    hourHold.bind.onPointerDown()
+                  }}
+                  onClick={hourHold.tap(() => tapHour(ms))}
                 >
                   <span className="wxcell-h">{midnight ? dayShort(ms) : hourShort(ms)}</span>
                   <span className="wxday-wx">

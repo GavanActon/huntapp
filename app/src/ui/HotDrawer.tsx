@@ -82,25 +82,42 @@ interface RowsProps {
   go: (f: () => void) => () => void
 }
 
-function WindFlowRows({ go }: RowsProps) {
+/** The streak widths the thickness choices draw, px in an 18 × 14 box (Auto follows the text size). */
+const STREAK_SIZES = ['auto', 'standard', 'large', 'larger'] as const
+const STREAK_W: Record<(typeof STREAK_SIZES)[number], number> = { auto: 0, standard: 1.5, large: 2.6, larger: 3.7 }
+
+/** The wind's knobs, all of them here (moved out of Settings, 2026-10-03).
+ *  Turbulence: the eddies the ground model finds behind tree lines, in small
+ *  openings and slots, drawn swirling; off, the straight drift. */
+function WindFlowRows() {
   const level = useAppStore((s) => s.windLevel)
   const setLevel = useAppStore((s) => s.setWindLevel)
   const op = useAppStore((s) => s.windFlowOpacity)
   const setOp = useAppStore((s) => s.setWindFlowOpacity)
-  const lowPower = useAppStore((s) => s.lowPower)
-  const setLowPower = useAppStore((s) => s.setLowPower)
   const swirl = useAppStore((s) => s.flowTuning.windSwirl)
+  const size = useAppStore((s) => s.flowTuning.windSize)
   const setFlowTuning = useAppStore((s) => s.setFlowTuning)
-  const openSheet = useAppStore((s) => s.openSheet)
   return (
     <>
       <Seg label="Wind at" value={level} options={[['ground', 'Ground'], ['forecast', 'Forecast']] as const} onPick={setLevel} />
-      <Seg label="Streaks" value={swirl ? 'eddies' : 'straight'} options={[['eddies', 'Eddies'], ['straight', 'Straight']] as const} onPick={(v) => setFlowTuning({ windSwirl: v === 'eddies' })} />
+      <Switch label="Turbulence" on={swirl} onChange={(v) => setFlowTuning({ windSwirl: v })} />
       <Slider label="Strength" value={Math.round(op * 100)} min={10} max={100} step={5} onChange={(v) => setOp(v / 100)} />
-      <Switch label="Low power" on={lowPower} onChange={setLowPower} />
-      <Act onTap={go(() => openSheet({ kind: 'settings' }))}>
-        Settings <span className="dim">›</span>
-      </Act>
+      <div className="hd-row">
+        <span>Line thickness</span>
+        <div className="seg" role="radiogroup" aria-label="Line thickness">
+          {STREAK_SIZES.map((t) => (
+            <button key={t} className={size === t ? 'seg-on' : ''} role="radio" aria-checked={size === t} onClick={() => setFlowTuning({ windSize: t })} aria-label={t}>
+              {t === 'auto' ? (
+                'Auto'
+              ) : (
+                <svg className="streak-a" width="18" height="14" viewBox="0 0 18 14">
+                  <line x1="3" y1="11" x2="15" y2="3" stroke="currentColor" strokeLinecap="round" strokeWidth={STREAK_W[t]} />
+                </svg>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
     </>
   )
 }
@@ -125,21 +142,13 @@ function ScentRows() {
 const INTERVALS: readonly Opt<(typeof CONTOUR_INTERVALS)[number]>[] = CONTOUR_INTERVALS.map((m) => [m, `${m} m`] as const)
 
 /** The contour lines' interval, the lines redrawing as it is picked; the lines come on so the pick can be seen. */
-function ContourRows({ go }: RowsProps) {
+function ContourRows() {
   const m = useAppStore((s) => s.contourInterval)
   const setInterval = useAppStore((s) => s.setContourInterval)
-  const openSheet = useAppStore((s) => s.openSheet)
   useEffect(() => {
     useAppStore.getState().setLayer('contours', true)
   }, [])
-  return (
-    <>
-      <Seg label="Lines every" value={m} options={INTERVALS} onPick={setInterval} />
-      <Act onTap={go(() => openSheet({ kind: 'layers' }))}>
-        Layers <span className="dim">›</span>
-      </Act>
-    </>
-  )
+  return <Seg label="Lines every" value={m} options={INTERVALS} onPick={setInterval} />
 }
 
 function HeardRows({ go }: RowsProps) {
@@ -251,19 +260,13 @@ function MeasureRows({ go }: RowsProps) {
 
 const LAYER_OPACITY: Partial<Record<HotId, keyof LayerOpacity>> = { understory: 'understory', lanes: 'lanes' }
 
-function LayerRows({ go, id }: RowsProps & { id: HotId }) {
+/** A layer's strength where it has one. No way to the Layers sheet: that is the view pill's (2026-10-03). */
+function LayerRows({ id }: { id: HotId }) {
   const key = LAYER_OPACITY[id]
   const op = useAppStore((s) => (key ? s.opacity[key] : 1))
   const setOpacity = useAppStore((s) => s.setOpacity)
-  const openSheet = useAppStore((s) => s.openSheet)
-  return (
-    <>
-      {key && <Slider label="Strength" value={Math.round(op * 100)} min={10} max={100} step={5} onChange={(v) => setOpacity(key, v / 100)} />}
-      <Act onTap={go(() => openSheet({ kind: 'layers' }))}>
-        Layers <span className="dim">›</span>
-      </Act>
-    </>
-  )
+  if (!key) return null
+  return <Slider label="Strength" value={Math.round(op * 100)} min={10} max={100} step={5} onChange={(v) => setOpacity(key, v / 100)} />
 }
 
 function PinRows({ go }: RowsProps) {
@@ -278,11 +281,11 @@ function PinRows({ go }: RowsProps) {
 function rows(id: HotId, go: RowsProps['go']): JSX.Element | null {
   switch (id) {
     case 'windflow':
-      return <WindFlowRows go={go} />
+      return <WindFlowRows />
     case 'scent':
       return <ScentRows />
     case 'contours':
-      return <ContourRows go={go} />
+      return <ContourRows />
     case 'heard':
       return <HeardRows go={go} />
     case 'windcheck':
@@ -295,7 +298,7 @@ function rows(id: HotId, go: RowsProps['go']): JSX.Element | null {
     case 'lanes':
     case 'bathy':
     case 'radar':
-      return <LayerRows go={go} id={id} />
+      return <LayerRows id={id} />
     case 'pin':
       return <PinRows go={go} />
     default:

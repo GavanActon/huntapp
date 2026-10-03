@@ -252,8 +252,7 @@ nothing that matters: at that cell the mechanical part stays under
     traces the noticeable edge (marching squares at NOTICE on the grid,
     blurred once more, specks dropped, corners cut twice) with the reach
     at its far tip, so a stand's plume shows where it touches down rather
-    than a ring round the tree. It is a still frame in low power or with
-    reduced motion.
+    than a ring round the tree. It is a still frame with reduced motion.
   - The bands are relative strength, not a deer detection threshold:
     no published data maps these ratios to detection.
   - **Conservative … aggressive** (2026-10-01): a slider on the scent

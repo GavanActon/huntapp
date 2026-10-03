@@ -17,9 +17,6 @@ const TEXT_SIZES = [
   ['larger', 'A++'],
 ] as const
 
-const STOPS = ['auto', 'standard', 'large', 'larger'] as const
-const STREAK_W: Record<(typeof STOPS)[number], number> = { auto: 0, standard: 1.5, large: 2.6, larger: 3.7 }
-
 /**
  * The build on the phone against the one on the server (offline/appUpdate.ts):
  * Check now asks, Reload runs a new one once the worker has it.
@@ -205,8 +202,6 @@ export default function SettingsSheet(): JSX.Element {
   const outdoor = useAppStore((s) => s.outdoor)
   const setOutdoor = useAppStore((s) => s.setOutdoor)
   const setTextSize = useAppStore((s) => s.setTextSize)
-  const lowPower = useAppStore((s) => s.lowPower)
-  const setLowPower = useAppStore((s) => s.setLowPower)
   const leftHanded = useAppStore((s) => s.leftHanded)
   const setLeftHanded = useAppStore((s) => s.setLeftHanded)
   const buttonLabels = useAppStore((s) => s.buttonLabels)
@@ -331,10 +326,6 @@ export default function SettingsSheet(): JSX.Element {
         </span>
         <input type="checkbox" className="switch" checked={outdoor} onChange={(e) => setOutdoor(e.target.checked)} />
       </label>
-      <label className="st-row">
-        <span>Low power</span>
-        <input type="checkbox" className="switch" checked={lowPower} onChange={(e) => setLowPower(e.target.checked)} />
-      </label>
       <div className="st-row">
         <span>Contour interval</span>
         <div className="seg" role="radiogroup" aria-label="Contour interval">
@@ -353,22 +344,6 @@ export default function SettingsSheet(): JSX.Element {
         </span>
         <input type="range" min={10} max={100} step={5} value={Math.round(windFlowOpacity * 100)} onChange={(e) => setWindFlowOpacity(Number(e.target.value) / 100)} aria-label="Strength" />
       </div>
-      <div className="st-row">
-        <span>Streak size</span>
-        <div className="seg" role="radiogroup" aria-label="Streak size">
-          {STOPS.map((t) => (
-            <button key={t} className={tune.windSize === t ? 'seg-on' : ''} role="radio" aria-checked={tune.windSize === t} onClick={() => setFlowTuning({ windSize: t })} aria-label={t}>
-              {t === 'auto' ? (
-                'Auto'
-              ) : (
-                <svg className="streak-a" width="18" height="14" viewBox="0 0 18 14">
-                  <line x1="3" y1="11" x2="15" y2="3" stroke="currentColor" strokeLinecap="round" strokeWidth={STREAK_W[t]} />
-                </svg>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
       <div className="st-row st-slider">
         <span>
           Particles <span className="numeral">· {tune.windDensity}</span>
@@ -381,18 +356,12 @@ export default function SettingsSheet(): JSX.Element {
         </span>
         <input type="range" min={86} max={97} step={1} value={Math.round(tune.windTrail * 100)} onChange={(e) => setFlowTuning({ windTrail: Number(e.target.value) / 100 })} aria-label="Trail" />
       </div>
-      <div className="st-row">
+      <label className="st-row">
         <span>
-          Streaks <span className="dim">· eddies where the air swirls, or the straight drift</span>
+          Turbulence <span className="dim">· the swirl behind tree lines and in openings</span>
         </span>
-        <div className="seg" role="radiogroup" aria-label="Streaks">
-          {([true, false] as const).map((on) => (
-            <button key={String(on)} className={tune.windSwirl === on ? 'seg-on' : ''} role="radio" aria-checked={tune.windSwirl === on} onClick={() => setFlowTuning({ windSwirl: on })}>
-              {on ? 'Eddies' : 'Straight'}
-            </button>
-          ))}
-        </div>
-      </div>
+        <input type="checkbox" className="switch" checked={tune.windSwirl} onChange={(e) => setFlowTuning({ windSwirl: e.target.checked })} />
+      </label>
       <div className="st-row">
         <span>Wind flow at</span>
         <div className="seg" role="radiogroup" aria-label="Wind flow at">

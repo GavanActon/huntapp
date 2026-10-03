@@ -161,7 +161,11 @@ export default function App() {
       {!sheetOpen && !formUp && (
         <div className="leftstack">
           {!viewMenuOpen && <HotColumn side="far" />}
-          {!measuring && <ViewPill />}
+          {!measuring && (
+            <div className="leftfoot">
+              <ViewPill />
+            </div>
+          )}
         </div>
       )}
       {!sheetOpen && !formUp && <ToolColumn />}

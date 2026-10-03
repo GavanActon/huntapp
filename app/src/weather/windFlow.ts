@@ -20,8 +20,8 @@ import { currentTextStop } from '../ui/textScale'
  * (frameAffine): every frame the pinned frame is carried to wherever the
  * camera went, trails and all, so a pan or a pinch slides the wind WITH the
  * map. When the camera settles the engine re-pins itself there and
- * resamples the wind under the new view. Stops for prefers-reduced-motion,
- * a hidden tab and low power.
+ * resamples the wind under the new view. Stops for prefers-reduced-motion
+ * and a hidden tab.
  */
 
 const FIELD_STEP = 28 // css px between wind samples
@@ -643,7 +643,7 @@ function reducedMotion(): boolean {
 
 function syncAmbient(map: MlMap) {
   const s = useAppStore.getState()
-  const want = s.layers.windFlow && !s.lowPower && !reducedMotion() && document.visibilityState === 'visible'
+  const want = s.layers.windFlow && !reducedMotion() && document.visibilityState === 'visible'
   const wasLive = !!ambient
   if (ambient) {
     ambient.stop()
@@ -714,7 +714,7 @@ export function initWindFlow() {
     }
     useAppStore.subscribe((s, prev) => {
       // the switches and the particle count need a new engine
-      if (s.layers.windFlow !== prev.layers.windFlow || s.lowPower !== prev.lowPower || s.flowTuning.windDensity !== prev.flowTuning.windDensity) cur()
+      if (s.layers.windFlow !== prev.layers.windFlow || s.flowTuning.windDensity !== prev.flowTuning.windDensity) cur()
       // the air under it only needs resampling
       else if (s.planTimeMs !== prev.planTimeMs || s.flowTuning.windSpeed !== prev.flowTuning.windSpeed || s.windLevel !== prev.windLevel) fresh()
     })
