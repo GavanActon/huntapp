@@ -46,8 +46,9 @@ export const HOT_MAX = 4
 /** The two columns: `near` is the thumb's side (right, or left for a left hand), `far` the other. */
 export type HotSide = 'near' | 'far'
 export type HotSets = Record<HotSide, HotId[]>
+// a fresh phone's are Gavan's (2026-10-03, sent from his phone): Scent above Sharpen
 export const DEFAULT_HOT: Record<'hunt' | 'fish', HotSets> = {
-  hunt: { near: ['heard', 'windcheck', 'scent', 'windflow'], far: ['routes', 'measure', 'lanes', 'contours'] },
+  hunt: { near: ['heard', 'scent', 'windcheck', 'windflow'], far: ['routes', 'measure', 'lanes', 'contours'] },
   fish: { near: ['pin', 'bathy', 'windflow'], far: ['routes', 'measure'] },
 }
 // Low power was taken out 2026-10-03: a saved layout holding it drops it here (unknown ids)
@@ -106,14 +107,16 @@ export interface LayerOpacity {
   satellite: number
 }
 
-/** A fresh phone shows the Scout view (viewsStore BUILT_IN[0]): imagery,
- *  contours, forest cover, burns and bush roads, with the wind flowing. */
+/** A fresh phone starts as Gavan's was set up (2026-10-03, his settings sent
+ *  from the phone, Settings › My settings): the Bow view with its lanes off
+ *  (they are a button of their own), so the imagery, the grey LiDAR shade,
+ *  contours and roads, with the wind flowing. Opacities: START_OPACITY. */
 export const DEFAULT_LAYERS: LayerVisibility = {
   topo: false,
-  hillshade: false,
+  hillshade: true,
   relief: false,
   contours: true,
-  forest: true,
+  forest: false,
   understory: false,
   lanes: false,
   bathy: false,
@@ -123,14 +126,14 @@ export const DEFAULT_LAYERS: LayerVisibility = {
   wmu: false,
   crown: false,
   parks: false,
-  fire: true,
+  fire: false,
   roads: true,
   weather: false,
   windFlow: true,
 }
 
 /** What the layers were before v3, for the migration: a phone still holding
- *  these untouched takes the Scout view instead. */
+ *  these untouched takes the starting view instead. */
 const LAYERS_V2: Partial<LayerVisibility> = { topo: true, contours: true, bathy: true, satellite: true }
 
 export const DEFAULT_OPACITY: LayerOpacity = {
@@ -144,6 +147,9 @@ export const DEFAULT_OPACITY: LayerOpacity = {
   satellite: 0.8,
 }
 
+/** A fresh phone's opacities: the Bow view's (the imagery whole, the shade light). DEFAULT_OPACITY stays the views' base. */
+const START_OPACITY: LayerOpacity = { ...DEFAULT_OPACITY, hillshade: 0.35, satellite: 1 }
+
 /** The wind layer's knobs (the boat app's, minus the sea). Persisted. */
 export interface FlowTuning {
   windDensity: number // particle count, 200–2500
@@ -154,7 +160,7 @@ export interface FlowTuning {
   windSize: SizeStop // streak width: auto follows the text size
   windSwirl: boolean // eddies drawn where the ground model says the air swirls
 }
-export const FLOW_TUNING_DEFAULTS: FlowTuning = { windDensity: 2500, windSpeed: 1, windTrail: 0.97, windHue: 195, windSat: 100, windSize: 'auto', windSwirl: true }
+export const FLOW_TUNING_DEFAULTS: FlowTuning = { windDensity: 2500, windSpeed: 1, windTrail: 0.97, windHue: 195, windSat: 100, windSize: 'large', windSwirl: true }
 
 /** A size setting's stops, the text's and the wind streaks': auto follows the phone (text) or the text (wind). */
 export type SizeStop = 'auto' | 'standard' | 'large' | 'larger'
@@ -298,11 +304,12 @@ export const useAppStore = create<AppState>()(
       setHotButtons: (mode, side, ids) => set((st) => ({ hotButtons: { ...st.hotButtons, [mode]: { ...st.hotButtons[mode], [side]: cleanHot(ids) } } })),
       leftHanded: false,
       setLeftHanded: (leftHanded) => set({ leftHanded }),
-      buttonLabels: true,
+      // a fresh phone's names off and the top row extra large: Gavan's (2026-10-03)
+      buttonLabels: false,
       setButtonLabels: (buttonLabels) => set({ buttonLabels }),
       hotHidden: false,
       setHotHidden: (hotHidden) => set({ hotHidden }),
-      stripButtons: 'normal',
+      stripButtons: 'xlarge',
       setStripButtons: (stripButtons) => set({ stripButtons }),
       marks: ALL_MARKS,
       // picking one in the list while all are hidden brings the marks back
@@ -314,7 +321,7 @@ export const useAppStore = create<AppState>()(
 
       layers: DEFAULT_LAYERS,
       setLayer: (k, v) => set((s) => ({ layers: { ...s.layers, [k]: v } })),
-      opacity: DEFAULT_OPACITY,
+      opacity: START_OPACITY,
       setOpacity: (k, v) => set((s) => ({ opacity: { ...s.opacity, [k]: v } })),
       saturation: {},
       setSaturation: (k, v) => set((s) => ({ saturation: { ...s.saturation, [k]: v } })),
@@ -322,12 +329,13 @@ export const useAppStore = create<AppState>()(
       toggleStar: (k) => set((s) => ({ starred: s.starred.includes(k) ? s.starred.filter((x) => x !== k) : [...s.starred, k] })),
       historicalYear: null,
       setHistoricalYear: (historicalYear) => set({ historicalYear }),
-      contourInterval: 5,
+      // every metre and a stalking pace, as Gavan has them (2026-10-03)
+      contourInterval: 1,
       setContourInterval: (contourInterval) => set({ contourInterval }),
 
       units: 'metric',
       setUnits: (units) => set({ units }),
-      paceKmh: 4,
+      paceKmh: 1,
       setPaceKmh: (paceKmh) => set({ paceKmh }),
       windFlowOpacity: 1,
       setWindFlowOpacity: (windFlowOpacity) => set({ windFlowOpacity }),
@@ -427,7 +435,7 @@ export const useAppStore = create<AppState>()(
           ...current,
           ...p,
           layers: { ...DEFAULT_LAYERS, ...(p.layers ?? {}) },
-          opacity: { ...DEFAULT_OPACITY, ...(p.opacity ?? {}) },
+          opacity: { ...START_OPACITY, ...(p.opacity ?? {}) },
           saturation: { ...(p.saturation ?? {}) },
           starred: Array.isArray(p.starred) ? p.starred.filter((k): k is keyof LayerVisibility => typeof k === 'string' && k in DEFAULT_LAYERS) : [],
           flowTuning: { ...FLOW_TUNING_DEFAULTS, ...(p.flowTuning ?? {}) },

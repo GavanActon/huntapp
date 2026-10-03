@@ -12,6 +12,10 @@ export type SpotsDetail = 'brief' | 'normal' | 'full'
 export type HeatScale = 'day' | 'fixed'
 export const DETAIL_NAMES: Record<SpotsDetail, string> = { brief: 'Brief', normal: 'Normal', full: 'Full' }
 
+/** A fresh phone's knobs: the model's rule (DEFAULT_WEIGHTS, which Reset
+ *  puts back) with roads and landings off, as Gavan has it (2026-10-03). */
+const START_WEIGHTS: Weights = { ...DEFAULT_WEIGHTS, access: 0 }
+
 interface SpotsState {
   /** what we are after */
   target: Target
@@ -56,16 +60,18 @@ export const useSpotsStore = create<SpotsState>()(
     (set) => ({
       target: 'moose',
       setTarget: (target) => set({ target }),
-      heat: true,
+      // a fresh phone's are Gavan's (2026-10-03): the heat off (the Bow view has none),
+      // the full detail, and roads and landings not counted
+      heat: false,
       setHeat: (heat) => set({ heat }),
       heatScale: 'day',
       setHeatScale: (heatScale) => set({ heatScale }),
       heatStrength: 1,
       setHeatStrength: (v) => set({ heatStrength: Math.max(0.5, Math.min(1.5, v)) }),
       scent: false,
-      detail: 'normal',
+      detail: 'full',
       setDetail: (detail) => set({ detail }),
-      weights: DEFAULT_WEIGHTS,
+      weights: START_WEIGHTS,
       setWeight: (k, v) => set((s) => ({ weights: { ...s.weights, [k]: Math.max(0, Math.min(2, v)) } })),
       resetWeights: () => set({ weights: DEFAULT_WEIGHTS }),
       digIn: null,
@@ -83,7 +89,7 @@ export const useSpotsStore = create<SpotsState>()(
       partialize: (s) => ({ target: s.target, heat: s.heat, heatScale: s.heatScale, heatStrength: s.heatStrength, detail: s.detail, weights: s.weights }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<SpotsState>
-        return { ...current, ...p, weights: { ...DEFAULT_WEIGHTS, ...(p.weights ?? {}) }, scent: false }
+        return { ...current, ...p, weights: { ...START_WEIGHTS, ...(p.weights ?? {}) }, scent: false }
       },
     },
   ),

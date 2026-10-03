@@ -54,9 +54,9 @@ export const BUILT_IN: MapView[] = [
   { id: 'fish-chart', name: 'Chart', mode: 'fish', builtIn: true, heat: true, opacity: DEFAULT_OPACITY, layers: L(['bathy', 'topo']) },
 ]
 
-/** The views pinned at the top of the pill menu on a fresh phone. */
+/** The views pinned at the top of the pill menu on a fresh phone (Gavan's, 2026-10-03: Scout too). */
 export const DEFAULT_PINNED: Record<Mode, string[]> = {
-  hunt: ['hunt-relief', 'hunt-bow', 'hunt-bush', 'hunt-terrain'],
+  hunt: ['hunt-relief', 'hunt-bow', 'hunt-bush', 'hunt-terrain', 'hunt-scout'],
   fish: ['fish-lake', 'fish-chart'],
 }
 
@@ -90,8 +90,9 @@ export const useViews = create<ViewsState>()(
     (set, get) => ({
       mode: 'hunt',
       saved: [],
-      lastTarget: { hunt: 'moose', fish: 'walleye' },
-      lastViewId: 'hunt-scout',
+      // a fresh phone starts in the Bow view (appStore DEFAULT_LAYERS), lake trout for the fishing side: Gavan's
+      lastTarget: { hunt: 'moose', fish: 'laketrout' },
+      lastViewId: 'hunt-bow',
       pinned: { hunt: [...DEFAULT_PINNED.hunt], fish: [...DEFAULT_PINNED.fish] },
       setMode: (mode) => {
         const s = get()

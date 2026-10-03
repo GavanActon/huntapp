@@ -740,7 +740,8 @@ export const useScent = create<ScentState>()(
       distances: true,
       view: 'cloud',
       height: GROUND_H,
-      risk: 0.5,
+      // a notch toward smaller, inside "as modelled": Gavan's (2026-10-03)
+      risk: 0.55,
       strength: 1,
       show: (lon, lat) => set({ people: [{ lon, lat, height: get().height }], plumes: [], group: null, pick: 0, adding: false, moving: null, hidden: false, card: true }),
       add: (lon, lat) => {
