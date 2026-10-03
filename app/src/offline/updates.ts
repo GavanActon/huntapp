@@ -32,9 +32,33 @@ export interface PendingFile {
 interface UpdatesState {
   pending: PendingFile[]
   checkedAt: number
+  /** every file the server has baked, from the last manifest seen; null before any */
+  onServer: string[] | null
 }
 
-export const useMapUpdates = create<UpdatesState>(() => ({ pending: [], checkedAt: 0 }))
+const SERVER_KEY = 'huntapp-server-files'
+function loadOnServer(): string[] | null {
+  try {
+    const raw = localStorage.getItem(SERVER_KEY)
+    const v = raw ? (JSON.parse(raw) as unknown) : null
+    return Array.isArray(v) ? (v as string[]) : null
+  } catch {
+    return null
+  }
+}
+
+export const useMapUpdates = create<UpdatesState>(() => ({ pending: [], checkedAt: 0, onServer: loadOnServer() }))
+
+/** The bundle's files the server has actually baked. A file listed in the
+ *  bundle but never built (the base map, 2026-10-02) is not one the phone
+ *  can be missing: counting it kept the Maps row at Download with every
+ *  real file saved. Before any manifest has been seen, every file counts. */
+export function bundleOnServer(files: string[]): string[] {
+  const on = useMapUpdates.getState().onServer
+  if (!on) return files
+  const set = new Set(on)
+  return files.filter((f) => set.has(f))
+}
 
 const LABELS = new Map(DATA_FILES.map((d) => [d.file, d.label]))
 const labelOf = (name: string) => LABELS.get(name) ?? name.replace(/-[a-z-]+\.(geojson|hab)$/, '').replace(/[_-]/g, ' ')
@@ -79,7 +103,13 @@ export function checkMapUpdates(): Promise<void> {
     .then((m) => {
       if (!m) return
       const pending = pendingFrom(m)
-      useMapUpdates.setState({ pending, checkedAt: Date.now() })
+      const onServer = Object.keys(m.files)
+      useMapUpdates.setState({ pending, checkedAt: Date.now(), onServer })
+      try {
+        localStorage.setItem(SERVER_KEY, JSON.stringify(onServer))
+      } catch {
+        /* private mode */
+      }
       if (pending.length) devlog('data', `new maps · ${pending.map((p) => `${p.name}:${p.why}`).join(' ')}`)
     })
     .finally(() => {

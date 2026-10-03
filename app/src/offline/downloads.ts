@@ -3,7 +3,7 @@ import { BUNDLES, DATA_BASE } from '../config'
 import { useAppStore } from '../state/appStore'
 import { useScent } from '../weather/micro/scent'
 import { deleteStoredFile, downloadToStore, listStored, requestPersistence } from './fileStore'
-import { serverHashes, useMapUpdates } from './updates'
+import { bundleOnServer, serverHashes, useMapUpdates } from './updates'
 
 /**
  * Downloading the region's baked maps to the phone, as a store rather than
@@ -114,14 +114,16 @@ export async function removeFiles(files: string[]): Promise<void> {
 export function mapsStatus(): { text: string; action: 'download' | 'none'; files: string[]; replace: boolean; disabled: boolean } {
   const dl = useDownloads.getState()
   if (dl.active) return { text: `Downloading ${dl.fileIdx}/${dl.fileCount}`, action: 'none', files: [], replace: false, disabled: true }
-  const bundle = BUNDLES[0]
+  // only files the server has: one it never built cannot be missing
+  const wanted = bundleOnServer(BUNDLES[0].files)
   const stored = new Set(listStored().map((s) => s.name))
-  const have = bundle.files.filter((f) => stored.has(f))
+  const have = wanted.filter((f) => stored.has(f))
   const pending = useMapUpdates.getState().pending
   const online = useAppStore.getState().online
   const offer = (text: string, files: string[], replace: boolean) =>
     online ? { text, action: 'download' as const, files, replace, disabled: false } : { text: 'Connect to download', action: 'download' as const, files, replace, disabled: true }
   if (have.length > 0 && pending.length > 0) return offer(`${pending.length} new · Download`, pending.map((p) => p.name), true)
-  if (have.length < bundle.files.length) return offer('Download', bundle.files, false)
+  if (have.length === 0) return offer('Download', wanted, false)
+  if (have.length < wanted.length) return offer(`${wanted.length - have.length} not saved · Download`, wanted, false)
   return { text: 'All saved', action: 'none', files: [], replace: false, disabled: false }
 }

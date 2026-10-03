@@ -2,7 +2,7 @@ import { useEffect, useState, type JSX } from 'react'
 import { BUNDLES, DATA_FILES, REGION } from '../../config'
 import { downloadFiles, fmtBytes, mapsStatus, removeFiles, useDownloads } from '../../offline/downloads'
 import { listStored, storageEstimate } from '../../offline/fileStore'
-import { useMapUpdates } from '../../offline/updates'
+import { bundleOnServer, useMapUpdates } from '../../offline/updates'
 import { useAppStore } from '../../state/appStore'
 import { IconCheck, IconDownload, IconTrash } from '../icons'
 import './settings.css'
@@ -34,9 +34,12 @@ export default function OfflineSheet(): JSX.Element {
   }, [dl.storedAt, dl.active])
 
   const bundle = BUNDLES[0]
+  // the files the server has baked; the rest are listed as not built yet
+  const wanted = bundleOnServer(bundle.files)
+  const notBuilt = bundle.files.filter((f) => !wanted.includes(f))
   const stored = listStored()
   const byName = new Map(stored.map((s) => [s.name, s]))
-  const have = bundle.files.filter((f) => byName.has(f))
+  const have = wanted.filter((f) => byName.has(f))
   const size = have.reduce((sum, f) => sum + (byName.get(f)?.size ?? 0), 0)
   const pendingNames = new Map(pending.map((p) => [p.name, p.why]))
   const maps = mapsStatus()
@@ -68,7 +71,7 @@ export default function OfflineSheet(): JSX.Element {
       {dl.error && <div className="st-line error">{dl.error}</div>}
       {dl.skipped.length > 0 && <div className="st-line">Not built yet: {dl.skipped.map(labelOf).join(', ')}</div>}
 
-      {bundle.files.map((f) => {
+      {wanted.map((f) => {
         const s = byName.get(f)
         const why = pendingNames.get(f)
         return (
@@ -83,7 +86,8 @@ export default function OfflineSheet(): JSX.Element {
 
       <div className="st-files-foot">
         <span>
-          {have.length}/{bundle.files.length} files{have.length > 0 ? ` · ${fmtBytes(size)}` : ''}
+          {have.length}/{wanted.length} files{have.length > 0 ? ` · ${fmtBytes(size)}` : ''}
+          {notBuilt.length > 0 && !dl.skipped.length ? ` · not built yet: ${notBuilt.map(labelOf).join(', ')}` : ''}
           {quota && quota.quota > 0 ? ` · ${fmtBytes(quota.usage)} used of ${fmtBytes(quota.quota)}` : ''}
         </span>
         {have.length > 0 && (
