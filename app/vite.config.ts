@@ -119,6 +119,13 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // a new worker takes over as soon as it is in, not when every window
+        // of the app has closed (an installed app on a phone rarely is). The
+        // plugin sets these itself only when it registers the worker, and
+        // injectRegister is off: without them a new build sat waiting
+        // (2026-10-03, "fetching it…" and nothing)
+        skipWaiting: true,
+        clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         globIgnores: ['data/**', 'fonts/**', 'sprites/**'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,

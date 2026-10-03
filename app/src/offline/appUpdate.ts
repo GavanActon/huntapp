@@ -74,6 +74,9 @@ export function initAppUpdate(): void {
   wired = true
   registerSW({
     immediate: true,
+    // the plugin would reload the page the moment the new worker is in;
+    // in use, the chip offers it instead (and coming to the front reloads)
+    onNeedReload: () => useAppUpdate.setState({ ready: true }),
     onRegisteredSW(_url, r) {
       reg = r
       if (r && useAppUpdate.getState().latest) void r.update()
