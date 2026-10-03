@@ -3,7 +3,7 @@ import type { Feature, FeatureCollection } from 'geojson'
 import type { GeoJSONSource, Map as MlMap } from 'maplibre-gl'
 import { onEachMap } from '../../map/mapController'
 import { closeOnTapOff } from '../../map/tapPopup'
-import { useAppStore } from '../../state/appStore'
+import { markShown, useAppStore } from '../../state/appStore'
 import { timeLabel } from '../../time'
 import { compass } from '../openMeteo'
 import { aloftVerdict, checkPull, checkReachM, checkSpentAt, steadiness, towardWords, useWindChecks, verdict, type WindCheck } from './windChecks'
@@ -62,6 +62,8 @@ export function showOutingChecks(range: { from: number; to: number } | null): vo
 
 function features(at: number): FeatureCollection {
   const out: Feature[] = []
+  // the strip's marks can take the checks off the map; they still sharpen the wind
+  if (!markShown(useAppStore.getState(), 'wind')) return { type: 'FeatureCollection', features: out }
   if (replay) {
     const { from, to } = replay
     for (const c of useWindChecks.getState().checks) {
@@ -268,7 +270,7 @@ export function initCheckLayer() {
     if (s.checks !== p.checks) refresh()
   })
   useAppStore.subscribe((s, p) => {
-    if (s.planTimeMs !== p.planTimeMs) refresh()
+    if (s.planTimeMs !== p.planTimeMs || markShown(s, 'wind') !== markShown(p, 'wind')) refresh()
   })
   // at "now" the rings shrink with the clock, a minute at a time
   window.setInterval(() => {

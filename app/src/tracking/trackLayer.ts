@@ -2,7 +2,7 @@ import type { FeatureCollection } from 'geojson'
 import type { FilterSpecification, GeoJSONSource, Map as MlMap } from 'maplibre-gl'
 import { onEachMap } from '../map/mapController'
 import { outingSince } from '../log/outingTime'
-import { useAppStore } from '../state/appStore'
+import { markShown, useAppStore } from '../state/appStore'
 import { useTrackStore, type Track, type TrackPoint } from './trackStore'
 
 /** The trail on the map: the live recording from the start of this outing
@@ -15,7 +15,7 @@ const SRC = 'tracks'
 const LAYERS = ['tracks-casing', 'tracks-gap', 'tracks-line']
 let layersOn: MlMap | null = null
 
-/** The trail shown or hidden (the strip's toggle). */
+/** The trail shown or hidden (the strip's marks). */
 function applyShown(m: MlMap, on: boolean) {
   for (const id of LAYERS) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none')
 }
@@ -77,7 +77,7 @@ function addLayers(m: MlMap) {
     paint: { 'line-color': ['case', ['get', 'live'], '#59e0b8', 'rgba(89, 224, 184, 0.55)'], 'line-width': ['case', ['get', 'live'], 3, 2] },
   })
   layersOn = m
-  applyShown(m, useAppStore.getState().showTracks)
+  applyShown(m, markShown(useAppStore.getState(), 'tracks'))
 }
 
 function render() {
@@ -107,6 +107,7 @@ export function initTrackLayer() {
     if (s.tracks !== prev.tracks || s.recordingId !== prev.recordingId) render()
   })
   useAppStore.subscribe((s, prev) => {
-    if (s.showTracks !== prev.showTracks && layersOn) applyShown(layersOn, s.showTracks)
+    const on = markShown(s, 'tracks')
+    if (on !== markShown(prev, 'tracks') && layersOn) applyShown(layersOn, on)
   })
 }

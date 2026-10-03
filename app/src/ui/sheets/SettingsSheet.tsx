@@ -302,9 +302,9 @@ export default function SettingsSheet(): JSX.Element {
       <div className="st-row">
         <span>Top row buttons</span>
         <div className="seg" role="radiogroup" aria-label="Top row buttons">
-          {(['normal', 'large'] as const).map((t) => (
+          {([['normal', 'Normal'], ['large', 'Large'], ['xlarge', 'Extra large']] as const).map(([t, label]) => (
             <button key={t} className={stripButtons === t ? 'seg-on' : ''} role="radio" aria-checked={stripButtons === t} onClick={() => setStripButtons(t)}>
-              {t === 'normal' ? 'Normal' : 'Large'}
+              {label}
             </button>
           ))}
         </div>

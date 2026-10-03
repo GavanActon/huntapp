@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { inRegion } from '../config'
 import { useMapBearing } from '../map/mapBearing'
-import { useAppStore } from '../state/appStore'
+import { MARK_KINDS, MARK_NAMES, useAppStore } from '../state/appStore'
 import { selectedPlace, homePlace, usePlacesStore } from '../state/placesStore'
 import { useSpotsStore } from '../state/spotsStore'
 import { pickTarget } from '../state/viewsStore'
@@ -142,6 +142,35 @@ function useHourTick(): void {
 
 const bar = (v: number): CSSProperties => ({ '--bar': v.toFixed(2) }) as CSSProperties
 
+/** A strip button's press and hold: `onHold` after 450 ms, and the click
+ *  that follows the lift is swallowed. Spread `bind` on the button and
+ *  pass its tap to `tap`. */
+function useHold(onHold: () => void) {
+  const timer = useRef(0)
+  const held = useRef(false)
+  const up = () => window.clearTimeout(timer.current)
+  const bind = {
+    onPointerDown: () => {
+      held.current = false
+      window.clearTimeout(timer.current)
+      timer.current = window.setTimeout(() => {
+        held.current = true
+        if (navigator.vibrate) navigator.vibrate(12)
+        onHold()
+      }, 450)
+    },
+    onPointerUp: up,
+    onPointerLeave: up,
+    onPointerCancel: up,
+    onContextMenu: (e: { preventDefault: () => void }) => e.preventDefault(),
+  }
+  const tap = (fn: () => void) => () => {
+    if (held.current) return void (held.current = false)
+    fn()
+  }
+  return { bind, tap }
+}
+
 export default function WeatherStrip() {
   const stripOpen = useAppStore((s) => s.stripOpen)
   const setStripOpen = useAppStore((s) => s.setStripOpen)
@@ -152,12 +181,22 @@ export default function WeatherStrip() {
   const outdoor = useAppStore((s) => s.outdoor)
   const hotHidden = useAppStore((s) => s.hotHidden)
   const setHotHidden = useAppStore((s) => s.setHotHidden)
-  const showPins = useAppStore((s) => s.showPins)
-  const setShowPins = useAppStore((s) => s.setShowPins)
-  const showTracks = useAppStore((s) => s.showTracks)
-  const setShowTracks = useAppStore((s) => s.setShowTracks)
-  // one toggle for your marks on the map, the pins and the tracks together
-  const marks = showPins || showTracks
+  // your marks on the map: a tap hides or brings back the lot, a hold picks which
+  const marks = useAppStore((s) => s.marks)
+  const setMark = useAppStore((s) => s.setMark)
+  const marksHidden = useAppStore((s) => s.marksHidden)
+  const setMarksHidden = useAppStore((s) => s.setMarksHidden)
+  const marksOn = !marksHidden && MARK_KINDS.some((k) => marks[k])
+  const [marksMenu, setMarksMenu] = useState(false)
+  const marksRef = useRef<HTMLSpanElement>(null)
+  useTapOff(marksRef, marksMenu, () => setMarksMenu(false))
+  const marksHold = useHold(() => setMarksMenu(true))
+  const tapMarks = () => {
+    if (marksOn) return setMarksHidden(true)
+    // none picked: the tap brings them all
+    if (!MARK_KINDS.some((k) => marks[k])) MARK_KINDS.forEach((k) => setMark(k, true))
+    setMarksHidden(false)
+  }
   const setOutdoor = useAppStore((s) => s.setOutdoor)
   const selectedId = usePlacesStore((s) => s.selectedId)
   const hasFix = useGpsStore((s) => s.fix != null)
@@ -172,21 +211,9 @@ export default function WeatherStrip() {
   // a press and hold on the heat button: how it is coloured
   const [heatMenu, setHeatMenu] = useState(false)
   const heatRef = useRef<HTMLSpanElement>(null)
-  const heatHold = useRef(0)
-  const heatHeld = useRef(false)
   useTapOff(heatRef, heatMenu, () => setHeatMenu(false))
-  const heatDown = () => {
-    heatHeld.current = false
-    window.clearTimeout(heatHold.current)
-    heatHold.current = window.setTimeout(() => {
-      heatHeld.current = true
-      if (navigator.vibrate) navigator.vibrate(12)
-      setHeatMenu(true)
-    }, 450)
-  }
-  const heatUp = () => window.clearTimeout(heatHold.current)
-  const big = stripButtons === 'large'
-  const ico = big ? 20 : 16
+  const heatHold = useHold(() => setHeatMenu(true))
+  const ico = { normal: 16, large: 20, xlarge: 26 }[stripButtons]
   const plans = useSpotsStore((s) => s.plans)
   const hourScores = useSpotsStore((s) => s.hours)
   const checks = useWindChecks((s) => s.checks)
@@ -444,7 +471,7 @@ export default function WeatherStrip() {
   // while the planning time is not now, ⋯; folded, a chevron opens the days
   // and the rest
   const head = (
-    <div className={`wx-head${big ? ' wx-head-lg' : ''}`}>
+    <div className={`wx-head${{ normal: '', large: ' wx-head-lg', xlarge: ' wx-head-xl' }[stripButtons]}`}>
       <span className="wx-quarry" ref={quarryRef}>
         <button className="wx-chip" onClick={() => setQuarryOpen((o) => !o)} aria-haspopup="menu" aria-expanded={quarryOpen}>
           {TARGET_NAMES[target]} <span className="dim">▾</span>
@@ -460,15 +487,8 @@ export default function WeatherStrip() {
       <span className="wx-quarry" ref={heatRef}>
         <button
           className={`wx-heat${heat ? ' on' : ''}`}
-          onPointerDown={heatDown}
-          onPointerUp={heatUp}
-          onPointerLeave={heatUp}
-          onPointerCancel={heatUp}
-          onContextMenu={(e) => e.preventDefault()}
-          onClick={() => {
-            if (heatHeld.current) return (heatHeld.current = false)
-            setHeat(!heat)
-          }}
+          {...heatHold.bind}
+          onClick={heatHold.tap(() => setHeat(!heat))}
           aria-pressed={heat}
           aria-label="Heat map · hold for its colouring"
         >
@@ -503,17 +523,31 @@ export default function WeatherStrip() {
       <button className={`wx-heat wx-theme${hotHidden ? ' on' : ''}`} onClick={() => setHotHidden(!hotHidden)} aria-pressed={hotHidden} aria-label={hotHidden ? 'Show the map buttons' : 'Hide the map buttons'}>
         {hotHidden ? <IconGridOff size={ico} /> : <IconGrid size={ico} />}
       </button>
-      <button
-        className={`wx-heat wx-theme${marks ? ' on' : ''}`}
-        onClick={() => {
-          setShowPins(!marks)
-          setShowTracks(!marks)
-        }}
-        aria-pressed={marks}
-        aria-label={marks ? 'Hide pins and tracks' : 'Show pins and tracks'}
-      >
-        <IconPin size={ico} />
-      </button>
+      <span className="wx-quarry" ref={marksRef}>
+        <button
+          className={`wx-heat wx-theme${marksOn ? ' on' : ''}`}
+          {...marksHold.bind}
+          onClick={marksHold.tap(tapMarks)}
+          aria-pressed={marksOn}
+          aria-label={`${marksOn ? 'Hide' : 'Show'} your marks · hold to pick which`}
+        >
+          <IconPin size={ico} />
+        </button>
+        {marksMenu && (
+          <div className="menu-pop wx-marksmenu" role="menu" aria-label="Marks on the map">
+            {MARK_KINDS.map((k) => (
+              <button key={k} className="menu-row" role="menuitemcheckbox" aria-checked={marks[k]} onClick={() => setMark(k, !marks[k])}>
+                {MARK_NAMES[k]}
+                {marks[k] && (
+                  <span className="wx-menu-check">
+                    <IconCheck size={16} />
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+      </span>
       {f ? <span className="wx-spacer" /> : <span className="wx-spacer wxstrip-empty">{emptyText}</span>}
       {planTimeMs != null && (
         <button className="wx-now" onClick={() => setPlanTime(null)}>

@@ -158,6 +158,17 @@ export const FLOW_TUNING_DEFAULTS: FlowTuning = { windDensity: 2500, windSpeed: 
 /** A size setting's stops, the text's and the wind streaks': auto follows the phone (text) or the text (wind). */
 export type SizeStop = 'auto' | 'standard' | 'large' | 'larger'
 
+/** Your marks on the map, each shown or not from the strip's marks button
+ *  (a press and hold lists them): your pins, the preset places (camp, the
+ *  lakes), the walked tracks, the hunt log's game dots and the wind checks. */
+export type MarkKind = 'pins' | 'places' | 'tracks' | 'game' | 'wind'
+export const MARK_KINDS: readonly MarkKind[] = ['pins', 'places', 'tracks', 'game', 'wind']
+export const MARK_NAMES: Record<MarkKind, string> = { pins: 'Pins', places: 'Places', tracks: 'Tracks', game: 'Game', wind: 'Wind checks' }
+const ALL_MARKS: Record<MarkKind, boolean> = { pins: true, places: true, tracks: true, game: true, wind: true }
+
+/** A mark on the map now: picked in the list and not all hidden by the tap. */
+export const markShown = (s: Pick<AppState, 'marks' | 'marksHidden'>, k: MarkKind): boolean => !s.marksHidden && s.marks[k]
+
 /** Contour interval choices for the LiDAR lines, metres. */
 export const CONTOUR_INTERVALS = [1, 2, 5, 10] as const
 export type ContourInterval = (typeof CONTOUR_INTERVALS)[number]
@@ -197,14 +208,15 @@ export interface AppState {
   /** both hot columns off the map (the strip's toggle beside Outdoor); persisted */
   hotHidden: boolean
   setHotHidden: (v: boolean) => void
-  /** the strip's row of toggles (heat, Outdoor, the hiders), normal or large; persisted */
-  stripButtons: 'normal' | 'large'
-  setStripButtons: (v: 'normal' | 'large') => void
-  /** the pins (saved places) on the map, and the walked tracks: the strip's two toggles; persisted */
-  showPins: boolean
-  setShowPins: (v: boolean) => void
-  showTracks: boolean
-  setShowTracks: (v: boolean) => void
+  /** the strip's row of toggles (heat, Outdoor, the hiders), normal, large or extra large; persisted */
+  stripButtons: 'normal' | 'large' | 'xlarge'
+  setStripButtons: (v: 'normal' | 'large' | 'xlarge') => void
+  /** which marks the strip's marks button shows (its press and hold); persisted */
+  marks: Record<MarkKind, boolean>
+  setMark: (k: MarkKind, v: boolean) => void
+  /** the marks button's tap: every mark off the map at once, the picks kept; persisted */
+  marksHidden: boolean
+  setMarksHidden: (v: boolean) => void
   /** how far back the log's dots show on the map; persisted */
   pastHunts: 'none' | 'today' | 'week' | 'all'
   setPastHunts: (v: 'none' | 'today' | 'week' | 'all') => void
@@ -294,10 +306,11 @@ export const useAppStore = create<AppState>()(
       setHotHidden: (hotHidden) => set({ hotHidden }),
       stripButtons: 'normal',
       setStripButtons: (stripButtons) => set({ stripButtons }),
-      showPins: true,
-      setShowPins: (showPins) => set({ showPins }),
-      showTracks: true,
-      setShowTracks: (showTracks) => set({ showTracks }),
+      marks: ALL_MARKS,
+      // picking one in the list while all are hidden brings the marks back
+      setMark: (k, v) => set((s) => ({ marks: { ...s.marks, [k]: v }, ...(v ? { marksHidden: false } : {}) })),
+      marksHidden: false,
+      setMarksHidden: (marksHidden) => set({ marksHidden }),
       pastHunts: 'all',
       setPastHunts: (pastHunts) => set({ pastHunts }),
 
@@ -354,7 +367,8 @@ export const useAppStore = create<AppState>()(
       // v3: the default layers are the Scout view's; the old defaults, never touched, become them
       // v4: two button columns (near and far), Wind flow, Routes and Measure among them; the one-column sets go
       // v5: the wind flow sits just above My location; the v4 defaults are replaced
-      version: 6,
+      // v7: the pins and tracks toggles became the marks: both off is all hidden
+      version: 7,
       migrate: (persisted, from) => {
         const p = (persisted ?? {}) as Partial<AppState>
         if (from < 1) {
@@ -372,6 +386,12 @@ export const useAppStore = create<AppState>()(
         }
         // 6: the heat map left the columns for the strip, and the defaults changed
         if (from < 6) delete (p as { hotButtons?: unknown }).hotButtons
+        if (from < 7) {
+          const old = p as { showPins?: boolean; showTracks?: boolean }
+          p.marksHidden = old.showPins === false && old.showTracks === false
+          delete old.showPins
+          delete old.showTracks
+        }
         return p as AppState
       },
       partialize: (s) => ({
@@ -395,8 +415,8 @@ export const useAppStore = create<AppState>()(
         buttonLabels: s.buttonLabels,
         hotHidden: s.hotHidden,
         stripButtons: s.stripButtons,
-        showPins: s.showPins,
-        showTracks: s.showTracks,
+        marks: s.marks,
+        marksHidden: s.marksHidden,
         pastHunts: s.pastHunts,
         who: s.who,
         onboarded: s.onboarded,
@@ -414,6 +434,7 @@ export const useAppStore = create<AppState>()(
           saturation: { ...(p.saturation ?? {}) },
           starred: Array.isArray(p.starred) ? p.starred.filter((k): k is keyof LayerVisibility => typeof k === 'string' && k in DEFAULT_LAYERS) : [],
           flowTuning: { ...FLOW_TUNING_DEFAULTS, ...(p.flowTuning ?? {}) },
+          marks: { ...ALL_MARKS, ...(p.marks ?? {}) },
           hotButtons: { hunt: sets('hunt'), fish: sets('fish') },
         }
       },

@@ -1,7 +1,7 @@
 import maplibregl, { type GeoJSONSource, type Map as MlMap, type MapLayerMouseEvent, type MapLayerTouchEvent } from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
 import { onEachMap } from '../map/mapController'
-import { useAppStore } from '../state/appStore'
+import { markShown, useAppStore } from '../state/appStore'
 import { startOfDayMs } from '../time'
 import { closeOnTapOff } from '../map/tapPopup'
 import { fmtCoord } from '../map/MapView'
@@ -21,11 +21,12 @@ const DAY = 86_400_000
 const HOLD_MS = 350
 const SLOP_PX = 8
 
-/** The oldest entry the map shows, by the Past hunts setting: none at all, today, the week, or everything. */
+/** The oldest entry the map shows, by the Past hunts setting: none at all, today, the week, or everything. None while the strip's marks hide the game. */
 function shownSince(): number {
   const now = Date.now()
-  const v = useAppStore.getState().pastHunts
-  if (v === 'none') return Infinity
+  const s = useAppStore.getState()
+  const v = s.pastHunts
+  if (v === 'none' || !markShown(s, 'game')) return Infinity
   if (v === 'today') return startOfDayMs(now)
   if (v === 'week') return now - 7 * DAY
   return 0
@@ -216,6 +217,6 @@ export function initLogLayer() {
     if (s.entries !== p.entries) redraw()
   })
   useAppStore.subscribe((s, p) => {
-    if (s.pastHunts !== p.pastHunts) redraw()
+    if (s.pastHunts !== p.pastHunts || markShown(s, 'game') !== markShown(p, 'game')) redraw()
   })
 }

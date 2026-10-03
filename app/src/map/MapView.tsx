@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { devlog } from '../devlog'
 import { BASE_GEO, baseGeoFile, DATA_BASE, DATA_FILES, GEO_THEMES, geoFile, HOME, MAX_BOUNDS } from '../config'
 import { getStoredFile } from '../offline/fileStore'
-import { useAppStore, type LayerOpacity, type LayerVisibility } from '../state/appStore'
+import { markShown, useAppStore, type LayerOpacity, type LayerVisibility } from '../state/appStore'
 import { placeColour } from '../state/pinColours'
 import { usePlacesStore } from '../state/placesStore'
 import { geoUrls, onFirstIdle, setMap, withMap } from './mapController'
@@ -47,17 +47,15 @@ function loadView(): SavedView | null {
 }
 
 
-/** The pins' three layers, shown or hidden together (the strip's toggle). */
-const PIN_LAYERS = ['pins-halo', 'pins-pt', 'pins-label']
-function applyPins(m: maplibregl.Map, on: boolean) {
-  for (const id of PIN_LAYERS) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none')
-}
-
+/** Your pins and the preset places, each as the strip's marks say. */
 function placesGeoJson(): FeatureCollection {
   const s = usePlacesStore.getState()
+  const app = useAppStore.getState()
+  const pins = markShown(app, 'pins')
+  const places = markShown(app, 'places')
   return {
     type: 'FeatureCollection',
-    features: s.places.map((p) => ({
+    features: s.places.filter((p) => (p.savedAt > 0 ? pins : places)).map((p) => ({
       type: 'Feature',
       id: p.id,
       geometry: { type: 'Point', coordinates: [p.lon, p.lat] },
@@ -182,7 +180,6 @@ export default function MapView() {
           layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Medium'], 'text-size': 12, 'text-offset': [0, 1.1], 'text-anchor': 'top' },
           paint: { 'text-color': '#eef5ea', 'text-halo-color': 'rgba(10,20,12,0.95)', 'text-halo-width': 1.4 },
         })
-        applyPins(m, useAppStore.getState().showPins)
       })
 
       m.on('moveend', () => {
@@ -292,7 +289,9 @@ export default function MapView() {
       applyLayerState(map, s.layers, s.opacity, s.saturation)
     })
     const unsubPins = useAppStore.subscribe((s, prev) => {
-      if (map && s.showPins !== prev.showPins) applyPins(map, s.showPins)
+      if (markShown(s, 'pins') === markShown(prev, 'pins') && markShown(s, 'places') === markShown(prev, 'places')) return
+      const src = map?.getSource('pins')
+      if (src && 'setData' in src) (src as maplibregl.GeoJSONSource).setData(placesGeoJson())
     })
     // the contour interval is a filter on the three contour layers
     const unsubContours = useAppStore.subscribe((s, prev) => {
