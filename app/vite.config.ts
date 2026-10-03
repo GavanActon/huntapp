@@ -65,9 +65,32 @@ function buildStamp(): { sha: string; at: string } {
   return { sha: sha.slice(0, 7), at: new Date().toISOString() }
 }
 
+/** version.json beside the bundle: the build's sha and time, which the app
+ *  on a phone fetches past every cache to see whether it is behind
+ *  (offline/appUpdate.ts). Not precached, so it always says the server's. */
+function versionFile(stamp: { sha: string; at: string }): Plugin {
+  const body = JSON.stringify(stamp)
+  return {
+    name: 'version-file',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url?.split('?')[0] !== '/version.json') return next()
+        res.setHeader('content-type', 'application/json')
+        res.setHeader('cache-control', 'no-store')
+        res.end(body)
+      })
+    },
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'version.json', source: body })
+    },
+  }
+}
+
+const STAMP = buildStamp()
+
 export default defineConfig({
   base: process.env.BASE_PATH ?? '/',
-  define: { __BUILD__: JSON.stringify(buildStamp()) },
+  define: { __BUILD__: JSON.stringify(STAMP) },
   build: { target: ['es2022', 'safari16'] },
   // docs/HUNTOS.md sits beside app/, bundled into Settings as the guide
   server: { host: true, allowedHosts: true, fs: { allow: ['..'] } },
@@ -76,8 +99,11 @@ export default defineConfig({
     ...(process.env.HTTPS_DEV ? [basicSsl()] : []),
     react(),
     dataManifest(),
+    versionFile(STAMP),
     VitePWA({
       registerType: 'autoUpdate',
+      // the app registers the worker itself (offline/appUpdate.ts) so it can ask for updates
+      injectRegister: false,
       manifest: {
         name: 'Pic River — hunt & fish maps',
         short_name: 'Pic River',

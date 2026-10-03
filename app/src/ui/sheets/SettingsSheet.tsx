@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type JSX } from 'react'
 import { getMap } from '../../map/mapController'
 import { clearDevlog, devlogCount, devlogOn, lastUpload, onDevlog, setDevlog, shareDevlog, uploadDevlog } from '../../devlog'
 import { BUILD } from '../../diagnostics'
+import { checkAppUpdate, reloadApp, useAppUpdate } from '../../offline/appUpdate'
 import { downloadFiles, mapsStatus, useDownloads } from '../../offline/downloads'
 import { checkMapUpdates, useMapUpdates } from '../../offline/updates'
 import { CONTOUR_INTERVALS, useAppStore } from '../../state/appStore'
@@ -18,6 +19,45 @@ const TEXT_SIZES = [
 
 const STOPS = ['auto', 'standard', 'large', 'larger'] as const
 const STREAK_W: Record<(typeof STOPS)[number], number> = { auto: 0, standard: 1.5, large: 2.6, larger: 3.7 }
+
+/**
+ * The build on the phone against the one on the server (offline/appUpdate.ts):
+ * Check now asks, Reload runs a new one once the worker has it.
+ */
+function BuildRow({ online }: { online: boolean }): JSX.Element {
+  const up = useAppUpdate()
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const t = window.setInterval(() => setTick((n) => n + 1), 60_000)
+    return () => window.clearInterval(t)
+  }, [])
+  const when = new Date(BUILD.at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  let line: string
+  if (up.ready) line = 'A new build is on the phone: reload to run it'
+  else if (up.checking) line = 'Checking…'
+  else if (up.latest) line = `Newer on the server (${up.latest}), fetching it…`
+  else if (up.checkedAt) line = `Up to date · checked ${agoLabel(Date.now() - up.checkedAt)}`
+  else line = online ? 'Not checked yet' : 'Checks when there is signal'
+  return (
+    <div className="st-row st-two">
+      <span>
+        <span>
+          Build <span className="numeral">{BUILD.sha}</span> <span className="dim">· {when}</span>
+        </span>
+        <small className="dim">{line}</small>
+      </span>
+      {up.ready ? (
+        <button className="st-more" onClick={reloadApp}>
+          Reload
+        </button>
+      ) : (
+        <button className="st-more" disabled={up.checking || !online} onClick={() => void checkAppUpdate(true)}>
+          Check now
+        </button>
+      )}
+    </div>
+  )
+}
 
 /**
  * The weather on the phone: when it was last brought in, when the next
@@ -52,7 +92,7 @@ function WeatherRow({ online }: { online: boolean }): JSX.Element {
   }
 
   return (
-    <div className="st-row st-weather">
+    <div className="st-row st-two">
       <span>
         Weather
         <small className={st.lastError && st.lastFailAt && (!f || st.lastFailAt > f.fetchedAt) ? 'warn' : 'dim'}>{line}</small>
@@ -378,9 +418,7 @@ export default function SettingsSheet(): JSX.Element {
           <li>© MapLibre</li>
         </ul>
       </details>
-      <div className="st-build dim numeral">
-        Build {BUILD.sha} · {new Date(BUILD.at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-      </div>
+      <BuildRow online={online} />
     </div>
   )
 }

@@ -348,6 +348,13 @@
   border-color: rgba(255, 180, 84, 0.35);
 }
 
+/* a new build ready: the chip is the reload */
+.chip-ok {
+  color: var(--c-accent);
+  border-color: rgba(63, 200, 255, 0.35);
+  cursor: pointer;
+}
+
 /* heading up: the way you face, read at the top */
 .chip-heading {
   display: inline-flex;

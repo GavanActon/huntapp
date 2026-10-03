@@ -21,6 +21,7 @@ import { initRouteLayer } from './routes/routeLayer'
 import { initScentLayer } from './weather/micro/scent'
 import { initCheckLayer } from './weather/micro/checkLayer'
 import { initMapUpdates } from './offline/updates'
+import { initAppUpdate, reloadApp, useAppUpdate } from './offline/appUpdate'
 import { initLive } from './hunting/hunting'
 import { initMoveLayer } from './hunting/moveLayer'
 import HeardCard, { useHeardForm } from './ui/HeardCard'
@@ -51,8 +52,14 @@ function TopBar() {
   // whole degrees: the compass reads many times a second, the chip redraws when the degree changes
   const heading = useCompass((s) => (s.heading == null ? null : Math.round(s.heading) % 360))
   const steady = useCompass((s) => s.steady)
+  const updateReady = useAppUpdate((s) => s.ready)
   return (
     <div className="topbar">
+      {updateReady && (
+        <button className="chip chip-ok" onClick={reloadApp}>
+          New version ready · Reload
+        </button>
+      )}
       {headingUp && heading != null && (
         <span className={`chip chip-heading${steady ? '' : ' chip-dim'}`}>
           <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
@@ -123,6 +130,7 @@ export default function App() {
     initLogLayer()
     initCheckLayer()
     initMapUpdates()
+    initAppUpdate()
     initMoveLayer()
     initLive()
     initRoutes()
