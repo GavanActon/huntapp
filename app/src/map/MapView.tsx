@@ -137,6 +137,8 @@ export default function MapView() {
           maxBounds: MAX_BOUNDS,
           minZoom: 7,
           maxZoom: 18,
+          // two taps are the map's info (below), not a zoom: pinch to zoom
+          doubleClickZoom: false,
           // the credits are under Settings → Map credits, off the map
           attributionControl: false,
           pitchWithRotate: false,
@@ -195,7 +197,15 @@ export default function MapView() {
 
       // tap a place: your own pin says what it is, with Delete (placePopup);
       // the camp and the lakes are presets and open Dig in on themselves.
-      // Tap the map: a three-line popup, Dig in behind it
+      // Tap the map TWICE: a three-line popup, Dig in behind it. One tap
+      // used to do it, and a finger brushing the screen or a hand passing
+      // over it opened popups nobody asked for (Gavan's dad, 2026-10-02);
+      // the armed tools above still take their one tap. The second tap must
+      // land within TAP_MS and TAP_PX of the first: iOS fires no dblclick
+      // for touch, so the pair is counted here.
+      const TAP_MS = 350
+      const TAP_PX = 30
+      let lastTap: { t: number; x: number; y: number } | null = null
       m.on('click', 'pins-pt', (e) => {
         // the ruler, a person being placed and the route card each own the tap
         if (useMeasureStore.getState().active || useScent.getState().adding || useRoutes.getState().open) return
@@ -220,12 +230,17 @@ export default function MapView() {
         // a place, a numbered pin, a wind check or a kept route has its own tap
         const hit = m.queryRenderedFeatures(e.point, { layers: ['pins-pt', 'spots-pin', 'windchecks-hit', 'routes-hit', 'huntlog-dot'].filter((id) => m.getLayer(id)) })
         if (hit.length) return
+        const now = performance.now()
+        const second = lastTap != null && now - lastTap.t <= TAP_MS && Math.hypot(e.point.x - lastTap.x, e.point.y - lastTap.y) <= TAP_PX
+        lastTap = second ? null : { t: now, x: e.point.x, y: e.point.y }
+        if (!second) return
         const { lng, lat } = e.lngLat
         const el = document.createElement('div')
         // one glance: the weather there, the game score, then Scent, Pin and
         // Dig in. Everything else is the sheet's.
         const sp = useSpotsStore.getState()
-        const why = sp.conditions ? explainPoint(sp.target, lng, lat, sp.conditions, sp.weights) : null
+        // the score only while the heat map is on: with it off the tap is about the weather; Dig in has the whole case either way
+        const why = sp.heat && sp.conditions ? explainPoint(sp.target, lng, lat, sp.conditions, sp.weights) : null
         const esc = (t: string) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] ?? c)
         const gameHtml = why
           ? `<div class="pp-game"><b class="pp-score pp-${spotGrade(why.score)}">${Math.round(why.score * 100)}</b><span>${esc(TARGET_NAMES[sp.target])} · ${esc(spotGradeWords(sp.target, why.score))}</span></div>`
