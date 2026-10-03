@@ -255,8 +255,10 @@ nothing that matters: at that cell the mechanical part stays under
     than a ring round the tree. It is a still frame with reduced motion.
   - The bands are relative strength, not a deer detection threshold:
     no published data maps these ratios to detection.
-  - **Conservative … aggressive** (2026-10-01): a slider on the scent
-    card, kept across sits. The middle is the model as above. Toward
+  - **Cone size, smaller … bigger** (2026-10-01, named conservative …
+    aggressive until 2026-10-03, which read either way): a slider on the
+    scent card and in the Scent button's hold menu, kept across sits.
+    Bigger is the conservative end below, smaller the aggressive one. The middle is the model as above. Toward
     conservative the three bands slide down together, to a third at the
     end (noticeable from 1.3% of the core), and the meander is 30% wider:
     the cone of a hunter who assumes scent counts sooner and the wind

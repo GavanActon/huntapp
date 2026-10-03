@@ -2,7 +2,7 @@ import { useEffect, type JSX } from 'react'
 import { useAppStore } from '../state/appStore'
 import { clockShort } from '../time'
 import { groundWind } from '../weather/micro/model'
-import { clearPlaced, drawnView, GROUND_H, groupSummary, personColour, reachLabel, SCENT_HEIGHTS, sittersLine, useScent, type ScentView } from '../weather/micro/scent'
+import { clearPlaced, coneSizeWord, drawnView, GROUND_H, groupSummary, personColour, reachLabel, SCENT_HEIGHTS, sittersLine, useScent, type ScentView } from '../weather/micro/scent'
 import { checkSpentAt, strongestCheck, useWindChecks } from '../weather/micro/windChecks'
 import { compass } from '../weather/openMeteo'
 import { useLookTick } from './useLookTick'
@@ -13,9 +13,9 @@ import './live.css'
  * the map (and both columns) still there. What the cone rests on, in
  * three lines: the wind at head height against the forecast, the wind
  * check pulling it while one does, and how wide and how far it goes. Then
- * the knobs: where you sit (the ground, or a stand), the cone's slider from
- * conservative (scent counts sooner, a bigger cone) to aggressive (only
- * what is strong), how it is drawn, and with a party placed, whose line it
+ * the knobs: where you sit (the ground, or a stand), the cone's size from
+ * smaller (only what is strong counts) to bigger (scent counts sooner, the
+ * wind wanders more), how it is drawn, and with a party placed, whose line it
  * is, Remove and Clear (+ Person is the live card's, and the map popup's
  * Scent). ‹ Back returns the live card.
  */
@@ -137,21 +137,23 @@ export default function ScentCard(): JSX.Element | null {
           </div>
         </div>
         <div className="sc-sec">
-          <span className="sc-sec-name">Cone</span>
+          <span className="sc-sec-name">
+            Cone size <span className="dim">· {coneSizeWord(risk)}</span>
+          </span>
           <input
-            className="sc-slider"
+            className="sc-slider sc-cone"
             type="range"
             min={0}
             max={1}
             step={0.05}
-            value={risk}
-            onChange={(e) => setRisk(Number(e.target.value))}
-            aria-label="Cone: conservative to aggressive"
-            aria-valuetext={risk < 0.3 ? 'conservative' : risk > 0.7 ? 'aggressive' : 'as modelled'}
+            value={1 - risk}
+            onChange={(e) => setRisk(1 - Number(e.target.value))}
+            aria-label="Cone size, smaller to bigger"
+            aria-valuetext={coneSizeWord(risk)}
           />
           <div className="sc-slider-ends">
-            <span>Conservative</span>
-            <span>Aggressive</span>
+            <span>Smaller</span>
+            <span>Bigger</span>
           </div>
         </div>
         <div className="sc-sec">

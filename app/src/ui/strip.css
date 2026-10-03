@@ -238,10 +238,9 @@
   color: var(--c-warn);
 }
 
-.wx-more {
-  align-self: flex-start;
-  padding-top: 2px;
-  font-size: calc(13px * var(--ui-scale));
+/* a newer HD forecast has landed since this one: worth the refresh */
+.wx-newer {
+  color: var(--c-accent);
 }
 
 .wxdetail-more .linklike {

@@ -6,7 +6,7 @@ import { selectedPlace, homePlace, usePlacesStore } from '../state/placesStore'
 import { useSpotsStore } from '../state/spotsStore'
 import { pickTarget } from '../state/viewsStore'
 import { useGpsStore } from '../tracking/gpsStore'
-import { cachedPointForecast, fetchPointForecast, hourAt, hourRow, isThunder, pointForecast, type HourRow, type PointForecast } from '../weather/openMeteo'
+import { cachedPointForecast, fetchPointForecast, hourAt, hourRow, isThunder, nextHrdpsRunMs, pointForecast, type HourRow, type PointForecast } from '../weather/openMeteo'
 import { forecastStale, onWeatherRefreshed, refreshWeather } from '../weather/refresh'
 import { skyGlyphSvg } from '../weather/skyGlyph'
 import { moonPhase } from '../weather/moon'
@@ -17,7 +17,7 @@ import { drainWindow, groundAirAround, loadMicro, onMicro, REGIME_TIP } from '..
 import { useWindChecks } from '../weather/micro/windChecks'
 import { activityBar } from '../spots/grades'
 import { FISH_TARGETS, HUNT_TARGETS, TARGET_NAMES, type Target } from '../spots/types'
-import { agoLabel, clockShort, dayLabel, dayShort, floorHourMs, hourAmPm, hourShort, startOfDayMs } from '../time'
+import { agoLabel, clockShort, dayLabel, dayShort, floorHourMs, hourAmPm, hourMinShort, hourShort, isToday, startOfDayMs } from '../time'
 import { IconCheck, IconChevronDown, IconChevronUp, IconDots, IconGrid, IconGridOff, IconHeat, IconPin, IconSun } from './icons'
 import AppMenu from './AppMenu'
 import { useMapUpdates } from '../offline/updates'
@@ -35,9 +35,9 @@ import './strip.css'
  * line marks the hours the ground's cold air drains. Tapping a day
  * or an hour sets the app-wide planning time; tapping the picked hour
  * again opens its detail inside the strip (gusts, feel, the quarry's
- * grade, the ground air), and `more ›` the rest (sun, legal light, moon,
- * the forecast's source and age). A press and hold on any hour picks it
- * and opens all of that at once. The strip is about the selected place,
+ * grade, the ground air, the sun, legal light, moon, the forecast's source
+ * and age, and when the next HD run lands). A press and hold on any hour
+ * picks it and opens its detail at once. The strip is about the selected place,
  * or the phone's position, or the camp.
  */
 
@@ -228,7 +228,6 @@ export default function WeatherStrip() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [quarryOpen, setQuarryOpen] = useState(false)
   const [detailMs, setDetailMs] = useState<number | null>(null)
-  const [more, setMore] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [groundTick, setGroundTick] = useState(0)
   const [drains, setDrains] = useState<DrainRun[]>([])
@@ -310,17 +309,12 @@ export default function WeatherStrip() {
   const activeHourMs = planTimeMs == null ? floorNow : floorHourMs(planTimeMs)
   const selDayMs = startOfDayMs(planTimeMs ?? now)
 
-  // a press and hold on an hour: pick it and open its detail whole, the
-  // `more ›` part already out. A tap on the picked hour stays brief.
+  // a press and hold on an hour: pick it and open its detail at once
   const heldHour = useRef<number | null>(null)
   const pressedHour = useRef(0)
   const hourHold = useHold(() => {
     const ms = pressedHour.current
-    if (ms === activeHourMs) {
-      setDetailMs(ms)
-      setMore(true)
-      return
-    }
+    if (ms === activeHourMs) return setDetailMs(ms)
     // a new pick: the effect below opens it once the hour has moved
     heldHour.current = ms
     setPlanTime(ms === floorNow ? null : ms)
@@ -331,7 +325,6 @@ export default function WeatherStrip() {
     const held = heldHour.current === activeHourMs
     heldHour.current = null
     setDetailMs(held ? activeHourMs : null)
-    setMore(held)
   }, [activeHourMs, stripOpen])
 
   // bring the picked hour into view when it lands off-screen (a day tap, the strip opening)
@@ -445,10 +438,8 @@ export default function WeatherStrip() {
   const wind = (k: number) => (units === 'imperial' ? Math.round(k * 0.621371) : Math.round(k))
 
   const tapHour = (ms: number) => {
-    if (ms === activeHourMs) {
-      setDetailMs((d) => (d === ms ? null : ms))
-      setMore(false)
-    } else setPlanTime(ms === floorNow ? null : ms)
+    if (ms === activeHourMs) setDetailMs((d) => (d === ms ? null : ms))
+    else setPlanTime(ms === floorNow ? null : ms)
   }
 
   const refresh = () => {
@@ -690,10 +681,7 @@ export default function WeatherStrip() {
                   {w}
                 </span>
               ))}
-              <button className="linklike wx-more" onClick={() => setMore((m) => !m)}>
-                {more ? 'less' : 'more ›'}
-              </button>
-              {more && <DetailMore f={f} ms={detail.ms} h={detail.h} dayIdx={detail.dayIdx} subject={subject} stale={stale} online={online} refreshing={refreshing} onRefresh={refresh} wind={wind} />}
+              <DetailRest f={f} ms={detail.ms} h={detail.h} dayIdx={detail.dayIdx} subject={subject} stale={stale} online={online} refreshing={refreshing} onRefresh={refresh} wind={wind} />
             </div>
           )}
         </>
@@ -707,9 +695,12 @@ export default function WeatherStrip() {
   )
 }
 
-/** Behind `more ›`: the sun, legal light, the moon, the day's wind, any
- *  rain or snow that hour, and where the forecast came from and when. */
-function DetailMore({
+/** The rest of the hour's detail, always out (no more/less, 2026-10-03):
+ *  the sun, legal light, the moon, the day's wind, any rain or snow that
+ *  hour, and where the forecast came from, when, and when the next HD
+ *  (HRDPS) run lands, so nobody refreshes for nothing. Refresh shows only
+ *  once a newer run is in. */
+function DetailRest({
   f,
   ms,
   h,
@@ -734,6 +725,10 @@ function DetailMore({
 }) {
   const sun = dayIdx >= 0 ? { sunriseMs: Date.parse(f.daily.sunrise[dayIdx]), sunsetMs: Date.parse(f.daily.sunset[dayIdx]) } : sunTimes(ms, subject.lat, subject.lon)
   const moon = moonPhase(ms)
+  // the next HRDPS run after this forecast was fetched; landed already (or the copy is stale), a refresh is worth it
+  const now = Date.now()
+  const next = nextHrdpsRunMs(f.fetchedAt)
+  const newer = stale || next <= now
   return (
     <div className="wxdetail-more">
       {sun.sunriseMs != null && sun.sunsetMs != null && (
@@ -753,11 +748,18 @@ function DetailMore({
       {h.precipMm > 0 && <span>Rain {h.precipMm.toFixed(1)} mm</span>}
       {h.snowCm > 0 && <span>Snow {h.snowCm.toFixed(1)} cm</span>}
       <span>
-        {h.hrdps ? 'HRDPS 2.5 km' : 'Open-Meteo blend'} · {agoLabel(Date.now() - f.fetchedAt)}
-        {stale ? ' · stale' : ''}
-        <button className="linklike" onClick={onRefresh} disabled={refreshing || !online}>
-          {refreshing ? 'Refreshing…' : 'Refresh'}
-        </button>
+        {h.hrdps ? 'HRDPS 2.5 km' : 'Open-Meteo blend'} · {agoLabel(now - f.fetchedAt)}
+        {newer ? (
+          <>
+            {' · '}
+            <span className="wx-newer">a newer HD forecast is in</span>
+            <button className="linklike" onClick={onRefresh} disabled={refreshing || !online}>
+              {refreshing ? 'Refreshing…' : online ? 'Refresh' : 'fetches with signal'}
+            </button>
+          </>
+        ) : (
+          ` · next HD ~${isToday(next) ? '' : `${dayShort(next)} `}${hourMinShort(next)}`
+        )}
       </span>
     </div>
   )

@@ -122,6 +122,15 @@ export function riskBands(risk: number): { strong: number; notice: number; trace
   return { strong: BANDS.strong * f, notice: BANDS.notice * f, trace: BANDS.trace * f, spread: 1 + 0.3 * (1 - 2 * r) }
 }
 
+/**
+ * The slider as the hunter sees it (2026-10-03): Cone size, Smaller … Bigger,
+ * which is `risk` turned round (conservative and aggressive read either
+ * way). A word for where it sits.
+ */
+export function coneSizeWord(risk: number): string {
+  return risk < 0.45 ? 'bigger' : risk > 0.55 ? 'smaller' : 'as modelled'
+}
+
 function applyRisk(risk: number): void {
   const b = riskBands(risk)
   STRONG = b.strong

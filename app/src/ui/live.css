@@ -154,7 +154,7 @@
   font-size: calc(13px * var(--ui-scale));
 }
 
-/* the cone's slider: conservative at the left, aggressive at the right */
+/* the card's sliders: the strength, and the cone's size (smaller at the left, bigger at the right) */
 .sc-slider {
   width: 100%;
   max-width: 320px;
@@ -164,6 +164,11 @@
   height: 4px;
   border-radius: 2px;
   background: linear-gradient(90deg, rgba(255, 157, 77, 0.55), rgba(var(--c-ink-rgb), 0.25));
+}
+
+/* the cone's size: the scent's orange grows toward Bigger */
+.sc-slider.sc-cone {
+  background: linear-gradient(90deg, rgba(var(--c-ink-rgb), 0.25), rgba(255, 157, 77, 0.55));
 }
 
 .sc-slider::-webkit-slider-thumb {

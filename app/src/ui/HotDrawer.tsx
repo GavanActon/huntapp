@@ -10,7 +10,7 @@ import { isFish } from '../spots/types'
 import { CONTOUR_INTERVALS, useAppStore, type HotId, type LayerOpacity } from '../state/appStore'
 import { useSpotsStore } from '../state/spotsStore'
 import { useGpsStore } from '../tracking/gpsStore'
-import { SCENT_HEIGHTS, useScent } from '../weather/micro/scent'
+import { coneSizeWord, SCENT_HEIGHTS, useScent } from '../weather/micro/scent'
 import { useWindChecks } from '../weather/micro/windChecks'
 import { HOT_DEFS } from './hotButtons'
 import { useTapOff } from './tapOff'
@@ -123,7 +123,8 @@ function WindFlowRows() {
   )
 }
 
-/** The cone's knobs only: + Person, Clear sitters and the card are the scent card's own (2026-10-02). */
+/** The cone's knobs only: + Person, Clear sitters and the card are the scent card's own (2026-10-02).
+ *  Cone size first: smaller (only strong scent counts) to bigger (it counts sooner, the wind wanders more). */
 function ScentRows() {
   const height = useScent((s) => s.height)
   const setHeight = useScent((s) => s.setHeight)
@@ -131,8 +132,31 @@ function ScentRows() {
   const setView = useScent((s) => s.setView)
   const strength = useScent((s) => s.strength)
   const setStrength = useScent((s) => s.setStrength)
+  const risk = useScent((s) => s.risk)
+  const setRisk = useScent((s) => s.setRisk)
   return (
     <>
+      <div className="hd-row">
+        <span>
+          Cone size <span className="dim">· {coneSizeWord(risk)}</span>
+        </span>
+        <div className="hd-range">
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={1 - risk}
+            onChange={(e) => setRisk(1 - Number(e.target.value))}
+            aria-label="Cone size, smaller to bigger"
+            aria-valuetext={coneSizeWord(risk)}
+          />
+          <div className="hd-ends">
+            <span>Smaller</span>
+            <span>Bigger</span>
+          </div>
+        </div>
+      </div>
       <Slider label="Strength" value={Math.round(strength * 100)} min={10} max={100} step={5} onChange={(v) => setStrength(v / 100)} />
       <Seg label="Height" value={height} options={HEIGHTS} onPick={setHeight} />
       <Seg label="View" value={view === 'people' ? 'cloud' : view} options={[['cloud', 'Cloud'], ['particles', 'Particles']] as const} onPick={setView} />

@@ -12,6 +12,7 @@ import { useGpsStore } from '../tracking/gpsStore'
 import { drainWindow } from '../weather/micro/model'
 import { clearPlaced, groupSummary, sittersLine, useScent, type Plume } from '../weather/micro/scent'
 import { checkSpentAt, strongestCheck, useWindChecks, verdict } from '../weather/micro/windChecks'
+import { useHeardForm } from './HeardCard'
 import { logWindHere } from './logWindHere'
 import { IconChevronDown, IconChevronUp } from './icons'
 import { useTapOff } from './tapOff'
@@ -84,6 +85,7 @@ export default function LiveCard(): JSX.Element | null {
   const plumes = useScent((s) => s.plumes)
   const group = useScent((s) => s.group)
   const adding = useScent((s) => s.adding)
+  const heardWaiting = useHeardForm((s) => s.placing)
   const checks = useWindChecks((s) => s.checks)
   const planTimeMs = useAppStore((s) => s.planTimeMs)
   const folded = useAppStore((s) => s.liveFolded)
@@ -104,7 +106,7 @@ export default function LiveCard(): JSX.Element | null {
   const live = k >= 0 ? people[k] : null
   const livePlume = k >= 0 ? (plumes[k] ?? null) : null
   const placed = people.filter((p) => !p.live)
-  const visible = cone || live != null || moves != null || placed.length > 0 || adding
+  const visible = cone || live != null || moves != null || placed.length > 0 || adding || heardWaiting
   useEffect(() => {
     if (!visible) setOpen(false)
   }, [visible])
@@ -127,6 +129,18 @@ export default function LiveCard(): JSX.Element | null {
     setOpen(false)
     setTopCard({ kind: 'scent' })
   }
+
+  // ---- Heard pressed: the next map tap is where it was (said, or the
+  // button just looks lit and the map does nothing anyone expects)
+  if (heardWaiting)
+    return (
+      <div className="livecard lc-party" ref={ref}>
+        <span className="lc-party-n">Tap the map where you heard it</span>
+        <button className="lc-act lc-act-on" onClick={() => useHeardForm.getState().arm()}>
+          cancel
+        </button>
+      </div>
+    )
 
   // ---- placing someone: the next map tap puts them there
   if (adding)

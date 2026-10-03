@@ -1458,6 +1458,25 @@
   display: block;
 }
 
+/* a slider with its two ends named under it (the scent's Cone size) */
+.hd-range {
+  flex: 1 1 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hotdrawer .hd-range input[type='range'] {
+  width: 100%;
+}
+
+.hd-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: calc(11px * var(--ui-scale));
+  color: var(--c-text-dim);
+}
+
 .hotdrawer input[type='range'] {
   width: 104px;
   min-width: 0;

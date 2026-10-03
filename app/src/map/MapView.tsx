@@ -345,12 +345,16 @@ export function applyLayerState(map: maplibregl.Map, layers: LayerVisibility, op
   }
   // a switch gone on before the first idle: its source gets its file now
   flushDeferredGeo(map, layers)
-  // the contour ink follows the base the view puts under it
-  if (map.getLayer('contour-line')) {
-    const ink = CONTOUR_INK[baseTone(layers)]
-    map.setPaintProperty('contour-line', 'line-color', ink.line)
-    map.setPaintProperty('contour-index', 'line-color', ink.index)
-    map.setPaintProperty('contour-label', 'text-color', ink.text)
-    map.setPaintProperty('contour-label', 'text-halo-color', ink.halo)
+  // the contour ink follows the base the view puts under it: the 1 m LiDAR
+  // lines and the region's 10 m ones alike (only the LiDAR ones followed, so
+  // zoomed out the Bow kept the Topo view's umber, near black on the bush:
+  // Gavan, 2026-10-03)
+  const ink = CONTOUR_INK[baseTone(layers)]
+  for (const p of ['contour', 'contour-wide']) {
+    if (!map.getLayer(`${p}-line`)) continue
+    map.setPaintProperty(`${p}-line`, 'line-color', ink.line)
+    map.setPaintProperty(`${p}-index`, 'line-color', ink.index)
+    map.setPaintProperty(`${p}-label`, 'text-color', ink.text)
+    map.setPaintProperty(`${p}-label`, 'text-halo-color', ink.halo)
   }
 }
