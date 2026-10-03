@@ -79,6 +79,17 @@ export function baseTone(layers: LayerVisibility): BaseTone {
   return 'imagery'
 }
 
+/** The ground under everything. The bush dark, except under the shade
+ *  alone (Terrain: no imagery, topo sheet or elevation colour), where it is
+ *  a mid grey: the DEM-drawn hillshade is highlights and shadows over
+ *  whatever is beneath, and over the near-black it went black past the
+ *  baked grey 1 m LiDAR shade (z13.5) and out to the region's edge (Gavan,
+ *  2026-10-02: zoomed out, the Terrain view was black). */
+const SHADE_GROUND = '#8a8f88'
+export function groundColour(layers: LayerVisibility): string {
+  return baseTone(layers) === 'shade' ? SHADE_GROUND : BUSH.background
+}
+
 export interface ContourInk {
   line: string
   index: string
@@ -163,6 +174,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
       },
     ]
   }
+  base = base.map((l) => (l.type === 'background' ? { ...l, paint: { ...l.paint, 'background-color': groundColour(o.layers) } } : l))
   const firstSymbol = base.findIndex((l) => l.type === 'symbol')
   const underLabels = firstSymbol === -1 ? base.length : firstSymbol
 

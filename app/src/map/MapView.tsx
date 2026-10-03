@@ -11,7 +11,7 @@ import { explainPoint } from '../spots/scoring'
 import { spotGrade, spotGradeWords } from '../spots/grades'
 import { useSpotsStore } from '../state/spotsStore'
 import { TARGET_NAMES } from '../spots/types'
-import { baseTone, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo } from './mapStyle'
+import { baseTone, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour } from './mapStyle'
 import { offlineComplete, registerAllDataFiles, sourceModes } from './pmtilesRegistry'
 import { attachTapWeather } from './tapWeather'
 import { closeOnTapOff } from './tapPopup'
@@ -312,6 +312,8 @@ const BASE_SATURATION: Partial<Record<keyof LayerOpacity, number>> = { satellite
 export function applyLayerState(map: maplibregl.Map, layers: LayerVisibility, opacity: LayerOpacity, saturation: Partial<Record<keyof LayerOpacity, number>> = {}) {
   if (!map.isStyleLoaded() && !map.getStyle()) return
   for (const l of map.getStyle().layers) {
+    // the ground under everything follows the base the view puts on it
+    if (l.type === 'background') map.setPaintProperty(l.id, 'background-color', groundColour(layers))
     const meta = (l as { metadata?: { group?: keyof LayerVisibility; opacityKey?: keyof LayerOpacity } }).metadata
     if (!meta?.group) continue
     const on = layers[meta.group]
