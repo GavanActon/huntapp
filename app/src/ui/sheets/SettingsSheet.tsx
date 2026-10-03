@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type JSX } from 'react'
 import { getMap } from '../../map/mapController'
-import { clearDevlog, devlogCount, devlogOn, lastUpload, onDevlog, setDevlog, shareDevlog, uploadDevlog } from '../../devlog'
+import { clearDevlog, devlogCount, devlogOn, lastUpload, onDevlog, setDevlog, shareDevlog, uploadDevlog, uploadSettings } from '../../devlog'
 import { BUILD } from '../../diagnostics'
 import { checkAppUpdate, reloadApp, useAppUpdate } from '../../offline/appUpdate'
 import { downloadFiles, mapsStatus, useDownloads } from '../../offline/downloads'
@@ -184,6 +184,36 @@ function DevlogRows(): JSX.Element {
         </div>
       )}
     </>
+  )
+}
+
+/** My settings › Send: the settings alone, no log and no position, for a
+ *  phone set up just so to become the app's defaults (devlog.ts). The
+ *  answer is a code to read out. */
+function SendSettingsRow({ online }: { online: boolean }): JSX.Element {
+  const [busy, setBusy] = useState(false)
+  const [note, setNote] = useState<string | null>(null)
+  const send = async () => {
+    setBusy(true)
+    setNote(null)
+    try {
+      setNote(`Sent · code ${await uploadSettings()}`)
+    } catch (e) {
+      setNote(`Not sent · ${e instanceof Error ? e.message : 'no answer'}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="st-row st-two">
+      <span>
+        <span>My settings</span>
+        <small className="dim">{note ?? 'settings only: no log, position, pins or tracks'}</small>
+      </span>
+      <button className="st-more" disabled={busy || !online} onClick={() => void send()}>
+        {busy ? 'Sending…' : 'Send'}
+      </button>
+    </div>
   )
 }
 
@@ -375,6 +405,7 @@ export default function SettingsSheet(): JSX.Element {
 
       <div className="st-sec">Something wrong?</div>
       <DevlogRows />
+      <SendSettingsRow online={online} />
       <details className="st-credits">
         <summary className="st-row">
           <span>Map credits</span>

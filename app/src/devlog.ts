@@ -248,10 +248,8 @@ async function snapshot(): Promise<string | undefined> {
     .catch(() => undefined)
 }
 
-/** Send the log to the API; the answer is a code to read out and a link. */
-export async function uploadDevlog(): Promise<Uploaded> {
-  flush()
-  const text = devlogText(await snapshot())
+/** Text to the API; the answer is a code to read out and a link. */
+async function post(text: string): Promise<{ code: string; url: string }> {
   const resp = await fetch(`${API}/devlog`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -259,12 +257,50 @@ export async function uploadDevlog(): Promise<Uploaded> {
     signal: AbortSignal.timeout(20_000),
   })
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-  const r = (await resp.json()) as { code: string; url: string }
+  return (await resp.json()) as { code: string; url: string }
+}
+
+/** Send the log to the API; the answer is a code to read out and a link. */
+export async function uploadDevlog(): Promise<Uploaded> {
+  flush()
+  const r = await post(devlogText(await snapshot()))
   const u: Uploaded = { code: r.code, url: r.url, at: Date.now() }
   write(LAST_KEY, JSON.stringify(u))
   devlog('log', `uploaded · ${u.code}`)
   emit()
   return u
+}
+
+/**
+ * The settings, whole, as the phone keeps them: a phone set up just so
+ * hands them over to become the app's defaults (Gavan, 2026-10-03). Only
+ * settings: the hunt log, tracks, pins, wind checks and the route's ends
+ * stay on the phone, and there is no position in it.
+ */
+const SETTINGS_KEYS = ['huntapp', 'huntapp-views', 'huntapp-spots', 'huntapp-scent', 'huntapp-hunting', 'huntapp-routes'] as const
+
+function settingsJson(): string {
+  const out: Record<string, unknown> = {}
+  for (const k of SETTINGS_KEYS) {
+    try {
+      const raw = localStorage.getItem(k)
+      if (!raw) continue
+      const v = JSON.parse(raw) as { state?: Record<string, unknown>; version?: number }
+      // the route keeps its ends (places); only how it is worked out is a setting
+      if (k === 'huntapp-routes' && v.state) v.state = { mode: v.state.mode, stayDry: v.state.stayDry }
+      out[k] = v
+    } catch {
+      /* unreadable: left out */
+    }
+  }
+  return JSON.stringify(out, null, 1)
+}
+
+/** Send the settings alone (no log, no position); the answer is a code. */
+export async function uploadSettings(): Promise<string> {
+  const r = await post(`Huntapp settings · ${dateLine()} · build ${__BUILD__.sha}\n\n${settingsJson()}\n`)
+  devlog('log', `settings sent · ${r.code}`)
+  return r.code
 }
 
 /** Hand the log to the share sheet as a file, or copy it where there is none. */
