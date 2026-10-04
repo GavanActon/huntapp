@@ -6,9 +6,11 @@ stability are applied in the browser (app/src/weather/micro/).
 
 Inputs:
   raw/mrdem-<region>.npz              NRCan MRDEM 30 m DTM (via rasters.fetch)
-  data/habitat-<region>.hab           cover, stand height, crown closure, and
-                                      canopySrc where the point cloud measured
-                                      the last two (build_habitat.measured_canopy)
+  data/habitat-<region>.hab           cover, stand height, crown closure, the
+                                      composition (conifer, hardwood, lead
+                                      species), and canopySrc where the point
+                                      cloud measured height and closure
+                                      (build_habitat.measured_canopy)
 
 Four parts, one per layer of docs/MICRO-WIND.md:
 
@@ -39,7 +41,10 @@ Four parts, one per layer of docs/MICRO-WIND.md:
 
 4. CANOPY. The head-height (2 m) fraction of the local 10 m wind, from
    stand height and closure (log profile to the canopy top, exponential
-   decay inside it: Cionco 1965), and tree height for edge shelter.
+   decay inside it: Cionco 1965), and tree height for edge shelter. The
+   fraction twice: in leaf, and with the leaves down (the hardwood and larch
+   share of the closure thinned to bare crowns), which the browser blends
+   between by the season.
 
 Output: app/public/data/micro-<region>.hab, the habitat file's format
 (gzip of u32 header length · JSON header · bands), same lattice.
@@ -304,6 +309,70 @@ def q_bearing(b: np.ndarray, none_mask: np.ndarray) -> np.ndarray:
     return np.where(none_mask | ~np.isfinite(b), 255, np.round(np.nan_to_num(b) % 360 / 360 * 250) % 250).astype(np.uint8)
 
 
+# ---------------------------------------------------------------- canopy
+
+# The closure a bare aspen or birch crown keeps of its closure in leaf: its
+# branches and stems. Leafless, a stand's plant area index is its wood's: 0.9–1.2
+# in a mature silver birch stand against 3.6–5.8 in full leaf (Lang & Pisek 2019,
+# Forestry Studies 70, hemispherical photos), 0.5 against about 5.6 in an Ontario
+# maple–aspen forest (Neumann, den Hartog & Shaw 1989, Agric. For. Meteorol. 45).
+# Seen from above as cover (Beer's law, G 0.5, the way closure is measured) that
+# leaves 0.2–0.5 of the cover in leaf; this is the middle. A first guess, for the
+# wind checks to move (docs/MICRO-WIND.md, Next steps 5).
+BARE = 0.35
+# Tamarack drops its needles too, but the habitat names only a stand's leading
+# species, not its share. Larch-led stands are about 60 % larch on both forest
+# maps (Pickle Lake's 41: median 60 %, mean 63 %; Lac Bailey's two, 55 and 65 %).
+# Larch further down a stand's list counts as conifer, in leaf all year.
+LARCH_LED = 0.6
+# A stand the forest map gives no composition is one the 2020 land cover alone
+# named (build_habitat.py), and its classes say the leaf type: needleleaf and
+# broadleaf forest are three quarters or more of their kind, mixed forest
+# neither. Each takes its class's middle, as qc_forest.py does for a cover type.
+CLASS_HARDWOOD = {CON_DENSE: 0.1, MIXED: 0.5, HARD: 0.9}
+
+
+def in_stand(h: np.ndarray, crown: np.ndarray, conifer: np.ndarray) -> np.ndarray:
+    """The head-height (2 m) fraction of the local 10 m wind in a stand h m
+    tall: log profile down to the top (d = 0.67 h), then the canopy's
+    exponential decay; the attenuation coefficient grows with the closure and
+    the conifer share, both in % (Cionco 1965: 1–4 across canopies)."""
+    zc0 = np.maximum(0.1 * h, 0.3)
+    d = 0.67 * h
+    f_top = np.log(np.maximum(h - d, 0.5) / zc0) / np.log(10 / zc0)
+    a = 1.0 + 2.2 * np.clip(crown / 100, 0.2, 1) + 0.6 * np.clip(conifer / 100, 0, 1)
+    return f_top * np.exp(-a * (1 - 2 / np.maximum(h, 2.1)))
+
+
+def leaves_down(cover: np.ndarray, crown: np.ndarray, conifer: np.ndarray, hardwood: np.ndarray, lead: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """The closure (%) and the conifer still in leaf (%) once the leaves are
+    down. A stand's deciduous share is its hardwood, plus the larch in a
+    larch-led stand, or its class's where the map gave no composition, and
+    that share of the closure thins to the bare crowns' BARE. Open ground,
+    water and a treed wetland of no known make-up keep their own."""
+    larch = np.where(lead == hb.LEAD_LA, np.minimum(LARCH_LED, conifer / 100), 0)
+    hw = np.clip(hardwood / 100 + larch, 0, 1)
+    unknown = (conifer + hardwood) == 0
+    for k, share in CLASS_HARDWOOD.items():
+        hw = np.where(unknown & (cover == k), share, hw)
+    return crown * (1 - hw * (1 - BARE)), conifer - 100 * larch
+
+
+def leaves_down_report(canopy: np.ndarray, bare: np.ndarray, crown: np.ndarray, crown_bare: np.ndarray, conifer: np.ndarray, cover: np.ndarray, h: np.ndarray, names: list[str]) -> str:
+    """The head-height fraction in leaf and with the leaves down over the
+    stands, by cover class, with the closure each reads and, for scale, an
+    open stand's (closure at the coefficient's 0.2 floor) of the same height
+    and conifer: the line the bake prints."""
+    open_stand = np.clip(in_stand(h, np.zeros_like(crown), conifer), 0.04, 0.95)
+    parts = []
+    for k in (TREED_WET, CON_DENSE, CON_OPEN, MIXED, HARD):
+        m = (cover == k) & (h > 0)
+        if m.sum() < 10:
+            continue
+        parts.append(f"{names[k]} {canopy[m].mean():.3f}->{bare[m].mean():.3f} (closure {crown[m].mean():.0f}->{crown_bare[m].mean():.0f}%, open {open_stand[m].mean():.3f})")
+    return f"  canopy with the leaves down (bare crowns keep {BARE:g} of their closure), in stands by cover class, in leaf->bare: " + "; ".join(parts)
+
+
 def main() -> None:
     t0 = time.time()
     print(f"microclimate on the habitat lattice {COLS}×{ROWS} ({DX:.0f}×{DY:.0f} m)")
@@ -421,17 +490,19 @@ def main() -> None:
     # speed ratio's.
     z0l = np.maximum(z0_class, 0.01)
     f_open = np.log(2 / z0l) / np.log(10 / z0l)
-    # in a stand: log profile down to the top (d = 0.67 h), then the
-    # canopy's exponential decay; the attenuation coefficient grows with
-    # closure and with conifer (Cionco 1965: 1–4 across canopies)
-    zc0 = np.maximum(0.1 * h, 0.3)
-    d = 0.67 * h
-    f_top = np.log(np.maximum(h - d, 0.5) / zc0) / np.log(10 / zc0)
-    a = 1.0 + 2.2 * np.clip(crown / 100, 0.2, 1) + 0.6 * np.clip(conifer / 100, 0, 1)
-    f_in = f_top * np.exp(-a * (1 - 2 / np.maximum(h, 2.1)))
-    canopy = np.where(h > 0, f_in, f_open)
+    canopy = np.where(h > 0, in_stand(h, crown, conifer), f_open)
     canopy = np.clip(canopy, 0.04, 0.95)
     print(f"  canopy: head-height fraction {canopy[h > 0].mean():.2f} in stands, {canopy[(h == 0) & ~water].mean():.2f} in the open · {time.time() - t0:.0f}s")
+    # The same with the leaves down. The closure is leaf-on, the point cloud's
+    # (both flown in leaf) and the forest maps' (photographed in summer)
+    # alike, and a hunt runs on past leaf drop, when a hardwood stand lets far
+    # more of the wind through. The browser blends canopy toward this by the
+    # season. Open ground keeps its fraction. The roughness above (z0, the
+    # speed ratio) stays leaf-on: docs/MICRO-WIND.md, Limits.
+    crown_bare, evergreen = leaves_down(cover, crown, conifer, hab["hardwood"], hab["lead"])
+    canopy_bare = np.clip(np.where(h > 0, in_stand(h, crown_bare, evergreen), f_open), 0.04, 0.95)
+    assert (canopy_bare >= canopy).all(), "leaves down must not shelter a stand more than leaves on"
+    print(leaves_down_report(canopy, canopy_bare, crown, crown_bare, conifer, cover, h, header["coverNames"]))
 
     # ---- assemble ----
     def qb(a):
@@ -457,6 +528,12 @@ def main() -> None:
         ("breezeMax", np.clip(np.round(breeze_max * 100), 0, 255).astype(np.uint8), 0.01, "strongest lake breeze the nearest big lake drives here, m/s"),
         ("rel", np.clip(np.round(rel * 2), -127, 127).astype(np.int8), 0.5, "height over the ~500 m around, m (negative = low ground)"),
         ("canopy", np.round(canopy * 250).astype(np.uint8), 1 / 250, "head-height (2 m) fraction of the local 10 m wind"),
+        (
+            "canopyBare",
+            np.round(canopy_bare * 250).astype(np.uint8),
+            1 / 250,
+            f"head-height (2 m) fraction of the local 10 m wind with the leaves down: the hardwood and larch share of the closure thinned to bare crowns ({BARE:g} of it); the browser blends canopy toward it after leaf drop",
+        ),
         ("treeH", np.clip(np.round(h), 0, 255).astype(np.uint8), 1, "stand height m (0 open)"),
     ]
     out_header = {
@@ -472,7 +549,7 @@ def main() -> None:
         "coverNames": header["coverNames"],
         "landformNames": header["landformNames"],
         "lakes": [],
-        "model": {"z0Ref": Z0_REF, "zBlend": Z_BLEND, "lidNeutral": LID_NEUTRAL, "lidStable": LID_STABLE},
+        "model": {"z0Ref": Z0_REF, "zBlend": Z_BLEND, "lidNeutral": LID_NEUTRAL, "lidStable": LID_STABLE, "bare": BARE, "larchLed": LARCH_LED},
         "bands": [],
     }
     payload = bytearray()
@@ -486,7 +563,7 @@ def main() -> None:
     out.write_bytes(gzip.compress(raw, 9))
     print(f"wrote {out.name}: {len(raw) / 1e6:.1f} MB raw, {out.stat().st_size / 1e6:.2f} MB gzipped, {len(bands)} bands · {time.time() - t0:.0f}s")
     # the solve's raw fields, for looking into it; a scratch run keeps its own
-    np.savez_compressed((OUT_DIR if SCRATCH else CACHE_DIR) / f"micro-debug-{REGION['id']}.npz", dem=dem.astype(np.float32), pool=pool, kat=kat.astype(np.float32), rel=rel.astype(np.float32), breeze=breeze_max.astype(np.float32), canopy=canopy.astype(np.float32), s=s.astype(np.float32), **{f"n{i}": a.astype(np.float32) for i, a in enumerate(neutral)}, **{f"s{i}": a.astype(np.float32) for i, a in enumerate(stable)})
+    np.savez_compressed((OUT_DIR if SCRATCH else CACHE_DIR) / f"micro-debug-{REGION['id']}.npz", dem=dem.astype(np.float32), pool=pool, kat=kat.astype(np.float32), rel=rel.astype(np.float32), breeze=breeze_max.astype(np.float32), canopy=canopy.astype(np.float32), canopyBare=canopy_bare.astype(np.float32), s=s.astype(np.float32), **{f"n{i}": a.astype(np.float32) for i, a in enumerate(neutral)}, **{f"s{i}": a.astype(np.float32) for i, a in enumerate(stable)})
 
 
 if __name__ == "__main__":

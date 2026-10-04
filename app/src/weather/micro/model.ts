@@ -1,6 +1,7 @@
 import { microFile } from '../../config'
 import { devlog } from '../../devlog'
 import { loadBandFile, type Band, type Habitat } from '../../spots/habitatGrid'
+import { useAppStore } from '../../state/appStore'
 import { homePlace } from '../../state/placesStore'
 import { useSpotsStore } from '../../state/spotsStore'
 import { estimateWaterTemp } from '../../spots/conditions'
@@ -11,6 +12,7 @@ import { sunPosition } from '../sun'
 import { onWeatherGrid, windGridInfo, windSampler } from '../windGrid'
 import { checkWeight, metresBetween, STRENGTH_KMH, useWindChecks } from './windChecks'
 import { biasFor, biasMatters, biasWords, learnBiases, type Bias, type Lesson } from './bias'
+import { leavesDown, leavesNote } from './leaves'
 
 /**
  * The ground wind: the air a hunter feels at head height, at a point and a
@@ -22,7 +24,8 @@ import { biasFor, biasMatters, biasWords, learnBiases, type Bias, type Lesson } 
  *   thermals   cold-air drainage and pooling after the sun goes and the
  *              sky clears; upslope flow on sun-heated slopes; lake and
  *              land breezes from the land–lake temperature contrast
- *   canopy     the head-height fraction under the trees, the shelter and
+ *   canopy     the head-height fraction under the trees, the hardwoods in
+ *              leaf or bare by the season (leaves.ts), the shelter and
  *              eddies downwind of a tree line, and the channelling along a
  *              slot between two of them
  *   checks     the hunter's own wind checks nearby, blended in
@@ -124,7 +127,11 @@ const K_BREEZEMAX = 16
 const K_REL = 17
 const K_CANOPY = 18
 const K_TREEH = 19
-const BAND_NAMES = ['nUe', 'nVe', 'nUn', 'nVn', 'sUe', 'sVe', 'sUn', 'sVn', 'katDir', 'katSpd', 'pool', 'drainAcc', 'thSlope', 'thAspect', 'onshore', 'shoreDist', 'breezeMax', 'rel', 'canopy', 'treeH']
+// the canopy with the hardwoods bare (leaves.ts). A grid baked before it
+// has none, and then the canopy stays in leaf all year, as it always did
+const K_CANOPY_BARE = 20
+const BAND_NAMES = ['nUe', 'nVe', 'nUn', 'nVn', 'sUe', 'sVe', 'sUn', 'sVn', 'katDir', 'katSpd', 'pool', 'drainAcc', 'thSlope', 'thAspect', 'onshore', 'shoreDist', 'breezeMax', 'rel', 'canopy', 'treeH', 'canopyBare']
+let hasBare = false
 
 export function loadMicro(): Promise<Habitat | null> {
   if (grid) return Promise.resolve(grid)
@@ -134,10 +141,15 @@ export function loadMicro(): Promise<Habitat | null> {
       if (!r) return null
       const g = r.grid
       BAND_NAMES.forEach((n, k) => {
-        if (!g.has(n)) throw new Error(`micro grid: no band ${n}`)
+        if (!g.has(n)) {
+          if (k === K_CANOPY_BARE) return
+          throw new Error(`micro grid: no band ${n}`)
+        }
         bands[k] = g.raw(n)
         scales[k] = g.scale(n)
       })
+      hasBare = g.has('canopyBare')
+      if (!hasBare) devlog('wind', 'micro grid has no canopyBare: the canopy stays in leaf whatever the date')
       grid = g
       slotAxis = null
       for (const cb of listeners) cb()
@@ -158,6 +170,8 @@ export function microGrid(): Habitat | null {
   return grid
 }
 
+/** Called when the micro grid lands, and when the leaves knob moves under
+ *  a loaded one: either way the ground wind is not what it was. */
 export function onMicro(cb: () => void): () => void {
   listeners.add(cb)
   return () => listeners.delete(cb)
@@ -182,6 +196,8 @@ interface Ctx {
   checks: ReturnType<typeof useWindChecks.getState>['checks']
   /** what the season's checks have taught, by lesson (bias.ts) */
   biases: Map<Lesson, Bias>
+  /** how far the hardwoods' leaves are down, 0 in leaf to 1 bare (leaves.ts) */
+  leaves: number
 }
 
 function makeCtx(ms: number): Ctx {
@@ -205,6 +221,7 @@ function makeCtx(ms: number): Ctx {
     gf: h && Number.isFinite(h.gustKmh) ? clamp(h.gustKmh / Math.max(1, h.windKmh), 1, 3) : 1,
     checks: useWindChecks.getState().checks,
     biases: learnBiases(useWindChecks.getState().checks, ms),
+    leaves: leavesDown(ms),
   }
 }
 
@@ -219,6 +236,23 @@ function b(k: number, i: number): number {
 function bearing(k: number, i: number): number | null {
   const v = bands[k][i]
   return v === 255 ? null : v * BEARING_Q
+}
+
+/** The head-height fraction of a cell: the baked canopy, in leaf, moved
+ *  toward the bare-branch one as far as the leaves are down. With them on,
+ *  or a grid without the bare band, it is the canopy exactly. */
+function canopyAt(i: number, leaves: number): number {
+  const c = b(K_CANOPY, i)
+  return leaves > 0 && hasBare ? c + (b(K_CANOPY_BARE, i) - c) * leaves : c
+}
+
+/** The bare canopy lets through a fifth more wind or better (and a point
+ *  at least, past the band's rounding): the leaves are worth a word there. */
+function leavesMatter(i: number): boolean {
+  if (!hasBare) return false
+  const c = b(K_CANOPY, i)
+  const bare = b(K_CANOPY_BARE, i)
+  return bare >= 1.2 * c && bare - c >= 0.01
 }
 
 function vec(kmh: number, toward: number): [number, number] {
@@ -399,7 +433,8 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
 
   // ---- canopy and edges ----
   const th = b(K_TREEH, i)
-  const cf = b(K_CANOPY, i)
+  // the leaves: the point clouds measured the hardwoods in leaf
+  const cf = canopyAt(i, ctx.leaves)
   let shelter = 1
   let swirl = false
   let slotSwirl = false
@@ -663,7 +698,11 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     if (kat > 0.3) reasons.push(`Cold air drains toward the ${compass(katTo)} at about ${kat.toFixed(1)} km/h${pool > 0.3 || lowness > 0.25 ? ', settling here: scent sits and creeps toward the outlet' : ': scent goes with it, downhill'}`)
     if (ana > 0.3) reasons.push(`The sun heats this slope: air rises upslope toward the ${compass(anaTo)} at about ${ana.toFixed(1)} km/h`)
     if (brz > 0.3) reasons.push(brzKind === 'lake' ? `Land warmer than the lake by ${Math.round(lay.t2 - ctx.waterC)}°: an onshore lake breeze toward the ${compass(brzTo)}` : `Land colder than the lake: air drifts off the shore toward the ${compass(brzTo)}`)
-    if (inTrees) reasons.push(`In ${Math.round(th)} m trees: head-height wind about ${Math.round(cf * 100)}% of the wind over them`)
+    if (inTrees) {
+      // the leaves get a word where the bare canopy lets through noticeably more, once they are mostly down
+      const note = ctx.leaves > 0.5 && leavesMatter(i) ? leavesNote(ctx.ms) : null
+      reasons.push(`In ${Math.round(th)} m trees: head-height wind about ${Math.round(cf * 100)}% of the wind over them${note ? `, ${note}` : ''}`)
+    }
     if (edgeNote) reasons.push(edgeNote[0].toUpperCase() + edgeNote.slice(1))
     if (applied) reasons.push(biasWords(lessonBias, lesson))
     if (lay.ensDirSd != null && lay.ensDirSd > 35 && fracMech > 0.4) reasons.push(`Forecast models disagree on the direction (±${Math.round(lay.ensDirSd)}°)`)
@@ -752,6 +791,12 @@ listeners.add(bump)
 onProfile(bump)
 onWeatherGrid(bump)
 useWindChecks.subscribe(bump)
+// the leaves knob moves the head-height wind under every hardwood: to all
+// that reads the ground wind (the cones, the heat map, the flow, the cards)
+// it is as good as a new grid
+useAppStore.subscribe((s, prev) => {
+  if (s.leaves !== prev.leaves && grid) for (const cb of listeners) cb()
+})
 
 let memo: { ms: number; version: number; ctx: Ctx; kmh: Float32Array; dir: Float32Array; sig: Float32Array; reg: Uint8Array } | null = null
 const REGIMES: Regime[] = ['wind', 'drainage', 'pooled', 'upslope', 'lakeBreeze', 'landBreeze', 'calm']
@@ -979,12 +1024,19 @@ export function drainWindow(lon: number, lat: number, dayStartMs: number): { sta
   return { startMs, endMs }
 }
 
-/** The baked values under a point, for the dev console. */
-export function microCell(lon: number, lat: number): Record<string, number> | null {
+/** The baked values under a point, for the dev console; with a time, the
+ *  leaves then and the head-height fraction the model reads for them. */
+export function microCell(lon: number, lat: number, ms?: number): Record<string, number> | null {
   const g = grid
   const i = g ? g.index(lon, lat) : -1
   if (!g || i < 0) return null
   const out: Record<string, number> = {}
-  BAND_NAMES.forEach((n, k) => (out[n] = Math.round(b(k, i) * 100) / 100))
+  BAND_NAMES.forEach((n, k) => {
+    if (bands[k]) out[n] = Math.round(b(k, i) * 100) / 100
+  })
+  if (ms != null) {
+    out.leaves = Math.round(leavesDown(ms) * 100) / 100
+    out.canopyNow = Math.round(canopyAt(i, leavesDown(ms)) * 1000) / 1000
+  }
   return out
 }

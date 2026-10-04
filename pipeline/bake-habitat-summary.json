@@ -5,11 +5,11 @@
   "open wetland": 30174,
   "treed wetland": 7,
   "dense conifer": 128954,
-  "open conifer": 32503,
-  "mixedwood": 71593,
-  "hardwood": 25627,
+  "open conifer": 32481,
+  "mixedwood": 71592,
+  "hardwood": 25626,
   "shrub / alder": 10912,
-  "young regen": 2078,
+  "young regen": 2102,
   "rock / barren": 0,
   "road": 4457
  },
@@ -2023,5 +2023,87 @@
    ],
    "depthModel": null
   }
- ]
+ ],
+ "canopy": {
+  "from": "Ontario MNR FRI leaf-on SPL LiDAR, White Lake 2021 (flown late Sept 2021)",
+  "lidarCells": 35591,
+  "lidarShareOfLand": 0.114,
+  "lidarShareOfCoreLand": 0.455,
+  "meanHeightM": {
+   "inventory": 10.3,
+   "lidar": 14.0
+  },
+  "meanClosurePct": {
+   "inventory": 45.4,
+   "lidar": 67.0
+  },
+  "inStands": {
+   "cells": 24520,
+   "meanHeightM": {
+    "inventory": 14.8,
+    "lidar": 15.7
+   },
+   "meanClosurePct": {
+    "inventory": 64.8,
+    "lidar": 70.2
+   }
+  },
+  "byCover": {
+   "dense conifer": {
+    "cells": 15113,
+    "heightM": [
+     14.6,
+     15.7
+    ],
+    "closurePct": [
+     69.2,
+     69.4
+    ]
+   },
+   "open conifer": {
+    "cells": 3778,
+    "heightM": [
+     13.5,
+     13.4
+    ],
+    "closurePct": [
+     46.9,
+     57.7
+    ]
+   },
+   "mixedwood": {
+    "cells": 4466,
+    "heightM": [
+     15.0,
+     17.1
+    ],
+    "closurePct": [
+     64.5,
+     79.8
+    ]
+   },
+   "hardwood": {
+    "cells": 1163,
+    "heightM": [
+     20.3,
+     18.7
+    ],
+    "closurePct": [
+     67.4,
+     84.2
+    ]
+   }
+  },
+  "gapsToRegen": 24,
+  "gapsFrom": {
+   "dense conifer": 0,
+   "open conifer": 22,
+   "mixedwood": 1,
+   "hardwood": 1
+  },
+  "coreUnder6m": {
+   "opened": 53,
+   "walled": 48
+  }
+ }
 }

@@ -167,6 +167,10 @@ export const FLOW_TUNING_DEFAULTS: FlowTuning = { windDensity: 2500, windSpeed: 
 /** A size setting's stops, the text's and the wind streaks': auto follows the phone (text) or the text (wind). */
 export type SizeStop = 'auto' | 'standard' | 'large' | 'larger'
 
+/** The hardwoods' leaves in the ground wind: by the date (auto), or held
+ *  on or down by hand for a fall that runs early or late (weather/micro/leaves.ts). */
+export type LeavesMode = 'auto' | 'on' | 'down'
+
 /** Your marks on the map, each shown or not from the strip's marks button
  *  (a press and hold lists them): your pins, the preset places (camp, the
  *  lakes), the walked tracks, the hunt log's game dots and the wind checks. */
@@ -259,6 +263,9 @@ export interface AppState {
   /** Which wind the flow layer draws: the ground model at head height, or HRDPS at 10 m. */
   windLevel: 'ground' | 'forecast'
   setWindLevel: (v: 'ground' | 'forecast') => void
+  /** The hardwoods' leaves in the ground wind, so the scent cone and the heat map too; persisted */
+  leaves: LeavesMode
+  setLeaves: (v: LeavesMode) => void
   textSize: SizeStop
   setTextSize: (v: SizeStop) => void
   /** Outdoor: opaque bone chrome and dark ink for sun on the phone; persisted */
@@ -345,6 +352,8 @@ export const useAppStore = create<AppState>()(
       setFlowTuning: (t) => set((s) => ({ flowTuning: { ...s.flowTuning, ...t } })),
       windLevel: 'ground',
       setWindLevel: (windLevel) => set({ windLevel }),
+      leaves: 'auto',
+      setLeaves: (leaves) => set({ leaves }),
       textSize: 'auto',
       setTextSize: (textSize) => set({ textSize }),
       outdoor: false,
@@ -414,6 +423,7 @@ export const useAppStore = create<AppState>()(
         windFlowOpacity: s.windFlowOpacity,
         flowTuning: s.flowTuning,
         windLevel: s.windLevel,
+        leaves: s.leaves,
         textSize: s.textSize,
         outdoor: s.outdoor,
         stripOpen: s.stripOpen,

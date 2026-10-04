@@ -144,11 +144,13 @@ Sherman (1978) and WindNinja's conservation-of-mass solver (Forthofer et al.
   open here even where the point cloud finds trees, as it does in most of
   Pickle Lake's measured open wetland (10 m at about half cover), and only
   the roughness (§2) sees them. Lac Bailey's grids carry phases 2 and 3
-  since 2026-10-04; Pickle Lake's published ones wait for their rebake,
-  and for Gavan's word on the leaf-on closure the flight gives hardwood
-  and mixedwood, which moves Spots through the ground wind
-  (MICRO-WIND-LIDAR.md, Phase 2, As built).
-- **Head-height fraction** of the local 10 m wind:
+  since 2026-10-04; Pickle Lake's published ones wait for their rebake.
+  The closure is leaf-on, the point clouds' and the forest maps' alike:
+  after leaf drop the canopy is the leaves-down fraction below (Gavan's
+  call on the leaf-on closure, 2026-10-04: MICRO-WIND-LIDAR.md, Phase 2,
+  As built).
+- **Head-height fraction** of the local 10 m wind (the micro grid's
+  `canopy`, and `canopyBare` with the leaves down):
   - Open ground: log law 2 m over 10 m (~0.7), thinned by up to 45% in a
     stable surface layer (Monin–Obukhov). It takes the cover class's z0,
     not the measured one: the law needs 2 m well above the roughness, and
@@ -158,6 +160,50 @@ Sherman (1978) and WindNinja's conservation-of-mass solver (Forthofer et al.
     exponential decay inside, `exp(−a(1 − z/h))` (Cionco 1965; Finnigan
     2000). The coefficient a runs 1–3.8 with crown closure and conifer
     share. Dense spruce leaves ~5–15% of the wind at 2 m.
+  - **Leaves down** (`canopyBare`, 2026-10-04): both point clouds were
+    flown in leaf and both forest maps read off summer photos, and a fall
+    hunt runs past leaf drop, when a hardwood stand lets far more of the
+    wind through. So the bake gives the fraction twice: `canopy` in leaf,
+    and `canopyBare`, the same formula on the closure with the leaves
+    down, which the browser blends toward as they come down (mid-October
+    by default).
+    - The deciduous share of a stand is its hardwood %, plus the larch in
+      a larch-led stand: tamarack drops its needles, and the habitat knows
+      only the lead species, so a larch-led stand counts as 60% larch
+      (both forest maps' larch-led stands, median 60%). Larch further down
+      a stand's list stays in leaf. A stand the 2020 land cover alone
+      names (no forest-map polygon, about half of Pickle Lake's
+      mixedwood) takes its class's middle: needleleaf 0.1, mixed 0.5,
+      broadleaf 0.9.
+    - That share of the closure thins to 0.35 of itself (`BARE`), the
+      cover bare branches and stems keep: leafless, a stand's plant area
+      index is its wood's, 0.9–1.2 in a silver birch stand against 3.6–5.8
+      in leaf (Lang & Pisek 2019) and 0.5 against about 5.6 in an Ontario
+      maple–aspen forest (Neumann et al. 1989), which seen from above is
+      0.2–0.5 of the cover in leaf. The larch's share also leaves the
+      conifer term. Open ground, water and a treed wetland of no known
+      make-up keep their fraction.
+    - Measured hardwood goes from 0.053 to 0.119 at Pickle Lake and from
+      0.056 to 0.130 at Lac Bailey (an open stand of the same heights:
+      0.174 and 0.167), measured mixedwood from 0.053 to 0.082 and 0.064
+      to 0.086 (0.153 and 0.131 open), dense conifer from 0.053 to 0.059
+      and 0.069 to 0.072. So with the
+      leaves down the head-height wind in hardwood is ×2.3–2.5 (the
+      median), in mixedwood ×1.3–1.6, in dense conifer under ×1.1.
+      Roughness stays leaf-on (Limits).
+    - In the browser (`weather/micro/leaves.ts`) the head-height fraction
+      is `canopy + (canopyBare − canopy) × leafOff`. leafOff goes by the
+      local date:
+      - full leaf until 20 September;
+      - falling to bare by 15 October and bare through the winter;
+      - the leaves come back from 10 May to 5 June.
+      An area file may set its own four days (`leaves`). The ground wind,
+      the scent cone, the wind flow, the routes' wind and Spots all read
+      through it. The Wind flow button's hold drawer has **Leaves: Auto ·
+      On · Down** for a fall that runs early or late. In trees, the reason
+      says "leaves down" once more than half are down and the bare crowns
+      let noticeably more wind through. A micro grid without `canopyBare`
+      reads in leaf, as before.
 - **Tree-line shelter** (browser): looking upwind from an open cell for the
   first stand over 6 m:
   - Within 3 h: shelter 0.25 and swirl.
@@ -487,6 +533,15 @@ nothing that matters: at that cell the mechanical part stays under
   the slot and tree-line rules. Only the speed ratio sees the trees.
   Reading those cells as treed would change the slots and the shelter as
   well, the 2026-09-29 slot among them, and wants checks there first.
+- Leaves down (§4) is the literature's, not a check: `BARE` and the larch
+  share are first guesses, and larch further down a stand's list stays in
+  leaf. The roughness (z0 and the 10 m speed ratio, §2) stays leaf-on, a
+  known simplification. Thinning it by the phase 3 formula on the bare
+  closure would put the 10 m wind in measured hardwood up 4–7% (the
+  median; mixedwood 3%), small next to ×2.3–2.5 at head height, and
+  whether a stand is smoother bare is not settled: its displacement
+  height falls with the leaves, its roughness length not simply (Nakai et
+  al. 2008).
 - Scent off a drop (§7) is a rule, not a solve: the share of a drop a
   particle keeps and the floor at its release height are first guesses
   with no check behind them yet. So is the water's part: over open water
@@ -517,10 +572,12 @@ nothing that matters: at that cell the mechanical part stays under
 5. Lessons that fit a knob, not a turn: the slot gain, the inversion's
    timing, the canopy factor, each from the residuals of the checks that
    layer decided. The per-regime turn is the first step toward it. The
-   canopy factor's first case is waiting: both point clouds were flown in
-   leaf, so the hardwood and mixedwood closure they give reads too closed
-   for a fall hunt (the habitat's `canopySrc` note points here;
-   MICRO-WIND-LIDAR.md, Phase 2, As built).
+   canopy factor's first knob is `BARE`, the share of its closure a bare
+   crown keeps (§4, Leaves down): the leaf-on closure of both point clouds
+   is now thinned after leaf drop by a literature value, and checks in
+   hardwood and mixedwood after the leaves are down would fit it (the
+   habitat's `canopySrc` note points here; MICRO-WIND-LIDAR.md, Phase 2,
+   As built).
 6. The model asking: when two regimes are close in a cell (drainage against
    the regional wind at dusk) a nudge to check the wind there, since those
    transition checks are the ones that fit timing.
@@ -545,10 +602,20 @@ nothing that matters: at that cell the mechanical part stays under
 - Forthofer, J.M., Butler, B.W., Wagenbrenner, N.S. 2014. A comparison of
   three approaches for simulating fine-scale surface winds in support of
   wildland fire management. Part I. Int. J. Wildland Fire 23:969–981.
+- Lang, M., Pisek, J. 2019. Tracking the long-term structure changes of a
+  mature deciduous broadleaf forest stand using digital hemispherical
+  photography. Forestry Studies 70:80–87.
 - Mahrt, L. 1982. Momentum balance of gravity flows. J. Atmos. Sci.
   39:2701–2711.
 - Mahrt, L. 2007. Weak-wind mesoscale meandering in the nocturnal boundary
   layer. Environ. Fluid Mech. 7:331–347.
+- Nakai, T., et al. 2008. Parameterisation of aerodynamic roughness over
+  boreal, cool- and warm-temperate forests. Agric. For. Meteorol.
+  148:1916–1925.
+- Neumann, H.H., den Hartog, G., Shaw, R.H. 1989. Leaf area measurements
+  based on hemispheric photographs and leaf-litter collection in a
+  deciduous forest during autumn leaf-fall. Agric. For. Meteorol.
+  45:325–345.
 - Oke, T.R. 1988. Street design and urban canopy layer climate. Energy and
   Buildings 11:103–113.
 - Sandu, I., Beljaars, A., Bechtold, P., Mauritsen, T., Balsamo, G. 2013.

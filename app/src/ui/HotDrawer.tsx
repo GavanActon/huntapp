@@ -7,9 +7,10 @@ import { snapshot } from '../log/snapshot'
 import { useMeasureStore } from '../measure/measureStore'
 import { campEnd, clearRoutes, useRoutes, youEnd } from '../routes/routeStore'
 import { isFish } from '../spots/types'
-import { CONTOUR_INTERVALS, useAppStore, type HotId, type LayerOpacity } from '../state/appStore'
+import { CONTOUR_INTERVALS, useAppStore, type HotId, type LayerOpacity, type LeavesMode } from '../state/appStore'
 import { useSpotsStore } from '../state/spotsStore'
 import { useGpsStore } from '../tracking/gpsStore'
+import { leavesWord } from '../weather/micro/leaves'
 import { coneSizeWord, SCENT_HEIGHTS, useScent } from '../weather/micro/scent'
 import { useWindChecks } from '../weather/micro/windChecks'
 import { HOT_DEFS } from './hotButtons'
@@ -34,10 +35,13 @@ function Act({ children, onTap, disabled, on }: { children: ReactNode; onTap: ()
   )
 }
 
-function Seg<T extends string | number>({ label, value, options, onPick, off }: { label: string; value: T | null; options: readonly Opt<T>[]; onPick: (v: T) => void; off?: T[] }) {
+function Seg<T extends string | number>({ label, note, value, options, onPick, off }: { label: string; note?: string; value: T | null; options: readonly Opt<T>[]; onPick: (v: T) => void; off?: T[] }) {
   return (
     <div className="hd-row">
-      <span>{label}</span>
+      <span>
+        {label}
+        {note && <span className="dim"> · {note}</span>}
+      </span>
       <div className="seg" role="radiogroup" aria-label={label}>
         {options.map(([v, name]) => (
           <button key={String(v)} className={value === v ? 'seg-on' : ''} role="radio" aria-checked={value === v} disabled={off?.includes(v)} onClick={() => onPick(v)}>
@@ -89,7 +93,8 @@ const STREAK_W: Record<(typeof STREAK_SIZES)[number], number> = { auto: 0, stand
 
 /** The wind's knobs, all of them here (moved out of Settings, 2026-10-03).
  *  Turbulence: the eddies the ground model finds behind tree lines, in small
- *  openings and slots, drawn swirling; off, the straight drift. */
+ *  openings and slots, drawn swirling; off, the straight drift. Leaves: the
+ *  ground model's own, so it moves everything that reads the ground wind. */
 function WindFlowRows() {
   const level = useAppStore((s) => s.windLevel)
   const setLevel = useAppStore((s) => s.setWindLevel)
@@ -119,8 +124,28 @@ function WindFlowRows() {
           ))}
         </div>
       </div>
+      <LeavesRow />
     </>
   )
+}
+
+const LEAVES: readonly Opt<LeavesMode>[] = [
+  ['auto', 'Auto'],
+  ['on', 'On'],
+  ['down', 'Down'],
+]
+
+/** The hardwoods' leaves in the ground wind, and so in the scent cone and
+ *  the heat map (weather/micro/leaves.ts): by the date, or held on or down
+ *  for a fall that comes early or late. Rarely touched, so last. Auto says
+ *  what the date gives at the planning time; the words run about as long
+ *  either way, so a pick doesn't move the choices out from under the thumb. */
+function LeavesRow() {
+  const leaves = useAppStore((s) => s.leaves)
+  const setLeaves = useAppStore((s) => s.setLeaves)
+  const planMs = useAppStore((s) => s.planTimeMs)
+  const note = leaves === 'auto' ? `by date, ${leavesWord(planMs ?? Date.now())}` : `${leaves}, not by date`
+  return <Seg label="Leaves" note={note} value={leaves} options={LEAVES} onPick={setLeaves} />
 }
 
 /** The cone's knobs only: + Person, Clear sitters and the card are the scent card's own (2026-10-02).

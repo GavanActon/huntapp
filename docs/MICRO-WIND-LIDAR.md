@@ -7,8 +7,9 @@ tests gave), not yet checked in the field. Phases 2 and 3 built
 built sections). Lac Bailey's grids are rebaked with them, all but the
 review's last two touches (Phase 3, As built); Pickle Lake's published
 habitat and micro grids are not yet. The command is in Phase 3, As built,
-and Phase 2, As built, says what the rebake does to Spots, which wants
-Gavan's word on leaf-on closure first. Decided with Gavan from
+and Phase 2, As built, says what the rebake does to Spots and how the
+leaf-on closure is met: Gavan chose seasonal leaf-off (2026-10-04), the
+micro grid's `canopyBare`. Decided with Gavan from
 [MICRO-WIND.md](MICRO-WIND.md) Next steps 7 (scent that leaves the ground
 at a drop-off, now built there as §7's "Off a drop in still air") and the
 question whether the 1 m LiDAR can sharpen the wind and scent. Three phases, in order of value, each shippable on its own.
@@ -446,12 +447,36 @@ with FRI closure 0, which the micro bake read as a near-open canopy; with
 the LiDAR's 65% its canopy goes 0.168 → 0.076, its ground wind under
 0.8 km/h and its score to 0.433 (×0.61), out of the top six. The sensible
 part: the fresh cut WSW of camp opens to the wind (0.6 → 8.5 km/h in a
-gap cell) and its edges light up (0.22 → 0.42). Nothing corrects leaf-on
-closure yet, so fall hardwood and mixedwood read low. **Gavan's call
+gap cell) and its edges light up (0.22 → 0.42). Nothing corrected leaf-on
+closure then, so fall hardwood and mixedwood read low. **Gavan's call
 before Pickle Lake is rebaked**: accept leaf-on closure in hardwood and
 mixedwood for an October–November hunt, or discount it until a canopy
 lesson exists (for example, scale the LiDAR's crown by the hardwood share
 in `build_microclimate.py`'s canopy part).
+
+**As built: seasonal leaf-off** (his call, 2026-10-04). The point cloud's
+closure is used as measured, in leaf, and the micro grid carries the
+head-height fraction a second time with the leaves down, `canopyBare`
+(`build_microclimate.py`'s `leaves_down`, MICRO-WIND §4, Leaves down):
+each stand's hardwood share of the closure, with the larch of a larch-led
+stand and a land-cover stand's class share, thinned to 0.35 of itself,
+the cover bare crowns keep. The app blends `canopy` toward it after leaf
+drop (mid-October by default), and the ground wind, the scent cone and
+Spots (through `groundForScoring`) follow. The forest maps' closure is
+leaf-on too (summer photos), so unmeasured stands thin the same way. On
+scratch bakes of the current habitat, measured hardwood goes from 0.053
+to 0.119 at Pickle Lake and from 0.056 to 0.130 at Lac Bailey, measured
+mixedwood from 0.053 to 0.082 and 0.064 to 0.086, dense conifer within
+0.006; every band the micro grid had is byte-identical, `canopy` among
+them. The roughness (phase 3's z0 and the speed ratio) stays leaf-on, a
+known simplification: the phase 3 formula on the bare closure would put
+the 10 m wind in measured hardwood up 4–7% (mixedwood 3%), against
+×2.3–2.5 at head height, and a stand is not clearly smoother bare (Nakai
+et al. 2008, MICRO-WIND Limits). A leaf-off laser would read more than
+0.35 (0.57 cover against 0.88 in leaf over temperate deciduous plots at
+bud-break: Wasser et al. 2013, PLoS ONE 8:e54776), but a footprint
+counts every twig it clips, which is not the drag the twigs make; checks
+after leaf drop are what will fit it (MICRO-WIND, Next steps 5).
 
 ## Phase 3: roughness length from LiDAR height and cover
 
@@ -543,14 +568,16 @@ than 0.3 km/h.
 Baked into Lac Bailey's habitat and micro grids with phase 2 (band for
 band the scratch bakes; the coverage report updated), before the review:
 its next habitat and micro bake (the command below for `lac-bailey`,
-without `--overwrite-published`) brings the reworded `canopySrc` note and
-the one cell above, and nothing else. The micro bake still takes 5–7 s.
+without `--overwrite-published`) brings the reworded `canopySrc` note,
+the one cell above and the leaves-down band `canopyBare` (Phase 2, As
+built), and nothing else. The micro bake still takes 5–7 s.
 Pickle Lake's grids are not rebaked yet; this does it, and a scratch bake
 of the current code is what it gives, band for band: in the habitat
 `height` on 32 127 cells, `crown` on 34 931, `cover` on 24, `distBrowse`
 on 290, `bearBrowse` on 305 and `canopySrc` new; in the micro grid
-`canopy` on 26 118, `treeH` on 25 929 and the eight basis bands; the
-going grid as it is. Weigh Phase 2's paragraph on Spots first:
+`canopy` on 26 118, `treeH` on 25 929, the eight basis bands and
+`canopyBare` new; the going grid as it is. Weigh Phase 2's paragraphs on
+Spots and leaf-off first:
 
 ```
 py -3.14 pipeline/bake_area.py --area pickle-lake --only habitat --only micro --only coverage --overwrite-published

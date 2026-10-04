@@ -48,7 +48,7 @@
     "lakeSheets": ["16-6042-54219", "16-6097-54195", "16-6034-54164"]
   },
   "coverage": {
-    "checked": "2026-10-03",
+    "checked": "2026-10-04",
     "pmtiles": {
       "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
       "topo": {
@@ -171,17 +171,18 @@
     "grids": {
       "habitat": {
         "file": "habitat-pickle-lake.hab",
-        "bytes": 1952354,
+        "bytes": 2001278,
         "source": "derived: MRDEM, NRCan 2020 land cover, forest stands, water, wetlands, roads and burns",
         "licence": "derived from the layers above",
-        "vintage": "generated 2026-09-28"
+        "note": "stand height and closure from the LiDAR point cloud over 46% of the core",
+        "vintage": "generated 2026-10-04"
       },
       "micro": {
         "file": "micro-pickle-lake.hab",
-        "bytes": 2256453,
+        "bytes": 2357953,
         "source": "derived: the habitat grid and the MRDEM",
         "licence": "derived from the layers above",
-        "vintage": "generated 2026-10-01"
+        "vintage": "generated 2026-10-04"
       },
       "going": {
         "file": "going-pickle-lake.hab",

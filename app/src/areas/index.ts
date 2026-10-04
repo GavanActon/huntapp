@@ -45,6 +45,19 @@ export interface CoverageLayer {
   missing?: string
 }
 
+/** An area's own days for the hardwoods' leaves, 'MM-DD', all four, in the
+ *  year's order (weather/micro/leaves.ts, which has the boreal defaults). */
+export interface AreaLeaves {
+  /** the leaves start to come out */
+  springStart: string
+  /** in full leaf from this day */
+  springFull: string
+  /** the leaves start to fall: in full leaf until this day */
+  fallStart: string
+  /** bare from this day */
+  fallBare: string
+}
+
 /** The bake's coverage report (pipeline/bake_area.py), written into the
  *  area file: every layer the app knows, by kind, as baked or missing. */
 export interface AreaCoverage {
@@ -82,6 +95,9 @@ export interface AreaDef {
    *  as further out they run together (map/mapStyle.ts contourFilters).
    *  Left out, every line shows at every zoom, as at Pickle Lake */
   contours?: { fineFrom?: number }
+  /** when the hardwoods' leaves come out and fall, for the ground wind.
+   *  Left out, the boreal defaults at about 49° N, as both areas have it */
+  leaves?: AreaLeaves
   /** the area's folder under the data base: '' for Pickle Lake (flat, as before areas), 'areas/<id>/' for the rest */
   base: string
   /** lakes drawn from their survey sheets, lower case (map/depthLayer.ts) */

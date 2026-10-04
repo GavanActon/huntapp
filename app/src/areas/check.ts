@@ -16,6 +16,19 @@ const isBox = (v: unknown) => {
   const b = obj(v)
   return b != null && isNum(b.west) && isNum(b.south) && isNum(b.east) && isNum(b.north)
 }
+const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+/** 'MM-DD', a day every year has (not 29 February) */
+const isDay = (v: unknown) => {
+  const m = typeof v === 'string' ? /^(\d\d)-(\d\d)$/.exec(v) : null
+  return m != null && +m[1] >= 1 && +m[1] <= 12 && +m[2] >= 1 && +m[2] <= MONTH_DAYS[+m[1] - 1]
+}
+/** The leaves' four days, each a day and each after the one before: out,
+ *  full, falling, bare (weather/micro/leaves.ts ramps between them). */
+const isLeaves = (v: Fields) => {
+  const days = [v.springStart, v.springFull, v.fallStart, v.fallBare]
+  // zero-padded, so the strings sort as the days do
+  return days.every(isDay) && days.every((d, k) => k === 0 || (days[k - 1] as string) < (d as string))
+}
 
 /** The first field the app reads that an area file lacks or holds as the
  *  wrong kind, by its path ('core.maxzoom'); null when all are there. */
@@ -28,6 +41,7 @@ export function badAreaField(v: unknown): string | null {
   const attribution = obj(a.attribution)
   const files = obj(a.files)
   const contours = obj(a.contours)
+  const leaves = obj(a.leaves)
   const center = arr(home?.center)
   const relief = arr(a.relief)
   const presets = arr(a.presets)
@@ -61,6 +75,8 @@ export function badAreaField(v: unknown): string | null {
     ['files', files != null && [files.pmtiles, files.geo, files.baseGeo, files.grids].every(Array.isArray)],
     // optional; when there, the zoom is a number (map/mapStyle.ts contourFilters)
     ['contours.fineFrom', a.contours == null || (contours != null && (contours.fineFrom == null || isNum(contours.fineFrom)))],
+    // optional; when there, the area's own four days for the leaves
+    ['leaves', a.leaves == null || (leaves != null && isLeaves(leaves))],
   ]
   return fields.find(([, ok]) => !ok)?.[0] ?? null
 }
