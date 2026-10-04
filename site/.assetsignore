@@ -1,0 +1,5 @@
+wrangler.toml
+worker.js
+schema.sql
+.assetsignore
+.wrangler

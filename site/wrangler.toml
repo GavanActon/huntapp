@@ -1,0 +1,24 @@
+# groundwind.app: this folder served as static assets by a Worker.
+# Deploy from site/ with `npx wrangler deploy`; the custom domains make
+# their own DNS records and certificates (the zone is on Cloudflare).
+name = "groundwind-site"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+routes = [
+  { pattern = "groundwind.app", custom_domain = true },
+  { pattern = "www.groundwind.app", custom_domain = true },
+]
+
+[assets]
+directory = "."
+binding = "ASSETS"
+not_found_handling = "404-page"
+# the worker sees every request first, for www, /app and /api
+run_worker_first = true
+
+# area requests (schema.sql); the id comes from `npx wrangler d1 create groundwind`
+[[d1_databases]]
+binding = "DB"
+database_name = "groundwind"
+database_id = "00000000-0000-0000-0000-000000000000"
