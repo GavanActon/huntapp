@@ -16,6 +16,7 @@ export type Sheet =
   | { kind: 'offline' }
   | { kind: 'layers' }
   | { kind: 'coords' }
+  | { kind: 'locations' }
 export type SheetKind = Sheet['kind']
 
 /** Each sheet's half-open height, % of the screen. */
@@ -31,6 +32,7 @@ export const SHEET_HALF_PCT: Record<SheetKind, number> = {
   offline: 60,
   layers: 80,
   coords: 40,
+  locations: 34,
 }
 
 /** The sheet showing now: the top of the stack, or null when closed. */

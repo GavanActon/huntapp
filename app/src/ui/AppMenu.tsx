@@ -2,11 +2,11 @@ import { useRef, type JSX } from 'react'
 import { openHuntLog } from '../log/logView'
 import { useMapUpdates } from '../offline/updates'
 import { useAppStore, type Sheet } from '../state/appStore'
-import { IconBook, IconClock, IconGear, IconGrid, IconLayers, IconPin, IconTarget } from './icons'
+import { IconBook, IconClock, IconGear, IconGrid, IconLayers, IconPin, IconPlaces, IconTarget } from './icons'
 import { useTapOff } from './tapOff'
 
 /**
- * The ⋯ menu behind the strip: Hunt log, Pins, Go to coordinates, Map
+ * The ⋯ menu behind the strip: Hunt log, Pins, Locations (the areas), Go to coordinates, Map
  * buttons, Views, HuntOS (the field guide) and Settings, with the new-maps
  * count beside Settings when the server has some. It hangs under
  * the right end of whatever is position: relative around it (the folded
@@ -39,6 +39,11 @@ export default function AppMenu({ open, onClose }: { open: boolean; onClose: () 
       <button className="wx-menu-row" role="menuitem" onClick={() => go({ kind: 'pins' })}>
         <IconPin />
         Pins
+        <span className="dim">›</span>
+      </button>
+      <button className="wx-menu-row" role="menuitem" onClick={() => go({ kind: 'locations' })}>
+        <IconPlaces />
+        Locations
         <span className="dim">›</span>
       </button>
       <button className="wx-menu-row" role="menuitem" onClick={() => go({ kind: 'coords' })}>
