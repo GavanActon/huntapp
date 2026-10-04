@@ -788,8 +788,10 @@ export function groundForScoring(ms: number, lon: number, lat: number, full = fa
 /** A fast sampler for particles and plumes: out = [east m/s, north m/s,
  *  sigma degrees] and, when the array has room, out[3]: 1 where the air
  *  swirls (an eddy behind a tree line, a small opening, a slot across the
- *  wind), 0.5 where it has settled or gone calm, else 0. Null when there is
- *  no wind at all to start from. */
+ *  wind), 0.5 where it has settled or gone calm, else 0; out[4]: 1 where
+ *  cold air drains, pools or flows off the shore (it hugs the ground: a
+ *  land breeze is the land's cold air running out over the water), else 0.
+ *  Null when there is no wind at all to start from. */
 export type GroundSampler = (lon: number, lat: number, out: Float32Array) => boolean
 export function groundSampler(ms: number): GroundSampler | null {
   const ctx = makeCtx(ms)
@@ -801,14 +803,20 @@ export function groundSampler(ms: number): GroundSampler | null {
     out[1] = ev.n / 3.6
     out[2] = ev.sigma
     out[3] = ev.swirl ? 1 : ev.regime === 'calm' || ev.regime === 'pooled' ? 0.5 : 0
+    out[4] = ev.regime === 'drainage' || ev.regime === 'pooled' || ev.regime === 'landBreeze' ? 1 : 0
     return true
   }
 }
 
-/** The air's layering at a time: 0…1 decoupled-stable, 0…1 sun-driven convective. */
-export function groundStability(ms: number): { stable: number; convective: number } {
-  const l = makeCtx(ms).lay
-  return { stable: l.stable, convective: l.convective }
+/** The air's layering at a time: 0…1 decoupled-stable, 0…1 sun-driven
+ *  convective, and whether the lakes are warmer than the air over the land
+ *  (by more than 1°, the land breeze's test in evaluate). Then the water
+ *  heats the air over it from below and mixes it down to the surface,
+ *  however still the night is over the land. */
+export function groundStability(ms: number): { stable: number; convective: number; warmWater: boolean } {
+  const ctx = makeCtx(ms)
+  const l = ctx.lay
+  return { stable: l.stable, convective: l.convective, warmWater: l.t2 - ctx.waterC < -1 }
 }
 
 export interface Window {

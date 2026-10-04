@@ -15,6 +15,7 @@ export interface Going {
 
 let loaded: Going | null = null
 let inflight: Promise<Going | null> | null = null
+const listeners = new Set<() => void>()
 
 function build(grid: Habitat, header: Record<string, unknown>): Going {
   const n = grid.size
@@ -64,11 +65,21 @@ export function loadGoing(): Promise<Going | null> {
     .finally(() => {
       inflight = null
     })
+  // whoever started the load, those drawn without the grid hear when it lands
+  void inflight.then((g) => {
+    if (g) for (const cb of listeners) cb()
+  })
   return inflight
 }
 
 export function going(): Going | null {
   return loaded
+}
+
+/** Call back when the grid lands, whoever loaded it (a scent cone, the routes, the Move layer). */
+export function onGoing(cb: () => void): () => void {
+  listeners.add(cb)
+  return () => listeners.delete(cb)
 }
 
 /** The cell under a point, or -1 outside the grid. */

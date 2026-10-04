@@ -51,13 +51,21 @@ Sherman (1978) and WindNinja's conservation-of-mass solver (Forthofer et al.
   ratio `s` is the log law through a 60 m blending height, from the local
   roughness length to the mosaic's (`z0_ref = 0.5 m`). ln z0 is smoothed
   over ~90 m because roughness takes fetch to take hold. Water z0 is
-  0.0002 m, open bog 0.03 m, shrub 0.2 m, forest 0.1·h (0.3–2.5 m). s runs
-  from 0.7 (forest) to 1.37 (open lake). Until 2026-10-01 the ratio was in
-  the first guess, so a lake's speed-up had to be fed by air pulled in
-  sideways across the shore, and the wind bent toward the upwind shore and
-  off the downwind one; in the real air it comes down from above (an
-  internal boundary layer) that a layer this thin cannot carry. Three
-  quarters of the neutral turning was that artefact.
+  0.0002 m, open bog 0.03 m, shrub 0.2 m, forest 0.1·h (0.3–2.5 m). Where
+  the LiDAR point cloud measured the cell (phase 3 of
+  [MICRO-WIND-LIDAR.md](MICRO-WIND-LIDAR.md)) z0 is its own, from the
+  height h and closure c it measured: h·(0.05 + 0.10·c) from 3 m up
+  (0.05–2.5 m), so a closed stand stays near 0.1·h and an open one goes to
+  about half, and 0.03 + 0.05·h under 3 m; water keeps its own. In trees
+  that makes the 10 m wind 4–6% slower; on measured ground the class calls
+  open, 5% at Lac Bailey and 18% at Pickle Lake, where much of the open
+  wetland is treed (§4). s runs from 0.7 (forest) to 1.37 (open lake).
+  Until 2026-10-01 the ratio was in the first guess, so a lake's speed-up
+  had to be fed by air pulled in sideways across the shore, and the wind
+  bent toward the upwind shore and off the downwind one; in the real air
+  it comes down from above (an internal boundary layer) that a layer this
+  thin cannot carry. Three quarters of the neutral turning was that
+  artefact.
 - **Layer**: the air between the ground and a lid of depth
   `H = lid + (large-scale terrain − terrain)`.
   - NEUTRAL: 250 m over the ~3 km terrain. The air goes over hills, and on
@@ -122,9 +130,30 @@ Sherman (1978) and WindNinja's conservation-of-mass solver (Forthofer et al.
 
 ### 4. Canopy and edges
 
+- **Stand height and closure** (the micro grid's `treeH` and the canopy
+  below) are the point cloud's where it measured the cell (phase 2 of
+  [MICRO-WIND-LIDAR.md](MICRO-WIND-LIDAR.md): the p95 of its returns over
+  2 m and their share, 45% of Pickle Lake's core land and all of Lac
+  Bailey's), the forest map's elsewhere (FRI 2010, the carte
+  écoforestière). So growth and cuts since the inventory show, where they
+  fill a good part of a 30 m cell; a narrow cutline mostly does not. A
+  stand it finds open (under 3 m, under 0.2 of its returns over 2 m) is
+  young regen, open to the wind, and a treed wetland it measures at 0 m is
+  open ground, not the 6 m the class table puts in where the map gives no
+  height. The cover class stays the map's: ground the map calls open is
+  open here even where the point cloud finds trees, as it does in most of
+  Pickle Lake's measured open wetland (10 m at about half cover), and only
+  the roughness (§2) sees them. Lac Bailey's grids carry phases 2 and 3
+  since 2026-10-04; Pickle Lake's published ones wait for their rebake,
+  and for Gavan's word on the leaf-on closure the flight gives hardwood
+  and mixedwood, which moves Spots through the ground wind
+  (MICRO-WIND-LIDAR.md, Phase 2, As built).
 - **Head-height fraction** of the local 10 m wind:
   - Open ground: log law 2 m over 10 m (~0.7), thinned by up to 45% in a
-    stable surface layer (Monin–Obukhov).
+    stable surface layer (Monin–Obukhov). It takes the cover class's z0,
+    not the measured one: the law needs 2 m well above the roughness, and
+    over a treed bog the measured z0 near 1 m more than halved the wind it
+    gives.
   - In a stand: log law to the canopy top (displacement 0.67 h), then
     exponential decay inside, `exp(−a(1 − z/h))` (Cionco 1965; Finnigan
     2000). The coefficient a runs 1–3.8 with crown closure and conifer
@@ -243,6 +272,62 @@ nothing that matters: at that cell the mechanical part stays under
     so a stand reads as thinner near the tree, touching down farther out.
     The card gives "reaches noses from X m". It still uses the head-height
     wind: the wind at stand height is stronger, not yet modelled.
+  - **Off a drop in still air** (2026-10-04, phase 1 of
+    [MICRO-WIND-LIDAR.md](MICRO-WIND-LIDAR.md)): on a decoupled night,
+    air that is not draining keeps its level where the ground falls away,
+    so scent passes over a hollow instead of sinking into it. Each
+    particle carries its height above the ground, read at every step from
+    the going grid's `elev` (the 1 m LiDAR DTM averaged to 10 m, MRDEM
+    where the LiDAR stops; the core only). Where the ground falls it keeps
+    a share of the drop: none below `stable` 0.3, all of it from 0.8, and
+    none in a cell whose regime is drainage, settled cold air or a land
+    breeze (the land's cold air running down the bank and out over the
+    water), which hug the ground. Rising ground takes back what it gained,
+    never below the release height; 60 m at most. Over open water more
+    than 1° warmer than the air (a fall night; the land breeze's own test)
+    the water heats the air from below and the scent is back at its
+    release height. A held-up step counts for the reflected Gaussian at
+    the height it has now. The grid is still scaled to a ground sit over
+    flat ground, so off a drop a cone can only thin: its reach never
+    grows, and where the scent comes back down it is no stronger than it
+    was.
+    - A bank 1.1 km ENE of camp, 7 m down in 20 m and 20 m down to the
+      lake about 200 m out, a 1.5 m/s wind off it at `stable` 1.0: over
+      the falling ground the noticeable cells go from 364 to 3, and over
+      the warm lake the scent is back (286, 276 now), so the cone still
+      reaches 477 m.
+    - A swamp 90 m across, 8 m under its lip, its far side steep (1.1 km
+      E of camp): the strong band leaves the hollow (189 noticeable cells
+      to none) and comes back on the far rise 170–200 m out, about 0.11 of
+      the core there against 0.12–0.14 before. From a 4 m stand on the lip
+      the scent first reaches noses at 186 m, not 65 m. At Lac Bailey a
+      10 m bank straight onto the lake keeps its cone (417 m) on a night
+      the lake is the warmer, and across a lake 200 m wide the water keeps
+      its scent (303 noticeable cells, 297 now) while the land beyond
+      thins: 505 m to 363 m.
+    - By day, in drainage, and before the going grid has loaded (the first
+      cone is drawn without it, then again when it lands) the cone is the
+      old one to the cell. On the real wind, both banks were draining at
+      the stablest hour of the next two days, so nothing changed; a calm
+      night at the swamp's lip took the cone from 106 m to 65 m. A lake
+      sit at Lac Bailey in a land breeze all night keeps the old cone, or
+      comes within a few dozen cells of it where it crosses plain wind.
+    - The scent card says "Off the drop the scent holds its height over
+      the low ground" under its reasons once 15% of the scent is held more
+      than 2 m up (each step counted for what it would have laid down at
+      its release height), and "and comes down where the ground rises"
+      only when the scent that came back down is noticeable on its own,
+      four cells or more, 50 m out or further.
+    - The walk adds 4–23% to a still night's plume on the real wind, up
+      to 3.5 ms on a desktop (up to 29%, and 42% for the first plume of a
+      minute, before the review's trims), and nothing by day or before the
+      going grid loads (the dev log has it once a run, each way, under
+      `scent`). Over the 20% budget at worst, and kept: MICRO-WIND-LIDAR.md,
+      Phase 1, As built.
+    - **How to check it**: a puff of chalk or unscented talc at the lip of
+      a bank at dusk under a clear sky, watched to the far side, with a
+      wind check logged at the lip and one in the hollow. The model says
+      the hollow stays clear; the puff says whether it does.
   - **Particle view** (an option on the card): every particle replayed
     along its own path, 15 minutes in 12 s on a loop. Each is a soft puff
     whose width grows with the distance it has travelled (σ ≈ 3 m +
@@ -393,7 +478,22 @@ nothing that matters: at that cell the mechanical part stays under
   in a few of them before it is trusted.
 - 2D mass consistency is a diagnostic model, not a flow solver. It gets
   speed-up, channelling and blocking. It does not get separation in the lee
-  of steep ridges, which this low-relief shield mostly lacks.
+  of steep ridges, which this low-relief shield mostly lacks, nor the eddy
+  below a steep bank in a day wind blowing down it, where scent can roll
+  back up toward the hunter.
+- Ground the cover class calls open where the point cloud finds trees
+  (much of Pickle Lake's open wetland: wetland on the wetland map with no
+  FRI stand) is open at head height: `treeH` 0, the open-ground fraction,
+  the slot and tree-line rules. Only the speed ratio sees the trees.
+  Reading those cells as treed would change the slots and the shelter as
+  well, the 2026-09-29 slot among them, and wants checks there first.
+- Scent off a drop (§7) is a rule, not a solve: the share of a drop a
+  particle keeps and the floor at its release height are first guesses
+  with no check behind them yet. So is the water's part: over open water
+  more than 1° warmer than the air the scent is put straight back at its
+  release height, as if the water mixed it down at once and all the way,
+  and a lake the estimate calls no warmer holds it up. A puff watched out
+  over the water would say.
 - Drainage speeds are potentials, not measurements. Timing (when the
   inversion forms or breaks) comes from HRDPS's 2 m and 80 m temperatures,
   and HRDPS itself is weakest in exactly those stable hours.
@@ -416,7 +516,11 @@ nothing that matters: at that cell the mechanical part stays under
    instead of the regional direction.
 5. Lessons that fit a knob, not a turn: the slot gain, the inversion's
    timing, the canopy factor, each from the residuals of the checks that
-   layer decided. The per-regime turn is the first step toward it.
+   layer decided. The per-regime turn is the first step toward it. The
+   canopy factor's first case is waiting: both point clouds were flown in
+   leaf, so the hardwood and mixedwood closure they give reads too closed
+   for a fall hunt (the habitat's `canopySrc` note points here;
+   MICRO-WIND-LIDAR.md, Phase 2, As built).
 6. The model asking: when two regimes are close in a cell (drainage against
    the regional wind at dusk) a nudge to check the wind there, since those
    transition checks are the ones that fit timing.

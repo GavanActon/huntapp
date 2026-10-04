@@ -2,7 +2,7 @@ import { useEffect, type JSX } from 'react'
 import { useAppStore } from '../state/appStore'
 import { clockShort } from '../time'
 import { groundWind } from '../weather/micro/model'
-import { clearPlaced, coneSizeWord, drawnView, GROUND_H, groupSummary, personColour, reachLabel, SCENT_HEIGHTS, sittersLine, useScent, type ScentView } from '../weather/micro/scent'
+import { clearPlaced, coneSizeWord, drawnView, GROUND_H, groupSummary, personColour, reachLabel, reliefReason, SCENT_HEIGHTS, sittersLine, useScent, type ScentView } from '../weather/micro/scent'
 import { checkSpentAt, strongestCheck, useWindChecks } from '../weather/micro/windChecks'
 import { compass } from '../weather/openMeteo'
 import { useLookTick } from './useLookTick'
@@ -12,7 +12,9 @@ import './live.css'
  * "Your scent": the live card's Scent › opened, a top card in its slot with
  * the map (and both columns) still there. What the cone rests on, in
  * three lines: the wind at head height against the forecast, the wind
- * check pulling it while one does, and how wide and how far it goes. Then
+ * check pulling it while one does, and how wide and how far it goes; on a
+ * still night off a drop, a fourth for why the cone skips the low ground
+ * (a reason, so here and not on the live card's brief line). Then
  * the knobs: where you sit (the ground, or a stand), the cone's size from
  * smaller (only what is strong counts) to bigger (scent counts sooner, the
  * wind wanders more), how it is drawn, and with a party placed, whose line it
@@ -61,6 +63,7 @@ export default function ScentCard(): JSX.Element | null {
   const who = (i: number) => (people[i]?.live ? 'You' : `${i + 1}`)
   const kmh = (v: number) => (units === 'imperial' ? Math.round(v * 0.621371) : Math.round(v))
   const slowed = g && g.kmh < g.regionalKmh * 0.8 ? ', slowed by the bush' : ''
+  const offDrop = plume && reliefReason(plume)
 
   return (
     <div className="topcard">
@@ -97,6 +100,7 @@ export default function ScentCard(): JSX.Element | null {
             {plume && (plume.height > GROUND_H && plume.landing >= 30 ? `noticeable from ${Math.round(plume.landing / 10) * 10} m out to ${reachLabel(plume)}` : `noticeable to ${reachLabel(plume)}`)}
           </div>
         )}
+        {offDrop && <div className="scent-line dim">{offDrop}</div>}
         {many && (
           <div className="sc-people">
             <div className="seg" role="radiogroup" aria-label="Whose sit">

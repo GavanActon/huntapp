@@ -11,6 +11,7 @@ import { compass } from '../openMeteo'
 import { onProfile } from '../boundaryLayer'
 import { onWeatherGrid } from '../windGrid'
 import { groundGust, groundSampler, groundStability, loadMicro, microGrid, onMicro, type GroundSampler } from './model'
+import { ensureRelief, onRelief, reliefCell, reliefNear, WATER } from './relief'
 import { useWindChecks } from './windChecks'
 
 /**
@@ -34,7 +35,12 @@ import { useWindChecks } from './windChecks'
  *     (Briggs rural σz for the hour's stability, reflected at the ground,
  *     the particle–puff hybrid HYSPLIT uses), and counts only for what is
  *     left at a deer's nose. Scent thins fast by day and hugs the ground
- *     on a still night.
+ *     on a still night;
+ *   - on a still night where the air is not draining, a particle keeps its
+ *     altitude off a drop (the ground from the going grid's 10 m LiDAR
+ *     DTM), so scent passes over a hollow above the deer's noses and comes
+ *     back down where the ground rises to meet it, or over open water
+ *     warmer than the air, which mixes it down from below.
  *
  * The map shades nose-height scent against the plume core 20–40 m out:
  * strong, noticeable, and a faint trace wash below that.
@@ -66,10 +72,25 @@ export interface Plume {
   mainShare: number
   /** the source sits in near calm: it spreads every way */
   calm: boolean
-  /** the air is decoupled-stable: scent hugs the ground */
+  /** the air is decoupled-stable: scent hugs the ground, or off a drop holds its height (lifted) */
   stable: boolean
   /** release height, m: 1.5 on the ground, higher in a tree stand */
   height: number
+  /**
+   * Share of the scent held more than 2 m above its release height: in
+   * still air off a drop, scent that kept its altitude over low ground (0
+   * by day, in drainage or a land breeze, and on the flat; over water
+   * warmer than the air it is mixed down). Each step counts for what it
+   * would have laid down at noses at its release height.
+   */
+  lifted: number
+  /**
+   * Scent that held its height over low ground comes back down to the
+   * noses where the ground rises again (the far side of a bog or a ravine),
+   * noticeable there on its own, 50 m out or more and inside the 700 m grid.
+   * Scent warm water mixed down does not count: it came down over the water.
+   */
+  touchdown: boolean
 }
 
 /** Each particle's path, metres east/north of the source, for the particle view. */
@@ -178,6 +199,40 @@ function noseTable(h: number, stable: number, conv: number): Float32Array {
   return t
 }
 
+/**
+ * The nose-height weight of a puff of spread s held h m above the ground:
+ * the reflected Gaussian, or nothing once the noses are 5 σz under it,
+ * where it would add under 1e-5 and its two exponentials are the dearest
+ * part of a held-up step.
+ */
+function heldUp(s: number, h: number): number {
+  const a = h - NOSE_H
+  return a * a > 25 * s * s ? 0 : noseShare(s, h) / NOSE0
+}
+
+/**
+ * How much of a drop in the ground a particle keeps as height above it
+ * (docs/MICRO-WIND-LIDAR.md, phase 1): none in mixed air, where the plume
+ * mixes down to the surface, all of it on a decoupled night, ramping over
+ * stable 0.3–0.8, where the ground model's own stable effects come in.
+ * Cold air that drains, pools or runs off the shore as a land breeze hugs
+ * the ground, so there it is none whatever the night (the step checks the
+ * sampler's flag, out[4]).
+ */
+function keepOfDrop(stable: number): number {
+  return Math.min(1, Math.max(0, (stable - 0.3) / 0.5))
+}
+/** a particle never rises more than this above the ground, m */
+const MAX_AGL = 60
+/** noticeable 10 m cells of scent come back down past a hollow before the card says so: a patch, not a speck */
+const TOUCH_CELLS = 4
+/**
+ * and that far out at least, m: past the core, so it is the far side of a
+ * hollow, not the sit's own scent meandering back over the lip in a calm
+ * (a Lac Bailey bank at 1 km/h said it came down with the cone 40 m long)
+ */
+const TOUCH_FROM_M = 50
+
 function mulberry32(seed: number) {
   let a = seed >>> 0
   return () => {
@@ -213,13 +268,15 @@ export function cellSampler(ms: number): GroundSampler | null {
     let v = memo.get(i)
     if (v === undefined) {
       const [clon, clat] = g.center(i)
-      v = sample(clon, clat, out) ? Float32Array.of(out[0], out[1], out[2]) : null
+      v = sample(clon, clat, out) ? Float32Array.of(out[0], out[1], out[2], out[3], out[4]) : null
       memo.set(i, v)
     }
     if (!v) return false
     out[0] = v[0]
     out[1] = v[1]
     out[2] = v[2]
+    out[3] = v[3]
+    out[4] = v[4]
     return true
   }
 }
@@ -229,6 +286,8 @@ export function cellSampler(ms: number): GroundSampler | null {
  * The grid is scaled to the core 20–40 m out of the same sit ON THE GROUND,
  * so a stand's scent reads against what the ground would have given: it
  * starts over the deer's heads and touches down farther out, thinner.
+ * `relief` says whether the particles walked the going grid's ground (still
+ * air over the core), the part of the cost phase 1 of MICRO-WIND-LIDAR.md adds.
  */
 export function simulatePlume(
   lon: number,
@@ -237,21 +296,52 @@ export function simulatePlume(
   height = GROUND_H,
   sample: GroundSampler | null = cellSampler(ms),
   gust = groundGust(ms),
-): { plume: Plume; grid: Float32Array; tracks: PlumeTracks } | null {
+): { plume: Plume; grid: Float32Array; tracks: PlumeTracks; relief: boolean } | null {
   if (!sample) return null
-  const { stable, convective } = groundStability(ms)
+  const { stable, convective, warmWater } = groundStability(ms)
   const noseAt = noseTable(height, stable, convective)
   const noseGround = height === GROUND_H ? noseAt : noseTable(GROUND_H, stable, convective)
   const kx = 111_320 * Math.cos((lat * Math.PI) / 180)
   const ky = 110_574
-  const out = new Float32Array(3)
+  // off a drop in still air a particle keeps its altitude (keep > 0); the
+  // ground under it is the going grid's 10 m LiDAR DTM, nothing off it.
+  // With keep 0, or before the grid lands, none of this runs and the cone
+  // is the old one, bit for bit.
+  const keep = keepOfDrop(stable)
+  const dtm = keep > 0 ? reliefNear(lon, lat, kx, ky) : null
+  // σz by distance travelled in 1 m steps for the steps held up off a drop,
+  // worked out as they need it (0 until then: σz is never under 1 m), so a
+  // plume that is not held up, or only near the sit, pays next to nothing
+  const sz = dtm ? new Float64Array(TABLE_M + 1) : null
+  const iSrc = dtm ? reliefCell(dtm, 0, 0) : -1
+  const gSrc = dtm && iSrc >= 0 ? dtm.elev[iSrc] : NaN
+  // the weight the steps would lay down at their release height: all of it,
+  // and the part held up off a drop
+  let lifted = 0
+  let wTotal = 0
+  // the particles walked the relief; one came back down after being held up
+  let walked = false
+  let landed = false
+  // out[4] is the sampler's flag for cold air that hugs the ground:
+  // drainage, a pool, a land breeze (model.ts groundSampler)
+  const out = new Float32Array(5)
   if (!sample(lon, lat, out)) return null
   const srcSigma = out[2] * SPREAD
   const srcSpeed = Math.hypot(out[0], out[1])
   const rnd = mulberry32(Math.round(lon * 1e4) * 73856093 ^ Math.round(lat * 1e4) * 19349663 ^ Math.round(ms / 60_000))
   const raw = new Float32Array(N * N)
-  // the same sit on the ground, for the scale
-  const rawGround = height === GROUND_H ? raw : new Float32Array(N * N)
+  // The same sit on the ground, for the scale, always at its release
+  // height: the scale is what a ground sit lays down over flat ground.
+  // The spec (MICRO-WIND-LIDAR.md) lifts this reference sit off a drop too
+  // (its zAglG); on a lip its 20–40 m core is then held up with the rest,
+  // the scale collapses and every cell reads stronger, which ran the cone
+  // at a Pickle bank out to the grid's edge. Held at its release height,
+  // a cone off a drop can only thin, never strengthen. A ground sit is its
+  // own reference until a particle is first held up (it gets its own copy
+  // then), so a plume that never leaves the ground pays nothing for it.
+  let rawGround = height === GROUND_H ? raw : new Float32Array(N * N)
+  // scent back at the noses after being held up: the far side of a hollow
+  const rawDown = dtm ? new Float32Array(N * N) : null
   const sectors = new Float64Array(8)
   const STEPS = Math.ceil(TOTAL_S / DT) + 1
   const NP = REALISATIONS * PER_REAL
@@ -296,6 +386,11 @@ export function simulatePlume(
       let vp = 0
       // distance travelled, which sets how far the puff has mixed upward
       let path = 0
+      // height above the ground, the ground under it a step ago (NaN off the
+      // going grid), and whether it has been held up off a drop
+      let zAgl = height
+      let g0 = gSrc
+      let aloft = false
       for (let t = t0; t < TOTAL_S; t += DT) {
         const k = Math.round(t / DT)
         if (!sample(lon + x / kx, lat + y / ky, out)) break
@@ -316,15 +411,71 @@ export function simulatePlume(
         const cx = Math.floor((x + EXTENT_M) / CELL_M)
         const cy = Math.floor((EXTENT_M - y) / CELL_M)
         if (cx < 0 || cy < 0 || cx >= N || cy >= N) break
+        if (dtm) {
+          // the going cell under it: reliefCell written out, since a call a
+          // step cost a relief plume about 0.8 ms (5%)
+          const gc = Math.floor(dtm.c0 + x * dtm.sx)
+          const gr = Math.floor(dtm.r0 - y * dtm.sy)
+          const i = gc < 0 || gr < 0 || gc >= dtm.cols || gr >= dtm.rows ? -1 : gr * dtm.cols + gc
+          if (i < 0) {
+            // off the going grid the step follows the ground, as before. Back
+            // on, the particle starts afresh: it followed the ground off the
+            // grid, so the fall since it left is not a drop it kept
+            g0 = NaN
+          } else {
+            const g1 = dtm.elev[i]
+            if (warmWater && dtm.ground[i] === WATER) {
+              // open water warmer than the air heats it from below and mixes
+              // the scent down to the surface, however still the night over
+              // the land. That is not scent coming down where the ground
+              // rises (touchdown), so it no longer counts as held up
+              zAgl = height
+              aloft = false
+            } else {
+              // NaN (no change) until the particle has had a step on the grid
+              const dz = g0 - g1
+              if (dz > 0) {
+                // falling ground: where cold air drains, pools or runs off the shore it follows it down
+                if (out[4] <= 0.5) zAgl = Math.min(MAX_AGL, zAgl + dz * keep)
+              } else if (dz < 0) {
+                // rising ground takes back what was gained, never below the release height
+                zAgl = Math.max(height, zAgl + dz)
+              }
+            }
+            g0 = g1
+            walked = true
+          }
+        }
         if (k < STEPS) {
           tracks.x[base + k] = x
           tracks.y[base + k] = y
           tracks.k1[id] = k
         }
         const pm = Math.min(TABLE_M, Math.round(path))
-        const w = noseAt[pm]
+        // at its release height the table; held up off a drop, the
+        // reflected Gaussian at the height it has now
+        let w = noseAt[pm]
+        if (sz && zAgl > height) {
+          let sig = sz[pm]
+          if (sig === 0) sig = sz[pm] = sigmaZ(pm, stable, convective)
+          w = heldUp(sig, zAgl)
+          // a ground sit's first step held up: until now it laid down just what its reference would
+          if (rawGround === raw) rawGround = raw.slice()
+        }
         raw[cy * N + cx] += w
         if (rawGround !== raw) rawGround[cy * N + cx] += noseGround[pm]
+        // weighed by what the step would lay down at its release height, not
+        // by w (the spec's way): held well up, a step lays down next to
+        // nothing, so by w a 10 m bank straight onto a lake read as 15% held
+        // up while the whole cone had gone (Lac Bailey, a stand)
+        wTotal += noseAt[pm]
+        if (zAgl > height + 2) {
+          lifted += noseAt[pm]
+          aloft = true
+        } else if (aloft && rawDown) {
+          rawDown[cy * N + cx] += w
+          landed = true
+        }
         if (x * x + y * y > 625) {
           const brg = ((Math.atan2(x, y) * 180) / Math.PI + 360) % 360
           sectors[Math.round(brg / 45) % 8] += w
@@ -358,6 +509,15 @@ export function simulatePlume(
         landing = Math.min(landing, d)
       }
     }
+  // held-up scent the rising ground brings back to the noses, noticeable on
+  // its own over a patch out in the cone, so the card can say it comes
+  // down, and only then
+  let down = 0
+  if (rawDown && landed && ref > 0) {
+    const d = blur(rawDown)
+    for (let y = 0; y < N && down < TOUCH_CELLS; y++)
+      for (let x = 0; x < N; x++) if (d[y * N + x] / ref >= NOTICE && Math.hypot(x - mid, y - mid) * CELL_M >= TOUCH_FROM_M) down++
+  }
   const tot = sectors.reduce((a, b) => a + b, 0) || 1
   const share = Array.from(sectors, (v) => v / tot)
   let main = 0
@@ -376,9 +536,12 @@ export function simulatePlume(
       calm: srcSpeed < 0.25,
       stable: stable > 0.5,
       height,
+      lifted: wTotal > 0 ? lifted / wTotal : 0,
+      touchdown: down >= TOUCH_CELLS,
     },
     grid,
     tracks,
+    relief: walked,
   }
 }
 
@@ -1023,13 +1186,30 @@ let gen = 0
 // each person's run, kept while only the people change, with one sampler for the minute
 let cache: { gen: number; ms: number; sample: GroundSampler | null; runs: Map<string, PlumeRun | null> } | null = null
 
+// The plume's time on the phone, in the dev log once an app run each way:
+// walking the going grid's relief (still air over the core) and not. That
+// pair is the before and after of the +20% budget in MICRO-WIND-LIDAR.md;
+// a line per plume would fill the log on a drag.
+const timed = new Set<boolean>()
+
+function timedPlume(p: Sitter, ms: number, sample: GroundSampler | null): PlumeRun | null {
+  const t0 = performance.now()
+  const r = simulatePlume(p.lon, p.lat, ms, p.height, sample)
+  if (r && !timed.has(r.relief)) {
+    timed.add(r.relief)
+    devlog('scent', `plume ${(performance.now() - t0).toFixed(1)} ms · ${r.relief ? `relief walked · ${Math.round(r.plume.lifted * 100)}% held up off a drop` : 'no relief walked'}`)
+  }
+  return r
+}
+
 function runsFor(people: Sitter[], ms: number): (PlumeRun | null)[] {
+  ensureRelief()
   if (!cache || cache.gen !== gen || cache.ms !== ms) cache = { gen, ms, sample: cellSampler(ms), runs: new Map() }
   const c = cache
   const keep = new Map<string, PlumeRun | null>()
   const out = people.map((p) => {
     const key = `${p.lon},${p.lat},${p.height}`
-    const r = c.runs.has(key) ? c.runs.get(key)! : simulatePlume(p.lon, p.lat, ms, p.height, c.sample)
+    const r = c.runs.has(key) ? c.runs.get(key)! : timedPlume(p, ms, c.sample)
     keep.set(key, r)
     return r
   })
@@ -1362,9 +1542,26 @@ function reachText(p: Plume): string {
   return `noticeable to about ${Math.round(p.reach / 10) * 10} m`
 }
 
+/** Share of the scent held up off a drop before the card says so. */
+const LIFTED = 0.15
+
+/**
+ * The card's reason when scent leaves the ground off a drop, or null. True
+ * whether or not it comes back down inside the grid: off a high bank over
+ * flat low ground it may not, so the second half is said only when the
+ * plume shows it landing where the ground rises again. Keyed on the share
+ * held up alone, not on `stable` too as the spec had it: a drop is kept
+ * from stable 0.3, and below 0.5, where the card does not call the air
+ * still, a Pickle bank's cone already went from 330 m to 90 m (at 0.49).
+ */
+export function reliefReason(p: Plume): string | null {
+  if (p.lifted <= LIFTED) return null
+  return `Off the drop the scent holds its height over the low ground${p.touchdown ? ' and comes down where the ground rises' : ''}`
+}
+
 /** One line for the card: where most of it goes and how far. */
 export function plumeSummary(p: Plume): string {
-  const still = p.stable ? ' · still air, it hugs the ground' : ''
+  const still = p.stable ? (p.lifted > LIFTED ? ' · still air, it holds its height off the drop' : ' · still air, it hugs the ground') : ''
   if (p.calm && p.mainShare < 0.35) return `Scent spreads every way, ${reachText(p)}${still}`
   const second = p.sectors
     .map((v, k) => [v, k] as [number, number])
@@ -1485,5 +1682,6 @@ export function initScentLayer() {
     onMicro(airChanged)
     onProfile(airChanged)
     onWeatherGrid(airChanged)
+    onRelief(airChanged)
   })
 }
