@@ -18,8 +18,32 @@ export default {
     }
     if (url.pathname === '/app' || url.pathname.startsWith('/app/')) return Response.redirect(APP + url.search, 302)
     if (url.pathname === '/api/request') return areaRequest(request, env)
-    return withHeaders(await env.ASSETS.fetch(request), url.pathname)
+    let res = await env.ASSETS.fetch(request)
+    if (url.pathname.endsWith('.mp4')) res = await byteRange(request, res)
+    return withHeaders(res, url.pathname)
   },
+}
+
+/** Safari won't play a video from a server that ignores Range, and the
+ *  assets binding does: cut the asked-for bytes out here. The loops are
+ *  a few MB each, so reading one whole is fine. */
+async function byteRange(request, res) {
+  const m = /^bytes=(\d*)-(\d*)$/.exec(request.headers.get('Range') ?? '')
+  if (res.status !== 200 || !m || (m[1] === '' && m[2] === '')) {
+    const r = new Response(res.body, res)
+    r.headers.set('Accept-Ranges', 'bytes')
+    return r
+  }
+  const buf = await res.arrayBuffer()
+  const size = buf.byteLength
+  const start = m[1] === '' ? Math.max(0, size - Number(m[2])) : Number(m[1])
+  const end = m[1] === '' || m[2] === '' ? size - 1 : Math.min(Number(m[2]), size - 1)
+  if (start > end) return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${size}` } })
+  const headers = new Headers(res.headers)
+  headers.set('Accept-Ranges', 'bytes')
+  headers.set('Content-Range', `bytes ${start}-${end}/${size}`)
+  headers.set('Content-Length', String(end - start + 1))
+  return new Response(buf.slice(start, end + 1), { status: 206, headers })
 }
 
 function withHeaders(res, path) {

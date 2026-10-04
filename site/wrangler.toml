@@ -21,4 +21,4 @@ run_worker_first = true
 [[d1_databases]]
 binding = "DB"
 database_name = "groundwind"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "5801c0bf-cb98-4799-bc24-226bb96ec381"
