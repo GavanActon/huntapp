@@ -123,7 +123,7 @@ corrected until someone has walked it. The check below is the stand-type
 comparison.
 
 Output: pipeline/raw/vegstructure-<region>.npz  (grids, transform, crs, nodata)
-        <area data>/understory-<region>.pmtiles  (z14-16, the core only)
+        <area data>/understory-<region>.pmtiles  (z10-16, the core only)
         <area data>/lanes-<region>.pmtiles  (the same, drawn for a bow: open clear)
         pipeline/bake-vegstructure-summary.json  (the stand-type check; area.summary_path)
 On a scratch run (HUNTAPP_OUT) the npz is written there too, so the one
@@ -135,7 +135,8 @@ build_going.py reads is never touched.
     py -3.14 pipeline/build_vegstructure.py --lanes          # re-render only the lanes tiles
 
 The tiles stop at the water on the 1 m lake edge (lakes.py), not in the
-10 m cells' steps.
+10 m cells' steps. Zoomed out, below the core's own zooms, a pixel holds
+more than a cell, and the cells are averaged into it (FAR_MINZOOM).
 """
 
 from __future__ import annotations
@@ -751,6 +752,7 @@ LANES_RAMP = [
     (0.75, (12, 16, 28, 155)),  # very thick
     (9.99, (12, 16, 28, 190)),  # thicket
 ]
+VEIL = LANES_RAMP[-1][1][:3]  # the veil's one colour, every class but the lanes'
 
 
 def colourise(v: np.ndarray, ramp=RAMP) -> np.ndarray:
@@ -777,6 +779,40 @@ def extend_over_water(v: np.ndarray, water: np.ndarray, cells: int) -> np.ndarra
     out = v.copy()
     out[fill] = v[iy[fill], ix[fill]]
     return out
+
+
+# Zoomed out. From the core's own first zoom (z14) up, a pixel is smaller
+# than a cell (6 m at z14 at 49°N) and samples the cells bilinearly. Below
+# it a pixel holds more than a cell (12.6 m at z13, 25 at z12, 50 at z11,
+# 100 at z10), and a sample would pick one cell of up to a hundred: speckle
+# that changes from zoom to zoom. These zooms average the cells instead, each
+# weighted by its area inside the pixel. The bush colours are the class of
+# the measured cells' mean value. The lanes are the mean of each cell's veil
+# as the z14 tiles draw it: one colour, darker for thicker bush, so the mean
+# is how dark the veil looks from further off, and a stand of thick bush is
+# as dark zoomed out as in close. A pixel is drawn only where its measured
+# cells outweigh its unmeasured land, so the survey's edges and gaps stay
+# clear instead of taking the colour of the few cells beside them. Water
+# counts as neither: the 1 m lake mask cuts it out as in close, averaged
+# into each pixel. Only the ground the core's z14 tiles cover is drawn, so
+# zooming in never loses bush the map showed zoomed out.
+FAR_MINZOOM = 10  # the core is about 80 px across here, barely a patch on a phone
+
+
+def far_cells(under: np.ndarray, water: np.ndarray, transform) -> tuple[np.ndarray, rasterio.Affine]:
+    """The cells as the zoomed-out tiles average them, four bands: measured
+    (1 where there is a value, the shore fill included), unmeasured land,
+    the value and the cell's lanes veil (alpha). The last two are 0 where
+    unmeasured, so either averaged over the measured band's average is the
+    measured cells' mean. Padded with unmeasured land a zoomed-out pixel
+    wide, so a pixel across the grid's edge is judged on all of it, not only
+    on its part over the grid; returned with the padded grid's transform."""
+    measured = np.isfinite(under)
+    bands = (measured, ~measured & ~water, np.where(measured, under, 0), colourise(under, LANES_RAMP)[..., 3])
+    b = tile_bounds_3857(FAR_MINZOOM, 0, 0)
+    pad = int(np.ceil((b[2] - b[0]) / 256 / CELL)) + 1  # a FAR_MINZOOM pixel in cells, by its mercator size (more than its ground size)
+    stack = np.stack([np.pad(v.astype(np.float32), pad, constant_values=fill) for v, fill in zip(bands, (0, 1, 0, 0))])
+    return stack, transform * rasterio.Affine.translation(-pad, -pad)
 
 
 def render_tiles(d: dict, layers: tuple[str, ...] = ("understory", "lanes")) -> None:
@@ -833,23 +869,80 @@ def render_tiles(d: dict, layers: tuple[str, ...] = ("understory", "lanes")) -> 
             )
         return dst, lake
 
+    cells, cells_tr = far_cells(under, d["water"], transform)
+    # the ground the core's z14 tiles cover, in web mercator metres
+    zc = REGION_MAXZOOM + 1
+    west, _, _, north = tile_bounds_3857(zc, lon_to_tile(CORE["west"], zc), lat_to_tile(CORE["north"], zc))
+    _, south, east, _ = tile_bounds_3857(zc, lon_to_tile(CORE["east"] - 1e-9, zc), lat_to_tile(CORE["south"] + 1e-9, zc))
+
+    def render_far(z, x, y):
+        """A zoomed-out tile (FAR_MINZOOM): the measured cells' mean value and
+        mean veil in each pixel, NaN and 0 where it is not drawn, and the
+        pixel's share of lake."""
+        if not in_core(z, x, y):
+            return None
+        b = tile_bounds_3857(z, x, y)
+        got = np.zeros((4, 256, 256), np.float32)
+        reproject(
+            source=cells,
+            destination=got,
+            src_transform=cells_tr,
+            src_crs=crs,
+            dst_transform=from_bounds(*b, 256, 256),
+            dst_crs="EPSG:3857",
+            resampling=Resampling.average,  # each cell weighted by its area in the pixel
+        )
+        measured, unknown, value, veil = got
+        centre = (np.arange(256) + 0.5) * (b[2] - b[0]) / 256
+        cx, cy = b[0] + centre, b[3] - centre
+        drawn = (measured > unknown) & ((cy > south) & (cy < north))[:, None] & ((cx > west) & (cx < east))[None, :]
+        if not drawn.any():
+            return None
+        with np.errstate(divide="ignore", invalid="ignore"):
+            value = np.where(drawn, value / measured, np.nan)
+            veil = np.where(drawn, veil / measured, 0)
+        lake = np.zeros((256, 256), np.float32)
+        if wet is not None:
+            reproject(
+                source=wet,
+                destination=lake,
+                src_transform=wtr,
+                src_crs=wcrs,
+                dst_transform=from_bounds(*b, 256, 256),
+                dst_crs="EPSG:3857",
+                resampling=Resampling.average,
+            )
+        return value, veil, lake
+
     for name, ramp in (("understory", RAMP), ("lanes", LANES_RAMP)):
         if name not in layers:
             continue
 
-        def tile(z, x, y, ramp=ramp):
-            got = render(z, x, y)
-            if got is None:
-                return None
-            dst, lake = got
-            rgba = colourise(dst, ramp)
+        def tile(z, x, y, name=name, ramp=ramp):
+            if z <= REGION_MAXZOOM:
+                got = render_far(z, x, y)
+                if got is None:
+                    return None
+                value, veil, lake = got
+                if name == "lanes":
+                    rgba = np.zeros((256, 256, 4), np.uint8)
+                    rgba[..., 3] = np.rint(veil)
+                    rgba[rgba[..., 3] > 0, :3] = VEIL
+                else:
+                    rgba = colourise(value, ramp)
+            else:
+                got = render(z, x, y)
+                if got is None:
+                    return None
+                dst, lake = got
+                rgba = colourise(dst, ramp)
             # cut at the lake's edge, softly
             rgba[..., 3] = (rgba[..., 3] * (1 - lake)).astype(np.uint8)
             # a tile that is all lane is nothing to draw
             return rgba if rgba[..., 3].any() else None
 
         path = OUT_DIR / f"{name}-{REGION['id']}.pmtiles"
-        write_raster_pmtiles(path, f"{name}-{REGION['id']}", info["attribution"], REGION_MAXZOOM + 1, CORE["maxzoom"], tile)
+        write_raster_pmtiles(path, f"{name}-{REGION['id']}", info["attribution"], FAR_MINZOOM, CORE["maxzoom"], tile)
         if info["own"]:  # for the coverage report (Ontario's comes from bake_area.py's defaults)
             note_source(path.name, source=info["source"], licence=info["licence"] or None, vintage=info["vintage"])
 

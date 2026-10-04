@@ -100,14 +100,14 @@
       },
       "understory": {
         "file": "understory-pickle-lake.pmtiles",
-        "bytes": 3795772,
+        "bytes": 4068417,
         "source": "FRI leaf-on single-photon LiDAR point clouds, OMNRF",
         "licence": "OGL-Ontario",
         "vintage": "2021"
       },
       "lanes": {
         "file": "lanes-pickle-lake.pmtiles",
-        "bytes": 3072476,
+        "bytes": 3480513,
         "source": "FRI leaf-on single-photon LiDAR point clouds, OMNRF",
         "licence": "OGL-Ontario",
         "vintage": "2021"

@@ -109,14 +109,14 @@
       },
       "understory": {
         "file": "understory-lac-bailey.pmtiles",
-        "bytes": 11586584,
+        "bytes": 12465257,
         "source": "MRNF LiDAR 2023_LacAuBrochet_LiDAR, flown 2024-07-27; MRNF LiDAR 2023_RiviereAuxOutardes_LiDAR, flown 2024-09-06 to 2024-09-14; heights above the tiles' own ground returns",
         "licence": "CC BY 4.0",
         "vintage": "flown 2024-07-27 to 2024-09-14"
       },
       "lanes": {
         "file": "lanes-lac-bailey.pmtiles",
-        "bytes": 8465371,
+        "bytes": 9858272,
         "source": "MRNF LiDAR 2023_LacAuBrochet_LiDAR, flown 2024-07-27; MRNF LiDAR 2023_RiviereAuxOutardes_LiDAR, flown 2024-09-06 to 2024-09-14; heights above the tiles' own ground returns",
         "licence": "CC BY 4.0",
         "vintage": "flown 2024-07-27 to 2024-09-14"

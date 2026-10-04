@@ -161,11 +161,21 @@ const RELIEF_RAMP = (() => {
   return ['interpolate', ['linear'], ['elevation'], ...RELIEF_STOPS.flatMap(([m, c]) => [at(m), c])] as unknown as ExpressionSpecification
 })()
 
-/** The core's archives (the 1 m LiDAR shade and contours, the bush layers)
- *  begin a zoom past the region's bake and run to the core's own maxzoom;
- *  their layers take over half a zoom early. 14–16 and 13.5 at Pickle Lake. */
+/** The core's archives (the 1 m LiDAR shade and contours) begin a zoom past
+ *  the region's bake and run to the core's own maxzoom; their layers take
+ *  over half a zoom early. 14–16 and 13.5 at Pickle Lake. */
 const CORE_MINZOOM = REGION_MAXZOOM + 1
 const CORE_HANDOFF = REGION_MAXZOOM + 0.5
+/** The bush layers, the core's too, go further out: below the core's zooms
+ *  their bake averages the 10 m cells into each pixel, from z10
+ *  (build_vegstructure.py FAR_MINZOOM), so they still show zoomed out
+ *  (Gavan, 2026-10-04: lanes and bush went when zoomed out). A 256 px
+ *  raster source takes a zoom's tiles from 1.5 zooms below it (it rounds
+ *  the map's zoom + 1), so the layers start there: z10's tiles from 8.5, as
+ *  z14's did from 12.5. An archive baked before has no such tiles and draws
+ *  nothing out there, as before. */
+const BUSH_MINZOOM = 10
+const BUSH_LAYER_MINZOOM = BUSH_MINZOOM - 1.5
 
 const FONT = ['Noto Sans Regular']
 const FONT_MED = ['Noto Sans Medium']
@@ -316,16 +326,16 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
       ),
     )
   }
-  // bush thickness from the point cloud, near camp (z14–16 baked, overzoomed above)
+  // bush thickness from the point cloud, near camp (z10–16 baked, overzoomed above)
   if (has('understory')) {
-    sources.understory = { type: 'raster', url: 'pmtiles://understory', tileSize: 256, minzoom: CORE_MINZOOM, maxzoom: CORE.maxzoom, attribution: ATTRIBUTION.bush }
+    sources.understory = { type: 'raster', url: 'pmtiles://understory', tileSize: 256, minzoom: BUSH_MINZOOM, maxzoom: CORE.maxzoom, attribution: ATTRIBUTION.bush }
     rasters.push(
       tag(
         {
           id: 'understory',
           type: 'raster',
           source: 'understory',
-          minzoom: 12.5,
+          minzoom: BUSH_LAYER_MINZOOM,
           layout: vis(o.layers.understory),
           paint: { 'raster-opacity': o.opacity.understory, 'raster-resampling': 'nearest' },
         },
@@ -336,14 +346,14 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   }
   // the same bush drawn for a bow: open ground left clear, thicker bush darker
   if (has('lanes')) {
-    sources.lanes = { type: 'raster', url: 'pmtiles://lanes', tileSize: 256, minzoom: CORE_MINZOOM, maxzoom: CORE.maxzoom, attribution: ATTRIBUTION.bush }
+    sources.lanes = { type: 'raster', url: 'pmtiles://lanes', tileSize: 256, minzoom: BUSH_MINZOOM, maxzoom: CORE.maxzoom, attribution: ATTRIBUTION.bush }
     rasters.push(
       tag(
         {
           id: 'lanes',
           type: 'raster',
           source: 'lanes',
-          minzoom: 12.5,
+          minzoom: BUSH_LAYER_MINZOOM,
           layout: vis(o.layers.lanes),
           paint: { 'raster-opacity': o.opacity.lanes, 'raster-resampling': 'linear' },
         },
