@@ -40,6 +40,8 @@ import LogCard, { useLogForm } from './ui/LogCard'
 import ViewPill from './ui/ViewPill'
 import { initDepthLayer } from './map/depthLayer'
 import { initSpotsLayer } from './spots/spotsLayer'
+import { initAreaArrival } from './areas/arrive'
+import AreaOffer from './ui/AreaOffer'
 
 /** What has gone wrong (offline with maps missing, no location), and with
  *  the map turned the way you face, the heading: the way that is up. */
@@ -68,6 +70,8 @@ function TopBar() {
           {compass(heading)} · {heading}°
         </span>
       )}
+      {/* the fix in another area's box: offered, never switched on a fix alone */}
+      <AreaOffer />
       {/* offline with every map saved is the normal state at camp: nothing to say */}
       {!online && !offlineReady && <span className="chip chip-warn">Offline · some maps not saved</span>}
       {gpsStatus === 'denied' && <span className="chip chip-warn">Location denied</span>}
@@ -136,6 +140,8 @@ export default function App() {
     initRoutes()
     initRouteLayer()
     initPlanTime()
+    // what an area switch asked for once the app is there: a pin, a place, an outing
+    initAreaArrival()
     // last: location comes back on if it was on at the last look, and recording with it
     resumeLocation()
     const on = () => setOnline(true)

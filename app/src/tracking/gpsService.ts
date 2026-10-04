@@ -1,3 +1,4 @@
+import { takeHoldFollow } from '../areas/handoff'
 import { withMap } from '../map/mapController'
 import { useAppStore } from '../state/appStore'
 import { nearestInBounds } from '../config'
@@ -127,7 +128,10 @@ export function resumeLocation(): void {
   }
   if (!on || useGpsStore.getState().locating) return
   useGpsStore.getState().setLocating(true)
-  useAppStore.getState().setFollow(true)
+  // just switched area to a place, or with the fix outside the new box: the
+  // map stays on the view the switch opened on, not taken off it by the
+  // first fix or dragged to the box's edge by every one (areas/switch.ts)
+  useAppStore.getState().setFollow(!takeHoldFollow())
   startCompass()
   startGps()
 }

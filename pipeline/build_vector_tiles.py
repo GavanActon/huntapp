@@ -3,9 +3,12 @@ tiles for the view instead of fetching, parsing and indexing whole files
 at start-up (the forest stands alone are 5 MB of GeoJSON, which held the
 map's load back by seconds on the phone, 2026-10-01).
 
-  forest-<region>.pmtiles   layer `forest`   from forest-<region>.geojson (build_forest.py)
+  forest-<region>.pmtiles   layer `forest`   from forest-<region>.geojson (the
+                            area's forest adapter: build_forest.py in Ontario)
   places-<region>.pmtiles   layers wmu, camps, crown, parks, fire, roads
-                            from <theme>-<region>.geojson (build_vectors.py)
+                            from <theme>-<region>.geojson (the area's vector
+                            adapter: build_vectors.py in Ontario), less any
+                            theme the province's licence keeps out (WITHHELD)
 
 The app's style (mapStyle.ts) already prefers these archives when they
 exist (DATA_FILES keys `forest` and `places`, one source-layer per theme)
@@ -29,6 +32,7 @@ import shapely
 from mapbox_vector_tile.encoder import on_invalid_geometry_make_valid
 from rasterio.warp import transform_geom
 
+from area import AREA, JURISDICTION
 from common import OUT_DIR, REGION, region_tiles, tile_bounds_3857
 from pmtiles.tile import Compression, TileType, zxy_to_tileid
 from pmtiles.writer import Writer
@@ -42,10 +46,20 @@ ARCHIVES: dict[str, list[str]] = {
     "forest": ["forest"],
     "places": ["wmu", "camps", "crown", "parks", "fire", "roads"],
 }
+# by the province whose adapters made the themes
 ATTRIBUTION = {
-    "forest": "FRI © Ontario Ministry of Natural Resources",
-    "places": "© Ontario MNRF",
+    "ON": {"forest": "FRI © Ontario Ministry of Natural Resources", "places": "© Ontario MNRF"},
+    "QC": {"forest": "Carte écoforestière © Gouvernement du Québec", "places": "© Gouvernement du Québec"},
 }
+# Themes a province's archives never carry: only open data goes in a pack,
+# and Quebec's hunting zones state no licence (qc_vectors.wmu). Not read
+# even if a copy is lying in the area's folder. The archive still names the
+# layer, empty, as it names camps and crown where there are none.
+WITHHELD = {"QC": {"wmu"}}
+
+
+def attribution(name: str) -> str:
+    return ATTRIBUTION.get(JURISDICTION, {}).get(name) or AREA.get("attribution", {}).get("vectors", "")
 
 
 def load_theme(theme: str) -> tuple[list[shapely.Geometry], list[dict]]:
@@ -78,7 +92,10 @@ def load_theme(theme: str) -> tuple[list[shapely.Geometry], list[dict]]:
 
 def write_archive(name: str, themes: list[str]) -> None:
     out = OUT_DIR / f"{name}-{REGION['id']}.pmtiles"
-    loaded = {t: load_theme(t) for t in themes}
+    withheld = WITHHELD.get(JURISDICTION, set())
+    for t in sorted(withheld & set(themes)):
+        print(f"  {t}: not openly licensed here, left out")
+    loaded = {t: load_theme(t) for t in themes if t not in withheld}
     loaded = {t: v for t, v in loaded.items() if v[0]}
     if not loaded:
         print(f"{name}: nothing to bake")
@@ -140,7 +157,7 @@ def write_archive(name: str, themes: list[str]) -> None:
             },
             {
                 "name": out.stem,
-                "attribution": ATTRIBUTION[name],
+                "attribution": attribution(name),
                 # every theme asked for, even one with nothing in it (crown
                 # land here): the style names them all as source-layers,
                 # and MapLibre reports a layer the metadata does not list

@@ -1,0 +1,195 @@
+{
+  "id": "pickle-lake",
+  "name": "Pickle Lake",
+  "jurisdiction": "ON",
+  "centre": [-85.59872, 48.9262],
+  "home": { "center": [-85.59872, 48.9262], "zoom": 13 },
+  "region": { "west": -85.72, "south": 48.86, "east": -85.46, "north": 49.0 },
+  "core": { "west": -85.65, "south": 48.895, "east": -85.535, "north": 48.967, "maxzoom": 16 },
+  "regionMaxzoom": 13,
+  "declination": -6,
+  "timezone": "America/Toronto",
+  "zone": { "label": "WMU", "name": "21B" },
+  "relief": [325, 466],
+  "base": "",
+  "surveyedLakes": ["pickle lake", "ketchup lake", "mcgill lake"],
+  "live": { "lio": true, "satellite": "lio" },
+  "attribution": {
+    "vectors": "© Ontario MNRF",
+    "lakes": "© Ontario MNRF",
+    "bush": "FRI LiDAR © Ontario MNR"
+  },
+  "presets": [
+    { "name": "Camp", "lon": -85.59872, "lat": 48.9262, "kind": "camp", "note": "On the peninsula" },
+    { "name": "Pickle Lake", "lon": -85.5777, "lat": 48.9412, "kind": "lake" },
+    { "name": "McGill Lake", "lon": -85.5027, "lat": 48.919, "kind": "lake" },
+    { "name": "Upper McGill Lake", "lon": -85.4854, "lat": 48.9393, "kind": "lake" },
+    { "name": "Ketchup Lake", "lon": -85.5922, "lat": 48.8944, "kind": "lake" },
+    { "name": "Line Lake", "lon": -85.5074, "lat": 48.9733, "kind": "lake" },
+    { "name": "White Lake", "lon": -85.6348, "lat": 48.7507, "kind": "lake", "note": "Tern Islands mid-lake" }
+  ],
+  "bundle": {
+    "description": "Topo, imagery, hillshade, forest stands, lake depths, historical topo, camps, WMU lines and the habitat grid the Spots tab scores and the going grid routes are found on, for Pickle, McGill, Ketchup and Line Lakes; full detail within 2 km of the camp."
+  },
+  "files": {
+    "pmtiles": ["basemap", "topo", "satellite", "hillshade", "hillshadeLidar", "dem", "contours", "contoursWide", "forest", "understory", "lanes", "bathy", "historical", "bathySheets", "places"],
+    "geo": ["wmu", "camps", "crown", "parks", "bathy", "fire", "roads", "forest", "depth"],
+    "baseGeo": ["waterbody"],
+    "grids": ["habitat", "micro", "going"]
+  },
+  "bake": {
+    "outDir": "app/public/data",
+    "hrdem": ["https://canelevation-dem.s3.ca-central-1.amazonaws.com/hrdem-lidar/ON-SPL_ON_White_Lake_UTM16_2021-1m-dtm.tif"],
+    "vectors": "on.lio",
+    "forest": { "adapter": "on.fri", "gdb": "raw/fri/pp_FRI_FIMv2_WhiteRiverForest_2010_2D.gdb", "crs": "EPSG:26916", "vintage": 2010 },
+    "imagery": "on.oiwms",
+    "pointcloud": "on.fri_leafon",
+    "nts": ["042C13", "042C14"],
+    "lakeSheets": ["16-6042-54219", "16-6097-54195", "16-6034-54164"]
+  },
+  "coverage": {
+    "checked": "2026-10-03",
+    "pmtiles": {
+      "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
+      "topo": {
+        "file": "topo-pickle-lake.pmtiles",
+        "bytes": 3923253,
+        "source": "Toporama hypsography (contours and spot heights), NRCan WMS",
+        "licence": "OGL-Canada"
+      },
+      "satellite": {
+        "file": "satellite-pickle-lake.pmtiles",
+        "bytes": 14705967,
+        "source": "Ontario Imagery, LIO web map service",
+        "licence": "OGL-Ontario"
+      },
+      "hillshade": {
+        "file": "hillshade-pickle-lake.pmtiles",
+        "bytes": 7841670,
+        "source": "MRDEM 30 m hillshade, NRCan WMS",
+        "licence": "OGL-Canada"
+      },
+      "hillshadeLidar": {
+        "file": "hillshade-lidar-pickle-lake.pmtiles",
+        "bytes": 36634866,
+        "source": "HRDEM 1 m LiDAR DTM, NRCan: ON-SPL_ON_White_Lake_UTM16_2021-1m",
+        "licence": "OGL-Canada",
+        "vintage": "2021"
+      },
+      "dem": {
+        "file": "dem-pickle-lake.pmtiles",
+        "bytes": 12169881,
+        "source": "MRDEM 30 m, with HRDEM 1 m LiDAR over the core (ON-SPL_ON_White_Lake_UTM16_2021-1m), NRCan",
+        "licence": "OGL-Canada",
+        "vintage": "2021"
+      },
+      "contours": {
+        "file": "contours-pickle-lake.pmtiles",
+        "bytes": 3330666,
+        "source": "HRDEM 1 m LiDAR DTM, NRCan: ON-SPL_ON_White_Lake_UTM16_2021-1m",
+        "licence": "OGL-Canada",
+        "vintage": "2021"
+      },
+      "contoursWide": { "file": "contours-wide-pickle-lake.pmtiles", "bytes": 437772, "source": "MRDEM 30 m DTM, NRCan", "licence": "OGL-Canada" },
+      "forest": {
+        "file": "forest-pickle-lake.pmtiles",
+        "bytes": 1061560,
+        "source": "Forest Resources Inventory (FRI FIMv2) stands, OMNRF",
+        "licence": "OGL-Ontario",
+        "vintage": "2010"
+      },
+      "understory": {
+        "file": "understory-pickle-lake.pmtiles",
+        "bytes": 3795772,
+        "source": "FRI leaf-on single-photon LiDAR point clouds, OMNRF",
+        "licence": "OGL-Ontario",
+        "vintage": "2021"
+      },
+      "lanes": {
+        "file": "lanes-pickle-lake.pmtiles",
+        "bytes": 3072476,
+        "source": "FRI leaf-on single-photon LiDAR point clouds, OMNRF",
+        "licence": "OGL-Ontario",
+        "vintage": "2021"
+      },
+      "bathy": { "missing": "not baked: lake depths are drawn from GeoJSON (depth)" },
+      "historical": {
+        "file": "historical-pickle-lake.pmtiles",
+        "bytes": 11181586,
+        "source": "CanMatrix2 1:50 000 NTS scans, NRCan: 042C13, 042C14",
+        "licence": "OGL-Canada"
+      },
+      "bathySheets": {
+        "file": "bathysheets-pickle-lake.pmtiles",
+        "bytes": 7137922,
+        "source": "MNR historic lake survey sheets",
+        "licence": "OGL-Ontario",
+        "vintage": "1978-79"
+      },
+      "places": {
+        "file": "places-pickle-lake.pmtiles",
+        "bytes": 82795,
+        "source": "LIO: WMUs, Crown land camps, Crown land, parks, burns and roads",
+        "licence": "OGL-Ontario"
+      }
+    },
+    "geo": {
+      "wmu": { "file": "wmu-pickle-lake.geojson", "bytes": 281075, "source": "Wildlife Management Units, LIO", "licence": "OGL-Ontario" },
+      "camps": {
+        "file": "camps-pickle-lake.geojson",
+        "bytes": 602,
+        "source": "Crown land dispositions: camps, cottages and lodges, LIO",
+        "licence": "OGL-Ontario"
+      },
+      "crown": { "file": "crown-pickle-lake.geojson", "bytes": 72, "source": "Crown land, LIO", "licence": "OGL-Ontario" },
+      "parks": { "file": "parks-pickle-lake.geojson", "bytes": 13203, "source": "Provincial parks, LIO", "licence": "OGL-Ontario" },
+      "bathy": { "file": "bathy-pickle-lake.geojson", "bytes": 67, "source": "Lake bathymetry lines, LIO", "licence": "OGL-Ontario" },
+      "fire": { "file": "fire-pickle-lake.geojson", "bytes": 182586, "source": "Fire disturbance areas, LIO", "licence": "OGL-Ontario" },
+      "roads": { "file": "roads-pickle-lake.geojson", "bytes": 111150, "source": "MNRF roads, LIO", "licence": "OGL-Ontario" },
+      "forest": {
+        "file": "forest-pickle-lake.geojson",
+        "bytes": 5098568,
+        "source": "Forest Resources Inventory (FRI FIMv2) stands, OMNRF",
+        "licence": "OGL-Ontario",
+        "vintage": "2010"
+      },
+      "depth": {
+        "file": "depth-pickle-lake.geojson",
+        "bytes": 784946,
+        "source": "depth bands: the MNR survey sheets where a lake was surveyed, else a shore-distance model",
+        "licence": "OGL-Ontario"
+      }
+    },
+    "baseGeo": {
+      "waterbody": {
+        "file": "waterbody-pickle-lake.geojson",
+        "bytes": 2261193,
+        "source": "Ontario Hydro Network waterbodies, LIO",
+        "licence": "OGL-Ontario"
+      }
+    },
+    "grids": {
+      "habitat": {
+        "file": "habitat-pickle-lake.hab",
+        "bytes": 1952354,
+        "source": "derived: MRDEM, NRCan 2020 land cover, forest stands, water, wetlands, roads and burns",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-09-28"
+      },
+      "micro": {
+        "file": "micro-pickle-lake.hab",
+        "bytes": 2256453,
+        "source": "derived: the habitat grid and the MRDEM",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-01"
+      },
+      "going": {
+        "file": "going-pickle-lake.hab",
+        "bytes": 1568712,
+        "source": "derived: HRDEM LiDAR, point-cloud bush or the forest-map estimate, water, wetlands and roads",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-09-30"
+      }
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type JSX } from 'react'
+import { ACTIVE_AREA } from '../../areas'
 import { getMap } from '../../map/mapController'
 import { clearDevlog, devlogCount, devlogOn, lastUpload, onDevlog, setDevlog, shareDevlog, uploadDevlog, uploadSettings } from '../../devlog'
 import { BUILD } from '../../diagnostics'
@@ -264,8 +265,12 @@ export default function SettingsSheet(): JSX.Element {
 
   return (
     <div className="settings">
-      <div className="st-row">
-        <button onClick={() => pushSheet({ kind: 'offline' })}>Maps on this phone</button>
+      {/* the row's word (All saved, Download) is the area the app is in; the sheet has every area */}
+      <div className="st-row st-two">
+        <button onClick={() => pushSheet({ kind: 'offline' })}>
+          <span>Maps on this phone</span>
+          <small>{ACTIVE_AREA.name}</small>
+        </button>
         {maps.action === 'download' ? (
           <button className="st-more" disabled={maps.disabled} onClick={() => void downloadFiles(maps.files, maps.replace)}>
             {maps.text}

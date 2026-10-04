@@ -29,6 +29,13 @@
     <div id="splash" aria-hidden="true">
       <div class="word"><b>Pic River</b><span>White Lake · Manitouwadge</span></div>
     </div>
+    <script>
+      // the place line is Pickle Lake's: on another area, the name the app left for this start (areas/index.ts)
+      try {
+        var area = localStorage.getItem('huntapp-area-splash')
+        if (area) document.querySelector('#splash .word span').textContent = area
+      } catch (e) {}
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

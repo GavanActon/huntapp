@@ -1,4 +1,5 @@
 import { Fragment, useMemo, useState, type JSX } from 'react'
+import { GEO_THEMES, ZONE } from '../../config'
 import { sourceModes } from '../../map/pmtilesRegistry'
 import { geoModes } from '../../map/MapView'
 import { LIVE_RASTER, LIVE_VECTOR } from '../../sources'
@@ -53,7 +54,8 @@ const GROUPS: { title: string; defs: LayerDef[] }[] = [
     title: 'Land',
     defs: [
       { key: 'camps', name: 'Camps', data: 'places', live: 'camps' },
-      { key: 'wmu', name: 'WMU boundaries', data: 'places', live: 'wmu' },
+      // the zone's word is the area's: WMU boundaries in Ontario, Zone boundaries in Quebec
+      { key: 'wmu', name: `${ZONE.label} boundaries`, data: 'places', live: 'wmu' },
       { key: 'crown', name: 'Private land', data: 'places', live: 'crown' },
       { key: 'parks', name: 'Parks', data: 'places', live: 'parks' },
       { key: 'roads', name: 'Bush roads', data: 'places' },
@@ -94,7 +96,11 @@ const ON_ORDER: (keyof LayerVisibility | 'heat')[] = [
 ]
 
 function status(d: LayerDef): string {
-  const pm = d.data ? sourceModes.get(d.data) : undefined
+  // the places archive holds only the themes the area has (files.geo; Lac
+  // Bailey has no camps or private land, LIO's): its being there says
+  // nothing of the rest
+  const absent = d.data === 'places' && !(GEO_THEMES as readonly string[]).includes(d.key)
+  const pm = d.data && !absent ? sourceModes.get(d.data) : undefined
   const mode = pm && pm !== 'missing' ? pm : geoModes.get(d.key)
   if (mode === 'local') return 'on this phone'
   if (mode === 'network') return 'baked · online'

@@ -1,11 +1,13 @@
 import { useRef, useState, type JSX } from 'react'
+import { otherAreaAt } from '../../areas'
+import { switchArea } from '../../areas/switch'
 import { inRegion } from '../../config'
 import { checkWords, entryDetail } from '../../log/eventText'
 import { SPECIES_NAMES, tallies, useHuntLog, type LogEntry } from '../../log/huntLog'
 import { exportAllGpx, exportCsv } from '../../log/logExport'
 import { entryTitle, showLogPopup } from '../../log/logLayer'
 import { LOG_FILTER_NAMES, LOG_FILTERS, logView, type LogFilter } from '../../log/logView'
-import { outings, outingSummary, outingTitle, type Outing } from '../../log/outings'
+import { outingElsewhere, outings, outingSummary, outingTitle, type Outing } from '../../log/outings'
 import { getMap } from '../../map/mapController'
 import { useAppStore } from '../../state/appStore'
 import { dateShort, dayShort, hourMinShort, startOfDayMs } from '../../time'
@@ -143,13 +145,22 @@ export default function HuntLogSheet(): JSX.Element {
     useLogForm.getState().open(at.lon, at.lat)
   }
 
-  /** The map to an event, its popup up (Delete is there); an outing opens over the map. */
+  /** The map to an event, its popup up (Delete is there); an outing opens
+   *  over the map. One in another area switches the app there first, and
+   *  the popup or the outing comes up once it has opened. */
   const go = (ev: LogEvent) => {
+    if (ev.type === 'outing') {
+      const away = outingElsewhere(ev.o)
+      if (away) return void switchArea(away.area.id, { center: away.center, zoom: 14 }, { kind: 'outing', id: ev.o.id })
+      closeSheet()
+      return setTopCard({ kind: 'outing', id: ev.o.id })
+    }
+    const { lon, lat } = ev.type === 'entry' ? ev.e : ev.c
+    const other = otherAreaAt(lon, lat)
+    if (other) return void switchArea(other.id, { center: [lon, lat], zoom: Math.max(getMap()?.getZoom() ?? 15, 15) }, ev.type === 'entry' ? { kind: 'entry', id: ev.e.id } : { kind: 'check', id: ev.c.id })
     closeSheet()
-    if (ev.type === 'outing') return setTopCard({ kind: 'outing', id: ev.o.id })
     const m = getMap()
     if (!m) return
-    const { lon, lat } = ev.type === 'entry' ? ev.e : ev.c
     useAppStore.getState().setFollow(false)
     m.easeTo({ center: [lon, lat], zoom: Math.max(m.getZoom(), 15), duration: 500 })
     if (ev.type === 'entry') showLogPopup(m, ev.e)

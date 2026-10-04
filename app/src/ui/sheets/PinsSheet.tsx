@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties, type JSX } from 'react'
+import { ACTIVE_AREA, AREA_LIST, type AreaDef } from '../../areas'
+import { switchArea } from '../../areas/switch'
 import type { PlaceDef } from '../../config'
 import { useHuntLog, type LogEntry } from '../../log/huntLog'
 import { getMap } from '../../map/mapController'
@@ -8,7 +10,7 @@ import { loadHabitat, onHabitat } from '../../spots/habitatGrid'
 import { fromHome } from '../../spots/scoring'
 import { huntedLine, huntedWinds, sectorOf, suggestWinds, windsLabel, windVerdict } from '../../spots/standWinds'
 import { PIN_COLOURS, placeColour } from '../../state/pinColours'
-import { homePlace, usePlacesStore, type SavedPlace } from '../../state/placesStore'
+import { homePlace, placeArea, usePlacesStore, type SavedPlace } from '../../state/placesStore'
 import { ensureProfile, onProfile } from '../../weather/boundaryLayer'
 import { loadMicro, onMicro } from '../../weather/micro/model'
 import { useWindChecks } from '../../weather/micro/windChecks'
@@ -23,7 +25,11 @@ const KINDS: PlaceDef['kind'][] = ['camp', 'lake', 'landing', 'stand', 'trail']
 /**
  * Pins: the camp, the lakes, the stands and landings, and the pins dropped
  * on the map. Tapping a row picks it (the map eases there, the strip
- * retargets); tapping the picked row again, or Clear, lets it go.
+ * retargets); tapping the picked row again, or Clear, lets it go. A place
+ * in another area says which, and going to it switches the app there
+ * (areas/switch.ts), picked once it opens. Another area's own places come
+ * last, folded under its name: this area's and your pins stay on top, and a
+ * scroll on the phone does not land on a row that reloads into another area.
  *
  * A stand can carry its good winds (spots/standWinds.ts): the row then
  * says how the ground wind at the next sit reads against them, and the
@@ -38,6 +44,8 @@ export default function PinsSheet(): JSX.Element {
   const remove = usePlacesStore((s) => s.remove)
   const add = usePlacesStore((s) => s.add)
   const [editing, setEditing] = useState<string | null>(null)
+  // the other areas' folds opened, by area id
+  const [unfolded, setUnfolded] = useState<string[]>([])
   const checks = useWindChecks((s) => s.checks)
   const entries = useHuntLog((s) => s.entries)
   // the ground model, the layering profile, the wind grid and the habitat bake land on their own time
@@ -58,10 +66,24 @@ export default function PinsSheet(): JSX.Element {
   const dropped = places.filter(isDroppedPin)
   const home = homePlace()
 
+  /** The area a place is in when it is not this one; a place in none stays as it was (the map eases as near as it can). */
+  const elsewhere = (p: SavedPlace): AreaDef | null => {
+    const a = placeArea(p)
+    return a && a.id !== ACTIVE_AREA.id ? a : null
+  }
+  const view = (p: SavedPlace) => ({ center: [p.lon, p.lat] as [number, number], zoom: Math.max(getMap()?.getZoom() ?? 13, 13) })
   const tap = (p: SavedPlace) => {
     if (p.id === selectedId) return select(null)
+    const away = elsewhere(p)
+    if (away) return void switchArea(away.id, view(p), { kind: 'select', id: p.id })
     select(p.id)
-    getMap()?.easeTo({ center: [p.lon, p.lat], zoom: Math.max(getMap()!.getZoom(), 13) })
+    getMap()?.easeTo(view(p))
+  }
+  const goTo = (p: SavedPlace) => {
+    const away = elsewhere(p)
+    // a look, nothing picked, as here; follow stays off there, or a fix in that area takes the map off the place
+    if (away) return void switchArea(away.id, view(p), { kind: 'look' })
+    getMap()?.easeTo(view(p))
   }
   const addHere = () => {
     const c = getMap()?.getCenter()
@@ -70,7 +92,78 @@ export default function PinsSheet(): JSX.Element {
     select(p.id)
     setEditing(p.id)
   }
-  const where = (p: SavedPlace) => (p.id === home.id ? p.kind : `${p.kind} · ${fromHome(p.lon, p.lat, home)}`)
+  // folded under its area's name, a place needs no more than its kind
+  const where = (p: SavedPlace, folded: boolean) => (p.id === home.id || folded ? p.kind : `${p.kind} · ${elsewhere(p)?.name ?? fromHome(p.lon, p.lat, home)}`)
+  // another area's presets go in its fold; your own pins there stay with the rest of yours
+  const inFold = (p: SavedPlace) => p.savedAt === 0 && elsewhere(p) != null
+  const folds = AREA_LIST.filter((a) => a.id !== ACTIVE_AREA.id)
+    .map((a) => ({ area: a, theirs: places.filter((p) => inFold(p) && placeArea(p)?.id === a.id) }))
+    .filter((f) => f.theirs.length > 0)
+  const toggleFold = (id: string) => setUnfolded((u) => (u.includes(id) ? u.filter((x) => x !== id) : [...u, id]))
+
+  const row = (p: SavedPlace, folded: boolean) => {
+    const on = p.id === selectedId
+    if (editing === p.id) {
+      return (
+        <div key={p.id} className="place-row place-row-edit">
+          <div className="pe-fields">
+            <input className="pe-name" value={p.name} onChange={(e) => update(p.id, { name: e.target.value })} />
+            <select value={p.kind} onChange={(e) => update(p.id, { kind: e.target.value as PlaceDef['kind'] })}>
+              {KINDS.map((k) => (
+                <option key={k} value={k}>
+                  {k}
+                </option>
+              ))}
+            </select>
+            <div className="pin-swatches">
+              {PIN_COLOURS.map((c) => (
+                <button key={c} className={`pin-swatch${placeColour(p) === c ? ' on' : ''}`} style={{ '--sw': c } as CSSProperties} aria-label={`Colour ${c}`} aria-pressed={placeColour(p) === c} onClick={() => update(p.id, { color: c })} />
+              ))}
+            </div>
+            <textarea className="pe-note" placeholder="Note" value={p.note ?? ''} onChange={(e) => update(p.id, { note: e.target.value })} />
+            <WindsEditor p={p} tick={tick} entries={entries} onChange={(winds) => update(p.id, { winds })} />
+          </div>
+          <div className="saved-actions">
+            <button className="btn-secondary" onClick={() => setEditing(null)}>
+              Done
+            </button>
+            <button
+              className="icon-btn danger"
+              aria-label="Delete"
+              onClick={() => {
+                if (confirm(`Delete ${p.name}?`)) remove(p.id)
+                setEditing(null)
+              }}
+            >
+              <IconTrash size={16} />
+            </button>
+          </div>
+        </div>
+      )
+    }
+    return (
+      <div key={p.id} className={`place-row${on ? ' place-current' : ''}`}>
+        <button className="row-text place-go" aria-pressed={on} onClick={() => tap(p)}>
+          <span className="row-title">
+            <i className="pin-dot" style={{ background: placeColour(p) }} />
+            {p.name}
+          </span>
+          <span className="row-desc">
+            {where(p, folded)}
+            {p.winds?.length ? ` · winds ${windsLabel(p.winds)}` : ''}
+            {p.note ? ` · ${p.note}` : ''}
+          </span>
+          {verdicts.get(p.id) && <span className={`row-desc pw-verdict pw-${verdicts.get(p.id)!.grade}`}>{verdicts.get(p.id)!.text}</span>}
+        </button>
+        <button className="icon-btn" aria-label="Edit" onClick={() => setEditing(p.id)}>
+          <IconPin size={16} />
+        </button>
+        <button className="icon-btn" aria-label="Go" onClick={() => goTo(p)}>
+          <IconLocate size={16} />
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="pins">
@@ -96,71 +189,22 @@ export default function PinsSheet(): JSX.Element {
           </button>
         )}
       </div>
-      <div className="place-list">
-        {places.map((p) => {
-          const on = p.id === selectedId
-          if (editing === p.id) {
-            return (
-              <div key={p.id} className="place-row place-row-edit">
-                <div className="pe-fields">
-                  <input className="pe-name" value={p.name} onChange={(e) => update(p.id, { name: e.target.value })} />
-                  <select value={p.kind} onChange={(e) => update(p.id, { kind: e.target.value as PlaceDef['kind'] })}>
-                    {KINDS.map((k) => (
-                      <option key={k} value={k}>
-                        {k}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="pin-swatches">
-                    {PIN_COLOURS.map((c) => (
-                      <button key={c} className={`pin-swatch${placeColour(p) === c ? ' on' : ''}`} style={{ '--sw': c } as CSSProperties} aria-label={`Colour ${c}`} aria-pressed={placeColour(p) === c} onClick={() => update(p.id, { color: c })} />
-                    ))}
-                  </div>
-                  <textarea className="pe-note" placeholder="Note" value={p.note ?? ''} onChange={(e) => update(p.id, { note: e.target.value })} />
-                  <WindsEditor p={p} tick={tick} entries={entries} onChange={(winds) => update(p.id, { winds })} />
-                </div>
-                <div className="saved-actions">
-                  <button className="btn-secondary" onClick={() => setEditing(null)}>
-                    Done
-                  </button>
-                  <button
-                    className="icon-btn danger"
-                    aria-label="Delete"
-                    onClick={() => {
-                      if (confirm(`Delete ${p.name}?`)) remove(p.id)
-                      setEditing(null)
-                    }}
-                  >
-                    <IconTrash size={16} />
-                  </button>
-                </div>
-              </div>
-            )
-          }
-          return (
-            <div key={p.id} className={`place-row${on ? ' place-current' : ''}`}>
-              <button className="row-text place-go" aria-pressed={on} onClick={() => tap(p)}>
-                <span className="row-title">
-                  <i className="pin-dot" style={{ background: placeColour(p) }} />
-                  {p.name}
-                </span>
-                <span className="row-desc">
-                  {where(p)}
-                  {p.winds?.length ? ` · winds ${windsLabel(p.winds)}` : ''}
-                  {p.note ? ` · ${p.note}` : ''}
-                </span>
-                {verdicts.get(p.id) && <span className={`row-desc pw-verdict pw-${verdicts.get(p.id)!.grade}`}>{verdicts.get(p.id)!.text}</span>}
-              </button>
-              <button className="icon-btn" aria-label="Edit" onClick={() => setEditing(p.id)}>
-                <IconPin size={16} />
-              </button>
-              <button className="icon-btn" aria-label="Go" onClick={() => getMap()?.easeTo({ center: [p.lon, p.lat], zoom: Math.max(getMap()!.getZoom(), 13) })}>
-                <IconLocate size={16} />
-              </button>
-            </div>
-          )
-        })}
-      </div>
+      <div className="place-list">{places.filter((p) => !inFold(p)).map((p) => row(p, false))}</div>
+      {folds.map(({ area, theirs }) => {
+        const open = unfolded.includes(area.id)
+        return (
+          <div key={area.id} className="pin-fold">
+            <button className="pin-fold-head" aria-expanded={open} onClick={() => toggleFold(area.id)}>
+              <b>{area.name}</b>
+              <span className="pin-fold-n">
+                {theirs.length} place{theirs.length === 1 ? '' : 's'}
+              </span>
+              <span className="dim">{open ? '⌃' : '›'}</span>
+            </button>
+            {open && <div className="place-list">{theirs.map((p) => row(p, true))}</div>}
+          </div>
+        )
+      })}
     </div>
   )
 }

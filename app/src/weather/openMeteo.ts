@@ -1,4 +1,4 @@
-import { REGION_BBOX } from '../config'
+import { ACTIVE_AREA, areaAt } from '../areas'
 
 /**
  * The forecast at a point: wind, gusts, temperature, sky, rain chance,
@@ -94,11 +94,17 @@ export function fetchTimeout(url: string, ms = FETCH_TIMEOUT_MS): Promise<Respon
   return fetch(url, { signal: ctl.signal }).finally(() => clearTimeout(t))
 }
 
-function clampToRegion(lon: number, lat: number): [number, number] {
-  return [
-    Math.min(Math.max(lon, REGION_BBOX.west), REGION_BBOX.east),
-    Math.min(Math.max(lat, REGION_BBOX.south), REGION_BBOX.north),
-  ]
+/** Where a forecast is asked for: the point pulled into the box of the area
+ *  it lies in, else of the active one (a point in no area is answered at
+ *  the active box's edge, as before areas), and that area's time zone. A
+ *  pin in another area so gets its own weather, not this box's corner's. */
+export function forecastPoint(lon: number, lat: number): { lon: number; lat: number; timezone: string } {
+  const a = areaAt(lon, lat) ?? ACTIVE_AREA
+  return {
+    lon: Math.min(Math.max(lon, a.region.west), a.region.east),
+    lat: Math.min(Math.max(lat, a.region.south), a.region.north),
+    timezone: a.timezone,
+  }
 }
 
 async function openMeteo(params: Record<string, string>): Promise<Record<string, unknown>> {
@@ -111,12 +117,13 @@ async function openMeteo(params: Record<string, string>): Promise<Record<string,
 }
 
 export async function fetchPointForecast(lon: number, lat: number): Promise<PointForecast> {
-  ;[lon, lat] = clampToRegion(lon, lat)
+  const at = forecastPoint(lon, lat)
+  ;({ lon, lat } = at)
   const common = {
     latitude: lat.toFixed(4),
     longitude: lon.toFixed(4),
     wind_speed_unit: 'kmh',
-    timezone: 'America/Toronto',
+    timezone: at.timezone,
   }
   // the seven-day outlook first: it is the frame the HRDPS hours drop into
   const j = await openMeteo({
@@ -218,7 +225,7 @@ export async function fetchPointForecast(lon: number, lat: number): Promise<Poin
 const parsedCache = new Map<string, { raw: string; parsed: PointForecast }>()
 
 export function cachedPointForecast(lon: number, lat: number): PointForecast | null {
-  ;[lon, lat] = clampToRegion(lon, lat)
+  ;({ lon, lat } = forecastPoint(lon, lat))
   const key = cacheKey(lon, lat)
   try {
     const raw = localStorage.getItem(key)

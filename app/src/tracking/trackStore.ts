@@ -75,18 +75,31 @@ function load(): Track[] {
   }
 }
 
+function write() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(useTrackStore.getState().tracks))
+  } catch {
+    /* full: the track lives in memory until something is deleted */
+  }
+}
+
 /** Written a couple of seconds after the last change, whatever the store holds by then. */
 let saveTimer: number | null = null
 function save() {
   if (saveTimer != null) return
   saveTimer = window.setTimeout(() => {
     saveTimer = null
-    try {
-      localStorage.setItem(KEY, JSON.stringify(useTrackStore.getState().tracks))
-    } catch {
-      /* full: the track lives in memory until something is deleted */
-    }
+    write()
   }, 2000)
+}
+
+/** A save still waiting is written now: the page is about to reload (an
+ *  area switch), and the last couple of seconds of a walk would go with it. */
+export function flushTrackSave(): void {
+  if (saveTimer == null) return
+  window.clearTimeout(saveTimer)
+  saveTimer = null
+  write()
 }
 
 interface TrackState {

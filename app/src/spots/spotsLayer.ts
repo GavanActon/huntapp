@@ -16,7 +16,7 @@ import { getMap, onEachMap, onFirstIdle, withMap } from '../map/mapController'
 import { useMeasureStore } from '../measure/measureStore'
 import { useRoutes } from '../routes/routeStore'
 import { useAppStore } from '../state/appStore'
-import { homePlace, selectedPlace, usePlacesStore } from '../state/placesStore'
+import { areaPlaces, homePlace, selectedPlace, usePlacesStore } from '../state/placesStore'
 import { useSpotsStore } from '../state/spotsStore'
 import { useGpsStore } from '../tracking/gpsStore'
 import { useHuntLog } from '../log/huntLog'
@@ -40,10 +40,11 @@ let canvas: HTMLCanvasElement | null = null
 const UP = 3
 let timer: number | null = null
 
-/** The closest saved place that has a forecast on the phone. */
+/** The closest saved place that has a forecast on the phone, in the area
+ *  the app is in: another area's weather never stands in for this one's. */
 function nearestCachedPlace(lon: number, lat: number): { p: { lon: number; lat: number; name: string }; f: PointForecast } | null {
   let best: { p: { lon: number; lat: number; name: string }; f: PointForecast; d: number } | null = null
-  for (const p of usePlacesStore.getState().places) {
+  for (const p of areaPlaces()) {
     const f = cachedPointForecast(p.lon, p.lat)
     if (!f) continue
     const d = Math.hypot((p.lon - lon) * Math.cos((lat * Math.PI) / 180), p.lat - lat)

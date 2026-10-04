@@ -37,6 +37,7 @@ from rasterio.transform import from_origin  # noqa: E402
 from rasterio.warp import Resampling, reproject  # noqa: E402
 from scipy import ndimage  # noqa: E402
 
+from area import LAKE_SHEETS  # noqa: E402
 from common import OUT_DIR, REGION  # noqa: E402
 
 EDGES = [2, 4, 6, 8, 10, 14]  # the sheets' 2 m contours; app/src/map/depthLayer.ts BANDS must match
@@ -78,7 +79,9 @@ def main():
     dlon, dlat = h["dLon"] / FINE, h["dLat"] / FINE
     tr = from_origin(h["west"], h["north"], dlon, dlat)
     survey_names = []
-    for tif in sorted(SURVEY_DIR.glob("*_depth.tif")):
+    # only this area's sheets: the folder is shared, and a survey there would
+    # mark a same-named lake in another area as surveyed
+    for tif in sorted(p for p in (SURVEY_DIR / f"{sid}_depth.tif" for sid in LAKE_SHEETS) if p.exists()):
         with rasterio.open(tif) as ds:
             grid = np.full((fr, fc), np.nan, dtype=np.float32)
             reproject(rasterio.band(ds, 1), grid, dst_transform=tr, dst_crs="EPSG:4326", resampling=Resampling.average, src_nodata=np.nan, dst_nodata=np.nan)

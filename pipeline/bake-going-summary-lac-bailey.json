@@ -1,0 +1,115 @@
+{
+ "cells": [
+  1047,
+  1014
+ ],
+ "cell_m": [
+  9.66,
+  9.95
+ ],
+ "elevation_from_lidar": 1.0,
+ "bush_from_lidar_of_land": 0.999,
+ "bush_from": "LiDAR NRD where the point cloud was fetched, elsewhere the forest-map estimate calibrated on it",
+ "estimate_to_lidar": [
+  {
+   "estimate": 0.10000000149011612,
+   "lidar_median": 0.12589186429977417,
+   "cells": 36914
+  },
+  {
+   "estimate": 0.15000000596046448,
+   "lidar_median": 0.09808620065450668,
+   "cells": 15894
+  },
+  {
+   "estimate": 0.25,
+   "lidar_median": 0.25654274225234985,
+   "cells": 1017
+  },
+  {
+   "estimate": 0.30000001192092896,
+   "lidar_median": 0.1916743814945221,
+   "cells": 5024
+  },
+  {
+   "estimate": 0.3499999940395355,
+   "lidar_median": 0.36989927291870117,
+   "cells": 10301
+  },
+  {
+   "estimate": 0.4000000059604645,
+   "lidar_median": 0.31054678559303284,
+   "cells": 29265
+  },
+  {
+   "estimate": 0.44999998807907104,
+   "lidar_median": 0.49782073497772217,
+   "cells": 4722
+  },
+  {
+   "estimate": 0.5,
+   "lidar_median": 0.39001384377479553,
+   "cells": 20097
+  },
+  {
+   "estimate": 0.550000011920929,
+   "lidar_median": 0.5490667819976807,
+   "cells": 24022
+  },
+  {
+   "estimate": 0.6000000238418579,
+   "lidar_median": 0.34650135040283203,
+   "cells": 303
+  },
+  {
+   "estimate": 0.6499999761581421,
+   "lidar_median": 0.5979031920433044,
+   "cells": 16064
+  },
+  {
+   "estimate": 0.699999988079071,
+   "lidar_median": 0.5284734964370728,
+   "cells": 4661
+  },
+  {
+   "estimate": 0.75,
+   "lidar_median": 0.3862442970275879,
+   "cells": 706834
+  },
+  {
+   "estimate": 0.8500000238418579,
+   "lidar_median": 0.20775838196277618,
+   "cells": 68597
+  },
+  {
+   "estimate": 0.949999988079071,
+   "lidar_median": 0.7214697003364563,
+   "cells": 5494
+  }
+ ],
+ "bush_land_percentiles": {
+  "10": 0.107,
+  "25": 0.211,
+  "50": 0.364,
+  "75": 0.523,
+  "90": 0.658,
+  "99": 0.847
+ },
+ "rough_m_land_percentiles": {
+  "10": 0.03,
+  "25": 0.038,
+  "50": 0.05,
+  "75": 0.067,
+  "90": 0.09,
+  "99": 0.19
+ },
+ "ground": {
+  "upland": 919117,
+  "water": 70802,
+  "marsh": 4534,
+  "open peatland": 18818,
+  "swamp": 20982,
+  "road": 7695,
+  "stream": 19710
+ }
+}

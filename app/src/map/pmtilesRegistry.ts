@@ -2,8 +2,10 @@ import maplibregl from 'maplibre-gl'
 import { FetchSource, PMTiles, Protocol } from 'pmtiles'
 import type { RangeResponse, Source } from 'pmtiles'
 import { devlog } from '../devlog'
-import { DATA_BASE, DATA_FILES } from '../config'
+import { fileUrl } from '../areas'
+import { DATA_FILES } from '../config'
 import { getStoredFile } from '../offline/fileStore'
+import { noteAbsent, offlineReady } from '../offline/updates'
 
 /**
  * All chart data is PMTiles referenced in the style as `pmtiles://<key>`.
@@ -104,7 +106,7 @@ export type DataSourceMode = 'local' | 'network' | 'missing'
 export const sourceModes = new Map<string, DataSourceMode>()
 
 function absoluteDataUrl(file: string): string {
-  return new URL(DATA_BASE + file, window.location.href).toString()
+  return new URL(fileUrl(file), window.location.href).toString()
 }
 
 /** (Re)register one data file, preferring local storage. Probes the archive header
@@ -142,27 +144,14 @@ export function allDataLocal(): boolean {
   return DATA_FILES.every((d) => sourceModes.get(d.key) === 'local')
 }
 
-const ABSENT_KEY = 'huntapp-absent-files'
-
-/** Every map the offline bundle can hold is on the phone. Files the server
- *  itself does not have (never baked) cannot be saved, so they do not count:
- *  they are noted while online, since offline every unsaved file looks missing. */
+/** Every map the area's offline bundle can hold is on the phone: its
+ *  archives, its GeoJSON and its grids (offline/updates.ts offlineReady).
+ *  Files the server itself does not have (never baked) cannot be saved, so
+ *  they do not count: an archive that does not answer is noted while
+ *  online, since offline every unsaved file looks missing. */
 export function offlineComplete(): boolean {
-  let absent: string[] = []
-  try {
-    absent = JSON.parse(localStorage.getItem(ABSENT_KEY) ?? '[]') as string[]
-  } catch {
-    /* ignore */
-  }
-  if (navigator.onLine) {
-    absent = DATA_FILES.filter((d) => sourceModes.get(d.key) === 'missing').map((d) => d.key)
-    try {
-      localStorage.setItem(ABSENT_KEY, JSON.stringify(absent))
-    } catch {
-      /* ignore */
-    }
-  }
-  return DATA_FILES.every((d) => sourceModes.get(d.key) === 'local' || absent.includes(d.key))
+  if (navigator.onLine) noteAbsent(DATA_FILES.filter((d) => sourceModes.get(d.key) === 'missing').map((d) => d.file))
+  return offlineReady()
 }
 
 /** Look up the depth (metres, positive down) at a lon/lat from the contour tiles' bathy grid.

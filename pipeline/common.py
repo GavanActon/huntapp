@@ -1,58 +1,22 @@
-"""Shared pipeline bits: the region (read from app/src/config.ts so there is
-one definition), web-mercator tile maths, and a raster → PMTiles writer."""
+"""Shared pipeline bits: the area being baked (area.py reads it from
+app/src/areas/<id>.json, the file the app reads too), web-mercator tile
+maths, and a raster → PMTiles writer.
+
+PIL and pmtiles are imported where they are used, so the py -3.13 scripts
+(build_forest.py and the pyogrio adapters) can import this as well."""
 
 from __future__ import annotations
 
 import io
 import math
-import re
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
-from pmtiles.tile import Compression, TileType, zxy_to_tileid
-from pmtiles.writer import Writer
 
-ROOT = Path(__file__).resolve().parent.parent
+# the names every script has always imported from here
+from area import CACHE_DIR, CORE, OUT_DIR, REGION, REGION_MAXZOOM, ROOT  # noqa: F401
+
 APP = ROOT / "app"
-OUT_DIR = APP / "public" / "data"
-CACHE_DIR = ROOT / "pipeline" / "raw"
-OUT_DIR.mkdir(parents=True, exist_ok=True)
-CACHE_DIR.mkdir(parents=True, exist_ok=True)
-
-
-def read_region() -> dict:
-    """REGION = { id, name, west, south, east, north } out of config.ts."""
-    src = (APP / "src" / "config.ts").read_text(encoding="utf-8")
-    m = re.search(r"export const REGION = \{(.*?)\}", src, re.S)
-    if not m:
-        raise SystemExit("REGION not found in app/src/config.ts")
-    body = m.group(1)
-    region: dict = {}
-    for key in ("id", "name"):
-        km = re.search(rf"{key}:\s*'([^']*)'", body)
-        region[key] = km.group(1) if km else key
-    for key in ("west", "south", "east", "north"):
-        km = re.search(rf"{key}:\s*(-?[\d.]+)", body)
-        region[key] = float(km.group(1))
-    return region
-
-
-def read_block(name: str) -> dict:
-    src = (APP / "src" / "config.ts").read_text(encoding="utf-8")
-    m = re.search(rf"export const {name} = \{{(.*?)\}}", src, re.S)
-    if not m:
-        raise SystemExit(f"{name} not found in app/src/config.ts")
-    out: dict = {}
-    for km in re.finditer(r"(\w+):\s*(-?[\d.]+)", m.group(1)):
-        out[km.group(1)] = float(km.group(2)) if "." in km.group(2) else int(km.group(2))
-    return out
-
-
-REGION = read_region()
-CORE = read_block("CORE")
-_rm = re.search(r"REGION_MAXZOOM = (\d+)", (APP / "src" / "config.ts").read_text(encoding="utf-8"))
-REGION_MAXZOOM = int(_rm.group(1)) if _rm else 11
 
 
 def lon_to_tile(lon: float, z: int) -> int:
@@ -76,6 +40,8 @@ def tile_bounds_3857(z: int, x: int, y: int) -> tuple[float, float, float, float
 
 
 def region_tiles(z: int):
+    from pmtiles.tile import zxy_to_tileid
+
     x0 = lon_to_tile(REGION["west"], z)
     x1 = lon_to_tile(REGION["east"] - 1e-9, z)
     y0 = lat_to_tile(REGION["north"], z)
@@ -91,6 +57,10 @@ def write_raster_pmtiles(
     an empty tile. fmt is PNG, JPEG (quality 82) or WEBP (lossless, for data
     tiles such as elevation). `metadata` adds keys to the archive's JSON
     metadata. Returns {zoom: (tiles, bytes)}."""
+    from PIL import Image
+    from pmtiles.tile import Compression, TileType
+    from pmtiles.writer import Writer
+
     count = 0
     stats: dict[int, tuple[int, int]] = {}
     with open(path, "wb") as f:
@@ -131,6 +101,19 @@ def write_raster_pmtiles(
         )
     print(f"wrote {path.name} ({path.stat().st_size / 1e6:.1f} MB, {count} tiles)")
     return stats
+
+
+def grid_covers(transform, shape: tuple[int, int], crs: str, box: dict) -> bool:
+    """True when a cached grid (affine transform, (rows, cols), CRS) reaches
+    over a lon/lat box. The caches are reused by name, so this is what tells
+    a grid read for a box that has since moved or grown."""
+    from rasterio.warp import transform_bounds
+
+    rows, cols = shape
+    x0, y0 = transform * (0, 0)
+    x1, y1 = transform * (cols, rows)
+    w, s, e, n = transform_bounds("EPSG:4326", crs, box["west"], box["south"], box["east"], box["north"], densify_pts=21)
+    return min(x0, x1) <= w and max(x0, x1) >= e and min(y0, y1) <= s and max(y0, y1) >= n
 
 
 def hillshade(elev: np.ndarray, cell_m: float, az_deg: float = 315.0, alt_deg: float = 45.0) -> np.ndarray:

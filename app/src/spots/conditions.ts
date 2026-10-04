@@ -6,8 +6,7 @@
  * Everything comes from the forecast the strip already caches, plus one
  * small cached call for the recent daily means.
  */
-import { REGION_BBOX } from '../config'
-import { fetchTimeout, hourAt, type PointForecast } from '../weather/openMeteo'
+import { fetchTimeout, forecastPoint, hourAt, type PointForecast } from '../weather/openMeteo'
 import { moonPhase } from '../weather/moon'
 import { sunTimes } from '../weather/sun'
 import { startOfDayMs } from '../time'
@@ -75,8 +74,9 @@ function recentKey(lon: number, lat: number) {
 
 /** Daily mean, high, low and rain for the past ten days (cached six hours). */
 export async function recentDailyMeans(lon: number, lat: number): Promise<RecentDaily | null> {
-  lon = Math.min(Math.max(lon, REGION_BBOX.west), REGION_BBOX.east)
-  lat = Math.min(Math.max(lat, REGION_BBOX.south), REGION_BBOX.north)
+  // pulled into its area's box, as the forecast is (openMeteo.forecastPoint)
+  const at = forecastPoint(lon, lat)
+  ;({ lon, lat } = at)
   let cached: RecentDaily | null = null
   try {
     const raw = localStorage.getItem(recentKey(lon, lat))
@@ -92,7 +92,7 @@ export async function recentDailyMeans(lon: number, lat: number): Promise<Recent
       daily: 'temperature_2m_mean,temperature_2m_max,temperature_2m_min,precipitation_sum',
       past_days: '10',
       forecast_days: '1',
-      timezone: 'America/Toronto',
+      timezone: at.timezone,
     })
     const r = await fetchTimeout(`https://api.open-meteo.com/v1/forecast?${q}`)
     if (!r.ok) throw new Error(String(r.status))

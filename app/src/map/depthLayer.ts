@@ -1,5 +1,6 @@
 import type { FeatureCollection } from 'geojson'
 import type { GeoJSONSource, Map as MlMap } from 'maplibre-gl'
+import { SURVEYED_LAKES } from '../config'
 import { geoUrls, onEachMap } from './mapController'
 import { deferredGeo } from './mapStyle'
 import { habitat, onHabitat } from '../spots/habitatGrid'
@@ -32,8 +33,9 @@ const BANDS: [number, string][] = [
 
 /** Lakes with a georeferenced MNR survey sheet (bathySheets): their bands
  *  now come from the sheet itself, drawn a little lighter so its ink and
- *  numbers read on top, and not labelled again. */
-const SURVEYED = ['pickle lake', 'ketchup lake', 'mcgill lake']
+ *  numbers read on top, and not labelled again. The area names them
+ *  (Pickle, Ketchup and McGill at Pickle Lake). */
+const SURVEYED = SURVEYED_LAKES.map((n) => n.toLowerCase())
 function surveyedIds(h: NonNullable<ReturnType<typeof habitat>>): Set<number> {
   return new Set(h.lakes.filter((l) => SURVEYED.includes((l.name ?? '').toLowerCase())).map((l) => l.id))
 }

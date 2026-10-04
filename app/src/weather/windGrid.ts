@@ -1,4 +1,5 @@
-import { REGION } from '../config'
+import type { AreaBox, AreaDef } from '../areas'
+import { REGION, TIMEZONE } from '../config'
 import { devlog } from '../devlog'
 import { fetchTimeout } from './openMeteo'
 
@@ -27,7 +28,9 @@ export interface WindGrid {
 
 const COLS = 5
 const ROWS = 5
-const KEY = `huntapp-wind:${REGION.id}:v2`
+/** Each area's field under its own key: this run's is the active area's. */
+const keyOf = (areaId: string) => `huntapp-wind:${areaId}:v2`
+const KEY = keyOf(REGION.id)
 const MAX_AGE_MS = 60 * 60_000
 
 let grid: WindGrid | null = null
@@ -42,25 +45,27 @@ try {
   /* private mode */
 }
 
-function lattice(): { lats: number[]; lons: number[] } {
+function lattice(box: AreaBox): { lats: number[]; lons: number[] } {
   const lats: number[] = []
   const lons: number[] = []
   for (let r = 0; r < ROWS; r++)
     for (let c = 0; c < COLS; c++) {
-      lats.push(REGION.south + ((REGION.north - REGION.south) * r) / (ROWS - 1))
-      lons.push(REGION.west + ((REGION.east - REGION.west) * c) / (COLS - 1))
+      lats.push(box.south + ((box.north - box.south) * r) / (ROWS - 1))
+      lons.push(box.west + ((box.east - box.west) * c) / (COLS - 1))
     }
   return { lats, lons }
 }
 
-async function fetchGrid(): Promise<WindGrid> {
-  const { lats, lons } = lattice()
+/** The field over an area's box, in its time zone: the active area's
+ *  unless another is named. */
+async function fetchGrid(box: AreaBox = REGION, timezone: string = TIMEZONE): Promise<WindGrid> {
+  const { lats, lons } = lattice(box)
   const q = new URLSearchParams({
     latitude: lats.map((v) => v.toFixed(4)).join(','),
     longitude: lons.map((v) => v.toFixed(4)).join(','),
     hourly: 'wind_speed_10m,wind_direction_10m',
     wind_speed_unit: 'kmh',
-    timezone: 'America/Toronto',
+    timezone,
     forecast_days: '3',
     // yesterday too: wind checks are scored against the hour they were made
     past_days: '1',
@@ -75,15 +80,30 @@ async function fetchGrid(): Promise<WindGrid> {
     fetchedAt: Date.now(),
     cols: COLS,
     rows: ROWS,
-    lon0: REGION.west,
-    lat0: REGION.south,
-    dLon: (REGION.east - REGION.west) / (COLS - 1),
-    dLat: (REGION.north - REGION.south) / (ROWS - 1),
+    lon0: box.west,
+    lat0: box.south,
+    dLon: (box.east - box.west) / (COLS - 1),
+    dLat: (box.north - box.south) / (ROWS - 1),
     time: cells[0].hourly.time,
     windKmh: cells.map((c) => c.hourly.wind_speed_10m.map((v) => v ?? NaN)),
     windDir: cells.map((c) => c.hourly.wind_direction_10m.map((v) => v ?? 0)),
   }
   return g
+}
+
+/** Another area's field, saved under its key for when the app is switched
+ *  there (weather/refresh.ts fetchAreaWeather). This run's field is not
+ *  touched: it is the active area's. */
+export async function fetchAreaWindGrid(area: AreaDef): Promise<boolean> {
+  try {
+    const g = await fetchGrid(area.region, area.timezone)
+    localStorage.setItem(keyOf(area.id), JSON.stringify(g))
+    devlog('wind', `grid · ${area.name} · ${g.time.length} h`)
+    return true
+  } catch (e) {
+    devlog('wind', `grid · ${area.name} · fetch failed · ${(e as Error).message}`)
+    return false
+  }
 }
 
 /** The grid, fetching when there is none or it is old. Resolves to what

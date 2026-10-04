@@ -1,12 +1,15 @@
 """The habitat grid: everything the Spots scorer needs about a place, on a
 30 m lon/lat lattice over the region, in one small file the phone keeps.
 
-Inputs (all already on disk after rasters.py, build_vectors.py and
-build_forest.py):
+Inputs (all already on disk after rasters.py and the area's vector and
+forest adapters: build_vectors.py and build_forest.py in Ontario,
+qc_vectors.py and qc_forest.py in Quebec):
   raw/mrdem-<region>.npz         NRCan MRDEM 30 m DTM (EPSG:3979)
   raw/landcover-<region>.npz     NRCan 2020 land cover 30 m (EPSG:3979)
-  data/forest-<region>.geojson   FRI stands: species, age, height, closure
-  data/waterbody-…, watercourse-…, wetland-…, roads-…, fire-…, ara-…
+  data/forest-<region>.geojson   forest stands: species, age, height, closure
+  data/waterbody-…, watercourse-…, wetland-…, roads-…, fire-…, ara-… (Ontario only)
+  raw/vegstructure-<region>.npz  the point cloud's understory, for an area whose
+                                 bake.habitatBush is "pointcloud" (measured_bush)
 
 Output: app/public/data/habitat-<region>.hab — gzip of
   [u32 header length][JSON header][band 0][band 1]…
@@ -43,6 +46,7 @@ from rasterio.transform import from_origin
 from rasterio.warp import Resampling, reproject
 from scipy import ndimage
 
+from area import BAKE, LAKE_SHEETS, adapter, cached, summary_path
 from common import OUT_DIR, REGION
 from rasters import fetch
 
@@ -69,9 +73,35 @@ LANDFORM_NAMES = ["flat", "ridge", "valley", "saddle", "bench", "peak", "slope"]
 LC_WATER = 18
 LC_WETLAND = 14
 LC_SHRUB = (8, 11)
+LC_GRASS = 10
 LC_BARREN = (13, 16)
 
 CONIFER_LEAD = {"Sb", "Sw", "Bf", "Pj", "Pw", "Pr", "Cw", "La"}
+
+# What the area's forest map already knows (bake.forest in its area file).
+# Ontario's FRI is a 2010 photo inventory nobody has updated: cuts since then
+# show only as shrub or bare ground in the 2020 land cover (the inferred
+# cuts in main), and the fire layer adds the burns it lacks. Quebec's carte
+# écoforestière carries every cut, burn and outbreak to its last update, and
+# its stand ages already count the burns (qc_forest.py). There the land
+# cover is not second-guessed, and a fire counts only where the map has no
+# polygon at all: the map marks the burns on the ground it covers, stand or
+# not (its open wetland, alder and rock carry them where they burned), and
+# qc_forest lays the later ones over it. An old burn under a younger stand,
+# under the survivors the photo shows, or round a fen the map left
+# unburned, is not a disturbance.
+FOREST_SOURCE = adapter(BAKE, "forest")
+FOREST_UPDATED = FOREST_SOURCE == "qc.ecoforestier"
+INVENTORY = {"on.fri": "FRI", "qc.ecoforestier": "carte écoforestière"}.get(FOREST_SOURCE or "", "forest map")
+
+# Where the bush band (thick) comes from. By default the estimate from the
+# forest map (bush_thickness). An area whose bake.habitatBush is
+# "pointcloud" takes the point cloud's measure wherever it has one, and puts
+# the estimate on the same scale elsewhere (measured_bush): at Lac Bailey
+# the estimate called two thirds of the cells thick, most of them the 1991
+# burn's 35-year-old regrowth, where the LiDAR finds mostly light to
+# moderate bush.
+BUSH_FROM_POINTCLOUD = BAKE.get("habitatBush") == "pointcloud"
 
 
 def load_geo(theme: str) -> list[dict]:
@@ -250,6 +280,89 @@ def bush_thickness(cover, stand_age, dist_age, f_cc, f_lead, f_poly) -> np.ndarr
     return np.clip(T, 0, 1)
 
 
+def measured_bush(est: np.ndarray, cover: np.ndarray) -> tuple[np.ndarray, np.ndarray | None, dict]:
+    """The bush band from the point cloud, for an area whose
+    bake.habitatBush is "pointcloud": where the LiDAR measured at least half
+    of a land cell, its understory (the share of the returns 0-3 m caught
+    0.5-3 m, build_vegstructure.py) averaged over the cell and put on the
+    estimate's scale, which is the one the Spots scorer reads (sight
+    distance, thick hiding cover at 0.7). Elsewhere, and on water and roads,
+    the estimate.
+
+    The scale is the going grid's: build_going.py's calibration of the
+    estimate against the LiDAR (the median NRD of each estimate value), run
+    here on the estimate before it is replaced, and read backwards. So the
+    habitat's bush and the going grid's are one measure, and the going grid
+    takes the same calibration from this header (bushCalib) rather than
+    calibrating on a band that is now partly the LiDAR's. It is read
+    backwards by a fit weighted by each class's cells (going.monotone_fit),
+    not the running maximum the going grid maps forwards by: one class small
+    enough to be noise must not decide where thick falls.
+
+    The cells the point cloud did not measure go onto the same scale: each
+    estimate value is taken to what the LiDAR measured for it (its class's
+    median) and read back the same way. Otherwise the band changes scale at
+    the edge of the LiDAR: at Lac Bailey the raw estimate called 74 % of the
+    land within 600 m past it thick, against 14 % inside.
+
+    Returns the band, its source per cell (0 water, 1 the LiDAR, 2 the
+    estimate) and what the header says of it. With no point cloud measured
+    yet, the estimate as it is."""
+    import build_going as going  # the going lattice and its calibration
+
+    vpath = cached(f"vegstructure-{REGION['id']}.npz")
+    lidar = going.lidar_layers(vpath)
+    if lidar is None:
+        print(f"  bake.habitatBush is pointcloud, but there is no {vpath.name} yet: bush from the forest-map estimate alone")
+        return est, None, {"thickFrom": f"the forest-map estimate: no point cloud measured yet ({vpath.name})"}
+    calib = going.calibration(going.crop(est), going.crop(cover), lidar[0])
+    curve = going.curve_of(calib)
+    own = curve is not going.PICKLE_CALIB
+    back = going.monotone_fit(calib) if own else curve  # Pickle Lake's medians come without their cells
+
+    # the 10 m cells averaged into each 30 m one: the understory over its land, and
+    # how much of the cell the point cloud saw at all (land measured, or its water)
+    v = np.load(vpath, allow_pickle=True)
+    water10 = v["water"].astype(bool)
+    land10 = (v["understory"] >= 0) & ~water10
+    src = {"src_transform": rasterio.Affine(*v["transform"]), "src_crs": str(v["crs"]), "dst_transform": TRANSFORM, "dst_crs": "EPSG:4326"}
+    under = np.full((ROWS, COLS), np.nan, dtype=np.float32)
+    reproject(source=np.where(land10, v["understory"], np.nan).astype(np.float32), destination=under, src_nodata=np.nan, dst_nodata=np.nan, resampling=Resampling.average, **src)
+    seen = np.zeros((ROWS, COLS), dtype=np.float32)
+    reproject(source=(land10 | water10).astype(np.float32), destination=seen, resampling=Resampling.average, **src)
+    ok = (seen >= 0.5) & np.isfinite(under) & (cover != WATER) & (cover != ROAD)
+
+    thick = np.where(ok, going.estimate_from_lidar(under, back), est).astype(np.float32)
+    thick_src = np.where(cover == WATER, 0, np.where(ok, 1, 2)).astype(np.uint8)
+    rest = (thick_src == 2) & (cover != ROAD)
+    if own:
+        # through the class medians themselves (interpolated between classes), not the fit:
+        # the fit pools half the classes into one level, which would read back as one value
+        xs, meds = np.array([c[0] for c in calib]), np.array([c[1] for c in calib])
+        thick[rest] = going.estimate_from_lidar(np.interp(est[rest], xs, meds), back)
+        by = "reading backwards a monotone fit of bushCalib's medians weighted by their cells (pool adjacent violators)"
+    else:
+        by = "Pickle Lake's calibration, too little point cloud here to calibrate on"
+    t = going.estimate_from_lidar(np.linspace(0, 1, 1001), back) >= 0.7 - 1e-6
+    at = f"NRD {np.argmax(t) / 1000:.2f} up" if t.any() else "no NRD"
+    print(f"  bush from the point cloud on {ok.sum()} cells ({100 * ok.sum() / (cover != WATER).sum():.0f}% of the land), by {by}: " + ", ".join(f"{a:.2f}->{b:.2f}" for a, b in back) + f"; thick (0.7) is {at}")
+    if ok.any():
+        print(f"  in those cells the estimate called {100 * (est[ok] >= 0.7).mean():.0f}% thick, the point cloud {100 * (thick[ok] >= 0.7).mean():.0f}%")
+    if own and rest.any():
+        print(f"  the estimate's land cells through their classes' LiDAR medians: {100 * (thick[rest] >= 0.7).mean():.0f}% thick, was {100 * (est[rest] >= 0.7).mean():.0f}%")
+    if own:
+        thick_from = (
+            f"LiDAR NRD where the point cloud measured the cell (thickSrc 1), on the estimate's scale by {by}. Elsewhere (thickSrc 2; roads "
+            "keep theirs) the forest-map estimate taken to its class's LiDAR median in bushCalib and read back the same way, so both are on "
+            "one scale; an estimate cell carries only its class's median, not the spread the LiDAR finds within a class, which the forest "
+            "map cannot resolve, so fewer estimate cells read thick"
+        )
+    else:
+        thick_from = f"LiDAR NRD where the point cloud measured the cell (thickSrc 1), on the estimate's scale by {by}; elsewhere the forest-map estimate (thickSrc 2)"
+    header = {"thickFrom": thick_from, "bushCalib": [[a, b, n] for a, b, n in calib]}
+    return thick, thick_src, header
+
+
 SURVEY_DIR = Path(__file__).parent / "raw" / "bathy"
 
 
@@ -258,10 +371,12 @@ def apply_survey_depths(depth_est: np.ndarray, lake_id: np.ndarray, lakes: list[
     raster (raw/bathy/<id>_depth.tif, tagged with the lake name), its
     depths replace the shape model on that lake: averaged into each 30 m
     cell, and carried by nearest neighbour to lake cells the sheet's
-    outline just misses. Returns how many lakes were replaced."""
+    outline just misses. Only the area's own sheets (bake.lakeSheets), so
+    another area's lake of the same name is never given them. Returns how
+    many lakes were replaced."""
     by_name = {(l.get("name") or "").lower(): l for l in lakes}
     n = 0
-    for tif in sorted(SURVEY_DIR.glob("*_depth.tif")):
+    for tif in sorted(p for p in (SURVEY_DIR / f"{s}_depth.tif" for s in LAKE_SHEETS) if p.exists()):
         with rasterio.open(tif) as ds:
             name = ds.tags().get("lake", "")
             lk = by_name.get(name.lower())
@@ -334,13 +449,24 @@ def main() -> None:
     f_dep = burn([(g, int(p["dep"] or 0)) for g, p in zip(fg, fp)], dtype=np.uint16)
     lead_code = {"Sb": 1, "Pj": 2, "Sw": 3, "Bf": 4, "Cw": 5, "La": 6, "Pt": 7, "Bw": 8, "Po": 7}
     f_lead = burn([(g, lead_code.get((p["species"] or "  ")[:2], 0)) for g, p in zip(fg, fp)])
+    # the FRI's rock polygons (none at Pickle Lake; Quebec's dénudé sec): no stand, so the
+    # land cover speaks first, and what it leaves unnamed (at Lac Bailey mostly its
+    # grassland class, which has no cover here) is barren rather than nodata
+    f_rock = burn([(g, 1) for g, p in zip(fg, fp) if p["poly"] == "RCK"]).astype(bool)
+    # every cell under a polygon of the map, stand or not (f_poly is 0 under poly ''), for a
+    # map that knows its own burns (FOREST_UPDATED)
+    f_mapped =burn([(g, 1) for g in fg]).astype(bool) if FOREST_UPDATED else np.zeros((ROWS, COLS), dtype=bool)
     print(f"  vectors burnt · {time.time() - t0:.0f}s")
 
-    # ---- disturbance age: burns, FRI depletions, and cuts the 2020 land cover shows on 2010 forest ----
+    # ---- disturbance age: burns, the forest map's depletions, and (FRI) cuts the 2020 land cover shows on 2010 forest ----
     dist_age = np.full((ROWS, COLS), 255, dtype=np.uint8)
     fy = np.where(fire_year > 0, YEAR - fire_year.astype(int), 255)
+    if FOREST_UPDATED:  # the map dates the burns on all the ground it covers
+        fy = np.where(f_mapped, 255, fy)
     dy = np.where(f_dep > 0, YEAR - f_dep.astype(int), 255)
-    inferred_cut = (f_poly == 1) & (f_year > 0) & (f_year < 2000) & (np.isin(lc, LC_SHRUB) | np.isin(lc, LC_BARREN)) & ~water & ~wetland
+    inferred_cut = np.zeros((ROWS, COLS), dtype=bool)
+    if not FOREST_UPDATED:
+        inferred_cut = (f_poly == 1) & (f_year > 0) & (f_year < 2000) & (np.isin(lc, LC_SHRUB) | np.isin(lc, LC_BARREN)) & ~water & ~wetland
     ic = np.where(inferred_cut, YEAR - 2015, 255)
     dist_age = np.minimum(np.minimum(fy, dy), ic).clip(0, 255).astype(np.uint8)
 
@@ -351,15 +477,35 @@ def main() -> None:
     cover[is_for & (f_conif >= 70) & (f_cc >= 60)] = CONIFER_DENSE
     cover[is_for & (f_conif < 70) & (f_conif > 30)] = MIXED
     cover[is_for & (f_conif <= 30) & (f_hard > 0)] = HARDWOOD
-    cover[(f_poly == 0) & np.isin(lc, (1, 2))] = CONIFER_DENSE  # outside FRI: land cover only
+    cover[(f_poly == 0) & np.isin(lc, (1, 2))] = CONIFER_DENSE  # no stand on the forest map: land cover only
     cover[(f_poly == 0) & (lc == 6)] = MIXED
     cover[(f_poly == 0) & (lc == 5)] = HARDWOOD
     cover[f_poly == 4] = SHRUB
     cover[(cover == 0) & np.isin(lc, LC_SHRUB)] = SHRUB
     cover[f_poly == 3] = TREED_WET
+    if FOREST_UPDATED:
+        # Quebec's map says what each polygon with no stand is (qc_forest.POLYTYPE):
+        # its UCL is ground kept open (power lines, roads, pits, camps) and its RCK
+        # dry rock and lichen. Both are open ground, as the point cloud reads them,
+        # whatever the 30 m land cover makes of a power line's strip (shrubland) or
+        # the rock's scattered spruce (forest). The FRI's UCL is anything
+        # unclassified, and stays the land cover's to read.
+        cover[(f_poly == 8) | f_rock] = BARREN
     cover[(f_poly == 2) | ((cover == 0) & (lc == LC_WETLAND))] = OPEN_WET
-    cover[wetland & ~is_for] = OPEN_WET
+    # Quebec's wetlands are drawn from the same forest map (MELCCFP, from the IEQM): where
+    # the map has its own word for the ground, an alder swamp or a treed bog, the wetland is
+    # that and not an open one (the point cloud: 4.7 m alder over 0.43 of understory, and
+    # 9 m trees over 0.48 cover, at Lac Bailey). It still counts as wetland for distWetland.
+    own_word = np.isin(f_poly, (3, 4)) if FOREST_UPDATED else np.zeros((ROWS, COLS), dtype=bool)
+    cover[wetland & ~is_for & ~own_word] = OPEN_WET
     cover[np.isin(lc, LC_BARREN) & (cover == 0)] = BARREN
+    cover[f_rock & (cover == 0)] = BARREN
+    if FOREST_UPDATED:
+        # what is still unnamed under a polygon of the map (mostly one with no stand
+        # described) where the land cover says grassland, a class with no cover of its own:
+        # at Lac Bailey the 1991 burn's open regrowth, which would otherwise score as no
+        # habitat at all. Not under the map's water and islands, a case of their own.
+        cover[f_mapped & ~np.isin(f_poly, (5, 7)) & (cover == 0) & (lc == LC_GRASS)] = SHRUB
     cover[(dist_age <= 5)] = REGEN
     cover[inferred_cut] = REGEN
     cover[water] = WATER
@@ -404,6 +550,9 @@ def main() -> None:
     # hiding cover: any thick bush (young thickets, alder, fir and cedar,
     # dense spruce), not only tall dense conifer. Patches of half a hectare up
     thick = bush_thickness(cover, stand_age, dist_age, f_cc, f_lead, f_poly)
+    thick_src, thick_header = None, {}
+    if BUSH_FROM_POINTCLOUD:
+        thick, thick_src, thick_header = measured_bush(thick, cover)
     thick_mask = thick >= 0.7
     tl, tn = ndimage.label(thick_mask)
     if tn:
@@ -508,18 +657,25 @@ def main() -> None:
         ("tpi100", np.clip(np.round(tpi100 * 2) + 128, 0, 255).astype(np.uint8), 0.5, "topographic position 100 m, m ((value-128)/2)"),
         ("landform", landform, 1, "landform class, see landformNames"),
         ("cover", cover, 1, "cover class, see coverNames"),
-        ("age", stand_age, 1, "stand age years (FRI origin, or years since disturbance)"),
-        ("height", f_ht, 1, "stand height m (FRI)"),
-        ("crown", f_cc, 1, "crown closure % (FRI)"),
-        ("conifer", f_conif, 1, "conifer % of composition (FRI)"),
-        ("hardwood", f_hard, 1, "hardwood % of composition (FRI)"),
+        ("age", stand_age, 1, f"stand age years ({INVENTORY} origin, or years since disturbance)"),
+        ("height", f_ht, 1, f"stand height m ({INVENTORY})"),
+        ("crown", f_cc, 1, f"crown closure % ({INVENTORY})"),
+        ("conifer", f_conif, 1, f"conifer % of composition ({INVENTORY})"),
+        ("hardwood", f_hard, 1, f"hardwood % of composition ({INVENTORY})"),
         ("lead", f_lead, 1, "leading species: 1 Sb 2 Pj 3 Sw 4 Bf 5 Cw 6 La 7 Pt 8 Bw"),
         ("disturbAge", dist_age, 1, "years since fire / cut (255 none)"),
         ("distWater", q8(d_water, 10), 10, "m to lake, pond, river or stream (×10)"),
         ("distLake", q8(d_lake, 10), 10, "m to a lake or pond (×10)"),
         ("distWetland", q8(d_wetland, 10), 10, "m to wetland (×10)"),
         ("distCover", q8(d_cover, 10), 10, "m to dense conifer / treed wetland cover (×10)"),
-        ("thick", np.round(thick * 250).astype(np.uint8), 1 / 250, "eye-level bush thickness, 0 open to 1 a wall (estimate from stand type, age, closure, disturbance)"),
+        (
+            "thick",
+            np.round(thick * 250).astype(np.uint8),
+            1 / 250,
+            "eye-level bush thickness, 0 open to 1 a wall ("
+            + ("the LiDAR's where thickSrc is 1, else the " if thick_src is not None else "")
+            + "estimate from stand type, age, closure, disturbance)",
+        ),
         ("distThick", q8(d_thick, 10), 10, "m to thick hiding cover, patches of 0.5 ha up (×10)"),
         ("distBrowse", q8(d_browse, 10), 10, "m to browse habitat (×10)"),
         ("bearBrowse", bear_q, 360 / 250, "compass bearing to nearest browse (255 = in browse)"),
@@ -532,6 +688,8 @@ def main() -> None:
     ]
     for d, arr in fetch_dirs.items():
         bands.append((f"fetch{d}", arr, 1, f"water cells: fetch in cells with wind from {d}"))
+    if thick_src is not None:
+        bands.append(("thickSrc", thick_src, 1, "where thick comes from: 0 water, 1 LiDAR, 2 forest-map estimate"))
 
     header = {
         "region": REGION["id"],
@@ -545,6 +703,7 @@ def main() -> None:
         "cellM": [round(DX_M, 1), round(DY_M, 1)],
         "coverNames": COVER_NAMES,
         "landformNames": LANDFORM_NAMES,
+        **thick_header,
         "lakes": lakes,
         "bands": [],
     }
@@ -566,7 +725,16 @@ def main() -> None:
         "inferredCuts": int(inferred_cut.sum()),
         "lakes": lakes,
     }
-    (Path(__file__).resolve().parent / "bake-habitat-summary.json").write_text(json.dumps(summary, indent=1), encoding="utf-8")
+    if thick_src is not None:
+        land = cover != WATER
+        summary["thick"] = {
+            "from": thick_header["thickFrom"],
+            "lidarCells": int((thick_src == 1).sum()),
+            "thickShareOfLand": round(float((thick[land] >= 0.7).mean()), 3),
+            "thickShareWhereLidar": round(float((thick[thick_src == 1] >= 0.7).mean()), 3) if (thick_src == 1).any() else None,
+            "estimateToLidar": [{"estimate": a, "lidar_median": b, "cells": n} for a, b, n in thick_header["bushCalib"]],
+        }
+    summary_path("habitat").write_text(json.dumps(summary, indent=1), encoding="utf-8")
 
 
 if __name__ == "__main__":

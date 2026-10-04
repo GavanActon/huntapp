@@ -12,6 +12,8 @@
  * it is off by default and uploaded only by hand.
  */
 
+import { ACTIVE_AREA } from './areas'
+
 const ON_KEY = 'huntapp-devlog'
 const LINES_KEY = 'huntapp-devlog-lines'
 const LAST_KEY = 'huntapp-devlog-last'
@@ -143,6 +145,8 @@ function boot(why: string) {
   devlog('boot', why, {
     date: dateLine(),
     build: __BUILD__.sha,
+    // a switch reloads: each run's boot line says which area it ran in
+    area: ACTIVE_AREA.id,
     ua: navigator.userAgent.replace(/^Mozilla\/5\.0 \(/, '').slice(0, 70),
     dpr: devicePixelRatio,
     vp: `${innerWidth}x${innerHeight}`,

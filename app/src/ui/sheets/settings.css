@@ -60,10 +60,16 @@
 
 /* a two-line row (Weather, Build): the name over its one-line status, Refresh at the right */
 .st-two > span:first-child,
+.st-two > button:first-child,
 .st-devlog > span:first-child {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+/* Maps on this phone over the area its word is for */
+.st-two > button:first-child {
+  align-items: flex-start;
 }
 
 .st-two small,
@@ -202,6 +208,50 @@
 
 .st-files-foot > :first-child {
   flex: 1;
+}
+
+/* an area's file count: the tap that folds its list */
+.st-files-count {
+  padding: 0;
+  text-align: left;
+}
+
+/* What's in it, open: each layer over its source, date and licence, or
+   over why the area has none (dimmed, after the rest) */
+.st-cover {
+  margin: 4px 0 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.st-cover li {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 0;
+  border-top: 1px solid rgba(var(--c-ink-rgb), 0.1);
+  font-size: calc(13px * var(--ui-scale));
+  color: var(--c-text);
+}
+
+.st-cover li.missing {
+  color: var(--c-text-dim);
+}
+
+.st-cover small {
+  font-size: calc(12px * var(--ui-scale));
+  line-height: 1.35;
+  color: var(--c-text-dim);
+  overflow-wrap: anywhere;
+}
+
+.st-cover .st-nb {
+  white-space: nowrap;
+}
+
+.st-cover .st-cover-foot {
+  font-size: calc(12px * var(--ui-scale));
+  color: var(--c-text-dim);
 }
 
 .st-line {

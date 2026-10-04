@@ -10,7 +10,8 @@
  * lists every band with dtype, byte offset and scale; nothing here is
  * hard-coded to the bake's band order.
  */
-import { DATA_BASE, REGION, habitatFile } from '../config'
+import { fileUrl } from '../areas'
+import { REGION, habitatFile } from '../config'
 import { devlog } from '../devlog'
 import { getStoredFile } from '../offline/fileStore'
 
@@ -181,7 +182,7 @@ export async function loadBandFile(file: string, tag: string): Promise<{ grid: H
   let mode = 'local'
   if (!blob) {
     if (!navigator.onLine) return null
-    const r = await fetch(DATA_BASE + file)
+    const r = await fetch(fileUrl(file))
     if (!r.ok || /html/i.test(r.headers.get('content-type') ?? '')) return null
     blob = await r.blob()
     mode = 'network'

@@ -6,8 +6,12 @@ The app reads these directly as GeoJSON sources when present (see
 mapStyle.ts); a later step can pack them into one vector PMTiles with
 tippecanoe (`tippecanoe -o places-<region>.pmtiles -L camps:camps.geojson …`).
 
-    python pipeline/build_vectors.py            # everything
+    python pipeline/build_vectors.py            # the default set
+    python pipeline/build_vectors.py bake       # everything an area bake reads: the default set and the habitat inputs
     python pipeline/build_vectors.py roads wmu  # just these
+
+LIO is Ontario's: an area in another province gets its vectors from its own
+adapter (bake_area.py picks it).
 """
 
 from __future__ import annotations
@@ -19,6 +23,7 @@ from urllib.parse import urlencode
 
 import requests
 
+from area import JURISDICTION
 from common import OUT_DIR, REGION
 
 LIO = "https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA"
@@ -63,6 +68,8 @@ LAYERS: dict[str, tuple[str, int, str, str]] = {
 
 # the small set the app expects as places-<region> when packed as PMTiles
 DEFAULT = ["wmu", "camps", "crown", "parks", "bathy", "bathy_index", "fire", "roads", "fishing_access", "trails", "rail", "bma", "trapline", "fmz"]
+# what the habitat, going, contour and lake bakes read on top of that
+HABITAT = ["waterbody", "watercourse", "wetland", "ara"]
 
 
 def fetch_layer(service: str, layer: int, where: str, out_fields: str) -> dict:
@@ -116,6 +123,10 @@ def fetch_layer(service: str, layer: int, where: str, out_fields: str) -> dict:
 
 
 def main(names: list[str]):
+    if JURISDICTION != "ON":
+        raise SystemExit(f"{REGION['name']} is in {JURISDICTION}: LIO covers Ontario only, use the area's own vector adapter (bake_area.py)")
+    if names == ["bake"]:
+        names = HABITAT + DEFAULT
     for name in names:
         service, layer, where, fields = LAYERS[name]
         print(f"== {name} ({service}/{layer})")

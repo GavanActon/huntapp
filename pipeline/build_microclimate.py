@@ -58,6 +58,7 @@ from scipy import ndimage, sparse
 from scipy.sparse.linalg import splu
 
 import build_habitat as hb
+from area import SCRATCH
 from common import CACHE_DIR, OUT_DIR, REGION
 
 ROWS, COLS = hb.ROWS, hb.COLS
@@ -432,7 +433,8 @@ def main() -> None:
     out = OUT_DIR / f"micro-{REGION['id']}.hab"
     out.write_bytes(gzip.compress(raw, 9))
     print(f"wrote {out.name}: {len(raw) / 1e6:.1f} MB raw, {out.stat().st_size / 1e6:.2f} MB gzipped, {len(bands)} bands · {time.time() - t0:.0f}s")
-    np.savez_compressed(CACHE_DIR / f"micro-debug-{REGION['id']}.npz", dem=dem.astype(np.float32), pool=pool, kat=kat.astype(np.float32), rel=rel.astype(np.float32), breeze=breeze_max.astype(np.float32), canopy=canopy.astype(np.float32), s=s.astype(np.float32), **{f"n{i}": a.astype(np.float32) for i, a in enumerate(neutral)}, **{f"s{i}": a.astype(np.float32) for i, a in enumerate(stable)})
+    # the solve's raw fields, for looking into it; a scratch run keeps its own
+    np.savez_compressed((OUT_DIR if SCRATCH else CACHE_DIR) / f"micro-debug-{REGION['id']}.npz", dem=dem.astype(np.float32), pool=pool, kat=kat.astype(np.float32), rel=rel.astype(np.float32), breeze=breeze_max.astype(np.float32), canopy=canopy.astype(np.float32), s=s.astype(np.float32), **{f"n{i}": a.astype(np.float32) for i, a in enumerate(neutral)}, **{f"s{i}": a.astype(np.float32) for i, a in enumerate(stable)})
 
 
 if __name__ == "__main__":

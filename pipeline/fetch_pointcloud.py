@@ -41,7 +41,7 @@ Python 3.13; the result is cached, so later runs need only the stdlib and
 requests:
 
     py -3.13 pipeline/fetch_pointcloud.py --list              # sizes only
-    py -3.13 pipeline/fetch_pointcloud.py --radius-km 2       # tiles within 2 km of HOME
+    py -3.13 pipeline/fetch_pointcloud.py --radius-km 2       # tiles within 2 km of the area's centre
     py -3.13 pipeline/fetch_pointcloud.py --tile 598/5417     # add a tile (km E / km N)
     py -3.13 pipeline/fetch_pointcloud.py --all --max-gb 30   # the whole core
     python pipeline/fetch_pointcloud.py --band --lake "Pickle Lake" --band-m 150 --around 48.95951,-85.55590,300 --list
@@ -67,7 +67,8 @@ from pathlib import Path
 import numpy as np
 import requests
 
-from common import APP, CACHE_DIR, CORE, REGION
+from area import BAKE, HOME, adapter
+from common import CACHE_DIR, CORE, OUT_DIR, REGION
 
 INDEX_URL = (
     "https://download.fri.mnrf.gov.on.ca/api/api/Download/tile-index/"
@@ -79,15 +80,6 @@ DEM_DIR = PC_DIR / "dem"
 INDEX_CACHE = PC_DIR / f"tiles-{REGION['id']}.json"
 NAME_RE = re.compile(r"^1kmZ(\d\d)(\d{4})(\d{5})(\d{4})L$")
 UTM_EPSG = {15: 3159, 16: 3160, 17: 2958}  # NAD83(CSRS) / UTM zone n
-
-
-def home() -> tuple[float, float]:
-    """HOME.center (lon, lat) out of config.ts."""
-    src = (APP / "src" / "config.ts").read_text(encoding="utf-8")
-    m = re.search(r"export const HOME = \{.*?center:\s*\[\s*(-?[\d.]+),\s*(-?[\d.]+)\s*\]", src, re.S)
-    if not m:
-        raise SystemExit("HOME.center not found in app/src/config.ts")
-    return float(m.group(1)), float(m.group(2))
 
 
 def parse_name(name: str) -> dict:
@@ -223,7 +215,7 @@ def band_area(args):
     t = Transformer.from_crs("EPSG:4326", f"EPSG:{UTM_EPSG[zone.pop()]}", always_xy=True)
     parts = []
     if args.lake:
-        fc = json.loads((APP / "public" / "data" / f"waterbody-{REGION['id']}.geojson").read_text(encoding="utf-8"))
+        fc = json.loads((OUT_DIR / f"waterbody-{REGION['id']}.geojson").read_text(encoding="utf-8"))
         for name in args.lake:
             polys = [shape(f["geometry"]) for f in fc["features"] if f["properties"].get("OFFICIAL_NAME_LABEL") == name]
             if not polys:
@@ -397,7 +389,7 @@ def select(rows: list[dict], args) -> list[dict]:
     elif args.radius_km is not None:
         from pyproj import Transformer
 
-        lon, lat = home()
+        lon, lat = HOME
         centre = {z: Transformer.from_crs("EPSG:4326", f"EPSG:{UTM_EPSG[z]}", always_xy=True).transform(lon, lat) for z in {r["zone"] for r in rows}}
         chosen = set()
         for r in rows:
@@ -425,7 +417,7 @@ def select(rows: list[dict], args) -> list[dict]:
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--all", action="store_true", help="every tile in the core")
-    ap.add_argument("--radius-km", type=float, help="tiles within this distance of HOME")
+    ap.add_argument("--radius-km", type=float, help="tiles within this distance of the area's centre")
     ap.add_argument("--tile", action="append", help="Tilename or 'EEE/NNNN' (SW corner, km); repeatable")
     ap.add_argument("--max-gb", type=float, default=15.0, help="refuse a selection bigger than this")
     ap.add_argument("--list", action="store_true", help="print sizes, download nothing")
@@ -436,6 +428,9 @@ def main(argv=None):
     ap.add_argument("--around", action="append", help="--band: 'lat,lon[,radius_m]' for a circle of ground (300 m by default); repeatable")
     ap.add_argument("--redo", action="store_true", help="--band: fetch a tile's band again even if one is on disk")
     args = ap.parse_args(argv)
+    if adapter(BAKE, "pointcloud") != "on.fri_leafon":
+        # the index cache is named by area: an empty Ontario one would hide the area's own
+        raise SystemExit(f"{REGION['name']}'s point cloud is not Ontario FRI leaf-on ({adapter(BAKE, 'pointcloud')}): bake it with bake_area.py")
 
     rows = query_index()
     if args.band:

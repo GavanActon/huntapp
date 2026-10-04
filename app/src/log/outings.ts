@@ -1,8 +1,8 @@
+import { AREA_LIST, otherAreaAt, type AreaDef } from '../areas'
 import { useGpsStore } from '../tracking/gpsStore'
 import { defaultTrackName, isDefaultName, removeRange, sliceDistanceM, useTrackStore } from '../tracking/trackStore'
 import { metresBetween, useWindChecks, type WindCheck } from '../weather/micro/windChecks'
 import { sunTimes } from '../weather/sun'
-import { homePlace } from '../state/placesStore'
 import { dayDate, hourMinShort, isToday } from '../time'
 import { SPECIES_NAMES, useHuntLog, type LogEntry } from './huntLog'
 import { OUTING_GAP_MS } from './outingTime'
@@ -55,9 +55,14 @@ interface Stamp {
   trackId?: string
 }
 
+/** Every area's camp, from the area files. Not the home of the area the app
+ *  is in: that is a stand at Lac Bailey, and the log's outings (and their
+ *  ids, which a switch opens one by) must come out the same in any area.
+ *  An area whose home is a stand has no camp and so no at-camp rule. */
+const CAMPS = AREA_LIST.flatMap((a) => a.presets.filter((p) => p.kind === 'camp'))
+
 function atCamp(s: { lon: number; lat: number }): boolean {
-  const home = homePlace()
-  return home != null && metresBetween(s.lon, s.lat, home.lon, home.lat) <= AT_CAMP_M
+  return CAMPS.some((c) => metresBetween(s.lon, s.lat, c.lon, c.lat) <= AT_CAMP_M)
 }
 
 function slotOf(startMs: number, lat: number, lon: number): Outing['slot'] {
@@ -177,6 +182,43 @@ export function outingChecks(o: Outing): WindCheck[] {
     .getState()
     .checks.filter((c) => c.source === 'hand' && c.ts >= o.startMs && c.ts <= o.endMs)
     .sort((a, b) => a.ts - b.ts)
+}
+
+/** The box round everything in the outing, its track, its sounds (and where
+ *  they were heard from) and its checks: [west, south, east, north], or
+ *  null when nothing in it has a place. */
+export function outingBounds(o: Outing): [number, number, number, number] | null {
+  let w = Infinity
+  let s = Infinity
+  let e = -Infinity
+  let n = -Infinity
+  const take = (lon: number, lat: number) => {
+    w = Math.min(w, lon)
+    e = Math.max(e, lon)
+    s = Math.min(s, lat)
+    n = Math.max(n, lat)
+  }
+  for (const id of o.trackIds) {
+    const t = useTrackStore.getState().tracks.find((x) => x.id === id)
+    if (!t) continue
+    for (const p of t.points) if (p.ts >= o.startMs && p.ts <= o.endMs) take(p.lon, p.lat)
+  }
+  for (const x of outingEntries(o)) {
+    take(x.lon, x.lat)
+    if (x.from) take(x.from.lon, x.from.lat)
+  }
+  for (const c of outingChecks(o)) take(c.lon, c.lat)
+  return Number.isFinite(w) ? [w, s, e, n] : null
+}
+
+/** The area an outing lies in when it is not the one the app is in: going
+ *  to it means switching (areas/switch.ts). */
+export function outingElsewhere(o: Outing): { area: AreaDef; center: [number, number] } | null {
+  const b = outingBounds(o)
+  if (!b) return null
+  const center: [number, number] = [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2]
+  const area = otherAreaAt(center[0], center[1])
+  return area ? { area, center } : null
 }
 
 /** The outing goes: its stretch of every track, its entries and its checks. */

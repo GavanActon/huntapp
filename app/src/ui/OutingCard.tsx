@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type JSX } from 'react'
+import { otherAreaAt } from '../areas'
+import { switchArea } from '../areas/switch'
 import { showOutingSounds } from '../hunting/moveLayer'
 import { SOUND_NAMES, SPECIES_NAMES, useHuntLog, WHAT_NAMES, type LogEntry } from '../log/huntLog'
 import { exportOutingGpx } from '../log/logExport'
-import { deleteOuting, outingById, outingChecks, outingEntries, outingTitle, renameOuting, type Outing } from '../log/outings'
+import { deleteOuting, outingBounds, outingById, outingChecks, outingElsewhere, outingEntries, outingTitle, renameOuting, type Outing } from '../log/outings'
 import { getMap } from '../map/mapController'
 import { fmtCoord } from '../map/MapView'
 import { useAppStore } from '../state/appStore'
@@ -38,27 +40,12 @@ function barHeight(): number {
 function fitOuting(o: Outing) {
   const m = getMap()
   if (!m) return
-  let w = Infinity
-  let s = Infinity
-  let e = -Infinity
-  let n = -Infinity
-  const take = (lon: number, lat: number) => {
-    w = Math.min(w, lon)
-    e = Math.max(e, lon)
-    s = Math.min(s, lat)
-    n = Math.max(n, lat)
-  }
-  for (const id of o.trackIds) {
-    const t = useTrackStore.getState().tracks.find((x) => x.id === id)
-    if (!t) continue
-    for (const p of t.points) if (p.ts >= o.startMs && p.ts <= o.endMs) take(p.lon, p.lat)
-  }
-  for (const x of outingEntries(o)) {
-    take(x.lon, x.lat)
-    if (x.from) take(x.from.lon, x.from.lat)
-  }
-  for (const c of outingChecks(o)) take(c.lon, c.lat)
-  if (!Number.isFinite(w)) return
+  // in another area: the app switches there and opens this card again
+  const away = outingElsewhere(o)
+  if (away) return void switchArea(away.area.id, { center: away.center, zoom: 14 }, { kind: 'outing', id: o.id })
+  const box = outingBounds(o)
+  if (!box) return
+  const [w, s, e, n] = box
   // the map goes where the outing was, not back to the next fix (as a drag does)
   useAppStore.getState().setFollow(false)
   const pad = { top: TOP_PAD, bottom: barHeight() + 90, left: 24, right: 80 }
@@ -126,7 +113,17 @@ function Row({ lon, lat, title, desc, badge, onDelete }: { lon: number; lat: num
           {fmtCoord(lon, lat)}
         </button>
       </div>
-      <button className="icon-btn" aria-label="Go" onClick={() => getMap()?.easeTo({ center: [lon, lat], zoom: Math.max(getMap()!.getZoom(), 14) })}>
+      <button
+        className="icon-btn"
+        aria-label="Go"
+        onClick={() => {
+          const zoom = Math.max(getMap()?.getZoom() ?? 14, 14)
+          const other = otherAreaAt(lon, lat)
+          // a look: follow stays off there, or a fix in that area takes the map off the point
+          if (other) return void switchArea(other.id, { center: [lon, lat], zoom }, { kind: 'look' })
+          getMap()?.easeTo({ center: [lon, lat], zoom })
+        }}
+      >
         <IconLocate size={15} />
       </button>
       <button className="icon-btn danger" aria-label="Delete" onClick={onDelete}>

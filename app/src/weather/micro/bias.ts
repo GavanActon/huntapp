@@ -1,3 +1,4 @@
+import { otherAreaAt } from '../../areas'
 import { STRENGTH_KMH, type WindCheck } from './windChecks'
 
 /**
@@ -79,6 +80,8 @@ export function residualRatio(c: WindCheck): number | null {
 export function learnBiases(checks: WindCheck[], ms: number): Map<Lesson, Bias> {
   const acc = new Map<Lesson, { s: number; c: number; wd: number; lr: number; wr: number }>()
   for (const c of checks) {
+    // another area's checks teach its ground, not this one's: its slots and slopes are not these
+    if (otherAreaAt(c.lon, c.lat)) continue
     const lesson = lessonOf(c)
     if (!lesson || c.ts > ms) continue
     const age = (ms - c.ts) / 86_400_000
@@ -144,6 +147,7 @@ export function lessonScores(checks: WindCheck[], verdictOf: (c: WindCheck) => '
   const biases = learnBiases(checks, ms)
   const rows = new Map<Lesson, LessonScore>()
   for (const c of checks) {
+    if (otherAreaAt(c.lon, c.lat)) continue
     const lesson = lessonOf(c)
     const v = verdictOf(c)
     if (!lesson || !v) continue

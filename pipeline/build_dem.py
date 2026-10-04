@@ -12,9 +12,9 @@ edge so no seam or cliff shows where one ends:
     (pipeline/raw/mrdem-wide-<region>.npz). The habitat bake's
     mrdem-<region>.npz stops 2 km past the region, short of the edge tiles.
   * HRDEM 1 m LiDAR DTM for the core, the cache build_hillshade.py makes
-    (pipeline/raw/lidar-<region>.npz). LiDAR wins wherever it exists, at
-    every zoom, so the heights and colours in the core do not jump as you
-    zoom in past REGION_MAXZOOM.
+    from the area's own surveys (pipeline/raw/lidar-<region>.npz). LiDAR
+    wins wherever it exists, at every zoom, so the heights and colours in
+    the core do not jump as you zoom in past REGION_MAXZOOM.
 
 The region is baked from MINZOOM to REGION_MAXZOOM and the core on to
 CORE.maxzoom, as the other rasters are. Every tile is a full 256 px square:
@@ -26,8 +26,9 @@ would leave faceted under a hillshade. Heights keep 0.1 m steps, the
 format's resolution.
 
 The MRDEM reads are windowed HTTP reads of a national COG (a minute or two
-each, cached after the first run). The LiDAR cache must exist already
-(run build_hillshade.py first).
+each, cached after the first run). The LiDAR cache normally exists already
+(build_hillshade.py runs first); without it the area's surveys are read
+as build_hillshade.py would.
 
     py -3.14 pipeline/build_dem.py                 # z8-16, lossless WebP
     py -3.14 pipeline/build_dem.py --maxzoom 15    # stop the core a zoom lower
@@ -52,9 +53,9 @@ from rasterio.transform import from_bounds
 from rasterio.warp import Resampling, reproject, transform_bounds
 from rasterio.windows import from_bounds as window_from_bounds
 
-from build_hillshade import WHITE_LAKE, fetch_core
+from build_hillshade import fetch_core
 from build_tiles import in_core
-from common import CACHE_DIR, CORE, OUT_DIR, REGION, REGION_MAXZOOM, region_tiles, tile_bounds_3857, write_raster_pmtiles
+from common import CACHE_DIR, CORE, OUT_DIR, REGION, REGION_MAXZOOM, grid_covers, region_tiles, tile_bounds_3857, write_raster_pmtiles
 from rasters import MRDEM
 
 MINZOOM = 8
@@ -103,7 +104,10 @@ def fetch_mrdem(name: str, bounds: tuple[float, float, float, float], factor: in
         np.savez_compressed(cache, **out)
         print(f"  {arr.shape} in {time.time() - t:.0f} s -> {cache.name}")
     z = np.load(cache)
-    return {k: z[k] for k in z.files}
+    out = {k: z[k] for k in z.files}
+    if not grid_covers(rasterio.Affine(*out["transform"][:6]), out["data"].shape, str(out["crs"]), REGION):
+        raise SystemExit(f"{cache.name} does not reach over this area's region (moved or grown since it was read?): delete it to fetch again")
+    return out
 
 
 def block_mean(a: np.ndarray, k: int) -> np.ndarray:
@@ -209,7 +213,7 @@ def load_layers() -> list[Layer]:
     coarse = fetch_mrdem("mrdem-coarse", union_bounds(MINZOOM, 0.1), 8)
     wide = fetch_mrdem("mrdem-wide", union_bounds(10, 0.02), 1)
     t = time.time()
-    elev, transform, crs, nodata = fetch_core(WHITE_LAKE)
+    elev, transform, crs, nodata = fetch_core()  # the area's own surveys (bake.hrdem), never another area's
     elev = np.where(elev == nodata, np.nan, elev)
     layers = []
     for name, m, skip, feather in (("mrdem-coarse", coarse, 1000.0, 3000.0), ("mrdem-wide", wide, 90.0, 600.0)):

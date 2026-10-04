@@ -3,11 +3,14 @@ the wider region at low zoom. This is what makes topo, imagery and the
 30 m hillshade work with no signal at camp.
 
     python pipeline/build_tiles.py topo
-    python pipeline/build_tiles.py satellite
+    python pipeline/build_tiles.py satellite          # the area's own imagery (bake.imagery)
     python pipeline/build_tiles.py hillshade-mrdem    # until the LiDAR bake
 
-Tile fetches are cached under pipeline/raw/tiles/<key>/ so a rerun costs
-nothing. Be polite: one request at a time, a short pause between.
+Topo and the MRDEM hillshade are national. The imagery is provincial, so
+each area names its provider (IMAGERY below). Tile fetches are cached
+under pipeline/raw/tiles/<cache>/ so a rerun costs nothing; the cache is
+keyed by provider, as tile coordinates are global. Be polite: one request
+at a time, a short pause between.
 """
 
 from __future__ import annotations
@@ -21,6 +24,7 @@ import numpy as np
 import requests
 from PIL import Image
 
+from area import BAKE, adapter
 from common import CACHE_DIR, CORE, OUT_DIR, REGION, REGION_MAXZOOM, tile_bounds_3857, write_raster_pmtiles
 
 UA = {"User-Agent": "huntapp-pipeline/0.1 (offline camp maps)"}
@@ -44,6 +48,28 @@ def wms(base: str, layers: str, fmt: str = "image/png") -> str:
     return f"{base}?{q}&BBOX={{bbox}}"
 
 
+# The imagery each area can name as bake.imagery. Each keeps its own tile
+# cache: the keys are global tile coordinates, so two providers sharing one
+# would serve each other's tiles where they overlap.
+IMAGERY: dict[str, dict] = {
+    "on.oiwms": {
+        "url": "https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_Imagery/Ontario_Imagery_Web_Map_Service/MapServer/tile/{z}/{y}/{x}",
+        "attribution": "Imagery © Ontario Ministry of Natural Resources",
+        "fmt": "JPEG",
+        "minz": 9,
+        "cache": "satellite",
+    },
+    # the province's most recent ortho as one layer: here the 20 cm flown
+    # Aug-Oct 2023 (CC BY 4.0); its WMTS matrices are plain web-mercator z/y/x
+    "qc.imagerie_gq": {
+        "url": "https://servicesmatriciels.mern.gouv.qc.ca/erdas-iws/ogc/wmts/Imagerie_Continue/Imagerie_GQ/default/GoogleMapsCompatibleExt2:epsg:3857/{z}/{y}/{x}.jpg",
+        "attribution": "© Gouvernement du Québec",
+        "fmt": "JPEG",
+        "minz": 9,
+        "cache": "satellite-qc-imagerie_gq",
+    },
+}
+
 SERVICES: dict[str, dict] = {
     # hypsography only (contours + spot heights, transparent ground): the
     # full CanTopo render buried the hillshade under its land colours
@@ -53,12 +79,6 @@ SERVICES: dict[str, dict] = {
         "fmt": "PNG",
         "minz": 8,
         "cache": "topo-hypsography",
-    },
-    "satellite": {
-        "url": "https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_Imagery/Ontario_Imagery_Web_Map_Service/MapServer/tile/{z}/{y}/{x}",
-        "attribution": "Imagery © Ontario Ministry of Natural Resources",
-        "fmt": "JPEG",
-        "minz": 9,
     },
     "hillshade-mrdem": {
         "url": wms("https://datacube.services.geo.ca/ows/mrdem", "dtm-hillshade"),
@@ -80,7 +100,12 @@ def in_core(z: int, x: int, y: int) -> bool:
 
 
 def main(key: str):
-    svc = SERVICES[key]
+    if key == "satellite":
+        svc = IMAGERY.get(adapter(BAKE, "imagery") or "")
+        if not svc:
+            raise SystemExit(f"{REGION['name']} has no imagery provider this script knows (bake.imagery = {BAKE.get('imagery')!r})")
+    else:
+        svc = SERVICES[key]
     out_key = svc.get("out", key)
     cache = CACHE_DIR / "tiles" / svc.get("cache", key)
     cache.mkdir(parents=True, exist_ok=True)

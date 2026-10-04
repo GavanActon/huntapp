@@ -1,10 +1,11 @@
 import { useSyncExternalStore } from 'react'
+import { ACTIVE_AREA, type AreaDef } from '../areas'
 import { devlog } from '../devlog'
 import { useAppStore } from '../state/appStore'
-import { usePlacesStore } from '../state/placesStore'
-import { cachedPointForecast, fetchPointForecast, nextHrdpsRunMs, type PointForecast } from './openMeteo'
-import { ensureWeatherGrid } from './windGrid'
-import { ensureProfile } from './boundaryLayer'
+import { areaPlaces, placeArea, usePlacesStore } from '../state/placesStore'
+import { cachedPointForecast, fetchPointForecast, forecastPoint, nextHrdpsRunMs, type PointForecast } from './openMeteo'
+import { ensureWeatherGrid, fetchAreaWindGrid } from './windGrid'
+import { ensureProfile, fetchAreaProfile } from './boundaryLayer'
 import { recentDailyMeans } from '../spots/conditions'
 
 /**
@@ -93,9 +94,12 @@ export function forecastStale(f: PointForecast | null, now = Date.now()): boolea
   return now >= nextHrdpsRunMs(f.fetchedAt)
 }
 
-/** Every point the app shows weather for: saved places (the camp first). */
+/** Every point the app shows weather for: the saved places of the area it
+ *  is in (the camp first). Another area's wait until it is switched to,
+ *  rather than spend the camp's few minutes of signal; saving its maps
+ *  brings its home's (fetchAreaWeather). */
 function subjects(): { lon: number; lat: number; name: string }[] {
-  return usePlacesStore.getState().places.map((p) => ({ lon: p.lon, lat: p.lat, name: p.name }))
+  return areaPlaces().map((p) => ({ lon: p.lon, lat: p.lat, name: p.name }))
 }
 
 export function onWeatherRefreshed(cb: () => void): () => void {
@@ -144,6 +148,39 @@ export function refreshWeather(reason: string, force = false): Promise<void> {
     setStatus({ busy: false })
   })
   return sweeping
+}
+
+/**
+ * Another area's weather, into its own keys: the forecast and ten-day
+ * means for its home and its stands (not its lakes: signal is rare), its
+ * wind field and its air's layering. Fetched when its maps are saved with
+ * signal (offline/downloads.ts), so a first arrival with none still has the
+ * forecast the ground wind and the scent cone are worked out from. Once the
+ * app is switched there, the sweep above keeps it fresh.
+ */
+export async function fetchAreaWeather(area: AreaDef): Promise<void> {
+  if (!navigator.onLine || area.id === ACTIVE_AREA.id) return
+  const stands = usePlacesStore.getState().places.filter((p) => p.kind === 'stand' && placeArea(p)?.id === area.id)
+  // one fetch per forecast: a point's is kept to 0.01° (openMeteo), and the home is often a stand too
+  const seen = new Set<string>()
+  let fetched = 0
+  for (const p of [area.presets[0], ...stands]) {
+    const at = forecastPoint(p.lon, p.lat)
+    const cell = `${at.lon.toFixed(2)},${at.lat.toFixed(2)}`
+    if (seen.has(cell)) continue
+    seen.add(cell)
+    try {
+      await fetchPointForecast(p.lon, p.lat)
+      await recentDailyMeans(p.lon, p.lat)
+      fetched++
+    } catch (e) {
+      devlog('wx', `${area.name} · ${p.name} · fetch failed · ${(e as Error).message}`)
+      if (!navigator.onLine) return
+    }
+  }
+  const grid = await fetchAreaWindGrid(area)
+  const air = await fetchAreaProfile(area)
+  devlog('wx', `${area.name} · for the trip · ${fetched} forecast${fetched === 1 ? '' : 's'}${grid ? ' · wind field' : ''}${air ? ' · layering' : ''}`)
 }
 
 let wired = false

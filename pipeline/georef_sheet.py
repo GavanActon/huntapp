@@ -13,6 +13,7 @@ Good to a few tens of metres, which is what a 1970s map is anyway.
 
 from __future__ import annotations
 
+import math
 import sys
 from pathlib import Path
 
@@ -25,17 +26,23 @@ from rasterio.transform import from_gcps
 Image.MAX_IMAGE_PIXELS = None
 
 
+def series_corner(series: int) -> tuple[int, int]:
+    """(west, south) of a 1:1M NTS block, e.g. 42 -> (-88, 48): the tens
+    step 8° west from 56° W and the units 4° north from 40° N. South of
+    68° N only; the Arctic blocks are wider and are laid out differently."""
+    tens, units = divmod(series, 10)
+    if not 0 <= units <= 6:
+        raise SystemExit(f"NTS series {series:03d} is north of 68° N, where the blocks are laid out differently")
+    return -(56 + 8 * tens), 40 + 4 * units
+
+
 def nts_50k_bounds(sheet: str) -> tuple[float, float, float, float]:
     """(west, south, east, north) of a 1:50k NTS sheet, e.g. 042C13."""
     sheet = sheet.upper()
     series = int(sheet[:3])  # 042
     block = sheet[3]  # C
     num = int(sheet[4:6])  # 13
-    # 1:1M block corners (west, south) for the Ontario belt
-    table = {30: (-80, 40), 31: (-80, 44), 32: (-80, 48), 40: (-88, 40), 41: (-88, 44), 42: (-88, 48), 52: (-96, 48)}
-    if series not in table:
-        raise SystemExit(f"add series {series} to the table")
-    blk_w, blk_s = table[series]
+    blk_w, blk_s = series_corner(series)
     # 1:250k blocks A–P: 4 columns (2° each) × 4 rows (1° each), A at SE, snake
     idx = ord(block) - ord('A')
     row = idx // 4
@@ -50,6 +57,37 @@ def nts_50k_bounds(sheet: str) -> tuple[float, float, float, float]:
     w = w250 + 2 - 0.5 * (c_e + 1)
     s = s250 + 0.25 * r
     return (w, s, w + 0.5, s + 0.25)
+
+
+def nts_50k_sheet(lon: float, lat: float) -> str:
+    """The 1:50k NTS sheet a point is on, e.g. 022F05: nts_50k_bounds run
+    backwards (west and south edges belong to the sheet)."""
+    tens = math.ceil((-56 - lon) / 8)
+    units = math.floor((lat - 40) / 4)
+    series = 10 * tens + units
+    blk_w, blk_s = series_corner(series)
+    # columns count from the east, so a west edge is ceil - 1 to stay in its own sheet
+    row = math.floor(lat - blk_s)  # 1:250k block, A..P snaking from the SE
+    col_e = min(3, max(0, math.ceil((blk_w + 8 - lon) / 2) - 1))
+    idx = row * 4 + (col_e if row % 2 == 0 else 3 - col_e)
+    w250, s250 = blk_w + 8 - 2 * (col_e + 1), blk_s + row
+    r = math.floor((lat - s250) / 0.25)  # 1:50k sheet, 1..16 snaking from the SE
+    c_e = min(3, max(0, math.ceil((w250 + 2 - lon) / 0.5) - 1))
+    num = r * 4 + (c_e if r % 2 == 0 else 3 - c_e) + 1
+    return f"{series:03d}{chr(ord('A') + idx)}{num:02d}"
+
+
+def nts_50k_sheets(west: float, south: float, east: float, north: float) -> list[str]:
+    """Every 1:50k sheet that meets a lon/lat box."""
+    out = set()
+    lon = math.floor(west * 2) / 2
+    while lon < east:
+        lat = math.floor(south * 4) / 4
+        while lat < north:
+            out.add(nts_50k_sheet(lon + 0.25, lat + 0.125))  # the sheet's middle
+            lat += 0.25
+        lon += 0.5
+    return sorted(out)
 
 
 def find_neatline(rgb: np.ndarray) -> tuple[int, int, int, int]:

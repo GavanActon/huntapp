@@ -18,6 +18,9 @@ Each zoom is baked with only the lines it will draw:
     z10-11  30 m grid, 20 m lines
     z12-14  30 m grid, 10 m lines (z14 overzooms to 15/16)
 
+z14 is REGION_MAXZOOM + 1, the zoom the LiDAR contours start at, so the
+two sets always meet whatever zoom an area's region is baked to.
+
 Lakes are masked with the LIO waterbody polygons, the grids are lightly
 smoothed before tracing, and short closed rings are dropped.
 
@@ -40,12 +43,12 @@ from rasterio import features
 from rasterio.warp import transform as warp_xy, transform_bounds, transform_geom
 from scipy import ndimage
 
-from common import CACHE_DIR, CORE, OUT_DIR, REGION, region_tiles, tile_bounds_3857
+from common import CACHE_DIR, CORE, OUT_DIR, REGION, REGION_MAXZOOM, region_tiles, tile_bounds_3857
 from pmtiles.tile import Compression, TileType, zxy_to_tileid
 from pmtiles.writer import Writer
 
 MINZOOM = 8
-MAXZOOM = 14
+MAXZOOM = REGION_MAXZOOM + 1  # 14 for Pickle Lake: where build_contours.py takes over
 INTERVAL = 10
 EXTENT = 4096
 TILE_BUFFER_PX = 64

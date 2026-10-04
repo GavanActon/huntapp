@@ -23,7 +23,7 @@ Output per lake: a float32 GeoTIFF of depth in metres at 5 m, NaN on land,
 beside the sheet (raw/bathy/<id>_depth.tif), which build_habitat.py reads
 in place of its shore-distance estimate and build_depth_bands.py contours.
 
-    python pipeline/survey_depth.py --all          # the camp's three sheets
+    python pipeline/survey_depth.py --all          # the area's sheets (bake.lakeSheets): the camp's three
     python pipeline/survey_depth.py raw/bathy/16-6042-54219_geo.tif "Pickle Lake" --max 15.4 --debug
 
 Order: build_habitat.py (lake outlines) -> georef_lake_sheet.py -> this ->
@@ -55,6 +55,7 @@ from scipy.signal import fftconvolve
 from scipy.sparse import coo_matrix
 from scipy.sparse.linalg import spsolve
 
+from area import LAKE_SHEETS
 from common import OUT_DIR, REGION
 
 INTERVAL_M = 2.0
@@ -68,6 +69,9 @@ INTERVAL_M = 2.0
 # Pins: (x, y, depth m) with x, y as fractions of the georeferenced sheet
 # (<id>_geo.tif), each a hand-written label read off the scan, fixing the
 # stroke it sits on. Only where the count goes wrong: shoals, mostly.
+#
+# This is each sheet's hand tuning; which sheets an area has is its
+# bake.lakeSheets (--all runs those).
 SHEETS = [
     (
         "16-6042-54219",
@@ -355,14 +359,20 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("tif", nargs="?")
     ap.add_argument("name", nargs="?")
-    ap.add_argument("--all", action="store_true", help="every sheet in SHEETS")
+    ap.add_argument("--all", action="store_true", help="the area's sheets (bake.lakeSheets)")
     ap.add_argument("--max", type=float, default=None, help="the sheet's maximum depth, m")
     ap.add_argument("--levels", default=None, help="the sheet's contour depths from the shore in, m, e.g. 1,2,4,6 (default: every 2 m)")
     ap.add_argument("--debug", action="store_true")
     a = ap.parse_args()
     if a.all:
+        tuned = {s[0] for s in SHEETS}
+        if missing := [sid for sid in LAKE_SHEETS if sid not in tuned]:
+            raise SystemExit(f"no tuning in SHEETS for {', '.join(missing)}: add each sheet's lake and maximum depth")
+        if not LAKE_SHEETS:
+            print(f"{REGION['name']} has no lake survey sheets (bake.lakeSheets)")
         for sid, name, dmax, levels, pins in SHEETS:
-            run(BATHY_DIR / f"{sid}_geo.tif", name, dmax, levels, a.debug, pins)
+            if sid in LAKE_SHEETS:
+                run(BATHY_DIR / f"{sid}_geo.tif", name, dmax, levels, a.debug, pins)
         return
     if not (a.tif and a.name):
         ap.error("a sheet and a lake name, or --all")

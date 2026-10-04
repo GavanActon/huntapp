@@ -1,3 +1,5 @@
+import { readAreaItem, writeAreaItem, type AreaDef } from '../areas'
+import { TIMEZONE } from '../config'
 import { devlog } from '../devlog'
 import { homePlace } from '../state/placesStore'
 import { fetchTimeout, turnHour } from './openMeteo'
@@ -60,6 +62,8 @@ export interface Layering {
   source: 'hrdps' | 'blend' | 'estimate'
 }
 
+/** Saved per area (areas.readAreaItem): one area's air is not another's,
+ *  and offline the saved profile is used however old it is. */
 const KEY = 'huntapp-profile:v1'
 const MAX_AGE_MS = 3 * 3600_000
 const VARS = ['temperature_2m', 'temperature_80m', 'wind_speed_10m', 'wind_direction_10m', 'wind_speed_80m', 'shortwave_radiation', 'cloud_cover']
@@ -69,7 +73,7 @@ let inflight: Promise<Profile | null> | null = null
 const listeners = new Set<() => void>()
 
 try {
-  const raw = localStorage.getItem(KEY)
+  const raw = readAreaItem(KEY)
   if (raw) profile = JSON.parse(raw) as Profile
 } catch {
   /* private mode */
@@ -92,9 +96,10 @@ function circSd(degs: number[]): number {
   return R <= 1e-6 ? 180 : Math.min(180, (Math.sqrt(-2 * Math.log(R)) * 180) / Math.PI)
 }
 
-async function fetchProfile(): Promise<Profile> {
-  const home = homePlace()
-  const common = { latitude: home.lat.toFixed(4), longitude: home.lon.toFixed(4), wind_speed_unit: 'kmh', timezone: 'America/Toronto', past_days: '1' }
+/** The profile over an area's home, in its time zone: the active area's
+ *  unless another is named. */
+async function fetchProfile(home: { lon: number; lat: number } = homePlace(), timezone: string = TIMEZONE): Promise<Profile> {
+  const common = { latitude: home.lat.toFixed(4), longitude: home.lon.toFixed(4), wind_speed_unit: 'kmh', timezone, past_days: '1' }
   // the seven-day frame from the blend, HRDPS's own hours dropped in
   const j = await om('https://api.open-meteo.com/v1/forecast', { ...common, hourly: VARS.join(','), forecast_days: '7', models: 'best_match' })
   const h = j.hourly as Record<string, (number | null)[] | string[]>
@@ -144,7 +149,7 @@ async function fetchProfile(): Promise<Profile> {
       latitude: common.latitude,
       longitude: common.longitude,
       wind_speed_unit: 'kmh',
-      timezone: 'America/Toronto',
+      timezone,
       hourly: 'wind_speed_10m,wind_direction_10m',
       forecast_days: '3',
       models: 'gem_global_ensemble',
@@ -180,11 +185,7 @@ export function ensureProfile(force = false): Promise<Profile | null> {
   inflight = fetchProfile()
     .then((p) => {
       profile = p
-      try {
-        localStorage.setItem(KEY, JSON.stringify(p))
-      } catch {
-        /* storage full */
-      }
+      writeAreaItem(KEY, JSON.stringify(p))
       devlog('wind', `profile · ${p.time.length} h · HRDPS ${p.hrdpsHours} h · ensemble ${p.ens ? 'yes' : 'no'}`)
       for (const cb of listeners) cb()
       return p
@@ -197,6 +198,21 @@ export function ensureProfile(force = false): Promise<Profile | null> {
       inflight = null
     })
   return inflight
+}
+
+/** Another area's profile, over its home, saved under its own key for when
+ *  the app is switched there (weather/refresh.ts fetchAreaWeather). This
+ *  run's profile is not touched: it is the active area's. */
+export async function fetchAreaProfile(area: AreaDef): Promise<boolean> {
+  try {
+    const p = await fetchProfile(area.presets[0], area.timezone)
+    writeAreaItem(KEY, JSON.stringify(p), area.id)
+    devlog('wind', `profile · ${area.name} · ${p.time.length} h · HRDPS ${p.hrdpsHours} h · ensemble ${p.ens ? 'yes' : 'no'}`)
+    return true
+  } catch (e) {
+    devlog('wind', `profile · ${area.name} · fetch failed · ${(e as Error).message}`)
+    return false
+  }
 }
 
 export function currentProfile(): Profile | null {

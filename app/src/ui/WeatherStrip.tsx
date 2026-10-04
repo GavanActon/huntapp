@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { inRegion } from '../config'
 import { useMapBearing } from '../map/mapBearing'
 import { MARK_KINDS, MARK_NAMES, useAppStore } from '../state/appStore'
-import { selectedPlace, homePlace, usePlacesStore } from '../state/placesStore'
+import { areaPlaces, selectedPlace, homePlace, usePlacesStore } from '../state/placesStore'
 import { useSpotsStore } from '../state/spotsStore'
 import { pickTarget } from '../state/viewsStore'
 import { useGpsStore } from '../tracking/gpsStore'
@@ -81,10 +81,11 @@ export function stripSubject(): { lon: number; lat: number; name: string } {
   return { lon: home.lon, lat: home.lat, name: home.name }
 }
 
-/** The nearest saved place with a forecast in the cache (spotsLayer's rule). */
+/** The nearest saved place with a forecast in the cache, in the area the
+ *  app is in (spotsLayer's rule). */
 function nearestCachedPlace(lon: number, lat: number): { p: Subject; f: PointForecast } | null {
   let best: { p: Subject; f: PointForecast; d: number } | null = null
-  for (const p of usePlacesStore.getState().places) {
+  for (const p of areaPlaces()) {
     const f = cachedPointForecast(p.lon, p.lat)
     if (!f) continue
     const d = Math.hypot((p.lon - lon) * Math.cos((lat * Math.PI) / 180), p.lat - lat)

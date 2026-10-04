@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { ACTIVE_AREA, DEFAULT_AREA, otherAreaAt, readAreaItem, writeAreaItem } from '../areas'
 import { CORE } from '../config'
 import { devlog } from '../devlog'
 import { getMap } from '../map/mapController'
@@ -85,6 +86,40 @@ interface RouteState {
   setPicking: (p: 'from' | 'to') => void
 }
 
+/**
+ * The ends and the kept route are places, so each area keeps its own: Pickle
+ * Lake's in 'huntapp-routes' with the rest, as before there were areas;
+ * another area's under ENDS_KEY with its id on it. How a route is worked
+ * out (mode, stay dry) is one setting, kept in 'huntapp-routes' wherever it
+ * was set. Away from Pickle Lake every write to 'huntapp-routes' carries
+ * Pickle Lake's ends through as they were read, so a route planned at its
+ * camp is there again on the way back.
+ */
+type Ends = Pick<RouteState, 'from' | 'to' | 'kept'>
+const ENDS_KEY = 'huntapp-routes-ends'
+const AWAY = ACTIVE_AREA.id !== DEFAULT_AREA
+let pickleEnds: Ends = { from: null, to: null, kept: null }
+
+/** Ends saved in another area (the app holds one at a time) are let go, so
+ *  this area's card does not open on ground it has no grid for. */
+function ownEnds(e: Partial<Ends>): Ends {
+  const start = e.kept?.coords[0]
+  return {
+    from: e.from && !otherAreaAt(e.from.lon, e.from.lat) ? e.from : null,
+    to: e.to && !otherAreaAt(e.to.lon, e.to.lat) ? e.to : null,
+    kept: e.kept && !(start && otherAreaAt(start[0], start[1])) ? e.kept : null,
+  }
+}
+
+function readAwayEnds(): Partial<Ends> {
+  try {
+    const raw = readAreaItem(ENDS_KEY)
+    return raw ? (JSON.parse(raw) as Partial<Ends>) : {}
+  } catch {
+    return {}
+  }
+}
+
 export const useRoutes = create<RouteState>()(
   persist(
     (set, get) => ({
@@ -110,9 +145,28 @@ export const useRoutes = create<RouteState>()(
         if (from && to) set({ from: to, to: from })
       },
     }),
-    { name: 'huntapp-routes', partialize: (s) => ({ from: s.from, to: s.to, mode: s.mode, stayDry: s.stayDry, kept: s.kept }) },
+    {
+      name: 'huntapp-routes',
+      partialize: (s) =>
+        AWAY
+          ? { from: pickleEnds.from, to: pickleEnds.to, mode: s.mode, stayDry: s.stayDry, kept: pickleEnds.kept }
+          : { from: s.from, to: s.to, mode: s.mode, stayDry: s.stayDry, kept: s.kept },
+      merge: (persisted, current) => {
+        const p = { ...(persisted as Partial<RouteState> | undefined) }
+        if (!AWAY) return { ...current, ...p, ...ownEnds(p) }
+        // Pickle Lake's ends are kept aside, as read; this area's come from its own key
+        pickleEnds = { from: p.from ?? null, to: p.to ?? null, kept: p.kept ?? null }
+        return { ...current, ...p, ...ownEnds(readAwayEnds()) }
+      },
+    },
   ),
 )
+
+// away from Pickle Lake, this area's ends are saved under its key as they change
+if (AWAY)
+  useRoutes.subscribe((s, p) => {
+    if (s.from !== p.from || s.to !== p.to || s.kept !== p.kept) writeAreaItem(ENDS_KEY, JSON.stringify({ from: s.from, to: s.to, kept: s.kept }))
+  })
 
 export function inGrid(lon: number, lat: number): boolean {
   return lon >= CORE.west && lon <= CORE.east && lat >= CORE.south && lat <= CORE.north

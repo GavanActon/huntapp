@@ -1,8 +1,10 @@
 import maplibregl, { type Map as MlMap } from 'maplibre-gl'
+import { ACTIVE_AREA } from '../areas'
+import { switchArea } from '../areas/switch'
 import { useAppStore } from '../state/appStore'
 import { windVerdict, windsLabel } from '../spots/standWinds'
 import { PIN_COLOURS, placeColour } from '../state/pinColours'
-import { usePlacesStore, type SavedPlace } from '../state/placesStore'
+import { placeArea, usePlacesStore, type SavedPlace } from '../state/placesStore'
 import { agoLabel } from '../time'
 import { closeOnTapOff } from './tapPopup'
 import '../ui/minipop.css'
@@ -72,6 +74,9 @@ export function showPlacePopup(map: MlMap, p: SavedPlace) {
   })
   el.querySelector('.pl-open')?.addEventListener('click', () => {
     pop.remove()
+    // a pin in another area: the app switches there, picks it and opens Pins on it
+    const away = placeArea(live())
+    if (away && away.id !== ACTIVE_AREA.id) return void switchArea(away.id, { center: [p.lon, p.lat], zoom: Math.max(map.getZoom(), 13) }, { kind: 'select', id: p.id, pins: true })
     // one of the two places a pin gets selected (the other is a Pins row)
     usePlacesStore.getState().select(p.id)
     useAppStore.getState().openSheet({ kind: 'pins' })

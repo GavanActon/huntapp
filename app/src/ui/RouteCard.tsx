@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { CORE_KM, HOME_NAME, HOME_WORDS } from '../config'
 import { useAppStore } from '../state/appStore'
 import { useGpsStore } from '../tracking/gpsStore'
 import { useSpotsStore } from '../state/spotsStore'
@@ -64,7 +65,7 @@ export default function RouteCard() {
   // with no end yet the card is just its head and From: the next map tap sets it
   let msg: string | null = null
   if (!to) msg = ''
-  else if (status === 'outside') msg = 'Both ends must be within 4 km of camp.'
+  else if (status === 'outside') msg = `Both ends must be within ${CORE_KM} km of ${HOME_WORDS}.`
   else if (status === 'water') msg = 'That end is out on the water.'
   else if (status === 'no-way') msg = 'No way there on foot.'
   else if (status === 'no-grid') msg = 'Download the maps in Settings first.'
@@ -92,7 +93,7 @@ export default function RouteCard() {
             You
           </button>
           <button className={`chip-pick${from?.kind === 'camp' ? ' chip-on' : ''}`} onClick={() => setFrom(campEnd())}>
-            Camp
+            {HOME_NAME}
           </button>
           <button className={`chip-pick${picking === 'from' ? ' chip-on' : from && (from.kind === 'map' || from.kind === 'place') ? ' chip-on' : ''}`} onClick={() => setPicking(picking === 'from' ? 'to' : 'from')}>
             {picking === 'from' ? 'Tap the map…' : from?.kind === 'place' ? from.name : from?.kind === 'map' ? 'The map' : 'Tap the map'}
@@ -101,7 +102,7 @@ export default function RouteCard() {
         <span className="rt-end">
           <span className="dim">To</span>
           <button className={`chip-pick${to?.kind === 'camp' ? ' chip-on' : ''}`} onClick={() => setTo(campEnd())}>
-            Camp
+            {HOME_NAME}
           </button>
           <button className={`chip-pick${picking === 'to' && !to ? ' chip-on' : to && to.kind !== 'camp' ? ' chip-on' : ''}`} onClick={() => setPicking('to')}>
             {to && to.kind !== 'camp' ? toName : picking === 'to' ? 'Tap the map…' : 'Tap the map'}

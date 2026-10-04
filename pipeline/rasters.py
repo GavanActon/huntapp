@@ -18,7 +18,7 @@ import rasterio
 from rasterio.warp import transform_bounds
 from rasterio.windows import from_bounds
 
-from common import CACHE_DIR, REGION
+from common import CACHE_DIR, REGION, grid_covers
 
 MRDEM = "https://canelevation-dem.s3.ca-central-1.amazonaws.com/mrdem-30/mrdem-30-dtm.tif"
 LANDCOVER = "https://datacube-prod-data-public.s3.ca-central-1.amazonaws.com/store/land/landcover/landcover-2020-classification.tif"
@@ -35,7 +35,10 @@ def fetch(name: str) -> dict:
     path = cache_path(name)
     if path.exists():
         z = np.load(path)
-        return {k: z[k] for k in z.files}
+        out = {k: z[k] for k in z.files}
+        if not grid_covers(rasterio.Affine(*out["transform"][:6]), out["data"].shape, str(out["crs"]), REGION):
+            raise SystemExit(f"{path.name} does not reach over this area's region (moved or grown since it was read?): delete it to fetch again")
+        return out
     url = SOURCES[name]
     t = time.time()
     print(f"fetching {name} from {url} (slow: minutes)")

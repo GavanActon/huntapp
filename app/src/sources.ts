@@ -5,8 +5,12 @@
  * with `{bbox-epsg-3857}`, or an ArcGIS query returning GeoJSON), all
  * CORS-open, no keys. All were fetched successfully on 2026-09-25 from the
  * region; see docs/DATA-SOURCES.md for what each one is and its licence.
+ *
+ * The national services serve any area. LIO's are Ontario's and have
+ * nothing past its border, so they stand in only for an Ontario area
+ * (LIVE.lio); the imagery is the province's own (LIVE.satellite).
  */
-import { REGION } from './config'
+import { LIVE, REGION } from './config'
 
 export interface LiveRaster {
   tiles: string[]
@@ -60,6 +64,26 @@ function lioQuery(service: string, layer: number, where = '1=1', outFields = '*'
   return `${LIO_OPEN}/${service}/MapServer/${layer}/query?${q.toString()}`
 }
 
+/** The imagery when none is baked, by province. */
+const SATELLITE: Record<'lio' | 'qc', LiveRaster> = {
+  // Ontario Imagery Web Map Service: the province's orthophoto mosaic,
+  // cached in Web Mercator; newer and sharper than Esri here.
+  lio: {
+    tiles: [`${LIO}/LIO_Imagery/Ontario_Imagery_Web_Map_Service/MapServer/tile/{z}/{y}/{x}`],
+    tileSize: 256,
+    attribution: 'Imagery © Ontario Ministry of Natural Resources',
+    maxzoom: 18,
+  },
+  // Quebec's continuous imagery (Imagerie_GQ), its newest flights mosaicked,
+  // as WMTS tiles in Web Mercator; CORS-open (checked 2026-10-03).
+  qc: {
+    tiles: ['https://servicesmatriciels.mern.gouv.qc.ca/erdas-iws/ogc/wmts/Imagerie_Continue/Imagerie_GQ/default/GoogleMapsCompatibleExt2:epsg:3857/{z}/{y}/{x}.jpg'],
+    tileSize: 256,
+    attribution: '© Gouvernement du Québec',
+    maxzoom: 18,
+  },
+}
+
 export const LIVE_RASTER: Partial<Record<'base' | 'satellite' | 'topo' | 'hillshade' | 'historical' | 'forest' | 'radar', LiveRaster>> = {
   // Base map when no basemap PMTiles is on hand: NRCan's Canada Base Map
   // (transportation), a cached Web Mercator tile service.
@@ -69,14 +93,8 @@ export const LIVE_RASTER: Partial<Record<'base' | 'satellite' | 'topo' | 'hillsh
     attribution: 'Canada Base Map © Natural Resources Canada',
     maxzoom: 17,
   },
-  // Ontario Imagery Web Map Service: the province's orthophoto mosaic,
-  // cached in Web Mercator; newer and sharper than Esri here.
-  satellite: {
-    tiles: [`${LIO}/LIO_Imagery/Ontario_Imagery_Web_Map_Service/MapServer/tile/{z}/{y}/{x}`],
-    tileSize: 256,
-    attribution: 'Imagery © Ontario Ministry of Natural Resources',
-    maxzoom: 18,
-  },
+  // the province's imagery; an area with none is left with what is baked
+  ...(LIVE.satellite ? { satellite: SATELLITE[LIVE.satellite] } : null),
   // NRCan Toporama, hypsography only: contour lines and spot elevations on
   // a transparent ground, so they sit over the hillshade and imagery without
   // the CanTopo land colouring washing everything out.
@@ -103,7 +121,8 @@ export const LIVE_RASTER: Partial<Record<'base' | 'satellite' | 'topo' | 'hillsh
   },
 }
 
-export const LIVE_VECTOR: Partial<Record<'wmu' | 'camps' | 'crown' | 'bathy' | 'parks' | 'fire', LiveVector>> = {
+/** The LIO queries, for an Ontario area. */
+const lioVectors = (): Partial<Record<'wmu' | 'camps' | 'crown' | 'bathy' | 'parks' | 'fire', LiveVector>> => ({
   // Wildlife Management Units (the region is 21A / 21B and neighbours)
   wmu: { url: lioQuery('LIO_Open05', 5, '1=1', 'OFFICIAL_NAME'), attribution: '© Ontario MNRF' },
   // Crown land dispositions that are camps: land use permits for outpost
@@ -126,4 +145,8 @@ export const LIVE_VECTOR: Partial<Record<'wmu' | 'camps' | 'crown' | 'bathy' | '
   bathy: { url: lioQuery('LIO_Open01', 30, '1=1', 'DEPTH,SURVEY_DATE'), attribution: 'Bathymetry © Ontario MNRF' },
   // Fire perimeters, for the burns that make moose country.
   fire: { url: lioQuery('LIO_Open09', 28, '1=1', 'FIRE_YEAR,FIRE_TYPE_CODE,FIRE_FINAL_SIZE'), attribution: '© Ontario MNRF' },
-}
+})
+
+/** Vector themes live when not baked: LIO's, in Ontario; nothing elsewhere
+ *  (Quebec's servers refuse a browser, so its themes are baked). */
+export const LIVE_VECTOR: Partial<Record<'wmu' | 'camps' | 'crown' | 'bathy' | 'parks' | 'fire', LiveVector>> = LIVE.lio ? lioVectors() : {}

@@ -1,15 +1,14 @@
 """Any georeferenced GeoTIFF(s) → one raster PMTiles for the region.
 
-Used for the historical NTS sheets (NRCan CanMatrix2, 042C13 + 042C14) and
-for a pre-rendered Toporama. The sheets are reprojected on the fly into
-Web Mercator tiles; several inputs are mosaicked first-wins per tile.
+Used for the historical NTS sheets (NRCan CanMatrix2; build_historical.py
+fetches and georeferences the area's sheets and calls this), for the MNR
+lake survey sheets, and for a pre-rendered Toporama. The sheets are
+reprojected on the fly into Web Mercator tiles; several inputs are
+mosaicked first-wins per tile.
 
-    python pipeline/build_raster.py historical raw/canmatrix2_042c13.tif raw/canmatrix2_042c14.tif
+    python pipeline/build_raster.py historical raw/sheets/042c13_geo.tif raw/sheets/042c14_geo.tif --minz 9 --maxz 15
+    python pipeline/build_raster.py bathysheets raw/bathy/*_geo.tif --minz 12 --maxz 17 --all --attribution "Lake survey sheets © Ontario Ministry of Natural Resources"
     python pipeline/build_raster.py topo raw/toporama_042c13_utm.tif --minz 8 --maxz 14
-
-Fetch the CanMatrix2 zips from
-https://ftp.maps.canada.ca/pub/nrcan_rncan/raster/canmatrix2/50k_tif/042/c/
-and unzip into pipeline/raw/ first (17 MB and 12 MB).
 """
 
 from __future__ import annotations
@@ -23,15 +22,16 @@ from rasterio.warp import Resampling, reproject
 from common import CORE, OUT_DIR, REGION, REGION_MAXZOOM, lat_to_tile, lon_to_tile, tile_bounds_3857, write_raster_pmtiles
 
 
-def main():
+def main(argv: list[str] | None = None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("key", help="output layer key: historical | topo | satellite")
+    ap.add_argument("key", help="output layer key: historical | bathysheets | topo | satellite")
     ap.add_argument("tifs", nargs="+")
     ap.add_argument("--minz", type=int, default=8)
     ap.add_argument("--maxz", type=int, default=14)
     ap.add_argument("--jpeg", action="store_true", help="JPEG tiles (no transparency, smaller)")
     ap.add_argument("--all", action="store_true", help="bake every zoom wherever the inputs are, not just the core")
-    a = ap.parse_args()
+    ap.add_argument("--attribution", default="© Natural Resources Canada", help="the archive's attribution (the inputs' owner)")
+    a = ap.parse_args(argv)
 
     srcs = [rasterio.open(p) for p in a.tifs]
     for s in srcs:
@@ -121,7 +121,7 @@ def main():
     write_raster_pmtiles(
         OUT_DIR / f"{a.key}-{REGION['id']}.pmtiles",
         f"{a.key}-{REGION['id']}",
-        "© Natural Resources Canada",
+        a.attribution,
         a.minz,
         a.maxz,
         render,

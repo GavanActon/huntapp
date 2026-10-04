@@ -1,6 +1,7 @@
 import { DARK, layers as basemapLayers } from '@protomaps/basemaps'
 import type { FeatureCollection } from 'geojson'
 import type { ExpressionSpecification, FilterSpecification, GeoJSONSource, LayerSpecification, Map as MlMap, StyleSpecification } from 'maplibre-gl'
+import { ATTRIBUTION, CONTOUR_FINE_FROM, CORE, REGION_MAXZOOM, RELIEF, ZONE } from '../config'
 import { LIVE_RASTER, LIVE_VECTOR } from '../sources'
 import type { ContourInterval, LayerOpacity, LayerVisibility } from '../state/appStore'
 
@@ -114,31 +115,57 @@ export const CONTOUR_INK: Record<BaseTone, ContourInk> = {
  *  intervals (1–2 m) every line carries its number, since that is what the
  *  close reading of a bench or a saddle is for; coarser, the index lines only. */
 export function contourFilters(interval: ContourInterval): [FilterSpecification, FilterSpecification, FilterSpecification] {
+  const fine = filtersAt(interval)
+  // steep ground (the area file's contours.fineFrom): lines closer than 5 m
+  // run together into solid bands further out, so short of that zoom the
+  // lines are the 5 m ones, as if 5 m were picked. Unset, as at Pickle Lake,
+  // the filters are the interval's alone
+  if (CONTOUR_FINE_FROM == null || interval >= 5) return fine
+  const coarse = filtersAt(5)
+  const atZoom = (k: number) => ['case', ['>=', ['zoom'], CONTOUR_FINE_FROM], fine[k], coarse[k]] as FilterSpecification
+  return [atZoom(0), atZoom(1), atZoom(2)]
+}
+
+function filtersAt(interval: ContourInterval): [FilterSpecification, FilterSpecification, FilterSpecification] {
   const keep: FilterSpecification = ['>=', ['get', 'step'], interval]
   const index: FilterSpecification = ['==', ['%', ['get', 'elev'], interval * 5], 0]
   return [keep, index, interval <= 2 ? keep : index]
 }
+
 /** Elevation colours for the relief, m: low ground and lake shores green,
  *  through the core's benches (340–420 m) in olive and tan, to the high
- *  ridges in pale brown. Stretched over the core's 325–466 m, with the
- *  wider region's extremes clamped at either end. */
-const RELIEF_RAMP = [
-  'interpolate',
-  ['linear'],
-  ['elevation'],
-  250, '#2f5236',
-  325, '#3f6b42',
-  340, '#5a824a',
-  355, '#7b9651',
-  370, '#a0a65a',
-  385, '#bfae63',
-  400, '#cc9f5e',
-  415, '#bf8658',
-  430, '#a9735a',
-  450, '#b49a86',
-  470, '#d9ccbd',
-  600, '#f1ebe2',
-] as unknown as ExpressionSpecification
+ *  ridges in pale brown. Stretched over Pickle Lake's core, 325–466 m, with
+ *  the wider region's extremes clamped at either end. Another area's stops
+ *  are stretched from that span onto its own (RELIEF), so the same colours
+ *  run from its low ground to its high; at Pickle Lake they are as set. */
+const RELIEF_TUNED: [number, number] = [325, 466]
+const RELIEF_STOPS: [number, string][] = [
+  [250, '#2f5236'],
+  [325, '#3f6b42'],
+  [340, '#5a824a'],
+  [355, '#7b9651'],
+  [370, '#a0a65a'],
+  [385, '#bfae63'],
+  [400, '#cc9f5e'],
+  [415, '#bf8658'],
+  [430, '#a9735a'],
+  [450, '#b49a86'],
+  [470, '#d9ccbd'],
+  [600, '#f1ebe2'],
+]
+const RELIEF_RAMP = (() => {
+  const [t0, t1] = RELIEF_TUNED
+  // a span the wrong way round would put the stops out of order: the tuned one then
+  const [lo, hi] = RELIEF[1] > RELIEF[0] ? RELIEF : RELIEF_TUNED
+  const at = (m: number) => lo + ((m - t0) * (hi - lo)) / (t1 - t0)
+  return ['interpolate', ['linear'], ['elevation'], ...RELIEF_STOPS.flatMap(([m, c]) => [at(m), c])] as unknown as ExpressionSpecification
+})()
+
+/** The core's archives (the 1 m LiDAR shade and contours, the bush layers)
+ *  begin a zoom past the region's bake and run to the core's own maxzoom;
+ *  their layers take over half a zoom early. 14–16 and 13.5 at Pickle Lake. */
+const CORE_MINZOOM = REGION_MAXZOOM + 1
+const CORE_HANDOFF = REGION_MAXZOOM + 0.5
 
 const FONT = ['Noto Sans Regular']
 const FONT_MED = ['Noto Sans Medium']
@@ -225,7 +252,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   if (dem) {
     sources.dem = { type: 'raster-dem', url: 'pmtiles://dem', encoding: 'mapbox', tileSize: 256, attribution: 'MRDEM, HRDEM LiDAR © Natural Resources Canada' }
     const lakes = o.geo.get('waterbody')
-    if (lakes) sources.lakes = { type: 'geojson', data: geoData('lakes', lakes, 'relief'), attribution: '© Ontario MNRF' }
+    if (lakes) sources.lakes = { type: 'geojson', data: geoData('lakes', lakes, 'relief'), attribution: ATTRIBUTION.lakes }
     rasters.push(
       tag(
         {
@@ -273,14 +300,14 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   // the 1 m LiDAR shade rides above the DEM-drawn one where it is baked (the
   // core, z14+); both answer to the one Hillshade switch and slider
   if (has('hillshadeLidar')) {
-    sources.hillshadeLidar = { type: 'raster', url: 'pmtiles://hillshadeLidar', tileSize: 256, minzoom: 14 }
+    sources.hillshadeLidar = { type: 'raster', url: 'pmtiles://hillshadeLidar', tileSize: 256, minzoom: CORE_MINZOOM }
     rasters.push(
       tag(
         {
           id: 'hillshade-lidar',
           type: 'raster',
           source: 'hillshadeLidar',
-          minzoom: 13.5,
+          minzoom: CORE_HANDOFF,
           layout: vis(o.layers.hillshade),
           paint: { 'raster-opacity': o.opacity.hillshade, 'raster-resampling': 'linear', 'raster-brightness-max': lidarShadeBrightness(o.layers) },
         },
@@ -291,7 +318,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   }
   // bush thickness from the point cloud, near camp (z14–16 baked, overzoomed above)
   if (has('understory')) {
-    sources.understory = { type: 'raster', url: 'pmtiles://understory', tileSize: 256, minzoom: 14, maxzoom: 16, attribution: 'FRI LiDAR © Ontario MNR' }
+    sources.understory = { type: 'raster', url: 'pmtiles://understory', tileSize: 256, minzoom: CORE_MINZOOM, maxzoom: CORE.maxzoom, attribution: ATTRIBUTION.bush }
     rasters.push(
       tag(
         {
@@ -309,7 +336,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   }
   // the same bush drawn for a bow: open ground left clear, thicker bush darker
   if (has('lanes')) {
-    sources.lanes = { type: 'raster', url: 'pmtiles://lanes', tileSize: 256, minzoom: 14, maxzoom: 16, attribution: 'FRI LiDAR © Ontario MNR' }
+    sources.lanes = { type: 'raster', url: 'pmtiles://lanes', tileSize: 256, minzoom: CORE_MINZOOM, maxzoom: CORE.maxzoom, attribution: ATTRIBUTION.bush }
     rasters.push(
       tag(
         {
@@ -351,7 +378,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   if (has('contoursWide')) {
     sources.contoursWide = { type: 'vector', url: 'pmtiles://contoursWide', minzoom: 8, maxzoom: 14 }
     const outsideLidar = (f: FilterSpecification): FilterSpecification =>
-      has('contours') ? (['step', ['zoom'], f, 13.5, ['all', f, ['==', ['get', 'core'], 0]]] as unknown as FilterSpecification) : f
+      has('contours') ? (['step', ['zoom'], f, CORE_HANDOFF, ['all', f, ['==', ['get', 'core'], 0]]] as unknown as FilterSpecification) : f
     const index: FilterSpecification = ['>=', ['get', 'step'], 50]
     const thin: FilterSpecification = ['<', ['get', 'step'], 50]
     const wide = { source: 'contoursWide', 'source-layer': 'contours' } as const
@@ -413,9 +440,9 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   // Settings knob switches instantly and offline. Every fifth line is an
   // index line: heavier, labelled.
   if (has('contours')) {
-    sources.contours = { type: 'vector', url: 'pmtiles://contours', minzoom: 14, maxzoom: 16 }
+    sources.contours = { type: 'vector', url: 'pmtiles://contours', minzoom: CORE_MINZOOM, maxzoom: CORE.maxzoom }
     const [keep, index, labelled] = contourFilters(o.contourInterval)
-    const line = { source: 'contours', 'source-layer': 'contours', minzoom: 13.5 } as const
+    const line = { source: 'contours', 'source-layer': 'contours', minzoom: CORE_HANDOFF } as const
     rasters.push(
       tag(
         {
@@ -469,7 +496,8 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
 
   // ---- vector overlays ----
   // Each overlay reads from the baked 'places' archive (one source-layer
-  // per theme) when it exists, else from the live LIO GeoJSON query.
+  // per theme) when it exists, else from the live LIO GeoJSON query (an
+  // Ontario area's only: elsewhere a theme not baked is left out).
   const vectors: LayerSpecification[] = []
   type Theme = 'forest' | 'bathy' | 'wmu' | 'camps' | 'crown' | 'parks' | 'fire' | 'roads'
   const themeSource = (t: Theme): { source: string; 'source-layer'?: string } | null => {
@@ -488,7 +516,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
     const live = t in LIVE_VECTOR ? LIVE_VECTOR[t as keyof typeof LIVE_VECTOR] : undefined
     const baked = o.geo.get(t)
     if (baked) {
-      sources[`geo-${t}`] = { type: 'geojson', data: geoData(`geo-${t}`, baked, t), attribution: live?.attribution ?? '© Ontario MNRF' }
+      sources[`geo-${t}`] = { type: 'geojson', data: geoData(`geo-${t}`, baked, t), attribution: live?.attribution ?? ATTRIBUTION.vectors }
       return { source: `geo-${t}` }
     }
     if (!live) return null
@@ -671,7 +699,8 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
           id: 'wmu-label',
           type: 'symbol',
           ...wmu,
-          layout: { ...vis(o.layers.wmu), 'text-field': ['concat', 'WMU ', ['get', 'OFFICIAL_NAME']], 'text-font': FONT_MED, 'text-size': 12 },
+          // the zone's word is the area's: WMU 21B in Ontario, Zone 18 in Quebec
+          layout: { ...vis(o.layers.wmu), 'text-field': ['concat', `${ZONE.label} `, ['get', 'OFFICIAL_NAME']], 'text-font': FONT_MED, 'text-size': 12 },
           paint: { 'text-color': 'rgba(255,180,84,0.95)', ...HALO },
         },
         'wmu',

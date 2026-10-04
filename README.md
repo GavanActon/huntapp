@@ -122,29 +122,32 @@ npm run dev
 `npm run dev:phone` serves over self-signed HTTPS on port 5176 so a phone on
 the same Wi-Fi gets location.
 
-## Bake the region
+## Bake an area
+
+Each area is one file, `app/src/areas/<id>.json`: its bounds, camp,
+compass correction, hunting zone, which layers it has and which sources
+bake them. The app and the pipeline both read it. See `docs/AREAS.md`.
 
 ```
-pip install numpy pillow rasterio pmtiles requests shapely
-python pipeline/build_vectors.py
-python pipeline/build_tiles.py satellite hillshade-mrdem
-python pipeline/build_hillshade.py                  # replaces the MRDEM hillshade with 1 m LiDAR
-python pipeline/build_contours.py                   # 1 m contours from the same LiDAR (after build_vectors.py waterbody)
-python pipeline/build_tiles.py topo   # Toporama hypsography (contours) via WMS
-python pipeline/georef_sheet.py pipeline/raw/sheets/042c13_02.tif 042C13   # CanMatrix2 scans have no georef
-python pipeline/georef_sheet.py pipeline/raw/sheets/042c14_02.tif 042C14
-python pipeline/build_raster.py historical pipeline/raw/sheets/042c13_geo.tif pipeline/raw/sheets/042c14_geo.tif --minz 9 --maxz 15
-python pipeline/build_microclimate.py               # the ground-wind grid (after build_habitat.py; needs scipy)
-python pipeline/survey_depth.py --all               # lake sheets to depth (after georef_lake_sheet.py)
-python pipeline/build_habitat.py                    # again: picks the survey depths up
-python pipeline/build_depth_bands.py                # the map's depth bands
-py -3.14 pipeline/build_going.py                    # the routes' going grid (after build_habitat.py and build_vegstructure.py)
-py -3.14 pipeline/build_vector_tiles.py             # forest stands and the places themes as vector tiles (after build_forest.py and build_vectors.py)
+py -3.14 pipeline/bake_area.py --area lac-bailey --list    # the plan
+py -3.14 pipeline/bake_area.py --area lac-bailey           # bake it all
+py -3.14 pipeline/bake_area.py --area lac-bailey --only habitat --only micro
+py -3.14 pipeline/bake_area.py --area lac-bailey --from contours
+py -3.14 pipeline/bake_area.py --new --lat 49.40955 --lon -69.55349 --name "Lac Bailey" --jurisdiction QC
 ```
 
-The sheets come from `https://ftp.maps.canada.ca/pub/nrcan_rncan/raster/`
-(`toporama/50k_utm_tif/042/c/` and `canmatrix2/50k_tif/042/c/`), unzipped
-into `pipeline/raw/sheets/`.
+`bake_area.py` runs each step under the interpreter it needs: py -3.13 for
+pyogrio (FRI and TRQ file geodatabases), py -3.14 for rasterio, laspy and
+scipy. It logs to `pipeline/bake-<id>.log` and writes the coverage report
+(what was baked, from what, under which licence) into the area file. The
+province picks the adapters: Ontario uses LIO and the FRI, Quebec uses
+`qc_vectors.py`, `qc_forest.py` and `qc_pointcloud.py`, and every area
+uses the national HRDEM, MRDEM, Toporama, land cover and CanMatrix sheets.
+Pickle Lake's files are published and are only rebaked with
+`--overwrite-published`, or into a scratch folder with `HUNTAPP_OUT`.
+Any one script still runs alone for an area:
+`py -3.14 pipeline/build_contours.py --area lac-bailey`.
 
-Region bounds live in `app/src/config.ts` (`REGION`) and are read by the
-pipeline from there.
+Lake survey sheets are hand work (Ontario only):
+`georef_lake_sheet.py`, then `survey_depth.py --all`, then
+`build_habitat.py` again and `build_depth_bands.py`.

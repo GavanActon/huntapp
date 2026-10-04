@@ -1,5 +1,5 @@
 import { useEffect, type JSX, type ReactNode, type RefObject } from 'react'
-import { inRegion } from '../config'
+import { HOME_NAME, inRegion } from '../config'
 import { heardThisHunt } from '../hunting/moveLayer'
 import { useHuntLog, type LogSpecies } from '../log/huntLog'
 import { openHuntLog } from '../log/logView'
@@ -241,7 +241,7 @@ function RoutesRows({ go }: RowsProps) {
     <>
       <Seg label="Route" value={mode} options={[['easy', 'Easiest'], ['hunt', 'Hunt']] as const} onPick={setMode} />
       <Switch label="Stay dry" on={stayDry} onChange={setStayDry} />
-      <Seg label="From" value={fromKind} options={[['you', 'You'], ['camp', 'Camp']] as const} off={you ? [] : ['you']} onPick={(v) => setFrom(v === 'you' && you ? you : campEnd())} />
+      <Seg label="From" value={fromKind} options={[['you', 'You'], ['camp', HOME_NAME]] as const} off={you ? [] : ['you']} onPick={(v) => setFrom(v === 'you' && you ? you : campEnd())} />
       <Act disabled={!drawn} onTap={go(clearRoutes)}>
         Clear route
       </Act>

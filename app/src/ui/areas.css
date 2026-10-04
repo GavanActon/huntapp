@@ -1,0 +1,66 @@
+/* The areas' own bits: Go to coordinates (sheets/CoordsSheet.tsx) and the
+   "You're at …" chip (AreaOffer.tsx). Buttons and chips are ui.css's. */
+
+.coords {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0 10px;
+}
+
+.coords-box {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--c-border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--c-text);
+  font: inherit;
+  font-size: calc(15px * var(--ui-scale));
+}
+
+.coords-box:focus {
+  outline: none;
+  border-color: var(--c-accent);
+}
+
+/* the point read, over its area */
+.coords-found {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: calc(15px * var(--ui-scale));
+  color: var(--c-text);
+}
+
+.coords-found .numeral {
+  font-weight: 650;
+}
+
+.coords-found small,
+.coords-help {
+  font-size: calc(12.5px * var(--ui-scale));
+  line-height: 1.35;
+  color: var(--c-text-dim);
+}
+
+.coords-acts {
+  display: flex;
+  gap: 8px;
+}
+
+/* the chip's two taps: the switch, and × for not now */
+.chip-offer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 4px;
+}
+
+.chip-offer .chip-x {
+  padding: 0 6px;
+  color: var(--c-text-dim);
+  font-size: 14px;
+  line-height: 1;
+}

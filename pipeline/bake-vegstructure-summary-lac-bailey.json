@@ -1,0 +1,244 @@
+{
+ "brush / alder (BSH)": {
+  "cells": 6607,
+  "stands": 32,
+  "canopy_height": {
+   "p25": 0.0,
+   "median": 3.618,
+   "p75": 6.697
+  },
+  "canopy_cover": {
+   "p25": 0.0,
+   "median": 0.157,
+   "p75": 0.545
+  },
+  "understory": {
+   "p25": 0.091,
+   "median": 0.398,
+   "p75": 0.691
+  },
+  "understory_pad": {
+   "p25": 0.077,
+   "median": 0.406,
+   "p75": 0.94
+  },
+  "density": {
+   "p25": 3.67,
+   "median": 4.18,
+   "p75": 6.706
+  }
+ },
+ "mature closed conifer (origin <=1945, cc>=70)": {
+  "cells": 20842,
+  "stands": 67,
+  "canopy_height": {
+   "p25": 11.82,
+   "median": 14.668,
+   "p75": 16.943
+  },
+  "canopy_cover": {
+   "p25": 0.492,
+   "median": 0.611,
+   "p75": 0.734
+  },
+  "understory": {
+   "p25": 0.268,
+   "median": 0.465,
+   "p75": 0.641
+  },
+  "understory_pad": {
+   "p25": 0.25,
+   "median": 0.501,
+   "p75": 0.819
+  },
+  "density": {
+   "p25": 6.16,
+   "median": 7.25,
+   "p75": 11.12
+  }
+ },
+ "mature hardwood-leading (origin <=1960)": {
+  "cells": 18851,
+  "stands": 49,
+  "canopy_height": {
+   "p25": 14.267,
+   "median": 17.474,
+   "p75": 21.065
+  },
+  "canopy_cover": {
+   "p25": 0.808,
+   "median": 0.874,
+   "p75": 0.919
+  },
+  "understory": {
+   "p25": 0.563,
+   "median": 0.712,
+   "p75": 0.813
+  },
+  "understory_pad": {
+   "p25": 0.663,
+   "median": 0.995,
+   "p75": 1.343
+  },
+  "density": {
+   "p25": 6.53,
+   "median": 7.69,
+   "p75": 11.55
+  }
+ },
+ "mature open conifer (origin <=1945, cc<60)": {
+  "cells": 36419,
+  "stands": 118,
+  "canopy_height": {
+   "p25": 9.665,
+   "median": 12.695,
+   "p75": 15.59
+  },
+  "canopy_cover": {
+   "p25": 0.433,
+   "median": 0.591,
+   "p75": 0.743
+  },
+  "understory": {
+   "p25": 0.329,
+   "median": 0.494,
+   "p75": 0.648
+  },
+  "understory_pad": {
+   "p25": 0.319,
+   "median": 0.545,
+   "p75": 0.836
+  },
+  "density": {
+   "p25": 5.78,
+   "median": 6.73,
+   "p75": 9.06
+  }
+ },
+ "open muskeg (OMS)": {
+  "cells": 7133,
+  "stands": 77,
+  "canopy_height": {
+   "p25": 0.0,
+   "median": 0.0,
+   "p75": 4.15
+  },
+  "canopy_cover": {
+   "p25": 0.0,
+   "median": 0.003,
+   "p75": 0.047
+  },
+  "understory": {
+   "p25": 0.001,
+   "median": 0.021,
+   "p75": 0.117
+  },
+  "understory_pad": {
+   "p25": 0.001,
+   "median": 0.017,
+   "p75": 0.099
+  },
+  "density": {
+   "p25": 3.74,
+   "median": 4.21,
+   "p75": 6.81
+  }
+ },
+ "treed muskeg (TMS)": {
+  "cells": 1970,
+  "stands": 10,
+  "canopy_height": {
+   "p25": 7.039,
+   "median": 8.788,
+   "p75": 11.091
+  },
+  "canopy_cover": {
+   "p25": 0.255,
+   "median": 0.432,
+   "p75": 0.64
+  },
+  "understory": {
+   "p25": 0.212,
+   "median": 0.379,
+   "p75": 0.591
+  },
+  "understory_pad": {
+   "p25": 0.19,
+   "median": 0.381,
+   "p75": 0.715
+  },
+  "density": {
+   "p25": 5.22,
+   "median": 6.09,
+   "p75": 8.78
+  }
+ },
+ "water (FRI WAT)": {
+  "cells": 717,
+  "stands": 45,
+  "canopy_height": {
+   "p25": 0.0,
+   "median": 0.0,
+   "p75": 0.0
+  },
+  "canopy_cover": {
+   "p25": 0.0,
+   "median": 0.0,
+   "p75": 0.0
+  },
+  "understory": {
+   "p25": 0.0,
+   "median": 0.0,
+   "p75": 0.007
+  },
+  "understory_pad": {
+   "p25": 0.0,
+   "median": 0.0,
+   "p75": 0.006
+  },
+  "density": {
+   "p25": 2.976,
+   "median": 3.417,
+   "p75": 3.86
+  }
+ },
+ "young forest, origin 1985+ or cut/burn": {
+  "cells": 434344,
+  "stands": 1592,
+  "canopy_height": {
+   "p25": 7.247,
+   "median": 9.347,
+   "p75": 12.237
+  },
+  "canopy_cover": {
+   "p25": 0.498,
+   "median": 0.704,
+   "p75": 0.836
+  },
+  "understory": {
+   "p25": 0.228,
+   "median": 0.373,
+   "p75": 0.522
+  },
+  "understory_pad": {
+   "p25": 0.207,
+   "median": 0.374,
+   "p75": 0.591
+  },
+  "density": {
+   "p25": 5.86,
+   "median": 6.92,
+   "p75": 9.88
+  }
+ },
+ "water (lidar)": {
+  "cells": 80736,
+  "share_with_any_value": 0.0473
+ },
+ "_fri_vs_lidar": {
+  "stands": 1796,
+  "height_r": 0.697,
+  "height_median_diff_m (lidar - forest map)": 1.68,
+  "closure_vs_cover_r": 0.643
+ }
+}

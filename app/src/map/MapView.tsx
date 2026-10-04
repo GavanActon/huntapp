@@ -1,7 +1,8 @@
 import maplibregl from 'maplibre-gl'
 import { useEffect, useRef, useState } from 'react'
 import { devlog } from '../devlog'
-import { BASE_GEO, baseGeoFile, DATA_BASE, DATA_FILES, GEO_THEMES, geoFile, HOME, MAX_BOUNDS } from '../config'
+import { fileUrl, loadView, saveView } from '../areas'
+import { BASE_GEO, baseGeoFile, DATA_FILES, GEO_THEMES, geoFile, HOME, MAX_BOUNDS } from '../config'
 import { getStoredFile } from '../offline/fileStore'
 import { markShown, useAppStore, type LayerOpacity, type LayerVisibility } from '../state/appStore'
 import { placeColour } from '../state/pinColours'
@@ -28,24 +29,6 @@ import type { FeatureCollection } from 'geojson'
 import 'maplibre-gl/dist/maplibre-gl.css'
 // the tap popup's score circle (the rest of the popup is in ui.css)
 import '../ui/sheets/digin.css'
-
-const VIEW_KEY = 'huntapp.lastView'
-
-interface SavedView {
-  center: [number, number]
-  zoom: number
-  bearing: number
-}
-
-function loadView(): SavedView | null {
-  try {
-    const raw = localStorage.getItem(VIEW_KEY)
-    return raw ? (JSON.parse(raw) as SavedView) : null
-  } catch {
-    return null
-  }
-}
-
 
 /** Your pins and the preset places, each as the strip's marks say. */
 function placesGeoJson(): FeatureCollection {
@@ -83,10 +66,11 @@ async function resolveGeo(): Promise<Map<string, string>> {
       if (!navigator.onLine) return
       try {
         // the dev server answers every path with index.html: only JSON counts
-        const r = await fetch(DATA_BASE + file, { method: 'HEAD' })
+        const url = fileUrl(file)
+        const r = await fetch(url, { method: 'HEAD' })
         if (r.ok && /json/i.test(r.headers.get('content-type') ?? '')) {
           geoModes.set(t, 'network')
-          geo.set(t, DATA_BASE + file)
+          geo.set(t, url)
         }
       } catch {
         /* not baked */
@@ -123,6 +107,7 @@ export default function MapView() {
 
       const { layers, opacity, contourInterval } = useAppStore.getState()
       const style = buildMapStyle({ base: import.meta.env.BASE_URL, layers, opacity, contourInterval, available, geo })
+      // the last view in this area (a switch saves the one to open on)
       const saved = loadView()
 
       try {
@@ -184,11 +169,7 @@ export default function MapView() {
 
       m.on('moveend', () => {
         const c = m.getCenter()
-        try {
-          localStorage.setItem(VIEW_KEY, JSON.stringify({ center: [c.lng, c.lat], zoom: m.getZoom(), bearing: m.getBearing() }))
-        } catch {
-          /* ignore */
-        }
+        saveView({ center: [c.lng, c.lat], zoom: m.getZoom(), bearing: m.getBearing() })
       })
       m.on('dragstart', () => useAppStore.getState().setFollow(false))
 

@@ -18,3 +18,12 @@ worker/.dev.vars
 # session screenshots and vite cache
 shot-*.png
 .vite/
+
+# Lac Bailey's bake inputs, which the app never reads (they are not in
+# app/src/areas/lac-bailey.json's files lists): out of git, so out of the
+# deploy. The map reads the stands from forest-lac-bailey.pmtiles.
+app/public/data/areas/lac-bailey/watercourse-lac-bailey.geojson
+app/public/data/areas/lac-bailey/wetland-lac-bailey.geojson
+app/public/data/areas/lac-bailey/forest-lac-bailey.geojson
+# the hunting zones state no licence, so never ship (qc_vectors.py keeps a copy in pipeline/raw)
+app/public/data/areas/lac-bailey/wmu-lac-bailey.geojson

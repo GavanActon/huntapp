@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { DECLINATION } from '../config'
 
 /**
  * The phone's compass: which way it is pointing, true north, smoothed.
@@ -10,7 +11,8 @@ import { create } from 'zustand'
  * the back (the camera's way) once it is held up; tilt-compensated either
  * way. iOS gives its own tilt-compensated heading (webkitCompassHeading);
  * elsewhere it comes from the absolute orientation's alpha, beta, gamma.
- * Both are magnetic, so the local declination is added.
+ * Both are magnetic, so the area's declination is added (config.ts: about
+ * −6° at Pickle Lake, −16.1° at Lac Bailey).
  *
  * iOS asks permission, and only from a tap: request() must be called from
  * a click handler before start() gets anything there.
@@ -33,11 +35,6 @@ import { create } from 'zustand'
  * yet the first reading is published anyway, unsteady or not: a rose turned
  * roughly the right way beats one stuck at north while the phone settles.
  */
-
-/** Magnetic declination at the camp, degrees (west negative). WMM2025
- *  gives about −6° here in 2026 (drifting ~0.1°/yr); a degree off is
- *  nothing against a 45° wind sector. */
-const DECLINATION = -6
 
 export type CompassStatus = 'off' | 'waiting' | 'on' | 'denied' | 'none'
 

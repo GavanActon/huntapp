@@ -1,0 +1,201 @@
+{
+  "id": "lac-bailey",
+  "name": "Lac Bailey",
+  "jurisdiction": "QC",
+  "centre": [-69.55349, 49.40955],
+  "home": { "center": [-69.55349, 49.40955], "zoom": 13 },
+  "region": { "west": -69.693, "south": 49.329, "east": -69.414, "north": 49.49 },
+  "core": { "west": -69.623, "south": 49.364, "east": -69.484, "north": 49.455, "maxzoom": 16 },
+  "regionMaxzoom": 13,
+  "declination": -16.1,
+  "timezone": "America/Toronto",
+  "zone": { "label": "Zone", "name": "18" },
+  "contours": { "fineFrom": 15 },
+  "relief": [160, 530],
+  "base": "areas/lac-bailey/",
+  "surveyedLakes": [],
+  "live": { "lio": false, "satellite": "qc" },
+  "attribution": {
+    "vectors": "© Gouvernement du Québec",
+    "lakes": "GRHQ © Gouvernement du Québec",
+    "bush": "LiDAR © Gouvernement du Québec (MRNF)"
+  },
+  "presets": [
+    { "name": "Shared spot", "lon": -69.55349, "lat": 49.40955, "kind": "stand", "note": "From an inReach message, 3 Oct 2026" },
+    { "name": "Lac Bailey", "lon": -69.5382, "lat": 49.4028, "kind": "lake" },
+    { "name": "Lac Laïc", "lon": -69.5546, "lat": 49.4142, "kind": "lake" },
+    { "name": "Lac Séton", "lon": -69.547, "lat": 49.3989, "kind": "lake" },
+    { "name": "Lac du Flux", "lon": -69.544, "lat": 49.4257, "kind": "lake" },
+    { "name": "Lac Titi", "lon": -69.557, "lat": 49.4323, "kind": "lake" },
+    { "name": "Lac du Hotu", "lon": -69.5451, "lat": 49.4329, "kind": "lake" },
+    { "name": "Lac Lacroix", "lon": -69.5161, "lat": 49.3968, "kind": "lake" },
+    { "name": "Lac des Expos", "lon": -69.5137, "lat": 49.4212, "kind": "lake" },
+    { "name": "Lac du Gril", "lon": -69.5723, "lat": 49.379, "kind": "lake" },
+    { "name": "Lac Den", "lon": -69.6103, "lat": 49.4124, "kind": "lake" },
+    { "name": "Lac Sergio", "lon": -69.6215, "lat": 49.4013, "kind": "lake" }
+  ],
+  "bundle": {
+    "description": "Topo, 2023 aerial imagery, 1 m LiDAR relief and contours, LiDAR bush and shooting lanes, forest stands with cuts and burns, lakes, wetlands, forest roads, the ZEC boundary, and the habitat, wind and going grids, for the ground west of Lac Bailey; full detail within 5 km of the shared spot."
+  },
+  "files": {
+    "pmtiles": ["topo", "satellite", "hillshadeLidar", "dem", "contours", "contoursWide", "forest", "understory", "lanes", "historical", "places"],
+    "geo": ["parks", "fire", "roads"],
+    "baseGeo": ["waterbody"],
+    "grids": ["habitat", "micro", "going"]
+  },
+  "bake": {
+    "outDir": "app/public/data/areas/lac-bailey",
+    "hrdem": [
+      "https://canelevation-dem.s3.ca-central-1.amazonaws.com/hrdem-lidar/QC-600023_29_LacAuBrochet_MTM7_2023-1m-dtm.tif",
+      "https://canelevation-dem.s3.ca-central-1.amazonaws.com/hrdem-lidar/QC-600015_24_LidarDIF_Cote_Nord_MTM7_2015_17-1m-dtm.tif"
+    ],
+    "vectors": "qc",
+    "forest": {
+      "adapter": "qc.ecoforestier",
+      "vintage": "4th inventory (2012 photos), with 5th-inventory stands from 2023-24 photos (preliminary) in the south and east; cuts, burns and outbreaks to 2023"
+    },
+    "imagery": "qc.imagerie_gq",
+    "pointcloud": { "adapter": "qc.mrnf_laz", "bbox": { "west": -69.623, "south": 49.364, "east": -69.484, "north": 49.455 } },
+    "habitatBush": "pointcloud",
+    "nts": ["022F05", "022F06"]
+  },
+  "coverage": {
+    "checked": "2026-10-04",
+    "pmtiles": {
+      "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
+      "topo": {
+        "file": "topo-lac-bailey.pmtiles",
+        "bytes": 14298221,
+        "source": "Toporama hypsography (contours and spot heights), NRCan WMS",
+        "licence": "OGL-Canada"
+      },
+      "satellite": {
+        "file": "satellite-lac-bailey.pmtiles",
+        "bytes": 25483941,
+        "source": "Imagerie_GQ WMTS, MRNF: the 20 cm ortho",
+        "licence": "CC BY 4.0",
+        "vintage": "flown Aug-Oct 2023"
+      },
+      "hillshade": { "missing": "not baked: the map shades the relief from the DEM" },
+      "hillshadeLidar": {
+        "file": "hillshade-lidar-lac-bailey.pmtiles",
+        "bytes": 62318669,
+        "source": "HRDEM 1 m LiDAR DTM, NRCan: QC-600023_29_LacAuBrochet_MTM7_2023-1m, gaps filled from QC-600015_24_LidarDIF_Cote_Nord_MTM7_2015_17-1m",
+        "licence": "OGL-Canada",
+        "vintage": "2023, gaps 2015-17",
+        "note": "LiDAR over 100% of the core"
+      },
+      "dem": {
+        "file": "dem-lac-bailey.pmtiles",
+        "bytes": 22235702,
+        "source": "MRDEM 30 m, with HRDEM 1 m LiDAR over the core (QC-600023_29_LacAuBrochet_MTM7_2023-1m, gaps filled from QC-600015_24_LidarDIF_Cote_Nord_MTM7_2015_17-1m), NRCan",
+        "licence": "OGL-Canada",
+        "vintage": "2023, gaps 2015-17"
+      },
+      "contours": {
+        "file": "contours-lac-bailey.pmtiles",
+        "bytes": 12319331,
+        "source": "HRDEM 1 m LiDAR DTM, NRCan: QC-600023_29_LacAuBrochet_MTM7_2023-1m, gaps filled from QC-600015_24_LidarDIF_Cote_Nord_MTM7_2015_17-1m",
+        "licence": "OGL-Canada",
+        "vintage": "2023, gaps 2015-17"
+      },
+      "contoursWide": { "file": "contours-wide-lac-bailey.pmtiles", "bytes": 1243953, "source": "MRDEM 30 m DTM, NRCan", "licence": "OGL-Canada" },
+      "forest": {
+        "file": "forest-lac-bailey.pmtiles",
+        "bytes": 2953565,
+        "source": "Carte écoforestière (MRNF), with later cuts, burns and outbreaks laid over",
+        "licence": "CC BY 4.0",
+        "vintage": "4th inventory (2012 photos), with 5th-inventory stands from 2023-24 photos (preliminary) in the south and east; cuts, burns and outbreaks to 2023"
+      },
+      "understory": {
+        "file": "understory-lac-bailey.pmtiles",
+        "bytes": 11586584,
+        "source": "MRNF LiDAR 2023_LacAuBrochet_LiDAR, flown 2024-07-27; MRNF LiDAR 2023_RiviereAuxOutardes_LiDAR, flown 2024-09-06 to 2024-09-14; heights above the tiles' own ground returns",
+        "licence": "CC BY 4.0",
+        "vintage": "flown 2024-07-27 to 2024-09-14"
+      },
+      "lanes": {
+        "file": "lanes-lac-bailey.pmtiles",
+        "bytes": 8465371,
+        "source": "MRNF LiDAR 2023_LacAuBrochet_LiDAR, flown 2024-07-27; MRNF LiDAR 2023_RiviereAuxOutardes_LiDAR, flown 2024-09-06 to 2024-09-14; heights above the tiles' own ground returns",
+        "licence": "CC BY 4.0",
+        "vintage": "flown 2024-07-27 to 2024-09-14"
+      },
+      "bathy": { "missing": "Ontario only: lake depths need the ARA lake facts and the MNR sheets" },
+      "historical": {
+        "file": "historical-lac-bailey.pmtiles",
+        "bytes": 25391764,
+        "source": "CanMatrix2 1:50 000 NTS scans, NRCan: 022F05, 022F06",
+        "licence": "OGL-Canada"
+      },
+      "bathySheets": { "missing": "Ontario only: MNR lake survey sheets" },
+      "places": {
+        "file": "places-lac-bailey.pmtiles",
+        "bytes": 175439,
+        "source": "TRQ territories, the carte écoforestière's burns and AQréseau roads, MRNF",
+        "licence": "CC BY 4.0"
+      }
+    },
+    "geo": {
+      "wmu": { "missing": "not in the maps: the hunting zones' only source (SmartFaune) states no licence, so the area file names the zone instead" },
+      "camps": { "missing": "Ontario only: Crown land camps come from LIO" },
+      "crown": { "missing": "Ontario only: Crown land comes from LIO" },
+      "parks": {
+        "file": "parks-lac-bailey.geojson",
+        "bytes": 55037,
+        "source": "Territoires récréatifs du Québec (TRQ), MRNF",
+        "licence": "CC BY 4.0",
+        "vintage": "2026-04"
+      },
+      "bathy": { "missing": "Ontario only: lake bathymetry comes from LIO" },
+      "fire": {
+        "file": "fire-lac-bailey.geojson",
+        "bytes": 403675,
+        "source": "Burns from the carte écoforestière (ca_feu), MRNF",
+        "licence": "CC BY 4.0",
+        "vintage": "burns to 2023"
+      },
+      "roads": {
+        "file": "roads-lac-bailey.geojson",
+        "bytes": 208272,
+        "source": "AQréseau (Adresses Québec, MRNF): Autre route (215)",
+        "licence": "CC BY 4.0",
+        "vintage": "release 2026-07-01"
+      },
+      "forest": { "missing": "not in the maps as GeoJSON: the map reads the stands from the forest tiles, and the GeoJSON stays the bake's input" },
+      "depth": { "missing": "Ontario only: lake depths need the ARA lake facts and the MNR sheets" }
+    },
+    "baseGeo": {
+      "waterbody": {
+        "file": "waterbody-lac-bailey.geojson",
+        "bytes": 526589,
+        "source": "GRHQ water surfaces (MRNF), 1:20 000",
+        "licence": "CC BY 4.0",
+        "vintage": "updated 2017-03-23, some to 2023-10-05"
+      }
+    },
+    "grids": {
+      "habitat": {
+        "file": "habitat-lac-bailey.hab",
+        "bytes": 3150625,
+        "source": "derived: MRDEM, NRCan 2020 land cover, forest stands, water, wetlands, roads and burns; bush from the LiDAR point cloud where it was measured",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-04"
+      },
+      "micro": {
+        "file": "micro-lac-bailey.hab",
+        "bytes": 3482691,
+        "source": "derived: the habitat grid and the MRDEM",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-04"
+      },
+      "going": {
+        "file": "going-lac-bailey.hab",
+        "bytes": 3339926,
+        "source": "derived: HRDEM LiDAR, point-cloud bush or the forest-map estimate, water, wetlands and roads",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-04"
+      }
+    }
+  }
+}

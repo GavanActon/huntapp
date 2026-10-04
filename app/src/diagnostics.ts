@@ -1,10 +1,11 @@
 /**
  * What the app is, for the top of an uploaded dev log: the build, the
- * phone, the viewport, the view and layers on, the maps on the phone and
- * the storage, the weather's age, the GPS, the sheet up, and the last
- * errors the console saw. Assembled only when the log is uploaded or
- * shared; nothing here phones home on its own.
+ * phone, the viewport, the area it is in, the view and layers on, the maps
+ * on the phone and the storage, the weather's age, the GPS, the sheet up,
+ * and the last errors the console saw. Assembled only when the log is
+ * uploaded or shared; nothing here phones home on its own.
  */
+import { ACTIVE_AREA } from './areas'
 import { devlog, devlogCount, devlogOn, lastUpload } from './devlog'
 import { listStored, storageEstimate } from './offline/fileStore'
 import { useAppStore } from './state/appStore'
@@ -117,6 +118,7 @@ export async function buildSnapshot(): Promise<string> {
     `Screen: ${screen.width}×${screen.height} @${devicePixelRatio} · viewport ${innerWidth}×${innerHeight}${vv ? ` · visual ${Math.round(vv.width)}×${Math.round(vv.height)}` : ''}`,
     `Time: ${new Date(now).toString()}`,
     `Online: ${yn(app.online)} · service worker ${yn(!!navigator.serviceWorker?.controller)}`,
+    `Area: ${ACTIVE_AREA.id} · ${ACTIVE_AREA.name}`,
     ``,
     `GPS: ${gpsLine}${gps.lastError ? ` · last error: ${gps.lastError}` : ''}`,
     `Mode: ${views.mode} · view ${currentView()?.name ?? 'custom'} · quarry ${spots.target} · heat ${yn(spots.heat)}`,

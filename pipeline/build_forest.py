@@ -6,8 +6,11 @@ OpenFileGDB driver, which on this machine is only installed for Python
 
     py -3.13 pipeline/build_forest.py
 
-Input:  pipeline/raw/fri/pp_FRI_FIMv2_WhiteRiverForest_2010_2D.gdb
-        (download with pipeline/fetch_resume.py, see docs/DATA-SOURCES.md)
+Input:  the area's FRI geodatabase and its CRS (bake.forest gdb and crs in
+        the area file; Pickle Lake's is
+        pipeline/raw/fri/pp_FRI_FIMv2_WhiteRiverForest_2010_2D.gdb in UTM 16N,
+        downloaded with pipeline/fetch_resume.py, see docs/DATA-SOURCES.md).
+        Ontario only: Quebec's stands come from qc_forest.py.
 Output: app/public/data/forest-<region>.geojson with the fields the map
         style and the habitat bake read: group, species, year, ht, cc, sc,
         conif, hard, poly, dep, deptype, eco.
@@ -33,9 +36,12 @@ from pyproj import Transformer
 from shapely.ops import transform as shp_transform
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from area import BAKE, JURISDICTION, options  # noqa: E402
 from common import OUT_DIR, REGION  # noqa: E402
 
-GDB = Path(__file__).resolve().parent / "raw" / "fri" / "pp_FRI_FIMv2_WhiteRiverForest_2010_2D.gdb"
+FRI = options(BAKE, "forest")
+GDB = Path(__file__).resolve().parent / (FRI.get("gdb") or "raw/fri/pp_FRI_FIMv2_WhiteRiverForest_2010_2D.gdb")
+CRS = FRI.get("crs") or "EPSG:26916"
 CONIFER = {"Sb", "Sw", "Bf", "Pj", "Pw", "Pr", "Cw", "La", "Ce", "He", "Sx", "Pl", "Ps"}
 COLUMNS = ["POLYTYPE", "DEVSTAGE", "YRDEP", "DEPTYPE", "OYRORG", "OSPCOMP", "OLEADSPC", "OAGE", "OHT", "OCCLO", "OSC", "PRI_ECO"]
 SPC_RE = re.compile(r"([A-Z][a-z]?)\s*(\d+)")
@@ -46,10 +52,12 @@ def parse_comp(s: str) -> list[tuple[str, int]]:
 
 
 def main() -> None:
+    if JURISDICTION != "ON":
+        raise SystemExit(f"{REGION['name']} is in {JURISDICTION}: the FRI is Ontario's, use the area's own forest adapter (bake_area.py)")
     if not GDB.exists():
         raise SystemExit(f"missing {GDB}; download the FRI package first (see docs/DATA-SOURCES.md)")
-    to_utm = Transformer.from_crs("EPSG:4326", "EPSG:26916", always_xy=True)
-    to_wgs = Transformer.from_crs("EPSG:26916", "EPSG:4326", always_xy=True)
+    to_utm = Transformer.from_crs("EPSG:4326", CRS, always_xy=True)
+    to_wgs = Transformer.from_crs(CRS, "EPSG:4326", always_xy=True)
     x0, y0 = to_utm.transform(REGION["west"], REGION["south"])
     x1, y1 = to_utm.transform(REGION["east"], REGION["north"])
     meta, _, wkbs, fields = pyogrio.raw.read(str(GDB), layer="Polygon_Forest", bbox=(x0, y0, x1, y1), columns=COLUMNS)
