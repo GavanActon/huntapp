@@ -18,6 +18,7 @@ export type Sheet =
   /** text: what it opens holding (a paste that could not go straight
    *  there, a point a link sent in no area) */
   | { kind: 'coords'; text?: string }
+  | { kind: 'locations' }
 export type SheetKind = Sheet['kind']
 
 /** Each sheet's half-open height, % of the screen. */
@@ -34,6 +35,7 @@ export const SHEET_HALF_PCT: Record<SheetKind, number> = {
   layers: 80,
   // the Paste button, the box, the areas and the first of Recent, the map still in view
   coords: 46,
+  locations: 34,
 }
 
 /** The sheet showing now: the top of the stack, or null when closed. */

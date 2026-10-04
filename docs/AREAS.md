@@ -210,8 +210,10 @@ down (`app/src/share/share.ts`).
 - Any tapped point, or a preset: Dig in's ⋯ › Share. A place tapped on
   itself goes with its name and its own point; "650 m NE of Camp" goes
   unnamed. The tap popup stays weather, score, Scent, Heard, Pin and Dig in.
-- The area: ⋯ › Share Lac Bailey (the area the app is in). This is how an
-  app on a home screen, with no address bar, sends itself.
+- An area: ⋯ › Locations lists every area (the one the app is in first,
+  each with its home place and whether its maps are saved); a tap goes
+  there, and each row's Share sends that area's link. This is how an app
+  on a home screen, with no address bar, sends itself.
 - Share is called inside the tap, nothing awaited first, as iOS refuses it
   otherwise. Without a share sheet the whole message goes to the clipboard,
   and the button says "Copied" only once the clipboard has it, "Could not
@@ -407,8 +409,9 @@ Built on branch `areas` (2026-10-03/04). Not yet merged or deployed.
   decimal degrees, degrees and minutes, DMS, map links, the app's own
   links and whole messages holding any of them. ⋯ › Paste goes straight to
   a pasted place; the sheet adds Paste, every area's home and Recent.
-- Share: a pin's popup, Dig in's ⋯ and ⋯ › Share <area>, by the phone's
-  share sheet, else the clipboard.
+- ⋯ › Locations: Pickle Lake and Lac Bailey a tap away, each with Share.
+- Share: a pin's popup, Dig in's ⋯ and each row of ⋯ › Locations, by the
+  phone's share sheet, else the clipboard.
 - Maps on this phone has one block per area, with its own download and
   remove, and a "What's in it" list built from the coverage report.
 - Another area's presets are folded at the bottom of the Pins list.

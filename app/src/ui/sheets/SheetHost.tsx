@@ -13,6 +13,7 @@ const ViewsSheet = lazy(() => import('./ViewsSheet'))
 const OfflineSheet = lazy(() => import('./OfflineSheet'))
 const LayersSheet = lazy(() => import('./LayersSheet'))
 const CoordsSheet = lazy(() => import('./CoordsSheet'))
+const LocationsSheet = lazy(() => import('./LocationsSheet'))
 
 /** '' where the panel draws its own `.sheet-head` as the first row of its body. */
 const TITLES: Record<SheetKind, string> = {
@@ -27,6 +28,7 @@ const TITLES: Record<SheetKind, string> = {
   offline: 'Maps on this phone',
   layers: '',
   coords: 'Go to coordinates',
+  locations: 'Locations',
 }
 
 function panel(s: Sheet): ReactNode {
@@ -54,6 +56,8 @@ function panel(s: Sheet): ReactNode {
     case 'coords':
       // keyed by its text: opened again on another point, it starts afresh
       return <CoordsSheet key={s.text ?? ''} text={s.text} />
+    case 'locations':
+      return <LocationsSheet />
   }
 }
 
