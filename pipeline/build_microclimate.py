@@ -6,7 +6,9 @@ stability are applied in the browser (app/src/weather/micro/).
 
 Inputs:
   raw/mrdem-<region>.npz              NRCan MRDEM 30 m DTM (via rasters.fetch)
-  data/habitat-<region>.hab           cover, stand height, crown closure
+  data/habitat-<region>.hab           cover, stand height, crown closure, and
+                                      canopySrc where the point cloud measured
+                                      the last two (build_habitat.measured_canopy)
 
 Four parts, one per layer of docs/MICRO-WIND.md:
 
@@ -17,8 +19,10 @@ Four parts, one per layer of docs/MICRO-WIND.md:
    conserves mass in the layer: u = u0 + grad(l), div(H grad l) =
    -div(H u0). Hills thin the layer and the air speeds over or goes round.
    The local roughness (log law through a 60 m blending height: lakes and
-   bogs fast, forest slow) scales the result afterwards, outside the solve,
-   since that extra air comes down from above, not in from the sides.
+   bogs fast, forest slow; z0 by cover class, or from the point cloud's
+   height and closure where it measured) scales the result afterwards,
+   outside the solve, since that extra air comes down from above, not in
+   from the sides.
    Two lids: NEUTRAL (250 m, air goes over) and STABLE (50 m over the
    valleys, air goes round and channels). The
    operator is linear in u0, so a wind from the east and one from the north
@@ -91,17 +95,54 @@ def read_hab(path) -> tuple[dict, dict[str, np.ndarray]]:
 
 # ---------------------------------------------------------------- roughness
 
-def roughness(cover: np.ndarray, height: np.ndarray) -> np.ndarray:
-    """Aerodynamic roughness length z0 (m) per cell."""
+def known_height(height: np.ndarray, src: np.ndarray | None) -> np.ndarray:
+    """Where a stand's height is a value: over 0, or anything the point cloud
+    measured (src, the habitat's canopySrc, is 1), where 0 m is open ground it
+    found. Only the forest map's 0 is a height it did not give, which the
+    class table and the canopy fill in (6 m for a treed wetland, 12 m for a
+    stand): read as that, a measured open bog was a 6 m wall of trees."""
+    return height > 0 if src is None else (height > 0) | (src == 1)
+
+
+def roughness(cover: np.ndarray, height: np.ndarray, crown: np.ndarray | None = None, src: np.ndarray | None = None) -> np.ndarray:
+    """Aerodynamic roughness length z0 (m) per cell: the cover class's, or
+    where the point cloud measured the stand (src, the habitat's canopySrc,
+    is 1) from the height and closure it measured (docs/MICRO-WIND-LIDAR.md,
+    phase 3). With no src, or no crown (the class's z0, which the
+    head-height fraction reads), the class table alone, on the heights src
+    says are known."""
     z0 = np.full(cover.shape, 0.1, dtype=np.float32)
     tall = np.isin(cover, (TREED_WET, CON_DENSE, CON_OPEN, MIXED, HARD))
-    h = np.where(height > 0, height, np.where(cover == TREED_WET, 6.0, 12.0))
+    h = np.where(known_height(height, src), height, np.where(cover == TREED_WET, 6.0, 12.0))
     z0[tall] = np.clip(0.1 * h[tall], 0.3, 2.5)
     z0[cover == WATER] = 0.0002
     z0[cover == OPEN_WET] = 0.03
     z0[np.isin(cover, (SHRUB, REGEN))] = 0.2
     z0[np.isin(cover, (BARREN, ROAD))] = 0.05
-    return z0
+    if src is None or crown is None:
+        return z0
+    # The table gives a stand 0.1 h whatever its closure, and every cell of a
+    # class one z0. Measured, a closed tall stand stays near 0.1 h and an open
+    # one goes to about half that, and under 3 m it is scrub on open ground.
+    # Water keeps its own, whatever the point cloud saw over it.
+    lidar = (src == 1) & (cover != WATER)
+    cc = crown / 100
+    measured = np.where(height >= 3, np.clip(height * (0.05 + 0.10 * cc), 0.05, 2.5), np.clip(0.03 + 0.05 * height, 0.03, 0.2))
+    return np.where(lidar, measured, z0).astype(np.float32)
+
+
+def measured_roughness(z0: np.ndarray, table: np.ndarray, cover: np.ndarray, src: np.ndarray, names: list[str]) -> str:
+    """The point cloud's z0 against the table's, by cover class, over the
+    land cells it measured: the line the bake prints."""
+    lidar = (src == 1) & (cover != WATER)
+    parts = []
+    for k, name in enumerate(names):
+        m = lidar & (cover == k)
+        if m.sum() < 10:
+            continue
+        p10, p90 = np.percentile(z0[m], (10, 90))
+        parts.append(f"{name} {z0[m].mean():.2f} ({p10:.2f}–{p90:.2f}) against {table[m].mean():.2f}")
+    return f"  z0 from the point cloud on {lidar.sum()} land cells, mean m by cover class (p10–p90) against the table's: " + "; ".join(parts)
 
 
 def speed_ratio(z0: np.ndarray) -> np.ndarray:
@@ -272,6 +313,7 @@ def main() -> None:
     height = hab["height"]
     crown = hab["crown"]
     conifer = hab["conifer"]
+    src = hab.get("canopySrc")  # 1 where height and crown are the point cloud's; none in an area without one
     water = cover == WATER
 
     dem = hb.to_grid(hb.fetch("mrdem"), hb.Resampling.bilinear, np.float32).astype(np.float64)
@@ -279,7 +321,10 @@ def main() -> None:
     dem = np.where(np.isnan(dem), np.nanmedian(dem), dem)
 
     # ---- 1. terrain and roughness ----
-    z0 = roughness(cover, height)
+    z0_class = roughness(cover, height, src=src)
+    z0 = roughness(cover, height, crown, src)
+    if src is not None:
+        print(measured_roughness(z0, z0_class, cover, src, header["coverNames"]))
     s = speed_ratio(z0)
     print(f"  roughness speed ratio {s.min():.2f}–{s.max():.2f} (lakes fast, forest slow) · {time.time() - t0:.0f}s")
     # The solve sees the terrain only (a uniform first guess), and the
@@ -364,10 +409,17 @@ def main() -> None:
 
     # ---- 4. canopy ----
     tall = np.isin(cover, (TREED_WET, CON_DENSE, CON_OPEN, MIXED, HARD))
-    h = np.where(tall, np.where(height > 0, height, np.where(cover == TREED_WET, 6.0, 12.0)), 0.0)
+    h = np.where(tall, np.where(known_height(height, src), height, np.where(cover == TREED_WET, 6.0, 12.0)), 0.0)
     h = np.where(h < 3, 0, h)
-    # open ground: log profile 2 m over 10 m
-    z0l = np.maximum(z0, 0.01)
+    # open ground: log profile 2 m over 10 m, on the class's z0. The law holds
+    # only where the roughness is well under 2 m. Where the point cloud finds
+    # trees in a cell its class calls open (most of Pickle Lake's measured
+    # open wetland is 10 m at half cover: wetland on the wetland map, no FRI
+    # stand), the measured z0 near 1 m cut the head-height wind to about a
+    # third, to half at the cell checked on 2026-09-29 (which felt breezy to
+    # windy), and from 2 m up put it at the floor. The measured z0 is the
+    # speed ratio's.
+    z0l = np.maximum(z0_class, 0.01)
     f_open = np.log(2 / z0l) / np.log(10 / z0l)
     # in a stand: log profile down to the top (d = 0.67 h), then the
     # canopy's exponential decay; the attenuation coefficient grows with

@@ -8,8 +8,10 @@ qc_vectors.py and qc_forest.py in Quebec):
   raw/landcover-<region>.npz     NRCan 2020 land cover 30 m (EPSG:3979)
   data/forest-<region>.geojson   forest stands: species, age, height, closure
   data/waterbody-…, watercourse-…, wetland-…, roads-…, fire-…, ara-… (Ontario only)
-  raw/vegstructure-<region>.npz  the point cloud's understory, for an area whose
-                                 bake.habitatBush is "pointcloud" (measured_bush)
+  raw/vegstructure-<region>.npz  the point cloud, where one was fetched: stand height
+                                 and closure wherever it measured (measured_canopy),
+                                 and the understory for an area whose bake.habitatBush
+                                 is "pointcloud" (measured_bush)
 
 Output: app/public/data/habitat-<region>.hab — gzip of
   [u32 header length][JSON header][band 0][band 1]…
@@ -46,8 +48,8 @@ from rasterio.transform import from_origin
 from rasterio.warp import Resampling, reproject
 from scipy import ndimage
 
-from area import BAKE, LAKE_SHEETS, adapter, cached, summary_path
-from common import OUT_DIR, REGION
+from area import BAKE, LAKE_SHEETS, adapter, cached, note_source, summary_path
+from common import CORE, OUT_DIR, REGION
 from rasters import fetch
 
 D_LON = 0.0004  # ≈ 29 m at 48.9° N
@@ -102,6 +104,17 @@ INVENTORY = {"on.fri": "FRI", "qc.ecoforestier": "carte écoforestière"}.get(FO
 # burn's 35-year-old regrowth, where the LiDAR finds mostly light to
 # moderate bush.
 BUSH_FROM_POINTCLOUD = BAKE.get("habitatBush") == "pointcloud"
+
+# Stand height and closure (bands height and crown) are the point cloud's
+# wherever it measured, in every area that has one (measured_canopy). A
+# stand the point cloud finds open, under GAP_HEIGHT_M with under GAP_COVER
+# of its returns over 2 m, is a gap the forest map cannot show: a cutline, a
+# skidder trail, a blowdown, a cut since the inventory. Only the upland
+# stand classes: a treed wetland's type is the map's word, and the going
+# grid reads it as swamp.
+STAND_CLASSES = (CONIFER_DENSE, CONIFER_OPEN, MIXED, HARDWOOD)
+GAP_HEIGHT_M = 3.0
+GAP_COVER = 0.2
 
 
 def load_geo(theme: str) -> list[dict]:
@@ -363,6 +376,103 @@ def measured_bush(est: np.ndarray, cover: np.ndarray) -> tuple[np.ndarray, np.nd
     return thick, thick_src, header
 
 
+def measured_canopy(f_ht: np.ndarray, f_cc: np.ndarray, cover: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray | None, dict]:
+    """Stand height and crown closure from the point cloud wherever it
+    measured the cell, the forest map's elsewhere (docs/MICRO-WIND-LIDAR.md,
+    phase 2). The map gives a polygon one height and closure out to its
+    edge, as they were at the inventory. The point cloud's 10 m cells
+    (build_vegstructure.py: canopy_height, the p95 of the returns over 2 m,
+    and canopy_cover, their share of all returns) find the cutlines, trails
+    and gaps inside it, and the growth and harvest since. A 30 m cell takes
+    their average over the 10 m cells with a value, where those cover half
+    of it or more.
+
+    The cover class stays the map's: species and wetland type come from it,
+    and the LiDAR cannot tell spruce from poplar. The exception is a gap
+    (one of STAND_CLASSES under GAP_HEIGHT_M and GAP_COVER), made young
+    regen in place so that the Spots scorer and the wind both read it as
+    open. The distances and browse the habitat derives from the cover
+    afterwards see the gaps; the bush estimate does not (main says why).
+
+    Returns the height and crown bands, canopySrc (0 the map, 1 the point
+    cloud; None with no point cloud, and then no band is written) and what
+    the header and the summary say of it."""
+    vpath = cached(f"vegstructure-{REGION['id']}.npz")
+    if not vpath.exists():
+        print(f"  (no vegstructure: {INVENTORY} heights)")
+        return f_ht, f_cc, None, {}
+    v = np.load(vpath, allow_pickle=True)
+    have10 = v["canopy_height"] != float(v["nodata"])  # canopy_cover has its values in the same cells
+    src = {"src_transform": rasterio.Affine(*v["transform"]), "src_crs": str(v["crs"]), "dst_transform": TRANSFORM, "dst_crs": "EPSG:4326"}
+
+    def averaged(key: str) -> np.ndarray:
+        out = np.full((ROWS, COLS), np.nan, dtype=np.float32)
+        reproject(source=np.where(have10, v[key], np.nan).astype(np.float32), destination=out, src_nodata=np.nan, dst_nodata=np.nan, resampling=Resampling.average, **src)
+        return out
+
+    ch, cc = averaged("canopy_height"), averaged("canopy_cover")
+    # the share of each cell under 10 m cells with a value. GDAL averages only the source cells a cell
+    # overlaps, so a cell half off the edge of the point cloud's grid would read as wholly measured: a
+    # ring of empty cells round the grid counts the part beyond the edge as no value
+    ring = 4
+    valid = np.zeros((ROWS, COLS), dtype=np.float32)
+    beyond = {**src, "src_transform": src["src_transform"] * rasterio.Affine.translation(-ring, -ring)}
+    reproject(source=np.pad(have10, ring).astype(np.float32), destination=valid, resampling=Resampling.average, **beyond)
+    lidar = (valid >= 0.5) & np.isfinite(ch) & np.isfinite(cc)
+    height = np.where(lidar, np.clip(np.round(np.nan_to_num(ch)), 0, 255), f_ht).astype(np.uint8)
+    crown = np.where(lidar, np.clip(np.round(np.nan_to_num(cc) * 100), 0, 100), f_cc).astype(np.uint8)
+
+    # the two against each other, on the map's classes before any gap is taken out
+    def mean(a: np.ndarray, m: np.ndarray) -> float | None:
+        return round(float(a[m].mean()), 1) if m.any() else None
+
+    land = cover != WATER
+    stood = np.isin(cover, (*STAND_CLASSES, TREED_WET))
+    stands = lidar & stood & (f_ht > 0)  # the map's stands and treed wetlands with a height: like against like
+    print(
+        f"  stand height and closure from the point cloud on {lidar.sum()} cells ({100 * (lidar & land).sum() / land.sum():.0f}% of the land): "
+        f"height {mean(f_ht, lidar)} m by the {INVENTORY}, {mean(height, lidar)} m by the LiDAR; closure {mean(f_cc, lidar)}% and {mean(crown, lidar)}%"
+    )
+    print(f"  under the {INVENTORY}'s stands with a height ({stands.sum()} cells): height {mean(f_ht, stands)} m against {mean(height, stands)} m, closure {mean(f_cc, stands)}% against {mean(crown, stands)}%")
+    by_cover = {}
+    for k in (*STAND_CLASSES, TREED_WET):
+        m = stands & (cover == k)
+        if m.any():
+            by_cover[COVER_NAMES[k]] = {"cells": int(m.sum()), "heightM": [mean(f_ht, m), mean(height, m)], "closurePct": [mean(f_cc, m), mean(crown, m)]}
+
+    # the gaps
+    gap = lidar & np.isin(cover, STAND_CLASSES) & (ch < GAP_HEIGHT_M) & (cc < GAP_COVER)
+    gap_from = {COVER_NAMES[k]: int((gap & (cover == k)).sum()) for k in STAND_CLASSES}
+    cover[gap] = REGEN
+    print(f"  {gap.sum()} stand cells the point cloud finds open (under {GAP_HEIGHT_M:g} m, under {GAP_COVER:g} of the returns over 2 m) are young regen now: " + ", ".join(f"{n} {k}" for k, n in gap_from.items() if n))
+
+    # the wind's tree-line and slot rules take a stand of 6 m or more for a wall (app/src/weather/micro/model.ts)
+    c0, c1 = math.floor((CORE["west"] - W) / D_LON), math.ceil((CORE["east"] - W) / D_LON)
+    r0, r1 = math.floor((N - CORE["north"]) / D_LAT), math.ceil((N - CORE["south"]) / D_LAT)
+    core = np.zeros((ROWS, COLS), dtype=bool)
+    core[r0:r1, c0:c1] = True
+    stands_now = np.isin(cover, (*STAND_CLASSES, TREED_WET))
+    opened = core & stood & (f_ht >= 6) & ~(stands_now & (height >= 6))
+    walled = core & stood & (f_ht > 0) & (f_ht < 6) & stands_now & (height >= 6)
+    print(f"  in the core, {opened.sum()} cells of 6 m stands or more by the {INVENTORY} are under 6 m or gaps by the LiDAR, open to the wind's tree-line and slot rules; {walled.sum()} the other way")
+
+    source = str(v["source"]) if "source" in v.files else "the area's point cloud"
+    summary = {
+        "from": source,
+        "lidarCells": int(lidar.sum()),
+        "lidarShareOfLand": round(float((lidar & land).sum() / land.sum()), 3),
+        "lidarShareOfCoreLand": round(float((lidar & land & core).sum() / (land & core).sum()), 3),
+        "meanHeightM": {"inventory": mean(f_ht, lidar), "lidar": mean(height, lidar)},
+        "meanClosurePct": {"inventory": mean(f_cc, lidar), "lidar": mean(crown, lidar)},
+        "inStands": {"cells": int(stands.sum()), "meanHeightM": {"inventory": mean(f_ht, stands), "lidar": mean(height, stands)}, "meanClosurePct": {"inventory": mean(f_cc, stands), "lidar": mean(crown, stands)}},
+        "byCover": by_cover,
+        "gapsToRegen": int(gap.sum()),
+        "gapsFrom": gap_from,
+        "coreUnder6m": {"opened": int(opened.sum()), "walled": int(walled.sum())},
+    }
+    return height, crown, lidar.astype(np.uint8), {"source": source, "summary": summary}
+
+
 SURVEY_DIR = Path(__file__).parent / "raw" / "bathy"
 
 
@@ -514,6 +624,15 @@ def main() -> None:
     stand_age = np.where(f_year > 0, YEAR - f_year.astype(int), 0)
     stand_age = np.where(dist_age < 255, dist_age, stand_age).clip(0, 255).astype(np.uint8)
 
+    # ---- stand height and closure: the point cloud's where it measured, and the gaps it finds made regen ----
+    # The classes above stay on the map's closure (the conifer split at 60 % is the map's own), and the
+    # bush estimate below reads them as the map has them, gaps and all: it is the forest map's estimate,
+    # and the point cloud's say on the bush is measured_bush's, where the area asks for it. Read as regen
+    # of no known age, a gap would also land in a thin class of the going grid's calibration and move it:
+    # at Pickle Lake 25 gaps moved the bush on a quarter of the going grid.
+    map_cover = cover.copy()
+    height, crown, canopy_src, canopy = measured_canopy(f_ht, f_cc, cover)
+
     # ---- terrain ----
     gy, gx = np.gradient(dem, DY_M, DX_M)
     slope = np.degrees(np.arctan(np.hypot(gx, gy)))
@@ -549,7 +668,7 @@ def main() -> None:
     d_cover = edt_m(cover_mask)
     # hiding cover: any thick bush (young thickets, alder, fir and cedar,
     # dense spruce), not only tall dense conifer. Patches of half a hectare up
-    thick = bush_thickness(cover, stand_age, dist_age, f_cc, f_lead, f_poly)
+    thick = bush_thickness(map_cover, stand_age, dist_age, f_cc, f_lead, f_poly)
     thick_src, thick_header = None, {}
     if BUSH_FROM_POINTCLOUD:
         thick, thick_src, thick_header = measured_bush(thick, cover)
@@ -656,10 +775,10 @@ def main() -> None:
         ("tpi", np.clip(np.round(tpi300) + 128, 0, 255).astype(np.uint8), 1, "topographic position 300 m, m (value-128)"),
         ("tpi100", np.clip(np.round(tpi100 * 2) + 128, 0, 255).astype(np.uint8), 0.5, "topographic position 100 m, m ((value-128)/2)"),
         ("landform", landform, 1, "landform class, see landformNames"),
-        ("cover", cover, 1, "cover class, see coverNames"),
+        ("cover", cover, 1, "cover class, see coverNames" + ("; young regen also where the point cloud finds a stand open (canopySrc 1)" if canopy_src is not None else "")),
         ("age", stand_age, 1, f"stand age years ({INVENTORY} origin, or years since disturbance)"),
-        ("height", f_ht, 1, f"stand height m ({INVENTORY})"),
-        ("crown", f_cc, 1, f"crown closure % ({INVENTORY})"),
+        ("height", height, 1, f"stand height m ({INVENTORY})" if canopy_src is None else f"stand height m: the point cloud's p95 of the returns over 2 m where canopySrc is 1, else {INVENTORY}"),
+        ("crown", crown, 1, f"crown closure % ({INVENTORY})" if canopy_src is None else f"crown closure %: the point cloud's share of returns over 2 m where canopySrc is 1, else {INVENTORY}"),
         ("conifer", f_conif, 1, f"conifer % of composition ({INVENTORY})"),
         ("hardwood", f_hard, 1, f"hardwood % of composition ({INVENTORY})"),
         ("lead", f_lead, 1, "leading species: 1 Sb 2 Pj 3 Sw 4 Bf 5 Cw 6 La 7 Pt 8 Bw"),
@@ -690,6 +809,13 @@ def main() -> None:
         bands.append((f"fetch{d}", arr, 1, f"water cells: fetch in cells with wind from {d}"))
     if thick_src is not None:
         bands.append(("thickSrc", thick_src, 1, "where thick comes from: 0 water, 1 LiDAR, 2 forest-map estimate"))
+    if canopy_src is not None:
+        # both surveys so far were flown in leaf (build_vegstructure.py), and a hunt is in the fall
+        meaning = (
+            f"where height and crown come from: 0 {INVENTORY} stand, 1 LiDAR point cloud: {canopy['source']}. Flown in leaf, "
+            "so hardwood closure reads high for a November hunt, which a future canopy lesson would correct (docs/MICRO-WIND.md, Next steps 5)"
+        )
+        bands.append(("canopySrc", canopy_src, 1, meaning))
 
     header = {
         "region": REGION["id"],
@@ -734,7 +860,12 @@ def main() -> None:
             "thickShareWhereLidar": round(float((thick[thick_src == 1] >= 0.7).mean()), 3) if (thick_src == 1).any() else None,
             "estimateToLidar": [{"estimate": a, "lidar_median": b, "cells": n} for a, b, n in thick_header["bushCalib"]],
         }
+    if canopy_src is not None:
+        summary["canopy"] = canopy["summary"]
     summary_path("habitat").write_text(json.dumps(summary, indent=1), encoding="utf-8")
+    # the coverage report's line for the grid (bake_area.py) says where the stand heights came from
+    share = canopy["summary"]["lidarShareOfCoreLand"] if canopy_src is not None else 0
+    note_source(out.name, note=f"stand height and closure from the LiDAR point cloud over {100 * share:.0f}% of the core" if share else None)
 
 
 if __name__ == "__main__":

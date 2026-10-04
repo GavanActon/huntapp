@@ -177,14 +177,15 @@
     "grids": {
       "habitat": {
         "file": "habitat-lac-bailey.hab",
-        "bytes": 3150625,
+        "bytes": 3310337,
         "source": "derived: MRDEM, NRCan 2020 land cover, forest stands, water, wetlands, roads and burns; bush from the LiDAR point cloud where it was measured",
         "licence": "derived from the layers above",
+        "note": "stand height and closure from the LiDAR point cloud over 100% of the core",
         "vintage": "generated 2026-10-04"
       },
       "micro": {
         "file": "micro-lac-bailey.hab",
-        "bytes": 3482691,
+        "bytes": 3564000,
         "source": "derived: the habitat grid and the MRDEM",
         "licence": "derived from the layers above",
         "vintage": "generated 2026-10-04"

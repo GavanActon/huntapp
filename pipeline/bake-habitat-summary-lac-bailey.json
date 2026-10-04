@@ -4,12 +4,12 @@
   "water": 29806,
   "open wetland": 7095,
   "treed wetland": 1080,
-  "dense conifer": 57196,
-  "open conifer": 87074,
-  "mixedwood": 127079,
-  "hardwood": 44907,
+  "dense conifer": 56569,
+  "open conifer": 86409,
+  "mixedwood": 126875,
+  "hardwood": 44870,
   "shrub / alder": 20336,
-  "young regen": 13153,
+  "young regen": 14686,
   "rock / barren": 21027,
   "road": 6254
  },
@@ -2407,5 +2407,98 @@
     "cells": 5494
    }
   ]
+ },
+ "canopy": {
+  "from": "MRNF LiDAR 2023_LacAuBrochet_LiDAR, flown 2024-07-27; MRNF LiDAR 2023_RiviereAuxOutardes_LiDAR, flown 2024-09-06 to 2024-09-14; heights above the tiles' own ground returns",
+  "lidarCells": 138004,
+  "lidarShareOfLand": 0.35,
+  "lidarShareOfCoreLand": 0.999,
+  "meanHeightM": {
+   "inventory": 7.8,
+   "lidar": 9.8
+  },
+  "meanClosurePct": {
+   "inventory": 50.9,
+   "lidar": 56.9
+  },
+  "inStands": {
+   "cells": 109740,
+   "meanHeightM": {
+    "inventory": 9.5,
+    "lidar": 10.7
+   },
+   "meanClosurePct": {
+    "inventory": 61.7,
+    "lidar": 64.9
+   }
+  },
+  "byCover": {
+   "dense conifer": {
+    "cells": 18294,
+    "heightM": [
+     9.8,
+     11.1
+    ],
+    "closurePct": [
+     74.8,
+     62.8
+    ]
+   },
+   "open conifer": {
+    "cells": 19495,
+    "heightM": [
+     9.4,
+     9.3
+    ],
+    "closurePct": [
+     40.4,
+     47.0
+    ]
+   },
+   "mixedwood": {
+    "cells": 48155,
+    "heightM": [
+     8.3,
+     9.9
+    ],
+    "closurePct": [
+     60.6,
+     65.8
+    ]
+   },
+   "hardwood": {
+    "cells": 23365,
+    "heightM": [
+     11.6,
+     13.2
+    ],
+    "closurePct": [
+     71.7,
+     79.9
+    ]
+   },
+   "treed wetland": {
+    "cells": 431,
+    "heightM": [
+     10.0,
+     9.0
+    ],
+    "closurePct": [
+     45.8,
+     46.0
+    ]
+   }
+  },
+  "gapsToRegen": 1533,
+  "gapsFrom": {
+   "dense conifer": 627,
+   "open conifer": 665,
+   "mixedwood": 204,
+   "hardwood": 37
+  },
+  "coreUnder6m": {
+   "opened": 772,
+   "walled": 23596
+  }
  }
 }
