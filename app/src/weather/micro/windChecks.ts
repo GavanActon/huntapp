@@ -100,6 +100,10 @@ export interface WindCheck {
   source: 'hand' | 'station'
   /** what the ground model said at that place and minute, before the check */
   model?: ModelCall
+  /** what the forecast said there and then: the 10 m wind the map draws,
+   *  before the ground model brings it down. Scored like the model's call,
+   *  so the log shows how far off a forecast is where you sit. */
+  forecast?: { dirFrom: number; kmh: number }
   /** replaced by a newer check near it at this moment: it counts until then */
   until?: number
 }
@@ -279,11 +283,19 @@ export function aloftVerdict(c: WindCheck): 'agree' | 'miss' | null {
  *  within 90° close, else a miss. A swinging check is judged on its arc:
  *  inside it (and half a sector past each end) is a hit, 45° more close. */
 export function verdict(c: WindCheck): 'agree' | 'close' | 'miss' | null {
-  const m = c.model
+  return judge(c, c.model)
+}
+
+/** The same test for the forecast as it stood at the check. */
+export function forecastVerdict(c: WindCheck): 'agree' | 'close' | 'miss' | null {
+  return judge(c, c.forecast)
+}
+
+function judge(c: WindCheck, m: { dirFrom: number; kmh: number } | undefined): 'agree' | 'close' | 'miss' | null {
   if (!m) return null
   const obsCalm = c.dirFrom == null || c.strength === 'calm'
-  const modelCalm = m.kmh < 1
-  if (obsCalm || modelCalm) return obsCalm === modelCalm ? 'agree' : m.kmh < 2.5 && c.strength !== 'breezy' && c.strength !== 'windy' ? 'close' : 'miss'
+  const callCalm = m.kmh < 1
+  if (obsCalm || callCalm) return obsCalm === callCalm ? 'agree' : m.kmh < 2.5 && c.strength !== 'breezy' && c.strength !== 'windy' ? 'close' : 'miss'
   const d = angleDiff(c.dirFrom!, m.dirFrom)
   if (c.swingDeg) {
     const out = Math.max(0, d - c.swingDeg / 2)

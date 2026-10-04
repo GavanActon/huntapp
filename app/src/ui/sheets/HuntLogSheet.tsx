@@ -217,7 +217,7 @@ export default function HuntLogSheet(): JSX.Element {
             <button className="menu-row" role="menuitem" onClick={() => (setMenu(false), addEntry())}>
               Add an entry
             </button>
-            <button className="menu-row" role="menuitem" disabled={!entries.length} onClick={() => (setMenu(false), void exportCsv(entries))}>
+            <button className="menu-row" role="menuitem" disabled={!entries.length && !checks.length} onClick={() => (setMenu(false), void exportCsv())}>
               Export CSV
             </button>
             <button className="menu-row" role="menuitem" onClick={() => (setMenu(false), void exportAllGpx())}>
