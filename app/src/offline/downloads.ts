@@ -53,18 +53,21 @@ export function fmtBytes(n: number): string {
   return `${(n / 1e3).toFixed(0)} KB`
 }
 
-/** The new maps come into use on a reload; a live setup (people placed) is never saved, so it waits. */
+/** The new maps come into use on a reload. People placed by hand are never
+ *  saved, so with any up it waits; the live cone alone comes back by itself
+ *  after the reload, so it doesn't hold it up. */
 function reloadUnlessLive(note: string) {
-  if (useScent.getState().people.length > 0) useDownloads.setState({ error: note })
+  if (useScent.getState().people.some((p) => !p.live)) useDownloads.setState({ error: note })
   else window.location.reload()
 }
 
 /** Saved or removed maps come into use on a reload, and only the area the
- *  app is in has any in use: another area's change needs none, just the
- *  new-maps list brought up to date. */
+ *  app is in has any in use. The new-maps list follows what is saved now
+ *  either way: with the reload held up (people placed), it kept saying
+ *  "2 new" for maps just downloaded (Gavan, 2026-10-04). */
 function afterChange(areaId: string, note: string) {
+  refreshPending()
   if (areaId === ACTIVE_AREA.id) reloadUnlessLive(note)
-  else refreshPending()
 }
 
 /** Download the area's files not on the phone, or with `replace` these files whether or not they are. */
