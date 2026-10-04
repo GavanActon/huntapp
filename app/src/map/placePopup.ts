@@ -1,6 +1,7 @@
 import maplibregl, { type Map as MlMap } from 'maplibre-gl'
 import { ACTIVE_AREA } from '../areas'
 import { switchArea } from '../areas/switch'
+import { shareSpot } from '../share/share'
 import { useAppStore } from '../state/appStore'
 import { windVerdict, windsLabel } from '../spots/standWinds'
 import { PIN_COLOURS, placeColour } from '../state/pinColours'
@@ -12,8 +13,9 @@ import '../ui/minipop.css'
 /**
  * A pin of your own, tapped (or just dropped): its name, which is a field
  * and edits in place, its colour as a row of swatches, when it was dropped
- * and its note, with Delete, and Open for the Pins sheet on it. The camp
- * and the lakes are presets and open Dig in instead (MapView).
+ * and its note, with Delete, Share (the pin, its name and a link to it:
+ * share/share.ts) and Open for the Pins sheet on it. The camp and the
+ * lakes are presets and open Dig in instead (MapView).
  *
  * A pin never named and with no note goes at once; one you have named or
  * written on asks first.
@@ -41,7 +43,7 @@ export function showPlacePopup(map: MlMap, p: SavedPlace) {
     `<div class="mp-sub">dropped ${esc(agoLabel(Date.now() - p.savedAt))}${p.winds?.length ? ` · winds ${esc(windsLabel(p.winds))}` : ''}</div>` +
     (v ? `<div class="mp-sub pw-verdict pw-${v.grade}">${esc(v.text)}</div>` : '') +
     (p.note ? `<div class="mp-note">${esc(p.note)}</div>` : '') +
-    `<div class="pp-acts"><button class="mp-danger pl-delete">Delete</button><button class="mp-plain pl-open">Open</button></div>`
+    `<div class="pp-acts"><button class="mp-danger pl-delete">Delete</button><button class="mp-plain pl-share">Share</button><button class="mp-plain pl-open">Open</button></div>`
   const pop = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, closeOnClick: false, offset: 10, maxWidth: '240px' })
     .setLngLat([p.lon, p.lat])
     .setDOMContent(el)
@@ -71,6 +73,17 @@ export function showPlacePopup(map: MlMap, p: SavedPlace) {
     if (!isDroppedPin(q) && !confirm(`Delete ${q.name}?`)) return
     pop.remove()
     usePlacesStore.getState().remove(p.id)
+  })
+  const share = el.querySelector('.pl-share') as HTMLButtonElement
+  share.addEventListener('click', () => {
+    // inside the tap, nothing awaited first: iOS refuses a share that is not.
+    // The name as it is now, typed a moment ago; one still Pin goes unnamed
+    void shareSpot(live()).then((r) => {
+      if (r !== 'copied' && r !== 'failed') return
+      // no share sheet here: the message went to the clipboard, or did not, and the button says which
+      share.textContent = r === 'copied' ? 'Copied' : 'Could not copy'
+      window.setTimeout(() => (share.textContent = 'Share'), r === 'copied' ? 1200 : 2400)
+    })
   })
   el.querySelector('.pl-open')?.addEventListener('click', () => {
     pop.remove()

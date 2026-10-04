@@ -3,8 +3,9 @@ import { fmtCoord } from '../../map/MapView'
 import { DROPPED_NAME } from '../../map/placePopup'
 import { useMeasureStore } from '../../measure/measureStore'
 import { openRoutes } from '../../routes/routeStore'
+import { shareSpot } from '../../share/share'
 import { useAppStore } from '../../state/appStore'
-import { homePlace, usePlacesStore } from '../../state/placesStore'
+import { homePlace, usePlacesStore, type SavedPlace } from '../../state/placesStore'
 import { useSpotsStore } from '../../state/spotsStore'
 import { bestWindow, type WindowScore } from '../../spots/dayPlan'
 import { spotGrade } from '../../spots/grades'
@@ -67,13 +68,17 @@ function barWord(r: Regime): string {
   return r === 'drainage' || r === 'pooled' ? 'drains' : r === 'wind' ? 'wind' : r === 'upslope' ? 'upslope' : r === 'calm' ? 'calm' : 'breeze'
 }
 
-/** The heading: a place tapped on itself (the camp, a lake, a pin) goes by
- *  its name; anywhere else is "650 m NE of Camp". */
-function title(lon: number, lat: number): string {
-  const home = homePlace()
+/** A place tapped on itself (the camp, a lake, a pin): one within 30 m. */
+function placeOn(lon: number, lat: number): SavedPlace | undefined {
   const kx = 111_320 * Math.cos((lat * Math.PI) / 180)
-  const on = usePlacesStore.getState().places.find((p) => Math.hypot((p.lon - lon) * kx, (p.lat - lat) * 110_574) < 30)
-  return on && on.name ? on.name : fromHome(lon, lat, home)
+  return usePlacesStore.getState().places.find((p) => Math.hypot((p.lon - lon) * kx, (p.lat - lat) * 110_574) < 30)
+}
+
+/** The heading: a place tapped on itself goes by its name; anywhere else
+ *  is "650 m NE of Camp". */
+function title(lon: number, lat: number): string {
+  const on = placeOn(lon, lat)
+  return on && on.name ? on.name : fromHome(lon, lat, homePlace())
 }
 
 /** Local midnight after `dayStartMs` (DST-safe). */
@@ -96,12 +101,21 @@ export default function DigInSheet({ lon, lat }: { lon: number; lat: number }): 
   const closeSheet = useAppStore((s) => s.closeSheet)
   const checks = useWindChecks((s) => s.checks)
   const [menu, setMenu] = useState(false)
+  // a menu row's word for a moment ("Copied", "Could not copy"), before the menu goes
+  const [said, setSaid] = useState<{ row: 'share' | 'copy'; text: string } | null>(null)
+  const saidTimer = useRef<number | undefined>(undefined)
   const [windOpen, setWindOpen] = useState(false)
   const [seeOpen, setSeeOpen] = useState(false)
   // the ground model, the layering profile and the wind grid arrive on their own time
   const [tick, setTick] = useState(0)
   const menuRef = useRef<HTMLDivElement>(null)
-  useTapOff(menuRef, menu, () => setMenu(false))
+  const closeMenu = () => {
+    window.clearTimeout(saidTimer.current)
+    setSaid(null)
+    setMenu(false)
+  }
+  useTapOff(menuRef, menu, closeMenu)
+  useEffect(() => () => window.clearTimeout(saidTimer.current), [])
 
   // the white ring, for as long as the sheet is on this point
   useEffect(() => {
@@ -158,11 +172,30 @@ export default function DigInSheet({ lon, lat }: { lon: number; lat: number }): 
   const pin = () => {
     // dropped and left alone: nothing selected, no sheet (Pins lists it)
     usePlacesStore.getState().add({ name: DROPPED_NAME, lon, lat, kind: 'stand' })
-    setMenu(false)
+    closeMenu()
+  }
+  /** The row says how it went, then the menu goes: "Copied" only once the clipboard has it. */
+  const say = (row: 'share' | 'copy', ok: boolean) => {
+    window.clearTimeout(saidTimer.current)
+    setSaid({ row, text: ok ? 'Copied' : 'Could not copy' })
+    saidTimer.current = window.setTimeout(closeMenu, ok ? 1200 : 2400)
+  }
+  const share = () => {
+    // a place tapped on itself goes with its name and its own point; anywhere
+    // else ("650 m NE of Camp") goes unnamed. Inside the tap, nothing awaited
+    // first: iOS refuses a share that is not
+    const on = placeOn(lon, lat)
+    void shareSpot(on ? { lon: on.lon, lat: on.lat, name: on.name } : { lon, lat }).then((r) => {
+      if (r === 'copied' || r === 'failed') say('share', r === 'copied')
+      else closeMenu()
+    })
   }
   const copy = () => {
-    void navigator.clipboard?.writeText(fmtCoord(lon, lat))
-    setMenu(false)
+    if (typeof navigator.clipboard?.writeText !== 'function') return say('copy', false)
+    void navigator.clipboard.writeText(fmtCoord(lon, lat)).then(
+      () => say('copy', true),
+      () => say('copy', false),
+    )
   }
   const measure = () => {
     useMeasureStore.getState().start([lon, lat])
@@ -204,7 +237,7 @@ export default function DigInSheet({ lon, lat }: { lon: number; lat: number }): 
       <div className="sheet-head">
         <span className="sheet-title">{title(lon, lat)}</span>
         <div className="sheet-actions" ref={menuRef}>
-          <button className="sheet-dots" aria-label="More" aria-expanded={menu} onClick={() => setMenu(!menu)}>
+          <button className="sheet-dots" aria-label="More" aria-expanded={menu} onClick={() => (menu ? closeMenu() : setMenu(true))}>
             <IconDots />
           </button>
           {menu && (
@@ -212,8 +245,11 @@ export default function DigInSheet({ lon, lat }: { lon: number; lat: number }): 
               <button className="menu-row" role="menuitem" onClick={pin}>
                 Pin
               </button>
+              <button className="menu-row" role="menuitem" onClick={share}>
+                {said?.row === 'share' ? said.text : 'Share'}
+              </button>
               <button className="menu-row" role="menuitem" onClick={copy}>
-                Copy coordinates
+                {said?.row === 'copy' ? said.text : 'Copy coordinates'}
               </button>
               <button className="menu-row" role="menuitem" onClick={measure}>
                 Measure from here

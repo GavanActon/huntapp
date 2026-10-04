@@ -5,22 +5,23 @@ import { useGpsStore } from '../tracking/gpsStore'
 import { flushTrackSave } from '../tracking/trackStore'
 import { useScent } from '../weather/micro/scent'
 import { cachedPointForecast } from '../weather/openMeteo'
-import { leaveHandoff, type SwitchThen } from './handoff'
-import { ACTIVE_AREA, areaById, saveView, setActiveArea, type AreaDef } from './index'
+import { forgetLinkDone, leaveHandoff, type SwitchThen } from './handoff'
+import { ACTIVE_AREA, areaById, areaHref, saveView, setActiveArea, type AreaDef } from './index'
 
 export type { SwitchThen } from './handoff'
 
 /**
  * Going to another area (docs/AREAS.md): the new area and the view to open
- * on are saved and the page reloads, so every module, cache and map source
- * starts clean there. A place, a pin, a log entry, an outing or a typed
- * coordinate in another area's box comes here, from a tap. A GPS fix in
- * one only offers it (ui/AreaOffer.tsx): the phone is glanced at and
- * pocketed, and a reload nobody asked for would lose the screen it was
- * left on. Nothing switches, or asks to, while the app starts.
+ * on are saved and the page loads the new area's address, so every module,
+ * cache and map source starts clean there. A place, a pin, a log entry, an
+ * outing or a typed coordinate in another area's box comes here, from a
+ * tap. A GPS fix in one only offers it (ui/AreaOffer.tsx): the phone is
+ * glanced at and pocketed, and a reload nobody asked for would lose the
+ * screen it was left on. Nothing switches, or asks to, while the app
+ * starts: a link opens on its area there and then (areas/start.ts).
  *
- * What is meant to happen on arrival (drop a pin there, pick the place,
- * open the outing) is left with areas/handoff.ts and done once by
+ * What is meant to happen on arrival (show the spot, pick the place, open
+ * the outing) is left with areas/handoff.ts and done once by
  * areas/arrive.ts.
  */
 
@@ -44,7 +45,7 @@ function offlineGaps(area: AreaDef): string | null {
   return `neither ${area.name}'s maps nor a forecast for it are on this phone: its map stays blank, with no ground wind or scent cone, until there is signal`
 }
 
-/** A reload is under way: a second tap does nothing. */
+/** The new area is loading: a second tap does nothing. */
 let switching = false
 
 /**
@@ -74,13 +75,11 @@ export function switchArea(id: string, view?: { center: [number, number]; zoom: 
   leaveHandoff(then, locating && (then != null || !(fix && inArea(area, fix.lon, fix.lat))))
   const where = view ? ` · ${view.center[1].toFixed(5)},${view.center[0].toFixed(5)} z${view.zoom.toFixed(1)}` : ''
   devlog('area', `switch ${ACTIVE_AREA.id} → ${area.id}${where}${then ? ` · then ${then.kind}` : ''}`)
-  if (setActiveArea(area.id)) {
-    window.location.reload()
-  } else {
-    // nowhere to save the choice (storage blocked): the address carries it for this load
-    const url = new URL(window.location.href)
-    url.searchParams.set('area', area.id)
-    window.location.replace(url)
-  }
+  // the address names the area (areas/index.ts areaHref): the reloads that
+  // follow (a download's, an update's) stay there
+  setActiveArea(area.id)
+  // the link this tab showed is done with: opened again later, it is a fresh tap
+  forgetLinkDone()
+  window.location.replace(areaHref(area.id))
   return true
 }

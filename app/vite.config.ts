@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import basicSsl from '@vitejs/plugin-basic-ssl'
-import { VitePWA } from 'vite-plugin-pwa'
+import { VitePWA, type ManifestOptions } from 'vite-plugin-pwa'
 import { badAreaField } from './src/areas/check.ts'
 
 /** What the plugin reads of an area file (src/areas/<id>.json). */
@@ -174,6 +174,113 @@ function dataManifest(): Plugin {
   }
 }
 
+/** The app's web manifest: Pickle Lake's, as it has always been. VitePWA
+ *  writes it (manifest.webmanifest, with lang and scope filled in), and
+ *  each other area's iPhone manifest is made from it (areaLinks). */
+const MANIFEST = {
+  name: 'Pic River — hunt & fish maps',
+  short_name: 'Pic River',
+  description: 'Offline topo, LiDAR, forest cover, lake depths, historical maps and weather for White Lake and the Pic River country',
+  theme_color: '#0f1a12',
+  background_color: '#0f1a12',
+  display: 'standalone',
+  orientation: 'any',
+  start_url: '.',
+  icons: [
+    { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+    { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+  ],
+} satisfies Partial<ManifestOptions>
+
+/** The area the plain address opens (areas/index.ts DEFAULT_AREA), whose manifest is the app's own. */
+const DEFAULT_AREA = 'pickle-lake'
+
+/** What index.html's head script has in place of the areas it knows. */
+const AREAS_SLOT = '/*AREAS*/{}'
+
+/** Another area's iPhone manifest: the app's, named for the area, starting
+ *  on it while the install has nothing saved (?start=, areas/start.ts). No
+ *  id: its own start_url is who it is, so it is never taken for the app
+ *  (Chrome would offer to rename an install to it). */
+function areaManifest(a: { id: string; name: string }, scope: string): string {
+  return JSON.stringify({
+    name: `${a.name} — hunt maps`,
+    short_name: a.name,
+    description: `Offline topo, LiDAR, forest cover and weather for ${a.name}`,
+    start_url: `./?start=${a.id}`,
+    display: MANIFEST.display,
+    background_color: MANIFEST.background_color,
+    theme_color: MANIFEST.theme_color,
+    lang: 'en',
+    scope,
+    orientation: MANIFEST.orientation,
+    icons: MANIFEST.icons,
+  })
+}
+
+/**
+ * An iPhone install of another area (docs/AREAS.md, Links and sharing). A
+ * link never reaches a home-screen app: it opens Safari, and the icon added
+ * from there starts at its manifest's start_url, with storage of its own.
+ * Add to Home Screen keeps the first manifest link in the head, so a page
+ * on another area has to put that area's ahead of the app's (index.html's
+ * head script does, from what this puts in its slot: every area's name and
+ * region, and each one's manifest but Pickle Lake's). The manifests are
+ * written for each area but Pickle Lake, and served in dev too.
+ */
+function areaLinks(): Plugin {
+  const areaDir = fileURLToPath(new URL('./src/areas/', import.meta.url))
+  let base = '/'
+  // the area files the app would load (a bad one stops the build: dataManifest)
+  const areas = () => {
+    const out: Pick<AreaFile, 'id' | 'name' | 'region'>[] = []
+    for (const name of readdirSync(areaDir)) {
+      if (!name.endsWith('.json')) continue
+      try {
+        const a = JSON.parse(readFileSync(areaDir + name, 'utf8')) as AreaFile
+        if (badAreaField(a) != null) continue
+        // the region's four numbers alone (areas/check.ts has them all numbers)
+        const { west, south, east, north } = a.region
+        out.push({ id: a.id, name: a.name, region: { west, south, east, north } })
+      } catch {
+        /* mid-write */
+      }
+    }
+    return out
+  }
+  const fileOf = (id: string) => `manifest-${id}.webmanifest`
+  const others = () => areas().filter((a) => a.id !== DEFAULT_AREA)
+  // every area the app knows (a link naming one the build lacks is not taken), its region
+  // (a link's spot picks the area it is in first, as areas/start.ts does), and each one's
+  // manifest but Pickle Lake's, with < written as its escape: it goes inside a <script>
+  const slot = () =>
+    JSON.stringify(
+      Object.fromEntries(areas().map((a) => [a.id, a.id === DEFAULT_AREA ? { name: a.name, region: a.region } : { name: a.name, region: a.region, manifest: base + fileOf(a.id) }])),
+    ).replace(/</g, '\\u003c')
+  return {
+    name: 'area-links',
+    configResolved(config) {
+      base = config.base
+    },
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const path = req.url?.split('?')[0] ?? ''
+        const a = others().find((x) => path === base + fileOf(x.id))
+        if (!a) return next()
+        res.setHeader('content-type', 'application/manifest+json')
+        res.end(areaManifest(a, base))
+      })
+    },
+    transformIndexHtml(html) {
+      if (!html.includes(AREAS_SLOT)) throw new Error(`index.html: the head script has lost its ${AREAS_SLOT}`)
+      return html.replace(AREAS_SLOT, slot())
+    },
+    generateBundle() {
+      for (const a of others()) this.emitFile({ type: 'asset', fileName: fileOf(a.id), source: areaManifest(a, base) })
+    },
+  }
+}
+
 // BASE_PATH lets the same build target a GitHub Pages project site (e.g. /huntapp/)
 /** The short git sha and the build time, stamped into the bundle for the
  *  dev log and its snapshot: a log that names its commit is one you can
@@ -226,24 +333,12 @@ export default defineConfig({
     react(),
     dataManifest(),
     versionFile(STAMP),
+    areaLinks(),
     VitePWA({
       registerType: 'autoUpdate',
       // the app registers the worker itself (offline/appUpdate.ts) so it can ask for updates
       injectRegister: false,
-      manifest: {
-        name: 'Pic River — hunt & fish maps',
-        short_name: 'Pic River',
-        description: 'Offline topo, LiDAR, forest cover, lake depths, historical maps and weather for White Lake and the Pic River country',
-        theme_color: '#0f1a12',
-        background_color: '#0f1a12',
-        display: 'standalone',
-        orientation: 'any',
-        start_url: '.',
-        icons: [
-          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
-        ],
-      },
+      manifest: MANIFEST,
       workbox: {
         // a new worker takes over as soon as it is in, not when every window
         // of the app has closed (an installed app on a phone rarely is). The
@@ -252,7 +347,8 @@ export default defineConfig({
         // (2026-10-03, "fetching it…" and nothing)
         skipWaiting: true,
         clientsClaim: true,
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // the areas' iPhone manifests too: an icon added with no signal still gets its area
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}', 'manifest-*.webmanifest'],
         globIgnores: ['data/**', 'fonts/**', 'sprites/**'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         runtimeCaching: [

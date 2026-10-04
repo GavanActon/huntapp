@@ -87,15 +87,17 @@ names already carry the area id, so two areas sit side by side.
 
 ## In the app
 
-- **One active area at a time.** config.ts resolves the active area when the
-  app starts: the id saved on the phone, else Pickle Lake. Every export
-  (`REGION`, `CORE`, `HOME`, `PLACES`, the file names) then comes from it, so
-  the files that import them do not change.
-- **Switching reloads the app.** The active id is saved, the map view to
-  open on is saved, and the page reloads. Every module then starts clean on
-  the new area. This leaves no source swaps or caches to carry over, which is
-  the safe choice while the app is in use in the field. It costs a second or
-  two, which is fine for something done once per trip.
+- **One active area at a time.** The active area is settled when the app
+  starts, before config.ts is read: a link's, else the id saved on the
+  phone, else Pickle Lake (see Links and sharing). Every export (`REGION`,
+  `CORE`, `HOME`, `PLACES`, the file names) then comes from it, so the files
+  that import them do not change.
+- **Switching loads the new area.** The active id is saved, the map view to
+  open on is saved, and the page loads the new area's address. Every module
+  then starts clean on the new area. This leaves no source swaps or caches
+  to carry over, which is the safe choice while the app is in use in the
+  field. It costs a second or two, which is fine for something done once
+  per trip.
 - **Going to a place in another area switches to it.** That covers a pin, a
   pasted coordinate, or a GPS fix inside another area's box. A place in no
   area at all gets "No detail here yet", with the coordinates.
@@ -112,6 +114,142 @@ names already carry the area id, so two areas sit side by side.
 - **The compass** takes the area's declination.
 - **Offline**: Settings → Maps on this phone lists each area, with its own
   download, size and remove. A phone only fetches the areas it is asked for.
+
+## Links and sharing
+
+The app's own links, so an area or a spot can be sent to someone: Mat's
+stand to Gavan, or Lac Bailey to Mat's buddy.
+
+**The links** (`app/src/share/link.ts`; `node scripts/check-links.mts` in
+`app/` checks them):
+
+- An area: `https://gavanacton.github.io/huntapp/?area=lac-bailey`.
+- A spot:
+  `https://gavanacton.github.io/huntapp/?area=lac-bailey#at=49.40955,-69.55349&pin=Mat%27s+stand`.
+  The area rides in the query, where index.html's head script reads it
+  before the app loads. The point and its name ride in the fragment, which
+  GitHub, link previews and server logs never see.
+- A point in no area: `https://gavanacton.github.io/huntapp/#at=49.60000,-70.20000`.
+- `at` is lat,lon to 5 decimals (about 1 m). `pin` is the name, at most 40
+  characters, left out when there is none or the pin is still called Pin.
+  `z` is read but never written. Reading is lenient: a bad id or a point
+  off the globe is left out.
+- Links are built on the deployed address (`VITE_SHARE_BASE` overrides it),
+  never the page's own, so a share from the dev server does not send a LAN
+  address.
+- A share is text and the link: the name and area, the coordinates as Copy
+  coordinates writes them, and a Google Maps link, then the app's link.
+  Satellite messages carry text only, so in the bush the coordinates line
+  is what works.
+
+**Landing.** One decision at startup (`app/src/areas/start.ts`), never a
+question: opening a link is the choice.
+
+- Which area opens, first match wins: the area whose region holds the
+  spot; the link's area; the area saved on the phone; an iPhone install's
+  seed (`?start=`, only while nothing is saved); Pickle Lake. An area that
+  comes from a link is saved as the link opens; a reload or a back of it
+  is not saved again, so a tab left on a link does not undo a later switch.
+- A spot in an area opens there at zoom 15 (or the link's `z`), north up.
+  It is shown, not kept: a ring with its name (on a place, the place's own
+  label), and the map's tap popup at the point, titled with the name (or
+  the coordinates). It becomes a pin only when Pin is tapped (Gavan,
+  2026-10-04). A pin of yours already there under the same name (within
+  25 m) is shown instead. Location stays on, but follow is held, so the
+  first fix does not take the map off it. A link to an area other than the
+  phone's own holds follow the same way.
+- A point in no area opens Go to coordinates holding it: "No detail here
+  yet", with the coordinates.
+- Every arrival goes into Go to coordinates' Recent (`huntapp-goto-recent`,
+  the last 5).
+- The arrival happens once per tab and link: `huntapp-link-done` in
+  sessionStorage is written once the spot is up, so a reload or a back
+  opens on the last moved view, not the spot again, while a reload of a
+  load that never got that far (weak signal, an old build the update
+  replaced) still shows it. With no sessionStorage, a reload or a back
+  counts as shown. A switch forgets the mark, so the link tapped again
+  later shows the spot again.
+- The address always names the area the app is in: `?area=<id>`, Pickle
+  Lake's bare unless a link named it. A switch loads the new area's address
+  instead of reloading, so the reloads that follow (a download's, an
+  update's) stay in the area, and Safari's Share, Open in Safari and Add to
+  Home Screen carry it.
+- A link that changes only the fragment of a page already open (an Android
+  install that had it open) is done in place, switching area if it has to.
+- A Pickle phone opening the plain address: nothing is written, the address
+  is left alone, and the map style is byte-identical.
+
+**Installing.**
+
+- iPhone: a tapped link always opens Safari (or an in-app browser), never
+  the home-screen app, and an icon added from Safari starts at its
+  manifest's `start_url` with storage of its own. WebKit keeps the first
+  manifest link in the head, so the head script puts the area's own
+  manifest ahead of the app's, only where `navigator.standalone` exists,
+  and names the page and the icon for the area. It picks the area in the
+  same order the app does (the spot's, the link's, the phone's, the
+  seed), so the two never disagree. The build writes
+  `manifest-<id>.webmanifest` for each area but Pickle Lake: "Lac Bailey —
+  hunt maps", short name "Lac Bailey", `start_url` `./?start=lac-bailey`,
+  no id (precached, so an icon added with no signal still gets it). The
+  seed opens the area on the icon's first launch only; after that the app
+  opens wherever it was last switched to. Icons added before keep opening
+  Pickle Lake first. Not yet tried on a device.
+- Android (Chrome): the installed app shares Chrome's storage, so the area
+  and the view a link left are there, and links in its scope open the
+  installed app. The app's own manifest is unchanged.
+- A later spot link on an iPhone opens Safari. To get it into the icon,
+  copy the link (Share › Copy, or a long press on it), then ⋯ › Paste in
+  the app, which reads the app's own links.
+
+**Sending.** Nothing is added to the map's own screen: Share is a level
+down (`app/src/share/share.ts`).
+
+- A pin: its popup's Delete · Share · Open. It goes with its name, unless
+  it is still called Pin.
+- Any tapped point, or a preset: Dig in's ⋯ › Share. A place tapped on
+  itself goes with its name and its own point; "650 m NE of Camp" goes
+  unnamed. The tap popup stays weather, score, Scent, Heard, Pin and Dig in.
+- The area: ⋯ › Share Lac Bailey (the area the app is in). This is how an
+  app on a home screen, with no address bar, sends itself.
+- Share is called inside the tap, nothing awaited first, as iOS refuses it
+  otherwise. Without a share sheet the whole message goes to the clipboard,
+  and the button says "Copied" only once the clipboard has it, "Could not
+  copy" when not. Dig in's Copy coordinates now says the same.
+
+**Pasting** (Go to coordinates, `app/src/ui/sheets/CoordsSheet.tsx` and
+`app/src/map/goto.ts`): the point on the map in two or three taps, with no
+keyboard, and no signal needed, so it is the way for a position that came
+by satellite or inReach.
+
+- ⋯ › Go to coordinates has Paste at its end. It reads the clipboard inside
+  the tap (iOS shows its own Paste bubble, Chrome asks once). A whole place
+  goes straight there; anything else opens the sheet holding it: an area's
+  link (with Go to Lac Bailey), words with no position, nothing, or no
+  access. The menu stays up until the read is done.
+- The sheet opens at 46% with Paste on top and the box unfocused, so no
+  keyboard comes up and the map stays in view. A paste into the box by the
+  phone (a long press, Gboard's chip) also goes straight there, so it works
+  with clipboard access refused. Under the box: every area's home (Pickle
+  Lake · Camp, Lac Bailey · Shared spot), this area first, then Recent.
+- `parsePlace` (`app/src/map/coords.ts`) reads whole messages: the app's
+  own links win (the area and the pin's name with them), links are taken
+  out before numbers are read (an inReach short link no longer reads as
+  3, 7), "Mat's stand" has no S for south, and "Stand 2:", "Zone 18:" and
+  "±5 m" beside the pair no longer break it. On 31 more formats it gives
+  the same point as the old parser, or reads one the old parser could not
+  (`node scripts/check-links.mts` keeps both tables).
+- Typed, a position counts only once both axes are good to about 200 m (3
+  decimals, minutes to 0.1, or seconds): until then there is no read-out,
+  no Go, and the go key waits, so "49.40955, -69.5" cannot send the map
+  off. The read-out says it back the way it was written (N/W stays N/W).
+  The text survives a tap off the sheet.
+- A place in no area: "No detail here yet", with Copy, Maps (Google Maps at
+  the point) and Pin; the go key puts the keyboard away.
+- Recent is the last 5 places gone to, from links, pastes, typing and the
+  rows themselves (`huntapp-goto-recent`), each with its name or
+  coordinates, its area when not this one, and how long ago. A tap shows
+  it again; it never brings back a pin you deleted.
 
 ## Hosting
 
@@ -252,16 +390,25 @@ checked live at the point on 2026-10-03:
 Built on branch `areas` (2026-10-03/04). Not yet merged or deployed.
 
 **App**
-- The area is resolved once at startup, silently: `?area=<id>`, else the
-  saved one, else Pickle Lake. There is never a picker or a question on
-  load (Gavan's requirement).
-- Switching saves the area and the view, then reloads. It is set off by a
-  pin, a place, a hunt-log entry, an outing or a coordinate in another
-  area.
+- The area is resolved once at startup, silently (`areas/start.ts`): a
+  link's spot or area, else the saved one, else an iPhone install's seed,
+  else Pickle Lake. There is never a picker or a question on load (Gavan's
+  requirement). The address keeps naming the area.
+- Switching saves the area and the view, then loads the area's address. It
+  is set off by a pin, a place, a hunt-log entry, an outing or a coordinate
+  in another area.
+- Links: an area link and a spot link (Links and sharing). A spot is shown
+  with its popup and a ring, not saved, until Pin is tapped. On an iPhone a
+  page on another area carries that area's manifest, so an icon added from
+  it opens there.
 - A GPS fix inside another area shows one small chip. It blocks nothing,
   and once dismissed with × it stays dismissed for that area.
 - Go to coordinates (⋯ menu) reads Garmin's "N 49.409550° W 69.553490°",
-  decimal degrees, degrees and minutes, DMS and map links.
+  decimal degrees, degrees and minutes, DMS, map links, the app's own
+  links and whole messages holding any of them. ⋯ › Paste goes straight to
+  a pasted place; the sheet adds Paste, every area's home and Recent.
+- Share: a pin's popup, Dig in's ⋯ and ⋯ › Share <area>, by the phone's
+  share sheet, else the clipboard.
 - Maps on this phone has one block per area, with its own download and
   remove, and a "What's in it" list built from the coverage report.
 - Another area's presets are folded at the bottom of the Pins list.
@@ -306,6 +453,13 @@ Decisions made along the way:
   downloaded.
 
 Still open:
+- The iPhone area manifest rests on reading WebKit's source: add a Lac
+  Bailey page to the Home Screen on a device and check the icon's name and
+  first launch.
+- Paste and Share are tried headless only (the share sheet stubbed): on
+  the phones, check iOS's Paste bubble beside the ⋯ menu, a spot link
+  copied in Safari and pasted in the home-screen app, the share sheet from
+  a pin, and that Chrome asks for the clipboard only once.
 - None of this has been field-checked. Lac Bailey's LiDAR bush may read a
   little light against Pickle Lake's single-photon survey.
 - The pack is large for a phone. Smaller tiles, or leaving the historical

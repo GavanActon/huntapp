@@ -1,4 +1,6 @@
 import { badAreaField } from './check'
+import { arriveNow, linkDone } from './handoff'
+import { decideStart } from './start'
 
 /**
  * The areas the app knows in full detail, and which one it is in. Each
@@ -7,11 +9,13 @@ import { badAreaField } from './check'
  * config.ts used to hold as literals, value for value.
  *
  * One area is active at a time, settled here once, synchronously, before
- * anything reads config.ts: ?area=<id> (for tests and headless shots; it
- * is saved too), else the id saved on the phone, else Pickle Lake.
- * Switching saves the new id and the view to open on, then reloads, so
- * every module, cache and map source starts clean on the new area; nothing
- * here changes while the app runs.
+ * anything reads config.ts (areas/start.ts decides): a link's area (the one
+ * its spot is in, else the one it names), else the id saved on the phone,
+ * else an iPhone install's seed, else Pickle Lake. The address names the
+ * area the app is in (?area=<id>, Pickle Lake's bare), so a reload stays
+ * there. Switching saves the new id and the view to open on, then loads the
+ * new area's address, so every module, cache and map source starts clean
+ * there; nothing here changes while the app runs.
  */
 
 export type PlaceKind = 'camp' | 'lake' | 'landing' | 'stand' | 'trail'
@@ -144,61 +148,73 @@ export function areaById(id: string | null | undefined): AreaDef | null {
   return id != null && Object.hasOwn(AREAS, id) ? AREAS[id] : null
 }
 
+/** The map's last camera in an area, saved on every move: the view the app
+ *  opens on there. A switch saves the target's before it loads it, and a
+ *  link's spot is saved as its area's before the map reads it. */
+export interface SavedView {
+  center: [number, number]
+  zoom: number
+  bearing: number
+}
+
+// above ACTIVE_AREA: resolveActive saves a link's view while this module is still loading
+const VIEW_KEY = 'huntapp.lastView'
+
 function resolveActive(): AreaDef {
-  // ?area=<id>: taken, saved, and taken off the address, so a later reload
-  // (a switch, a download) is not pulled back to it
-  let asked: string | null = null
-  try {
-    const url = new URL(window.location.href)
-    asked = url.searchParams.get('area')
-    if (asked != null) {
-      url.searchParams.delete('area')
-      window.history.replaceState(window.history.state, '', url)
-    }
-  } catch {
-    /* no address to read */
-  }
-  const fromUrl = areaById(asked)
-  if (fromUrl) {
-    try {
-      localStorage.setItem(AREA_KEY, fromUrl.id)
-    } catch {
-      /* private mode: this session only */
-    }
-    return fromUrl
-  }
+  let href = ''
   let saved: string | null = null
+  let navType: string | undefined
   try {
+    href = window.location.href
     saved = localStorage.getItem(AREA_KEY)
   } catch {
-    /* private mode */
+    /* private mode: the address alone */
   }
+  try {
+    navType = (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined)?.type
+  } catch {
+    /* no timing: the tab's mark alone says a link was shown before */
+  }
+  const done = linkDone()
+  const start = decideStart({ href, saved, areas: defs, defaultId: DEFAULT_AREA, done: done ?? null, sessionOk: done !== undefined, navType })
   // an id no longer known (an area dropped from the build) falls to Pickle
   // Lake, and with Pickle Lake's own file left out, to any area there is:
   // a start on the wrong area beats one that stops before the map
-  const a = areaById(saved) ?? areaById(DEFAULT_AREA) ?? defs[0]
+  const a = areaById(start.areaId) ?? areaById(DEFAULT_AREA) ?? defs[0]
   if (!a) throw new Error('no usable area file in src/areas')
-  return a
-}
-
-/** The splash's place line on the next start (index.html, before any of
- *  this runs): another area's name; Pickle Lake's own words are the page's.
- *  Kept for the area the app is in, and set by a switch for the one it
- *  goes to. */
-const SPLASH_KEY = 'huntapp-area-splash'
-
-function noteSplash(a: AreaDef): void {
-  try {
-    if (a.id === DEFAULT_AREA) localStorage.removeItem(SPLASH_KEY)
-    else localStorage.setItem(SPLASH_KEY, a.name)
-  } catch {
-    /* private mode: the page's words */
+  if (start.save) {
+    try {
+      localStorage.setItem(AREA_KEY, a.id)
+    } catch {
+      /* private mode: the address carries it */
+    }
   }
+  if (start.href) {
+    try {
+      window.history.replaceState(window.history.state, '', start.href)
+    } catch {
+      /* the address stays as it came */
+    }
+  }
+  // the address took the app to another area than the phone opens on by
+  // itself (a link, a tab left on one): location stays on, but follow is
+  // held for this run, as a switch holds it, so the first fix does not drag
+  // the map to the box's edge (and the view saved there with it)
+  const own = areaById(saved) ?? areaById(DEFAULT_AREA) ?? defs[0]
+  const moved = a.id !== own.id
+  const s = start.arrival
+  if (s) {
+    // a spot in the area: the map opens on it, north up, and the first fix
+    // does not take it away. One in no area waits in Go to coordinates. The
+    // link is noted as shown once it is (areas/arrive.ts)
+    if (s.inArea) saveView({ center: [s.lon, s.lat], zoom: s.z, bearing: 0 }, a.id)
+    arriveNow({ kind: 'spot', lon: s.lon, lat: s.lat, name: s.name, link: start.mark ?? undefined }, s.inArea || moved)
+  } else if (moved) arriveNow({ kind: 'look' }, true)
+  return a
 }
 
 /** The area the app is in, for the whole of this run. */
 export const ACTIVE_AREA: AreaDef = resolveActive()
-noteSplash(ACTIVE_AREA)
 
 /** Every area, the active one first. */
 export const AREA_LIST: readonly AreaDef[] = [ACTIVE_AREA, ...defs.filter((a) => a.id !== ACTIVE_AREA.id)]
@@ -227,18 +243,28 @@ export function fileUrl(name: string, areaId: string = ACTIVE_AREA.id): string {
   return `${DATA_BASE}${areaById(areaId)?.base ?? ''}${name}`
 }
 
-/** Save the area to open on next time. No reload here: the caller saves the
- *  view to open on (saveView) and reloads. False for an unknown id. */
+/** Save the area to open on next time. No load here: the caller saves the
+ *  view to open on (saveView) and loads areaHref. False for an unknown id,
+ *  or with nowhere to save it (the address carries it then). */
 export function setActiveArea(id: string): boolean {
-  const a = areaById(id)
-  if (!a) return false
+  if (!areaById(id)) return false
   try {
     localStorage.setItem(AREA_KEY, id)
-    noteSplash(a)
     return true
   } catch {
     return false
   }
+}
+
+/** The app's address in an area: ?area=<id>, Pickle Lake's bare. A switch
+ *  loads it, so the address always names the area the app is in: a reload
+ *  (a download's, an update's) stays there, and the browser's Share, Copy
+ *  and Add to Home Screen carry it. */
+export function areaHref(id: string): string {
+  const u = new URL(window.location.href)
+  u.hash = ''
+  u.search = id === DEFAULT_AREA ? '' : new URLSearchParams({ area: id }).toString()
+  return u.toString()
 }
 
 /** A saved key that only means something in one area: the bare key with
@@ -267,16 +293,6 @@ export function writeAreaItem(base: string, value: string, areaId: string = ACTI
     /* private mode or full */
   }
 }
-
-/** The map's last camera in an area, saved on every move: the view the app
- *  opens on there. A switch saves the target's before it reloads. */
-export interface SavedView {
-  center: [number, number]
-  zoom: number
-  bearing: number
-}
-
-const VIEW_KEY = 'huntapp.lastView'
 
 export function loadView(areaId: string = ACTIVE_AREA.id): SavedView | null {
   try {

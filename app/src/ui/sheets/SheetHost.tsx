@@ -52,7 +52,8 @@ function panel(s: Sheet): ReactNode {
     case 'layers':
       return <LayersSheet />
     case 'coords':
-      return <CoordsSheet />
+      // keyed by its text: opened again on another point, it starts afresh
+      return <CoordsSheet key={s.text ?? ''} text={s.text} />
   }
 }
 

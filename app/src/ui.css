@@ -1000,6 +1000,17 @@
   white-space: nowrap;
 }
 
+/* a spot's popup (a link's, a Go to's): which spot, over the weather (map/infoPopup.ts) */
+.pp-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--c-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
 /* a log entry's popup: what and when over its coordinates and Delete */
 .lp-title {
   font-weight: 700;
@@ -1879,6 +1890,55 @@
   margin-left: auto;
   color: var(--c-accent);
   font-weight: 650;
+}
+
+/* a row of two taps (Go to coordinates, and Paste at its end): the row is
+   only the frame, each button lights up on its own */
+.wx-menu-split {
+  padding: 0;
+  gap: 8px;
+}
+
+.wx-menu-split:active {
+  background: none;
+}
+
+.wx-menu-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0 10px 12px;
+  border-radius: var(--r-md);
+  text-align: left;
+}
+
+.wx-menu-main svg {
+  flex: none;
+}
+
+.wx-menu-split > .dim {
+  padding-right: 12px;
+}
+
+.wx-menu-main:active {
+  background: rgba(var(--c-ink-rgb), 0.1);
+  transform: none;
+}
+
+/* Paste: a pill, so it reads as a tap of its own and not the row's (it
+   presses in as any button does) */
+.wx-menu-pill {
+  flex: none;
+  margin-right: 4px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--c-accent);
+  background: var(--c-accent-dim);
+  color: var(--c-text);
+  font-weight: 650;
+  font-size: calc(13.5px * var(--ui-scale));
 }
 
 /* a thin green bar along the foot of a day or hour cell: the quarry's

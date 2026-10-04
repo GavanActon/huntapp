@@ -9,15 +9,10 @@ import { placeColour } from '../state/pinColours'
 import { usePlacesStore } from '../state/placesStore'
 import { geoUrls, onFirstIdle, setMap, withMap } from './mapController'
 import { useMeasureStore } from '../measure/measureStore'
-import { explainPoint } from '../spots/scoring'
-import { spotGrade, spotGradeWords } from '../spots/grades'
-import { useSpotsStore } from '../state/spotsStore'
-import { TARGET_NAMES } from '../spots/types'
 import { baseTone, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour } from './mapStyle'
 import { offlineComplete, registerAllDataFiles, sourceModes } from './pmtilesRegistry'
-import { attachTapWeather } from './tapWeather'
-import { closeOnTapOff } from './tapPopup'
-import { DROPPED_NAME, showPlacePopup } from './placePopup'
+import { showInfoPopup } from './infoPopup'
+import { showPlacePopup } from './placePopup'
 import { useScent } from '../weather/micro/scent'
 import { useRoutes } from '../routes/routeStore'
 import { useHeardForm } from '../ui/HeardCard'
@@ -202,55 +197,9 @@ export default function MapView() {
         // a place, a numbered pin, a wind check or a kept route has its own tap
         const hit = m.queryRenderedFeatures(e.point, { layers: ['pins-pt', 'spots-pin', 'windchecks-hit', 'routes-hit', 'huntlog-dot'].filter((id) => m.getLayer(id)) })
         if (hit.length) return
-        openInfo(e.lngLat)
+        // the weather there, the score while the heat is on, then the actions (map/infoPopup.ts)
+        showInfoPopup(m, e.lngLat)
       })
-      /** The info popup at a point: the weather there, the score while the heat is on, then the actions. */
-      const openInfo = (lngLat: maplibregl.LngLat) => {
-        const { lng, lat } = lngLat
-        const el = document.createElement('div')
-        // one glance: the weather there, the game score, then Scent, Pin and
-        // Dig in. Everything else is the sheet's.
-        const sp = useSpotsStore.getState()
-        // the score only while the heat map is on: with it off the tap is about the weather; Dig in has the whole case either way
-        const why = sp.heat && sp.conditions ? explainPoint(sp.target, lng, lat, sp.conditions, sp.weights) : null
-        const esc = (t: string) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] ?? c)
-        const gameHtml = why
-          ? `<div class="pp-game"><b class="pp-score pp-${spotGrade(why.score)}">${Math.round(why.score * 100)}</b><span>${esc(TARGET_NAMES[sp.target])} · ${esc(spotGradeWords(sp.target, why.score))}</span></div>`
-          : ''
-        const sitting = useScent.getState().people.length > 0
-        el.innerHTML = `<div class="depth-popup-wx"></div>${gameHtml}<div class="pp-acts"><button class="pp-scent">${sitting ? '+ Person' : 'Scent'}</button><button class="pp-heard">Heard</button><button class="pp-save">Pin</button><button class="pp-digin">Dig in ›</button></div>`
-        const popup = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, closeOnClick: false, offset: 8, maxWidth: '260px' })
-          .setLngLat([lng, lat])
-          .setDOMContent(el)
-          .addTo(m)
-        // no ×: tap again, anywhere off it, and it goes
-        closeOnTapOff(m, popup)
-        // wind, temperature and sky at the planning time
-        const stopWx = attachTapWeather(el.querySelector('.depth-popup-wx') as HTMLElement, lng, lat)
-        popup.on('close', stopWx)
-        // with people already sitting, Scent adds the next one here
-        el.querySelector('.pp-scent')?.addEventListener('click', () => {
-          const sc = useScent.getState()
-          if (sc.people.length) sc.add(lng, lat)
-          else sc.show(lng, lat)
-          popup.remove()
-        })
-        // a pin: its own popup takes over, the name and colour right there
-        el.querySelector('.pp-save')?.addEventListener('click', () => {
-          const sp = usePlacesStore.getState().add({ name: DROPPED_NAME, lon: lng, lat, kind: 'stand' })
-          popup.remove()
-          showPlacePopup(m, sp)
-        })
-        el.querySelector('.pp-digin')?.addEventListener('click', () => {
-          popup.remove()
-          useAppStore.getState().openSheet({ kind: 'digin', lon: lng, lat })
-        })
-        // a moose heard, placed here rather than from where you stand
-        el.querySelector('.pp-heard')?.addEventListener('click', () => {
-          popup.remove()
-          useHeardForm.getState().show({ lon: lng, lat })
-        })
-      }
       // a log entry (a moose heard, a sighting): what and when, Delete, and press-and-hold to move it
       m.on('click', 'huntlog-dot', (e) => {
         if (useMeasureStore.getState().active || useScent.getState().adding || useRoutes.getState().open) return

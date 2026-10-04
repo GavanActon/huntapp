@@ -1,5 +1,7 @@
-/* The areas' own bits: Go to coordinates (sheets/CoordsSheet.tsx) and the
-   "You're at …" chip (AreaOffer.tsx). Buttons and chips are ui.css's. */
+/* The areas' own bits: Go to coordinates (sheets/CoordsSheet.tsx: Paste,
+   the box, the areas and Recent), the "You're at …" chip (AreaOffer.tsx)
+   and a spot shown on the map (map/goto.ts). Buttons and chips are
+   ui.css's. */
 
 .coords {
   display: flex;
@@ -48,6 +50,100 @@
 .coords-acts {
   display: flex;
   gap: 8px;
+}
+
+/* Paste: the whole width, first; most go-tos are a paste */
+.coords-paste {
+  flex: none;
+}
+
+/* Maps is a link dressed as the buttons beside it */
+.coords-acts a {
+  text-decoration: none;
+}
+
+/* a tap each: every area's home, then the places gone to lately */
+.coords-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.coords-label {
+  padding: 6px 2px 4px;
+  font-size: calc(11px * var(--ui-scale));
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-text-dim);
+}
+
+.coords-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 2px;
+  border-top: 1px solid rgba(var(--c-ink-rgb), 0.12);
+  color: var(--c-text);
+  text-align: left;
+  font-size: calc(14.5px * var(--ui-scale));
+}
+
+.coords-row:active {
+  background: rgba(var(--c-ink-rgb), 0.1);
+  transform: none;
+}
+
+.coords-row > :first-child {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coords-row .dim {
+  flex: none;
+  color: var(--c-text-dim);
+  font-size: calc(12.5px * var(--ui-scale));
+}
+
+/* a spot shown, not kept: a ring where it is, its name under it, light on
+   dark so it reads on the imagery and the topo alike. A tap on it puts its
+   popup back up */
+.spot-mark {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+/* a thumb's worth to tap */
+.spot-mark::before {
+  content: '';
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+}
+
+.spot-mark i {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid #eef5ea;
+  box-shadow: 0 0 0 1.5px rgba(10, 20, 12, 0.9), inset 0 0 0 1.5px rgba(10, 20, 12, 0.9);
+}
+
+.spot-mark b {
+  position: absolute;
+  top: 23px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: #eef5ea;
+  text-shadow: 0 0 2px rgba(10, 20, 12, 0.95), 0 0 4px rgba(10, 20, 12, 0.95);
+  pointer-events: none;
 }
 
 /* the chip's two taps: the switch, and × for not now */
