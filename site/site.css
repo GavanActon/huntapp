@@ -629,3 +629,6 @@ footer .links a:hover { color: var(--ink); text-decoration: underline; }
 @media (min-width: 860px) {
   .built { grid-template-columns: 1fr 1fr; gap: 72px; padding-block: 88px; }
 }
+
+/* ---- why: the forecast-then-ground-wind loop beside the case for checks */
+.why-loop { align-self: center; }
