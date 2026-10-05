@@ -6,7 +6,7 @@ import { areaPlaces, selectedPlace, homePlace, usePlacesStore } from '../state/p
 import { useSpotsStore } from '../state/spotsStore'
 import { pickTarget } from '../state/viewsStore'
 import { useGpsStore } from '../tracking/gpsStore'
-import { cachedPointForecast, fetchPointForecast, hourAt, hourRow, isThunder, nextHrdpsRunMs, pointForecast, type HourRow, type PointForecast } from '../weather/openMeteo'
+import { cachedPointForecast, fetchPointForecast, forecastBasisMs, hourAt, hourRow, isThunder, nextHrdpsRunMs, pointForecast, type HourRow, type PointForecast } from '../weather/openMeteo'
 import { forecastStale, onWeatherRefreshed, refreshWeather } from '../weather/refresh'
 import { skyGlyphSvg } from '../weather/skyGlyph'
 import { moonPhase } from '../weather/moon'
@@ -728,7 +728,7 @@ function DetailRest({
   const moon = moonPhase(ms)
   // the next HRDPS run after this forecast was fetched; landed already (or the copy is stale), a refresh is worth it
   const now = Date.now()
-  const next = nextHrdpsRunMs(f.fetchedAt)
+  const next = nextHrdpsRunMs(forecastBasisMs(f))
   const newer = stale || next <= now
   return (
     <div className="wxdetail-more">
@@ -749,7 +749,7 @@ function DetailRest({
       {h.precipMm > 0 && <span>Rain {h.precipMm.toFixed(1)} mm</span>}
       {h.snowCm > 0 && <span>Snow {h.snowCm.toFixed(1)} cm</span>}
       <span>
-        {h.hrdps ? 'HRDPS 2.5 km' : 'Open-Meteo blend'} · {agoLabel(now - f.fetchedAt)}
+        {h.hrdps ? 'HRDPS 2.5 km' : 'Open-Meteo blend'} · {h.sat && f.sat ? `by satellite ${agoLabel(now - f.sat.at)}` : agoLabel(now - f.fetchedAt)}
         {newer ? (
           <>
             {' · '}
@@ -757,6 +757,14 @@ function DetailRest({
             <button className="linklike" onClick={onRefresh} disabled={refreshing || !online}>
               {refreshing ? 'Refreshing…' : online ? 'Refresh' : 'fetches with signal'}
             </button>
+            {!online && (
+              <>
+                {' or '}
+                <button className="linklike" onClick={() => useAppStore.getState().openSheet({ kind: 'sat' })}>
+                  by satellite
+                </button>
+              </>
+            )}
           </>
         ) : (
           ` · next HD ~${isToday(next) ? '' : `${dayShort(next)} `}${hourMinShort(next)}`

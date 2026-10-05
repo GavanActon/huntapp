@@ -1,7 +1,7 @@
 import type { AreaBox, AreaDef } from '../areas'
 import { REGION, TIMEZONE } from '../config'
 import { devlog } from '../devlog'
-import { fetchTimeout } from './openMeteo'
+import { fetchTimeout, localStamp } from './openMeteo'
 
 /**
  * The wind field over the region: a small lattice of Open-Meteo points
@@ -216,6 +216,123 @@ export function windSampler(ms: number): WindSample | null {
   }
 }
 
-export function windGridInfo(): { fetchedAt: number; hours: number } | null {
-  return grid ? { fetchedAt: grid.fetchedAt, hours: grid.time.length } : null
+/** When the field was fetched, its hours, and the end of its last hour. */
+export function windGridInfo(): { fetchedAt: number; hours: number; endMs: number } | null {
+  if (!grid || !grid.time.length) return null
+  return { fetchedAt: grid.fetchedAt, hours: grid.time.length, endMs: Date.parse(grid.time[grid.time.length - 1]) + 3600_000 }
+}
+
+/** The field has this moment's hour. Past its last hour windSampler holds
+ *  that hour, which a map's streaks can live with but the ground model must
+ *  not: days without signal would freeze its wind (micro/model.ts asks this
+ *  first and falls back to the camp's forecast). */
+export function windGridCovers(ms: number): boolean {
+  const g = grid
+  if (!g || !g.time.length) return false
+  return ms >= Date.parse(g.time[0]) && ms <= Date.parse(g.time[g.time.length - 1]) + 3600_000
+}
+
+/** One hour of the field at a point, bilinear (the sampler's corners). */
+function cellWind(g: WindGrid, k: number, lon: number, lat: number): { kmh: number; dir: number } {
+  const fx = Math.min(g.cols - 1, Math.max(0, (lon - g.lon0) / g.dLon))
+  const fy = Math.min(g.rows - 1, Math.max(0, (lat - g.lat0) / g.dLat))
+  const x0 = Math.min(g.cols - 2, Math.floor(fx))
+  const y0 = Math.min(g.rows - 2, Math.floor(fy))
+  let kmh = 0
+  let u = 0
+  let v = 0
+  for (let c = 0; c < 4; c++) {
+    const cell = (y0 + (c >> 1)) * g.cols + x0 + (c & 1)
+    const w = (c & 1 ? fx - x0 : 1 - (fx - x0)) * (c >> 1 ? fy - y0 : 1 - (fy - y0))
+    kmh += g.windKmh[cell][k] * w
+    u += Math.sin((g.windDir[cell][k] * Math.PI) / 180) * w
+    v += Math.cos((g.windDir[cell][k] * Math.PI) / 180) * w
+  }
+  return { kmh, dir: ((Math.atan2(u, v) * 180) / Math.PI + 360) % 360 }
+}
+
+/**
+ * Satellite hours (weather/satForecast.ts) into the field: a text carries
+ * the camp's wind alone, so each hour of the field is turned and scaled to
+ * it, every cell keeping its own turn and strength against the camp (the
+ * lakes' lee stays). An hour the field has gives its own pattern; an hour
+ * past its end borrows the pattern of its hour whose camp wind blew most
+ * nearly the same way, and with none that had a wind worth reading, the
+ * camp's wind everywhere. Hours between the field's end and the text's are
+ * long past and hold the last. fetchedAt is kept: signal refetches it.
+ */
+export function patchWindGrid(rows: { ms: number; kmh: number; dir: number }[], camp: { lon: number; lat: number }): void {
+  if (!rows.length) return
+  const g: WindGrid = grid ?? {
+    // none on the phone yet: the box at the camp's wind
+    fetchedAt: 0,
+    cols: COLS,
+    rows: ROWS,
+    lon0: REGION.west,
+    lat0: REGION.south,
+    dLon: (REGION.east - REGION.west) / (COLS - 1),
+    dLat: (REGION.north - REGION.south) / (ROWS - 1),
+    time: [],
+    windKmh: Array.from({ length: COLS * ROWS }, () => []),
+    windDir: Array.from({ length: COLS * ROWS }, () => []),
+  }
+  const cells = g.cols * g.rows
+  const own = g.time.length
+  const idx = new Map(g.time.map((t, i) => [t, i]))
+  const turnOf = (a: number, b: number) => ((b - a + 540) % 360) - 180
+  const similar = (dir: number): number => {
+    let best = -1
+    let bestTurn = 181
+    for (let k = 0; k < own; k++) {
+      const c = cellWind(g, k, camp.lon, camp.lat)
+      const t = Math.abs(turnOf(c.dir, dir))
+      if (c.kmh >= 3 && t < bestTurn) {
+        best = k
+        bestTurn = t
+      }
+    }
+    return best
+  }
+  for (const r of rows) {
+    const stamp = localStamp(r.ms)
+    let i = idx.get(stamp)
+    if (i == null) {
+      const last = g.time.length ? Date.parse(g.time[g.time.length - 1]) : null
+      if (last != null && r.ms <= last) continue
+      if (last != null)
+        for (let ms = last + 3600_000; ms < r.ms; ms += 3600_000) {
+          g.time.push(localStamp(ms))
+          for (let c = 0; c < cells; c++) {
+            g.windKmh[c].push(g.windKmh[c][g.windKmh[c].length - 1])
+            g.windDir[c].push(g.windDir[c][g.windDir[c].length - 1])
+          }
+        }
+      g.time.push(stamp)
+      for (let c = 0; c < cells; c++) {
+        g.windKmh[c].push(r.kmh)
+        g.windDir[c].push(r.dir)
+      }
+      i = g.time.length - 1
+    }
+    const pat = i < own ? i : similar(r.dir)
+    const campPat = pat >= 0 ? cellWind(g, pat, camp.lon, camp.lat) : null
+    for (let c = 0; c < cells; c++) {
+      let turn = 0
+      let ratio = 1
+      if (campPat && campPat.kmh >= 2 && Number.isFinite(g.windKmh[c][pat])) {
+        turn = turnOf(campPat.dir, g.windDir[c][pat])
+        ratio = Math.min(2, Math.max(0.5, g.windKmh[c][pat] / campPat.kmh))
+      }
+      g.windKmh[c][i] = r.kmh * ratio
+      g.windDir[c][i] = (r.dir + turn + 360) % 360
+    }
+  }
+  grid = g
+  try {
+    localStorage.setItem(KEY, JSON.stringify(g))
+  } catch {
+    /* ignore */
+  }
+  devlog('wind', `grid · satellite hours · ${rows.length} h · now ${g.time.length} h`)
+  for (const cb of gridListeners) cb()
 }

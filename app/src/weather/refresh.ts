@@ -107,6 +107,12 @@ export function onWeatherRefreshed(cb: () => void): () => void {
   return () => listeners.delete(cb)
 }
 
+/** New forecasts on the phone by another road (satellite hours pasted in,
+ *  weather/satForecast.ts): everything that redraws after a sweep redraws. */
+export function announceWeather(): void {
+  for (const cb of listeners) cb()
+}
+
 /** Refresh what is stale, one place at a time. `force` ignores freshness
  *  (the Weather tab's refresh button). Resolves when the sweep is done. */
 export function refreshWeather(reason: string, force = false): Promise<void> {

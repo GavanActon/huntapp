@@ -1,0 +1,36 @@
+/* Weather by satellite (sheets/SatSheet.tsx): the Go to coordinates parts
+   (areas.css), plus the request as it will be sent and the reply's box. */
+
+.sat-req {
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  border: 1px dashed rgba(var(--c-accent-rgb), 0.45);
+  font-size: calc(17px * var(--ui-scale));
+  letter-spacing: 0.02em;
+  color: var(--c-text);
+  user-select: all;
+  -webkit-user-select: all;
+}
+
+.sat-box {
+  resize: none;
+  font-family: inherit;
+  font-size: calc(14px * var(--ui-scale));
+  line-height: 1.35;
+}
+
+.sat-online {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: calc(12.5px * var(--ui-scale));
+  color: var(--c-text-dim);
+}
+
+.sat-ok > span {
+  color: var(--c-good);
+}
+
+.sat-bad {
+  color: var(--c-warn);
+}

@@ -23,6 +23,10 @@ export interface PointForecast {
   fetchedAt: number
   /** How many leading hours carry HRDPS values (0 when that call failed). */
   hrdpsHours: number
+  /** Hours brought in by satellite text (weather/satForecast.ts): when they
+   *  were taken in, the HRDPS run they are from, and their first and last
+   *  index. fetchedAt stays the last real fetch, so signal still refetches. */
+  sat?: { at: number; runMs: number; i0: number; i1: number }
   hourly: {
     time: string[]
     windKmh: number[]
@@ -65,9 +69,13 @@ export interface HourRow {
   pressureHpa: number
   /** True where the hour's numbers are HRDPS's own. */
   hrdps: boolean
+  /** True where the hour came by satellite text. */
+  sat: boolean
 }
 
 const CACHE_PREFIX = 'huntapp-wx:'
+/** HRDPS lands on Open-Meteo about 3 h 40 after its run time. */
+export const HRDPS_LAND_MS = (3 * 60 + 40) * 60_000
 const FETCH_TIMEOUT_MS = 12_000
 const HOURLY = [
   'temperature_2m',
@@ -224,6 +232,24 @@ export async function fetchPointForecast(lon: number, lat: number): Promise<Poin
 // fetch, another tab) re-parses; a missing one drops the entry.
 const parsedCache = new Map<string, { raw: string; parsed: PointForecast }>()
 
+/** A forecast written back to the cache under its own point (the
+ *  satellite hours, weather/satForecast.ts). */
+export function savePointForecast(f: PointForecast): void {
+  try {
+    localStorage.setItem(cacheKey(f.lon, f.lat), JSON.stringify(f))
+  } catch {
+    /* storage full or private */
+  }
+}
+
+/** An hour's stamp as Open-Meteo writes it in the area's time zone, which
+ *  is the phone's (Date.parse reads it back as local): "2026-10-05T14:00". */
+export function localStamp(ms: number): string {
+  const d = new Date(ms)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
 export function cachedPointForecast(lon: number, lat: number): PointForecast | null {
   ;({ lon, lat } = forecastPoint(lon, lat))
   const key = cacheKey(lon, lat)
@@ -247,11 +273,17 @@ export function cachedPointForecast(lon: number, lat: number): PointForecast | n
  *  The moment the first run AFTER `fetchedAt` lands: a forecast fetched
  *  before then is the best available until then. */
 export function nextHrdpsRunMs(fetchedAt: number): number {
-  const LAND_MS = (3 * 60 + 40) * 60_000
   const runMs = 6 * 3600_000
   // the run whose landing is the first strictly after fetchedAt
-  const lastLanded = Math.floor((fetchedAt - LAND_MS) / runMs) * runMs
-  return lastLanded + runMs + LAND_MS
+  const lastLanded = Math.floor((fetchedAt - HRDPS_LAND_MS) / runMs) * runMs
+  return lastLanded + runMs + HRDPS_LAND_MS
+}
+
+/** The moment a forecast is as new as: its fetch, or the landing of the run
+ *  its satellite hours came from if that is later. nextHrdpsRunMs of it is
+ *  when a newer run is out. */
+export function forecastBasisMs(f: PointForecast): number {
+  return f.sat ? Math.max(f.fetchedAt, f.sat.runMs + HRDPS_LAND_MS) : f.fetchedAt
 }
 
 /** Cache-first: the stored copy at once (stale once the next model run has
@@ -264,12 +296,14 @@ export async function pointForecast(lon: number, lat: number): Promise<{ forecas
   try {
     return { forecast: await fetchPointForecast(lon, lat), stale: false }
   } catch {
-    return cached ? { forecast: cached, stale: true } : null
+    // no signal: a copy whose satellite hours carry the newest run is not stale
+    return cached ? { forecast: cached, stale: now >= nextHrdpsRunMs(forecastBasisMs(cached)) } : null
   }
 }
 
 export function hourRow(f: PointForecast, i: number): HourRow {
   const h = f.hourly
+  const sat = !!f.sat && i >= f.sat.i0 && i <= f.sat.i1
   return {
     time: new Date(h.time[i]),
     windKmh: h.windKmh[i],
@@ -283,7 +317,8 @@ export function hourRow(f: PointForecast, i: number): HourRow {
     snowCm: h.snowCm[i],
     cloudPct: h.cloudPct[i],
     pressureHpa: h.pressureHpa[i],
-    hrdps: i < (f.hrdpsHours ?? 0),
+    hrdps: i < (f.hrdpsHours ?? 0) || sat,
+    sat,
   }
 }
 
@@ -348,6 +383,7 @@ export function hourAt(f: PointForecast, ms: number): HourRow | null {
     cloudPct: lerpHour(a.cloudPct, b.cloudPct, t),
     pressureHpa: lerpHour(a.pressureHpa, b.pressureHpa, t),
     hrdps: a.hrdps && b.hrdps,
+    sat: a.sat && b.sat,
   }
 }
 

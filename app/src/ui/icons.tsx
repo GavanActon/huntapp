@@ -437,6 +437,16 @@ export const IconRadar = (p: IconProps) => (
   </svg>
 )
 
+/** Weather by satellite: a satellite, its panels and a signal. */
+export const IconSatellite = (p: IconProps) => (
+  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 8.5l3.5 3.5-3.5 3.5-3.5-3.5z" />
+    <path d="M6.5 4L9 6.5 6.5 9 4 6.5zM17.5 15l2.5 2.5-2.5 2.5-2.5-2.5z" />
+    <path d="M7.75 7.75l2.5 2.5M13.75 13.75l2.5 2.5" />
+    <path d="M4 15.5a4.5 4.5 0 0 0 4.5 4.5M4 18.5a1.5 1.5 0 0 0 1.5 1.5" />
+  </svg>
+)
+
 /** Settings. */
 export const IconGear = (p: IconProps) => (
   <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
