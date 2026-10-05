@@ -51,6 +51,8 @@ interface FieldGrid {
   live: boolean
   /** the map as drawn under each cell, 0 black to 1 white; null until the next render fills it */
   lum: Float32Array | null
+  /** lum averaged over its neighbours (INK_BLUR): what picks a streak's ink; null with it */
+  inkLum: Float32Array | null
   /** how hard the eddies turn in each cell, css px/s; 0 where the air runs straight */
   swirl: Float32Array | null
 }
@@ -79,6 +81,12 @@ const SWIRL_PERIOD = 4000
 /** the slowest swirl, in near calm, css px/s; faster air eddies faster */
 const SWIRL_FLOOR = 14
 
+/** How far the eddy strength is averaged, in cells: the model marks a cell
+ *  as swirling or not, and taken as it was the eddies stopped dead at a
+ *  cell's edge, drawing straight lines and boxes across open water off a
+ *  treed shore (Gavan, 2026-10-05, Sault). Averaged and read between cells,
+ *  they die away over a couple of cells instead. */
+const SWIRL_BLUR = 2
 /** The eddy strength for a cell: the sampler's swirl mark (1 swirls, 0.5 settled, 0 straight) and the mean's speed. */
 function swirlAmp(mark: number, pxps: number): number {
   const k = mark >= 1 ? 1 : mark > 0 ? SWIRL_CALM : 0
@@ -212,6 +220,68 @@ const TONE_LIGHT = 0
 const TONE_BRIGHT = 1
 const TONE_DARK = 2
 const toneOf = (lum: number) => (lum < 0.3 ? TONE_LIGHT : lum < 0.45 ? TONE_BRIGHT : TONE_DARK)
+/**
+ * A streak's ink is picked from the map under the field averaged over
+ * INK_BLUR cells around, read between cells at the streak's own place and
+ * nudged by its own INK_JITTER: a stretch of ground takes one ink, and
+ * where it changes the edge is a smooth line with the inks mixed across it.
+ * Read cell by cell, shallow water or a beach sitting at a threshold
+ * flipped neighbours between inks and drew a checkerboard of blocks over
+ * the water (Gavan, 2026-10-05, the Sault shore in the Bow view). A real
+ * edge (a lake beside the land) moves a cell or two at most.
+ */
+const INK_BLUR = 2
+/** Each streak's own nudge to the ink thresholds, ± this: where two inks
+ *  meet they mix over a band instead of meeting at a line */
+const INK_JITTER = 0.03
+
+/** A cols×rows grid averaged over a (2·radius+1)² box of cells (fewer at the edges). */
+function boxBlur(a: Float32Array, cols: number, rows: number, radius: number, out: Float32Array | null): Float32Array {
+  const n = cols * rows
+  const across = new Float32Array(n)
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      let sum = 0
+      let k = 0
+      for (let d = -radius; d <= radius; d++) {
+        const cc = c + d
+        if (cc < 0 || cc >= cols) continue
+        sum += a[r * cols + cc]
+        k++
+      }
+      across[r * cols + c] = sum / k
+    }
+  }
+  const blur = out && out.length === n ? out : new Float32Array(n)
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      let sum = 0
+      let k = 0
+      for (let d = -radius; d <= radius; d++) {
+        const rr = r + d
+        if (rr < 0 || rr >= rows) continue
+        sum += across[rr * cols + c]
+        k++
+      }
+      blur[r * cols + c] = sum / k
+    }
+  }
+  return blur
+}
+
+/** A field grid's value at a point, between its cells. */
+function cellLerp(f: FieldGrid, grid: Float32Array, fx: number, fy: number): number {
+  const gx = Math.min(f.cols - 1.001, Math.max(0, fx / f.step))
+  const gy = Math.min(f.rows - 1.001, Math.max(0, fy / f.step))
+  const c = gx | 0
+  const r = gy | 0
+  const tx = gx - c
+  const ty = gy - r
+  const i = r * f.cols + c
+  const top = grid[i] * (1 - tx) + grid[i + 1] * tx
+  const bottom = grid[i + f.cols] * (1 - tx) + grid[i + f.cols + 1] * tx
+  return top * (1 - ty) + bottom * ty
+}
 
 let lumCanvas: HTMLCanvasElement | null = null
 
@@ -239,8 +309,10 @@ function readLuminance(map: MlMap, f: FieldGrid) {
     const lum = f.lum ?? new Float32Array(f.cols * f.rows)
     for (let i = 0; i < lum.length; i++) lum[i] = (0.2126 * d[i * 4] + 0.7152 * d[i * 4 + 1] + 0.0722 * d[i * 4 + 2]) / 255
     f.lum = lum
+    f.inkLum = boxBlur(lum, f.cols, f.rows, INK_BLUR, f.inkLum)
   } catch {
     f.lum = null
+    f.inkLum = null
   }
 }
 
@@ -306,7 +378,7 @@ function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
     }
   }
   // the forecast field carries no spread, so no eddies at that level
-  const f: FieldGrid = { step: FIELD_STEP, cols, rows, vx, vy, live, lum: null, swirl: ground ? swirl : null }
+  const f: FieldGrid = { step: FIELD_STEP, cols, rows, vx, vy, live, lum: null, inkLum: null, swirl: ground ? boxBlur(swirl, cols, rows, SWIRL_BLUR, null) : null }
   if (live) sampleLuminance(map, f)
   return f
 }
@@ -388,6 +460,7 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
   const bands: Path2D[] = new Array(ALPHA_BANDS * TONES)
   const age = new Float32Array(N)
   const life = new Float32Array(N)
+  const jitter = Float32Array.from({ length: N }, () => (Math.random() * 2 - 1) * INK_JITTER)
 
   let anchor = new FrameAnchor(map, centrePoint(map))
   let M: Affine = IDENTITY
@@ -519,7 +592,7 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
     const ly = useAppStore.getState().layers
     const pale = !ly.satellite && (ly.topo || ly.relief || ly.hillshade)
     const fallback = pale ? TONE_DARK : TONE_LIGHT
-    const lum = field.lum
+    const inks = field.inkLum
     for (let i = 0; i < active; i++) {
       age[i] += dt
       const fx = px[i] - fieldOff.x
@@ -528,9 +601,7 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
       let vx = vel[0]
       let vy = vel[1]
       if (amps) {
-        const sc = Math.min(field.cols - 1, Math.max(0, (fx / field.step) | 0))
-        const sr = Math.min(field.rows - 1, Math.max(0, (fy / field.step) | 0))
-        const amp = amps[sr * field.cols + sc]
+        const amp = cellLerp(field, amps, fx, fy)
         if (amp > 0.5) {
           sampleSwirl(swirl, fx, fy, phase, eddy)
           vx += amp * eddy[0]
@@ -549,11 +620,7 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
       const spd = Math.hypot(vx, vy)
       const band = Math.min(ALPHA_BANDS - 1, ((spd / 130) * ALPHA_BANDS) | 0)
       let tone = fallback
-      if (lum) {
-        const fc = Math.min(field.cols - 1, Math.max(0, ((px[i] - fieldOff.x) / field.step) | 0))
-        const fr = Math.min(field.rows - 1, Math.max(0, ((py[i] - fieldOff.y) / field.step) | 0))
-        tone = toneOf(lum[fr * field.cols + fc])
-      }
+      if (inks) tone = toneOf(cellLerp(field, inks, px[i] - fieldOff.x, py[i] - fieldOff.y) + jitter[i])
       const path = bands[tone * ALPHA_BANDS + band]
       path.moveTo(px[i], py[i])
       path.lineTo(nx, ny)
