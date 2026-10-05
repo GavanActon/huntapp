@@ -185,7 +185,7 @@
       },
       "micro": {
         "file": "micro-lac-bailey.hab",
-        "bytes": 3722925,
+        "bytes": 9268946,
         "source": "derived: the habitat grid and the MRDEM",
         "licence": "derived from the layers above",
         "vintage": "generated 2026-10-04"
