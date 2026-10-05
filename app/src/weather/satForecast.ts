@@ -218,9 +218,11 @@ function patchForecast(f0: PointForecast | null, lon: number, lat: number, h: Sa
 }
 
 /**
- * A pasted reply taken in, or why not: no code in it, cut short, for
- * another place, or no newer than what the phone has. `change` is the wind
- * at the coming dusk, now and as the phone had it.
+ * A pasted reply taken in, or why not: no code in it, cut short, or for
+ * another place. A reply no newer than what the phone has is a success
+ * too (the weather is as new as it gets), with nothing written: a fetch's
+ * full numbers beat the text's packed ones. `change` is the wind at the
+ * coming dusk, now and as the phone had it.
  */
 export function applySatText(text: string): SatResult {
   const got = decodeSatReply(text)
@@ -233,7 +235,9 @@ export function applySatText(text: string): SatResult {
   const at = forecastPoint(home.lon, home.lat)
   const camp0 = cachedPointForecast(at.lon, at.lat)
   if (camp0 && h.runMs + HRDPS_LAND_MS <= forecastBasisMs(camp0)) {
-    return { ok: false, why: `The phone already has that forecast (HRDPS ${runLabel(h.runMs)}) or a newer one.` }
+    // the answer came: nothing waits any more
+    writeAsk(null)
+    return { ok: true, hours: h.windKmh.length, runMs: h.runMs, change: null }
   }
   const n = h.windKmh.length
   const endMs = h.startMs + n * HOUR_MS

@@ -137,9 +137,10 @@ export default function SatSheet(): JSX.Element {
       {result && !result.ok && <div className="coords-help sat-bad">{result.why}</div>}
       {result?.ok && (
         <div className="coords-found sat-ok">
-          <span>
-            Updated · HRDPS {runLabel(result.runMs)} · {result.hours} h
-          </span>
+          <span>Weather updated</span>
+          <small>
+            HRDPS {runLabel(result.runMs)} · {result.hours} h
+          </small>
           {result.change && (
             <small>
               At dusk ({clockShort(result.change.atMs)}): {windWords(result.change.now, units)}
