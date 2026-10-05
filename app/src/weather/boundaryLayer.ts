@@ -2,7 +2,7 @@ import { readAreaItem, writeAreaItem, type AreaDef } from '../areas'
 import { TIMEZONE } from '../config'
 import { devlog } from '../devlog'
 import { homePlace } from '../state/placesStore'
-import { fetchTimeout, turnHour } from './openMeteo'
+import { fetchTimeout, localStamp, turnHour } from './openMeteo'
 
 /**
  * The air's layering over camp, hour by hour: what decides whether the
@@ -36,6 +36,9 @@ export interface Profile {
   sw: number[]
   cloud: number[]
   ens: { time: string[]; dirSd: number[]; spdSd: number[]; spdMean: number[] } | null
+  /** hours brought in by satellite text (weather/satForecast.ts): when, and
+   *  their first and last index. They are HRDPS's own numbers. */
+  sat?: { at: number; i0: number; i1: number }
 }
 
 export interface Layering {
@@ -219,6 +222,79 @@ export function currentProfile(): Profile | null {
   return profile
 }
 
+/** One satellite hour of the air over camp (weather/satForecast.ts). */
+export interface ProfileRow {
+  ms: number
+  t2: number
+  t80: number
+  w10: number
+  d10: number
+  w80: number
+  sw: number
+  cloud: number
+  ensDirSd: number | null
+}
+
+/** Put each row at its hour, the arrays run on to it if it is past their
+ *  end (the hours between unknown: those read as an estimate). */
+function placeRows<T extends { time: string[] }>(o: T, rows: ProfileRow[], fields: (keyof T)[], set: (o: T, i: number, r: ProfileRow) => void): [number, number] {
+  const idx = new Map(o.time.map((t, i) => [t, i]))
+  let i0 = Infinity
+  let i1 = -1
+  for (const r of rows) {
+    const stamp = localStamp(r.ms)
+    let i = idx.get(stamp)
+    if (i == null) {
+      const last = o.time.length ? Date.parse(o.time[o.time.length - 1]) : null
+      if (last != null && r.ms <= last) continue
+      if (last != null)
+        for (let ms = last + 3600_000; ms < r.ms; ms += 3600_000) {
+          o.time.push(localStamp(ms))
+          for (const f of fields) (o[f] as number[]).push(NaN)
+        }
+      o.time.push(stamp)
+      for (const f of fields) (o[f] as number[]).push(NaN)
+      i = o.time.length - 1
+    }
+    set(o, i, r)
+    i0 = Math.min(i0, i)
+    i1 = Math.max(i1, i)
+  }
+  return [i0, i1]
+}
+
+/**
+ * Satellite hours into the profile: the layering, the ensemble's spread
+ * and where they came from, so the ground model reads them as HRDPS hours.
+ * With no profile on the phone one is begun from them. fetchedAt is kept:
+ * signal refetches it.
+ */
+export function patchProfile(rows: ProfileRow[]): void {
+  if (!rows.length) return
+  const home = homePlace()
+  const p: Profile = profile ?? { fetchedAt: 0, lon: home.lon, lat: home.lat, time: [], hrdpsHours: 0, t2: [], t80: [], w10: [], d10: [], w80: [], sw: [], cloud: [], ens: null }
+  const [i0, i1] = placeRows(p, rows, ['t2', 't80', 'w10', 'd10', 'w80', 'sw', 'cloud'], (o, i, r) => {
+    o.t2[i] = r.t2
+    o.t80[i] = r.t80
+    o.w10[i] = r.w10
+    o.d10[i] = r.d10
+    o.w80[i] = r.w80
+    o.sw[i] = r.sw
+    o.cloud[i] = r.cloud
+  })
+  if (i1 < 0) return
+  p.ens ??= { time: [], dirSd: [], spdSd: [], spdMean: [] }
+  // a text without the spread leaves what the phone had
+  placeRows(p.ens, rows, ['dirSd', 'spdSd', 'spdMean'], (o, i, r) => {
+    if (r.ensDirSd != null) o.dirSd[i] = r.ensDirSd
+  })
+  p.sat = { at: Date.now(), i0, i1 }
+  profile = p
+  writeAreaItem(KEY, JSON.stringify(p))
+  devlog('wind', `profile · satellite hours · ${rows.length} h`)
+  for (const cb of listeners) cb()
+}
+
 export function onProfile(cb: () => void): () => void {
   listeners.add(cb)
   return () => listeners.delete(cb)
@@ -292,7 +368,7 @@ export function layeringAt(ms: number, fallback: { cloud: number; w10: number; t
         sw: Number.isFinite(sw) ? sw : 0,
         cloud: Number.isFinite(cloud) ? cloud : 50,
         ensDirSd,
-        source: hourIdx >= 0 && hourIdx < p.hrdpsHours ? 'hrdps' : 'blend',
+        source: (hourIdx >= 0 && hourIdx < p.hrdpsHours) || (p.sat && hourIdx >= p.sat.i0 && hourIdx <= p.sat.i1) ? 'hrdps' : 'blend',
       }
     }
   }

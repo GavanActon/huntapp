@@ -9,7 +9,7 @@ import { startOfDayMs } from '../../time'
 import { layeringAt, onProfile, type Layering } from '../boundaryLayer'
 import { cachedPointForecast, compass, hourAt } from '../openMeteo'
 import { sunPosition } from '../sun'
-import { onWeatherGrid, windGridInfo, windSampler } from '../windGrid'
+import { onWeatherGrid, windGridCovers, windGridInfo, windSampler } from '../windGrid'
 import { checkWeight, metresBetween, STRENGTH_KMH, useWindChecks } from './windChecks'
 import { biasFor, biasMatters, biasWords, learnBiases, type Bias, type Lesson } from './bias'
 import { leavesDown, leavesNote } from './leaves'
@@ -237,7 +237,8 @@ function makeCtx(ms: number): Ctx {
     lay,
     sunElev: sun.elevDeg,
     sunAz: sun.azDeg,
-    regional: windSampler(ms),
+    // past the field's last hour, the camp's forecast (fallback), not that hour held
+    regional: windGridCovers(ms) ? windSampler(ms) : null,
     fallback: h ? { kmh: h.windKmh, dir: h.windDir } : Number.isFinite(lay.w10) && Number.isFinite(lay.d10) ? { kmh: lay.w10, dir: lay.d10 } : null,
     waterC,
     gf: h && Number.isFinite(h.gustKmh) ? clamp(h.gustKmh / Math.max(1, h.windKmh), 1, 3) : 1,
@@ -940,7 +941,7 @@ const DAY_MEMO_MAX = 64
 export function groundDay(lon: number, lat: number, dayStartMs: number): Window[] {
   const home = homePlace()
   const f = cachedPointForecast(home.lon, home.lat)
-  const key = `${lon.toFixed(4)},${lat.toFixed(4)},${dayStartMs},${f?.fetchedAt ?? 0}`
+  const key = `${lon.toFixed(4)},${lat.toFixed(4)},${dayStartMs},${f?.fetchedAt ?? 0},${f?.sat?.at ?? 0}`
   const hit = dayMemo.get(key)
   if (hit) return hit
   const out = groundDayPass(lon, lat, dayStartMs)
@@ -1002,15 +1003,12 @@ function nextDayStartMs(dayStartMs: number): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime()
 }
 
-/** The last moment the wind is forecast for: the wind grid's end (it runs
- *  from yesterday's midnight for its hours), else the camp forecast's last
+/** The last moment the wind is forecast for: the end of the wind grid's
+ *  last hour (satellite hours extend it), else the camp forecast's last
  *  hour, which makeCtx falls back to; null with neither. */
 function windHorizonMs(): number | null {
   const info = windGridInfo()
-  if (info) {
-    const d = new Date(info.fetchedAt)
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1).getTime() + info.hours * 3600_000
-  }
+  if (info) return info.endMs
   const home = homePlace()
   const times = cachedPointForecast(home.lon, home.lat)?.hourly.time
   return times && times.length ? Date.parse(times[times.length - 1]) + 3600_000 : null

@@ -130,7 +130,7 @@ let hoursMemo: { key: unknown[]; out: HourActivity[] } | null = null
 export function hourScores(f: PointForecast, target: Target, recent: RecentDaily, lake: LakeFacts | null, w: Weights, fromMs: number, toMs?: number): HourActivity[] {
   const from = floorHourMs(fromMs)
   const to = toMs ?? lastHourMs(f)
-  const key: unknown[] = [f.fetchedAt, f.lon, f.lat, target, w, lake?.id ?? null, recent?.fetchedAt ?? 0, from, to]
+  const key: unknown[] = [f.fetchedAt, f.sat?.at ?? 0, f.lon, f.lat, target, w, lake?.id ?? null, recent?.fetchedAt ?? 0, from, to]
   if (hoursMemo && hoursMemo.key.every((k, i) => k === key[i])) return hoursMemo.out
   const out: HourActivity[] = []
   for (let ms = from; ms <= to; ms += 3600_000) {

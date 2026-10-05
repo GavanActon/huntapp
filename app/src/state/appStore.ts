@@ -19,6 +19,8 @@ export type Sheet =
    *  there, a point a link sent in no area) */
   | { kind: 'coords'; text?: string }
   | { kind: 'locations' }
+  /** weather by satellite text: the request, then the paste */
+  | { kind: 'sat' }
 export type SheetKind = Sheet['kind']
 
 /** Each sheet's half-open height, % of the screen. */
@@ -36,6 +38,8 @@ export const SHEET_HALF_PCT: Record<SheetKind, number> = {
   // the Paste button, the box, the areas and the first of Recent, the map still in view
   coords: 46,
   locations: 34,
+  // the request, its two buttons and the paste box
+  sat: 62,
 }
 
 /** The sheet showing now: the top of the stack, or null when closed. */

@@ -285,3 +285,9 @@ export const ATTRIBUTION = AREA.attribution
 
 /** Lakes with a georeferenced survey sheet (map/depthLayer.ts), lower case. */
 export const SURVEYED_LAKES = AREA.surveyedLakes
+
+/** The Groundwind number that answers a satellite weather request
+ *  (weather/satForecast.ts, site/satbot.js), E.164: Twilio, bought
+ *  2026-10-05. An inReach texts it and an iPhone on satellite texts it the
+ *  same. Empty, the sheet shows the request and the paste but no Text button. */
+export const SAT_NUMBER = '+18679884457'

@@ -3,16 +3,19 @@ import { openHuntLog } from '../log/logView'
 import { pasteAndGo } from '../map/goto'
 import { useMapUpdates } from '../offline/updates'
 import { useAppStore, type Sheet } from '../state/appStore'
-import { IconBook, IconClock, IconGear, IconGrid, IconLayers, IconPin, IconPlaces, IconTarget } from './icons'
+import { satWaiting } from '../weather/satForecast'
+import { IconBook, IconClock, IconGear, IconGrid, IconLayers, IconPin, IconPlaces, IconSatellite, IconTarget } from './icons'
 import { useTapOff } from './tapOff'
 
 /**
  * The ⋯ menu behind the strip: Hunt log, Pins, Locations (the areas, each
  * with its Share), Go to coordinates (with Paste at its end), Map buttons,
  * Views, HuntOS (the field guide) and Settings, with the new-maps count
- * beside Settings when the server has some. It hangs under the right end
- * of whatever is position: relative around it (the folded line, or the
- * open strip's header); a tap anywhere else closes it.
+ * beside Settings when the server has some. Weather by satellite joins
+ * them with no signal, or while a request sent by text waits for its
+ * answer; with signal there is nothing for it to do. The menu hangs under
+ * the right end of whatever is position: relative around it (the folded
+ * line, or the open strip's header); a tap anywhere else closes it.
  *
  * Paste reads the clipboard inside the tap (iOS refuses it otherwise), and
  * the menu stays up until it is done: iOS's Paste bubble sits beside it.
@@ -21,6 +24,7 @@ export default function AppMenu({ open, onClose }: { open: boolean; onClose: () 
   const ref = useRef<HTMLDivElement>(null)
   const openSheet = useAppStore((s) => s.openSheet)
   const newMaps = useMapUpdates((s) => s.pending.length)
+  const online = useAppStore((s) => s.online)
   // a paste under way: a second tap waits for it
   const busy = useRef(false)
   // one per opening: what settles after the menu has closed (a tap off it) leaves the next opening alone
@@ -83,6 +87,13 @@ export default function AppMenu({ open, onClose }: { open: boolean; onClose: () 
           <span className="dim">›</span>
         )}
       </div>
+      {(!online || satWaiting()) && (
+        <button className="wx-menu-row" role="menuitem" onClick={() => go({ kind: 'sat' })}>
+          <IconSatellite />
+          Weather by satellite
+          <span className="dim">›</span>
+        </button>
+      )}
       <button className="wx-menu-row" role="menuitem" onClick={() => go({ kind: 'buttons' })}>
         <IconGrid />
         Map buttons

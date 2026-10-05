@@ -3,3 +3,4 @@ worker.js
 schema.sql
 .assetsignore
 .wrangler
+satbot.js
