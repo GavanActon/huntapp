@@ -66,6 +66,7 @@ ADAPTERS: dict[str, dict[str, tuple[str, list[str]]]] = {
     "vectors": {
         "on.lio": ("3.14", ["build_vectors.py", "bake"]),
         "qc": ("3.13", ["qc_vectors.py", "--area", "{id}"]),  # pyogrio: the TRQ territories are a file geodatabase
+        "yt": ("3.14", ["yt_vectors.py", "--area", "{id}"]),
     },
     "forest": {
         "on.fri": ("3.13", ["build_forest.py"]),  # pyogrio: the FRI is a file geodatabase
@@ -119,6 +120,11 @@ def plan(a: dict) -> list[Step]:
     needs the LiDAR DTM and the lakes (hillshade, vectors)."""
     bake = a.get("bake") or {}
     ontario = a["jurisdiction"] == "ON"
+    # no 1 m LiDAR over the core (bake.lidar "none", set by --new when NRCan
+    # has no survey there): the hillshade step makes the core's elevation grid
+    # from the 30 m MRDEM instead, for the DEM and the going grid, and the
+    # MRDEM's contours (contours-wide) stand in for the LiDAR's
+    no_lidar = bake.get("lidar") == "none"
     sheets = list(bake.get("lakeSheets") or [])
     bathy = HERE / "raw" / "bathy"
     # the 30 m MRDEM hillshade only where the area's maps use it: one with a
@@ -160,7 +166,7 @@ def plan(a: dict) -> list[Step]:
         Step("historical", "3.14", [["build_historical.py"]], skip=None if bake.get("nts") else "no NTS sheets listed (bake.nts)"),
         Step("hillshade", "3.14", [["build_hillshade.py"]], needs=("vectors",)),
         Step("dem", "3.14", [["build_dem.py"]]),
-        Step("contours", "3.14", [["build_contours.py"]]),
+        Step("contours", "3.14", [["build_contours.py"]], skip="no 1 m LiDAR here: the MRDEM's contours stand in" if no_lidar else None),
         Step("contours-wide", "3.14", [["build_contours_wide.py"]], needs=("dem",)),
         adapter_step("pointcloud", "pointcloud", a),
         Step("vegstructure", "3.14", [["build_vegstructure.py"]], skip=None if bake.get("pointcloud") else "no point cloud for this area", needs=("pointcloud",)),
@@ -351,7 +357,7 @@ def bake(args) -> int:
 
 # ---- the coverage report --------------------------------------------------
 
-OGL_ON, OGL_CA, CC_BY = "OGL-Ontario", "OGL-Canada", "CC BY 4.0"
+OGL_ON, OGL_CA, CC_BY, OGL_YT = "OGL-Ontario", "OGL-Canada", "CC BY 4.0", "OGL-Yukon"
 DERIVED = "derived from the layers above"
 # The app's layer keys (the "files" of an area file) and, for each, the
 # file's name before "-<id>" and the step that makes it (to say why a layer
@@ -389,6 +395,18 @@ NOT_IN = {  # layers a province has no source for, or none open
         ("geo", "depth"): "Ontario only: lake depths need the ARA lake facts and the MNR sheets",
         ("pmtiles", "bathySheets"): "Ontario only: MNR lake survey sheets",
         ("pmtiles", "bathy"): "Ontario only: lake depths need the ARA lake facts and the MNR sheets",
+    },
+    "YT": {
+        ("geo", "camps"): "Ontario only: Crown land camps come from LIO",
+        ("geo", "parks"): "none baked for the Yukon yet",
+        ("geo", "bathy"): "Ontario only: lake bathymetry comes from LIO",
+        ("geo", "depth"): "Ontario only: lake depths need the ARA lake facts and the MNR sheets",
+        ("pmtiles", "bathySheets"): "Ontario only: MNR lake survey sheets",
+        ("pmtiles", "bathy"): "Ontario only: lake depths need the ARA lake facts and the MNR sheets",
+        ("pmtiles", "hillshadeLidar"): "no 1 m LiDAR here: the nearest HRDEM survey is tens of km away",
+        ("pmtiles", "contours"): "no 1 m LiDAR here: the MRDEM's contours stand in",
+        ("pmtiles", "understory"): "no LiDAR point cloud here",
+        ("pmtiles", "lanes"): "no LiDAR point cloud here",
     },
 }
 # Why a layer the area leaves out of its files (its pack) is not in its
@@ -447,6 +465,16 @@ def known_sources(a: dict, lidar: list[str], pc_years: str | None) -> dict[tuple
             ("geo", "forest"): fri,
             ("geo", "depth"): {"source": "depth bands: the MNR survey sheets where a lake was surveyed, else a shore-distance model", "licence": OGL_ON},
             ("baseGeo", "waterbody"): {"source": "Ontario Hydro Network waterbodies, LIO", "licence": OGL_ON},
+        }
+    elif a["jurisdiction"] == "YT":
+        out |= {
+            ("pmtiles", "satellite"): {"source": "Yukon SPOT 1.5 m colour composite, Geomatics Yukon ImageServer", "licence": OGL_YT, "vintage": "2013-2022"},
+            ("pmtiles", "places"): {"source": "GeoYukon: game management subzones, First Nation settlement land, burns and roads", "licence": OGL_YT},
+            ("geo", "wmu"): {"source": "Game Management Areas 250k (subzones), GeoYukon; generalised, not for legal use", "licence": OGL_YT},
+            ("geo", "crown"): {"source": "First Nation Settlement Lands, GeoYukon", "licence": OGL_YT},
+            ("geo", "fire"): {"source": "Yukon fire history, Wildland Fire Management, GeoYukon", "licence": OGL_YT},
+            ("geo", "roads"): {"source": "Yukon Road Network and surface disturbance lines (access roads, trails), GeoYukon", "licence": OGL_YT},
+            ("baseGeo", "waterbody"): {"source": "CanVec 1:50 000 waterbodies, via GeoYukon", "licence": OGL_CA},
         }
     elif a["jurisdiction"] == "QC":
         eco = {"source": "Carte écoforestière (MRNF), with later cuts, burns and outbreaks laid over", "licence": CC_BY, "vintage": forest_v}
@@ -642,12 +670,15 @@ def new_area(args) -> str:
     cw, ch = (2 * args.core_km,) * 2 if args.core_km else km_size(pickle["core"])
     region = box_around(lon, lat, rw, rh)
     core = {**box_around(lon, lat, cw, ch), "maxzoom": pickle["core"]["maxzoom"]}
+    no_lidar = False
     try:
         from build_hillshade import stac_search
 
         hrdem = stac_search(core)
     except (SystemExit, Exception) as e:  # noqa: BLE001  (offline: the bake searches again)
-        print(f"no HRDEM list yet ({e}); the bake will search for it")
+        # the catalogue answered and has no survey there: the core goes without
+        no_lidar = str(e).startswith("no HRDEM LiDAR project")
+        print(f"no 1 m LiDAR over the core ({e})" if no_lidar else f"no HRDEM list yet ({e}); the bake will search for it")
         hrdem = []
 
     # what the province's adapters make, and the app fields that go with them,
@@ -659,8 +690,27 @@ def new_area(args) -> str:
     files = json.loads(json.dumps(ex.get("files") or national))
     if j == "ON":  # never baked (basemap, bathy) or Pickle Lake's own survey sheets
         files["pmtiles"] = [k for k in files.get("pmtiles", []) if k not in ("bathySheets", "basemap", "bathy")]
+    if j == "YT":  # the Yukon adapters' layers, and the national stands (ca_forest.py)
+        files = {
+            "pmtiles": ["topo", "satellite", "hillshade", "hillshadeLidar", "dem", "contours", "contoursWide", "forest", "historical", "places"],
+            "geo": ["wmu", "crown", "fire", "roads"],
+            "baseGeo": ["waterbody"],
+            "grids": ["habitat", "micro", "going"],
+        }
+    if no_lidar:  # the MRDEM's relief alone: its hillshade and its contours
+        files["pmtiles"] = [k for k in files["pmtiles"] if k not in ("hillshadeLidar", "contours", "understory", "lanes")]
     bake_by = {
         "ON": {"vectors": "on.lio", "forest": {"adapter": "on.fri", "gdb": None, "crs": None, "vintage": None}, "imagery": "on.oiwms", "pointcloud": "on.fri_leafon"},
+        "YT": {
+            "vectors": "yt",
+            "forest": {
+                "adapter": "ca.scanfi",
+                "vintage": "SCANFI 2025; CanLaD 1985-2025",
+                "attribution": "Forest inferred from SCANFI and CanLaD © Natural Resources Canada",
+            },
+            "imagery": "yt.spot",
+            "pointcloud": None,
+        },
         "QC": {
             "vectors": "qc",
             "forest": {"adapter": "qc.ecoforestier", "vintage": "4th inventory, with cuts, burns and outbreaks to 2025"},
@@ -669,7 +719,7 @@ def new_area(args) -> str:
             "pointcloud": {"adapter": "qc.mrnf_laz", "bbox": box_around(lon, lat, 6, 6)},
         },
     }
-    zone_label = {"ON": "WMU", "QC": "Zone"}.get(j, "Zone")
+    zone_label = {"ON": "WMU", "QC": "Zone", "YT": "GMS"}.get(j, "Zone")
     a = {
         "id": area_id,
         "name": args.name,
@@ -680,13 +730,15 @@ def new_area(args) -> str:
         "core": core,
         "regionMaxzoom": pickle["regionMaxzoom"],
         "declination": declination(lat, lon),
-        "timezone": "America/Winnipeg" if j == "ON" and lon < -90 else "America/Toronto",
+        "timezone": {"YT": "America/Whitehorse"}.get(j) or ("America/Winnipeg" if j == "ON" and lon < -90 else "America/Toronto"),
         "zone": {"label": zone_label, "name": None},
         "relief": None,  # the bake fills it in from the core's elevations
         "base": f"areas/{area_id}/",
         "surveyedLakes": [],
         "live": {"lio": j == "ON", "satellite": {"ON": "lio", "QC": "qc"}.get(j)},
-        "attribution": ex.get("attribution") or {"vectors": "", "lakes": "", "bush": ""},
+        "attribution": ex.get("attribution")
+        or {"YT": {"vectors": "© Government of Yukon", "lakes": "CanVec © Natural Resources Canada", "bush": ""}}.get(j)
+        or {"vectors": "", "lakes": "", "bush": ""},
         "presets": [{"name": "Requested spot", "lon": lon, "lat": lat, "kind": "stand", "note": f"Area requested {date.today().isoformat()}"}],
         "bundle": {
             "description": (
@@ -698,6 +750,7 @@ def new_area(args) -> str:
         "bake": {
             "outDir": f"app/public/data/areas/{area_id}",
             "hrdem": hrdem,
+            **({"lidar": "none"} if no_lidar else {}),
             **bake_by.get(j, {"vectors": None, "forest": None, "imagery": None, "pointcloud": None}),
             "nts": nts_50k_sheets(region["west"], region["south"], region["east"], region["north"]),
         },
@@ -723,7 +776,7 @@ def main() -> int:
     ap.add_argument("--lat", type=float)
     ap.add_argument("--lon", type=float)
     ap.add_argument("--name")
-    ap.add_argument("--jurisdiction", help="ON or QC (provinces with adapters); others get the national layers only")
+    ap.add_argument("--jurisdiction", help="ON, QC or YT (with adapters); others get the national layers only")
     ap.add_argument("--id", help="--new: the area's id (default: from the name)")
     ap.add_argument("--core-km", type=float, help="--new: the core's half-width (default: Pickle Lake's size)")
     ap.add_argument("--region-km", type=float, help="--new: the region's half-width (default: Pickle Lake's size)")

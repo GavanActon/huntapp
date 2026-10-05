@@ -1,0 +1,156 @@
+{
+  "id": "highland-lake",
+  "name": "Highland Lake",
+  "jurisdiction": "YT",
+  "centre": [-134.760001, 63.360577],
+  "home": { "center": [-134.760001, 63.360577], "zoom": 13 },
+  "region": { "west": -134.95, "south": 63.291, "east": -134.57, "north": 63.431 },
+  "core": { "west": -134.82, "south": 63.333, "east": -134.7, "north": 63.388, "maxzoom": 15 },
+  "regionMaxzoom": 13,
+  "declination": 18.2,
+  "timezone": "America/Whitehorse",
+  "zone": { "label": "GMS", "name": "4-09" },
+  "relief": [920, 1684],
+  "base": "areas/highland-lake/",
+  "surveyedLakes": [],
+  "live": { "lio": false, "satellite": null },
+  "attribution": { "vectors": "© Government of Yukon", "lakes": "CanVec © Natural Resources Canada", "bush": "" },
+  "presets": [{ "name": "Highland Lake spot", "lon": -134.760001, "lat": 63.360577, "kind": "stand", "note": "From a plus code, 4 Oct 2026" }],
+  "bundle": {
+    "description": "Topo, 1.5 m satellite imagery, 30 m relief and contours, forest stands inferred from the national forest maps, burns, water, game management subzones, First Nation settlement land, and the habitat, wind and going grids around Highland Lake; no 1 m LiDAR here."
+  },
+  "files": {
+    "pmtiles": ["topo", "satellite", "hillshade", "dem", "contoursWide", "forest", "historical", "places"],
+    "geo": ["wmu", "crown", "fire", "roads"],
+    "baseGeo": ["waterbody"],
+    "grids": ["habitat", "micro", "going"]
+  },
+  "bake": {
+    "outDir": "app/public/data/areas/highland-lake",
+    "hrdem": [],
+    "lidar": "none",
+    "vectors": "yt",
+    "forest": {
+      "adapter": "ca.scanfi",
+      "vintage": "SCANFI 2025; CanLaD 1985-2025",
+      "attribution": "Forest inferred from SCANFI and CanLaD © Natural Resources Canada"
+    },
+    "imagery": "yt.spot",
+    "pointcloud": null,
+    "nts": ["105M07"]
+  },
+  "coverage": {
+    "checked": "2026-10-04",
+    "pmtiles": {
+      "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
+      "topo": {
+        "file": "topo-highland-lake.pmtiles",
+        "bytes": 2916916,
+        "source": "Toporama hypsography (contours and spot heights), NRCan WMS",
+        "licence": "OGL-Canada"
+      },
+      "satellite": {
+        "file": "satellite-highland-lake.pmtiles",
+        "bytes": 3691255,
+        "source": "Yukon SPOT 1.5 m colour composite, Geomatics Yukon ImageServer",
+        "licence": "OGL-Yukon",
+        "vintage": "2013-2022"
+      },
+      "hillshade": {
+        "file": "hillshade-highland-lake.pmtiles",
+        "bytes": 9289654,
+        "source": "MRDEM 30 m hillshade, NRCan WMS",
+        "licence": "OGL-Canada"
+      },
+      "hillshadeLidar": { "missing": "no 1 m LiDAR here: the nearest HRDEM survey is tens of km away" },
+      "dem": {
+        "file": "dem-highland-lake.pmtiles",
+        "bytes": 4803741,
+        "source": "MRDEM 30 m, with HRDEM 1 m LiDAR over the core (mrdem-30), NRCan",
+        "licence": "OGL-Canada"
+      },
+      "contours": { "missing": "no 1 m LiDAR here: the MRDEM's contours stand in" },
+      "contoursWide": { "file": "contours-wide-highland-lake.pmtiles", "bytes": 897059, "source": "MRDEM 30 m DTM, NRCan", "licence": "OGL-Canada" },
+      "forest": {
+        "file": "forest-highland-lake.pmtiles",
+        "bytes": 649149,
+        "source": "inferred from SCANFI v2 (species, closure, height, age, 30 m) and CanLaD v1.1 (cuts and burns), Canadian Forest Service",
+        "licence": "OGL-Canada; CanLaD CC BY 4.0",
+        "vintage": "SCANFI 2025; CanLaD 1985-2025"
+      },
+      "understory": { "missing": "no LiDAR point cloud here" },
+      "lanes": { "missing": "no LiDAR point cloud here" },
+      "bathy": { "missing": "Ontario only: lake depths need the ARA lake facts and the MNR sheets" },
+      "historical": {
+        "file": "historical-highland-lake.pmtiles",
+        "bytes": 29731,
+        "source": "CanMatrix2 1:50 000 NTS scans, NRCan: 105M07",
+        "licence": "OGL-Canada"
+      },
+      "bathySheets": { "missing": "Ontario only: MNR lake survey sheets" },
+      "places": {
+        "file": "places-highland-lake.pmtiles",
+        "bytes": 97495,
+        "source": "GeoYukon: game management subzones, First Nation settlement land, burns and roads",
+        "licence": "OGL-Yukon"
+      }
+    },
+    "geo": {
+      "wmu": {
+        "file": "wmu-highland-lake.geojson",
+        "bytes": 37580,
+        "source": "Game Management Areas 250k (subzones), GeoYukon; generalised, not for legal use",
+        "licence": "OGL-Yukon"
+      },
+      "camps": { "missing": "Ontario only: Crown land camps come from LIO" },
+      "crown": { "file": "crown-highland-lake.geojson", "bytes": 461, "source": "First Nation Settlement Lands, GeoYukon", "licence": "OGL-Yukon" },
+      "parks": { "missing": "none baked for the Yukon yet" },
+      "bathy": { "missing": "Ontario only: lake bathymetry comes from LIO" },
+      "fire": {
+        "file": "fire-highland-lake.geojson",
+        "bytes": 180535,
+        "source": "Yukon fire history, Wildland Fire Management, GeoYukon",
+        "licence": "OGL-Yukon"
+      },
+      "roads": {
+        "file": "roads-highland-lake.geojson",
+        "bytes": 111,
+        "source": "Yukon Road Network and surface disturbance lines (access roads, trails, cut lines), GeoYukon",
+        "licence": "OGL-Yukon"
+      },
+      "forest": { "missing": "not in the maps as GeoJSON: the map reads the stands from the forest tiles, and the GeoJSON stays the bake's input" },
+      "depth": { "missing": "Ontario only: lake depths need the ARA lake facts and the MNR sheets" }
+    },
+    "baseGeo": {
+      "waterbody": {
+        "file": "waterbody-highland-lake.geojson",
+        "bytes": 85116,
+        "source": "CanVec 1:50 000 waterbodies, via GeoYukon",
+        "licence": "OGL-Canada"
+      }
+    },
+    "grids": {
+      "habitat": {
+        "file": "habitat-highland-lake.hab",
+        "bytes": 1880472,
+        "source": "derived: MRDEM, NRCan 2020 land cover, forest stands, water, wetlands, roads and burns",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-04"
+      },
+      "micro": {
+        "file": "micro-highland-lake.hab",
+        "bytes": 2724392,
+        "source": "derived: the habitat grid and the MRDEM",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-04"
+      },
+      "going": {
+        "file": "going-highland-lake.hab",
+        "bytes": 898061,
+        "source": "derived: HRDEM LiDAR, point-cloud bush or the forest-map estimate, water, wetlands and roads",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-04"
+      }
+    }
+  }
+}

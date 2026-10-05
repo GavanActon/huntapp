@@ -1,0 +1,39 @@
+{
+ "cells": [
+  903,
+  612
+ ],
+ "cell_m": [
+  6.66,
+  9.95
+ ],
+ "elevation_from_lidar": 1.0,
+ "bush_from_lidar_of_land": 0.0,
+ "bush_from": "the forest-map estimate (habitat thick) on Pickle Lake's LiDAR calibration, too little point cloud here to calibrate on",
+ "estimate_to_lidar": [],
+ "bush_land_percentiles": {
+  "10": 0.481,
+  "25": 0.481,
+  "50": 0.481,
+  "75": 0.586,
+  "90": 0.586,
+  "99": 0.586
+ },
+ "rough_m_land_percentiles": {
+  "10": 0.002,
+  "25": 0.005,
+  "50": 0.014,
+  "75": 0.031,
+  "90": 0.058,
+  "99": 0.135
+ },
+ "ground": {
+  "upland": 534443,
+  "water": 16259,
+  "marsh": 0,
+  "open peatland": 51,
+  "swamp": 0,
+  "road": 0,
+  "stream": 1883
+ }
+}

@@ -41,3 +41,7 @@ app/public/data/areas/sault-test/fmz-sault-test.geojson
 app/public/data/areas/sault-test/rail-sault-test.geojson
 app/public/data/areas/sault-test/trails-sault-test.geojson
 app/public/data/areas/sault-test/trapline-sault-test.geojson
+# Highland Lake's bake inputs, which the app never reads
+app/public/data/areas/highland-lake/forest-highland-lake.geojson
+app/public/data/areas/highland-lake/watercourse-highland-lake.geojson
+app/public/data/areas/highland-lake/wetland-highland-lake.geojson

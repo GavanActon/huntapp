@@ -195,8 +195,16 @@ def stands(a, tr, crs) -> list[dict]:
     codes = list(SPECIES.values())
     conif_i = [codes.index(SPECIES[k]) for k in CONIFER]
 
-    # smooth the stair-steps across the shared edges, then to lon/lat
-    geoms = shapely.coverage_simplify(np.array([p for p, _ in polys], dtype=object), SMOOTH_M)
+    # smooth the stair-steps across the shared edges, then to lon/lat. GEOS's
+    # coverage simplify throws on some coverages (Highland Lake: "Points of
+    # LinearRing do not form a closed linestring"); each stand on its own then,
+    # which can leave slivers of up to SMOOTH_M between neighbours.
+    raw = np.array([p for p, _ in polys], dtype=object)
+    try:
+        geoms = shapely.coverage_simplify(raw, SMOOTH_M)
+    except shapely.errors.GEOSException as e:
+        print(f"  coverage simplify failed ({e}): stand by stand")
+        geoms = shapely.simplify(raw, SMOOTH_M, preserve_topology=True)
     to_ll = Transformer.from_crs(crs, "EPSG:4326", always_xy=True)
     box = shapely.box(REGION["west"], REGION["south"], REGION["east"], REGION["north"])
     out = []
