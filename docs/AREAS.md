@@ -402,6 +402,46 @@ checked live at the point on 2026-10-03:
   are baked, never fetched live. The MRNF ArcGIS server is slow and often
   returns 503s, so retry.
 
+## Highland Lake, Yukon
+
+Centre 63.3606, −134.7600 (a plus code Gavan sent), on Highland Lake
+(Et'aghro, about 91 ha), sheet 105M/07. It is in game management subzone
+4-09 and outfitting concession 7, in Na-Cho Nyäk Dun traditional territory.
+It is not on settlement land: the nearest parcel is a 1 ha Category B site
+on the shore. No road, trail or cut line in any open layer comes within
+10 km, so this is fly-in country. Declination is +18.2°.
+
+It is the first area with **no 1 m LiDAR**: the nearest HRDEM survey is
+Mayo, at least 50 km away. `--new` sets `bake.lidar: "none"` when NRCan's
+catalogue answers with nothing over the core. Then:
+- the hillshade step makes the core's elevation grid from the 30 m MRDEM,
+  bilinear onto 5 m, so the DEM tiles and the going grid bake unchanged;
+- no LiDAR shade or 1 m contours are drawn: the MRDEM's hillshade and
+  contours stand in;
+- there is no point cloud, so no bush thickness or shooting lanes, and the
+  habitat's bush comes from the stand estimate.
+
+Its sources:
+- **Yukon layers** (`yt_vectors.py`, OGL-Yukon, GeoYukon's ArcGIS services
+  at `mapservices.gov.yk.ca/arcgis/rest/services/GeoYukon`):
+  - fire history;
+  - game management subzones (the layer holds only an id: 409 is 4-09);
+  - First Nation settlement land, as the map's "Private land" layer;
+  - the road network and the surface disturbance lines.
+- **CanVec 1:50 000 water**, served by the same GeoYukon services.
+- **Stands:** inferred from SCANFI and CanLaD (`ca_forest.py`).
+- **Imagery:** the 1.5 m SPOT composite, exported tile by tile from
+  `mapservices.gov.yk.ca/imagery/.../Yukon_Composite_150cm_WebMercator/ImageServer`.
+
+Checked and not used yet:
+- the Yukon Vegetation Inventory (1988–89 photos);
+- NBAC burns;
+- the ArcticDEM 2 m surface model (it includes the trees);
+- moose key areas and caribou ranges.
+
+The moose model was built for boreal Ontario. Yukon's subalpine country,
+willow and big burns have not been checked against it.
+
 ## Status
 
 Built on branch `areas` (2026-10-03/04). Not yet merged or deployed.

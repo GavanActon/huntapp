@@ -14,6 +14,11 @@ and is blended into the newer one over FEATHER_M at their seam (feather).
 A cache that exists is used as it is. Only the core comes from LiDAR; the
 wider region's low zooms keep the MRDEM hillshade from build_tiles.py.
 
+An area with no 1 m LiDAR over its core (bake.lidar "none": the Yukon
+fly-in lakes) gets the same cache from the 30 m MRDEM, bilinear onto a
+MRDEM_CELL_M grid, so the DEM tiles and the going grid bake unchanged.
+No shade is drawn from it: the MRDEM hillshade tiles already are that.
+
 The lakes are left unshaded (lakes.py): the LiDAR ground model is not
 flattened on water here, and its 0.2-1 m of noise drew as texture on the
 lakes over the imagery (Gavan, 2026-09-28, in the Bow view).
@@ -41,6 +46,7 @@ STAC_SEARCH = "https://datacube.services.geo.ca/stac/api/search"
 MARGIN_DEG = 0.004  # a few hundred metres past the core, so edge tiles shade cleanly
 OVERSAMPLE = 2
 FEATHER_M = 30.0  # an older survey filling a newer one's gaps is blended into it over this far
+MRDEM_CELL_M = 5.0  # the core grid made from the 30 m MRDEM where there is no LiDAR
 
 GDAL_ENV = dict(
     GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR",
@@ -79,6 +85,29 @@ def stac_search(box: dict) -> list[str]:
         raise SystemExit(f"no HRDEM LiDAR project meets the core ({bbox})")
     print("HRDEM projects over the core, newest first: " + ", ".join(project(u) for u in urls))
     return urls
+
+
+def no_lidar() -> bool:
+    return BAKE.get("lidar") == "none"
+
+
+def mrdem_core():
+    """The core plus MARGIN_DEG from the 30 m MRDEM, bilinear onto a
+    MRDEM_CELL_M grid in its own CRS: (array, transform, crs, nodata)."""
+    from rasters import MRDEM
+
+    box = (CORE["west"] - MARGIN_DEG, CORE["south"] - MARGIN_DEG, CORE["east"] + MARGIN_DEG, CORE["north"] + MARGIN_DEG)
+    with rasterio.Env(**GDAL_ENV), rasterio.open(f"/vsicurl/{MRDEM}") as src:
+        b = transform_bounds("EPSG:4326", src.crs, *box, densify_pts=21)
+        w = window_from_bounds(*b, src.transform).round_offsets().round_lengths()
+        a = src.read(1, window=w).astype(np.float32)
+        tr, crs, nodata = src.window_transform(w), src.crs.to_string(), float(src.nodata if src.nodata is not None else -32767)
+    k = abs(tr.a) / MRDEM_CELL_M
+    elev = np.full((int(round(a.shape[0] * k)), int(round(a.shape[1] * k))), nodata, dtype=np.float32)
+    fine = tr * rasterio.Affine.scale(1 / k)
+    reproject(a, elev, src_transform=tr, src_crs=crs, src_nodata=nodata, dst_transform=fine, dst_crs=crs, dst_nodata=nodata, resampling=Resampling.bilinear)
+    print(f"  no 1 m LiDAR here: the core from the MRDEM, {a.shape} at {abs(tr.a):g} m onto {elev.shape} at {MRDEM_CELL_M:g} m")
+    return elev, fine, crs, nodata
 
 
 def hrdem_sources() -> list[str]:
@@ -203,6 +232,10 @@ def fetch_core(sources: list[str] | None = None):
         if not grid_covers(transform, elev.shape, crs, CORE):
             raise SystemExit(f"{cache.name} does not reach over this area's core (moved or grown since it was read?): delete it to read the LiDAR again")
         return elev, transform, crs, nodata
+    if no_lidar() and not sources:
+        elev, transform, crs, nodata = mrdem_core()
+        np.savez_compressed(cache, elev=elev, transform=np.array(transform)[:6], crs=crs, nodata=nodata, sources=np.array(["mrdem-30"]), feather_m=0.0)
+        return elev, transform, crs, nodata
     sources = sources or hrdem_sources()
     tags = checkpoint_tags(sources)
     t = time.time()
@@ -261,6 +294,10 @@ def core_share(elev: np.ndarray, transform, crs: str, nodata: float) -> float:
 
 
 def main(sources: list[str] | None = None):
+    if no_lidar() and not sources:
+        fetch_core()
+        print("the core's grid is the MRDEM's, for the DEM and the going grid; the shade stays the MRDEM hillshade tiles")
+        return
     elev, transform, crs, nodata = fetch_core(sources)
     share = core_share(elev, transform, crs, nodata)
     print(f"LiDAR over {share * 100:.1f}% of the core")

@@ -68,6 +68,17 @@ IMAGERY: dict[str, dict] = {
         "minz": 9,
         "cache": "satellite-qc-imagerie_gq",
     },
+    # Geomatics Yukon's 1.5 m colour composite (SPOT 6/7, 2013-2022), the
+    # whole territory in one image service: exported tile by tile, as it has
+    # no tile cache. OGL-Yukon (the pixels are Airbus's).
+    "yt.spot": {
+        "url": "https://mapservices.gov.yk.ca/imagery/rest/services/Satellites/Yukon_Composite_150cm_WebMercator/ImageServer/exportImage"
+        "?bbox={bbox}&bboxSR=3857&imageSR=3857&size=256,256&format=jpg&f=image",
+        "attribution": "Imagery © Government of Yukon (SPOT 6/7)",
+        "fmt": "JPEG",
+        "minz": 9,
+        "cache": "satellite-yt-spot",
+    },
 }
 
 SERVICES: dict[str, dict] = {
