@@ -101,7 +101,8 @@ names already carry the area id, so two areas sit side by side.
 - **Going to a place in another area switches to it.** That covers a pin, a
   pasted coordinate, or a GPS fix inside another area's box. A place in no
   area at all gets "No detail here yet", with the coordinates.
-- **Coordinates go in.** A box (in the ⋯ menu) takes "N 49.409550° W
+- **Coordinates go in.** A box (Go to coordinates; in the ⋯ menu until
+  2026-10-05, now opened by a shared spot in no area) takes "N 49.409550° W
   69.553490°" as Garmin writes it, "49.40955, -69.55349", or degrees and
   minutes. It goes there, switching area if it needs to, and offers to drop a
   pin.
@@ -198,9 +199,10 @@ question: opening a link is the choice.
 - Android (Chrome): the installed app shares Chrome's storage, so the area
   and the view a link left are there, and links in its scope open the
   installed app. The app's own manifest is unchanged.
-- A later spot link on an iPhone opens Safari. To get it into the icon,
-  copy the link (Share › Copy, or a long press on it), then ⋯ › Paste in
-  the app, which reads the app's own links.
+- A later spot link on an iPhone opens Safari. ⋯ › Paste in the app took
+  it into the icon (it reads the app's own links); that left the menu with
+  Go to coordinates on 2026-10-05, so for now such a link opens in Safari
+  only.
 
 **Sending.** Nothing is added to the map's own screen: Share is a level
 down (`app/src/share/share.ts`).

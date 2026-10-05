@@ -2,20 +2,20 @@ import { useRef, type JSX } from 'react'
 import { openHuntLog } from '../log/logView'
 import { useMapUpdates } from '../offline/updates'
 import { useAppStore, type Sheet } from '../state/appStore'
-import { IconBook, IconClock, IconGear, IconGrid, IconLayers, IconPin, IconPlaces, IconSatellite } from './icons'
+import { IconBook, IconClock, IconGear, IconPin, IconPlaces, IconSatellite } from './icons'
 import { useTapOff } from './tapOff'
 
 /**
  * The ⋯ menu behind the strip: Hunt log, Pins, Locations (the areas, each
  * with its Share), Weather by satellite (the request to text, and the
- * answer pasted back), Map buttons, Views, HuntOS (the field guide) and
- * Settings, with the new-maps count beside Settings when the server has
- * some. It hangs under the right end of whatever is position: relative
- * around it (the folded line, or the open strip's header); a tap anywhere
- * else closes it.
+ * answer pasted back), HuntOS (the field guide) and Settings, with the
+ * new-maps count beside Settings when the server has some. It hangs under
+ * the right end of whatever is position: relative around it (the folded
+ * line, or the open strip's header); a tap anywhere else closes it.
  *
- * Go to coordinates is not here (Gavan, 2026-10-05): its sheet still opens
- * on its own for a shared spot in no area (map/goto.ts).
+ * Not here (Gavan, 2026-10-05): Go to coordinates, whose sheet still opens
+ * on its own for a shared spot in no area (map/goto.ts), and Map buttons
+ * and Views, which are in Settings under Map.
  */
 export default function AppMenu({ open, onClose }: { open: boolean; onClose: () => void }): JSX.Element | null {
   const ref = useRef<HTMLDivElement>(null)
@@ -54,16 +54,6 @@ export default function AppMenu({ open, onClose }: { open: boolean; onClose: () 
       <button className="wx-menu-row" role="menuitem" onClick={() => go({ kind: 'sat' })}>
         <IconSatellite />
         Weather by satellite
-        <span className="dim">›</span>
-      </button>
-      <button className="wx-menu-row" role="menuitem" onClick={() => go({ kind: 'buttons' })}>
-        <IconGrid />
-        Map buttons
-        <span className="dim">›</span>
-      </button>
-      <button className="wx-menu-row" role="menuitem" onClick={() => go({ kind: 'views' })}>
-        <IconLayers />
-        Views
         <span className="dim">›</span>
       </button>
       <button className="wx-menu-row" role="menuitem" onClick={() => go({ kind: 'guide' })}>

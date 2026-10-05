@@ -219,8 +219,11 @@ function SendSettingsRow({ online }: { online: boolean }): JSX.Element {
 }
 
 /**
- * Settings, one level deep: the maps on the phone, the weather, the buttons, the hand,
- * units and text, then the wind flow's knobs and the contour interval. The
+ * Settings, one level deep, under headings and nothing folded away (Gavan,
+ * 2026-10-05: categorical, but don't hide): On this phone (the maps, the
+ * weather), Map (Map buttons and Views, which left the ⋯ menu for here, the
+ * contour interval, past hunts), Wind flow, Display (units, the hand, text
+ * and buttons, Outdoor), Sharing (your initials), Something wrong?. The
  * download runs in offline/downloads.ts, so closing the sheet does not stop
  * it. The host draws the title row.
  */
@@ -265,6 +268,7 @@ export default function SettingsSheet(): JSX.Element {
 
   return (
     <div className="settings">
+      <div className="st-sec">On this phone</div>
       {/* the row's word (All saved, Download) is the area the app is in; the sheet has every area */}
       <div className="st-row st-two">
         <button onClick={() => pushSheet({ kind: 'offline' })}>
@@ -287,6 +291,8 @@ export default function SettingsSheet(): JSX.Element {
         </div>
       )}
       <WeatherRow online={online} />
+
+      <div className="st-sec">Map</div>
       <button className="st-row" onClick={() => pushSheet({ kind: 'buttons' })}>
         <span>Map buttons</span>
         <span className="dim">›</span>
@@ -296,77 +302,21 @@ export default function SettingsSheet(): JSX.Element {
         <span className="dim">›</span>
       </button>
       <div className="st-row">
-        <span>Thumb</span>
-        <div className="seg" role="radiogroup" aria-label="Which hand">
-          {([false, true] as const).map((left) => (
-            <button key={String(left)} className={leftHanded === left ? 'seg-on' : ''} role="radio" aria-checked={leftHanded === left} onClick={() => setLeftHanded(left)}>
-              {left ? 'Left' : 'Right'}
+        <span>Contour interval</span>
+        <div className="seg" role="radiogroup" aria-label="Contour interval">
+          {CONTOUR_INTERVALS.map((m) => (
+            <button key={m} className={contourInterval === m ? 'seg-on' : ''} role="radio" aria-checked={contourInterval === m} onClick={() => setContourInterval(m)}>
+              {m} m
             </button>
           ))}
         </div>
       </div>
-      <label className="st-row">
-        <span>Button names</span>
-        <input type="checkbox" className="switch" checked={buttonLabels} onChange={(e) => setButtonLabels(e.target.checked)} />
-      </label>
-      <div className="st-row">
-        <span>Units</span>
-        <div className="seg" role="radiogroup" aria-label="Units">
-          {(['metric', 'imperial'] as const).map((u) => (
-            <button key={u} className={units === u ? 'seg-on' : ''} role="radio" aria-checked={units === u} onClick={() => setUnits(u)}>
-              {u === 'metric' ? '°C km/h' : '°F mph'}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="st-row">
-        <span>Text size</span>
-        <div className="seg" role="radiogroup" aria-label="Text size">
-          {TEXT_SIZES.map(([t, label]) => (
-            <button key={t} className={textSize === t ? 'seg-on' : ''} role="radio" aria-checked={textSize === t} onClick={() => setTextSize(t)}>
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="st-row">
-        <span>Top row buttons</span>
-        <div className="seg" role="radiogroup" aria-label="Top row buttons">
-          {([['normal', 'Normal'], ['large', 'Large'], ['xlarge', 'Extra large']] as const).map(([t, label]) => (
-            <button key={t} className={stripButtons === t ? 'seg-on' : ''} role="radio" aria-checked={stripButtons === t} onClick={() => setStripButtons(t)}>
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-      <label className="st-row">
-        <span>
-          Your initials <span className="dim">· on the wind checks you share</span>
-        </span>
-        <input type="text" className="st-text" value={who} maxLength={12} placeholder="GA" onChange={(e) => setWho(e.target.value)} aria-label="Your initials" />
-      </label>
       <div className="st-row">
         <span>Past hunts on the map</span>
         <div className="seg" role="radiogroup" aria-label="Past hunts on the map">
           {(['none', 'today', 'week', 'all'] as const).map((v) => (
             <button key={v} className={pastHunts === v ? 'seg-on' : ''} role="radio" aria-checked={pastHunts === v} onClick={() => setPastHunts(v)}>
               {v === 'none' ? 'None' : v === 'today' ? 'Today' : v === 'week' ? '7 days' : 'All'}
-            </button>
-          ))}
-        </div>
-      </div>
-      <label className="st-row">
-        <span>
-          Outdoor <span className="dim">· for sun on the phone</span>
-        </span>
-        <input type="checkbox" className="switch" checked={outdoor} onChange={(e) => setOutdoor(e.target.checked)} />
-      </label>
-      <div className="st-row">
-        <span>Contour interval</span>
-        <div className="seg" role="radiogroup" aria-label="Contour interval">
-          {CONTOUR_INTERVALS.map((m) => (
-            <button key={m} className={contourInterval === m ? 'seg-on' : ''} role="radio" aria-checked={contourInterval === m} onClick={() => setContourInterval(m)}>
-              {m} m
             </button>
           ))}
         </div>
@@ -407,6 +357,66 @@ export default function SettingsSheet(): JSX.Element {
           ))}
         </div>
       </div>
+
+      <div className="st-sec">Display</div>
+      <div className="st-row">
+        <span>Units</span>
+        <div className="seg" role="radiogroup" aria-label="Units">
+          {(['metric', 'imperial'] as const).map((u) => (
+            <button key={u} className={units === u ? 'seg-on' : ''} role="radio" aria-checked={units === u} onClick={() => setUnits(u)}>
+              {u === 'metric' ? '°C km/h' : '°F mph'}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="st-row">
+        <span>Thumb</span>
+        <div className="seg" role="radiogroup" aria-label="Which hand">
+          {([false, true] as const).map((left) => (
+            <button key={String(left)} className={leftHanded === left ? 'seg-on' : ''} role="radio" aria-checked={leftHanded === left} onClick={() => setLeftHanded(left)}>
+              {left ? 'Left' : 'Right'}
+            </button>
+          ))}
+        </div>
+      </div>
+      <label className="st-row">
+        <span>Button names</span>
+        <input type="checkbox" className="switch" checked={buttonLabels} onChange={(e) => setButtonLabels(e.target.checked)} />
+      </label>
+      <div className="st-row">
+        <span>Text size</span>
+        <div className="seg" role="radiogroup" aria-label="Text size">
+          {TEXT_SIZES.map(([t, label]) => (
+            <button key={t} className={textSize === t ? 'seg-on' : ''} role="radio" aria-checked={textSize === t} onClick={() => setTextSize(t)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="st-row">
+        <span>Top row buttons</span>
+        <div className="seg" role="radiogroup" aria-label="Top row buttons">
+          {([['normal', 'Normal'], ['large', 'Large'], ['xlarge', 'Extra large']] as const).map(([t, label]) => (
+            <button key={t} className={stripButtons === t ? 'seg-on' : ''} role="radio" aria-checked={stripButtons === t} onClick={() => setStripButtons(t)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <label className="st-row">
+        <span>
+          Outdoor <span className="dim">· for sun on the phone</span>
+        </span>
+        <input type="checkbox" className="switch" checked={outdoor} onChange={(e) => setOutdoor(e.target.checked)} />
+      </label>
+
+      <div className="st-sec">Sharing</div>
+      <label className="st-row">
+        <span>
+          Your initials <span className="dim">· on the wind checks you share</span>
+        </span>
+        <input type="text" className="st-text" value={who} maxLength={12} placeholder="GA" onChange={(e) => setWho(e.target.value)} aria-label="Your initials" />
+      </label>
 
       <div className="st-sec">Something wrong?</div>
       <DevlogRows />
