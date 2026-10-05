@@ -40,7 +40,7 @@
     "nts": ["105M07"]
   },
   "coverage": {
-    "checked": "2026-10-04",
+    "checked": "2026-10-05",
     "pmtiles": {
       "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
       "topo": {
@@ -139,10 +139,10 @@
       },
       "micro": {
         "file": "micro-highland-lake.hab",
-        "bytes": 2724392,
+        "bytes": 6764532,
         "source": "derived: the habitat grid and the MRDEM",
         "licence": "derived from the layers above",
-        "vintage": "generated 2026-10-04"
+        "vintage": "generated 2026-10-05"
       },
       "going": {
         "file": "going-highland-lake.hab",
