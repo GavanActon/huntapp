@@ -70,6 +70,8 @@ ADAPTERS: dict[str, dict[str, tuple[str, list[str]]]] = {
     "forest": {
         "on.fri": ("3.13", ["build_forest.py"]),  # pyogrio: the FRI is a file geodatabase
         "qc.ecoforestier": ("3.14", ["qc_forest.py", "--area", "{id}"]),
+        # anywhere in Canada with no provincial stands: inferred from the CFS's national 30 m maps
+        "ca.scanfi": ("3.14", ["ca_forest.py", "--area", "{id}"]),
     },
     "pointcloud": {
         # the index read needs pyogrio once; it is cached after
