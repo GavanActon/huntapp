@@ -41,12 +41,12 @@
 
 <section class="hero" aria-labelledby="hero-title">
   <div>
-    <p class="eyebrow">Ontario and Québec · <span class="nw">on the stand and on the move</span></p>
+    <p class="eyebrow">Made to order for your ground · <span class="nw">on the stand and on the move</span></p>
     <h1 id="hero-title">The forecast is a guess. <em>Sharpen it.</em></h1>
     <p class="lede">Groundwind runs a real wind model at ground level: Environment Canada's high-resolution forecast, worked over the LiDAR terrain and through the trees and the season's leaves. Puff your powder and tap where it went, and your check corrects the model around you. Your scent cone shows where your scent is really going, with or without bars.</p>
     <div class="ctas">
       <a class="btn btn-go" href="/app">Open the beta</a>
-      <a class="btn btn-quiet" href="/guide">How to use it</a>
+      <a class="btn btn-quiet" href="#request">Request your spot</a>
     </div>
     <div class="qr">
       <img src="media/app-qr.svg" width="96" height="96" alt="QR code for groundwind.app/app">
@@ -89,6 +89,25 @@
     <li><b>Trees and leaves</b><span>Stand height and closure from the LiDAR point cloud, the hardwoods' leaves coming down by date, wind channelled down the slots between stands.</span></li>
     <li><b>Gusts and swirl</b><span>The forecast's gusts widen the cone, and the air tumbles behind tree lines and in openings.</span></li>
     <li><b>Your checks</b><span>Each puff corrects the model near you and teaches it how that kind of air behaves at your spot.</span></li>
+  </ol>
+</section>
+
+<section class="built" id="built" aria-labelledby="built-title">
+  <div class="built-text">
+    <p class="tag" style="--dot: var(--scent)">Made to order</p>
+    <h2 id="built-title">Not an app for everywhere. Built for your spot.</h2>
+    <p>An app that runs anywhere can only give you the forecast arrow. The wind at your head depends on your ridge, your stands and your shoreline, and getting it right takes 1&nbsp;m LiDAR, the forest inventory and a wind model solved over that exact ground. So we don't fake it everywhere. You send us your spot, and we build it.</p>
+    <div class="heights">
+      <div><b class="w">10×10<small>km</small></b><span>Built around your spot: the ground, the bush and the air over it.</span></div>
+      <div><b class="s">48<small>h</small></b><span>From your request to the map on your phone.</span></div>
+    </div>
+    <a class="btn btn-go" href="#request">Request your spot</a>
+  </div>
+  <ol class="steps" aria-label="How an area gets built">
+    <li><b>Send your spot</b><span>Coordinates from your GPS or Google Maps, or the name of the lake.</span></li>
+    <li><b>We build it</b><span>The 1&nbsp;m LiDAR ground and bush, every forest stand, the ground wind solved over the terrain, the moose scores and the routes, built and checked by hand for that block.</span></li>
+    <li><b>It's on your phone</b><span>We email you when it's ready. Save it once at camp and all of it works with no service.</span></li>
+    <li><b>Ontario and Québec</b><span>Today. Elsewhere in Canada, ask: a new province takes us longer, because its forest and LiDAR come from different places.</span></li>
   </ol>
 </section>
 
@@ -252,7 +271,7 @@
       <p>Eye-level cover isn't the canopy. A closed canopy shades the brush out, while a cut or a burn fills in with suckers and saplings. Groundwind counts the LiDAR returns between 0.5 and 3&nbsp;m against everything below 3&nbsp;m, cell by 10&nbsp;m cell. Where the point cloud hasn't been fetched yet, it estimates the brush from each stand's age and makeup.</p>
     </details>
   </div>
-  <div class="phone"><video data-loop src="media/bushview.mp4" poster="media/bushview.jpg" muted loop playsinline preload="none" aria-label="The imagery, then the Bush view colouring the brush, then the Bow view with lanes clear and thick bush dark, then a spot's sight lines in metres"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
+  <div class="phone"><video data-loop src="media/bushview.mp4" poster="media/bushview.jpg" muted loop playsinline preload="none" aria-label="The land alone, then the shooting-lanes overlay showing where you'll be able to see and shoot, then the Bush view colouring the brush from open to thicket"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
 </section>
 
 <section class="row" id="tonight" aria-labelledby="f4-title">
@@ -308,12 +327,12 @@
 
 <section class="beta" aria-label="Join the beta">
   <div class="live">
-    <h2>Two areas are live.</h2>
+    <h2>Built so far.</h2>
     <ul class="areas">
       <li><b>Pickle Lake</b><span>Near White River, ON · WMU 21B</span></li>
       <li><b>Lac Bailey</b><span>Québec · zone 18</span></li>
     </ul>
-    <p>Open the beta and both are there to try.</p>
+    <p>Open the beta and both are there to try: it's what your own spot will look like.</p>
     <a class="btn btn-go" href="/app">Open the beta</a>
     <details>
       <summary>Put it on your phone</summary>
@@ -322,8 +341,8 @@
   </div>
 
   <form class="req" id="request" novalidate>
-    <h2>Request your area.</h2>
-    <p>During the beta we dig in on each new area by hand: LiDAR, forest inventory, the wind model. Tell us where you hunt and we'll email you when it's ready.</p>
+    <h2>Request your spot.</h2>
+    <p>Tell us where you hunt. We build a 10 × 10 km block around it and email you when it's on the map: within 48 hours in Ontario and Québec.</p>
     <div class="field">
       <label for="req-email">Email</label>
       <input id="req-email" name="email" type="email" autocomplete="email" required>
@@ -366,7 +385,11 @@
     </details>
     <details>
       <summary>Where does it work?</summary>
-      <p>The full detail (LiDAR, forest, the ground wind, routes) is built one area at a time. Two are live: Pickle Lake near White River, and Lac Bailey in Québec. <a href="#request">Request yours</a> and we'll dig in.</p>
+      <p>Where we've built it, on purpose. Each area is a 10 × 10 km block built around someone's spot: Pickle Lake near White River and Lac Bailey in Québec so far. <a href="#request">Request yours</a> and it's ready within 48 hours.</p>
+    </details>
+    <details>
+      <summary>Why not everywhere?</summary>
+      <p>Because a map of everywhere can only show you the forecast arrow. The wind at your head depends on your ridge, your stands and your shoreline, and modelling that takes 1&nbsp;m LiDAR, the forest inventory and a wind solve over that exact ground. We'd rather do your spot properly than the whole country badly.</p>
     </details>
     <details>
       <summary>What happens to my data?</summary>
@@ -415,7 +438,7 @@ const REQUEST_URL = '/api/request'
       if (r.status === 429) return (msg.textContent = 'Lots of requests from here just now. Try again in an hour.')
       if (!r.ok) throw new Error(String(r.status))
       form.reset()
-      msg.textContent = "Got it. We'll email you when your area is ready."
+      msg.textContent = "Got it. We'll build it and email you when it's ready, within 48 hours."
     } catch {
       msg.textContent = "That didn't go through. Check your connection and try again."
     }

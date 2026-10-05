@@ -594,3 +594,38 @@ footer .links a:hover { color: var(--ink); text-decoration: underline; }
   box-shadow: 0 0 0 1px rgba(243, 248, 239, 0.35), 0 6px 20px rgba(0, 0, 0, 0.45);
 }
 .phone.wait .loop-toggle[aria-label="Play"]::before { border-left-width: 20px; border-block-width: 12px; margin-left: 6px; }
+
+/* ---- made to order: not everywhere, built for your spot */
+.built { display: grid; gap: 36px; padding-block: 64px; border-top: 1px solid var(--line); align-items: start; }
+.built-text { display: grid; gap: 20px; align-content: start; min-width: 0; }
+.built-text > p:not(.tag) { color: var(--dim); max-width: 34em; }
+.built-text .btn { justify-self: start; }
+.heights b small { font-size: 0.42em; margin-left: 0.18em; letter-spacing: 0.02em; }
+.steps { list-style: none; padding: 0; margin: 0; display: grid; counter-reset: step; }
+.steps li {
+  counter-increment: step;
+  display: grid;
+  grid-template-columns: 2.6rem 1fr;
+  column-gap: 10px;
+  row-gap: 6px;
+  padding-block: 18px;
+  border-top: 1px solid var(--line);
+}
+.steps li::before {
+  content: counter(step);
+  grid-row: span 2;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font: 500 0.85rem/1 var(--f-mono);
+  color: var(--on-accent);
+  background: var(--accent);
+}
+.steps li:last-child::before { content: '·'; background: transparent; color: var(--faint); border: 1px solid var(--line-strong); }
+.steps b { font: 800 1.5rem/1 var(--f-display); text-transform: uppercase; letter-spacing: 0.01em; }
+.steps span { color: var(--dim); font-size: 0.97rem; max-width: 34em; }
+@media (min-width: 860px) {
+  .built { grid-template-columns: 1fr 1fr; gap: 72px; padding-block: 88px; }
+}
