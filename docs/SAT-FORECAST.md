@@ -29,15 +29,17 @@ what is left before it works for real. See [Going live](#going-live).
     number, paste, send. The request for an area never changes, so it can
     also be saved once as an inReach preset.
 - **2 · Paste the answer**: the whole reply, as it came. Pasting is the
-  update, with no button after it. The sheet says "Updated · HRDPS 12Z ·
-  45 h" and how the wind at the coming dusk changed ("At dusk (7:13): NW
-  6, was NW 5").
+  update, with no button after it. The sheet says "Weather updated", the
+  run and the hours under it, and how the wind at the coming dusk changed
+  ("At dusk (7:13): NW 6, was NW 5"). A reply for a run the phone already
+  has (fetched with signal) says "Weather updated" too and leaves the
+  fetched numbers alone: they are a little finer than the text's.
 - The request is remembered. Close the sheet and pocket the phone; when it
   opens again it says when you asked. An answer takes a few minutes. With
   Apple's satellite you stay connected for it. On an inReach, check for
   messages.
 - What goes wrong says so: no code in the text, part of it missing or
-  changed, a reply for another area, or a run the phone already has.
+  changed, or a reply for another area.
 
 ## What the reply holds
 
