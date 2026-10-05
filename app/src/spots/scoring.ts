@@ -3,7 +3,7 @@
  * a score per cell (the heat map), the best few separate spots with their
  * reasons, and the day's verdict. Pure: no map, no store.
  */
-import { SPOTS_RADIUS_M } from '../config'
+import { CORE, SPOTS_RADIUS_M } from '../config'
 import { habitat, type Habitat } from './habitatGrid'
 import type { Conditions } from './conditions'
 import { activityVerdict, describeCell, habitatScore, huntBands, siteFactor, viewM, type HuntBands } from './huntRules'
@@ -95,28 +95,112 @@ function pickPeaks(h: Habitat, scores: Float32Array, n: number, sepM: number, mi
   return out
 }
 
-export function scoreHunt(target: Exclude<Target, 'walleye' | 'pike' | 'laketrout'>, c: Conditions, home: { lon: number; lat: number; name: string }, w: Weights = DEFAULT_WEIGHTS): ScoreResult | null {
+type HuntTarget = Exclude<Target, 'walleye' | 'pike' | 'laketrout'>
+
+/**
+ * The cells a hunt pass scores, rows r0..r1 and columns c0..c1 (ends
+ * exclusive), as [r0, r1, c0, c1]. Three things read the scores:
+ * - the heat map, out to a third past the radius round the subject plus
+ *   the smooth's margin (spotsLayer paint);
+ * - the hunt log's snapshot, which ranks within the radius round its own
+ *   point;
+ * - the hunt routes, over the core the going grid covers.
+ * So the window is the subject's round, plus the core, with a few cells to
+ * spare. The rest of the region stays 0: a quarter to a third of the cells.
+ */
+export function scoreWindow(h: Habitat, home: { lon: number; lat: number }): [number, number, number, number] {
+  const ni = h.index(home.lon, home.lat)
+  const [nr, nc] = ni >= 0 ? h.rc(ni) : [h.rows >> 1, h.cols >> 1]
+  const rx = SPOTS_RADIUS_M / h.cellM[0]
+  const ry = SPOTS_RADIUS_M / h.cellM[1]
+  const M = 4 // paint's smooth pads 2; two more to spare
+  const kr0 = Math.floor((h.north - CORE.north) / h.dLat) - 2
+  const kr1 = Math.ceil((h.north - CORE.south) / h.dLat) + 2
+  const kc0 = Math.floor((CORE.west - h.west) / h.dLon) - 2
+  const kc1 = Math.ceil((CORE.east - h.west) / h.dLon) + 2
+  return [
+    Math.max(0, Math.min(Math.floor(nr - 1.34 * ry) - M, kr0)),
+    Math.min(h.rows, Math.max(Math.ceil(nr + 1.34 * ry) + M + 1, kr1)),
+    Math.max(0, Math.min(Math.floor(nc - 1.34 * rx) - M, kc0)),
+    Math.min(h.cols, Math.max(Math.ceil(nc + 1.34 * rx) + M + 1, kc1)),
+  ]
+}
+
+/** A hunt pass under way: scoreHunt in three steps (huntPass, huntRows,
+ *  huntResult), so the map can run it a few rows at a time and paint a
+ *  rough copy first (spotsLayer). */
+export interface HuntPass {
+  target: HuntTarget
+  c: Conditions
+  home: { lon: number; lat: number; name: string }
+  w: Weights
+  h: Habitat
+  b: HuntBands
+  warm: boolean
+  lateFall: boolean
+  log: Float32Array | null
+  scores: Float32Array
+  /** scoreWindow's rows and columns */
+  win: [number, number, number, number]
+}
+
+export function huntPass(target: HuntTarget, c: Conditions, home: { lon: number; lat: number; name: string }, w: Weights = DEFAULT_WEIGHTS): HuntPass | null {
   const h = habitat()
   if (!h) return null
   if (!huntCache || huntCache.h !== h) huntCache = { h, b: huntBands(h) }
-  const b = huntCache.b
-  const verdict = activityVerdict(target, c, w)
-  const warm = c.tempC > 14 && c.sinceSunriseH > 2 && c.toSunsetH > 1.5
-  const lateFall = c.dayOfYear >= 288
-  const scores = new Float32Array(h.size)
-  // the hunter's own log: fresh sign pulls, blank sits push
-  const log = w.log > 0 ? logBoostGrid(h, target, c.timeMs) : null
-  for (let i = 0; i < h.size; i++) {
-    const hs = habitatScore(target, b, i, warm, lateFall, w)
-    if (hs < 0.2) continue
-    scores[i] = hs * siteFactor(target, b, h, i, c, undefined, w) * (log ? weigh(log[i], w.log) : 1)
+  return {
+    target,
+    c,
+    home,
+    w,
+    h,
+    b: huntCache.b,
+    warm: c.tempC > 14 && c.sinceSunriseH > 2 && c.toSunsetH > 1.5,
+    lateFall: c.dayOfYear >= 288,
+    // the hunter's own log: fresh sign pulls, blank sits push
+    log: w.log > 0 ? logBoostGrid(h, target, c.timeMs) : null,
+    scores: new Float32Array(h.size),
+    win: scoreWindow(h, home),
   }
+}
+
+/** Scores rows r0..r1 of the pass's window. With step 2, only every other
+ *  cell across and down is scored, and each fills its 2×2 block: the rough
+ *  copy the heat map paints first, for a quarter of the work. */
+export function huntRows(p: HuntPass, r0: number, r1: number, step = 1): void {
+  const { target, b, h, c, w, warm, lateFall, log, scores } = p
+  const [, , c0, c1] = p.win
+  const cols = h.cols
+  for (let r = r0; r < r1; r += step)
+    for (let cc = c0; cc < c1; cc += step) {
+      const i = r * cols + cc
+      const hs = habitatScore(target, b, i, warm, lateFall, w)
+      if (hs < 0.2) continue
+      const s = hs * siteFactor(target, b, h, i, c, undefined, w) * (log ? weigh(log[i], w.log) : 1)
+      scores[i] = s
+      if (step > 1) {
+        for (let dr = 0; dr < step && r + dr < r1; dr++)
+          for (let dc = 0; dc < step && cc + dc < c1; dc++) scores[i + dr * cols + dc] = s
+      }
+    }
+}
+
+/** The pass's spots and the day's verdict, once every row is scored. */
+export function huntResult(p: HuntPass): ScoreResult {
+  const { target, b, h, c, w, home, scores } = p
   const peaks = pickPeaks(h, scores, 6, 600, 0.35, home)
   const spots: Spot[] = peaks.map((i) => {
     const [lon, lat] = h.center(i)
     return { cell: i, lon, lat, score: scores[i], title: fromHome(lon, lat, home), reasons: describeCell(target, b, h, i, c) }
   })
-  return { target, timeMs: c.timeMs, scores, spots, verdict }
+  return { target, timeMs: c.timeMs, scores, spots, verdict: activityVerdict(target, c, w) }
+}
+
+export function scoreHunt(target: HuntTarget, c: Conditions, home: { lon: number; lat: number; name: string }, w: Weights = DEFAULT_WEIGHTS): ScoreResult | null {
+  const p = huntPass(target, c, home, w)
+  if (!p) return null
+  huntRows(p, p.win[0], p.win[1])
+  return huntResult(p)
 }
 
 /** Fishing: the lake nearest the subject point (camp, pin or fix) is the one the verdict speaks to;
