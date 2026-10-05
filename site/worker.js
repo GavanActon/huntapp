@@ -51,8 +51,9 @@ function withHeaders(res, path) {
   r.headers.set('X-Content-Type-Options', 'nosniff')
   r.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   r.headers.set('X-Frame-Options', 'DENY')
-  // the loops and stills are cut once and kept; pages always revalidate
-  if (path.startsWith('/media/') && res.ok) r.headers.set('Cache-Control', 'public, max-age=86400')
+  // loops get recut under the same names, so a phone asks each time; the
+  // ETag makes that a 304 when nothing changed
+  if (path.startsWith('/media/') && res.ok) r.headers.set('Cache-Control', 'public, no-cache')
   return r
 }
 
