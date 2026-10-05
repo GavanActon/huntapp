@@ -19,8 +19,10 @@ import { leavesDown, leavesNote } from './leaves'
  * minute, built up in the layers of docs/MICRO-WIND.md:
  *
  *   regional   HRDPS 10 m wind at the point (windGrid's lattice)
- *   terrain    mass-consistent downscaling, neutral and stable lids
- *              blended by how decoupled the air is (boundaryLayer)
+ *   terrain    by day WindNinja's momentum solve, baked for 16 directions
+ *              (build_windcfd.py), or the mass-consistent neutral lid on a
+ *              grid without it; blended toward the stable lid by how
+ *              decoupled the air is (boundaryLayer)
  *   thermals   cold-air drainage and pooling after the sun goes and the
  *              sky clears; upslope flow on sun-heated slopes; lake and
  *              land breezes from the land–lake temperature contrast
@@ -132,6 +134,17 @@ const K_TREEH = 19
 const K_CANOPY_BARE = 20
 const BAND_NAMES = ['nUe', 'nVe', 'nUn', 'nVn', 'sUe', 'sVe', 'sUn', 'sVn', 'katDir', 'katSpd', 'pool', 'drainAcc', 'thSlope', 'thAspect', 'onshore', 'shoreDist', 'breezeMax', 'rel', 'canopy', 'treeH', 'canopyBare']
 let hasBare = false
+// The momentum solve (pipeline/build_windcfd.py): WindNinja's 10 m flow for
+// a unit wind from each of 16 directions, the roughness on, in the neutral
+// lid's place. The 2D lid cannot make the lee wakes and the turning round
+// the hills (checked against it 2026-10-04: turn r 0.55 at best). A grid
+// baked before it has none, and reads the neutral lid as it always did
+const MOM_STEP = 22.5
+const MOM_N = 16
+const momName = (k: number) => (k * MOM_STEP).toFixed(1).padStart(5, '0')
+let momU: Band[] | null = null
+let momV: Band[] | null = null
+let momScale = 0
 
 export function loadMicro(): Promise<Habitat | null> {
   if (grid) return Promise.resolve(grid)
@@ -150,6 +163,15 @@ export function loadMicro(): Promise<Habitat | null> {
       })
       hasBare = g.has('canopyBare')
       if (!hasBare) devlog('wind', 'micro grid has no canopyBare: the canopy stays in leaf whatever the date')
+      const dirs = Array.from({ length: MOM_N }, (_, k) => momName(k))
+      if (dirs.every((d) => g.has(`mU${d}`) && g.has(`mV${d}`))) {
+        momU = dirs.map((d) => g.raw(`mU${d}`))
+        momV = dirs.map((d) => g.raw(`mV${d}`))
+        momScale = g.scale(`mU${dirs[0]}`)
+      } else {
+        momU = momV = null
+        devlog('wind', 'micro grid has no momentum solve: the day wind is the neutral lid')
+      }
       grid = g
       slotAxis = null
       for (const cb of listeners) cb()
@@ -236,6 +258,33 @@ function b(k: number, i: number): number {
 function bearing(k: number, i: number): number | null {
   const v = bands[k][i]
   return v === 255 ? null : v * BEARING_Q
+}
+
+// momentumAt's answer, east and north km/h: no array made per cell
+let momE = 0
+let momN = 0
+/** The momentum solve's 10 m wind at a cell for a regional U km/h from
+ *  dirFrom: the two baked directions either side, each field turned with
+ *  the wind to its own direction, weighted by how near it is (165° from the
+ *  135° and 180° runs came within 2.5° of its own run, median). */
+function momentumAt(i: number, U: number, dirFrom: number): void {
+  const x = (((dirFrom % 360) + 360) % 360) / MOM_STEP
+  const k0 = Math.floor(x) % MOM_N
+  const t = x - Math.floor(x)
+  momE = 0
+  momN = 0
+  momTurned(k0, i, U * (1 - t), t * MOM_STEP)
+  momTurned((k0 + 1) % MOM_N, i, U * t, (t - 1) * MOM_STEP)
+}
+/** Direction k's field at a cell, times w, turned clockwise by deg. */
+function momTurned(k: number, i: number, w: number, deg: number): void {
+  if (w === 0) return
+  const u = momU![k][i] * momScale
+  const v = momV![k][i] * momScale
+  const c = Math.cos(deg * RAD)
+  const sn = Math.sin(deg * RAD)
+  momE += w * (u * c + v * sn)
+  momN += w * (-u * sn + v * c)
 }
 
 /** The head-height fraction of a cell: the baked canopy, in leaf, moved
@@ -417,8 +466,17 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
 
   // ---- terrain and roughness: the two lids, blended by stability ----
   const s = lay.stable
-  let e10 = (1 - s) * (b(K_NUE, i) * Ue + b(K_NUN, i) * Un) + s * (b(K_SUE, i) * Ue + b(K_SUN, i) * Un)
-  let n10 = (1 - s) * (b(K_NVE, i) * Ue + b(K_NVN, i) * Un) + s * (b(K_SVE, i) * Ue + b(K_SVN, i) * Un)
+  let e10: number
+  let n10: number
+  if (momU) {
+    // by day the momentum solve; it is neutral air only, so a still night still goes to the stable lid
+    momentumAt(i, U, dirFrom)
+    e10 = (1 - s) * momE + s * (b(K_SUE, i) * Ue + b(K_SUN, i) * Un)
+    n10 = (1 - s) * momN + s * (b(K_SVE, i) * Ue + b(K_SVN, i) * Un)
+  } else {
+    e10 = (1 - s) * (b(K_NUE, i) * Ue + b(K_NUN, i) * Un) + s * (b(K_SUE, i) * Ue + b(K_SUN, i) * Un)
+    n10 = (1 - s) * (b(K_NVE, i) * Ue + b(K_NVN, i) * Un) + s * (b(K_SVE, i) * Ue + b(K_SVN, i) * Un)
+  }
   const local10 = Math.hypot(e10, n10)
   // low ground under an inversion: the cold layer stays put under the wind
   const pool = b(K_POOL, i)

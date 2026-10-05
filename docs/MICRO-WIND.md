@@ -94,6 +94,50 @@ Sherman (1978) and WindNinja's conservation-of-mass solver (Forthofer et al.
     ~500 m around it) keeps its cold layer while the wind slides over:
     × (1 − 0.7·stable·lowness).
 
+#### The momentum solve (by day, since 2026-10-04)
+
+The neutral layer above is a 2D diagnostic. On 2026-10-04 it was checked
+against WindNinja 4.0.0 (US Forest Service; Forthofer et al. 2014) on 10 km
+tiles at both areas, for 8 directions:
+
+- **Against WindNinja's mass solver** (3D, the same family) the neutral layer
+  turned the wind in the wrong places. Turn r was 0.54 at Lac Bailey and 0.59
+  at Pickle. It under-turned at the foot of walls and over-turned on flats.
+- **Against the momentum solver** (OpenFOAM, RNG k-ε), no lid or smoothing of
+  the 2D layer came near. Across lids of 30–250 m and smoothing of 0.2–3 km,
+  turn r topped out at 0.55 (rmse 15–17°) and speed r at 0.75. WindNinja's own
+  mass solver scored only r = 0.62 against it. The momentum field has lee
+  wakes, separation (2% of cells turn more than 45°) and air pushed round the
+  hills. Mass conservation alone cannot make them.
+- **The momentum field is safe to bake once:**
+  - converged at 300 iterations (600 changed nothing; 150 drifted 0.8°);
+  - the same pattern at 8 km/h as at 22, so one speed covers all;
+  - directions 45° apart interpolate to 2.5° (median).
+  - At 85 m it lost a wall at Lac Bailey, so it is solved at 31 m.
+
+So `pipeline/build_windcfd.py` solves each area once:
+- 16 directions, every 22.5°, at 22 km/h and 10 m, with WindNinja's `trees`
+  roughness;
+- over the core and 2.5 km round it, with 31 m cells at the ground;
+- about 30 min a direction on a 24-core machine, 65 on a laptop.
+
+Its kit runs on any number of machines (windcfd/run.ps1), with a progress
+page (windcfd/status.py). `build_microclimate.py` writes the result as
+`mU`/`mV<ddd.d>` int8 bands with the roughness ratio on, the same as the
+neutral basis. That is 32 bands, about +5 MB a grid.
+
+In the browser (`model.ts momentumAt`):
+- The day wind is the two baked directions either side of the regional
+  wind. Each is turned to the wind's own direction and weighted by nearness.
+  At 165° that came within 1.7° (median) of WindNinja's own 165° run, against
+  3.7° for the neutral layer.
+- It blends toward the stable lid by `stable` as before: the momentum solve
+  is neutral air only.
+- A grid without the bands reads the neutral layer.
+
+The stable lid stays. Against WindNinja's stable mode (α 0.2) it scored
+r = 0.89, with the right median turn.
+
 ### 3. Thermals
 
 - **Cold-air drainage** (baked):
@@ -522,11 +566,15 @@ nothing that matters: at that cell the mechanical part stays under
   biggest single change to a head-height direction the model makes. About a
   fifth of the open ground in the core reads as a slot, so it wants checks
   in a few of them before it is trusted.
-- 2D mass consistency is a diagnostic model, not a flow solver. It gets
-  speed-up, channelling and blocking. It does not get separation in the lee
-  of steep ridges, which this low-relief shield mostly lacks, nor the eddy
-  below a steep bank in a day wind blowing down it, where scent can roll
-  back up toward the hunter.
+- By day the terrain is now WindNinja's momentum solve (§2), which does
+  separate in the lee and push air round the hills.
+  - It is RANS, a steady mean flow. It is not the gusting eddy below a bank;
+    that comes from the gust and swirl rules.
+  - Its roughness is one class (`trees`) everywhere, with ours put on after,
+    as for the neutral layer.
+  - It is neutral air only. Stable air still has the 2D stable lid, and that
+    lid gets channelling and blocking but no separation.
+  - It is not checked in the field yet. The wind checks are the test.
 - Ground the cover class calls open where the point cloud finds trees
   (much of Pickle Lake's open wetland: wetland on the wetland map with no
   FRI stand) is open at head height: `treeH` 0, the open-ground fraction,
@@ -562,8 +610,12 @@ nothing that matters: at that cell the mechanical part stays under
 
 ## Next steps, if we go further
 
-1. Cross-check the stable and neutral fields against WindNinja runs (US
-   Forest Service, open source) for a few cases at camp.
+1. ~~Cross-check the stable and neutral fields against WindNinja runs~~:
+   done 2026-10-04, and the day layer is now WindNinja's momentum solve
+   (§2). Next for it:
+   - score it against the wind checks, old and new side by side;
+   - feed WindNinja the habitat grid's roughness (an .lcp of stand height and
+     cover) in place of one class.
 2. One or two stations (a Tempest or an ESP32 with a sonic anemometer over
    LoRa) at camp and a stand. Bias-correct HRDPS and fit the thermal
    constants.

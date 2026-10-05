@@ -82,6 +82,7 @@ Z_BLEND = 60.0  # roughness no longer matters above this, m
 LID_NEUTRAL = 250.0  # layer depth over the large-scale terrain, m
 LID_STABLE = 50.0
 BASIS_SCALE = 1 / 60  # int8 basis bands: value * scale
+MOM_SCALE = 1 / 50  # int8 momentum bands: ridge tops run past the basis's ±2.1
 
 
 def read_hab(path) -> tuple[dict, dict[str, np.ndarray]]:
@@ -409,6 +410,21 @@ def main() -> None:
     print("  stable layer (air goes round and down the valleys)")
     stable = [a * s for a in solve_basis(dem, ones, LID_STABLE, big_sigma=35)]  # ~1 km
     print(f"  solved · {time.time() - t0:.0f}s")
+    # the momentum solve, where build_windcfd.py has run and collected it:
+    # WindNinja's flow for a unit wind from each of 16 directions, the lee
+    # wakes and the turning round the hills the layer above cannot make.
+    # It takes the neutral layer's place in the browser; the stable layer
+    # and everything below stay as they are. The roughness ratio goes on
+    # the same way
+    cfd_path = CACHE_DIR / f"windcfd-{REGION['id']}.npz"
+    cfd = None
+    if cfd_path.exists():
+        z = np.load(cfd_path)
+        cfd = [(float(d), z[f"u{d:05.1f}"] * s, z[f"v{d:05.1f}"] * s) for d in z["directions"]]
+        sp = np.hypot(cfd[0][1], cfd[0][2])
+        print(f"  momentum solve: {len(cfd)} directions · speed {np.percentile(sp, 5):.2f}–{np.percentile(sp, 95):.2f} of the regional wind")
+    else:
+        print("  no momentum solve (build_windcfd.py): the neutral layer stands")
 
     # ---- 2. thermals ----
     zs = ndimage.gaussian_filter(dem, 1.7)  # cold air ignores 30 m bumps
@@ -508,6 +524,9 @@ def main() -> None:
     def qb(a):
         return np.clip(np.round(a / BASIS_SCALE), -127, 127).astype(np.int8)
 
+    def qm(a):
+        return np.clip(np.round(a / MOM_SCALE), -127, 127).astype(np.int8)
+
     bands: list[tuple[str, np.ndarray, float, str]] = [
         ("nUe", qb(neutral[0]), BASIS_SCALE, "neutral: east component for a unit wind toward the east"),
         ("nVe", qb(neutral[1]), BASIS_SCALE, "neutral: north component for a unit wind toward the east"),
@@ -536,6 +555,11 @@ def main() -> None:
         ),
         ("treeH", np.clip(np.round(h), 0, 255).astype(np.uint8), 1, "stand height m (0 open)"),
     ]
+    for d, u, v in cfd or []:
+        bands += [
+            (f"mU{d:05.1f}", qm(u), MOM_SCALE, f"momentum solve: east component for a unit wind from {d:g}°"),
+            (f"mV{d:05.1f}", qm(v), MOM_SCALE, f"momentum solve: north component for a unit wind from {d:g}°"),
+        ]
     out_header = {
         "region": REGION["id"],
         "generated": date.today().isoformat(),
@@ -549,7 +573,7 @@ def main() -> None:
         "coverNames": header["coverNames"],
         "landformNames": header["landformNames"],
         "lakes": [],
-        "model": {"z0Ref": Z0_REF, "zBlend": Z_BLEND, "lidNeutral": LID_NEUTRAL, "lidStable": LID_STABLE, "bare": BARE, "larchLed": LARCH_LED},
+        "model": {"z0Ref": Z0_REF, "zBlend": Z_BLEND, "lidNeutral": LID_NEUTRAL, "lidStable": LID_STABLE, "bare": BARE, "larchLed": LARCH_LED, **({"momentum": {"directions": [d for d, _, _ in cfd], "solver": "WindNinja 4.0.0 momentum (OpenFOAM, RNG k-epsilon), trees, 10 m"}} if cfd else {})},
         "bands": [],
     }
     payload = bytearray()
