@@ -123,7 +123,7 @@
   <div class="row-text">
     <p class="tag" style="--dot: var(--wind)">Forecast</p>
     <h2 id="f1-title">A forecast that works with no bars.</h2>
-    <p>Environment Canada's 2.5&nbsp;km HRDPS model for the next two days, with a seven-day outlook behind it, saved on your phone at camp. Walk out of service and it's still there, with its age shown, as your best guess until a check sharpens it.</p>
+    <p>Environment Canada's 2.5&nbsp;km HRDPS model for the next two days, with a seven-day outlook behind it, saved on your phone at camp. Walk out of service and it's still there, with its age shown, as your best guess until a check sharpens it. No bars at all? <a href="#satellite">The HD forecast comes by text</a>.</p>
     <p class="readout left">HRDPS 2.5 km · a new run 4× a day · 7-day outlook</p>
     <details>
       <summary>How it works</summary>
@@ -133,7 +133,21 @@
   <div class="phone"><video data-loop src="media/forecast.mp4" poster="media/forecast.jpg" muted loop playsinline preload="none" aria-label="The hour-by-hour forecast opening from the strip, then still there from the copy on the phone with no signal"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
 </section>
 
-<section class="row flip" id="checks" aria-labelledby="f2-title">
+<section class="row flip" id="satellite" aria-labelledby="fs-title">
+  <div class="row-text">
+    <p class="tag" style="--dot: var(--wind)">By text</p>
+    <h2 id="fs-title">No bars? Doesn't matter. The HD forecast comes by text.</h2>
+    <p>From an iPhone on satellite or an inReach, send the line the app writes for your camp to the Groundwind number. The answer comes back in one text: the next two days of the HD forecast, packed tight. Paste it in and the ground wind, your scent cone and the heat map all run on the new forecast.</p>
+    <p class="readout left">48 h of HRDPS in one 160-character text</p>
+    <details>
+      <summary>How it works</summary>
+      <p>The text carries the 10&nbsp;m wind at its turning points, about a dozen a day and back within about 2° and half a km/h on average, far inside the forecast's own error. With it come the gusts, the temperatures and winds aloft that decide whether the wind reaches the ground, cloud, rain and how much the models agree, plus a check that catches a reply cut short. The first words are plain, for an inReach's screen: the wind now, its next big change and the first rain. The camp is in the request, so there's no account to make. On an inReach it's two messages on your plan, one out and one back, and the first time you have signal again the phone fetches the full forecast as usual.</p>
+    </details>
+  </div>
+  <div class="phone"><img src="media/satellite.jpg" width="390" height="844" alt="Weather by satellite: the request for the camp with Text it and Copy, then the reply pasted in, Weather updated, and the wind at dusk now and before" loading="lazy"></div>
+</section>
+
+<section class="row" id="checks" aria-labelledby="f2-title">
   <div class="row-text">
     <p class="tag" style="--dot: var(--scent)">Wind checks</p>
     <h2 id="f2-title">Sharpen the wind. Trust the cone.</h2>
@@ -147,7 +161,7 @@
   <div class="phone"><img src="media/sharpen-card.jpg" width="390" height="844" alt="The Wind sharpened card after a check: what the map said and what the forecast said, against what was felt" loading="lazy"></div>
 </section>
 
-<section class="row" id="plan" aria-labelledby="f3-title">
+<section class="row flip" id="plan" aria-labelledby="f3-title">
   <div class="row-text">
     <p class="tag" style="--dot: var(--good)">Habitat and weather</p>
     <h2 id="f3-title">Where they'll be, day by day.</h2>
@@ -263,7 +277,7 @@
   </script>
 </section>
 
-<section class="row flip" id="bush" aria-labelledby="f6-title">
+<section class="row" id="bush" aria-labelledby="f6-title">
   <div class="row-text">
     <p class="tag" style="--dot: var(--good)">Bush and range</p>
     <h2 id="f6-title">See the bush before you're in it.</h2>
@@ -282,7 +296,7 @@
   <div class="phone"><video data-loop src="media/bushview.mp4" poster="media/bushview.jpg" muted loop playsinline preload="none" aria-label="The land alone, then the shooting-lanes overlay showing where you'll be able to see and shoot, then the Bush view colouring the brush from open to thicket"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
 </section>
 
-<section class="row" id="tonight" aria-labelledby="f4-title">
+<section class="row flip" id="tonight" aria-labelledby="f4-title">
   <div class="row-text">
     <p class="tag" style="--dot: var(--scent)">Party scent</p>
     <h2 id="f4-title">Tonight, two of you.</h2>
@@ -296,7 +310,7 @@
   <div class="phone"><video data-loop src="media/evening2.mp4" poster="media/evening2.jpg" muted loop playsinline preload="none" aria-label="Planning the evening hunt: an evening hour picked on the strip, two sitters placed, and their two numbered scent cones on the evening wind"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
 </section>
 
-<section class="row flip" id="stand" aria-labelledby="f7-title">
+<section class="row" id="stand" aria-labelledby="f7-title">
   <div class="row-text">
     <p class="tag" style="--dot: var(--scent)">Stand height</p>
     <h2 id="f7-title">Up a tree, your scent lands further out.</h2>
@@ -310,7 +324,7 @@
   <div class="phone"><video data-loop src="media/stand.mp4" poster="media/stand.jpg" muted loop playsinline preload="none" aria-label="A sit on a bank on a still evening: the scent cone strong right below you from the ground, then cleared near you from a 4 m stand, coming down from 90 m out, and from a 6 m stand from 330 m out"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
 </section>
 
-<section class="row" id="stalk" aria-labelledby="f5-title">
+<section class="row flip" id="stalk" aria-labelledby="f5-title">
   <div class="row-text">
     <p class="tag" style="--dot: var(--wind)">On the move</p>
     <h2 id="f5-title">What's the wind doing over that bluff?</h2>
@@ -403,7 +417,7 @@
     </details>
     <details>
       <summary>Does it work with no service?</summary>
-      <p>Yes, once your area is saved on the phone (Settings, then Maps on this phone). The forecast you saved at camp keeps working with its age shown, and your track, calls and wind checks are kept as you go.</p>
+      <p>Yes, once your area is saved on the phone (Settings, then Maps on this phone). The forecast you saved at camp keeps working with its age shown, and your track, calls and wind checks are kept as you go. Out for days, text for the newest forecast from an iPhone on satellite or an inReach: <span class="ui">⋯</span>, then Weather by satellite.</p>
     </details>
     <details>
       <summary>Where does it work?</summary>
