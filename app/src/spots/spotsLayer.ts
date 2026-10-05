@@ -21,15 +21,15 @@ import { useSpotsStore } from '../state/spotsStore'
 import { useGpsStore } from '../tracking/gpsStore'
 import { useHuntLog } from '../log/huntLog'
 import { cachedPointForecast, pointForecast, type PointForecast } from '../weather/openMeteo'
-import { onWeatherRefreshed } from '../weather/refresh'
-import { deriveConditions, recentDailyMeans } from './conditions'
+import { onWeatherRefreshed, onWeatherStatus, weatherStatus } from '../weather/refresh'
+import { cachedRecentDaily, deriveConditions, recentDailyMeans } from './conditions'
 import { habitat, loadHabitat, onHabitat, COVER } from './habitatGrid'
-import { scoreTarget } from './scoring'
+import { huntPass, huntResult, huntRows, scoreTarget, type HuntPass, type ScoreResult } from './scoring'
 import { loadMicro, onMicro } from '../weather/micro/model'
 import { useScent } from '../weather/micro/scent'
-import { ensureProfile, onProfile } from '../weather/boundaryLayer'
+import { currentProfile, ensureProfile, onProfile } from '../weather/boundaryLayer'
 import { useWindChecks } from '../weather/micro/windChecks'
-import { isFish } from './types'
+import { isFish, type HuntTarget } from './types'
 
 const HEAT_SRC = 'spots-heat'
 const PINS_SRC = 'spots-pins'
@@ -434,15 +434,29 @@ function pins(m: MlMap) {
 }
 
 async function recompute() {
+  // What a pass needs, first. It waits only for what the phone has never
+  // had: a forecast, the ten-day means, the habitat grid, the ground wind,
+  // the air's profile. Means and a profile it does hold it takes however
+  // old, and the weather sweep's fresh ones ask again as they land: a stale
+  // profile once held the heat map for a whole fetch timeout on weak signal.
+  const subj0 = subject()
+  if (!cachedPointForecast(subj0.lon, subj0.lat) && navigator.onLine) await pointForecast(subj0.lon, subj0.lat).catch(() => null)
+  if (!cachedRecentDaily(subj0.lon, subj0.lat)) await recentDailyMeans(subj0.lon, subj0.lat)
+  const h = await loadHabitat()
+  if (h) {
+    // the site rules read the ground wind and the wind profile: with either
+    // still on its way the whole pass would only be done again when it lands
+    await loadMicro()
+    if (currentProfile()) void ensureProfile()
+    else await ensureProfile()
+  }
+  // Then every input at once, after the waiting: a change made meanwhile
+  // (the quarry, the time, the place) is in this pass, not lost behind it
   const s = useSpotsStore.getState()
   const subj = subject()
   const app = useAppStore.getState()
   const timeMs = app.planTimeMs ?? Date.now()
   let f = cachedPointForecast(subj.lon, subj.lat)
-  if (!f && navigator.onLine) {
-    const r = await pointForecast(subj.lon, subj.lat).catch(() => null)
-    f = r?.forecast ?? null
-  }
   // no signal and a subject with no cache of its own (the phone, moving):
   // the nearest saved place's forecast stands in; HRDPS cells are 2.5 km
   let recentAt = subj
@@ -453,7 +467,7 @@ async function recompute() {
       recentAt = near.p
     }
   }
-  const recent = await recentDailyMeans(recentAt.lon, recentAt.lat)
+  const recent = cachedRecentDaily(recentAt.lon, recentAt.lat)
   const c = f ? deriveConditions(f, timeMs, recent) : null
   if (!f || !c) {
     s.setHours([])
@@ -461,33 +475,67 @@ async function recompute() {
   }
   // the week's windows and the hour bars need only the forecast: with no
   // habitat grid the strip still says when, if not where
-  const h = await loadHabitat()
   if (!h) {
     const plans = dayPlans(f, s.target, recent, null, s.weights)
     s.setHours(hourScores(f, s.target, recent, null, s.weights, Date.now()))
     return s.setResult(null, c, 'no-grid', plans)
   }
-  // the site rules read the ground wind and the wind profile: with either
-  // still on its way the whole pass would only be done again when it
-  // lands (both are cached after the first call, and answer at once
-  // offline or with no file)
-  await loadMicro()
-  await ensureProfile()
   // the loads above tell their listeners, and every listener asks for a
   // pass: this one has already read what they brought, so the asks since
   // the last pass read its inputs are what counts, not the asks since it
   // was scheduled
   if (inputsGen === scoredGen) return
   scoredGen = inputsGen
+  const gen = ++passGen
   const m = getMap()
   if (m) ensureSources(m)
   const t0 = performance.now()
-  const res = scoreTarget(s.target, c, subj, s.weights)
+  let work = 0
+  let res: ScoreResult | null
+  if (isFish(s.target)) {
+    res = scoreTarget(s.target, c, subj, s.weights)
+    work = performance.now() - t0
+  } else {
+    // A hunt pass is a second on a phone just after launch: run it in
+    // slices of rows and give the map its frames between, and with the
+    // heat on paint a rough copy (every other cell, a quarter of the work)
+    // first, so the heat shows at once and sharpens when the pass is done.
+    // A newer pass ends this one at its next strip.
+    const p = huntPass(s.target as HuntTarget, c, subj, s.weights)
+    if (!p) res = null
+    else {
+      const [r0, r1] = p.win
+      if (s.heat) {
+        const t = performance.now()
+        const rough: HuntPass = { ...p, scores: new Float32Array(p.scores.length) }
+        huntRows(rough, r0, r1, 2)
+        paint(rough.scores, false, subj)
+        work += performance.now() - t
+        await nextTurn()
+        if (gen !== passGen) return
+      }
+      // rows in small strips until a slice's time is spent, then a turn
+      let sliceStart = performance.now()
+      for (let r = r0; r < r1; r += STRIP_ROWS) {
+        const t = performance.now()
+        huntRows(p, r, Math.min(r1, r + STRIP_ROWS))
+        work += performance.now() - t
+        if (r + STRIP_ROWS < r1 && performance.now() - sliceStart >= SLICE_MS) {
+          await nextTurn()
+          if (gen !== passGen) return
+          sliceStart = performance.now()
+        }
+      }
+      const t = performance.now()
+      res = huntResult(p)
+      work += performance.now() - t
+    }
+  }
   // the week and the hours from the same forecast, scored with the lake the verdict is about
   const lake = res?.lakeId ? h.lake(res.lakeId) ?? null : null
   const plans = dayPlans(f, s.target, recent, lake, s.weights)
   s.setHours(hourScores(f, s.target, recent, lake, s.weights, Date.now()))
-  devlog('spots', `${s.target} scored in ${(performance.now() - t0).toFixed(0)} ms · ${res?.spots.length ?? 0} spots · ${res?.verdict.headline ?? ''}`)
+  devlog('spots', `${s.target} scored in ${work.toFixed(0)} ms of work, ${(performance.now() - t0).toFixed(0)} ms in all · ${res?.spots.length ?? 0} spots · ${res?.verdict.headline ?? ''}`)
   s.setResult(res, c, 'ready', plans)
   const mm = getMap()
   if (!mm || !mm.getSource(HEAT_SRC)) return
@@ -509,9 +557,31 @@ let holdUntil = 0
  *  inputs, and a later ask that finds the count unchanged is a no-op. */
 let inputsGen = 0
 let scoredGen = -1
+/** Counts passes begun: a pass that finds a newer one begun stops at its next strip. */
+let passGen = 0
+/** A hunt pass goes in strips of this many rows, and gives the browser a
+ *  turn once a slice of them has run this long: the map keeps drawing at
+ *  some 40 frames a second, and a fast phone pays for few turns */
+const STRIP_ROWS = 8
+const SLICE_MS = 24
+/** Back to the browser for a frame (or a tap) between strips. */
+const nextTurn = () => new Promise<void>((r) => window.setTimeout(r, 0))
+/** Data asks that came in while a weather sweep ran, folded into one pass at its end. */
+let heldForSweep = false
 
-function schedule() {
+/** A pass, soon. `data`: the ask is data landing (a grid, a forecast, the
+ *  air's profile), not the hunter changing something. */
+function schedule(data = false) {
   inputsGen++
+  // A weather sweep lands the forecasts, the wind field and the profile one
+  // after another, each an ask: just after launch on a phone that was five
+  // passes of a second each in twelve seconds (devlog, 2026-10-05). Once
+  // the map has a pass to show, data asks during a sweep wait for its end
+  // and fold into one; the hunter's own (the quarry, the time, a pin) don't
+  if (data && scoredGen >= 0 && weatherStatus().busy) {
+    heldForSweep = true
+    return
+  }
   if (timer != null) clearTimeout(timer)
   timer = window.setTimeout(
     () => {
@@ -542,21 +612,29 @@ export function initSpotsLayer() {
     schedule()
   })
   withMap(() => {
-    onHabitat(() => schedule())
+    onHabitat(() => schedule(true))
     // the site rules read the ground wind: rescore when it arrives
     void loadMicro()
-    onMicro(() => schedule())
-    onProfile(() => schedule())
+    onMicro(() => schedule(true))
+    onProfile(() => schedule(true))
     useWindChecks.subscribe(() => schedule())
     // a fresh forecast: the map rescores itself
-    onWeatherRefreshed(() => schedule())
+    onWeatherRefreshed(() => schedule(true))
+    // the sweep is done: the asks it held, as one pass
+    onWeatherStatus(() => {
+      if (heldForSweep && !weatherStatus().busy) {
+        heldForSweep = false
+        schedule()
+      }
+    })
     useSpotsStore.subscribe((s, prev) => {
       if (s.target !== prev.target || s.heat !== prev.heat || s.weights !== prev.weights) schedule()
       // the colouring alone changed: the same scores, painted again
       else if (s.heatScale !== prev.heatScale || s.heatStrength !== prev.heatStrength) repaint()
     })
     useAppStore.subscribe((s, prev) => {
-      if (s.planTimeMs !== prev.planTimeMs || s.online !== prev.online) schedule()
+      if (s.planTimeMs !== prev.planTimeMs) schedule()
+      else if (s.online !== prev.online) schedule(true)
     })
     usePlacesStore.subscribe((s, prev) => {
       if (s.selectedId !== prev.selectedId) schedule()
@@ -578,7 +656,7 @@ export function initSpotsLayer() {
     const tick = () => {
       const now = Date.now()
       window.setTimeout(() => {
-        if (useAppStore.getState().planTimeMs == null) schedule()
+        if (useAppStore.getState().planTimeMs == null) schedule(true)
         tick()
       }, 3600_000 - (now % 3600_000) + 3000)
     }

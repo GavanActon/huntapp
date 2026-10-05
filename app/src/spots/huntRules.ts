@@ -424,6 +424,13 @@ export function activityVerdict(t: HuntTarget, c: Conditions, w: Weights = DEFAU
 /** Per-cell wind and scent geometry and reachability, 0..1: the product of
  *  the weighed parts. */
 export function siteFactor(t: HuntTarget, b: HuntBands, h: Habitat, i: number, c: Conditions, reasons?: string[], w: Weights = DEFAULT_WEIGHTS, parts?: Part[]): number {
+  // the heat map's pass, every cell: the three numbers, no words and no
+  // objects (building the labels was most of siteParts' own time). The
+  // same products in the same order, so the same score to the bit
+  if (!reasons && !parts) {
+    siteCore(t, b, h, i, c, undefined, null)
+    return weigh(SITE[0], w.scent) * weigh(SITE[1], w.visibility) * weigh(SITE[2], w.access)
+  }
   const sp = siteParts(t, b, h, i, c, reasons)
   parts?.push(...sp)
   return sp.reduce((m, p) => m * weigh(p.value, w[p.key]), 1)
@@ -432,20 +439,41 @@ export function siteFactor(t: HuntTarget, b: HuntBands, h: Habitat, i: number, c
 /** The site's three parts: scent (wind and thermals against the feeding
  *  side), the downwind view, and access. Each 0..1, unweighed. */
 export function siteParts(t: HuntTarget, b: HuntBands, h: Habitat, i: number, c: Conditions, reasons?: string[]): Part[] {
+  const labels: string[] = []
+  siteCore(t, b, h, i, c, reasons, labels)
+  return [
+    { key: 'scent', label: labels[0], value: SITE[0], kind: 'mult' },
+    { key: 'visibility', label: labels[1], value: SITE[1], kind: 'mult' },
+    { key: 'access', label: labels[2], value: SITE[2], kind: 'mult' },
+  ]
+}
+
+/** siteCore's answer: scent, view, access, each 0..1, unweighed */
+const SITE = new Float64Array(3)
+/** the five gusts' weights the scent part averages over the direction spread */
+const SPREAD_W = [-2, -1, 0, 1, 2].map((k) => Math.exp(-((k * 0.75) ** 2) / 2))
+
+function geo(from: number, approach: number): number {
+  const a = Math.abs(((from - approach) % 360 + 540) % 360 - 180)
+  return a <= 30 ? 0.9 : a <= 120 ? 1.0 : a <= 150 ? 0.5 : 0.12
+}
+
+/** The site's three parts into SITE; their words into labels, and the
+ *  reasons, only when asked for (a tapped cell, the breakdown). */
+function siteCore(t: HuntTarget, b: HuntBands, h: Habitat, i: number, c: Conditions, reasons: string[] | undefined, labels: string[] | null): void {
   let g: number
   const bear = b.bearBrowse[i]
   const evening = c.toSunsetH <= 1.5 || c.sinceSunriseH < 0.7
   // the air at head height in this cell (docs/MICRO-WIND.md): drainage,
   // shelter, breezes and the forecast's layering, not one regional arrow.
   // The heat map skips the tree-line search; a tapped cell gets it all.
-  const [lon, lat] = h.center(i)
+  // The cell's centre written out, as h.center works it: no array a cell
+  const row = (i / h.cols) | 0
+  const lon = h.west + (i - row * h.cols + 0.5) * h.dLon
+  const lat = h.north - (row + 0.5) * h.dLat
   const gw = groundForScoring(c.timeMs, lon, lat, reasons != null)
   const windDir = gw ? gw.dirFrom : c.windDir
   const calm = gw ? gw.kmh < 0.8 : c.windKmh < 5
-  const geo = (from: number, approach: number) => {
-    const a = Math.abs(((from - approach) % 360 + 540) % 360 - 180)
-    return a <= 30 ? 0.9 : a <= 120 ? 1.0 : a <= 150 ? 0.5 : 0.12
-  }
   if (gw && reasons && c.windKmh > 3 && !calm) {
     const off = Math.abs(((gw.dirFrom - c.windDir) % 360 + 540) % 360 - 180)
     if (off > 45) reasons.push(`at ground the air runs from the ${compass8(gw.dirFrom)}, not the forecast's ${compass8(c.windDir)} (${REGIME_LABEL[gw.regime].toLowerCase()})`)
@@ -460,7 +488,7 @@ export function siteParts(t: HuntTarget, b: HuntBands, h: Habitat, i: number, c:
       let sw = 0
       g = 0
       for (let k = -2; k <= 2; k++) {
-        const wk = Math.exp(-((k * 0.75) ** 2) / 2)
+        const wk = SPREAD_W[k + 2]
         g += wk * geo(windDir + k * 0.75 * sd, approach)
         sw += wk
       }
@@ -492,15 +520,18 @@ export function siteParts(t: HuntTarget, b: HuntBands, h: Habitat, i: number, c:
   // thickness where the bake has it, else from open cover classes
   const down = (windDir + 180) % 360
   let vis: number
-  let visLabel: string
+  let visLabel = ''
   if (b.through30) {
-    const bearings = t === 'grouse' ? [0, 90, 180, 270] : [down - 30, down, down + 30]
-    const range = bearings.reduce((a, br) => a + viewM(b, h, i, (br + 360) % 360), 0) / bearings.length
+    // the bearings written out, each as (br + 360) % 360 as before: no array a cell
+    const range =
+      t === 'grouse'
+        ? (viewM(b, h, i, 0) + viewM(b, h, i, 90) + viewM(b, h, i, 180) + viewM(b, h, i, 270)) / 4
+        : (viewM(b, h, i, (down - 30 + 360) % 360) + viewM(b, h, i, (down + 360) % 360) + viewM(b, h, i, (down + 30 + 360) % 360)) / 3
     // a sitter needs the view; a grouse hunter walks the thick and flushes
     // birds out of it, so for grouse thick bush costs a shot, not the spot
     vis = t === 'grouse' ? 0.82 + 0.18 * Math.min(1, range / 60) : 0.6 + 0.4 * Math.min(1, range / 100)
     const where = t === 'grouse' ? 'round you' : 'downwind'
-    visLabel = range >= 80 ? `open ${where}` : range >= 35 ? `partly open ${where}` : `thick ${where}`
+    if (labels) visLabel = range >= 80 ? `open ${where}` : range >= 35 ? `partly open ${where}` : `thick ${where}`
     if (range >= 80 && t !== 'grouse') reasons?.push('open ground downwind: a circling animal shows itself')
     else if (range < 35) reasons?.push(`thick ${where}: about ${Math.max(5, Math.round(range / 5) * 5)} m of view`)
     else reasons?.push(`about ${Math.round(range / 5) * 5} m of view ${where}`)
@@ -515,7 +546,7 @@ export function siteParts(t: HuntTarget, b: HuntBands, h: Habitat, i: number, c:
     }
     const openFrac = n ? open / n : 0.5
     vis = 0.7 + 0.3 * openFrac
-    visLabel = openFrac >= 0.75 ? 'open downwind' : openFrac >= 0.4 ? 'partly open downwind' : 'thick downwind'
+    if (labels) visLabel = openFrac >= 0.75 ? 'open downwind' : openFrac >= 0.4 ? 'partly open downwind' : 'thick downwind'
     if (openFrac >= 0.75) reasons?.push('open ground downwind: a circling animal shows itself')
   }
   if (c.windShiftDeg > 30 && !calm) g *= 0.85
@@ -526,12 +557,13 @@ export function siteParts(t: HuntTarget, b: HuntBands, h: Habitat, i: number, c:
   let access = dRoad <= 150 ? 0.85 : dRoad <= 2500 ? 1 : dRoad <= 4000 ? 0.8 : 0.5
   if (dLake <= 120) access = Math.max(access, 0.95) // by boat
   if (t === 'grouse') access = dRoad <= 60 ? 1 : dRoad <= 800 ? 0.9 : 0.6
-  const accessLabel = dLake <= 120 && dRoad > 150 ? 'reachable by boat' : dRoad <= 150 ? 'right by a road' : dRoad <= 2500 ? `${dRoad < 1000 ? `${dRoad} m` : `${(dRoad / 1000).toFixed(1)} km`} from a road` : 'a long walk in'
-  return [
-    { key: 'scent', label: calm ? (gw ? 'still air at ground' : 'thermals') : gw ? 'ground air against the feeding side' : 'wind against the feeding side', value: g, kind: 'mult' },
-    { key: 'visibility', label: visLabel, value: vis, kind: 'mult' },
-    { key: 'access', label: accessLabel, value: access, kind: 'mult' },
-  ]
+  SITE[0] = g
+  SITE[1] = vis
+  SITE[2] = access
+  if (!labels) return
+  labels[0] = calm ? (gw ? 'still air at ground' : 'thermals') : gw ? 'ground air against the feeding side' : 'wind against the feeding side'
+  labels[1] = visLabel
+  labels[2] = dLake <= 120 && dRoad > 150 ? 'reachable by boat' : dRoad <= 150 ? 'right by a road' : dRoad <= 2500 ? `${dRoad < 1000 ? `${dRoad} m` : `${(dRoad / 1000).toFixed(1)} km`} from a road` : 'a long walk in'
 }
 
 /** Words for a cell: what it is and why it scores. */

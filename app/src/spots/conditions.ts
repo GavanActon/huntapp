@@ -72,6 +72,19 @@ function recentKey(lon: number, lat: number) {
   return `${RECENT_KEY}${lon.toFixed(2)},${lat.toFixed(2)}`
 }
 
+/** The ten-day means the phone holds for a point, however old, without
+ *  waiting: what a scoring pass reads while the sweep fetches fresh ones. */
+export function cachedRecentDaily(lon: number, lat: number): RecentDaily | null {
+  const at = forecastPoint(lon, lat)
+  try {
+    const raw = localStorage.getItem(recentKey(at.lon, at.lat))
+    const cached = raw ? (JSON.parse(raw) as RecentDaily) : null
+    return cached && cached.tMax ? cached : null
+  } catch {
+    return null
+  }
+}
+
 /** Daily mean, high, low and rain for the past ten days (cached six hours). */
 export async function recentDailyMeans(lon: number, lat: number): Promise<RecentDaily | null> {
   // pulled into its area's box, as the forecast is (openMeteo.forecastPoint)
