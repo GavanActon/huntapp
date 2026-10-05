@@ -102,7 +102,7 @@
       "contoursWide": { "file": "contours-wide-lac-bailey.pmtiles", "bytes": 1243953, "source": "MRDEM 30 m DTM, NRCan", "licence": "OGL-Canada" },
       "forest": {
         "file": "forest-lac-bailey.pmtiles",
-        "bytes": 2953565,
+        "bytes": 3053138,
         "source": "Carte écoforestière (MRNF), with later cuts, burns and outbreaks laid over",
         "licence": "CC BY 4.0",
         "vintage": "4th inventory (2012 photos), with 5th-inventory stands from 2023-24 photos (preliminary) in the south and east; cuts, burns and outbreaks to 2023"

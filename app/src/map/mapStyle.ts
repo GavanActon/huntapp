@@ -534,10 +534,21 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
     return { source: `live-${t}` }
   }
 
-  // Forest cover: FRI stand polygons by cover group; the species-and-year
-  // code as a label only in close (Dig in says it in words at any zoom).
+  // Forest cover: FRI stand polygons by cover group. The groups' colours
+  // sit apart from each other and from the imagery's own greens (the old
+  // conifer and mixed were two dark greens that went into the trees
+  // zoomed out, and lakes took the fallback green: Gavan, 2026-10-04):
+  // conifer dark teal, mixed green, hardwood pale lime. None is warm, as
+  // the heat under them is amber, orange and red (a gold hardwood read
+  // as a hot patch), so a burn is mauve; water is left clear. Zoomed out
+  // the wood type is named per patch (the bake's forest_label points,
+  // each in from the zoom its name fits at), in a tint of its fill; close
+  // in, each stand's name over its species-and-year code. The bake's
+  // `cover` draws an old cut or burn as the trees grown back on it.
   const forest = themeSource('forest')
   if (forest) {
+    const groupTint = (tints: Record<string, string>, other: string) =>
+      ['match', ['coalesce', ['get', 'cover'], ['get', 'group']], ...Object.entries(tints).flat(), other] as unknown as ExpressionSpecification
     vectors.push(
       tag(
         {
@@ -546,23 +557,44 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
           ...forest,
           layout: vis(o.layers.forest),
           paint: {
-            'fill-color': [
-              'match',
-              ['get', 'group'],
-              'conifer', '#1f6b3a',
-              'mixed', '#5f8f2e',
-              'hardwood', '#c9a227',
-              'cut', '#8a5a2b',
-              'burn', '#7a2e2e',
-              'wetland', '#2e6b6b',
-              '#3a5a3a',
-            ],
+            'fill-color': groupTint(
+              { conifer: '#176b5b', mixed: '#7cb342', hardwood: '#c6ec5c', cut: '#dcd2bc', burn: '#a77fc0', wetland: '#6f93b8', brush: '#8f8a6a', water: 'rgba(0,0,0,0)' },
+              '#5a6a5a',
+            ),
             'fill-opacity': o.opacity.forest,
           },
         },
         'forest',
         'forest',
       ),
+    )
+    const textTint = groupTint(
+      { conifer: '#bfe8dc', mixed: '#d6f0b4', hardwood: '#f2fbc8', cut: '#efe9dc', burn: '#e4d0f2', wetland: '#c4d8ef', brush: '#e2dcc4' },
+      'rgba(230,240,225,0.9)',
+    )
+    if (forest['source-layer'])
+      vectors.push(
+        tag(
+          {
+            id: 'forest-type',
+            type: 'symbol',
+            source: forest.source,
+            'source-layer': 'forest_label',
+            maxzoom: 15,
+            layout: {
+              ...vis(o.layers.forest),
+              'text-field': ['get', 'name'],
+              'text-font': FONT_MED,
+              'text-size': 12,
+              'symbol-sort-key': ['-', ['to-number', ['get', 'r'], 0]],
+              'text-padding': 4,
+            },
+            paint: { 'text-color': textTint, ...HALO },
+          },
+          'forest',
+        ),
+      )
+    vectors.push(
       tag(
         {
           id: 'forest-label',
@@ -571,11 +603,16 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
           minzoom: 15,
           layout: {
             ...vis(o.layers.forest),
-            'text-field': ['concat', ['coalesce', ['get', 'species'], ''], ' ', ['coalesce', ['to-string', ['get', 'year']], '']],
+            'text-field': [
+              'format',
+              ['coalesce', ['get', 'name'], ''], { 'text-font': ['literal', FONT_MED], 'font-scale': 1.1 },
+              ['case', ['has', 'name'], '\n', ''], {},
+              ['concat', ['coalesce', ['get', 'species'], ''], ' ', ['coalesce', ['to-string', ['get', 'year']], '']], {},
+            ],
             'text-font': FONT,
             'text-size': 10,
           },
-          paint: { 'text-color': 'rgba(230,240,225,0.8)', ...HALO },
+          paint: { 'text-color': textTint, ...HALO },
         },
         'forest',
       ),
