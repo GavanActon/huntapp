@@ -1,0 +1,188 @@
+{
+  "id": "sault-test",
+  "name": "Sault test",
+  "jurisdiction": "ON",
+  "centre": [-84.4949169, 46.4727536],
+  "home": { "center": [-84.4949169, 46.4727536], "zoom": 13 },
+  "region": { "west": -84.619, "south": 46.403, "east": -84.371, "north": 46.543 },
+  "core": { "west": -84.521, "south": 46.455, "east": -84.469, "north": 46.491, "maxzoom": 16 },
+  "regionMaxzoom": 13,
+  "declination": -7.2,
+  "timezone": "America/Toronto",
+  "zone": { "label": "WMU", "name": "36" },
+  "relief": [176, 199],
+  "base": "areas/sault-test/",
+  "surveyedLakes": [],
+  "live": { "lio": true, "satellite": "lio" },
+  "attribution": { "vectors": "© Ontario MNRF", "lakes": "© Ontario MNRF", "bush": "FRI LiDAR © Ontario MNR" },
+  "presets": [{ "name": "Requested spot", "lon": -84.4949169, "lat": 46.4727536, "kind": "stand", "note": "Area requested 2026-10-04" }],
+  "bundle": {
+    "description": "Topo, imagery, LiDAR relief and contours, LiDAR bush and shooting lanes, forest stands inferred from the national forest maps, water, roads, and the habitat, wind and going grids around the test spot west of Sault Ste. Marie; full detail within 2 km of it."
+  },
+  "files": {
+    "pmtiles": [
+      "topo",
+      "satellite",
+      "hillshade",
+      "hillshadeLidar",
+      "dem",
+      "contours",
+      "contoursWide",
+      "forest",
+      "understory",
+      "lanes",
+      "historical",
+      "places"
+    ],
+    "geo": ["wmu", "camps", "crown", "parks", "bathy", "fire", "roads", "depth"],
+    "baseGeo": ["waterbody"],
+    "grids": ["habitat", "micro", "going"]
+  },
+  "bake": {
+    "outDir": "app/public/data/areas/sault-test",
+    "hrdem": [
+      "https://canelevation-dem.s3.ca-central-1.amazonaws.com/hrdem-lidar/ON-Sault_SteMarie_UTM16_2024-1m-dtm.tif",
+      "https://canelevation-dem.s3.ca-central-1.amazonaws.com/hrdem-lidar/ON-SPL_ON_St_Marys_River_UTM16_2023-1m-dtm.tif",
+      "https://canelevation-dem.s3.ca-central-1.amazonaws.com/hrdem-lidar/ON-SPL_ON_Blind_River_UTM16_2022-1m-dtm.tif"
+    ],
+    "vectors": "on.lio",
+    "forest": {
+      "adapter": "ca.scanfi",
+      "vintage": "SCANFI 2025; CanLaD 1985-2025",
+      "attribution": "Forest inferred from SCANFI and CanLaD © Natural Resources Canada"
+    },
+    "imagery": "on.oiwms",
+    "pointcloud": "on.fri_leafon",
+    "nts": ["041K08", "041K09", "041K10"]
+  },
+  "coverage": {
+    "checked": "2026-10-04",
+    "pmtiles": {
+      "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
+      "topo": {
+        "file": "topo-sault-test.pmtiles",
+        "bytes": 165785,
+        "source": "Toporama hypsography (contours and spot heights), NRCan WMS",
+        "licence": "OGL-Canada"
+      },
+      "satellite": {
+        "file": "satellite-sault-test.pmtiles",
+        "bytes": 2645092,
+        "source": "Ontario Imagery, LIO web map service",
+        "licence": "OGL-Ontario"
+      },
+      "hillshade": { "file": "hillshade-sault-test.pmtiles", "bytes": 3799760, "source": "MRDEM 30 m hillshade, NRCan WMS", "licence": "OGL-Canada" },
+      "hillshadeLidar": {
+        "file": "hillshade-lidar-sault-test.pmtiles",
+        "bytes": 5278985,
+        "source": "HRDEM 1 m LiDAR DTM, NRCan: ON-Sault_SteMarie_UTM16_2024-1m, gaps filled from ON-SPL_ON_St_Marys_River_UTM16_2023-1m, ON-SPL_ON_Blind_River_UTM16_2022-1m",
+        "licence": "OGL-Canada",
+        "vintage": "2024, gaps 2023, 2022",
+        "note": "LiDAR over 86% of the core"
+      },
+      "dem": {
+        "file": "dem-sault-test.pmtiles",
+        "bytes": 3641715,
+        "source": "MRDEM 30 m, with HRDEM 1 m LiDAR over the core (ON-Sault_SteMarie_UTM16_2024-1m, gaps filled from ON-SPL_ON_St_Marys_River_UTM16_2023-1m, ON-SPL_ON_Blind_River_UTM16_2022-1m), NRCan",
+        "licence": "OGL-Canada",
+        "vintage": "2024, gaps 2023, 2022"
+      },
+      "contours": {
+        "file": "contours-sault-test.pmtiles",
+        "bytes": 209049,
+        "source": "HRDEM 1 m LiDAR DTM, NRCan: ON-Sault_SteMarie_UTM16_2024-1m, gaps filled from ON-SPL_ON_St_Marys_River_UTM16_2023-1m, ON-SPL_ON_Blind_River_UTM16_2022-1m",
+        "licence": "OGL-Canada",
+        "vintage": "2024, gaps 2023, 2022"
+      },
+      "contoursWide": { "file": "contours-wide-sault-test.pmtiles", "bytes": 218145, "source": "MRDEM 30 m DTM, NRCan", "licence": "OGL-Canada" },
+      "forest": {
+        "file": "forest-sault-test.pmtiles",
+        "bytes": 282606,
+        "source": "inferred from SCANFI v2 (species, closure, height, age, 30 m) and CanLaD v1.1 (cuts and burns), Canadian Forest Service",
+        "licence": "OGL-Canada; CanLaD CC BY 4.0",
+        "vintage": "SCANFI 2025; CanLaD 1985-2025"
+      },
+      "understory": {
+        "file": "understory-sault-test.pmtiles",
+        "bytes": 1078639,
+        "source": "FRI leaf-on single-photon LiDAR point clouds, OMNRF",
+        "licence": "OGL-Ontario",
+        "vintage": "2022, 2023"
+      },
+      "lanes": {
+        "file": "lanes-sault-test.pmtiles",
+        "bytes": 790142,
+        "source": "FRI leaf-on single-photon LiDAR point clouds, OMNRF",
+        "licence": "OGL-Ontario",
+        "vintage": "2022, 2023"
+      },
+      "bathy": { "missing": "not baked: lake depths are drawn from GeoJSON (depth)" },
+      "historical": {
+        "file": "historical-sault-test.pmtiles",
+        "bytes": 4389102,
+        "source": "CanMatrix2 1:50 000 NTS scans, NRCan: 041K08, 041K09, 041K10",
+        "licence": "OGL-Canada"
+      },
+      "bathySheets": { "missing": "not in this area's maps" },
+      "places": {
+        "file": "places-sault-test.pmtiles",
+        "bytes": 34250,
+        "source": "LIO: WMUs, Crown land camps, Crown land, parks, burns and roads",
+        "licence": "OGL-Ontario"
+      }
+    },
+    "geo": {
+      "wmu": { "file": "wmu-sault-test.geojson", "bytes": 354214, "source": "Wildlife Management Units, LIO", "licence": "OGL-Ontario" },
+      "camps": {
+        "file": "camps-sault-test.geojson",
+        "bytes": 99,
+        "source": "Crown land dispositions: camps, cottages and lodges, LIO",
+        "licence": "OGL-Ontario"
+      },
+      "crown": { "file": "crown-sault-test.geojson", "bytes": 217746, "source": "Crown land, LIO", "licence": "OGL-Ontario" },
+      "parks": { "file": "parks-sault-test.geojson", "bytes": 77, "source": "Provincial parks, LIO", "licence": "OGL-Ontario" },
+      "bathy": { "file": "bathy-sault-test.geojson", "bytes": 67, "source": "Lake bathymetry lines, LIO", "licence": "OGL-Ontario" },
+      "fire": { "file": "fire-sault-test.geojson", "bytes": 73, "source": "Fire disturbance areas, LIO", "licence": "OGL-Ontario" },
+      "roads": { "file": "roads-sault-test.geojson", "bytes": 44257, "source": "MNRF roads, LIO", "licence": "OGL-Ontario" },
+      "forest": { "missing": "not in the maps as GeoJSON: the map reads the stands from the forest tiles, and the GeoJSON stays the bake's input" },
+      "depth": {
+        "file": "depth-sault-test.geojson",
+        "bytes": 30295,
+        "source": "depth bands: the MNR survey sheets where a lake was surveyed, else a shore-distance model",
+        "licence": "OGL-Ontario"
+      }
+    },
+    "baseGeo": {
+      "waterbody": {
+        "file": "waterbody-sault-test.geojson",
+        "bytes": 1653412,
+        "source": "Ontario Hydro Network waterbodies, LIO",
+        "licence": "OGL-Ontario"
+      }
+    },
+    "grids": {
+      "habitat": {
+        "file": "habitat-sault-test.hab",
+        "bytes": 984642,
+        "source": "derived: MRDEM, NRCan 2020 land cover, forest stands, water, wetlands, roads and burns",
+        "licence": "derived from the layers above",
+        "note": "stand height and closure from the LiDAR point cloud over 97% of the core",
+        "vintage": "generated 2026-10-04"
+      },
+      "micro": {
+        "file": "micro-sault-test.hab",
+        "bytes": 1203400,
+        "source": "derived: the habitat grid and the MRDEM",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-04"
+      },
+      "going": {
+        "file": "going-sault-test.hab",
+        "bytes": 255252,
+        "source": "derived: HRDEM LiDAR, point-cloud bush or the forest-map estimate, water, wetlands and roads",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-04"
+      }
+    }
+  }
+}

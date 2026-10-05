@@ -285,8 +285,8 @@ adapter that covers the area for each layer:
 | --- | --- | --- | --- |
 | 1 m LiDAR (relief, contours, DEM) | HRDEM | HRDEM | HRDEM, project found by STAC search |
 | 30 m elevation, 10 m contours | — | — | MRDEM |
-| Forest stands and their age | FRI FIMv2 | Carte écoforestière (4th inventory) plus later cuts, fires and outbreaks | (SCANFI, not checked) |
-| Burns | LIO fire | `ca_feu` layer | (NBAC, not checked) |
+| Forest stands and their age | FRI FIMv2 | Carte écoforestière (4th inventory) plus later cuts, fires and outbreaks | Inferred from SCANFI v2 (2025) and CanLaD (1985–2025): `ca_forest.py`, adapter `ca.scanfi` |
+| Burns | LIO fire | `ca_feu` layer | CanLaD in the inferred stands; NBAC (WFS, 1972–2025) checked, not wired |
 | Lakes, streams | OHN (LIO) | GRHQ | NHN, OSM |
 | Wetlands | LIO wetlands | Milieux humides potentiels | land cover |
 | Roads | MNRF roads (LIO) | AQréseau, forest roads included | OSM |
@@ -318,11 +318,26 @@ for fishing. An area without them simply has no Lake depths layer.
 4. **Ship**: the pack is uploaded to the data store and added to
    `areas.json`, and the phone that asked sees it next time it is online.
 
-A national baseline would make any request in Canada useful on the first
-day. The Canadian Forest Service publishes national 30 m forest
-attributes and disturbance history (SCANFI, CanLaD), which could feed a
-coarser moose score where no province is wired up yet. These have **not
-been checked**.
+A national baseline makes any request in Canada useful on the first day.
+`ca_forest.py` (adapter `ca.scanfi`) infers stands from the Canadian
+Forest Service's national 30 m maps:
+- **SCANFI v2:** each species' share of the crown, height, closure and
+  median age, as of 2025.
+- **CanLaD v1.1:** the latest cut or burn and its year, 1985–2025.
+
+Both are national GeoTIFFs read by window, so a region takes about a minute
+and nothing national is downloaded. The stands are a model's estimates:
+- conifer against hardwood holds up;
+- the lead species less so;
+- broadleaf is one class (aspen, birch and maple alike);
+- the readme warns accuracy is lower in the Yukon.
+
+First used for the Sault test area (2026-10-04), where the Algoma Forest
+FRI is FIMv1 only.
+
+Tried and dropped there: telling hardwood from conifer by the leaf-off
+against the leaf-on HRDEM surface models. Bare branches still hold the
+surface up.
 
 Bakes run on the PC that has the pipeline (Python 3.13/3.14, GDAL, and
 gigabytes of point cloud), then later on a cloud machine. Whether requests
@@ -468,4 +483,4 @@ Still open:
 - The pack is large for a phone. Smaller tiles, or leaving the historical
   sheets out, would bring it down.
 - The request flow and the move to R2 are next. See Requests and Hosting.
-- The national baseline (SCANFI, CanLaD) has not been checked.
+- The inferred stands (`ca_forest.py`) are not field-checked; NBAC burns before 1985 are not wired in.

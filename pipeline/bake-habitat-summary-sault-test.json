@@ -1,0 +1,280 @@
+{
+ "cover": {
+  "nodata": 200353,
+  "water": 64979,
+  "open wetland": 2051,
+  "treed wetland": 0,
+  "dense conifer": 1417,
+  "open conifer": 11211,
+  "mixedwood": 18927,
+  "hardwood": 19077,
+  "shrub / alder": 2299,
+  "young regen": 778,
+  "rock / barren": 90,
+  "road": 598
+ },
+ "landform": {
+  "flat": 291367,
+  "ridge": 12522,
+  "valley": 11392,
+  "saddle": 25,
+  "bench": 33,
+  "peak": 65,
+  "slope": 6376
+ },
+ "disturbed": 3450,
+ "inferredCuts": 541,
+ "lakes": [
+  {
+   "id": 2,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 91,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 6,
+   "name": null,
+   "areaHa": 1.0,
+   "fetchMaxM": 153,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 7,
+   "name": null,
+   "areaHa": 1.9,
+   "fetchMaxM": 398,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 9,
+   "name": null,
+   "areaHa": 1.2,
+   "fetchMaxM": 91,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 10,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 61,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 12,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 122,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 13,
+   "name": "Mary Ann Lake",
+   "areaHa": 3.3,
+   "fetchMaxM": 214,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 17,
+   "name": null,
+   "areaHa": 1.6,
+   "fetchMaxM": 245,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 19,
+   "name": null,
+   "areaHa": 1.2,
+   "fetchMaxM": 214,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 20,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 91,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 22,
+   "name": "Lake Superior (lac Sup\u00e9rieur)",
+   "areaHa": 471.5,
+   "fetchMaxM": 3097,
+   "maxDepth": 406.0,
+   "meanDepth": 147.0,
+   "secchi": null,
+   "species": [
+    "brooktrout",
+    "burbot",
+    "cisco",
+    "laketrout",
+    "whitefish",
+    "pike",
+    "bass",
+    "walleye",
+    "perch"
+   ],
+   "depthModel": {
+    "k": 1.64,
+    "shoreMaxM": 2247
+   }
+  },
+  {
+   "id": 23,
+   "name": "Bennett - West Davignon Channel",
+   "areaHa": 0.7,
+   "fetchMaxM": 122,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 24,
+   "name": null,
+   "areaHa": 1.8,
+   "fetchMaxM": 183,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 27,
+   "name": null,
+   "areaHa": 1.4,
+   "fetchMaxM": 183,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  }
+ ],
+ "canopy": {
+  "from": "Ontario MNR FRI leaf-on SPL LiDAR, White Lake 2021 (flown late Sept 2021)",
+  "lidarCells": 12652,
+  "lidarShareOfLand": 0.048,
+  "lidarShareOfCoreLand": 0.97,
+  "meanHeightM": {
+   "inventory": 7.3,
+   "lidar": 10.9
+  },
+  "meanClosurePct": {
+   "inventory": 30.6,
+   "lidar": 49.0
+  },
+  "inStands": {
+   "cells": 6761,
+   "meanHeightM": {
+    "inventory": 13.1,
+    "lidar": 14.9
+   },
+   "meanClosurePct": {
+    "inventory": 54.8,
+    "lidar": 69.3
+   }
+  },
+  "byCover": {
+   "dense conifer": {
+    "cells": 649,
+    "heightM": [
+     15.8,
+     16.4
+    ],
+    "closurePct": [
+     62.9,
+     78.5
+    ]
+   },
+   "open conifer": {
+    "cells": 2073,
+    "heightM": [
+     12.8,
+     13.9
+    ],
+    "closurePct": [
+     52.2,
+     61.6
+    ]
+   },
+   "mixedwood": {
+    "cells": 3565,
+    "heightM": [
+     12.6,
+     15.2
+    ],
+    "closurePct": [
+     53.7,
+     71.3
+    ]
+   },
+   "hardwood": {
+    "cells": 474,
+    "heightM": [
+     14.0,
+     15.2
+    ],
+    "closurePct": [
+     63.3,
+     75.2
+    ]
+   }
+  },
+  "gapsToRegen": 239,
+  "gapsFrom": {
+   "dense conifer": 3,
+   "open conifer": 106,
+   "mixedwood": 96,
+   "hardwood": 34
+  },
+  "coreUnder6m": {
+   "opened": 364,
+   "walled": 0
+  }
+ }
+}
