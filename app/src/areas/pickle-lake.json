@@ -93,7 +93,7 @@
       "contoursWide": { "file": "contours-wide-pickle-lake.pmtiles", "bytes": 437772, "source": "MRDEM 30 m DTM, NRCan", "licence": "OGL-Canada" },
       "forest": {
         "file": "forest-pickle-lake.pmtiles",
-        "bytes": 1061560,
+        "bytes": 1099820,
         "source": "Forest Resources Inventory (FRI FIMv2) stands, OMNRF",
         "licence": "OGL-Ontario",
         "vintage": "2010"

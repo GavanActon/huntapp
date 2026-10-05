@@ -5,6 +5,8 @@ map's load back by seconds on the phone, 2026-10-01).
 
   forest-<region>.pmtiles   layer `forest`   from forest-<region>.geojson (the
                             area's forest adapter: build_forest.py in Ontario)
+                            and `forest_label`, a point per patch of one
+                            wood type, in from the zoom its name fits at
   places-<region>.pmtiles   layers wmu, camps, crown, parks, fire, roads
                             from <theme>-<region>.geojson (the area's vector
                             adapter: build_vectors.py in Ontario), less any
@@ -24,15 +26,19 @@ from __future__ import annotations
 import gzip
 import json
 import math
+import re
 import sys
 import time
+from collections import defaultdict
+from datetime import date
 
 import mapbox_vector_tile
+import numpy as np
 import shapely
 from mapbox_vector_tile.encoder import on_invalid_geometry_make_valid
 from rasterio.warp import transform_geom
 
-from area import AREA, JURISDICTION
+from area import AREA, BAKE, JURISDICTION, options
 from common import OUT_DIR, REGION, region_tiles, tile_bounds_3857
 from pmtiles.tile import Compression, TileType, zxy_to_tileid
 from pmtiles.writer import Writer
@@ -57,9 +63,49 @@ ATTRIBUTION = {
 # layer, empty, as it names camps and crown where there are none.
 WITHHELD = {"QC": {"wmu"}}
 
+# The wood type in words. Zoomed out a stand is a few pixels across and
+# the fill's colours alone did not say what grows there, the words only
+# came in at z15 (Gavan, 2026-10-04, Scout view). Each stand gets a name,
+# the stands of one colour (cover group) are run together into patches,
+# and each patch gets label points in its widest parts, written into the
+# tiles from the zoom the name fits there: the map names a big spruce flat
+# at z11 and a small aspen patch at z14, and never a stand too small to
+# hold the word. A label says what most of the ground under it is (aspen
+# where aspen leads), else the group's word (hardwood, an aspen and birch
+# patch). The lead species (the stand's first code) names conifer and
+# hardwood stands, as the heat's reasons do; Quebec's codes are mapped
+# onto Ontario's by qc_forest.py.
+#
+# The colour and the name go by `cover`, the stand's group except on an
+# old cut or burn: one OLD_DISTURBANCE_YEARS on is drawn and named as the
+# trees grown back on it, as the habitat bake classes it. At Lac Bailey
+# nearly every stand is the 1991 burn, and the map was one burn colour
+# with the species only in the z15 codes. A younger one stays a cut or a
+# burn (the browse); the year stays in the close-in code either way.
+OLD_DISTURBANCE_YEARS = 20
+CONIFER_NAMES = {
+    "Sb": "Black spruce", "Sw": "White spruce", "Sx": "Spruce", "Bf": "Balsam fir",
+    "Pj": "Jack pine", "Pw": "White pine", "Pr": "Red pine", "Px": "Pine",
+    "Cw": "Cedar", "Ce": "Cedar", "La": "Tamarack", "He": "Hemlock",
+    "Pl": "Lodgepole pine", "Fd": "Douglas-fir", "Py": "Ponderosa pine",
+}
+HARDWOOD_NAMES = {
+    "Pt": "Aspen", "Po": "Poplar", "Pb": "Balsam poplar", "Bw": "Birch", "By": "Yellow birch",
+    "Hi": "Aspen, birch", "Mr": "Red maple", "Mh": "Sugar maple",
+}
+GROUP_NAMES = {"conifer": "Conifer", "hardwood": "Hardwood", "mixed": "Mixed", "wetland": "Wetland", "brush": "Brush", "cut": "Cut", "burn": "Burn"}
+LABEL_PX_PER_CHAR = 6.8  # the style's 12 px text
+LABEL_MIN_PX = 16  # about the text's height and a bit
+LABEL_FIT = 0.4  # the widest circle in the patch against the name's width
+LABEL_LEAD = 0.6  # the share of the ground under a label one name needs to give it
+LABELS_PER_PATCH = 40
+SEAM_M = 3  # closes the slivers between neighbouring stands when they are run together
+
 
 def attribution(name: str) -> str:
-    return ATTRIBUTION.get(JURISDICTION, {}).get(name) or AREA.get("attribution", {}).get("vectors", "")
+    # an area whose stands are not the province's (ca_forest.py's inferred ones) names its own
+    own = options(BAKE, "forest").get("attribution") if name == "forest" else None
+    return own or ATTRIBUTION.get(JURISDICTION, {}).get(name) or AREA.get("attribution", {}).get("vectors", "")
 
 
 def load_theme(theme: str) -> tuple[list[shapely.Geometry], list[dict]]:
@@ -90,6 +136,91 @@ def load_theme(theme: str) -> tuple[list[shapely.Geometry], list[dict]]:
     return geoms, props
 
 
+def stand_cover(p: dict) -> str | None:
+    """The group the map draws a stand as: an old cut or burn with a
+    composition as its trees, by the habitat bake's conifer shares."""
+    group = p.get("group")
+    year = p.get("dep") or p.get("year")
+    conif, hard = p.get("conif") or 0, p.get("hard") or 0
+    if group in ("cut", "burn") and year and date.today().year - year >= OLD_DISTURBANCE_YEARS and conif + hard > 0:
+        return "conifer" if conif >= 70 else "hardwood" if conif <= 30 else "mixed"
+    return group
+
+
+def stand_name(p: dict) -> str | None:
+    """A stand's wood type in a word or two; none for water and the rest."""
+    group = p.get("cover")
+    if group in ("cut", "burn"):
+        year = p.get("dep") or p.get("year")
+        return f"{group.capitalize()} {year}" if year else group.capitalize()
+    m = re.match(r"[A-Z][a-z]?", p.get("species") or "")
+    lead = m.group(0) if m else ""
+    if group == "conifer":
+        return CONIFER_NAMES.get(lead, "Conifer")
+    if group == "hardwood":
+        return HARDWOOD_NAMES.get(lead, "Hardwood")
+    return GROUP_NAMES.get(group)
+
+
+def forest_labels(geoms: list[shapely.Geometry], props: list[dict]) -> tuple[list[shapely.Geometry], list[dict]]:
+    """Names the stands (a `cover` and a `name` on each, for the fill and
+    the close-in label) and returns the patch label points, each with the
+    zoom it comes in at."""
+    by_group: dict[str, list[int]] = defaultdict(list)
+    for i, p in enumerate(props):
+        if cover := stand_cover(p):
+            p["cover"] = cover
+        name = stand_name(p)
+        if name:
+            p["name"] = name
+            by_group[p["cover"]].append(i)
+    z0_px_m = 2 * math.pi * 6378137.0 / 256
+
+    def r_fit(name: str) -> float:
+        """The circle a name needs at z0, in 3857 m: halve once a zoom."""
+        return max(LABEL_MIN_PX, LABEL_FIT * len(name) * LABEL_PX_PER_CHAR) * z0_px_m / 2
+
+    # nothing narrower than the shortest name's circle at the deepest baked zoom
+    r_floor = LABEL_MIN_PX * z0_px_m / 2 / 2**MAXZOOM
+    points: list[shapely.Geometry] = []
+    out: list[dict] = []
+    for cover, ids in by_group.items():
+        gs = np.array([geoms[i] for i in ids], dtype=object)
+        names = [props[i]["name"] for i in ids]
+        tree = shapely.STRtree(gs)
+        patch = shapely.buffer(shapely.union_all(shapely.buffer(gs, SEAM_M)), -SEAM_M)
+        for part in shapely.get_parts(patch):
+            # the widest spot first, then the next widest clear of it, so a
+            # big patch is named more than once as it grows on the screen
+            for _ in range(LABELS_PER_PATCH):
+                if part.is_empty:
+                    break
+                mic = shapely.maximum_inscribed_circle(part, tolerance=5)
+                r = mic.length
+                if r < r_floor:
+                    break
+                c = shapely.get_point(mic, 0)
+                disc = c.buffer(r)
+                part = part.difference(c.buffer(2 * r))
+                near = tree.query(disc)
+                share: dict[str, float] = defaultdict(float)
+                for j, a in zip(near, shapely.area(shapely.intersection(disc, gs[near]))):
+                    share[names[j]] += a
+                total = sum(share.values()) or 1
+                lead, a = max(share.items(), key=lambda kv: kv[1], default=(GROUP_NAMES[cover], 0))
+                name = lead if a / total >= LABEL_LEAD else GROUP_NAMES[cover]
+                minz = max(MINZOOM, math.ceil(math.log2(r_fit(name) / r)))
+                if minz > MAXZOOM:
+                    continue
+                points.append(c)
+                out.append({"name": name, "cover": cover, "r": round(r), "minz": minz})
+    by_z = defaultdict(int)
+    for p in out:
+        by_z[p["minz"]] += 1
+    print(f"  forest_label: {len(out)} points, in from " + ", ".join(f"z{z}: {n}" for z, n in sorted(by_z.items())))
+    return points, out
+
+
 def write_archive(name: str, themes: list[str]) -> None:
     out = OUT_DIR / f"{name}-{REGION['id']}.pmtiles"
     withheld = WITHHELD.get(JURISDICTION, set())
@@ -100,6 +231,8 @@ def write_archive(name: str, themes: list[str]) -> None:
     if not loaded:
         print(f"{name}: nothing to bake")
         return
+    if "forest" in loaded:
+        loaded["forest_label"] = forest_labels(*loaded["forest"])
     trees = {t: shapely.STRtree(g) for t, (g, _) in loaded.items()}
     count, total = 0, 0
     t0 = time.time()
@@ -117,6 +250,9 @@ def write_archive(name: str, themes: list[str]) -> None:
                     idx = trees[t].query(shapely.box(minx - buf, miny - buf, maxx + buf, maxy + buf))
                     feats = []
                     for i in idx:
+                        # a label point waits for the zoom its name fits at
+                        if props[i].get("minz", MINZOOM) > z:
+                            continue
                         g = shapely.clip_by_rect(simplified[t][i], minx - buf, miny - buf, maxx + buf, maxy + buf)
                         if g.is_empty:
                             continue
@@ -161,7 +297,7 @@ def write_archive(name: str, themes: list[str]) -> None:
                 # every theme asked for, even one with nothing in it (crown
                 # land here): the style names them all as source-layers,
                 # and MapLibre reports a layer the metadata does not list
-                "vector_layers": [{"id": t, "minzoom": MINZOOM, "maxzoom": MAXZOOM, "fields": {}} for t in themes],
+                "vector_layers": [{"id": t, "minzoom": MINZOOM, "maxzoom": MAXZOOM, "fields": {}} for t in [*themes, *(["forest_label"] if "forest" in themes else [])]],
             },
         )
     print(f"wrote {out.name} ({out.stat().st_size / 1e6:.1f} MB, {count} tiles, {time.time() - t0:.0f} s)")
