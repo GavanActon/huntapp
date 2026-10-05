@@ -2,13 +2,11 @@ import maplibregl, { type Map as MlMap } from 'maplibre-gl'
 import { ACTIVE_AREA, areaAt } from '../areas'
 import { switchArea } from '../areas/switch'
 import { SPOT_ZOOM } from '../areas/start'
-import { devlog } from '../devlog'
 import { haversineM } from '../measure/measureMath'
 import { SHARE_BASE } from '../share/share'
 import { coordWords, spotLink, type LonLat } from '../share/link'
 import { useAppStore } from '../state/appStore'
 import { usePlacesStore, type SavedPlace } from '../state/placesStore'
-import { parsePlace } from './coords'
 import { showInfoPopup, type InfoHead } from './infoPopup'
 import { getMap, withMap } from './mapController'
 import { showPlacePopup } from './placePopup'
@@ -145,36 +143,6 @@ export function goToSpot(s: Spot, text?: string): void {
   })
 }
 
-/**
- * ⋯ › Paste: the clipboard, read inside the tap (iOS puts its own Paste
- * bubble by the finger, Chrome asks the once). A whole place goes straight
- * there, as Go would. Anything else opens Go to coordinates holding it: an
- * area's link (Go to Lac Bailey is there), words with no position, a
- * number still short of one, an empty clipboard, no access to it. Settles
- * once the read has, so the menu stays up until then.
- */
-export function pasteAndGo(): Promise<void> {
-  let read: Promise<string>
-  try {
-    read = navigator.clipboard.readText()
-  } catch {
-    // no clipboard here (an old browser, a page off https)
-    read = Promise.reject(new Error('no clipboard'))
-  }
-  return read.then(
-    (text) => {
-      const p = parsePlace(text)
-      devlog('goto', `paste · ${p == null ? 'no position' : p.lon == null ? `area ${p.area}` : `${coordWords(p)}${p.complete ? '' : ' (short)'}${p.name ? ` · ${p.name}` : ''}`}`)
-      if (p && p.lon != null && p.complete) return goToSpot({ lon: p.lon, lat: p.lat, name: p.name }, text)
-      // an empty clipboard leaves the box as it was (what was being typed)
-      useAppStore.getState().openSheet(text.trim() ? { kind: 'coords', text } : { kind: 'coords' })
-    },
-    () => {
-      devlog('goto', 'paste · no clipboard access')
-      useAppStore.getState().openSheet({ kind: 'coords' })
-    },
-  )
-}
 
 /** A place gone to, for Go to coordinates' Recent: newest first. */
 export interface RecentPlace extends LonLat {

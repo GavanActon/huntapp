@@ -224,11 +224,9 @@ down (`app/src/share/share.ts`).
 keyboard, and no signal needed, so it is the way for a position that came
 by satellite or inReach.
 
-- ⋯ › Go to coordinates has Paste at its end. It reads the clipboard inside
-  the tap (iOS shows its own Paste bubble, Chrome asks once). A whole place
-  goes straight there; anything else opens the sheet holding it: an area's
-  link (with Go to Lac Bailey), words with no position, nothing, or no
-  access. The menu stays up until the read is done.
+- The ⋯ menu no longer has Go to coordinates (Gavan, 2026-10-05: the
+  menu's paste is the satellite weather's now, docs/SAT-FORECAST.md). The
+  sheet opens on its own for a shared spot in no area.
 - The sheet opens at 46% with Paste on top and the box unfocused, so no
   keyboard comes up and the map stays in view. A paste into the box by the
   phone (a long press, Gboard's chip) also goes straight there, so it works
@@ -460,10 +458,11 @@ Built on branch `areas` (2026-10-03/04). Not yet merged or deployed.
   it opens there.
 - A GPS fix inside another area shows one small chip. It blocks nothing,
   and once dismissed with × it stays dismissed for that area.
-- Go to coordinates (⋯ menu) reads Garmin's "N 49.409550° W 69.553490°",
-  decimal degrees, degrees and minutes, DMS, map links, the app's own
-  links and whole messages holding any of them. ⋯ › Paste goes straight to
-  a pasted place; the sheet adds Paste, every area's home and Recent.
+- Go to coordinates reads Garmin's "N 49.409550° W 69.553490°", decimal
+  degrees, degrees and minutes, DMS, map links, the app's own links and
+  whole messages holding any of them, with Paste, every area's home and
+  Recent. It opens for a shared spot in no area; it left the ⋯ menu
+  2026-10-05.
 - ⋯ › Locations: Pickle Lake and Lac Bailey a tap away, each with Share.
 - Share: a pin's popup, Dig in's ⋯ and each row of ⋯ › Locations, by the
   phone's share sheet, else the clipboard.

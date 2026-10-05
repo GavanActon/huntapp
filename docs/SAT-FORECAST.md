@@ -14,10 +14,11 @@ what is left before it works for real. See [Going live](#going-live).
 
 ## Using it
 
-- **Open**: ⋯ → **Weather by satellite**. The row is there only with no
-  signal, or while a request is waiting for its answer. The weather
-  detail's "a newer HD forecast is in · fetches with signal" adds **or by
-  satellite** when offline.
+- **Open**: ⋯ → **Weather by satellite**, always there (it took Go to
+  coordinates' place, 2026-10-05). With signal the sheet says so and offers
+  Refresh, the steps still under it. The weather detail's "a newer HD
+  forecast is in · fetches with signal" adds **or by satellite** when
+  offline.
 - **1 · Send this**: the app writes the request for the camp, for
   example `GW1 48.926 -85.599 48`: the camp's forecast point (3 decimals,
   about 100 m) and the hours wanted.
