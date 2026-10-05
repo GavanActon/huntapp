@@ -583,3 +583,14 @@ footer .links a:hover { color: var(--ink); text-decoration: underline; }
 @media (min-width: 860px) {
   .behaviour { grid-template-columns: 1fr 1fr; gap: 64px; padding-block: 88px; }
 }
+/* a loop that's waiting for a tap: the play button big, in the middle */
+.phone:has(video) { cursor: pointer; }
+.phone.wait .loop-toggle {
+  inset: 0;
+  margin: auto;
+  width: 68px;
+  height: 68px;
+  background: rgba(10, 16, 11, 0.72);
+  box-shadow: 0 0 0 1px rgba(243, 248, 239, 0.35), 0 6px 20px rgba(0, 0, 0, 0.45);
+}
+.phone.wait .loop-toggle[aria-label="Play"]::before { border-left-width: 20px; border-block-width: 12px; margin-left: 6px; }
