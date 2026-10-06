@@ -139,7 +139,7 @@
       },
       "micro": {
         "file": "micro-highland-lake.hab",
-        "bytes": 6764532,
+        "bytes": 8449086,
         "source": "derived: the habitat grid and the MRDEM",
         "licence": "derived from the layers above",
         "vintage": "generated 2026-10-05"
