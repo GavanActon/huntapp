@@ -106,6 +106,7 @@ const KEY_PROP = {
   share: 'what',
   log_entry: 'species',
   wind_check: 'strength',
+  check_share: 'on',
   route: 'status',
   download: 'ok',
   sat_paste: 'ok',

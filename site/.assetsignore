@@ -5,3 +5,4 @@ schema.sql
 .wrangler
 satbot.js
 stats.js
+checks.js

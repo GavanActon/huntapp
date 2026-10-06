@@ -1,5 +1,5 @@
--- Area requests from the site's form (and later the app's own button), and
--- the app's usage stats (events, below).
+-- Area requests from the site's form (and later the app's own button), the
+-- app's usage stats (events, below) and the wind checks hunters share (checks).
 -- Apply with: npx wrangler d1 execute groundwind --remote --file schema.sql
 -- Read with:  npx wrangler d1 execute groundwind --remote --command "SELECT * FROM requests ORDER BY at DESC"
 CREATE TABLE IF NOT EXISTS requests (
@@ -36,3 +36,27 @@ CREATE TABLE IF NOT EXISTS events (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS events_install_seq ON events (install, seq);
 CREATE INDEX IF NOT EXISTS events_ts ON events (ts);
+
+-- Wind checks the hunters chose to share (app/src/weather/micro/checkShare.ts
+-- → /api/checks, checks.js; docs/ANALYTICS.md "Wind checks"). Asked once, at
+-- a phone's first check, and off in Settings. A position, a time, what was
+-- felt and what the map and the forecast said: the ground model's lessons by
+-- place and conditions. Never a name or a note, never shown to another
+-- hunter. A check that changes on the phone (another puff folded in, or
+-- replaced by a newer one) is sent again and updated: (install, cid) is unique.
+CREATE TABLE IF NOT EXISTS checks (
+  id INTEGER PRIMARY KEY,
+  install TEXT NOT NULL,      -- the phone's random id, as in events
+  cid TEXT NOT NULL,          -- the check's own id on the phone
+  ts INTEGER NOT NULL,        -- when it was made, ms, the phone's clock put right by the batch's skew
+  lat REAL NOT NULL,
+  lon REAL NOT NULL,
+  area TEXT,                  -- the area the app was running in when it was sent
+  build TEXT,                 -- the app's build (git sha) that sent it
+  data TEXT NOT NULL,         -- the check as the phone keeps it (windChecks.ts WindCheck), JSON, less `by` and `note`
+  country TEXT,               -- Cloudflare's guess from the upload
+  received INTEGER NOT NULL,  -- first reached us, ms
+  updated INTEGER NOT NULL    -- last sent, ms
+);
+CREATE UNIQUE INDEX IF NOT EXISTS checks_install_cid ON checks (install, cid);
+CREATE INDEX IF NOT EXISTS checks_ts ON checks (ts);
