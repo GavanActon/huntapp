@@ -138,6 +138,37 @@ In the browser (`model.ts momentumAt`):
 The stable lid stays. Against WindNinja's stable mode (α 0.2) it scored
 r = 0.89, with the right median turn.
 
+#### The solve's turbulence (since 2026-10-05)
+
+The first bake kept only u and v. In the lee of a bare summit the mean flow
+broke away and circled back, as it should, but it drew smooth and narrow:
+only trees (§4, §5) made the air swirl. Gavan noticed it at Highland Lake,
+on the north face of a 1700 m summit on a south wind. WindNinja's k-ε solve
+knows the turbulence. Every area was rerun to keep it:
+
+- **What WindNinja writes.** `turbulence_output_flag` (it needs
+  `write_goog_output`) adds a GeoTIFF, in EPSG:4326 at the Google Earth
+  resolution (30 m here). It holds the column's most velocity fluctuation,
+  in km/h, over `COLMAX_HEIGHT_AGL` (an environment variable; WindNinja's
+  default is 457 m). run.ps1 sets it to 10 m. A 0 in the grid is outside
+  the domain.
+- **As a spread.** `build_microclimate.py` turns it into a direction
+  spread, atan(σ / local speed). Both are WindNinja's own and unscaled, so
+  the ratio comes from one solve. It writes `mT<ddd.d>` uint8 bands
+  (0.5°) and the area's median as `model.momentum.spreadRef`.
+  - On a coarse test at 202.5°, flat ground came out at ±14°, matching
+    the browser's 12° base.
+  - In the summit's eddy it came out at ±60–80°.
+- **In the browser** (`model.ts`), the tumble is the spread past the
+  median, × (1 − stable), × a ramp from 3 to 9 km/h of regional wind. In
+  a near calm the slopes' own flows run the place.
+  - It adds to the spread's 12°.
+  - At 25° or more it draws swirling, like a tree-line eddy.
+  - At 12° or more the reasons say "The air tumbles in the lee of the high
+    ground". They add "runs back the way it came" where the mean turns
+    120° or more.
+  - A grid without the bands keeps the old spread.
+
 ### 3. Thermals
 
 - **Cold-air drainage** (baked):
@@ -332,6 +363,8 @@ nothing that matters: at that cell the mechanical part stays under
   - convective swings,
   - canopy +8°,
   - swirl +40°, and +25° more in an unsteady slot,
+  - the tumble in the lee of the high ground, from the momentum solve's
+    turbulence (§2),
   - gusts,
   - the ensemble spread for the regional share.
 

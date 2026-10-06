@@ -27,7 +27,11 @@ prepare: <kit>/<area>/dem.tif (MRDEM 30 m in UTM over the core and 2.5 km
          meta.json (the mesh count for ~31 m cells at the ground).
 collect: the finished directions resampled onto the habitat lattice, as
          unit vectors per regional 10 m wind: raw/windcfd-<region>.npz,
-         which build_microclimate.py reads.
+         which build_microclimate.py reads. With them, from the runs since
+         2026-10-05 (job folders t<dir>), the turbulence: WindNinja's most
+         velocity fluctuation in the lowest 10 m (its turbulence output, a
+         GeoTIFF beside the Google Earth file, COLMAX_HEIGHT_AGL=10), per
+         regional 10 m wind, as s<dir>. Left out until all 16 have it.
 
 The kit is WINDCFD_KIT, else pipeline/raw/windcfd.
 """
@@ -129,7 +133,7 @@ def prepare() -> None:
     meta = {"area": REGION["id"], "epsg": epsg, "bounds": [x0, y0, x1, y1], "cols": cols, "rows": rows,
             "meshCount": mesh, "groundCellM": round(res, 1), "groundCells": ground, "speedKph": SPEED_KPH, "directions": DIRECTIONS}
     (out / "meta.json").write_text(json.dumps(meta, indent=1))
-    for f in ("run.ps1", "README.txt"):
+    for f in ("run.ps1", "start-runners.ps1", "README.txt"):
         shutil.copy(HERE / "windcfd" / f, KIT / f)
     print(f"{REGION['id']}: {cols}×{rows} cells of {CELL_M:.0f} m in EPSG:{epsg}, "
           f"{area_m2 / 1e6:.0f} km², mesh count {mesh}: {ground} cells of {res:.1f} m at the ground · {out}")
@@ -154,8 +158,13 @@ def collect() -> None:
     x, y = tr.transform(lon, lat)
     bands: dict[str, np.ndarray] = {}
     done = []
+    turb = []
     for d in meta["directions"]:
-        job = area_dir() / f"d{d:05.1f}"
+        # t<dir>: the runs with the turbulence (2026-10-05 on); d<dir>: the
+        # first pass, u and v only, still read where a t run is not in yet
+        job = area_dir() / f"t{d:05.1f}"
+        if not (job / "done.txt").exists():
+            job = area_dir() / f"d{d:05.1f}"
         us, vs = sorted(job.glob("*_u.asc")), sorted(job.glob("*_v.asc"))
         if not us or not vs:
             continue
@@ -179,13 +188,38 @@ def collect() -> None:
         bands[f"u{d:05.1f}"] = (at(u) / meta["speedKph"]).astype(np.float32)
         bands[f"v{d:05.1f}"] = (at(v) / meta["speedKph"]).astype(np.float32)
         done.append(d)
+        # the turbulence: the most velocity fluctuation in the lowest 10 m,
+        # km/h, on a lon/lat grid of its own (WindNinja's Google Earth side)
+        ks = sorted(job.glob("*colMax*.tif"))
+        if ks:
+            with rasterio.open(ks[0]) as src:
+                k = src.read(1).astype(np.float32)
+                # 0 is outside the solve: the UTM domain's corners in the lon/lat grid
+                bad = ~np.isfinite(k) | (k <= 0) | ((k == src.nodata) if src.nodata is not None else False)
+                k[bad] = np.nan
+                kc, kr = ~src.transform * (lon, lat)
+            kc0 = np.clip(np.floor(kc - 0.5).astype(int), 0, k.shape[1] - 2)
+            kr0 = np.clip(np.floor(kr - 0.5).astype(int), 0, k.shape[0] - 2)
+            tx = np.clip(kc - 0.5 - kc0, 0, 1)
+            ty = np.clip(kr - 0.5 - kr0, 0, 1)
+            ks_ = ((k[kr0, kc0] * (1 - tx) + k[kr0, kc0 + 1] * tx) * (1 - ty)
+                   + (k[kr0 + 1, kc0] * (1 - tx) + k[kr0 + 1, kc0 + 1] * tx) * ty)
+            ks_ = np.where(np.isfinite(ks_), ks_, np.nanmedian(k))
+            bands[f"s{d:05.1f}"] = (ks_ / meta["speedKph"]).astype(np.float32)
+            turb.append(d)
     missing = [d for d in meta["directions"] if d not in done]
     if missing:
         raise SystemExit(f"{REGION['id']}: {len(missing)} directions not run yet: {missing}")
+    if turb and len(turb) < len(done):
+        # all or nothing, as the browser reads it: a half set is dropped
+        print(f"  turbulence for only {len(turb)}/{len(done)} directions: left out until the rest are in")
+        for d in turb:
+            del bands[f"s{d:05.1f}"]
     out = cached(f"windcfd-{REGION['id']}.npz")
     np.savez_compressed(out, directions=np.array(done, np.float32), **bands)
     sp = np.hypot(bands[f"u{done[0]:05.1f}"], bands[f"v{done[0]:05.1f}"])
-    print(f"{REGION['id']}: {len(done)} directions onto {hb.COLS}×{hb.ROWS} · speed {np.percentile(sp, 5):.2f}–{np.percentile(sp, 95):.2f} of the regional wind · {out}")
+    tn = f" · turbulence {np.percentile(bands[f's{done[0]:05.1f}'], 50):.2f} of the regional wind (median)" if f"s{done[0]:05.1f}" in bands else " · no turbulence"
+    print(f"{REGION['id']}: {len(done)} directions onto {hb.COLS}×{hb.ROWS} · speed {np.percentile(sp, 5):.2f}–{np.percentile(sp, 95):.2f} of the regional wind{tn} · {out}")
 
 
 if __name__ == "__main__":

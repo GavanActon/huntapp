@@ -352,6 +352,11 @@ def bake(args) -> int:
     log(f"== done in {time.time() - t_all:.0f} s")
     for n, r in results.items():
         log(f"   {n:14} {r}")
+    # what the area still lacks, said out loud (a step outside this bake,
+    # like the momentum solve, is otherwise easy to miss)
+    if not area.SCRATCH:
+        from area_checklist import print_warnings
+        print_warnings(a["id"])
     return 1 if any(r.startswith("failed") for r in results.values()) else 0
 
 
