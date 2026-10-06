@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { create } from 'zustand'
-import { compass } from '../weather/openMeteo'
+import { cachedPointForecast, compass, hourAt } from '../weather/openMeteo'
+import { windSampler } from '../weather/windGrid'
 import { groundWind, loadMicro } from '../weather/micro/model'
-import { checkPull, checkSpentAt, steadiness, towardWords, useWindChecks, verdict, type Strength, type WindCheck, STRENGTH_CUE } from '../weather/micro/windChecks'
+import { checkPull, checkSpentAt, forecastVerdict, steadiness, towardWords, useWindChecks, verdict, type Strength, type WindCheck, STRENGTH_CUE } from '../weather/micro/windChecks'
 import { LESSON_WORDS, lessonOf, lessonScores, PRIOR_N, biasMatters, biasWords } from '../weather/micro/bias'
 import { clockShort } from '../time'
 import { useAppStore } from '../state/appStore'
 import { requestCompass, startCompass, stopCompass, useCompass } from '../tracking/compass'
 import Rose, { Arrow, sector } from './Rose'
+import ShareChecksAsk from './ShareChecksAsk'
 import { useTapOff } from './tapOff'
 import './ground.css'
 
@@ -69,6 +71,23 @@ export const useCheckForm = create<CheckForm>((set, get) => ({
   mapTap: (lon, lat) => set({ tap: { lon, lat, n: (get().tap?.n ?? 0) + 1 } }),
   close: () => set({ at: null, arming: false, aim: false, tap: null }),
 }))
+
+/** The forecast wind at a place and minute as the map draws it: the HRDPS
+ *  lattice, else the cached point forecast; none with neither on the phone. */
+function forecastAt(lon: number, lat: number, ms: number): { dirFrom: number; kmh: number } | undefined {
+  const out = new Float32Array(2)
+  if (windSampler(ms)?.(lon, lat, out)) return { dirFrom: Math.round(out[1]), kmh: Math.round(out[0] * 10) / 10 }
+  const f = cachedPointForecast(lon, lat)
+  const h = f ? hourAt(f, ms) : null
+  return h && Number.isFinite(h.windKmh) && Number.isFinite(h.windDir) ? { dirFrom: Math.round(h.windDir), kmh: Math.round(h.windKmh * 10) / 10 } : undefined
+}
+
+/** A call (the map's or the forecast's) in the card's words. */
+function callWords(m: { dirFrom: number; kmh: number }): string {
+  return m.kmh < 1 ? 'calm' : `toward ${compass((m.dirFrom + 180) % 360)} at ${Math.round(m.kmh)}`
+}
+
+const VERDICT_WORDS = { agree: 'agreed', close: 'was close', miss: 'missed' } as const
 
 /** Bearing from the check's spot to a point on the map, degrees true. */
 function bearingTo(from: { lon: number; lat: number }, lon: number, lat: number): number {
@@ -185,6 +204,7 @@ export default function WindCheckCard() {
       ...(useAppStore.getState().who ? { by: useAppStore.getState().who } : {}),
       source: 'hand',
       model: g ? { dirFrom: g.dirFrom, kmh: g.kmh, regime: g.regime, sigmaDeg: g.sigmaDeg, decoupled: g.decoupled, slot: g.inSlot, ...(g.bias ? { bias: g.bias } : {}) } : undefined,
+      forecast: forecastAt(at.lon, at.lat, now),
     })
     setSaving(false)
     setSaved(c)
@@ -199,7 +219,8 @@ export default function WindCheckCard() {
     const steady = steadiness(saved)
     const m = saved.model
     const felt = saved.dirFrom == null || saved.strength === 'calm' ? 'calm' : `toward ${towardWords((saved.dirFrom + 180) % 360, saved.swingDeg)}, ${saved.strength}`
-    const said = m ? (m.kmh < 1 ? 'calm' : `toward ${compass((m.dirFrom + 180) % 360)} at ${Math.round(m.kmh)}`) : null
+    const said = m ? callWords(m) : null
+    const fv = forecastVerdict(saved)
     const lesson = lessonOf(saved)
     const score = lesson ? lessonScores(useWindChecks.getState().checks, verdict).find((r) => r.lesson === lesson) : undefined
     const n = score ? score.agree + score.close + score.miss : 0
@@ -224,12 +245,17 @@ export default function WindCheckCard() {
         <div className="gc-line">
           {v ? (
             <>
-              The map <b className={`gc-verdict gc-${v}`}>{v === 'agree' ? 'agreed' : v === 'close' ? 'was close' : 'missed'}</b> · it said {said}, you felt {felt}
+              The map <b className={`gc-verdict gc-${v}`}>{VERDICT_WORDS[v]}</b> · it said {said}, you felt {felt}
             </>
           ) : (
             <>Saved without the map's call (it had not loaded) · you felt {felt}</>
           )}
         </div>
+        {fv && saved.forecast && (
+          <div className="gc-line">
+            The forecast <b className={`gc-verdict gc-${fv}`}>{VERDICT_WORDS[fv]}</b> · it said {callWords(saved.forecast)}
+          </div>
+        )}
         <div className="gc-line">
           Leads the ground wind here <b>{pull}%</b> now · fades by ~{clockShort(checkSpentAt(saved))}
         </div>
@@ -240,6 +266,7 @@ export default function WindCheckCard() {
           </div>
         )}
         <div className="gc-note">{next}</div>
+        <ShareChecksAsk />
       </div>
     )
   }

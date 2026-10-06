@@ -53,10 +53,11 @@ interface Meta {
 const OFF_KEY = 'huntapp-stats-off'
 const QUEUE_KEY = 'huntapp-stats-queue'
 const META_KEY = 'huntapp-stats-meta'
-const API = (import.meta.env.VITE_EVENTS_API as string | undefined) ?? 'https://groundwind.app'
+/** The Groundwind Worker: the stats here, the shared wind checks (weather/micro/checkShare.ts). */
+export const API = (import.meta.env.VITE_EVENTS_API as string | undefined) ?? 'https://groundwind.app'
 /** A dev server keeps its taps to the console, unless pointed at an API on
  *  purpose; a browser driven by a script (the site's loops) sends nothing. */
-const SEND = (import.meta.env.PROD || !!import.meta.env.VITE_EVENTS_API) && !navigator.webdriver
+export const SEND = (import.meta.env.PROD || !!import.meta.env.VITE_EVENTS_API) && !navigator.webdriver
 const SESSION_GAP = 30 * 60_000
 const MAX_QUEUE = 1500
 const BATCH = 100
