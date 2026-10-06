@@ -369,7 +369,7 @@ export default function SettingsSheet(): JSX.Element {
       </div>
       <label className="st-row">
         <span>
-          Turbulence <span className="dim">· the swirl behind tree lines and in openings</span>
+          Turbulence <span className="dim">· the swirl behind tree lines, in openings and in the lee of hills</span>
         </span>
         <input type="checkbox" className="switch" checked={tune.windSwirl} onChange={(e) => setFlowTuning({ windSwirl: e.target.checked })} />
       </label>

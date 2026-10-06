@@ -145,6 +145,20 @@ const momName = (k: number) => (k * MOM_STEP).toFixed(1).padStart(5, '0')
 let momU: Band[] | null = null
 let momV: Band[] | null = null
 let momScale = 0
+// The solve's turbulence (2026-10-05 on): per direction, the spread of the
+// wind's direction at 10 m, WindNinja's velocity fluctuation against its
+// local wind. Most of an area sits near momRef, which is what the 12° the
+// spread starts from stands for; past it is the air tumbling in the lee of
+// a summit or a ridge, where the flow breaks away and circles back. Before,
+// only trees made turbulence here, so a bare mountain's lee eddies drew
+// smooth and narrow (Gavan, 2026-10-05, Highland Lake). A grid without the
+// bands keeps the old spread
+let momT: Band[] | null = null
+let momTScale = 0
+let momRef = 0
+/** degrees of tumble past which the place gets a word in the reasons, and past which it draws swirling */
+const TUMBLE_NOTE = 12
+const TUMBLE_SWIRL = 25
 
 export function loadMicro(): Promise<Habitat | null> {
   if (grid) return Promise.resolve(grid)
@@ -171,6 +185,15 @@ export function loadMicro(): Promise<Habitat | null> {
       } else {
         momU = momV = null
         devlog('wind', 'micro grid has no momentum solve: the day wind is the neutral lid')
+      }
+      const mom = (r.header.model as { momentum?: { spreadRef?: number } } | undefined)?.momentum
+      if (momU && mom?.spreadRef != null && dirs.every((d) => g.has(`mT${d}`))) {
+        momT = dirs.map((d) => g.raw(`mT${d}`))
+        momTScale = g.scale(`mT${dirs[0]}`)
+        momRef = mom.spreadRef
+      } else {
+        momT = null
+        if (momU) devlog('wind', 'micro grid has no turbulence from the momentum solve: only trees make the air swirl')
       }
       grid = g
       slotAxis = null
@@ -277,6 +300,15 @@ function momentumAt(i: number, U: number, dirFrom: number): void {
   momTurned(k0, i, U * (1 - t), t * MOM_STEP)
   momTurned((k0 + 1) % MOM_N, i, U * t, (t - 1) * MOM_STEP)
 }
+/** The solve's direction spread at a cell, degrees: the two nearest baked
+ *  directions, weighted by how near. */
+function turbAt(i: number, dirFrom: number): number {
+  const x = (((dirFrom % 360) + 360) % 360) / MOM_STEP
+  const k0 = Math.floor(x) % MOM_N
+  const t = x - Math.floor(x)
+  return (momT![k0][i] * (1 - t) + momT![(k0 + 1) % MOM_N][i] * t) * momTScale
+}
+
 /** Direction k's field at a cell, times w, turned clockwise by deg. */
 function momTurned(k: number, i: number, w: number, deg: number): void {
   if (w === 0) return
@@ -478,6 +510,10 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     e10 = (1 - s) * (b(K_NUE, i) * Ue + b(K_NUN, i) * Un) + s * (b(K_SUE, i) * Ue + b(K_SUN, i) * Un)
     n10 = (1 - s) * (b(K_NVE, i) * Ue + b(K_NVN, i) * Un) + s * (b(K_SVE, i) * Ue + b(K_SVN, i) * Un)
   }
+  // the air tumbling in the lee of the high ground, degrees of spread past
+  // the area's ordinary: neutral air, like the solve, and a wind with some
+  // push to it (in a near calm the slopes' own flows run the place)
+  const tumble = momT ? Math.max(0, turbAt(i, dirFrom) - momRef) * (1 - s) * clamp((U - 3) / 6, 0, 1) : 0
   const local10 = Math.hypot(e10, n10)
   // low ground under an inversion: the cold layer stays put under the wind
   const pool = b(K_POOL, i)
@@ -725,7 +761,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   const Ug = sp / 3.6
 
   // ---- spread ----
-  let sigma = 12 + 70 * Math.exp(-Ug / 0.6) + 20 * s * Math.exp(-Ug / 1.0) + 15 * lay.convective + (inTrees ? 8 : 0) + (swirl ? 40 : 0) + (slotSwirl ? 25 : 0)
+  let sigma = 12 + tumble + 70 * Math.exp(-Ug / 0.6) + 20 * s * Math.exp(-Ug / 1.0) + 15 * lay.convective + (inTrees ? 8 : 0) + (swirl ? 40 : 0) + (slotSwirl ? 25 : 0)
   const thermal = kat + ana + brz
   const fracMech = mechG / (mechG + thermal + 1e-6)
   // gusty air swings more: a gust factor of 2.5 means the along-wind
@@ -753,6 +789,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     if (ratio > 1.15) reasons.push(`Terrain and open ground speed the wind up about ${Math.round((ratio - 1) * 100)}% here`)
     else if (ratio < 0.85) reasons.push(`Terrain and trees shelter this spot: the 10 m wind is about ${Math.round((1 - ratio) * 100)}% lighter`)
     if (turn >= 12 && U > 3) reasons.push(`The land turns the wind ${Math.round(turn)}° here`)
+    if (tumble >= TUMBLE_NOTE) reasons.push(`The air tumbles in the lee of the high ground: the wind swings about ±${Math.round(12 + tumble)}° here${turn >= 120 ? ', and on the whole runs back the way it came' : ''}`)
     if (s > 0.4 && lowness > 0.3) reasons.push('Low ground: the cold layer sits here under the wind')
     if (kat > 0.3) reasons.push(`Cold air drains toward the ${compass(katTo)} at about ${kat.toFixed(1)} km/h${pool > 0.3 || lowness > 0.25 ? ', settling here: scent sits and creeps toward the outlet' : ': scent goes with it, downhill'}`)
     if (ana > 0.3) reasons.push(`The sun heats this slope: air rises upslope toward the ${compass(anaTo)} at about ${ana.toFixed(1)} km/h`)
@@ -777,7 +814,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     if (lay.source === 'estimate') reasons.push('No layering forecast cached: stability estimated from the sky and the wind')
   }
 
-  return { e: E, n: N, sigma, regime, swirl, gusty, parts, reasons, local10, U, dirFrom, inGrid: true, slot: !!slot, bias: applied ? lessonBias : null }
+  return { e: E, n: N, sigma, regime, swirl: swirl || tumble >= TUMBLE_SWIRL, gusty, parts, reasons, local10, U, dirFrom, inGrid: true, slot: !!slot, bias: applied ? lessonBias : null }
 }
 
 function headlineOf(ev: Eval, kmh: number, dirFrom: number, gustKmh: number): string {
@@ -892,7 +929,7 @@ export function groundForScoring(ms: number, lon: number, lat: number, full = fa
 /** A fast sampler for particles and plumes: out = [east m/s, north m/s,
  *  sigma degrees] and, when the array has room, out[3]: 1 where the air
  *  swirls (an eddy behind a tree line, a small opening, a slot across the
- *  wind), 0.5 where it has settled or gone calm, else 0; out[4]: 1 where
+ *  wind, the tumbling lee of a hill), 0.5 where it has settled or gone calm, else 0; out[4]: 1 where
  *  cold air drains, pools or flows off the shore (it hugs the ground: a
  *  land breeze is the land's cold air running out over the water), else 0.
  *  Null when there is no wind at all to start from. */

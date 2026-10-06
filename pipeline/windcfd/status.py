@@ -29,7 +29,8 @@ DEFAULT_MIN = 66.0
 
 
 def dir_name(d: float) -> str:
-    return f"d{d:05.1f}"
+    # t: the runs with the turbulence (run.ps1, 2026-10-05 on)
+    return f"t{d:05.1f}"
 
 
 def progress(log: Path) -> tuple[float, str]:
@@ -82,6 +83,9 @@ def scan() -> dict:
                         job["minutes"] = float(words[1])
                     except (IndexError, ValueError):
                         pass
+                elif "claim-HOLD.txt" in claims:
+                    # parked by hand behind other work (claim-HOLD.txt): runners skip it
+                    job.update(state="held")
                 elif claims:
                     c = claims[0]
                     who = c[len("claim-"):-len(".txt")]
@@ -178,7 +182,7 @@ h1 {{ font-size:20px; margin:0 0 4px; font-weight:650; }}
 figure {{ margin:0; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px; text-align:center; }}
 figcaption {{ color:var(--dim); font-size:13px; margin-top:2px; }}
 .rose {{ width:100%; max-width:260px; }}
-.w-done {{ fill:var(--done); }} .w-running {{ fill:var(--run); }} .w-waiting {{ fill:var(--wait); }} .w-failed {{ fill:var(--fail); }} .w-track {{ fill:var(--wait); stroke:var(--run); stroke-width:1.5; }}
+.w-done {{ fill:var(--done); }} .w-running {{ fill:var(--run); }} .w-waiting {{ fill:var(--wait); }} .w-failed {{ fill:var(--fail); }} .w-held {{ fill:var(--wait); opacity:.45; }} .w-track {{ fill:var(--wait); stroke:var(--run); stroke-width:1.5; }}
 .cardinal {{ fill:var(--dim); font-size:11px; text-anchor:middle; }}
 .count {{ fill:var(--text); font-size:26px; font-weight:650; text-anchor:middle; }}
 .of {{ fill:var(--dim); font-size:11px; text-anchor:middle; }}
@@ -209,7 +213,7 @@ td.bar span {{ display:block; height:6px; border-radius:3px; background:var(--ru
 <div class="overall" title="{pct:.0f}%"><span style="width:{pct:.1f}%"></span></div>
 {fail_note}
 <div class="roses">{roses}</div>
-<div class="legend"><span><i style="background:var(--done)"></i>done</span><span><i style="background:var(--run)"></i>running (grows as it goes)</span><span><i style="background:var(--wait)"></i>waiting</span><span><i style="background:var(--fail)"></i>failed</span></div>
+<div class="legend"><span><i style="background:var(--done)"></i>done</span><span><i style="background:var(--run)"></i>running (grows as it goes)</span><span><i style="background:var(--wait)"></i>waiting</span><span><i style="background:var(--wait);opacity:.45"></i>held back</span><span><i style="background:var(--fail)"></i>failed</span></div>
 <h2>Running</h2>
 <div class="tablewrap"><table><tr><th>Area</th><th class="num">From</th><th>Runner</th><th>Phase</th><th>Progress</th><th class="num">Elapsed</th></tr>{run_rows}</table></div>
 <h2>Machines</h2>

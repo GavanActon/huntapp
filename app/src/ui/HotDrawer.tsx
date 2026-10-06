@@ -93,7 +93,8 @@ const STREAK_W: Record<(typeof STREAK_SIZES)[number], number> = { auto: 0, stand
 
 /** The wind's knobs, all of them here (moved out of Settings, 2026-10-03).
  *  Turbulence: the eddies the ground model finds behind tree lines, in small
- *  openings and slots, drawn swirling; off, the straight drift. Leaves: the
+ *  openings and slots, and in the lee of hills and ridges (the momentum
+ *  solve's turbulence), drawn swirling; off, the straight drift. Leaves: the
  *  ground model's own, so it moves everything that reads the ground wind. */
 function WindFlowRows() {
   const level = useAppStore((s) => s.windLevel)

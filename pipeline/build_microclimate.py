@@ -83,6 +83,7 @@ LID_NEUTRAL = 250.0  # layer depth over the large-scale terrain, m
 LID_STABLE = 50.0
 BASIS_SCALE = 1 / 60  # int8 basis bands: value * scale
 MOM_SCALE = 1 / 50  # int8 momentum bands: ridge tops run past the basis's ±2.1
+TURB_SCALE = 0.5  # uint8 turbulence spread bands, degrees: to 127.5° (it tops out near 90°)
 
 
 def read_hab(path) -> tuple[dict, dict[str, np.ndarray]]:
@@ -418,11 +419,25 @@ def main() -> None:
     # the same way
     cfd_path = CACHE_DIR / f"windcfd-{REGION['id']}.npz"
     cfd = None
+    # the solve's turbulence as a direction spread: the velocity fluctuation
+    # (the most in the lowest 10 m) against the local wind, both WindNinja's
+    # own, unscaled, so the ratio is one solve's. Neutral air only, like the
+    # flow; the browser takes the stable side from its own rules
+    turb = None
+    turb_ref = None
     if cfd_path.exists():
         z = np.load(cfd_path)
         cfd = [(float(d), z[f"u{d:05.1f}"] * s, z[f"v{d:05.1f}"] * s) for d in z["directions"]]
         sp = np.hypot(cfd[0][1], cfd[0][2])
         print(f"  momentum solve: {len(cfd)} directions · speed {np.percentile(sp, 5):.2f}–{np.percentile(sp, 95):.2f} of the regional wind")
+        if all(f"s{d:05.1f}" in z for d in z["directions"]):
+            turb = [np.degrees(np.arctan2(z[f"s{d:05.1f}"], np.hypot(z[f"u{d:05.1f}"], z[f"v{d:05.1f}"]))).astype(np.float32) for d in z["directions"]]
+            # the ordinary spread here, the level the browser's own 12° stands for
+            turb_ref = float(np.median(np.stack(turb)))
+            hi = float(np.mean(np.stack(turb) > turb_ref + 25))
+            print(f"  turbulence: spread ±{turb_ref:.1f}° (median), {hi * 100:.1f}% of cells and directions 25°+ past it")
+        else:
+            print("  no turbulence in the momentum solve (a run from before 2026-10-05): the spread stays the browser's own")
     else:
         print("  no momentum solve (build_windcfd.py): the neutral layer stands")
 
@@ -560,6 +575,9 @@ def main() -> None:
             (f"mU{d:05.1f}", qm(u), MOM_SCALE, f"momentum solve: east component for a unit wind from {d:g}°"),
             (f"mV{d:05.1f}", qm(v), MOM_SCALE, f"momentum solve: north component for a unit wind from {d:g}°"),
         ]
+    for (d, _, _), t in zip(cfd or [], turb or []):
+        bands.append((f"mT{d:05.1f}", np.clip(np.round(t / TURB_SCALE), 0, 255).astype(np.uint8), TURB_SCALE,
+                      f"momentum solve: direction spread, degrees, for a wind from {d:g}° (turbulence against the local wind)"))
     out_header = {
         "region": REGION["id"],
         "generated": date.today().isoformat(),
@@ -573,7 +591,7 @@ def main() -> None:
         "coverNames": header["coverNames"],
         "landformNames": header["landformNames"],
         "lakes": [],
-        "model": {"z0Ref": Z0_REF, "zBlend": Z_BLEND, "lidNeutral": LID_NEUTRAL, "lidStable": LID_STABLE, "bare": BARE, "larchLed": LARCH_LED, **({"momentum": {"directions": [d for d, _, _ in cfd], "solver": "WindNinja 4.0.0 momentum (OpenFOAM, RNG k-epsilon), trees, 10 m"}} if cfd else {})},
+        "model": {"z0Ref": Z0_REF, "zBlend": Z_BLEND, "lidNeutral": LID_NEUTRAL, "lidStable": LID_STABLE, "bare": BARE, "larchLed": LARCH_LED, **({"momentum": {"directions": [d for d, _, _ in cfd], "solver": "WindNinja 4.0.0 momentum (OpenFOAM, RNG k-epsilon), trees, 10 m", **({"spreadRef": round(turb_ref, 2)} if turb else {})}} if cfd else {})},
         "bands": [],
     }
     payload = bytearray()
