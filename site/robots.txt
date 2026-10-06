@@ -1,4 +1,5 @@
 User-agent: *
 Disallow: /api/
+Disallow: /stats
 
 Sitemap: https://groundwind.app/sitemap.xml

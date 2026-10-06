@@ -1,5 +1,6 @@
 import type { AreaBox, AreaDef } from '../areas'
 import { REGION, TIMEZONE } from '../config'
+import { trackTime } from '../analytics'
 import { devlog } from '../devlog'
 import { fetchTimeout, localStamp } from './openMeteo'
 
@@ -120,6 +121,7 @@ export function ensureWeatherGrid(): Promise<WindGrid | null> {
         /* ignore */
       }
       devlog('wind', `grid · ${g.time.length} h`)
+      trackTime('wind_grid')
       for (const cb of gridListeners) cb()
       return g
     })

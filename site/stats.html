@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Groundwind usage</title>
+<style>
+/* The app's usage stats (docs/ANALYTICS.md): read from /api/stats with the
+   key kept in this browser. Not linked from the site. */
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --surface-2: #f0efec;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --ring: rgba(11, 11, 11, 0.10);
+  --series: #2a78d6;
+  --series-hover: #5598e7;
+  --good: #006300;
+  --bad: #d03b3b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --surface-2: #262624;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --ring: rgba(255, 255, 255, 0.10);
+    --series: #3987e5;
+    --series-hover: #6da7ec;
+    --good: #0ca30c;
+    --bad: #e66767;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d;
+  --surface: #1a1a19;
+  --surface-2: #262624;
+  --ink: #ffffff;
+  --ink-2: #c3c2b7;
+  --muted: #898781;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --ring: rgba(255, 255, 255, 0.10);
+  --series: #3987e5;
+  --series-hover: #6da7ec;
+  --good: #0ca30c;
+  --bad: #e66767;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1180px; margin: 0 auto; padding: 20px 16px 64px; }
+h1 { font-size: 1.35rem; font-weight: 600; margin: 0; }
+h2 { font-size: 0.95rem; font-weight: 600; margin: 0 0 2px; }
+.sub { color: var(--ink-2); font-size: 0.85rem; margin: 0 0 12px; }
+.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+.stamp { color: var(--muted); font-size: 0.8rem; }
+
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 18px; }
+.seg { display: inline-flex; border: 1px solid var(--ring); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.seg button { border: 0; background: none; color: var(--ink-2); padding: 7px 12px; font: inherit; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface-2); color: var(--ink); font-weight: 600; }
+input[type="text"], input[type="password"], select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--ring); border-radius: 8px; padding: 7px 10px; }
+.btn { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--ring); border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+.btn:hover, .seg button:hover { background: var(--surface-2); }
+.btn-main { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.btn-main:hover { background: var(--ink-2); }
+label.inline { display: inline-flex; gap: 6px; align-items: center; color: var(--ink-2); font-size: 0.85rem; }
+#exclude { width: 210px; }
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.tile { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; padding: 12px 14px; }
+.tile .label { color: var(--ink-2); font-size: 0.8rem; }
+.tile .value { font-size: 1.65rem; font-weight: 600; line-height: 1.2; margin-top: 2px; }
+.tile .note { color: var(--muted); font-size: 0.75rem; }
+.tile.hero .value { font-size: 3rem; }
+.tiles.small { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
+.tiles.small .value { font-size: 1.3rem; }
+
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); gap: 14px; margin-bottom: 14px; }
+.card { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; padding: 14px 14px 10px; min-width: 0; margin-bottom: 14px; }
+.grid2 .card { margin-bottom: 0; }
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart svg:focus { outline: none; }
+.chart svg:focus-visible { outline: 2px solid var(--series); outline-offset: 4px; border-radius: 4px; }
+.gridline { stroke: var(--grid); stroke-width: 1; }
+.baseline { stroke: var(--axis); stroke-width: 1; }
+.tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.bar { fill: var(--series); }
+.bar.on { fill: var(--series-hover); }
+.hit { fill: transparent; cursor: default; }
+
+.bars { display: grid; grid-template-columns: minmax(110px, max-content) 1fr auto; gap: 6px 10px; align-items: center; }
+.bars .name { color: var(--ink); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bars .track { height: 14px; position: relative; }
+.bars .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--series); border-radius: 0 4px 4px 0; min-width: 2px; }
+.bars .row-hit:hover .fill, .bars .row-hit:focus-visible .fill { background: var(--series-hover); }
+.bars .num { color: var(--ink-2); font-size: 0.8rem; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.bars .row-hit { display: contents; }
+
+.heat { display: grid; grid-template-columns: 34px repeat(24, minmax(0, 1fr)); gap: 2px; }
+.heat .cell { aspect-ratio: 1 / 1; border-radius: 3px; min-height: 10px; }
+.heat .cell:focus-visible { outline: 2px solid var(--ink); }
+.heat .rowlab, .heat .collab { color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+.heat .rowlab { align-self: center; }
+.heat .collab { text-align: center; }
+.scale { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; margin-top: 8px; }
+.scale span.sw { width: 18px; height: 10px; border-radius: 2px; display: inline-block; }
+
+.tablewrap { overflow-x: auto; max-height: 420px; overflow-y: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.83rem; }
+th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+th { position: sticky; top: 0; background: var(--surface); color: var(--ink-2); font-weight: 600; cursor: pointer; user-select: none; }
+th[aria-sort="descending"]::after { content: ' ↓'; }
+th[aria-sort="ascending"]::after { content: ' ↑'; }
+td.wrap { white-space: normal; word-break: break-word; min-width: 220px; }
+td.cohort { text-align: center; font-variant-numeric: tabular-nums; }
+.dim { color: var(--muted); }
+details.tv { margin-top: 8px; }
+details.tv summary { color: var(--ink-2); font-size: 0.8rem; cursor: pointer; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+.empty { color: var(--ink-2); padding: 18px 0; }
+.err { color: var(--bad); }
+.refetch { opacity: 0.55; transition: opacity 0.2s; }
+
+#tip { position: fixed; pointer-events: none; z-index: 10; background: var(--surface); color: var(--ink); border: 1px solid var(--ring); border-radius: 8px; padding: 7px 10px; font-size: 0.8rem; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12); display: none; max-width: 260px; }
+#tip .h { color: var(--ink-2); margin-bottom: 3px; }
+#tip .r { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+#tip .r b { font-variant-numeric: tabular-nums; }
+#tip .key { width: 12px; height: 2px; background: var(--series); display: inline-block; margin-right: 6px; vertical-align: middle; }
+
+#keybox { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; padding: 16px; margin-bottom: 14px; max-width: 520px; }
+#keybox p { margin: 0 0 10px; color: var(--ink-2); }
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div>
+      <h1>Groundwind usage</h1>
+      <div class="stamp" id="stamp">Not loaded</div>
+    </div>
+  </div>
+
+  <div id="keybox" hidden>
+    <p>The stats key (<code>STATS_KEY</code>, set with <code>npx wrangler secret put STATS_KEY</code>). It stays in this browser.</p>
+    <div class="row">
+      <input type="password" id="key" placeholder="Key" autocomplete="off" size="32">
+      <button class="btn btn-main" id="keygo">Open</button>
+    </div>
+    <div class="err" id="keyerr"></div>
+  </div>
+
+  <div class="filters" id="filters" hidden>
+    <div class="seg" role="group" aria-label="Window" id="range">
+      <button data-d="7">7 days</button><button data-d="30">30 days</button><button data-d="90">90 days</button><button data-d="365">1 year</button>
+    </div>
+    <label class="inline">Leave out phones <input type="text" id="exclude" placeholder="8-hex ids, comma separated"></label>
+    <button class="btn" id="reload">Refresh</button>
+    <button class="btn" id="csv">Download CSV</button>
+    <button class="btn" id="forget">Forget key</button>
+  </div>
+
+  <div id="out"></div>
+</main>
+<div id="tip" role="tooltip"></div>
+
+<script>
+'use strict'
+const $ = (s) => document.querySelector(s)
+const KEY = 'gw-stats-key'
+const EXCL = 'gw-stats-exclude'
+const DAYS = 'gw-stats-days'
+const store = {
+  get(k) { try { return localStorage.getItem(k) } catch { return null } },
+  set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v) } catch { /* private window */ } },
+}
+let days = Number(store.get(DAYS)) || 30
+let data = null
+
+// ------------------------------------------------------------------ DOM
+
+function h(tag, attrs, ...kids) {
+  const e = document.createElement(tag)
+  for (const [k, v] of Object.entries(attrs ?? {})) {
+    if (v == null || v === false) continue
+    if (k === 'class') e.className = v
+    else if (k === 'style') e.style.cssText = v
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v)
+    else e.setAttribute(k, v === true ? '' : v)
+  }
+  for (const k of kids.flat()) if (k != null && k !== false) e.append(k instanceof Node ? k : document.createTextNode(String(k)))
+  return e
+}
+const NS = 'http://www.w3.org/2000/svg'
+function s(tag, attrs) {
+  const e = document.createElementNS(NS, tag)
+  for (const [k, v] of Object.entries(attrs ?? {})) if (v != null) e.setAttribute(k, v)
+  return e
+}
+
+const fmt = (n) => (n == null || Number.isNaN(n) ? '–' : Math.abs(n) >= 10000 ? `${(n / 1000).toFixed(n >= 100000 ? 0 : 1)}K` : Math.round(n).toLocaleString())
+const pct = (a, b) => (b ? `${Math.round((100 * a) / b)}%` : '–')
+const mins = (sec) => (sec == null ? '–' : sec < 90 ? `${Math.round(sec)} s` : sec < 5400 ? `${(sec / 60).toFixed(sec < 600 ? 1 : 0)} min` : `${(sec / 3600).toFixed(1)} h`)
+const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+const when = (ms) => new Date(ms).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+
+// ------------------------------------------------------------------ tooltip
+
+const tip = $('#tip')
+function showTip(x, y, head, rows) {
+  tip.replaceChildren(h('div', { class: 'h' }, head), ...rows.map(([k, v, key]) => h('div', { class: 'r' }, h('span', null, key ? h('i', { class: 'key' }) : null, k), h('b', null, v))))
+  tip.style.display = 'block'
+  const r = tip.getBoundingClientRect()
+  const left = Math.min(innerWidth - r.width - 8, Math.max(8, x + 14))
+  const top = y + 14 + r.height > innerHeight ? y - r.height - 10 : y + 14
+  tip.style.left = `${left}px`
+  tip.style.top = `${top}px`
+}
+const hideTip = () => (tip.style.display = 'none')
+
+// ------------------------------------------------------------------ charts
+
+/** A round step for about four gridlines over 0…v: 1, 2 or 5 times a power of ten. */
+function niceStep(v) {
+  const raw = Math.max(v, 1e-9) / 4
+  const p = 10 ** Math.floor(Math.log10(raw))
+  for (const m of [1, 2, 5, 10]) if (m * p >= raw) return m * p
+  return 10 * p
+}
+
+/**
+ * Columns along a baseline, one series: cols = [{ label, value, tip: [[k, v], …], head }].
+ * Re-drawn to the card's width. Hover or arrow keys pick a column.
+ */
+function columns(host, cols, opts = {}) {
+  const wrap = h('div', { class: 'chart' })
+  host.append(wrap)
+  const H = opts.height ?? 170
+  const AX = 22
+  const LEFT = 40
+  const draw = () => {
+    const W = Math.max(260, wrap.clientWidth)
+    const peak = Math.max(0, ...cols.map((c) => c.value))
+    const step = niceStep(Math.max(peak, opts.minTop ?? 4))
+    const n = Math.max(1, Math.ceil(peak / step))
+    const max = step * n
+    const svg = s('svg', { viewBox: `0 0 ${W} ${H + AX}`, height: H + AX, role: 'img', 'aria-label': opts.label ?? '', tabindex: '0' })
+    const y = (v) => H - (v / max) * (H - 8)
+    for (let i = 0; i <= n; i++) {
+      const v = step * i
+      svg.append(s('line', { x1: LEFT, x2: W, y1: y(v), y2: y(v), class: i === 0 ? 'baseline' : 'gridline' }))
+      const t = s('text', { x: LEFT - 6, y: y(v) + 4, 'text-anchor': 'end', class: 'tick' })
+      t.textContent = opts.yFmt ? opts.yFmt(v) : fmt(v)
+      svg.append(t)
+    }
+    const band = (W - LEFT) / Math.max(1, cols.length)
+    const bw = Math.max(2, Math.min(24, band - 2))
+    const every = Math.max(1, Math.ceil(cols.length / Math.max(2, Math.floor((W - LEFT) / 64))))
+    const bars = []
+    cols.forEach((c, i) => {
+      const x = LEFT + band * i + (band - bw) / 2
+      const top = y(c.value)
+      const hgt = H - top
+      const r = Math.min(4, bw / 2, hgt)
+      // a rounded data end, square on the baseline
+      const d = hgt <= 0 ? '' : `M${x},${H} V${top + r} Q${x},${top} ${x + r},${top} H${x + bw - r} Q${x + bw},${top} ${x + bw},${top + r} V${H} Z`
+      const bar = s('path', { d, class: 'bar' })
+      svg.append(bar)
+      bars.push(bar)
+      if (i % every === 0) {
+        const t = s('text', { x: LEFT + band * i + band / 2, y: H + 15, 'text-anchor': 'middle', class: 'tick' })
+        t.textContent = c.label
+        svg.append(t)
+      }
+    })
+    let on = -1
+    const pick = (i, ev) => {
+      if (on >= 0) bars[on]?.classList.remove('on')
+      on = i
+      if (i < 0) return hideTip()
+      bars[i].classList.add('on')
+      const c = cols[i]
+      const box = svg.getBoundingClientRect()
+      const px = ev?.clientX ?? box.left + ((LEFT + band * i + band / 2) / W) * box.width
+      const py = ev?.clientY ?? box.top + (y(c.value) / (H + AX)) * box.height
+      showTip(px, py, c.head ?? c.label, c.tip ?? [[opts.label ?? 'Value', fmt(c.value), true]])
+    }
+    const hit = s('rect', { x: LEFT, y: 0, width: W - LEFT, height: H, class: 'hit' })
+    hit.addEventListener('pointermove', (ev) => {
+      const box = svg.getBoundingClientRect()
+      const vx = ((ev.clientX - box.left) / box.width) * W
+      pick(Math.max(0, Math.min(cols.length - 1, Math.floor((vx - LEFT) / band))), ev)
+    })
+    hit.addEventListener('pointerleave', () => pick(-1))
+    svg.append(hit)
+    svg.addEventListener('keydown', (ev) => {
+      if (ev.key === 'ArrowRight') pick(Math.min(cols.length - 1, on + 1))
+      else if (ev.key === 'ArrowLeft') pick(Math.max(0, on < 0 ? cols.length - 1 : on - 1))
+      else return
+      ev.preventDefault()
+    })
+    svg.addEventListener('blur', () => pick(-1))
+    wrap.replaceChildren(svg)
+  }
+  draw()
+  new ResizeObserver(() => draw()).observe(wrap)
+}
+
+/** Horizontal bars as a list: rows = [{ name, value, max, text, tip }]. */
+function barList(host, rows) {
+  const box = h('div', { class: 'bars' })
+  const max = Math.max(1, ...rows.map((r) => r.max ?? r.value))
+  for (const r of rows) {
+    const hitTip = (ev) => showTip(ev.clientX, ev.clientY, r.name, r.tip)
+    const row = h('div', { class: 'row-hit', tabindex: '0', onpointermove: hitTip, onpointerleave: hideTip, onfocus: (ev) => { const b = ev.target.getBoundingClientRect(); showTip(b.right, b.top, r.name, r.tip) }, onblur: hideTip },
+      h('div', { class: 'name', title: r.name }, r.name),
+      h('div', { class: 'track' }, h('div', { class: 'fill', style: `width:${(100 * r.value) / max}%` })),
+      h('div', { class: 'num' }, r.text))
+    box.append(row)
+  }
+  host.append(box)
+}
+
+// sequential blue, near zero receding toward the surface in either mode
+const RAMP_LIGHT = ['#cde2fb', '#b7d3f6', '#9ec5f4', '#86b6ef', '#6da7ec', '#5598e7', '#3987e5', '#2a78d6', '#256abf', '#1c5cab', '#184f95', '#104281', '#0d366b']
+const RAMP_DARK = ['#0d366b', '#104281', '#184f95', '#1c5cab', '#256abf', '#2a78d6', '#3987e5', '#5598e7', '#6da7ec', '#86b6ef', '#9ec5f4', '#b7d3f6', '#cde2fb']
+const dark = () => getComputedStyle(document.documentElement).colorScheme.includes('dark')
+const ramp = (f) => {
+  const r = dark() ? RAMP_DARK : RAMP_LIGHT
+  return r[Math.max(0, Math.min(r.length - 1, Math.round(f * (r.length - 1))))]
+}
+function inkOn(hex) {
+  const n = parseInt(hex.slice(1), 16)
+  const l = (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255
+  return l > 0.55 ? '#0b0b0b' : '#ffffff'
+}
+
+/** A sortable table: cols = [{ k, t, n (numeric), f (format), cls }]. */
+function table(host, cols, rows, opts = {}) {
+  let sortK = opts.sort ?? null
+  let dir = -1
+  const wrap = h('div', { class: 'tablewrap' })
+  const draw = () => {
+    const list = sortK ? [...rows].sort((a, b) => {
+      const x = a[sortK]
+      const y = b[sortK]
+      return (typeof x === 'number' && typeof y === 'number' ? x - y : String(x ?? '').localeCompare(String(y ?? ''))) * dir
+    }) : rows
+    const head = h('tr', null, cols.map((c) => h('th', { class: c.n ? 'n' : null, 'aria-sort': sortK === c.k ? (dir < 0 ? 'descending' : 'ascending') : null, onclick: () => { dir = sortK === c.k ? -dir : c.n ? -1 : 1; sortK = c.k; draw() } }, c.t)))
+    const body = list.slice(0, opts.limit ?? 500).map((r) => h('tr', null, cols.map((c) => {
+      const v = r[c.k]
+      const cell = h('td', { class: c.cls ?? (c.n ? 'n' : null) }, c.f ? c.f(v, r) : v ?? '–')
+      if (c.style) cell.style.cssText = c.style(v, r) ?? ''
+      return cell
+    })))
+    wrap.replaceChildren(h('table', null, h('thead', null, head), h('tbody', null, body)))
+  }
+  draw()
+  host.append(wrap)
+}
+
+function card(title, sub, ...kids) {
+  return h('section', { class: 'card' }, h('h2', null, title), sub ? h('p', { class: 'sub' }, sub) : null, ...kids)
+}
+function tableView(cols, rows) {
+  const d = h('details', { class: 'tv' }, h('summary', null, 'Table'))
+  table(d, cols, rows)
+  return d
+}
+
+// ------------------------------------------------------------------ the data
+
+const KEYED = { sheet: 'Sheets', card: 'Top cards', tool: 'Tools', form: 'Forms', arm: 'Waiting for a map tap', layer: 'Layers switched', setting: 'Settings changed', view: 'Views', mode: 'Mode', quarry: 'Quarry', heat: 'Heat map', cone: 'Scent cone on you', location: 'Location', heading_up: 'Heading up', share: 'Shares', log_entry: 'Hunt log entries', wind_check: 'Wind checks', route: 'Routes worked out', download: 'Map downloads', sat_paste: 'Satellite pastes', gps: 'GPS trouble', strip: 'Weather strip', plan_time: 'Planning time (h ahead)' }
+const BOOL = new Set(['heat', 'cone', 'location', 'heading_up', 'strip', 'download', 'sat_paste'])
+
+function features(d) {
+  const by = Object.fromEntries(d.features.map((f) => [f.name, f]))
+  const key = (n, k) => d.breakdown.find((b) => b.name === n && b.k === k)?.users ?? 0
+  const u = (n) => by[n]?.users ?? 0
+  return [
+    ['Tapped the map', u('map_tap')],
+    ['Dig in', key('sheet', 'digin')],
+    ['Heat map on', key('heat', '1')],
+    ['Scent cone on you', key('cone', '1')],
+    ['Placed people for scent', u('scent_people')],
+    ['Wind check', u('wind_check')],
+    ['Hunt log entry', u('log_entry')],
+    ['Heard (button)', key('arm', 'heard')],
+    ['Location on', key('location', '1')],
+    ['Recorded a track', u('track_start')],
+    ['Routes', key('tool', 'routes')],
+    ['Measure', key('tool', 'measure')],
+    ['Dropped a pin', u('pin_add')],
+    ['Changed the view', u('view')],
+    ['Switched a layer', u('layer')],
+    ['Planned ahead', u('plan_time')],
+    ['Hunt log', key('sheet', 'huntlog')],
+    ['Downloaded maps', u('download')],
+    ['Weather by satellite', u('sat_paste')],
+    ['Shared a spot or area', u('share')],
+    ['Settings', key('sheet', 'settings')],
+    ['HuntOS guide', key('sheet', 'guide')],
+  ].sort((a, b) => b[1] - a[1])
+}
+
+function filledDays(daily) {
+  const by = Object.fromEntries(daily.map((r) => [r.day, r]))
+  const out = []
+  const end = new Date()
+  for (let i = days - 1; i >= 0; i--) {
+    const t = new Date(end.getFullYear(), end.getMonth(), end.getDate() - i)
+    const key = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
+    out.push(by[key] ?? { day: key, users: 0, sessions: 0, events: 0, new_users: 0, fg_min: 0 })
+  }
+  return out
+}
+
+function quantile(sorted, q) {
+  if (!sorted.length) return null
+  const i = (sorted.length - 1) * q
+  const lo = Math.floor(i)
+  return sorted[lo] + (sorted[Math.min(sorted.length - 1, lo + 1)] - sorted[lo]) * (i - lo)
+}
+
+// ------------------------------------------------------------------ the page
+
+function render(d) {
+  const out = $('#out')
+  out.classList.remove('refetch')
+  out.replaceChildren()
+  $('#stamp').textContent = `Last ${d.days} days · as of ${when(d.at)} · ${fmt(d.total.installs)} phones since ${d.total.first ? when(d.total.first) : '–'}`
+  if (!d.total.installs) {
+    out.append(h('p', { class: 'empty' }, 'No events yet. They start arriving once a build with the usage stats is live and someone opens it.'))
+    return
+  }
+  const a = d.active
+  const sess = d.sessions.map((r) => (r.fg > 0 ? r.fg : r.dur)).sort((x, y) => x - y)
+  const newUsers = d.daily.reduce((t, r) => t + r.new_users, 0)
+  const off = d.offline.find((r) => r.online === 0)
+  const on = d.offline.find((r) => r.online === 1)
+  const allEv = (off?.n ?? 0) + (on?.n ?? 0)
+
+  const tile = (label, value, note, hero) => h('div', { class: `tile${hero ? ' hero' : ''}` }, h('div', { class: 'label' }, label), h('div', { class: 'value' }, value), note ? h('div', { class: 'note' }, note) : null)
+  out.append(h('div', { class: 'tiles' },
+    tile('Active phones, last 7 days', fmt(a.wau), `${fmt(a.dau)} in the last 24 h · ${fmt(a.mau)} in 30 days`, true),
+    tile(`Phones in the window`, fmt(a.users), `${fmt(newUsers)} new`),
+    tile('Sessions', fmt(a.sessions), `${(a.sessions / Math.max(1, a.users)).toFixed(1)} per phone`),
+    tile('Time in app, median session', mins(quantile(sess, 0.5)), `p75 ${mins(quantile(sess, 0.75))}`),
+    tile('Done with no signal', pct(off?.n ?? 0, allEv), `${fmt(off?.users ?? 0)} phones · waited ${mins(((off?.lag_min ?? 0) * 60))} on average`),
+  ))
+
+  // the days
+  const days_ = filledDays(d.daily)
+  const g1 = h('div', { class: 'grid2' })
+  const c1 = card('Active phones per day', 'Phones with at least one event that day')
+  columns(c1, days_.map((r) => ({ label: dayLabel(r.day), head: dayLabel(r.day), value: r.users, tip: [['Phones', fmt(r.users), true], ['Sessions', fmt(r.sessions)], ['New phones', fmt(r.new_users)], ['Minutes in front', fmt(r.fg_min)]] })), { label: 'Phones' })
+  c1.append(tableView([{ k: 'day', t: 'Day' }, { k: 'users', t: 'Phones', n: 1 }, { k: 'sessions', t: 'Sessions', n: 1 }, { k: 'new_users', t: 'New', n: 1 }, { k: 'fg_min', t: 'Minutes', n: 1 }, { k: 'events', t: 'Events', n: 1 }], days_))
+  const c2 = card('Minutes in the app per day', 'Time with the app in front, all phones')
+  columns(c2, days_.map((r) => ({ label: dayLabel(r.day), head: dayLabel(r.day), value: r.fg_min, tip: [['Minutes', fmt(r.fg_min), true], ['Per phone', r.users ? (r.fg_min / r.users).toFixed(1) : '–']] })), { label: 'Minutes' })
+  g1.append(c1, c2)
+  out.append(g1)
+
+  // what gets used
+  const feats = features(d)
+  const g2 = h('div', { class: 'grid2' })
+  const c3 = card('What gets used', `Share of the ${fmt(a.users)} phones in the window that did it at least once`)
+  barList(c3, feats.map(([name, users]) => ({ name, value: users, max: a.users, text: `${pct(users, a.users)} · ${fmt(users)}`, tip: [['Phones', fmt(users), true], ['Share', pct(users, a.users)]] })))
+  c3.append(tableView([{ k: 0, t: 'Feature' }, { k: 1, t: 'Phones', n: 1 }], feats))
+
+  // when
+  const c4 = card('When it is used', 'Sessions and returns to the app, by weekday and hour (your time zone)')
+  const grid = Array.from({ length: 7 }, () => Array(24).fill(0))
+  for (const r of d.hours) grid[r.dow][r.hour] += r.n
+  const hmax = Math.max(1, ...grid.flat())
+  const heat = h('div', { class: 'heat' }, h('div'), Array.from({ length: 24 }, (_, i) => h('div', { class: 'collab' }, i % 3 === 0 ? String(i) : '')))
+  const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  for (const dw of [1, 2, 3, 4, 5, 6, 0]) {
+    heat.append(h('div', { class: 'rowlab' }, DOW[dw]))
+    for (let hr = 0; hr < 24; hr++) {
+      const v = grid[dw][hr]
+      const tipRows = [['Opens', fmt(v), true]]
+      const head = `${DOW[dw]} ${hr}:00–${hr + 1}:00`
+      heat.append(h('div', { class: 'cell', tabindex: '0', style: `background:${v ? ramp(v / hmax) : 'var(--surface-2)'}`, 'aria-label': `${head}: ${v}`, onpointermove: (ev) => showTip(ev.clientX, ev.clientY, head, tipRows), onpointerleave: hideTip, onfocus: (ev) => { const b = ev.target.getBoundingClientRect(); showTip(b.right, b.top, head, tipRows) }, onblur: hideTip }))
+    }
+  }
+  c4.append(heat, h('div', { class: 'scale' }, 'fewer', ...[0.05, 0.3, 0.55, 0.8, 1].map((f) => h('span', { class: 'sw', style: `background:${ramp(f)}` })), 'more', h('span', { class: 'dim' }, ` · busiest hour ${fmt(hmax)}`)))
+  g2.append(c3, c4)
+  out.append(g2)
+
+  // sessions and retention
+  const g3 = h('div', { class: 'grid2' })
+  const BUCKETS = [[0, 60, '<1'], [60, 120, '1–2'], [120, 300, '2–5'], [300, 600, '5–10'], [600, 1200, '10–20'], [1200, 2400, '20–40'], [2400, Infinity, '40+']]
+  const hist = BUCKETS.map(([lo, hi, label]) => ({ label, head: `${label} min`, value: sess.filter((v) => v >= lo && v < hi).length }))
+  const c5 = card('Session length', `Minutes in front per session · median ${mins(quantile(sess, 0.5))}, p90 ${mins(quantile(sess, 0.9))}`)
+  columns(c5, hist.map((b) => ({ ...b, tip: [['Sessions', fmt(b.value), true], ['Share', pct(b.value, sess.length)]] })), { label: 'Sessions', height: 150 })
+  c5.append(tableView([{ k: 'head', t: 'Length' }, { k: 'value', t: 'Sessions', n: 1 }], hist))
+
+  const c6 = card('Coming back', 'Phones by the week they were first seen, and the share back in each week after')
+  const dr = h('div', { class: 'tiles small' }, d.dayRet.map((r) => tile(`Day ${r.dn}`, pct(r.back, r.eligible), `${fmt(r.back)} of ${fmt(r.eligible)} phones`)))
+  c6.append(dr)
+  const cohorts = {}
+  for (const r of d.retention) (cohorts[r.cohort] ??= {})[r.wk] = r.users
+  const WEEKS = 8
+  const rows = Object.keys(cohorts).sort().reverse().map((c) => {
+    const row = { cohort: dayLabel(c), size: cohorts[c][0] ?? 0 }
+    const age = (Date.now() - new Date(`${c}T00:00:00`).getTime()) / (7 * 86_400_000)
+    for (let w = 1; w <= WEEKS; w++) row[`w${w}`] = w < age ? (cohorts[c][w] ?? 0) / Math.max(1, row.size) : null
+    return row
+  })
+  const wcols = Array.from({ length: WEEKS }, (_, i) => ({
+    k: `w${i + 1}`, t: `W${i + 1}`, n: 1, cls: 'cohort',
+    f: (v) => (v == null ? '' : `${Math.round(v * 100)}%`),
+    style: (v) => { if (v == null) return ''; const c = v > 0 ? ramp(v) : null; return c ? `background:${c};color:${inkOn(c)}` : '' },
+  }))
+  table(c6, [{ k: 'cohort', t: 'First week' }, { k: 'size', t: 'Phones', n: 1 }, ...wcols], rows)
+  g3.append(c5, c6)
+  out.append(g3)
+
+  // every event
+  const c7 = card('Every event', 'What each event counts is in docs/ANALYTICS.md')
+  table(c7, [{ k: 'name', t: 'Event' }, { k: 'n', t: 'Events', n: 1, f: fmt }, { k: 'users', t: 'Phones', n: 1 }, { k: 'share', t: '% phones', n: 1, f: (v) => `${v}%` }, { k: 'sessions', t: 'Sessions', n: 1 }, { k: 'per', t: 'Per phone', n: 1 }],
+    d.features.map((f) => ({ ...f, share: Math.round((100 * f.users) / Math.max(1, a.users)), per: Math.round((10 * f.n) / Math.max(1, f.users)) / 10 })), { sort: 'users' })
+  out.append(c7)
+
+  // breakdowns
+  const names = [...new Set(d.breakdown.map((b) => b.name))].sort((x, y) => (KEYED[x] ?? x).localeCompare(KEYED[y] ?? y))
+  const c8 = card('Which ones', 'Each event by what it was about: which sheet, which layer, which setting')
+  const pickBox = h('select', { 'aria-label': 'Event' }, names.map((n) => h('option', { value: n }, KEYED[n] ?? n)))
+  const host = h('div')
+  const showBreak = () => {
+    const n = pickBox.value
+    const dwell = Object.fromEntries(d.dwell.filter((x) => x.name === n).map((x) => [x.k, x.avg_s]))
+    const rows_ = d.breakdown.filter((b) => b.name === n).map((b) => ({ k: BOOL.has(n) ? (b.k === '1' ? 'on' : b.k === '0' ? 'off' : b.k) : b.k ?? '–', n: b.n, users: b.users, share: Math.round((100 * b.users) / Math.max(1, a.users)), dwell: dwell[b.k] ?? null }))
+    host.replaceChildren()
+    const cols = [{ k: 'k', t: 'Which' }, { k: 'n', t: 'Times', n: 1, f: fmt }, { k: 'users', t: 'Phones', n: 1 }, { k: 'share', t: '% phones', n: 1, f: (v) => `${v}%` }]
+    if (Object.keys(dwell).length) cols.push({ k: 'dwell', t: 'Open, avg', n: 1, f: (v) => mins(v) })
+    table(host, cols, rows_, { sort: 'users' })
+  }
+  pickBox.addEventListener('change', showBreak)
+  if (names.includes('sheet')) pickBox.value = 'sheet'
+  c8.append(h('div', { class: 'row' }, pickBox), host)
+  showBreak()
+
+  // the taps
+  const c9 = card('Taps', 'Every button by its label (your names and numbers taken out) and where on the screen')
+  const q = h('input', { type: 'text', placeholder: 'Filter', 'aria-label': 'Filter taps' })
+  const tapHost = h('div')
+  const showTaps = () => {
+    const f = q.value.trim().toLowerCase()
+    tapHost.replaceChildren()
+    table(tapHost, [{ k: 'area', t: 'Where' }, { k: 'el', t: 'Button' }, { k: 'n', t: 'Taps', n: 1, f: fmt }, { k: 'users', t: 'Phones', n: 1 }], d.clicks.filter((c) => !f || `${c.area} ${c.el}`.toLowerCase().includes(f)), { sort: 'n' })
+  }
+  q.addEventListener('input', showTaps)
+  c9.append(h('div', { class: 'row' }, q), tapHost)
+  showTaps()
+  const g4 = h('div', { class: 'grid2' })
+  g4.append(c8, c9)
+  out.append(g4)
+
+  // phones, speed, errors
+  const g5 = h('div', { class: 'grid2' })
+  const c10 = card('Phones', 'From each launch: the platform, the browser, and whether it runs from the home screen')
+  table(c10, [{ k: 'platform', t: 'Platform' }, { k: 'browser', t: 'Browser' }, { k: 'installed', t: 'Home screen', f: (v) => (v ? 'yes' : 'no') }, { k: 'users', t: 'Phones', n: 1 }], d.phones, { sort: 'users' })
+  const c11 = card('Areas, builds, countries', null)
+  table(c11, [{ k: 'area', t: 'Area' }, { k: 'users', t: 'Phones', n: 1 }, { k: 'sessions', t: 'Sessions', n: 1 }], d.areas, { sort: 'users' })
+  table(c11, [{ k: 'build', t: 'Build' }, { k: 'users', t: 'Phones', n: 1 }, { k: 'last', t: 'Last seen', f: (v) => when(v) }], d.builds)
+  table(c11, [{ k: 'country', t: 'Country' }, { k: 'users', t: 'Phones', n: 1 }], d.countries, { sort: 'users' })
+  g5.append(c10, c11)
+  out.append(g5)
+
+  const g6 = h('div', { class: 'grid2' })
+  const perf = {}
+  for (const r of d.perf) (perf[r.name === 'gps_fix' ? 'gps first fix' : r.what] ??= []).push(r.ms)
+  const PERF_NAMES = { map_ready: 'Map ready', map_idle: 'Map drawn', wind_grid: 'Wind field fetched', heat_scored: 'Heat map scored', 'gps first fix': 'GPS first fix (from location on)' }
+  const c12 = card('Speed', 'From opening the page, in seconds; the GPS from switching location on')
+  table(c12, [{ k: 'what', t: 'What' }, { k: 'n', t: 'Times', n: 1 }, { k: 'p50', t: 'Median', n: 1 }, { k: 'p90', t: 'p90', n: 1 }],
+    Object.entries(perf).map(([w, ms]) => ({ what: PERF_NAMES[w] ?? w, n: ms.length, p50: (quantile(ms, 0.5) / 1000).toFixed(1), p90: (quantile(ms, 0.9) / 1000).toFixed(1) })))
+  const c13 = card('Errors', 'Uncaught errors and rejections, up to five different ones per page load')
+  table(c13, [{ k: 'msg', t: 'Message', cls: 'wrap' }, { k: 'at', t: 'At' }, { k: 'users', t: 'Phones', n: 1 }, { k: 'n', t: 'Times', n: 1 }, { k: 'build', t: 'Build' }, { k: 'last', t: 'Last', f: (v) => when(v) }], d.errors)
+  g6.append(c12, c13)
+  out.append(g6)
+
+  const c14 = card('Latest events', 'The newest 60, as they were stored')
+  table(c14, [{ k: 'ts', t: 'When', f: (v) => when(v) }, { k: 'install', t: 'Phone' }, { k: 'name', t: 'Event' }, { k: 'props', t: 'Details', cls: 'wrap' }, { k: 'area', t: 'Area' }, { k: 'online', t: 'Signal', f: (v) => (v ? 'yes' : 'no') }], d.recent)
+  out.append(c14)
+}
+
+// ------------------------------------------------------------------ loading
+
+function query() {
+  const x = ($('#exclude').value || '').replace(/\s/g, '')
+  return `days=${days}&tz=${-new Date().getTimezoneOffset()}${x ? `&x=${encodeURIComponent(x)}` : ''}`
+}
+
+async function load() {
+  const key = store.get(KEY)
+  if (!key) return askKey()
+  $('#out').classList.add('refetch')
+  try {
+    const r = await fetch(`/api/stats?${query()}`, { headers: { Authorization: `Bearer ${key}` } })
+    if (r.status === 401) return askKey('That key was not taken.')
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    data = await r.json()
+    $('#keybox').hidden = true
+    $('#filters').hidden = false
+    render(data)
+  } catch (e) {
+    $('#out').classList.remove('refetch')
+    $('#stamp').textContent = `Could not load: ${e.message}`
+  }
+}
+
+function askKey(err) {
+  $('#keybox').hidden = false
+  $('#filters').hidden = true
+  $('#keyerr').textContent = err ?? ''
+  $('#key').focus()
+}
+
+$('#keygo').addEventListener('click', () => {
+  store.set(KEY, $('#key').value.trim())
+  load()
+})
+$('#key').addEventListener('keydown', (e) => e.key === 'Enter' && $('#keygo').click())
+$('#forget').addEventListener('click', () => {
+  store.set(KEY, null)
+  $('#out').replaceChildren()
+  askKey()
+})
+$('#reload').addEventListener('click', load)
+$('#exclude').value = store.get(EXCL) ?? ''
+$('#exclude').addEventListener('change', () => {
+  store.set(EXCL, $('#exclude').value.trim())
+  load()
+})
+for (const b of document.querySelectorAll('#range button')) {
+  b.setAttribute('aria-pressed', String(Number(b.dataset.d) === days))
+  b.addEventListener('click', () => {
+    days = Number(b.dataset.d)
+    store.set(DAYS, String(days))
+    for (const o of document.querySelectorAll('#range button')) o.setAttribute('aria-pressed', String(o === b))
+    load()
+  })
+}
+$('#csv').addEventListener('click', async () => {
+  const r = await fetch(`/api/export?${query()}`, { headers: { Authorization: `Bearer ${store.get(KEY)}` } })
+  if (!r.ok) return alert(`Export failed: HTTP ${r.status}`)
+  const url = URL.createObjectURL(await r.blob())
+  const a = h('a', { href: url, download: `groundwind-events-${days}d.csv` })
+  document.body.append(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 5000)
+})
+// the theme follows the system; re-draw so the ramps pick the right end
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => data && render(data))
+load()
+</script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 import { useState, type JSX } from 'react'
 import { SAT_NUMBER } from '../../config'
+import { track } from '../../analytics'
 import { useAppStore } from '../../state/appStore'
 import { agoLabel, clockShort } from '../../time'
 import { refreshWeather, campForecast, hrdpsRunLabel } from '../../weather/refresh'
@@ -22,6 +23,8 @@ function prettyNumber(n: string): string {
   const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(n)
   return m ? `+1 ${m[1]} ${m[2]} ${m[3]}` : n
 }
+
+let pasteTimer = 0
 
 export default function SatSheet(): JSX.Element {
   const units = useAppStore((s) => s.units)
@@ -49,7 +52,11 @@ export default function SatSheet(): JSX.Element {
   const take = (t: string) => {
     setText(t)
     setNote(null)
-    setResult(t.trim() ? applySatText(t) : null)
+    const r = t.trim() ? applySatText(t) : null
+    setResult(r)
+    // a paste is one change, typing is many: the box as it came to rest
+    window.clearTimeout(pasteTimer)
+    if (r) pasteTimer = window.setTimeout(() => track('sat_paste', r.ok ? { ok: true, hours: r.hours, changed: !!r.change } : { ok: false, why: r.why.split(/[.:]/)[0] }), 1500)
   }
 
   const paste = () => {

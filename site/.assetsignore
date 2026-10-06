@@ -4,3 +4,4 @@ schema.sql
 .assetsignore
 .wrangler
 satbot.js
+stats.js

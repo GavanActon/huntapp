@@ -1,9 +1,11 @@
 // groundwind.app: www goes to the bare domain, /app to the app, /api/request
 // keeps area requests (D1, schema.sql), /api/sms and /api/wx answer weather
-// requests sent by satellite text (satbot.js), and everything else is the
-// static site in this folder (wrangler.toml).
+// requests sent by satellite text (satbot.js), /api/events takes the app's
+// usage stats and /api/stats and /api/export read them back (stats.js), and
+// everything else is the static site in this folder (wrangler.toml).
 
 import { smsWebhook, wxQuery } from './satbot.js'
+import { eventsExport, eventsIngest, statsQuery } from './stats.js'
 
 // where the app lives for now: links, the QR code and shares all go through
 // groundwind.app/app, so moving the app is this one line
@@ -23,6 +25,9 @@ export default {
     if (url.pathname === '/api/request') return areaRequest(request, env)
     if (url.pathname === '/api/sms') return smsWebhook(request, env)
     if (url.pathname === '/api/wx') return wxQuery(request)
+    if (url.pathname === '/api/events') return eventsIngest(request, env)
+    if (url.pathname === '/api/stats') return statsQuery(request, env)
+    if (url.pathname === '/api/export') return eventsExport(request, env)
     let res = await env.ASSETS.fetch(request)
     if (url.pathname.endsWith('.mp4')) res = await byteRange(request, res)
     return withHeaders(res, url.pathname)
