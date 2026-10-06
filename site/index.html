@@ -3,9 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Groundwind · Head-height wind and scent for the Canadian bush</title>
-<meta name="description" content="Head-height wind and scent for hunting the Canadian bush. Environment Canada's high-resolution forecast on your phone with no service, sharpened by your own wind checks.">
+<title>Groundwind · Hunting wind and scent app for the Canadian bush</title>
+<meta name="description" content="A hunting app for moose and deer: the wind at head height and your scent cone, from Environment Canada's HD forecast over LiDAR terrain. Works offline.">
 <link rel="canonical" href="https://groundwind.app/">
+<meta name="robots" content="max-image-preview:large">
 <meta name="theme-color" content="#0a100b">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -24,6 +25,31 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Sofia+Sans+Extra+Condensed:wght@800&family=Sofia+Sans:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="site.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://groundwind.app/#website",
+      "url": "https://groundwind.app/",
+      "name": "Groundwind",
+      "alternateName": "groundwind.app",
+      "inLanguage": "en-CA",
+      "publisher": { "@id": "https://groundwind.app/#org" }
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://groundwind.app/#org",
+      "name": "Groundwind",
+      "url": "https://groundwind.app/",
+      "logo": "https://groundwind.app/apple-touch-icon.png",
+      "email": "hello@groundwind.app",
+      "description": "A hunting app for the Canadian bush: head-height wind and scent from Environment Canada's HD forecast over LiDAR terrain, sharpened by the hunter's own wind checks."
+    }
+  ]
+}
+</script>
 </head>
 <body>
 <div class="page">
@@ -34,7 +60,7 @@
     <b>Groundwind</b>
     <span class="pill">Beta</span>
   </a>
-  <nav class="top-nav"><a class="top-link wide" href="#faq">Questions</a><a class="top-link" href="/guide">How to use it</a></nav>
+  <nav class="top-nav"><a class="top-link wide" href="#faq">Questions</a><a class="top-link wide" href="#notes">Field notes</a><a class="top-link" href="/guide">How to use it</a></nav>
 </header>
 
 <main>
@@ -43,7 +69,7 @@
   <div>
     <p class="eyebrow">Made to order for your ground · <span class="nw">on the stand and on the move</span></p>
     <h1 id="hero-title">The forecast is a guess. <em>Sharpen it.</em></h1>
-    <p class="lede">Groundwind runs a real wind model at ground level: Environment Canada's high-resolution forecast, worked over the LiDAR terrain and through the trees and the season's leaves. Puff your powder and tap where it went, and your check corrects the model around you. Your scent cone shows where your scent is really going, with or without bars.</p>
+    <p class="lede">Groundwind is a hunting app that runs a real wind model at ground level: Environment Canada's high-resolution forecast, worked over the LiDAR terrain and through the trees and the season's leaves. Puff your powder and tap where it went, and your check corrects the model around you. Your scent cone shows where your scent is really going, with or without bars.</p>
     <div class="ctas">
       <a class="btn btn-go" href="/app">Open the beta</a>
       <a class="btn btn-quiet" href="#request">Request your spot</a>
@@ -438,12 +464,33 @@
   </div>
 </section>
 
+<section class="also" id="notes" aria-labelledby="notes-title">
+  <h2 id="notes-title">Field notes</h2>
+  <div class="also-grid notes-grid">
+    <a href="/hunting-thermals">
+      <h3>Hunting thermals</h3>
+      <p>Scent follows the sun, not the clock: where it goes at dawn and dusk, and where to sit.</p>
+      <span class="go">Read ›</span>
+    </a>
+    <a href="/moose-calling-wind">
+      <h3>Calling moose with the wind</h3>
+      <p>Why the bull circles for your wind, and where the caller and the shooter go.</p>
+      <span class="go">Read ›</span>
+    </a>
+    <a href="/moose-weather">
+      <h3>When moose move</h3>
+      <p>Heat, rain, wind and the rut: what's measured, what's hunter experience and what's myth.</p>
+      <span class="go">Read ›</span>
+    </a>
+  </div>
+</section>
+
 </main>
 
 <footer>
   <p class="first">Groundwind is a beta. The wind at your head is a model, so keep checking it yourself. That's what the checks are for.</p>
   <p>Forecast: Environment and Climate Change Canada's HRDPS, served by Open-Meteo (CC BY 4.0). Elevation and LiDAR: Natural Resources Canada (Open Government Licence – Canada). Forest: Ontario's Forest Resources Inventory (Open Government Licence – Ontario) and Québec's forest maps (MRNF).</p>
-  <p class="links"><a href="/guide">How to use it</a><a href="/app">Open the beta</a><a href="mailto:hello@groundwind.app">hello@groundwind.app</a><span>© 2026 Groundwind</span></p>
+  <p class="links"><a href="/guide">How to use it</a><a href="/hunting-thermals">Hunting thermals</a><a href="/moose-calling-wind">Calling moose with the wind</a><a href="/moose-weather">When moose move</a><a href="/app">Open the beta</a><a href="mailto:hello@groundwind.app">hello@groundwind.app</a><span>© 2026 Groundwind</span></p>
 </footer>
 
 </div>
