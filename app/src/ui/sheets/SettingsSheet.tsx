@@ -10,7 +10,7 @@ import { checkMapUpdates, useMapUpdates } from '../../offline/updates'
 import { CONTOUR_INTERVALS, useAppStore } from '../../state/appStore'
 import { agoLabel, dayTimeLabel } from '../../time'
 import { campForecast, hrdpsRunLabel, nextWeatherUpdateMs, onWeatherRefreshed, refreshWeather, useWeatherStatus } from '../../weather/refresh'
-import { onShareChange, setShare, shareCounts, shareState } from '../../weather/micro/checkShare'
+import { onShareChange, setShare, shareCounts, shareState, wasAsked } from '../../weather/micro/checkShare'
 import './settings.css'
 
 const TEXT_SIZES = [
@@ -155,9 +155,9 @@ function CheckShareRow({ online }: { online: boolean }): JSX.Element {
   const on = shareState() === 'on'
   const { sent, waiting } = shareCounts()
   const status = !on
-    ? shareState() === 'off'
+    ? shareState() === 'off' || wasAsked()
       ? 'off · your checks stay on this phone'
-      : 'off till you say · asked after your first check'
+      : 'off till you say · asked once, after your first check'
     : waiting
       ? `${sent} sent · ${waiting} to go${online ? '' : ' when there is signal'}`
       : `all ${sent} sent · without your name or notes`

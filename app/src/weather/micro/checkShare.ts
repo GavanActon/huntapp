@@ -10,7 +10,8 @@ import { useWindChecks, type WindCheck } from './windChecks'
  * and not only the ones on this phone (docs/ANALYTICS.md "Wind checks").
  *
  * Asked once, on the card after a phone's first check (Share or Not now),
- * and switched in Settings → Sharing. Until it is answered nothing goes.
+ * and switched in Settings → Sharing. Once only: a card closed without an
+ * answer is not asked again, and nothing goes till Settings says so.
  * A check goes whole, its place and time, what was felt and what the map
  * and the forecast said, under the phone's random id: never who made it
  * (`by`) or a note, and never a partner's check taken in from their file.
@@ -27,12 +28,15 @@ export type ShareState = 'ask' | 'on' | 'off'
 
 const KEY = 'huntapp-checkshare'
 const SENT_KEY = 'huntapp-checkshare-sent'
+const ASKED_KEY = 'huntapp-checkshare-asked'
 const BATCH = 100
 /** after a check changes: long enough for the next puff to fold in */
 const SOON_MS = 15_000
 const TICK_MS = 60_000
 
 let state: ShareState = 'ask'
+/** the card has put the question, answered or not */
+let asked = false
 /** check id → the fingerprint of what was last sent */
 let sent: Record<string, string> = {}
 let sending = false
@@ -70,6 +74,19 @@ export function shareState(): ShareState {
 export function onShareChange(cb: () => void): () => void {
   listeners.add(cb)
   return () => listeners.delete(cb)
+}
+
+/** Whether the card has put the question: it is put once, answered or not. */
+export function wasAsked(): boolean {
+  return asked
+}
+
+/** The card is showing the question: never again after this one. */
+export function markAsked(): void {
+  if (asked) return
+  asked = true
+  write(ASKED_KEY, '1')
+  track('check_share_ask')
 }
 
 /** The answer to the card's question, or the Settings switch. */
@@ -184,6 +201,7 @@ function start() {
 export function initCheckShare(): void {
   const v = read(KEY)
   state = v === 'on' || v === 'off' ? v : 'ask'
+  asked = state !== 'ask' || read(ASKED_KEY) === '1'
   try {
     const s = JSON.parse(read(SENT_KEY) ?? '{}') as unknown
     sent = s && typeof s === 'object' && !Array.isArray(s) ? (s as Record<string, string>) : {}
