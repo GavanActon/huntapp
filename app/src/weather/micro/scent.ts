@@ -4,6 +4,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { devlog } from '../../devlog'
 import { getMap, onEachMap, withMap } from '../../map/mapController'
+import { closeOnTapOff } from '../../map/tapPopup'
 import { useMeasureStore } from '../../measure/measureStore'
 import { useRoutes } from '../../routes/routeStore'
 import { useAppStore } from '../../state/appStore'
@@ -13,6 +14,7 @@ import { onWeatherGrid } from '../windGrid'
 import { groundGust, groundSampler, groundStability, loadMicro, microGrid, onMicro, type GroundSampler } from './model'
 import { ensureRelief, onRelief, reliefCell, reliefNear, WATER } from './relief'
 import { useWindChecks } from './windChecks'
+import '../../ui/minipop.css'
 
 /**
  * The scent cone: where the hunter's scent goes from a spot during a sit.
@@ -1115,10 +1117,73 @@ function drawEdges(map: MlMap, people: Sitter[], runs: (PlumeRun | null)[]) {
   })
 }
 
-// each person is a marker to drag about; a tap on one picks them for the card
+// each person is a marker to drag about; a tap on one picks them for the card,
+// a press held still asks where they sit, and a drag never does
 let markers: maplibregl.Marker[] = []
 let markersOn: MlMap | null = null
 let dragging = -1
+// as long as the hot buttons' hold
+const HOLD_MS = 450
+// the dot on the ground, and up a stand: pale, so a glance tells them apart
+const GROUND_DOT = '#ff9d4d'
+const STAND_DOT = '#fff2df'
+
+const heightName = (h: number) => (h === GROUND_H ? 'Ground' : `Stand ${h} m`)
+
+/** The held person's popup: where they sit, the ground or a stand, a tap to change it. */
+let personPop: { pop: maplibregl.Popup; k: number; sync: () => void } | null = null
+
+function showPersonPopup(map: MlMap, k: number) {
+  personPop?.pop.remove()
+  const { people } = useScent.getState()
+  const p = people[k]
+  if (!p) return
+  const el = document.createElement('div')
+  const head = document.createElement('div')
+  head.className = 'mp-head'
+  const name = document.createElement('b')
+  name.textContent = people.length > 1 ? `${k + 1} is at` : "You're at"
+  head.append(name)
+  const seg = document.createElement('div')
+  seg.className = 'seg sp-heights'
+  seg.setAttribute('role', 'radiogroup')
+  seg.setAttribute('aria-label', people.length > 1 ? `Where ${k + 1} sits` : 'Where you sit')
+  const buttons = SCENT_HEIGHTS.map((h) => {
+    const b = document.createElement('button')
+    b.textContent = heightName(h)
+    b.setAttribute('role', 'radio')
+    b.addEventListener('click', () => {
+      const s = useScent.getState()
+      s.setPick(k)
+      s.setHeight(h)
+      sync()
+    })
+    seg.append(b)
+    return b
+  })
+  el.append(head, seg)
+  const pop = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, closeOnClick: false, offset: 16, maxWidth: '300px' })
+    .setLngLat([p.lon, p.lat])
+    .setDOMContent(el)
+    .addTo(map)
+  closeOnTapOff(map, pop, { held: true })
+  // the chips as the person is now: a tap here, or the card's own
+  const sync = () => {
+    const q = useScent.getState().people[k]
+    if (!q) return pop.remove()
+    pop.setLngLat([q.lon, q.lat])
+    buttons.forEach((b, i) => {
+      const on = SCENT_HEIGHTS[i] === q.height
+      b.classList.toggle('seg-on', on)
+      b.setAttribute('aria-checked', String(on))
+    })
+  }
+  sync()
+  pop.on('close', () => {
+    if (personPop?.pop === pop) personPop = null
+  })
+  personPop = { pop, k, sync }
+}
 
 function syncMarkers(map: MlMap | null) {
   const { people, pick, view } = useScent.getState()
@@ -1126,6 +1191,7 @@ function syncMarkers(map: MlMap | null) {
     for (const m of markers) m.remove()
     markers = []
     markersOn = map
+    personPop?.pop.remove()
   }
   if (!map) return
   while (markers.length > people.length) markers.pop()!.remove()
@@ -1134,10 +1200,37 @@ function syncMarkers(map: MlMap | null) {
     const k = markers.length
     const el = document.createElement('div')
     el.className = 'scent-person'
+    // held still: where they sit. A finger that moves first is a drag (the
+    // map's clickTolerance) and the hold is off
+    let hold = 0
+    let held = false
+    const letGo = () => window.clearTimeout(hold)
+    const holdOpen = () => {
+      if (!useScent.getState().people[k] || map.isMoving()) return
+      held = true
+      if (navigator.vibrate) navigator.vibrate(12)
+      useScent.getState().setPick(k)
+      showPersonPopup(map, k)
+    }
+    el.addEventListener('pointerdown', (e) => {
+      held = false
+      letGo()
+      if (e.button === 0) hold = window.setTimeout(holdOpen, HOLD_MS)
+    })
+    el.addEventListener('pointerup', letGo)
+    el.addEventListener('pointercancel', letGo)
+    // Android's long press and a right click: the same popup, not the browser's menu
+    el.addEventListener('contextmenu', (e) => {
+      e.preventDefault()
+      letGo()
+      if (!held) holdOpen()
+    })
     // the map's own tap popup stays shut; with the tape or the routes out,
     // the person is the point you meant
     el.addEventListener('click', (e) => {
       e.stopPropagation()
+      // letting go of a hold is not a tap
+      if (held) return (held = false)
       const p = useScent.getState().people[k]
       if (p && useMeasureStore.getState().active) return useMeasureStore.getState().addPoint([p.lon, p.lat])
       if (p && useRoutes.getState().open) return useRoutes.getState().setTo({ lon: p.lon, lat: p.lat, kind: 'map', name: `${k + 1}` })
@@ -1150,6 +1243,8 @@ function syncMarkers(map: MlMap | null) {
     }
     m.on('dragstart', () => {
       dragging = k
+      letGo()
+      personPop?.pop.remove()
       useScent.getState().setPick(k)
     })
     m.on('drag', moved)
@@ -1172,8 +1267,13 @@ function syncMarkers(map: MlMap | null) {
     el.textContent = many ? String(k + 1) : ''
     el.classList.toggle('sp-many', many)
     el.classList.toggle('sp-pick', many && k === pick)
-    el.style.setProperty('--sp', own ? personColour(k) : '#ff9d4d')
+    // up a tree: the dot pale (in their own colours, its ring) and the stand's height under it
+    const stand = p.height !== GROUND_H
+    el.style.setProperty('--sp', own ? personColour(k) : stand ? STAND_DOT : GROUND_DOT)
+    el.style.setProperty('--sp-edge', own && stand ? STAND_DOT : '')
+    el.dataset.h = stand ? `${p.height} m` : ''
   })
+  personPop?.sync()
 }
 
 /** The planning time, or now to the minute: the plume's seed is the minute, and a drag keeps its cache. */
