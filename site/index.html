@@ -118,10 +118,10 @@
   </div>
   <ol class="stack" aria-label="The layers of the wind model, in order">
     <li><b>Forecast</b><span>ECCC's HRDPS at 10 and 80&nbsp;m, so it knows when the ground air comes loose from the wind above on a clear, cold night.</span></li>
-    <li><b>Terrain</b><span>A mass-consistent wind solve over the 1&nbsp;m LiDAR ground: faster over the bluff, slack in its lee.</span></li>
+    <li><b>Terrain</b><span>WindNinja's full 3D flow solve over the ground, in 16 directions: faster over the bluff, slack in its lee, breaking off behind a summit and circling back.</span></li>
     <li><b>Heat and cold</b><span>Cold air draining downhill at dusk, warm air rising upslope by day, lake and land breezes.</span></li>
     <li><b>Trees and leaves</b><span>Stand height and closure from the LiDAR point cloud, the hardwoods' leaves coming down by date, wind channelled down the slots between stands.</span></li>
-    <li><b>Gusts and swirl</b><span>The forecast's gusts widen the cone, and the air tumbles behind tree lines and in openings.</span></li>
+    <li><b>Gusts and swirl</b><span>The forecast's gusts widen the cone, and the air tumbles behind tree lines, in openings and in the lee of a ridge.</span></li>
     <li><b>Your checks</b><span>Each puff corrects the model near you and teaches it how that kind of air behaves at your spot.</span></li>
   </ol>
 </section>
@@ -367,6 +367,24 @@
     </details>
   </div>
   <div class="phone"><video data-loop src="media/stalk.mp4" poster="media/stalk.jpg" muted loop playsinline preload="none" aria-label="On the move: the head-height wind streaks running over a bluff and round a stand edge, a scent cone dropped at the corner ahead, then that spot's sight lines"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
+</section>
+
+<section class="row" id="mountains" aria-labelledby="f8-title">
+  <div class="row-text">
+    <p class="tag" style="--dot: var(--wind)">In the mountains</p>
+    <h2 id="f8-title">Behind the summit, the wind comes back.</h2>
+    <p>On a south wind the forecast draws one straight line over the mountain. On the ground, the wind breaks off the summit and circles back. Sit on the north face and your scent runs back up toward the top, and every which way.</p>
+    <ul class="uses">
+      <li><b>Wind</b><span>The streaks bend round the summit and curl back where the flow breaks away.</span></li>
+      <li><b>Swirl</b><span>Where the air tumbles in the lee, the map draws it swirling and the scent cone widens to match.</span></li>
+      <li><b>Scent</b><span>Drop a cone in the eddy and see it head back the way the wind came.</span></li>
+    </ul>
+    <details>
+      <summary>How it works</summary>
+      <p>Groundwind solves the flow over each area with WindNinja, the US Forest Service's wind model for wildfire, in 16 directions. The solve keeps its turbulence too, so the lee of a summit or a ridge shows up as rough air, not a smooth curve. Highland Lake in the Yukon, Monday 5 October, 5 pm, 17 km/h from the south.</p>
+    </details>
+  </div>
+  <div class="phone"><video data-loop src="media/eddy.mp4" poster="media/eddy.jpg" muted loop playsinline preload="none" aria-label="Highland Lake in the Yukon on a south wind: the forecast's one straight wind over a 1700 m summit, then the ground wind breaking off behind the summit and circling back, then a scent cone dropped in the eddy, spreading every way and mostly back toward the summit"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
 </section>
 
 <section class="also" aria-labelledby="also-title">
