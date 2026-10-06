@@ -12,13 +12,18 @@ const DRAG_PX = 6
  *
  * Call it right after addTo(map), inside the tap that opened it: the
  * listener goes on after that tap has passed, so it does not close at once.
+ * Opened by a press still held (`held`), the click its letting go makes is
+ * not a tap off either: only a tap from a fresh finger down closes it.
  */
-export function closeOnTapOff(map: MlMap, popup: Popup) {
+export function closeOnTapOff(map: MlMap, popup: Popup, { held = false }: { held?: boolean } = {}) {
   let down: { x: number; y: number } | null = null
+  let armed = !held
   const onDown = (e: PointerEvent) => {
+    armed = true
     down = { x: e.clientX, y: e.clientY }
   }
   const onClick = (e: MouseEvent) => {
+    if (!armed) return
     const t = e.target as Node | null
     if (t && popup.getElement()?.contains(t)) return
     if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > DRAG_PX) return

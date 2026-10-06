@@ -91,14 +91,25 @@ div.me .me-hit { pointer-events: all; cursor: pointer; }
 .ground-card .gc-people .chip-pick { padding: 5px 11px; }
 /* the head's second button (the × after the cone toggle) sits against the first */
 .ground-card .tb-head .icon-btn + .icon-btn { margin-left: 0; }
-/* each person on the map: a dot to drag (numbered once there are two), a finger's width to catch it by, above the particles */
+/* each person on the map: a dot to drag (numbered once there are two), a finger's width to catch it by, above the particles;
+   held for their popup, so no text to select and no callout */
 .scent-person {
-  width: 14px; height: 14px; border-radius: 50%; background: var(--sp, #ff9d4d); border: 2px solid #1a0f06;
+  width: 14px; height: 14px; border-radius: 50%; background: var(--sp, #ff9d4d); border: 2px solid var(--sp-edge, #1a0f06);
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.45); cursor: grab; z-index: 3; touch-action: none;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
 }
 .scent-person::before { content: ''; position: absolute; inset: -14px; border-radius: 50%; }
 .scent-person.sp-many { width: 24px; height: 24px; display: grid; place-items: center; font: 700 12.5px/1 system-ui, sans-serif; color: #1a0f06; }
 .scent-person.sp-pick { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9), 0 1px 6px rgba(0, 0, 0, 0.5); }
+/* up a stand: its height under the dot */
+.scent-person[data-h]:not([data-h=''])::after {
+  content: attr(data-h); position: absolute; top: calc(100% + 3px); left: 50%; transform: translateX(-50%);
+  font: 700 10.5px/1 system-ui, sans-serif; color: #fff; white-space: nowrap; pointer-events: none;
+  text-shadow: 0 0 2px #1a0f06, 0 0 3px #1a0f06, 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+/* a held person's popup: the ground or a stand */
+.depth-popup .sp-heights { margin-top: 6px; }
+.depth-popup .sp-heights button { padding: 6px 11px; white-space: nowrap; }
 /* out hunting: the scent card as its summary alone, "more" for the rest */
 .ground-card .tb-head .gc-more { margin-left: auto; font-size: 12.5px; }
 .ground-card .tb-head .gc-more + .icon-btn { margin-left: 0; }
