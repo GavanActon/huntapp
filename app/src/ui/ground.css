@@ -110,6 +110,9 @@ div.me .me-hit { pointer-events: all; cursor: pointer; }
 /* a held person's popup: the ground or a stand */
 .depth-popup .sp-heights { margin-top: 6px; }
 .depth-popup .sp-heights button { padding: 6px 11px; white-space: nowrap; }
+/* its Remove: small, alone past a rule, some 25 px under the heights */
+.depth-popup .sp-remove { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--c-border); }
+.depth-popup .sp-remove button { flex: none; padding: 6px 14px; }
 /* out hunting: the scent card as its summary alone, "more" for the rest */
 .ground-card .tb-head .gc-more { margin-left: auto; font-size: 12.5px; }
 .ground-card .tb-head .gc-more + .icon-btn { margin-left: 0; }

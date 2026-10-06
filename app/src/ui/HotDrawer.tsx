@@ -11,7 +11,7 @@ import { CONTOUR_INTERVALS, useAppStore, type HotId, type LayerOpacity, type Lea
 import { useSpotsStore } from '../state/spotsStore'
 import { useGpsStore } from '../tracking/gpsStore'
 import { leavesWord } from '../weather/micro/leaves'
-import { coneSizeWord, SCENT_HEIGHTS, useScent } from '../weather/micro/scent'
+import { coneSizeWord, drawnView, SCENT_HEIGHTS, useScent, type ScentView } from '../weather/micro/scent'
 import { useWindChecks } from '../weather/micro/windChecks'
 import { HOT_DEFS } from './hotButtons'
 import { useTapOff } from './tapOff'
@@ -81,6 +81,12 @@ function youHere(): { lon: number; lat: number } | null {
 }
 
 const HEIGHTS: readonly Opt<number>[] = SCENT_HEIGHTS.map((h, i) => [h, i === 0 ? 'Ground' : `${h} m`] as const)
+const VIEWS: readonly Opt<ScentView>[] = [
+  ['cloud', 'Cloud'],
+  ['particles', 'Particles'],
+]
+// with a party placed, each one's edge in their own colour as well
+const PARTY_VIEWS: readonly Opt<ScentView>[] = [...VIEWS, ['people', 'By person']]
 
 interface RowsProps {
   /** close the drawer, then do the thing */
@@ -150,12 +156,14 @@ function LeavesRow() {
 }
 
 /** The cone's knobs only: + Person, Clear sitters and the card are the scent card's own (2026-10-02).
- *  Cone size first: smaller (only strong scent counts) to bigger (it counts sooner, the wind wanders more). */
+ *  Cone size first: smaller (only strong scent counts) to bigger (it counts sooner, the wind wanders more).
+ *  With two or more placed, the view has By person too, as Your scent's has. */
 function ScentRows() {
   const height = useScent((s) => s.height)
   const setHeight = useScent((s) => s.setHeight)
   const view = useScent((s) => s.view)
   const setView = useScent((s) => s.setView)
+  const n = useScent((s) => s.people.length)
   const strength = useScent((s) => s.strength)
   const setStrength = useScent((s) => s.setStrength)
   const risk = useScent((s) => s.risk)
@@ -185,7 +193,7 @@ function ScentRows() {
       </div>
       <Slider label="Strength" value={Math.round(strength * 100)} min={10} max={100} step={5} onChange={(v) => setStrength(v / 100)} />
       <Seg label="Height" value={height} options={HEIGHTS} onPick={setHeight} />
-      <Seg label="View" value={view === 'people' ? 'cloud' : view} options={[['cloud', 'Cloud'], ['particles', 'Particles']] as const} onPick={setView} />
+      <Seg label="View" value={drawnView(view, n)} options={n > 1 ? PARTY_VIEWS : VIEWS} onPick={setView} />
     </>
   )
 }

@@ -1130,7 +1130,7 @@ const STAND_DOT = '#fff2df'
 
 const heightName = (h: number) => (h === GROUND_H ? 'Ground' : `Stand ${h} m`)
 
-/** The held person's popup: where they sit, the ground or a stand, a tap to change it. */
+/** The held person's popup: where they sit, the ground or a stand, a tap to change it; and Remove. */
 let personPop: { pop: maplibregl.Popup; k: number; sync: () => void } | null = null
 
 function showPersonPopup(map: MlMap, k: number) {
@@ -1161,7 +1161,20 @@ function showPersonPopup(map: MlMap, k: number) {
     seg.append(b)
     return b
   })
-  el.append(head, seg)
+  // Remove on a row of its own past a rule, well clear of the heights: a
+  // thumb that slips off a stand never takes the person off the map
+  const acts = document.createElement('div')
+  acts.className = 'pp-acts sp-remove'
+  const rm = document.createElement('button')
+  rm.className = 'mp-danger'
+  rm.textContent = people.length > 1 ? `Remove ${k + 1}` : 'Remove'
+  rm.addEventListener('click', () => {
+    // shut first: the people after k move up, and the popup would follow the next one
+    pop.remove()
+    useScent.getState().remove(k)
+  })
+  acts.append(rm)
+  el.append(head, seg, acts)
   const pop = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, closeOnClick: false, offset: 16, maxWidth: '300px' })
     .setLngLat([p.lon, p.lat])
     .setDOMContent(el)

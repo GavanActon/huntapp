@@ -159,24 +159,23 @@ export default function LiveCard(): JSX.Element | null {
     )
 
   // ---- a party placed (with or without your own cone): one bar like the
-  // folded strip, how many sit, + Person and Clear; the count opens Your
-  // scent, where the area, whose scent drifts over whom and the rest live
-  if (placed.length) {
-    const n = people.length
+  // folded strip, + Person, Advanced and Clear. Advanced opens Your scent,
+  // where the area, whose scent drifts over whom and the rest live; Clear
+  // last, away from the one you reach for most
+  if (placed.length)
     return (
       <div className="livecard lc-party" ref={ref}>
-        <button className="lc-party-n" onClick={toScent}>
-          {n} {n === 1 ? 'sitter' : 'sitters'}
-        </button>
         <button className="lc-act" onClick={() => setAdding(true)}>
           + Person
+        </button>
+        <button className="lc-act" onClick={toScent}>
+          Advanced ›
         </button>
         <button className="lc-act" onClick={clearPlaced}>
           Clear
         </button>
       </div>
     )
-  }
 
   // ---- line 1: your scent. The cone on the map says where it goes and
   // how far; the line is the way into its knobs, with the hour when the

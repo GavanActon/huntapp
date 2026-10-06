@@ -74,8 +74,8 @@
 }
 
 /* the party's bar: one line at the left, the height and corners of the
-   folded strip; the count, then + Person and Clear as plain words (cancel
-   lit while placing) */
+   folded strip; + Person, Advanced › and Clear as plain words (while
+   placing, the prompt first and cancel lit) */
 .livecard.lc-party {
   align-self: flex-start;
   flex-direction: row;
@@ -85,6 +85,11 @@
   padding: 0 4px 0 12px;
   border-radius: var(--r-md);
   white-space: nowrap;
+}
+
+/* + Person first: its word where the prompt's would start */
+.lc-party > .lc-act:first-child {
+  margin-left: -10px;
 }
 
 .lc-party-n {
