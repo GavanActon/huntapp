@@ -697,9 +697,29 @@ footer .links a:hover { color: var(--ink); text-decoration: underline; }
 }
 .art-cta p { color: var(--dim); }
 .art-cta .ctas { margin-top: 0; }
-.sources { border-top: 1px solid var(--line); padding-top: 18px; margin-top: 20px; display: grid; gap: 10px; }
-.sources h2 { font: 500 0.74rem/1.4 var(--f-mono); letter-spacing: 0.08em; margin: 0; color: var(--faint); }
-.art .sources li { color: var(--faint); font-size: 0.88rem; }
+/* the research: a cite in the text jumps to its paper in the list, and the list links out */
+.cites { color: var(--faint); font-size: 0.82em; }
+.art .cites a { color: inherit; text-decoration-color: var(--line-strong); text-underline-offset: 2px; }
+.art .cites a:hover { color: var(--ink); }
+.sources { border-top: 1px solid var(--line); padding-top: 22px; margin-top: 20px; display: grid; gap: 14px; scroll-margin-top: 12px; }
+.sources h2 { font-size: 1.6rem; line-height: 1; margin: 0; }
+.sources > p { color: var(--dim); font-size: 0.95rem; }
+.sources ul { margin: 0; padding-left: 1.2em; display: grid; gap: 12px; }
+.art .sources li { color: var(--dim); font-size: 0.9rem; line-height: 1.5; scroll-margin-top: 16px; border-radius: 6px; }
+.sources li:target { background: var(--accent-dim); box-shadow: 0 0 0 6px var(--accent-dim); }
+.sources .gist { display: block; color: var(--faint); }
+.free {
+  display: inline-block;
+  font: 500 0.66rem/1 var(--f-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--good);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 3px 6px 2px;
+  margin-left: 2px;
+  vertical-align: 1px;
+}
 .more { display: grid; gap: 10px; }
 .more a { display: block; padding: 14px 0; border-top: 1px solid var(--line); text-decoration: none; color: var(--dim); }
 .more a b { display: block; color: var(--ink); font-weight: 600; }
