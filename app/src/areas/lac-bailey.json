@@ -60,7 +60,7 @@
     "nts": ["022F05", "022F06"]
   },
   "coverage": {
-    "checked": "2026-10-04",
+    "checked": "2026-10-06",
     "pmtiles": {
       "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
       "topo": {
@@ -185,10 +185,10 @@
       },
       "micro": {
         "file": "micro-lac-bailey.hab",
-        "bytes": 9268946,
+        "bytes": 12074375,
         "source": "derived: the habitat grid and the MRDEM",
         "licence": "derived from the layers above",
-        "vintage": "generated 2026-10-04"
+        "vintage": "generated 2026-10-06"
       },
       "going": {
         "file": "going-lac-bailey.hab",
