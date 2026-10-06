@@ -10,6 +10,7 @@ import { checkMapUpdates, useMapUpdates } from '../../offline/updates'
 import { CONTOUR_INTERVALS, useAppStore } from '../../state/appStore'
 import { agoLabel, dayTimeLabel } from '../../time'
 import { campForecast, hrdpsRunLabel, nextWeatherUpdateMs, onWeatherRefreshed, refreshWeather, useWeatherStatus } from '../../weather/refresh'
+import { onShareChange, setShare, shareCounts, shareState } from '../../weather/micro/checkShare'
 import './settings.css'
 
 const TEXT_SIZES = [
@@ -125,7 +126,7 @@ function mapCredits(): string[] {
 function StatsRow(): JSX.Element {
   const [on, setOn] = useState(statsOn)
   return (
-    <label className="st-row">
+    <label className="st-row st-two">
       <span>
         Usage stats
         <small className="dim">{on ? `what's tapped and for how long, never where you are · phone ${statsId().slice(0, 8)}` : 'off · nothing is kept or sent'}</small>
@@ -139,6 +140,34 @@ function StatsRow(): JSX.Element {
           setOn(e.target.checked)
         }}
       />
+    </label>
+  )
+}
+
+/**
+ * Sharing the wind checks (weather/micro/checkShare.ts): asked once on the
+ * check card, switched here. Not yet answered reads as off. While on, how
+ * many have gone and how many wait for a signal.
+ */
+function CheckShareRow({ online }: { online: boolean }): JSX.Element {
+  const [, tick] = useState(0)
+  useEffect(() => onShareChange(() => tick((n) => n + 1)), [])
+  const on = shareState() === 'on'
+  const { sent, waiting } = shareCounts()
+  const status = !on
+    ? shareState() === 'off'
+      ? 'off · your checks stay on this phone'
+      : 'off till you say · asked after your first check'
+    : waiting
+      ? `${sent} sent · ${waiting} to go${online ? '' : ' when there is signal'}`
+      : `all ${sent} sent · without your name or notes`
+  return (
+    <label className="st-row st-two">
+      <span>
+        Share wind checks
+        <small className="dim">{status}</small>
+      </span>
+      <input type="checkbox" className="switch" checked={on} onChange={(e) => setShare(e.target.checked ? 'on' : 'off', 'settings')} />
     </label>
   )
 }
@@ -439,10 +468,11 @@ export default function SettingsSheet(): JSX.Element {
       <div className="st-sec">Sharing</div>
       <label className="st-row">
         <span>
-          Your initials <span className="dim">· on the wind checks you share</span>
+          Your initials <span className="dim">· on the wind checks you share with your party</span>
         </span>
         <input type="text" className="st-text" value={who} maxLength={12} placeholder="GA" onChange={(e) => setWho(e.target.value)} aria-label="Your initials" />
       </label>
+      <CheckShareRow online={online} />
       <StatsRow />
 
       <div className="st-sec">Something wrong?</div>

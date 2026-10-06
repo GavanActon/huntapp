@@ -14,7 +14,7 @@ import { dateShort, dayShort, hourMinShort, startOfDayMs } from '../../time'
 import { useGpsStore } from '../../tracking/gpsStore'
 import { useTrackStore } from '../../tracking/trackStore'
 import { showCheckPopup } from '../../weather/micro/checkLayer'
-import { aloftVerdict, useWindChecks, verdict, type WindCheck } from '../../weather/micro/windChecks'
+import { aloftVerdict, forecastVerdict, useWindChecks, verdict, type WindCheck } from '../../weather/micro/windChecks'
 import { biasMatters, biasWords, LESSON_WORDS, lessonScores } from '../../weather/micro/bias'
 import { IconTrack } from '../icons'
 import { useLogForm } from '../LogCard'
@@ -169,6 +169,9 @@ export default function HuntLogSheet(): JSX.Element {
 
   const scored = checks.filter((c) => c.source === 'hand' && verdict(c) != null)
   const hits = scored.filter((c) => verdict(c) === 'agree').length
+  // the forecast as it stood at each check, scored the same way: the gap is what a check buys
+  const fcScored = checks.filter((c) => c.source === 'hand' && forecastVerdict(c) != null)
+  const fcHits = fcScored.filter((c) => forecastVerdict(c) === 'agree').length
   const aloftN = checks.filter((c) => aloftVerdict(c) != null).length
   const aloftHits = checks.filter((c) => aloftVerdict(c) === 'agree').length
   const tally = tallies(entries)
@@ -275,6 +278,7 @@ export default function HuntLogSheet(): JSX.Element {
           {scored.length > 0 && (
             <div>
               <b>Wind checks</b> · model {hits}/{scored.length} agreed
+              {fcScored.length > 0 && ` · forecast ${fcHits}/${fcScored.length}`}
               {lessonScores(scored, verdict).map((r) => {
                 const n = r.agree + r.close + r.miss
                 const w = LESSON_WORDS[r.lesson]

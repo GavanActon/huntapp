@@ -53,6 +53,8 @@ phone (app/src/analytics.ts, stats/watch.ts)
   the queue and sends nothing, not even the fact it was switched off. The
   row shows the phone's id (first 8 hex) while on.
 - The site's FAQ ("What happens to my data?") says this, 2026-10-05.
+- The wind checks are not usage stats: they hold a position, so they are
+  asked for apart and go apart. See [Wind checks](#wind-checks).
 
 ## The events
 
@@ -183,6 +185,53 @@ The dashboard's **Download CSV**, or
 One row per event, props as a JSON column. It loads into pandas, a
 notebook or Excel as is.
 
+## Wind checks
+
+The hunters' wind checks are the ground model's lessons: where it is wrong
+and under which conditions (docs/MICRO-WIND.md). They come through the same
+Worker, but apart from the stats, because a check is a position: where
+someone hunts.
+
+```
+phone (app/src/weather/micro/checkShare.ts)
+  └─ the checks in the store (windChecks.ts), each remembered by a fingerprint of what was sent
+       └─ POST /api/checks, a batch of up to 100, text/plain, keepalive
+            └─ groundwind.app Worker (site/checks.js) → D1 groundwind.checks
+                 └─ GET /api/checks/export  (JSON, behind STATS_KEY)
+```
+
+- **Asked once.** After a phone's first check is saved, the card asks
+  "Share your wind checks?" with **Share** and **Not now**. Either answer is
+  final until changed in **Settings → Sharing → Share wind checks**. Until it
+  is answered nothing goes. The answer is a `check_share` event
+  (`on`, `via`: ask or settings), so the dashboard shows how many say yes.
+- **Anonymous.** A check goes whole (place, time, what was felt, every
+  puff, the two optional answers, what the map and the forecast said) under
+  the phone's random id. Never `by` (initials) or `note`: the phone leaves
+  them out and the Worker drops them again. A partner's check taken in from
+  their file (marked `taken` by the store's merge) is never sent.
+- **Never shown to another hunter.** Only what the checks teach goes back
+  into the wind, never a check itself.
+- **Switched on, the season goes too:** every check still on the phone (the
+  store keeps 500), not only the ones made after.
+- **Changes are sent again.** A check changes after it is made: another
+  puff folds in within 6 minutes, or a newer check within 100 m sets its
+  `until`. The phone keeps a fingerprint of what it sent per check and
+  sends one again when it has moved; the Worker updates the row
+  (`(install, cid)` is unique). A change is sent 15 s after the last one,
+  then every minute in front, when the phone is put away and when signal
+  comes back. A week with no signal waits and goes whole.
+- **Off** stops the sending. What has gone stays in D1.
+- The site FAQ ("What happens to my data?") says this, 2026-10-06.
+
+Pull them with
+`curl -H "Authorization: Bearer $KEY" "https://groundwind.app/api/checks/export?days=400" > checks.json`
+(`&area=pickle-lake` for one area). Each object has the row's columns
+(`install`, `cid`, `ts`, `utc`, `lat`, `lon`, `area`, `build`, `country`,
+`received`, `updated`) and `check`, the WindCheck as the phone kept it.
+`/api/checks` shares the stats' rate limit (`EVENTS_LIMIT`): 30 batches a
+minute per address, 200 checks and 200 KB a batch.
+
 ## Limits and costs
 
 - D1 free tier: 100,000 rows written a day. Each event writes the row plus
@@ -203,8 +252,8 @@ notebook or Excel as is.
 From `site/`:
 
 1. `npx wrangler d1 execute groundwind --remote --file schema.sql` adds
-   the `events` table (the existing `requests` table is untouched: IF NOT
-   EXISTS).
+   the `events` and `checks` tables (the tables already there are
+   untouched: IF NOT EXISTS).
 2. `npx wrangler secret put STATS_KEY` and paste a long random key. That
    key opens the dashboard and the export.
 3. `npx wrangler deploy`: the endpoints, the dashboard, the FAQ text.

@@ -33,7 +33,9 @@ import { compass } from '../openMeteo'
  * a wind that has held, so the check is trusted for longer.
  *
  * Kept on the phone (localStorage); a camp weather station can later add
- * checks with source 'station'.
+ * checks with source 'station'. Shared, if the hunter says yes when
+ * asked after the first check, so the model learns from everyone's
+ * (checkShare.ts): without initials or notes, never to another hunter.
  *
  * A party's checks combine: each phone shares its checks as a file (the
  * Weather tab), the others take it in, and every check counts the same in
@@ -97,6 +99,8 @@ export interface WindCheck {
   note?: string
   /** who made it: the initials in Settings; a partner's checks keep theirs */
   by?: string
+  /** taken in from a partner's file (merge): theirs, so never shared from this phone (checkShare.ts) */
+  taken?: boolean
   source: 'hand' | 'station'
   /** what the ground model said at that place and minute, before the check */
   model?: ModelCall
@@ -196,7 +200,7 @@ export const useWindChecks = create<ChecksState>()(
       merge: (cs) => {
         const have = new Set(get().checks.map((c) => c.id))
         const fresh = cs.filter((c) => c && typeof c.id === 'string' && !have.has(c.id) && Number.isFinite(c.ts) && Number.isFinite(c.lon) && Number.isFinite(c.lat))
-        if (fresh.length) set((s) => ({ checks: [...s.checks, ...fresh].sort((a, b) => a.ts - b.ts).slice(-500) }))
+        if (fresh.length) set((s) => ({ checks: [...s.checks, ...fresh.map((c) => ({ ...c, taken: true }))].sort((a, b) => a.ts - b.ts).slice(-500) }))
         return fresh.length
       },
       remove: (id) => set((s) => ({ checks: s.checks.filter((c) => c.id !== id) })),
