@@ -42,6 +42,7 @@ import { initDepthLayer } from './map/depthLayer'
 import { initSpotsLayer } from './spots/spotsLayer'
 import { initAreaArrival } from './areas/arrive'
 import AreaOffer from './ui/AreaOffer'
+import { initStatsWatch } from './stats/watch'
 
 /** What has gone wrong (offline with maps missing, no location), and with
  *  the map turned the way you face, the heading: the way that is up. */
@@ -142,6 +143,8 @@ export default function App() {
     initPlanTime()
     // what an area switch asked for once the app is there: a pin, a place, an outing
     initAreaArrival()
+    // what gets used: the sheets, layers, settings and tools, read off the stores
+    initStatsWatch()
     // last: location comes back on if it was on at the last look, and recording with it
     resumeLocation()
     const on = () => setOnline(true)

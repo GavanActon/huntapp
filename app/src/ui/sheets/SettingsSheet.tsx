@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type JSX } from 'react'
 import { ACTIVE_AREA } from '../../areas'
+import { setStatsOn, statsId, statsOn } from '../../analytics'
 import { getMap } from '../../map/mapController'
 import { clearDevlog, devlogCount, devlogOn, lastUpload, onDevlog, setDevlog, shareDevlog, uploadDevlog, uploadSettings } from '../../devlog'
 import { BUILD } from '../../diagnostics'
@@ -115,6 +116,31 @@ function mapCredits(): string[] {
     }
   }
   return out
+}
+
+/**
+ * Usage stats (analytics.ts): on unless switched off here. The phone's id
+ * shows while on, so your own taps can be told from everyone's.
+ */
+function StatsRow(): JSX.Element {
+  const [on, setOn] = useState(statsOn)
+  return (
+    <label className="st-row">
+      <span>
+        Usage stats
+        <small className="dim">{on ? `what's tapped and for how long, never where you are · phone ${statsId().slice(0, 8)}` : 'off · nothing is kept or sent'}</small>
+      </span>
+      <input
+        type="checkbox"
+        className="switch"
+        checked={on}
+        onChange={(e) => {
+          setStatsOn(e.target.checked)
+          setOn(e.target.checked)
+        }}
+      />
+    </label>
+  )
 }
 
 /**
@@ -417,6 +443,7 @@ export default function SettingsSheet(): JSX.Element {
         </span>
         <input type="text" className="st-text" value={who} maxLength={12} placeholder="GA" onChange={(e) => setWho(e.target.value)} aria-label="Your initials" />
       </label>
+      <StatsRow />
 
       <div className="st-sec">Something wrong?</div>
       <DevlogRows />

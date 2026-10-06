@@ -1,3 +1,4 @@
+import { track } from '../analytics'
 import { areaAt, type AreaDef } from '../areas'
 import { DROPPED_NAME } from '../map/placePopup'
 import { areaLink, areaMessage, spotLink, spotMessage, type LonLat } from './link'
@@ -45,10 +46,16 @@ export function shareSpot(s: LonLat & { name?: string | null }): Promise<ShareRe
   const name = s.name && s.name !== DROPPED_NAME ? s.name : null
   const area = areaAt(s.lon, s.lat)
   const msg = spotMessage({ lon: s.lon, lat: s.lat, name, areaName: area?.name })
-  return shareOrCopy({ ...msg, url: spotLink(SHARE_BASE, { lon: s.lon, lat: s.lat, area: area?.id, name }) })
+  return shareOrCopy({ ...msg, url: spotLink(SHARE_BASE, { lon: s.lon, lat: s.lat, area: area?.id, name }) }).then((r) => {
+    track('share', { what: 'spot', result: r, named: !!name })
+    return r
+  })
 }
 
 /** Share an area: the link opens on the reader's own last view there, else its home. */
 export function shareArea(a: AreaDef): Promise<ShareResult> {
-  return shareOrCopy({ ...areaMessage(a.name), url: areaLink(SHARE_BASE, a.id) })
+  return shareOrCopy({ ...areaMessage(a.name), url: areaLink(SHARE_BASE, a.id) }).then((r) => {
+    track('share', { what: 'area', result: r, area: a.id })
+    return r
+  })
 }

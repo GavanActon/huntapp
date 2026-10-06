@@ -10,6 +10,7 @@ import { dayPlans, hourScores } from './dayPlan'
 import type { GeoJSONSource, ImageSource, Map as MlMap } from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
 import { inRegion, REGION, SPOTS_RADIUS_M } from '../config'
+import { trackTime } from '../analytics'
 import { devlog } from '../devlog'
 import { initDigInMarker } from '../map/diginMarker'
 import { getMap, onEachMap, onFirstIdle, withMap } from '../map/mapController'
@@ -537,6 +538,7 @@ async function recompute() {
   s.setHours(hourScores(f, s.target, recent, lake, s.weights, Date.now()))
   devlog('spots', `${s.target} scored in ${work.toFixed(0)} ms of work, ${(performance.now() - t0).toFixed(0)} ms in all · ${res?.spots.length ?? 0} spots · ${res?.verdict.headline ?? ''}`)
   s.setResult(res, c, 'ready', plans)
+  trackTime('heat_scored')
   const mm = getMap()
   if (!mm || !mm.getSource(HEAT_SRC)) return
   // the numbered pins follow the heat map
