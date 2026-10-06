@@ -100,6 +100,9 @@ Northern limit set by winter snow depth; at 48.9 °N inland presence tracks
 south-facing aspen and hazel mixedwood and cutover edges near lakes and
 roads [S] (Kennedy-Slaney et al. 2018). Scored as half the moose browse
 layer plus a bonus for aspects 135–225° and dense conifer within 500 m.
+(Fixed 2026-10-05: the habitat bake's `aspect` band holds the uphill
+bearing, and the bonus read it as the facing, so it went to north slopes.
+The app now adds 180°; the band is unchanged, no rebake.)
 
 ### Weather effects (all species)
 
@@ -226,8 +229,15 @@ would measure the brush at 0.5–3 m directly.
    clear): from 30–60 min after sunrise until mid-afternoon air and scent
    rise upslope; from about an hour before sunset through the night they
    drain downslope and pool in hollows, creek bottoms, low corners of
-   cutovers and over lake surfaces. Morning: sit level with or below the
-   target, across-slope; evening: sit above the target.
+   cutovers and over lake surfaces. Scent goes where the air goes, so sit
+   on the side it flows away to. While it drains (evening, night, and the
+   morning until the sun is on that slope): sit below or level with the
+   target, across-slope, never above it. While it rises (sun on the
+   slope): sit level with or above the target. The switch follows the sun
+   on each slope: under 30 min after sunrise on an open east face, hours
+   later on west faces, valley floors and under dense conifer
+   (docs/ELK-SCIENCE.md §5). (Corrected 2026-10-05: this rule had the
+   positions reversed.)
    The ground-wind model computes this per spot and minute from the
    forecast's own layering (docs/MICRO-WIND.md).
 6. Drainages are scent highways: evening scent flows down every gully to

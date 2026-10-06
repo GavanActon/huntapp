@@ -89,8 +89,11 @@ What the forecast means for the hunt, in the order it matters.
   sunset through the night: scent runs downhill and pools in hollows,
   creek bottoms, low corners of cutovers and over the water. From an hour
   after sunrise until mid-afternoon on a sunny day: it rises up the slopes.
-  Morning: sit level with or below the moose, across the slope. Evening:
-  sit above him. Never sit in a bowl or a saddle in the evening. [S/H]
+  Your scent goes where the air goes, so sit on the side it flows away to.
+  While it drains (evening, night, and the morning until the sun is on
+  your slope): sit below or level with the moose, across the slope, never
+  above him. While it rises (sun on the slope): sit level with or above
+  him. Never sit in a bowl or a saddle in the evening. [S/H]
   `MICRO-WIND.md` is the whole story; the app's ground wind and cone are
   this, per spot and minute.
 - **A slot in the trees channels the wind along it**, whatever the wind

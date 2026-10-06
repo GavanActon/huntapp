@@ -636,7 +636,11 @@ def main() -> None:
     # ---- terrain ----
     gy, gx = np.gradient(dem, DY_M, DX_M)
     slope = np.degrees(np.arctan(np.hypot(gx, gy)))
-    aspect = (np.degrees(np.arctan2(gx, -gy)) + 360) % 360  # 0 = N, clockwise; gy is +south→ -gy is north
+    # 0 = N, clockwise; gy is +south→ -gy is north. This is the gradient's bearing, so UPHILL, not the
+    # way the slope faces (that is atan2(-gx, gy), as common.py's hillshade and build_microclimate.py
+    # have it). Every baked file holds it so; the app adds 180° where it wants the facing (huntRules.ts,
+    # the deer south-slope bonus, fixed 2026-10-05). Don't "fix" it here without changing the reader too.
+    aspect = (np.degrees(np.arctan2(gx, -gy)) + 360) % 360
     aspect_q = np.where(slope < 1.5, 255, np.round(aspect / 360 * 250)).astype(np.uint8)
     smooth = ndimage.gaussian_filter(dem, 1.2)
     tpi300 = smooth - ndimage.uniform_filter(smooth, size=21)
@@ -771,7 +775,7 @@ def main() -> None:
     bands: list[tuple[str, np.ndarray, float, str]] = [
         ("elev", np.clip(np.round(dem), 0, 65535).astype(np.uint16), 1, "elevation m"),
         ("slope", q8(slope, 1), 1, "slope degrees"),
-        ("aspect", aspect_q, 360 / 250, "aspect degrees (0..250 → 0..360; 255 flat)"),
+        ("aspect", aspect_q, 360 / 250, "uphill bearing degrees (0..250 → 0..360; 255 flat); the slope faces +180°"),
         ("tpi", np.clip(np.round(tpi300) + 128, 0, 255).astype(np.uint8), 1, "topographic position 300 m, m (value-128)"),
         ("tpi100", np.clip(np.round(tpi100 * 2) + 128, 0, 255).astype(np.uint8), 0.5, "topographic position 100 m, m ((value-128)/2)"),
         ("landform", landform, 1, "landform class, see landformNames"),

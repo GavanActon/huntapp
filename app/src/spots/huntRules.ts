@@ -27,6 +27,9 @@ export interface HuntBands {
   lead: Uint8Array
   crown: Uint8Array
   landform: Uint8Array
+  /** the UPHILL bearing (×360/250, 255 flat), not the way the slope
+   *  faces: add 180° for that. The bake has always written it so
+   *  (pipeline/build_habitat.py); flipped here rather than rebaking. */
   aspect: Uint8Array
   slope: Uint8Array
   tpi: Uint8Array
@@ -45,6 +48,8 @@ export interface HuntBands {
   /** per cell, the share of light that gets through 30 m of it (the view
    *  model's one number, precomputed: the heat map asks for it a million times) */
   through30: Float32Array | null
+  /** ground elevation, m; null with a habitat file baked without it */
+  elev: Uint16Array | null
 }
 
 export function huntBands(h: Habitat): HuntBands {
@@ -72,6 +77,7 @@ export function huntBands(h: Habitat): HuntBands {
     thick: h.has('thick') ? u8('thick') : null,
     distThick: h.has('distThick') ? u8('distThick') : null,
     through30: h.has('thick') ? transmission(u8('thick'), u8('cover')) : null,
+    elev: h.has('elev') && h.scale('elev') === 1 ? (h.raw('elev') as Uint16Array) : null,
   }
 }
 
@@ -249,7 +255,9 @@ export function habitatScore(t: HuntTarget, b: HuntBands, i: number, warm: boole
       s *= 0.5
       const asp = b.aspect[i]
       if (asp !== 255) {
-        const deg = asp * (360 / 250)
+        // the way the slope faces: the band holds the uphill bearing (until
+        // 2026-10-05 this read it as-is and the bonus went to north slopes)
+        const deg = (asp * (360 / 250) + 180) % 360
         if (deg >= 135 && deg <= 225 && b.slope[i] >= 3) s += add('funnel', 'a south slope', 0.3)
       }
       if (hidingCover(b, i).m <= 500) s += add('edge', 'cover within 500 m', 0.15)
@@ -407,7 +415,7 @@ export function activityVerdict(t: HuntTarget, c: Conditions, w: Weights = DEFAU
   if (t === 'moose') {
     factors.push({ label: rut.phase, mult: 0.6 + 0.4 * rut.f, key: 'rut' })
     if (rut.f >= 0.7) notes.push('Cow calls 30–60 s every 15–20 min; put the call 40–50 m upwind of the shooter; a bull circles downwind.')
-    if (c.windKmh <= 8 && c.cloudPct < 40) notes.push(c.toSunsetH <= 1.5 || c.sinceSunriseH < 0.7 ? 'Thermals: air sinks downslope now; scent pools in hollows and drains to the lakes. Sit above the animal.' : 'Thermals: air rises upslope now; sit level with or below where the animal is.')
+    if (c.windKmh <= 8 && c.cloudPct < 40) notes.push(c.toSunsetH <= 1.5 || c.sinceSunriseH < 0.7 ? 'Thermals: air sinks downslope now; scent pools in hollows and drains to the lakes. Sit below or level with the animal, never above it.' : 'Thermals: air rises up slopes the sun is on (in shade it still drains); there, sit level with or above where the animal is.')
   }
   if (t === 'grouse' && c.tempDrop24h >= 5 && c.tempC <= 2) notes.push('After a hard frost birds move to edges and roadside gravel.')
   if (t === 'bear' && c.month >= 10 && c.dayOfYear >= 288) notes.push('Berries are done: bears drift to thick conifer uplands before denning.')
@@ -503,15 +511,36 @@ function siteCore(t: HuntTarget, b: HuntBands, h: Habitat, i: number, c: Conditi
     g = gw.regime === 'pooled' ? 0.35 : 0.6
     reasons?.push(gw.regime === 'pooled' ? 'cold air settled here: scent pools round you' : 'near dead calm at ground: scent spreads every way')
   } else if (calm) {
-    // no ground model: the thermals rule of thumb, evening drains downslope, morning rises
+    // no ground model: the thermals rule of thumb. Air drains downhill at
+    // dusk and through the night and rises by day, and scent goes with it,
+    // so sit below the feeding side while it drains and above it while it
+    // rises (docs/HUNT-FISH-SCIENCE.md rule 5). Where it lies: the nearest
+    // browse, along its bearing, against this cell's elevation.
     const tpi = b.tpi[i] - 128
+    let rise: number | null = null
+    if (b.elev && bear !== 255 && b.distBrowse[i] < 255) {
+      const j = h.offset(i, bear * (360 / 250), b.distBrowse[i] * 10)
+      if (j >= 0) rise = b.elev[j] - b.elev[i]
+    }
     if (evening) {
-      g = tpi >= 2 ? 1.0 : tpi <= -3 ? 0.35 : 0.7
-      if (tpi <= -3) reasons?.push('a hollow at dusk: scent pools here')
-      else if (tpi >= 2) reasons?.push('sits above the ground below: evening thermals carry scent down past it')
+      if (tpi <= -3) {
+        g = 0.35
+        reasons?.push('a hollow at dusk: scent pools here')
+      } else if (rise != null && rise <= -3) {
+        g = 0.35
+        reasons?.push('the feeding side is below you: draining air carries your scent down onto it')
+      } else if (rise != null && rise >= 3) {
+        g = 1.0
+        reasons?.push('the feeding side is above you: draining air carries your scent down and away')
+      } else g = 0.7
     } else {
-      g = tpi <= -1 ? 0.95 : tpi >= 4 ? 0.6 : 0.8
-      if (tpi <= -1) reasons?.push('low ground in the morning: rising air carries scent up and away')
+      if (rise != null && rise >= 3) {
+        g = 0.4
+        reasons?.push('the feeding side is above you: rising air carries your scent up onto it')
+      } else if (rise != null && rise <= -3) {
+        g = 0.95
+        reasons?.push('the feeding side is below you: rising air carries your scent up and away')
+      } else g = 0.8
     }
   } else g = 0.75
 
