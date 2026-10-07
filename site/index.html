@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Groundwind · Hunting wind and scent app for the Canadian bush</title>
-<meta name="description" content="A hunting app for moose and deer: the wind at head height and your scent cone, from Environment Canada's HD forecast over LiDAR terrain. Works offline.">
+<title>Groundwind · Hunting wind and scent app for moose, elk and deer</title>
+<meta name="description" content="A hunting app for moose, elk, deer and bear: the wind at head height and your scent cone, from a 2.5 km HD forecast over LiDAR terrain. Works offline.">
 <link rel="canonical" href="https://groundwind.app/">
 <meta name="robots" content="max-image-preview:large">
 <meta name="theme-color" content="#0a100b">
@@ -14,12 +14,12 @@
 <meta property="og:site_name" content="Groundwind">
 <meta property="og:locale" content="en_CA">
 <meta property="og:url" content="https://groundwind.app/">
-<meta property="og:title" content="Groundwind: the forecast is a guess. Sharpen it.">
-<meta property="og:description" content="Head-height wind and scent for hunting the Canadian bush, on your phone with no service, sharpened by your own wind checks.">
+<meta property="og:title" content="Groundwind: don't get winded">
+<meta property="og:description" content="Head-height wind and scent for moose, elk, deer and bear, on your phone with no service, sharpened by your own wind checks.">
 <meta property="og:image" content="https://groundwind.app/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Groundwind: the forecast is a guess. Sharpen it. Beside it, the app with a scent cone and a wind check.">
+<meta property="og:image:alt" content="Groundwind: don't get winded. Beside it, the app with a scent cone and a wind check.">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -45,7 +45,7 @@
       "url": "https://groundwind.app/",
       "logo": "https://groundwind.app/apple-touch-icon.png",
       "email": "hello@groundwind.app",
-      "description": "A hunting app for the Canadian bush: head-height wind and scent from Environment Canada's HD forecast over LiDAR terrain, sharpened by the hunter's own wind checks."
+      "description": "A hunting app for moose, elk, deer and bear: head-height wind and scent from a 2.5 km HD forecast over LiDAR terrain, sharpened by the hunter's own wind checks."
     }
   ]
 }
@@ -67,9 +67,8 @@
 
 <section class="hero" aria-labelledby="hero-title">
   <div>
-    <p class="eyebrow">Made to order for your ground · <span class="nw">on the stand and on the move</span></p>
-    <h1 id="hero-title">The forecast is a guess. <em>Sharpen it.</em></h1>
-    <p class="lede">Groundwind is a hunting app that runs a real wind model at ground level: Environment Canada's high-resolution forecast, worked over the LiDAR terrain and through the trees and the season's leaves. Puff your powder and tap where it went, and your check corrects the model around you. Your scent cone shows where your scent is really going, with or without bars.</p>
+    <h1 id="hero-title">Don't get winded.</h1>
+    <p class="lede">Groundwind shows where your scent is going from where you're standing, at head height, and learns your spot from every puff of powder. Moose, elk, deer or bear, on the stand or on the move, with no bars.</p>
     <div class="ctas">
       <a class="btn btn-go" href="/app">Open the beta</a>
       <a class="btn btn-quiet" href="#request">Request your spot</a>
@@ -85,40 +84,54 @@
       <video data-loop src="media/sharpen.mp4" poster="media/sharpen.jpg" muted loop playsinline preload="metadata" aria-label="A wind check in the app: the scent cone drawn from the forecast, a tap on the powder's direction, the saved check, then the cone swung round to the wind that was felt"></video>
       <button class="loop-toggle" type="button" aria-label="Pause"></button>
     </div>
-    <figcaption class="readout">Forecast <b>toward E, 14 km/h</b> · powder <b>toward N</b><br><span class="s">One check, and the cone follows.</span></figcaption>
+    <figcaption class="readout">Forecast <b>toward E, 13 km/h</b> · powder <b>toward N</b><br><span class="s">One check, and the cone follows.</span></figcaption>
   </figure>
 </section>
 
-<section class="why" aria-labelledby="why-title">
-  <div class="why-text">
-    <h2 id="why-title">Every forecast is off where you sit.</h2>
-    <p>Forecasts are made for open ground. Under the canopy the air slows down, trees and slots turn it, and at dawn and dusk it can run against the forecast altogether. You already carry powder for this. Groundwind makes every puff count.</p>
-    <p>And it goes where you go. Most hunting apps are built around a stand on a property line. Groundwind works just as hard on the move: angling in on a bull, working round a bluff, still-hunting an edge.</p>
-    <div class="heights">
-      <div><b class="w">10&nbsp;m</b><span>The height a wind forecast is made for, over open ground.</span></div>
-      <div><b class="s">1.5&nbsp;m</b><span>Where your scent leaves you, under the trees.</span></div>
-    </div>
+<section class="row pillar" id="scent" aria-labelledby="p1-title">
+  <div class="row-text">
+    <h2 id="p1-title">See where your scent goes.</h2>
+    <p>Your scent rides the wind at head height, and that wind bends over ridges, slows in the trees and drains downhill at dusk. Groundwind works it out on your ground and draws your scent cone where it's really going.</p>
+    <details class="dig">
+      <summary>How</summary>
+      <div class="dig-body">
+        <h3>Behind the summit</h3>
+        <p>In the clip, at Highland Lake in the Yukon, the forecast draws one straight south wind over the mountain. On the ground the wind breaks off the summit and circles back, so if you sit on the north face your scent runs back up toward the top and spreads in every direction. The lee of a ridge or a tree line tumbles the same way, and the scent cone widens to match.</p>
+        <h3>Cold air at dusk</h3>
+        <p>Once the sun is down, the air on a slope cools and slides downhill, whatever the forecast says. Here, on the same mountain at 8 pm, the forecast is a south wind at 11&nbsp;km/h, and your scent drains east down the slope instead.</p>
+        <figure class="loop">
+          <div class="phone"><video data-loop src="media/drain.mp4" poster="media/drain.jpg" muted loop playsinline preload="none" aria-label="Highland Lake in the Yukon at 8 pm, after sunset: the forecast's one south wind, then the ground wind sliding downhill, then a scent cone draining east down the slope, away from the forecast's north"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
+          <figcaption class="readout">Highland Lake, Yukon, <b>Tue 6 Oct, 8 pm</b><br><span class="s">Forecast south, scent drains east</span></figcaption>
+        </figure>
+        <h3>Up a tree</h3>
+        <p>Hold your dot to say where you sit, on the ground or in a 4 or 6&nbsp;m stand. From a stand your scent rides the air before it comes down.</p>
+        <p>In the clip, on a still night off a 6&nbsp;m bank at Pickle Lake, the scent is strong right below you from the ground, comes down 60&nbsp;m out from a 4&nbsp;m stand, and 160&nbsp;m out from 6&nbsp;m. How much a stand buys depends on the drop and the air. A lake warmer than the air, or a land breeze, mixes it back down sooner, and the cone shows that too.</p>
+        <figure class="loop">
+          <div class="phone"><video data-loop src="media/stand.mp4" poster="media/stand.jpg" muted loop playsinline preload="none" aria-label="A sit on a 6 m bank at Pickle Lake on a still Thursday night: the scent cone strong right below you from the ground, then cleared near you from a 4 m stand, coming down 60 m out, and from a 6 m stand 160 m out"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
+          <figcaption class="readout">Pickle Lake, Ontario, <b>Thu 8 Oct, 10 pm</b><br><span class="s">From the ground, then 4 and 6 m up</span></figcaption>
+        </figure>
+      </div>
+    </details>
   </div>
-  <figure class="loop why-loop">
-    <div class="phone"><video data-loop src="media/groundwind.mp4" poster="media/groundwind.jpg" muted loop playsinline preload="none" aria-label="At Pickle Lake on a calm dawn: the forecast wind drawn the same everywhere, then the ground wind, slow and swirling in the trees and running off the shore over the water, then a scent cone carried out over the lake"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
-    <figcaption class="readout">The forecast, then the <b>ground wind</b><br><span class="s">Your scent goes with the ground wind</span></figcaption>
+  <figure class="loop">
+    <div class="phone"><video data-loop src="media/eddy.mp4" poster="media/eddy.jpg" muted loop playsinline preload="none" aria-label="Highland Lake in the Yukon on a south wind: the forecast's one straight wind over a 1700 m summit, then the ground wind breaking off behind the summit and circling back, then a scent cone dropped in the eddy, spreading every way and mostly back toward the summit"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
+    <figcaption class="readout">Highland Lake, Yukon, <b>Mon 5 Oct, 5 pm</b><br><span class="s">The wind comes back behind the summit</span></figcaption>
   </figure>
 </section>
 
-<section class="model" id="model" aria-labelledby="m-title">
+<section class="model" id="science" aria-labelledby="sci-title">
   <div class="model-text">
-    <p class="tag" style="--dot: var(--wind)">The wind model</p>
-    <h2 id="m-title">A wind model, not an arrow.</h2>
-    <p>The forecast's 2.5&nbsp;km grid can't see a ridge, a bog, a spruce stand or the lee of a lake. Groundwind works it down to the air at head height, for any minute of the week, on the phone. Each layer changes where your scent goes, and each is built on <a href="/hunting-thermals#src">published research</a>.</p>
-    <p class="readout left">Head height · any minute · offline</p>
+    <h2 id="sci-title">A world-class wind model.</h2>
+    <p>A forecast is made for 10&nbsp;m up over open ground, and your scent leaves you at 1.5&nbsp;m under the trees. Groundwind closes that gap. It takes a 2.5&nbsp;km HD weather forecast and solves it over 1&nbsp;m LiDAR and every forest stand with WindNinja, the US Forest Service's wildfire wind model, then adds the thermals, the leaves and the swirl, down to head height for any minute of the week.</p>
+    <p class="proof">Every layer is built on <a href="/hunting-thermals#src">published research</a>, and it all runs on your phone with no bars.</p>
     <figure class="loop model-loop">
       <div class="phone"><video data-loop src="media/thermals.mp4" poster="media/thermals.jpg" muted loop playsinline preload="none" aria-label="Pickle Lake on a calm, sunny afternoon last week: the forecast's light wind drawn the same everywhere, then the ground wind, with the lake breeze pushing the air off the lake onto every shore, then a scent cone carried inland"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
       <figcaption class="readout">Pickle Lake, <b>Mon 28 Sept, 2 pm</b><br><span class="s">The lake breeze, as the app drew it</span></figcaption>
     </figure>
   </div>
   <ol class="stack" aria-label="The layers of the wind model, in order">
-    <li><b>Forecast</b><span>ECCC's HRDPS at 10 and 80&nbsp;m, so it knows when the ground air comes loose from the wind above on a clear, cold night.</span></li>
-    <li><b>Terrain</b><span>WindNinja's full 3D flow solve over the ground, in 16 directions: faster over the bluff, slack in its lee, breaking off behind a summit and circling back.</span></li>
+    <li><b>Forecast</b><span>The 2.5&nbsp;km HD forecast (HRDPS) at 10 and 80&nbsp;m, so it knows when the ground air comes loose from the wind above on a clear, cold night.</span></li>
+    <li><b>Terrain</b><span>WindNinja's full 3D flow solve over the 1&nbsp;m LiDAR ground, in 16 directions: faster over the bluff, slack in its lee, breaking off behind a summit and circling back.</span></li>
     <li><b>Heat and cold</b><span>Cold air draining downhill at dusk, warm air rising upslope by day, lake and land breezes.</span></li>
     <li><b>Trees and leaves</b><span>Stand height and closure from the LiDAR point cloud, the hardwoods' leaves coming down by date, wind channelled down the slots between stands.</span></li>
     <li><b>Gusts and swirl</b><span>The forecast's gusts widen the cone, and the air tumbles behind tree lines, in openings and in the lee of a ridge.</span></li>
@@ -126,98 +139,53 @@
   </ol>
 </section>
 
-<section class="built" id="built" aria-labelledby="built-title">
-  <div class="built-text">
-    <p class="tag" style="--dot: var(--scent)">Made to order</p>
-    <h2 id="built-title">Not an app for everywhere. Built for your spot.</h2>
-    <p>An app that runs anywhere can only give you the forecast arrow. The wind at your head depends on your ridge, your stands and your shoreline, and getting it right takes 1&nbsp;m LiDAR, the forest inventory and a wind model solved over that exact ground. So we don't fake it everywhere. You send us your spot, and we build it.</p>
-    <div class="heights">
-      <div><b class="w">10×10<small>km</small></b><span>Built around your spot: the ground, the bush and the air over it.</span></div>
-      <div><b class="s">48<small>h</small></b><span>From your request to the map on your phone.</span></div>
-    </div>
-    <a class="btn btn-go" href="#request">Request your spot</a>
-  </div>
-  <ol class="steps" aria-label="How an area gets built">
-    <li><b>Send your spot</b><span>Coordinates from your GPS or Google Maps, or the name of the lake.</span></li>
-    <li><b>We build it</b><span>The 1&nbsp;m LiDAR ground and bush, every forest stand, the ground wind solved over the terrain, the moose scores and the routes, built and checked by hand for that block.</span></li>
-    <li><b>It's on your phone</b><span>We email you when it's ready. Save it once at camp and all of it works with no service.</span></li>
-    <li><b>Ontario and Québec</b><span>Today. Elsewhere in Canada, ask: a new province takes us longer, because its forest and LiDAR come from different places.</span></li>
-  </ol>
-</section>
-
-<section class="row" id="forecast" aria-labelledby="f1-title">
+<section class="row flip pillar" id="learn" aria-labelledby="p2-title">
   <div class="row-text">
-    <p class="tag" style="--dot: var(--wind)">Forecast</p>
-    <h2 id="f1-title">A forecast that works with no bars.</h2>
-    <p>Environment Canada's 2.5&nbsp;km HRDPS model for the next two days, with a seven-day outlook behind it, saved on your phone at camp. Walk out of service and it's still there, with its age shown, as your best guess until a check sharpens it. No bars at all? <a href="#satellite">The HD forecast comes by text</a>.</p>
-    <p class="readout left">HRDPS 2.5 km · a new run 4× a day · 7-day outlook</p>
-    <details>
-      <summary>How it works</summary>
-      <p>Groundwind asks for each new HRDPS run by name as it lands and drops it into the seven-day blend. The wind is fetched over a grid across your area, so the lee of a lake still shows. A ground model then brings the 10&nbsp;m wind down to head height: the canopy, the slots between stands, morning and evening thermals, and the still layer that settles on a clear night.</p>
+    <h2 id="p2-title">It learns your spot.</h2>
+    <p>Puff your powder and tap where it went. The wind map corrects around you on the spot, and it remembers how the air moves where you hunt, like the drain off a ridge at dusk or the wind funnelling down a slot in the trees.</p>
+    <details class="dig">
+      <summary>How</summary>
+      <div class="dig-body">
+        <p>A check pulls the ground wind inside its ring toward what you felt, and it fades with time, more slowly if you say the wind has held. It also becomes a lesson for its kind of air, like cold air draining, a lake breeze or a slot in the trees. That lesson is a turn and a speed correction the model applies wherever that air turns up, forgotten over about two weeks.</p>
+        <p>Each check saves what the forecast and the model said beside what you felt, so the hunt log keeps score of how often each was right. If you say yes when the app asks, your checks also come to us without your name or notes, and they teach the ground wind where it's wrong. Settings, then Share wind checks, switches it off.</p>
+      </div>
     </details>
   </div>
-  <div class="phone"><video data-loop src="media/forecast.mp4" poster="media/forecast.jpg" muted loop playsinline preload="none" aria-label="The hour-by-hour forecast opening from the strip, then still there from the copy on the phone with no signal"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
+  <figure class="loop">
+    <div class="phone"><img src="media/sharpen-card.jpg" width="390" height="844" alt="The Wind sharpened card after a check: what the map said and what the forecast said, against what was felt" loading="lazy"></div>
+    <figcaption class="readout">Pickle Lake, <b>Ontario</b><br><span class="s">Every check is scored in your hunt log</span></figcaption>
+  </figure>
 </section>
 
-<section class="row flip" id="satellite" aria-labelledby="fs-title">
+<section class="row pillar" id="plan" aria-labelledby="p3-title">
   <div class="row-text">
-    <p class="tag" style="--dot: var(--wind)">By text</p>
-    <h2 id="fs-title">No bars? Doesn't matter. The HD forecast comes by text.</h2>
-    <p>From an iPhone on satellite or an inReach, send the line the app writes for your camp to the Groundwind number. The answer comes back in one text: the next two days of the HD forecast, packed tight. Paste it in and the ground wind, your scent cone and the heat map all run on the new forecast.</p>
-    <p class="readout left">48 h of HRDPS in one 160-character text</p>
-    <details>
-      <summary>How it works</summary>
-      <p>The text carries the 10&nbsp;m wind at its turning points, about a dozen a day and back within about 2° and half a km/h on average, far inside the forecast's own error. With it come the gusts, the temperatures and winds aloft that decide whether the wind reaches the ground, cloud, rain and how much the models agree, plus a check that catches a reply cut short. The first words are plain, for an inReach's screen: the wind now, its next big change and the first rain. The camp is in the request, so there's no account to make. On an inReach it's two messages on your plan, one out and one back, and the first time you have signal again the phone fetches the full forecast as usual.</p>
-    </details>
-  </div>
-  <div class="phone"><img src="media/satellite.jpg" width="390" height="844" alt="Weather by satellite: the request for the camp with Text it and Copy, then the reply pasted in, Weather updated, and the wind at dusk now and before" loading="lazy"></div>
-</section>
-
-<section class="row" id="checks" aria-labelledby="f2-title">
-  <div class="row-text">
-    <p class="tag" style="--dot: var(--scent)">Wind checks</p>
-    <h2 id="f2-title">Sharpen the wind. Trust the cone.</h2>
-    <p>Puff your powder and tap the way it went. Your check goes into the wind model: the ground wind around you is pulled toward what you felt, and your scent cone moves with it. It also teaches the model how that kind of air behaves where you hunt, so the next sit starts closer.</p>
-    <p class="readout left">Scored in your hunt log: forecast vs map, check by check</p>
-    <details>
-      <summary>How it works</summary>
-      <p>A check pulls the ground wind inside its ring toward what you felt and fades with time, more slowly if you say the wind has held. It also becomes a lesson for its kind of air, like cold air draining, a lake breeze or a slot in the trees: a turn and a speed correction the model applies wherever that air turns up, forgotten over about two weeks. Each check saves what the forecast and the model said beside what you felt, so the hunt log shows how often each was right.</p>
-    </details>
-  </div>
-  <div class="phone"><img src="media/sharpen-card.jpg" width="390" height="844" alt="The Wind sharpened card after a check: what the map said and what the forecast said, against what was felt" loading="lazy"></div>
-</section>
-
-<section class="row flip" id="plan" aria-labelledby="f3-title">
-  <div class="row-text">
-    <p class="tag" style="--dot: var(--good)">Habitat and weather</p>
-    <h2 id="f3-title">Where they'll be, day by day.</h2>
-    <p>Habitat, weather and the season all move animals. Groundwind scores moose, deer, grouse and bear across your area, hour by hour for the week ahead, weighing the last ten days of weather, the wind, the rut and the leaves, and what you've logged yourself. Tap a spot for its score, Dig in for the reasons, and turn the knobs if you know better.</p>
-    <ul class="uses">
+    <h2 id="p3-title">Plan the sit first.</h2>
+    <p>Put the party where you'll sit tonight and see whose scent drifts over whom, where the wind swirls and where they're likely to be. It saves you walking in to find the wind totally in the wrong place.</p>
+    <details class="dig">
+      <summary>How</summary>
+      <div class="dig-body">
+        <h3>The party</h3>
+        <p>Set the time to the evening hunt and drop the sitters. Each cone shows on the evening wind, numbered, with whose scent drifts over whom, so you can move them until nobody is on the way he'll come in. The old rule still holds. Put the caller 40 to 50&nbsp;m upwind of the shooter, so a bull circling downwind of the calls walks into the shooter. <a href="/moose-calling-wind">More on calling with the wind</a>.</p>
+        <h3>Where they'll be</h3>
+        <p>Groundwind scores moose, deer, grouse and bear across your area, hour by hour for the week ahead, from the habitat, the last ten days of weather, the wind, the rut and the leaves. It doesn't mean they're there. Log what you see and the map leans toward it for about a week, and blank sits push it down. Every score shows its reasons, and every rule is a knob from off to double.</p>
+        <ul class="uses">
       <li><b>Moose</b><span>Browse 5 to 20 years after a cut or burn, close to cover. Shores in the rut. Bedded through a warm spell, moving on the first cool day.</span></li>
       <li><b>Deer</b><span>South-facing aspen and hazel near cuts, lakes and roads.</span></li>
       <li><b>Grouse</b><span>Young aspen over alder, or spruce and jack pine for spruce grouse. Tight in wind and rain, out on the roads at dawn and dusk.</span></li>
       <li><b>Bear</b><span>Berries in 6 to 20-year cuts and burns through September, then denning cover.</span></li>
     </ul>
-    <details>
-      <summary>How it works</summary>
-      <p>The rules come from Ontario's habitat guides and <a href="/moose-weather#src">published field studies</a>. Weather moves them hour by hour: temperature (below), wind and heavy rain cutting calling range, a 5&nbsp;°C drop with the wind easing, and overcast cool days that stretch the morning. The rut follows the calendar, peaking from 25 September to 5 October. Your sightings pull the map toward them for about a week, and blank sits push it down. Every score shows its arithmetic, and every rule is a knob from off to double.</p>
-    </details>
-  </div>
-  <div class="phone"><video data-loop src="media/species.mp4" poster="media/species.jpg" muted loop playsinline preload="none" aria-label="The heat map redrawn for moose, grouse and bear, then shifting across the days of the week with the weather"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
-</section>
-
-<section class="behaviour" id="behaviour" aria-labelledby="b-title">
-  <div class="behaviour-text">
-    <p class="tag" style="--dot: var(--scent)">Behaviour</p>
-    <h2 id="b-title">A warm week beds them. The first cold morning moves them.</h2>
-    <p>Groundwind reads the last ten days of highs beside the forecast, because <a href="/moose-weather#heat">moose feel heat early</a>. Every hour's score carries the temperature, and the scoring tells you in so many words when the game is lying up and when the break is coming.</p>
-    <ul class="uses">
+        <figure class="loop">
+          <div class="phone"><video data-loop src="media/species.mp4" poster="media/species.jpg" muted loop playsinline preload="none" aria-label="The heat map redrawn for moose, grouse and bear, then shifting across the days of the week with the weather"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
+          <figcaption class="readout">Pickle Lake, <b>Ontario</b><br><span class="s">The heat shifts with the week's weather</span></figcaption>
+        </figure>
+        <h3>A warm week beds them down</h3>
+        <p>Groundwind reads the last ten days of highs beside the forecast, because <a href="/moose-weather#heat">moose feel heat early</a>. Every hour's score carries the temperature, and the scoring says plainly when the game is lying up and when the break is coming. The rules come from habitat guides and <a href="/moose-weather#src">published field studies</a>.</p>
+        <ul class="uses">
       <li><b>Moose, deer</b><span>Heat stress starts near 14&nbsp;°C. By the third day of highs over 18&nbsp;°C they bed through the heat and move at night. The first cool day after is the one to be out.</span></li>
       <li><b>Grouse</b><span>Tight in wind over 25&nbsp;km/h and in rain. Calm, cool mornings and the two hours before dark.</span></li>
       <li><b>Bear</b><span>Less bothered by heat. On the berries through September, then into denning cover after mid-October.</span></li>
     </ul>
-  </div>
-  <div class="behaviour-viz">
+        <div class="behaviour-viz">
     <figure class="tchart" id="tchart">
       <figcaption>Moose activity by temperature</figcaption>
       <svg viewBox="0 0 360 200" role="img" aria-labelledby="tchart-desc">
@@ -277,7 +245,7 @@
       <p class="says cool"><span class="say">first cool day after 3 warm ones: expect movement</span></p>
     </div>
   </div>
-  <script>
+        <script>
   // the chart's tooltip: each temperature band names its activity
   ;(() => {
     const fig = document.getElementById('tchart')
@@ -301,118 +269,93 @@
     })
   })()
   </script>
+      </div>
+    </details>
+  </div>
+  <figure class="loop">
+    <div class="phone"><video data-loop src="media/evening2.mp4" poster="media/evening2.jpg" muted loop playsinline preload="none" aria-label="Planning Wednesday's evening hunt at Lac Bailey in Québec: a northwest wind now, the 6 pm hour picked and the wind turning southeast, two sitters placed on the shore, and their numbered scent cones, with sitter 1's scent drifting over sitter 2"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
+    <figcaption class="readout">Lac Bailey, Québec, <b>Wed 7 Oct, 6 pm</b><br><span class="s">The wind turns, and 1's scent drifts over 2</span></figcaption>
+  </figure>
 </section>
 
-<section class="row" id="bush" aria-labelledby="f6-title">
+<section class="row flip pillar" id="bush" aria-labelledby="p4-title">
   <div class="row-text">
-    <p class="tag" style="--dot: var(--good)">Bush and range</p>
-    <h2 id="f6-title">See the bush before you're in it.</h2>
-    <p>Bush thickness at eye level, from the LiDAR point cloud: open, light, thick or thicket. It decides how far you'll see, how loud the walk is, and where a moose can stand unseen.</p>
-    <ul class="uses">
+    <h2 id="p4-title">See around the corner.</h2>
+    <p>Bush thickness at eye level, from the LiDAR. Know where you'll be able to shoot, where the walk is quiet and how the trees turn the wind, before you step into the woods.</p>
+    <details class="dig">
+      <summary>How</summary>
+      <div class="dig-body">
+        <h3>Bush and sight lines</h3>
+        <p>Bush thickness comes from the LiDAR point cloud as open, light, thick or thicket. It decides how far you'll see, how loud the walk is, and where a moose can stand unseen.</p>
+        <ul class="uses">
       <li><b>Bush</b><span>The Bush view colours the brush between 0.5 and 3&nbsp;m, from open to thicket.</span></li>
       <li><b>Range</b><span>The Bow view is your range: open lanes stay clear and thick bush goes dark, so you know where you'll be able to see and shoot.</span></li>
       <li><b>Sight lines</b><span>Dig in on any spot for how far you'll see in eight directions, in metres.</span></li>
       <li><b>Going</b><span>Routes and the moose scores both read it: thick bush is slow and loud to walk, and it's cover.</span></li>
     </ul>
-    <details>
-      <summary>How it works</summary>
-      <p>Eye-level cover isn't the canopy. A closed canopy shades the brush out, while a cut or a burn fills in with suckers and saplings. Groundwind counts the LiDAR returns between 0.5 and 3&nbsp;m against everything below 3&nbsp;m, cell by 10&nbsp;m cell. Where the point cloud hasn't been fetched yet, it estimates the brush from each stand's age and makeup.</p>
-    </details>
-  </div>
-  <div class="phone"><video data-loop src="media/bushview.mp4" poster="media/bushview.jpg" muted loop playsinline preload="none" aria-label="The land alone, then the shooting-lanes overlay showing where you'll be able to see and shoot, then the Bush view colouring the brush from open to thicket"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
-</section>
-
-<section class="row flip" id="tonight" aria-labelledby="f4-title">
-  <div class="row-text">
-    <p class="tag" style="--dot: var(--scent)">Party scent</p>
-    <h2 id="f4-title">Tonight, two of you.</h2>
-    <p>Set the time to the evening hunt and drop two sitters. Both cones show on the evening wind, numbered, with whose scent drifts over whom. Move them until neither of you is on the way he'll come in.</p>
-    <p class="readout left">Cones at 1.5 m · or from a 4 or 6 m stand · added up</p>
-    <details>
-      <summary>How it works</summary>
-      <p>The cones run on the forecast for that hour, brought down to head height, including the cold air that starts draining toward dusk. The scent card adds them up, with lines like "2 sitters · scent over 5.2 ha" and "1's scent drifts over you". The old rule still holds: put the caller 40 to 50 m upwind of the shooter, so a bull circling downwind of the calls walks into the shooter.</p>
-    </details>
-  </div>
-  <div class="phone"><video data-loop src="media/evening2.mp4" poster="media/evening2.jpg" muted loop playsinline preload="none" aria-label="Planning the evening hunt: an evening hour picked on the strip, two sitters placed, and their two numbered scent cones on the evening wind"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
-</section>
-
-<section class="row" id="stand" aria-labelledby="f7-title">
-  <div class="row-text">
-    <p class="tag" style="--dot: var(--scent)">Stand height</p>
-    <h2 id="f7-title">Up a tree, your scent lands further out.</h2>
-    <p>Tell it where you sit: on the ground, or in a 4 or 6&nbsp;m stand, each sitter their own. From a stand your scent rides the air before it comes down. On a still evening off a bank it can hold its height over the low ground and come down well out past it. The cone shows where, so you can see what the stand buys you.</p>
-    <p class="readout left">Ground 1.5 m · stand 4 or 6 m · per sitter</p>
-    <details>
-      <summary>How it works</summary>
-      <p>Scent leaves you at your height and spreads down as it travels. In still, settled air off a drop it keeps its height instead of following the ground down. In the clip, on a still evening off a 5&nbsp;m bank: from the ground it's noticeable right below you, from a 4&nbsp;m stand from 90&nbsp;m out, and from 6&nbsp;m from 330&nbsp;m out. How much a stand buys depends on the drop and the air. A lake warmer than the air, or a land breeze, mixes the scent back down sooner, and the cone shows that too.</p>
-    </details>
-  </div>
-  <div class="phone"><video data-loop src="media/stand.mp4" poster="media/stand.jpg" muted loop playsinline preload="none" aria-label="A sit on a bank on a still evening: the scent cone strong right below you from the ground, then cleared near you from a 4 m stand, coming down from 90 m out, and from a 6 m stand from 330 m out"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
-</section>
-
-<section class="row flip" id="stalk" aria-labelledby="f5-title">
-  <div class="row-text">
-    <p class="tag" style="--dot: var(--wind)">On the move</p>
-    <h2 id="f5-title">What's the wind doing over that bluff?</h2>
-    <p>A lot of moose hunting is moving: angling in on a bull you've heard, still-hunting an edge, working round a bluff. That's where a forecast is least use. Before you step round the corner, see what the air is doing there and how far you'll see.</p>
-    <ul class="uses">
+        <p>Eye-level cover isn't the canopy. A closed canopy shades the brush out, while a cut or a burn fills in with suckers and saplings. Groundwind counts the LiDAR returns between 0.5 and 3&nbsp;m against everything below 3&nbsp;m, cell by 10&nbsp;m cell. Where the point cloud hasn't been fetched yet, it estimates the brush from each stand's age and makeup.</p>
+        <h3>On the move</h3>
+        <p>A lot of moose hunting is moving. You angle in on a bull you've heard, still-hunt an edge or work round a bluff, and that's where a forecast is least use. Before you step round the corner, see what the air is doing there and how far you'll see.</p>
+        <ul class="uses">
       <li><b>Angle</b><span>Log his grunts with Heard. The map draws his line and where he'd swing to get your wind, so you can angle in from the right side.</span></li>
       <li><b>Wind</b><span>The streaks run at head height: over the bluff, down the draw, round the edge of the stand.</span></li>
       <li><b>Scent</b><span>Drop a cone at the corner ahead and see where you'd blow before you get there.</span></li>
       <li><b>Range</b><span>Before you step out, Bow and the sight lines tell you how far you'll see from the next spot.</span></li>
     </ul>
-    <details>
-      <summary>How it works</summary>
-      <p>The ground wind is solved over the terrain, then slowed and turned by the bush: tree lines, slots between stands, the lee of a ridge. Eye-level cover isn't the canopy, so Groundwind reads the brush from each stand's age and makeup and from the LiDAR's height and density, which is what sets the sight lines.</p>
+        <figure class="loop">
+          <div class="phone"><video data-loop src="media/stalk.mp4" poster="media/stalk.jpg" muted loop playsinline preload="none" aria-label="On the move: the head-height wind streaks running over a bluff and round a stand edge, a scent cone dropped at the corner ahead, then that spot's sight lines"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
+          <figcaption class="readout">Pickle Lake, <b>Ontario</b><br><span class="s">A bluff, a corner and the sight lines</span></figcaption>
+        </figure>
+        <h3>Routes and the log</h3>
+        <p>Routes finds three ways in on foot over the LiDAR ground. One is the easiest walk, and the hunt routes skirt the best ground and keep your scent off it. Your track, the calls you heard and your wind checks are grouped into outings as you go.</p>
+      </div>
     </details>
   </div>
-  <div class="phone"><video data-loop src="media/stalk.mp4" poster="media/stalk.jpg" muted loop playsinline preload="none" aria-label="On the move: the head-height wind streaks running over a bluff and round a stand edge, a scent cone dropped at the corner ahead, then that spot's sight lines"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
+  <figure class="loop">
+    <div class="phone"><video data-loop src="media/bushview.mp4" poster="media/bushview.jpg" muted loop playsinline preload="none" aria-label="A lake narrows at Lac Bailey in Québec: the land alone, then the shooting lanes showing where you can see and shoot, then the Bush view colouring the brush from open on the 1991 burn to thicket in the fir"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
+    <figcaption class="readout">Lac Bailey, <b>Québec</b><br><span class="s">The 1991 burn is open, the fir is thicket</span></figcaption>
+  </figure>
 </section>
 
-<section class="row" id="mountains" aria-labelledby="f8-title">
+<section class="row pillar" id="nobars" aria-labelledby="p5-title">
   <div class="row-text">
-    <p class="tag" style="--dot: var(--wind)">In the mountains</p>
-    <h2 id="f8-title">Behind the summit, the wind comes back.</h2>
-    <p>On a south wind the forecast draws one straight line over the mountain. On the ground, the wind breaks off the summit and circles back. Sit on the north face and your scent runs back up toward the top, and every which way.</p>
-    <ul class="uses">
-      <li><b>Wind</b><span>The streaks bend round the summit and curl back where the flow breaks away.</span></li>
-      <li><b>Swirl</b><span>Where the air tumbles in the lee, the map draws it swirling and the scent cone widens to match.</span></li>
-      <li><b>Scent</b><span>Drop a cone in the eddy and see it head back the way the wind came.</span></li>
-    </ul>
-    <details>
-      <summary>How it works</summary>
-      <p>Groundwind solves the flow over each area with WindNinja, the US Forest Service's wind model for wildfire, in 16 directions. The solve keeps its turbulence too, so the lee of a summit or a ridge shows up as rough air, not a smooth curve. Highland Lake in the Yukon, Monday 5 October, 5 pm, 17 km/h from the south.</p>
+    <h2 id="p5-title">No bars? Doesn't matter.</h2>
+    <p>Save your area at camp and all of it works offline. Out for days? Text from your inReach or iPhone and the newest HD forecast comes back by satellite.</p>
+    <details class="dig">
+      <summary>How</summary>
+      <div class="dig-body">
+        <p>With signal, Groundwind asks for each new run of the 2.5&nbsp;km HD forecast (HRDPS) as it lands, four times a day, and saves the next two days on your phone with a seven-day outlook behind them. Walk out of service and it's still there, with its age shown.</p>
+        <p>Out for days, send the line the app writes for your camp to the Groundwind number from an iPhone on satellite or an inReach. The next two days come back in one 160-character text. Paste it in and the ground wind, your scent cone and the heat map all run on it, because the terrain and the bush are already on your phone.</p>
+        <p>The text carries the 10&nbsp;m wind at its turning points, about a dozen a day and back within about 2° and half a km/h on average, far inside the forecast's own error. With it come the gusts, the temperatures and winds aloft that decide whether the wind reaches the ground, cloud, rain and how much the models agree, plus a check that catches a reply cut short. The first words are plain, for an inReach's screen: the wind now, its next big change and the first rain. The camp is in the request, so there's no account to make. On an inReach it's two messages on your plan, one out and one back, and the first time you have signal again the phone fetches the full forecast as usual.</p>
+      </div>
     </details>
   </div>
-  <div class="phone"><video data-loop src="media/eddy.mp4" poster="media/eddy.jpg" muted loop playsinline preload="none" aria-label="Highland Lake in the Yukon on a south wind: the forecast's one straight wind over a 1700 m summit, then the ground wind breaking off behind the summit and circling back, then a scent cone dropped in the eddy, spreading every way and mostly back toward the summit"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
+  <figure class="loop">
+    <div class="phone"><img src="media/satellite.jpg" width="390" height="844" alt="Weather by satellite at Highland Lake in the Yukon: the request line with Text it and Copy, then the reply pasted in, Weather updated, and the wind at dusk now and before" loading="lazy"></div>
+    <figcaption class="readout">Highland Lake, <b>Yukon</b><br><span class="s">Two days of HD forecast in one text</span></figcaption>
+  </figure>
 </section>
 
-<section class="also" aria-labelledby="also-title">
-  <h2 id="also-title">Also in the beta</h2>
-  <div class="also-grid">
-    <article>
-      <h3>Calls you hear</h3>
-      <p>Tap Heard and tap where the call came from. The map draws where the bull is likely to swing to get your wind.</p>
-    </article>
-    <article>
-      <h3>Routes in</h3>
-      <p>Three ways in on foot over the LiDAR: the easiest walk, and hunt routes that skirt the best ground and keep your scent off it.</p>
-    </article>
-    <article>
-      <h3>A log that keeps itself</h3>
-      <p>Your track, the calls you heard and your wind checks, grouped into outings. It all works offline once the area is saved.</p>
-    </article>
+<section class="coda" aria-labelledby="help-title">
+  <figure class="said">
+    <blockquote><p>Prepare as much as you can, bring the best tools you can to the hunt, and adjust it while you're out there, because we all know the best plans don't survive contact with the real world.</p></blockquote>
+    <figcaption>Gavan, from moose camp near White River</figcaption>
+  </figure>
+  <div class="help">
+    <h2 id="help-title">We need your help.</h2>
+    <p>Groundwind gets better with your input. Share your wind checks when the app asks, and they teach the ground wind where it's wrong, so we can all be more successful on our hunts.</p>
   </div>
 </section>
 
 <section class="beta" aria-label="Join the beta">
   <div class="live">
-    <h2>Built so far.</h2>
+    <h2>Try it on our spots.</h2>
     <ul class="areas">
       <li><b>Pickle Lake</b><span>Near White River, ON · WMU 21B</span></li>
       <li><b>Lac Bailey</b><span>Québec · zone 18</span></li>
+      <li><b>Highland Lake</b><span>Yukon · GMS 4-09</span></li>
     </ul>
-    <p>Open the beta and both are there to try: it's what your own spot will look like.</p>
+    <p>Open the beta and all three are there. Your own spot will look like them.</p>
     <a class="btn btn-go" href="/app">Open the beta</a>
     <details>
       <summary>Put it on your phone</summary>
@@ -422,7 +365,7 @@
 
   <form class="req" id="request" novalidate>
     <h2>Request your spot.</h2>
-    <p>Tell us where you hunt. We build a 10 × 10 km block around it and email you when it's on the map: within 48 hours in Ontario and Québec.</p>
+    <p>Tell us where you hunt, moose woods or elk country. We build a 10 × 10 km block around it by hand and email you when it's on the map.</p>
     <div class="field">
       <label for="req-email">Email</label>
       <input id="req-email" name="email" type="email" autocomplete="email" required>
@@ -436,6 +379,7 @@
       <legend>What you hunt</legend>
       <div class="chips">
         <label class="chip"><input type="checkbox" name="game" value="moose" id="req-moose" checked><span>Moose</span></label>
+        <label class="chip"><input type="checkbox" name="game" value="elk" id="req-elk"><span>Elk</span></label>
         <label class="chip"><input type="checkbox" name="game" value="deer" id="req-deer"><span>Deer</span></label>
         <label class="chip"><input type="checkbox" name="game" value="bear" id="req-bear"><span>Bear</span></label>
         <label class="chip"><input type="checkbox" name="game" value="grouse" id="req-grouse"><span>Grouse</span></label>
@@ -465,11 +409,11 @@
     </details>
     <details>
       <summary>Where does it work?</summary>
-      <p>Where we've built it, on purpose. Each area is a 10 × 10 km block built around someone's spot: Pickle Lake near White River and Lac Bailey in Québec so far. <a href="#request">Request yours</a> and it's ready within 48 hours.</p>
+      <p>Where we've built it, on purpose. Each area is a 10 × 10 km block built around someone's spot: Pickle Lake near White River, Lac Bailey in Québec and Highland Lake in the Yukon so far. <a href="#request">Request yours</a> anywhere. Ontario and Québec spots are ready within 48 hours, and elsewhere takes longer while we bring in that ground's LiDAR, forest and forecast data.</p>
     </details>
     <details>
       <summary>Why not everywhere?</summary>
-      <p>Because a map of everywhere can only show you the forecast arrow. The wind at your head depends on your ridge, your stands and your shoreline, and modelling that takes 1&nbsp;m LiDAR, the forest inventory and a wind solve over that exact ground. We'd rather do your spot properly than the whole country badly.</p>
+      <p>Because the wind at your head depends on your ridge, your stands and your shoreline, and getting it right takes 1&nbsp;m LiDAR, the forest inventory and a wind solve over that exact ground. High quality means being deliberate, so you request a spot and we build it.</p>
     </details>
     <details>
       <summary>What happens to my data?</summary>
@@ -487,7 +431,7 @@
   <div class="also-grid notes-grid">
     <a href="/hunting-thermals">
       <h3>Hunting thermals</h3>
-      <p>Scent follows the sun, not the clock: where it goes at dawn and dusk, and where to sit.</p>
+      <p>Thermals switch when the sun reaches your slope. Where your scent goes at dawn and dusk, and where to sit.</p>
       <span class="go">Read ›</span>
     </a>
     <a href="/moose-calling-wind">
@@ -506,7 +450,7 @@
 </main>
 
 <footer>
-  <p class="first">Groundwind is a beta. The wind at your head is a model, so keep checking it yourself. That's what the checks are for.</p>
+  <p class="first">Groundwind is a beta.</p>
   <p>Forecast: Environment and Climate Change Canada's HRDPS, served by Open-Meteo (CC BY 4.0). Elevation and LiDAR: Natural Resources Canada (Open Government Licence – Canada). Forest: Ontario's Forest Resources Inventory (Open Government Licence – Ontario) and Québec's forest maps (MRNF).</p>
   <p class="links"><a href="/guide">How to use it</a><a href="/hunting-thermals">Hunting thermals</a><a href="/moose-calling-wind">Calling moose with the wind</a><a href="/moose-weather">When moose move</a><a href="/app">Open the beta</a><a href="mailto:hello@groundwind.app">hello@groundwind.app</a><span>© 2026 Groundwind</span></p>
 </footer>

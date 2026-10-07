@@ -1,7 +1,7 @@
 /* Layout: one reading column that opens into text | phone rows on wide screens.
    The app's own screens are the pictures; the type is trail-sign condensed caps
    over a quiet body, with instrument readouts in mono. Dark first, like the app;
-   the light theme is the app's Outdoor palette. */
+   the light theme is the app's Outdoor palette, on birch. */
 :root {
   --bg: #0a100b;
   --raised: #141c15;
@@ -26,38 +26,38 @@
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --bg: #f3f0e7;
-    --raised: #fbfaf6;
+    --bg: #eaeee8;
+    --raised: #f6f8f4;
     --ink: #121a10;
     --dim: #3f4d3a;
-    --faint: #66745f;
+    --faint: #5d6b56;
     --line: rgba(38, 52, 36, 0.16);
     --line-strong: rgba(38, 52, 36, 0.34);
     --accent: #5a6b3e;
     --accent-dim: rgba(90, 107, 62, 0.14);
     --on-accent: #ffffff;
     --wind: #0b6fae;
-    --scent: #b9561a;
-    --good: #2f7d2a;
+    --scent: #ad4210;
+    --good: #2b7527;
     --bezel: #1a1f18;
     --shadow: 0 30px 60px -28px rgba(30, 40, 25, 0.45);
     color-scheme: light;
   }
 }
 :root[data-theme="light"] {
-  --bg: #f3f0e7;
-  --raised: #fbfaf6;
+  --bg: #eaeee8;
+  --raised: #f6f8f4;
   --ink: #121a10;
   --dim: #3f4d3a;
-  --faint: #66745f;
+  --faint: #5d6b56;
   --line: rgba(38, 52, 36, 0.16);
   --line-strong: rgba(38, 52, 36, 0.34);
   --accent: #5a6b3e;
   --accent-dim: rgba(90, 107, 62, 0.14);
   --on-accent: #ffffff;
   --wind: #0b6fae;
-  --scent: #b9561a;
-  --good: #2f7d2a;
+  --scent: #ad4210;
+  --good: #2b7527;
   --bezel: #1a1f18;
   --shadow: 0 30px 60px -28px rgba(30, 40, 25, 0.45);
   color-scheme: light;
@@ -85,7 +85,7 @@ h1, h2, h3 {
   margin: 0;
   text-wrap: balance;
 }
-h1 { font-size: clamp(3rem, 11vw, 5.75rem); line-height: 0.88; }
+h1 { font-size: clamp(2.8rem, 9.5vw, 4.5rem); line-height: 0.9; }
 h1 em { font-style: normal; color: var(--wind); }
 h2 { font-size: clamp(2.2rem, 7vw, 3.5rem); line-height: 0.92; }
 h3 { font-size: 1.6rem; line-height: 0.95; }
@@ -137,6 +137,7 @@ p { margin: 0; }
 /* ---- hero */
 .hero { display: grid; gap: 44px; padding-block: 28px 72px; align-items: center; }
 .eyebrow { font-size: 0.74rem; color: var(--faint); margin-bottom: 20px; }
+.hero h1 { font-size: clamp(3.4rem, 14vw, 7rem); line-height: 0.88; }
 .lede { font-size: 1.2rem; color: var(--dim); max-width: 32em; margin-top: 24px; }
 .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
 
@@ -188,7 +189,7 @@ p { margin: 0; }
   margin-left: 3px;
 }
 .readout { font-size: 0.76rem; color: var(--faint); text-align: center; line-height: 1.5; }
-.readout b { font-weight: 500; color: var(--wind); }
+.readout b { font-weight: 500; color: var(--wind); white-space: nowrap; }
 .readout .s { color: var(--scent); }
 
 /* ---- the case for checks */
@@ -242,7 +243,7 @@ summary {
 }
 summary::-webkit-details-marker { display: none; }
 summary::before { content: '+'; font: 500 1rem/1 var(--f-mono); color: var(--accent); width: 1ch; }
-details[open] summary::before { content: '\2212'; }
+details[open] > summary::before { content: '\2212'; }
 details p { color: var(--dim); font-size: 0.97rem; margin-top: 10px; max-width: 36em; }
 
 /* ---- also built in */
@@ -250,6 +251,41 @@ details p { color: var(--dim); font-size: 0.97rem; margin-top: 10px; max-width: 
 .also-grid { display: grid; gap: 28px; }
 .also-grid article { display: grid; gap: 10px; align-content: start; }
 .also-grid p { color: var(--dim); font-size: 0.98rem; }
+
+/* ---- the five pillars: a heading, a line or two, and How, opened in place */
+.pillar .row-text > p { font-size: 1.15rem; }
+details.dig { border-top: 0; padding-top: 4px; }
+details.dig > summary {
+  min-height: 46px;
+  padding: 0 22px 0 18px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 1.05rem;
+  transition: background-color 0.15s var(--ease), color 0.15s var(--ease);
+}
+details.dig > summary::before { color: var(--on-accent); }
+details.dig > summary:hover { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+details.dig > summary:hover::before { color: var(--bg); }
+details.dig[open] > summary { background: transparent; color: var(--ink); }
+details.dig[open] > summary::before { color: var(--accent); }
+.dig-body { display: grid; gap: 16px; padding-top: 26px; }
+.dig-body h3 { font-size: 1.5rem; margin-top: 14px; }
+.dig-body h3:first-child { margin-top: 0; }
+details.dig .dig-body > p { color: var(--dim); font-size: 1rem; margin: 0; max-width: 36em; }
+.dig-body .loop { justify-self: start; width: min(100%, 300px); }
+.dig-body .phone { width: min(100%, 260px); }
+.model-text .proof { color: var(--ink); }
+
+/* ---- coda: your own line, then the ask */
+.coda { padding-block: 72px; border-top: 1px solid var(--line); display: grid; gap: 48px; }
+.said { margin: 0; display: grid; gap: 16px; }
+.said blockquote { margin: 0; }
+.said blockquote p { font-size: clamp(1.4rem, 4.2vw, 2rem); line-height: 1.3; max-width: 30em; }
+.said figcaption { color: var(--faint); }
+.help { display: grid; gap: 14px; }
+.help p { color: var(--dim); font-size: 1.15rem; max-width: 34em; }
 
 /* ---- beta */
 .beta { padding-block: 64px 72px; border-top: 1px solid var(--line); display: grid; gap: 48px; }
@@ -327,6 +363,10 @@ footer .first { color: var(--dim); font-size: 0.95rem; }
   .row { grid-template-columns: 1fr 1fr; gap: 72px; padding-block: 88px; }
   .row.flip .row-text { order: 2; }
   .also-grid { grid-template-columns: repeat(3, 1fr); gap: 40px; }
+  .coda { padding-block: 104px; grid-template-columns: 1.4fr 1fr; gap: 72px; align-items: end; }
+  /* open, the pillar reads from the top and its phone stays in view */
+  .pillar:has(details.dig[open]) { align-items: start; }
+  .pillar:has(details.dig[open]) > .loop { position: sticky; top: 24px; }
   .beta { grid-template-columns: 1fr 1fr; gap: 64px; }
 }
 @media (max-width: 420px) {
@@ -496,7 +536,7 @@ td { color: var(--dim); }
 }
 
 /* ---- launch: the phone QR, questions, the form's trap, footer links, 404 */
-.eyebrow .nw { white-space: nowrap; }
+.eyebrow .nw, .readout .nw { white-space: nowrap; }
 .req .form-msg:empty { display: none; }
 .top-link.wide, .qr { display: none; }
 .qr img { width: 96px; height: 96px; border-radius: 10px; flex: none; }
@@ -649,7 +689,7 @@ footer .links a:hover { color: var(--ink); text-decoration: underline; }
 .art > ul, .art > ol, .rule ul { margin: 0; padding-left: 1.2em; display: grid; gap: 10px; }
 .art li::marker { color: var(--faint); }
 .art a:not(.btn) { color: var(--ink); }
-.art .byline { font: 500 0.74rem/1.5 var(--f-mono); text-transform: uppercase; letter-spacing: 0.07em; color: var(--faint); }
+.art .byline { font-size: 0.95rem; color: var(--faint); }
 .art figure { margin: 10px 0; display: grid; justify-items: center; gap: 14px; }
 .art .phone { width: min(100%, 270px); }
 .art .table-wrap { margin-block: 4px; }
@@ -696,6 +736,8 @@ footer .links a:hover { color: var(--ink); text-decoration: underline; }
   gap: 18px;
 }
 .art-cta p { color: var(--dim); }
+/* the hunter's own line about this, before the pitch */
+.art-cta .said { color: var(--ink); font-size: 1.12rem; }
 .art-cta .ctas { margin-top: 0; }
 /* the research: a cite in the text jumps to its paper in the list, and the list links out */
 .cites { color: var(--faint); font-size: 0.82em; }
