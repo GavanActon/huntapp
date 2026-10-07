@@ -14,6 +14,7 @@ import { fileUrl } from '../areas'
 import { REGION, habitatFile } from '../config'
 import { devlog } from '../devlog'
 import { getStoredFile } from '../offline/fileStore'
+import { trackResponse } from '../offline/loadProgress'
 import type { FromUnzip, ToUnzip } from './unzipWorker'
 
 export interface LakeFacts {
@@ -233,7 +234,7 @@ export async function loadBandFile(file: string, tag: string): Promise<{ grid: H
     if (!navigator.onLine) return null
     const r = await fetch(fileUrl(file))
     if (!r.ok || /html/i.test(r.headers.get('content-type') ?? '')) return null
-    blob = await r.blob()
+    blob = await trackResponse(file, r) // counted for the hairline under the weather strip
     mode = 'network'
   }
   const buf = await gunzip(blob)

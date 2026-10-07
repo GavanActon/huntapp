@@ -23,6 +23,7 @@ import AppMenu from './AppMenu'
 import { useMapUpdates } from '../offline/updates'
 import { useLookTick } from './useLookTick'
 import { useTapOff } from './tapOff'
+import { useLoadProgress } from '../offline/loadProgress'
 import './strip.css'
 
 /**
@@ -262,6 +263,8 @@ function useHold(onHold: () => void) {
 }
 
 export default function WeatherStrip() {
+  // the wind and habitat grids coming in from the network: the hairline at the strip's foot
+  const load = useLoadProgress()
   const stripOpen = useAppStore((s) => s.stripOpen)
   const setStripOpen = useAppStore((s) => s.setStripOpen)
   const planTimeMs = useAppStore((s) => s.planTimeMs)
@@ -682,6 +685,13 @@ export default function WeatherStrip() {
   return (
     <div className="wxstrip glass">
       {stale && <span className="wxstrip-stale" />}
+      {load.visible && (
+        <span
+          className={`wxstrip-load${load.done ? ' wxstrip-load-done' : ''}${load.known ? '' : ' wxstrip-load-unknown'}`}
+          style={load.known ? { width: `${load.pct}%` } : undefined}
+          aria-hidden
+        />
+      )}
       {head}
       {f && (
         <>
