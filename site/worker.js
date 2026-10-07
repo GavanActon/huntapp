@@ -14,9 +14,9 @@ import { eventsExport, eventsIngest, statsQuery } from './stats.js'
 
 // where the app lives for now: links, the QR code and shares all go through
 // groundwind.app/app, so moving the app is this one line
-const APP = 'https://gavanacton.github.io/huntapp/'
+const APP = 'https://hunt.groundwind.app/'
 // pages that may send a request: the site, and later the app's own button
-const ORIGINS = ['https://groundwind.app', 'https://gavanacton.github.io']
+const ORIGINS = ['https://groundwind.app', 'https://hunt.groundwind.app', 'https://gavanacton.github.io']
 const GAME = new Set(['moose', 'elk', 'deer', 'bear', 'grouse'])
 
 export default {

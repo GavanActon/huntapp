@@ -124,13 +124,13 @@ stand to Gavan, or Lac Bailey to Mat's buddy.
 **The links** (`app/src/share/link.ts`; `node scripts/check-links.mts` in
 `app/` checks them):
 
-- An area: `https://gavanacton.github.io/huntapp/?area=lac-bailey`.
+- An area: `https://hunt.groundwind.app/?area=lac-bailey`.
 - A spot:
-  `https://gavanacton.github.io/huntapp/?area=lac-bailey#at=49.40955,-69.55349&pin=Mat%27s+stand`.
+  `https://hunt.groundwind.app/?area=lac-bailey#at=49.40955,-69.55349&pin=Mat%27s+stand`.
   The area rides in the query, where index.html's head script reads it
   before the app loads. The point and its name ride in the fragment, which
   GitHub, link previews and server logs never see.
-- A point in no area: `https://gavanacton.github.io/huntapp/#at=49.60000,-70.20000`.
+- A point in no area: `https://hunt.groundwind.app/#at=49.60000,-70.20000`.
 - `at` is lat,lon to 5 decimals (about 1 m). `pin` is the name, at most 40
   characters, left out when there is none or the pin is still called Pin.
   `z` is read but never written. Reading is lenient: a bad id or a point

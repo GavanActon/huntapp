@@ -14,7 +14,7 @@ import { areaLink, areaMessage, spotLink, spotMessage, type LonLat } from './lin
 /** Where the app's links point: the deployed site, never this page's own
  *  address (a share from the dev server would send a LAN address).
  *  VITE_SHARE_BASE for a build that wants its own. */
-export const SHARE_BASE: string = import.meta.env.VITE_SHARE_BASE ?? 'https://gavanacton.github.io/huntapp/'
+export const SHARE_BASE: string = import.meta.env.VITE_SHARE_BASE ?? 'https://hunt.groundwind.app/'
 
 export type ShareResult = 'shared' | 'copied' | 'cancelled' | 'failed'
 
