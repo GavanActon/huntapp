@@ -170,8 +170,13 @@ export interface FlowTuning {
   windSat: number // stroke saturation %
   windSize: SizeStop // streak width: auto follows the text size
   windSwirl: boolean // eddies drawn where the ground model says the air swirls
+  windStyle: WindStyle // the streaks' look (weather/windFlow.ts LOOKS)
 }
-export const FLOW_TUNING_DEFAULTS: FlowTuning = { windDensity: 2500, windSpeed: 1, windTrail: 0.97, windHue: 195, windSat: 100, windSize: 'large', windSwirl: true }
+export const FLOW_TUNING_DEFAULTS: FlowTuning = { windDensity: 2500, windSpeed: 1, windTrail: 0.97, windHue: 195, windSat: 100, windSize: 'large', windSwirl: true, windStyle: 'standard' }
+
+/** The wind's look: the streaks as they were, bolder ones, or white ones
+ *  over a wash coloured by the wind's speed, as windy.com draws it (Contrast). */
+export type WindStyle = 'standard' | 'bold' | 'contrast'
 
 /** A size setting's stops, the text's and the wind streaks': auto follows the phone (text) or the text (wind). */
 export type SizeStop = 'auto' | 'standard' | 'large' | 'larger'

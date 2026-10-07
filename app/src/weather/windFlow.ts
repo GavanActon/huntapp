@@ -1,7 +1,7 @@
-import type { Map as MlMap } from 'maplibre-gl'
+import type { CanvasSource, Map as MlMap } from 'maplibre-gl'
 import { getMap, onEachMap, onFirstIdle, withMap } from '../map/mapController'
 import { devlog } from '../devlog'
-import { useAppStore } from '../state/appStore'
+import { useAppStore, type WindStyle } from '../state/appStore'
 import { lodOf, meanLod, onQuality, qualityProfile, reportFrame } from './flowQuality'
 import { centrePoint, compose, FrameAnchor, IDENTITY, invert, isIdentity, same, type Affine } from './frameAffine'
 import { ensureWeatherGrid, onWeatherGrid, onWeatherTick, windGridInfo, windSampler } from './windGrid'
@@ -27,6 +27,144 @@ import { currentTextStop } from '../ui/textScale'
 
 const FIELD_STEP = 28 // css px between wind samples
 const ALPHA_BANDS = 12
+/**
+ * The streaks' looks, picked under Look in the wind button's drawer.
+ * - standard: as they have been.
+ * - bold: the faintest at 40% where they were 22%, and the inks pushed
+ *   apart. Light air all but vanished on busy imagery (Gavan, 2026-10-07:
+ *   "our wind needs a higher contrast still"); he picked this from a
+ *   comparison and kept it a choice for now. A dark edge under each streak
+ *   was tried too: every frame's new stretch laid its edge over the last
+ *   one's ink, and the streaks came out beaded, the map dimmed.
+ * - contrast: white streaks over a wash coloured by the wind's speed, as
+ *   windy.com draws it (paintWash); the Wind view's look.
+ * floor and span: a streak's opacity from the slowest air to the fastest,
+ * before the strength setting. ink: the inks' lightness, %, the light one
+ * over dark ground, the brighter over mid, the dark over pale. white: one
+ * white ink on every ground.
+ */
+interface Look {
+  floor: number
+  span: number
+  ink: { light: number; bright: number; dark: number }
+  white: boolean
+  wash: boolean
+}
+const LOOKS: Record<WindStyle, Look> = {
+  standard: { floor: 0.22, span: 0.4, ink: { light: 62, bright: 80, dark: 24 }, white: false, wash: false },
+  bold: { floor: 0.4, span: 0.5, ink: { light: 74, bright: 88, dark: 16 }, white: false, wash: false },
+  contrast: { floor: 0.35, span: 0.5, ink: { light: 100, bright: 100, dark: 100 }, white: true, wash: true },
+}
+const lookOf = (): Look => LOOKS[useAppStore.getState().flowTuning.windStyle] ?? LOOKS.standard
+
+// ---------------------------------------------------------------- wash
+
+/** The Contrast look's wash: the wind's speed under the view, coloured on
+ *  windy.com's scale, drawn in the map above the imagery and the shade and
+ *  under the contours, roads, labels and pins. It covers half a screen
+ *  round the view, so a pan does not run off it before the streaks' field
+ *  is redrawn, which redraws it. */
+const WASH_SRC = 'wind-wash'
+/** css px between the wash's samples (the map blends between them) */
+const WASH_STEP = 32
+const WASH_PAD = 0.5
+/** its opacity at full strength (the Strength slider scales it) */
+const WASH_ALPHA = 0.6
+/** windy.com's wind colours, by speed in km/h (its scale runs in m/s: 0, 1, 3, 5 ...) */
+const WASH_STOPS: readonly [number, readonly [number, number, number]][] = [
+  [0, [98, 113, 183]],
+  [3.6, [57, 97, 159]],
+  [10.8, [74, 148, 169]],
+  [18, [77, 141, 123]],
+  [25.2, [83, 165, 83]],
+  [32.4, [53, 159, 53]],
+  [39.6, [167, 157, 81]],
+  [46.8, [159, 127, 58]],
+  [54, [161, 108, 92]],
+  [61.2, [129, 58, 78]],
+  [68.4, [175, 80, 136]],
+  [75.6, [117, 74, 147]],
+]
+
+function washRgb(kmh: number, d: Uint8ClampedArray, o: number) {
+  let k = 1
+  while (k < WASH_STOPS.length - 1 && WASH_STOPS[k][0] < kmh) k++
+  const [s0, c0] = WASH_STOPS[k - 1]
+  const [s1, c1] = WASH_STOPS[k]
+  const t = Math.min(1, Math.max(0, (kmh - s0) / (s1 - s0)))
+  d[o] = c0[0] + (c1[0] - c0[0]) * t
+  d[o + 1] = c0[1] + (c1[1] - c0[1]) * t
+  d[o + 2] = c0[2] + (c1[2] - c0[2]) * t
+  d[o + 3] = 255
+}
+
+let washCanvas: HTMLCanvasElement | null = null
+
+function washOpacity(): number {
+  return WASH_ALPHA * useAppStore.getState().windFlowOpacity
+}
+
+/** Paint the wash for the view as it is now, at the air of `atMs`: the
+ *  ground model's head-height wind, or the forecast's, as the streaks are. */
+function paintWash(map: MlMap, atMs: number) {
+  const el = map.getContainer()
+  const x0 = -el.clientWidth * WASH_PAD
+  const y0 = -el.clientHeight * WASH_PAD
+  const cols = Math.ceil((el.clientWidth * (1 + 2 * WASH_PAD)) / WASH_STEP)
+  const rows = Math.ceil((el.clientHeight * (1 + 2 * WASH_PAD)) / WASH_STEP)
+  const ground = useAppStore.getState().windLevel === 'ground' && microGrid() ? groundSampler(atMs) : null
+  const wind = ground ? null : windSampler(atMs)
+  if (!ground && !wind) return removeWash(map)
+  const c = (washCanvas ??= document.createElement('canvas'))
+  if (c.width !== cols || c.height !== rows) {
+    c.width = cols
+    c.height = rows
+  }
+  const g = c.getContext('2d', { willReadFrequently: true })
+  if (!g) return
+  const img = g.createImageData(cols, rows)
+  const out = new Float32Array(4)
+  for (let r = 0; r < rows; r++) {
+    for (let k = 0; k < cols; k++) {
+      const ll = map.unproject([x0 + (k + 0.5) * WASH_STEP, y0 + (r + 0.5) * WASH_STEP])
+      let kmh = NaN
+      if (ground) {
+        if (ground(ll.lng, ll.lat, out)) kmh = Math.hypot(out[0], out[1]) * 3.6
+      } else if (wind?.(ll.lng, ll.lat, out)) kmh = out[0]
+      if (Number.isFinite(kmh)) washRgb(kmh, img.data, (r * cols + k) * 4)
+    }
+  }
+  g.putImageData(img, 0, 0)
+  const corner = (x: number, y: number): [number, number] => {
+    const p = map.unproject([x, y])
+    return [p.lng, p.lat]
+  }
+  const x1 = x0 + cols * WASH_STEP
+  const y1 = y0 + rows * WASH_STEP
+  const coordinates: [[number, number], [number, number], [number, number], [number, number]] = [corner(x0, y0), corner(x1, y0), corner(x1, y1), corner(x0, y1)]
+  const src = map.getSource(WASH_SRC) as (CanvasSource & { play?: () => void; pause?: () => void }) | undefined
+  if (!src) {
+    map.addSource(WASH_SRC, { type: 'canvas', canvas: c, animate: false, coordinates })
+    // over the imagery and the shade, under the first line, label or dot
+    const before = map.getStyle().layers.find((l) => l.type === 'line' || l.type === 'symbol' || l.type === 'circle')?.id
+    map.addLayer({ id: WASH_SRC, type: 'raster', source: WASH_SRC, paint: { 'raster-opacity': washOpacity(), 'raster-resampling': 'linear', 'raster-fade-duration': 0 } }, before)
+    return
+  }
+  src.setCoordinates(coordinates)
+  map.setPaintProperty(WASH_SRC, 'raster-opacity', washOpacity())
+  // a canvas source that does not animate needs a nudge to read it again
+  src.play?.()
+  requestAnimationFrame(() => src.pause?.())
+}
+
+function removeWash(map: MlMap) {
+  try {
+    if (map.getLayer(WASH_SRC)) map.removeLayer(WASH_SRC)
+    if (map.getSource(WASH_SRC)) map.removeSource(WASH_SRC)
+  } catch {
+    /* the style is going (a lost context, the map removed): the wash goes with it */
+  }
+}
 
 /** The streaks fade out below zoom 15: in close the eddies and the slots
  *  read; far out the sheet of them only hides the map. */
@@ -484,6 +622,8 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
   let bitmapBusy = false
   let stopped = false
   const readNow = () => {
+    // one white ink: nothing to read the map for
+    if (lookOf().white) return
     if (!bitmapRoad) return readLuminance(map, field)
     if (bitmapBusy) return
     bitmapBusy = true
@@ -506,6 +646,12 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
     })
     map.triggerRepaint()
   }
+  // the Contrast look's wash, drawn with every new field (a pan's slide keeps it: it sits in the map)
+  const syncWash = () => {
+    if (lookOf().wash) paintWash(map, atMs())
+    else removeWash(map)
+  }
+  syncWash()
   const fieldOff = { x: 0, y: 0 }
   const swirl = makeSwirl(w, h, performance.now())
   const eddy = new Float32Array(2)
@@ -619,6 +765,7 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
       viewGen++
       // a new view under the field: what it crosses has to be read again
       if (field.live) readSoon()
+      syncWash()
     }
     lod = lodOf(map, h)
     sizeActive()
@@ -644,6 +791,7 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
     fieldOff.x = 0
     fieldOff.y = 0
     if (!f.lum || slid) armQuiet()
+    syncWash()
     return true
   }
 
@@ -726,13 +874,14 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
     }
     ctx.lineWidth = streakPx
     // the same hue in three inks: light, brighter, and a dark one that
-    // reads on pale ground
+    // reads on pale ground; the Contrast look's one white
+    const look = LOOKS[tune.windStyle] ?? LOOKS.standard
     for (let tone = 0; tone < TONES; tone++) {
-      const light = tone === TONE_DARK ? 24 : tone === TONE_BRIGHT ? 80 : 62
-      const sat = tone === TONE_DARK ? 90 : tone === TONE_BRIGHT ? Math.round(tune.windSat * 0.7) : tune.windSat
-      const boost = tone === TONE_DARK ? 1.25 : tone === TONE_BRIGHT ? 1.1 : 1
+      const light = tone === TONE_DARK ? look.ink.dark : tone === TONE_BRIGHT ? look.ink.bright : look.ink.light
+      const sat = look.white ? 0 : tone === TONE_DARK ? 90 : tone === TONE_BRIGHT ? Math.round(tune.windSat * 0.7) : tune.windSat
+      const boost = look.white ? 1 : tone === TONE_DARK ? 1.25 : tone === TONE_BRIGHT ? 1.1 : 1
       for (let b = 0; b < ALPHA_BANDS; b++) {
-        const alpha = (0.22 + ((b + 0.5) / ALPHA_BANDS) * 0.4) * level * boost
+        const alpha = (look.floor + ((b + 0.5) / ALPHA_BANDS) * look.span) * level * boost
         ctx.strokeStyle = `hsla(${tune.windHue}, ${sat}%, ${light}%, ${Math.min(1, alpha)})`
         ctx.stroke(bands[tone * ALPHA_BANDS + b])
       }
@@ -804,6 +953,7 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
     refield,
     stop: () => {
       stopped = true
+      removeWash(map)
       cancelAnimationFrame(raf)
       offQuality()
       map.off('render', onRender)
@@ -925,7 +1075,12 @@ export function initWindFlow() {
       // the switches and the particle count need a new engine
       if (s.layers.windFlow !== prev.layers.windFlow || s.flowTuning.windDensity !== prev.flowTuning.windDensity) cur()
       // the air under it only needs resampling
-      else if (s.planTimeMs !== prev.planTimeMs || s.flowTuning.windSpeed !== prev.flowTuning.windSpeed || s.windLevel !== prev.windLevel) fresh()
+      else if (s.planTimeMs !== prev.planTimeMs || s.flowTuning.windSpeed !== prev.flowTuning.windSpeed || s.flowTuning.windStyle !== prev.flowTuning.windStyle || s.windLevel !== prev.windLevel) fresh()
+      // the wash's strength follows the streaks'
+      if (s.windFlowOpacity !== prev.windFlowOpacity) {
+        const m = getMap()
+        if (m?.getLayer(WASH_SRC)) m.setPaintProperty(WASH_SRC, 'raster-opacity', washOpacity())
+      }
     })
     onWeatherGrid(fresh)
     // at "now" the air drifts between hours; a planned time stands still
