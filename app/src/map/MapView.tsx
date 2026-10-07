@@ -2,12 +2,13 @@ import maplibregl from 'maplibre-gl'
 import { useEffect, useRef, useState } from 'react'
 import { devlog } from '../devlog'
 import { fileUrl, loadView, saveView } from '../areas'
+import { peekSwitchThen } from '../areas/handoff'
 import { BASE_GEO, baseGeoFile, DATA_FILES, GEO_THEMES, geoFile, HOME, MAX_BOUNDS } from '../config'
 import { getStoredFile } from '../offline/fileStore'
 import { markShown, useAppStore, type LayerOpacity, type LayerVisibility } from '../state/appStore'
 import { placeColour } from '../state/pinColours'
 import { usePlacesStore } from '../state/placesStore'
-import { geoUrls, setMap, withMap } from './mapController'
+import { geoUrls, holdOpening, setMap, withMap } from './mapController'
 import { useMeasureStore } from '../measure/measureStore'
 import { baseTone, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour } from './mapStyle'
 import { offlineComplete, registerAllDataFiles, sourceModes } from './pmtilesRegistry'
@@ -90,6 +91,72 @@ function pressedIntoCorner(m: maplibregl.Map): boolean {
   return atW !== atE && atS !== atN
 }
 
+/** The opening: how many zoom levels further out the map starts, the
+ *  furthest out it starts (every area's imagery and topo reach 11), how
+ *  long it waits for the coarse view to draw, and the zoom in. */
+const OPEN_OUT = 2
+const OPEN_MIN_ZOOM = 11
+const OPEN_WAIT_MS = 1200
+const OPEN_IN_MS = 700
+
+/**
+ * The map opens further out than its view, where a handful of coarse tiles
+ * fill the screen at once, and zooms in once they have drawn. MapLibre keeps
+ * the coarse tiles up under the view as stand-ins while its own stream in,
+ * so the map comes up blurred and sharpens instead of blank and filling in
+ * a tile at a time (Gavan, 2026-10-07: "start zoomed out and stream in").
+ * A hand on the map ends it where it is, and so does anything else that
+ * sets its own zoom first (an outing fitting itself). A follow easing to
+ * the dot moves only the middle: the zoom in still lands. Resolves once
+ * the map is at its view, or left to the hand.
+ */
+function openFromFurtherOut(m: maplibregl.Map): Promise<void> {
+  const zoom = m.getZoom()
+  const center = m.getCenter()
+  const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+  if (zoom - Math.max(OPEN_MIN_ZOOM, zoom - OPEN_OUT) < 0.5) return Promise.resolve()
+  m.jumpTo({ zoom: Math.max(OPEN_MIN_ZOOM, zoom - OPEN_OUT) })
+  // where it really starts: a tall screen out at 11 sees past the box, and
+  // MapLibre holds the zoom in (and shifts the middle) to keep the view inside it
+  const from = m.getZoom()
+  const fromCenter = m.getCenter()
+  if (zoom - from < 0.5) {
+    m.jumpTo({ zoom, center })
+    return Promise.resolve()
+  }
+  return new Promise((done) => {
+    let touched = false
+    const onMove = (e: { originalEvent?: unknown }) => {
+      if (e.originalEvent) touched = true
+    }
+    m.on('movestart', onMove)
+    const finish = () => {
+      m.off('movestart', onMove)
+      done()
+    }
+    let went = false
+    const zoomIn = () => {
+      if (went) return
+      went = true
+      if (touched || Math.abs(m.getZoom() - from) > 0.01) return finish()
+      // back to the view's own middle, unless something moved it meanwhile (the dot, followed)
+      const to = m.getCenter().distanceTo(fromCenter) < 1 ? { zoom, center } : { zoom }
+      if (still) {
+        m.jumpTo(to)
+        return finish()
+      }
+      m.easeTo({ ...to, duration: OPEN_IN_MS })
+      m.once('moveend', () => {
+        // cut short by an easing of the middle alone (the dot, followed): the zoom still lands
+        if (!touched && m.getZoom() < zoom - 0.05) m.jumpTo({ zoom })
+        finish()
+      })
+    }
+    m.once('idle', zoomIn)
+    m.once('render', () => window.setTimeout(zoomIn, OPEN_WAIT_MS))
+  })
+}
+
 /** "51.47312, -90.18844": lat, lon to five places, for Copy coordinates. */
 export function fmtCoord(lon: number, lat: number): string {
   return `${lat.toFixed(5)}, ${lon.toFixed(5)}`
@@ -104,6 +171,8 @@ export default function MapView() {
     if (!el) return
     let map: maplibregl.Map | null = null
     let cancelled = false
+    // read now, before the app takes it (App's effects run after this one's)
+    const arrival = peekSwitchThen()
 
     void (async () => {
       const [available, geo] = await Promise.all([registerAllDataFiles(), resolveGeo()])
@@ -150,6 +219,9 @@ export default function MapView() {
         devlog('map', `a corner view from an out-of-area fix · opened on the middle`)
         m.jumpTo({ center: HOME.center, zoom: HOME.zoom, bearing: 0 })
       }
+      // the opening: from further out, unless a switch or a link opened the
+      // app on something to show (its view is the point, at once)
+      if (!arrival || arrival === 'look') holdOpening(openFromFurtherOut(m))
 
       // the controller hands the map to the layer modules once the style is
       // parsed ('style.load'), not 'load': a live tile source that never

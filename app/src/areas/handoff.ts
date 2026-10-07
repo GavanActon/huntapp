@@ -73,12 +73,14 @@ export function takeHoldFollow(): boolean {
  *  A switch's left from before a link was opened in the same tab goes: the
  *  link is what was asked for last. */
 export function takeSwitchThen(): SwitchThen | null {
-  const raw = take(THEN_KEY)
-  if (nowThen) {
-    const t = nowThen
-    nowThen = null
-    return t
-  }
+  const t = readThen(take(THEN_KEY))
+  nowThen = null
+  runKind = t?.kind ?? null
+  return t
+}
+
+function readThen(raw: string | null): SwitchThen | null {
+  if (nowThen) return nowThen
   if (!raw) return null
   try {
     const t = JSON.parse(raw) as SwitchThen
@@ -86,6 +88,24 @@ export function takeSwitchThen(): SwitchThen | null {
   } catch {
     return null
   }
+}
+
+/** What this run was opened for, once looked at: kept after it is taken,
+ *  for the map's opening, which is made after the app has taken it. */
+let runKind: SwitchThen['kind'] | null | undefined
+
+/** What takeSwitchThen hands over (or handed over), without taking it: the map's
+ *  opening (MapView) goes straight to the view a switch's or a link's
+ *  follow-up is about, without the zoom in from further out. */
+export function peekSwitchThen(): SwitchThen['kind'] | null {
+  if (runKind !== undefined) return runKind
+  let raw: string | null = null
+  try {
+    raw = sessionStorage.getItem(THEN_KEY)
+  } catch {
+    /* private mode: nothing was left */
+  }
+  return readThen(raw)?.kind ?? null
 }
 
 /** The link this tab last showed, so a reload or a restored tab does not
