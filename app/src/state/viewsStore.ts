@@ -43,8 +43,8 @@ const L = (on: (keyof LayerVisibility)[]): LayerVisibility =>
   Object.fromEntries(Object.keys(DEFAULT_LAYERS).map((k) => [k, on.includes(k as keyof LayerVisibility)])) as unknown as LayerVisibility
 
 export const BUILT_IN: MapView[] = [
-  // the wind first: the Topo view's ground under the streaks in the Contrast look, white over a wash coloured by
-  // speed (Gavan, 2026-10-07: "a default view, call it Wind, the Windy version plus topo"); a fresh phone opens on it
+  // the wind: the Topo view's ground under the streaks in the Contrast look, white over a wash coloured by
+  // speed (Gavan, 2026-10-07: "a default view, call it Wind, the Windy version plus topo")
   { id: 'hunt-wind', name: 'Wind', mode: 'hunt', builtIn: true, heat: false, opacity: { ...DEFAULT_OPACITY, hillshade: 0.7 }, layers: L(['relief', 'hillshade', 'contours', 'roads', 'windFlow']), wind: 'contrast' },
   { id: 'hunt-scout', name: 'Scout', mode: 'hunt', builtIn: true, heat: true, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'contours', 'forest', 'fire', 'roads']) },
   { id: 'hunt-bush', name: 'Bush', mode: 'hunt', builtIn: true, heat: false, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'understory', 'contours', 'roads']) },
@@ -60,9 +60,10 @@ export const BUILT_IN: MapView[] = [
   { id: 'fish-chart', name: 'Chart', mode: 'fish', builtIn: true, heat: true, opacity: DEFAULT_OPACITY, layers: L(['bathy', 'topo']) },
 ]
 
-/** The views pinned at the top of the pill menu on a fresh phone (Gavan's, 2026-10-03: Scout too). */
+/** The views pinned at the top of the pill menu on a fresh phone (Gavan's, 2026-10-03: Scout too;
+ *  2026-10-07: "base load should be Bow with range on", so Bow first and the phone opens on it). */
 export const DEFAULT_PINNED: Record<Mode, string[]> = {
-  hunt: ['hunt-wind', 'hunt-relief', 'hunt-bow', 'hunt-bush', 'hunt-terrain', 'hunt-scout'],
+  hunt: ['hunt-bow', 'hunt-wind', 'hunt-relief', 'hunt-bush', 'hunt-terrain', 'hunt-scout'],
   fish: ['fish-lake', 'fish-chart'],
 }
 
@@ -177,12 +178,14 @@ export const useViews = create<ViewsState>()(
       // 1: the pinned views (the top of the pill menu) are the user's to pick and order
       // 2: the hunting default is Topo, Bow, Bush, Terrain; a v1 list never touched follows it
       // 3: the Wind view, pinned first
-      version: 3,
+      // 4: Bow first again, the Wind view second (a v3 list never touched follows it)
+      version: 4,
       migrate: (persisted, from) => {
         const p = (persisted ?? {}) as Partial<ViewsState>
         if (!p.pinned) p.pinned = { hunt: [...DEFAULT_PINNED.hunt], fish: [...DEFAULT_PINNED.fish] }
         else if (from < 2 && p.pinned.hunt.join() === 'hunt-scout,hunt-bush,hunt-bow,hunt-terrain') p.pinned = { ...p.pinned, hunt: [...DEFAULT_PINNED.hunt] }
         if (from < 3 && !p.pinned.hunt.includes('hunt-wind')) p.pinned = { ...p.pinned, hunt: ['hunt-wind', ...p.pinned.hunt] }
+        if (from < 4 && p.pinned.hunt.join() === 'hunt-wind,hunt-relief,hunt-bow,hunt-bush,hunt-terrain,hunt-scout') p.pinned = { ...p.pinned, hunt: [...DEFAULT_PINNED.hunt] }
         return p as ViewsState
       },
       partialize: (s) => ({ mode: s.mode, saved: s.saved, lastTarget: s.lastTarget, lastViewId: s.lastViewId, pinned: s.pinned, lookBefore: s.lookBefore }),
@@ -190,10 +193,11 @@ export const useViews = create<ViewsState>()(
   ),
 )
 
-// a fresh phone opens on the Wind view, its look with it
+// a fresh phone opens on the Bow view with the shooting lanes on (Gavan,
+// 2026-10-07: "base load should be Bow with range on"); the wind keeps flowing
 if (freshPhone) {
-  const wind = BUILT_IN.find((v) => v.id === 'hunt-wind')
-  if (wind) useViews.getState().apply(wind)
+  const bow = BUILT_IN.find((v) => v.id === 'hunt-bow')
+  if (bow) useViews.getState().apply(bow)
 }
 
 /** The views on offer in a mode: built in first, then the user's. */

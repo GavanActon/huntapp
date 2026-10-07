@@ -122,9 +122,9 @@ export interface LayerOpacity {
 }
 
 /** A fresh phone starts as Gavan's was set up (2026-10-03, his settings sent
- *  from the phone, Settings › My settings): the Bow view with its lanes off
- *  (they are a button of their own), so the imagery, the grey LiDAR shade,
- *  contours and roads, with the wind flowing. Opacities: START_OPACITY. */
+ *  from the phone, Settings › My settings; 2026-10-07: "Bow with range on"):
+ *  the Bow view with its shooting lanes, so the imagery, the grey LiDAR shade,
+ *  the lanes, contours and roads, with the wind flowing. Opacities: START_OPACITY. */
 export const DEFAULT_LAYERS: LayerVisibility = {
   topo: false,
   hillshade: true,
@@ -132,7 +132,7 @@ export const DEFAULT_LAYERS: LayerVisibility = {
   contours: true,
   forest: false,
   understory: false,
-  lanes: false,
+  lanes: true,
   bathy: false,
   historical: false,
   satellite: true,
