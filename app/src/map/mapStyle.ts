@@ -41,6 +41,40 @@ function tag<T extends LayerSpecification>(l: T, group: keyof LayerVisibility, o
 
 const vis = (on: boolean) => ({ visibility: on ? 'visible' : 'none' }) as const
 
+/** The marsh symbol the bogs are drawn with (relief-bog-tufts): a tuft of
+ *  reeds on its ground line, two to a tile and staggered, in the blue the
+ *  old topo sheets drew them in. Made when the map first asks for it
+ *  (MapView's styleimagemissing). */
+export const BOG_TUFT = 'bog-tuft'
+export function bogTuftImage(): ImageData {
+  const S = 2
+  const W = 28
+  const H = 24
+  const c = document.createElement('canvas')
+  c.width = W * S
+  c.height = H * S
+  const g = c.getContext('2d', { willReadFrequently: true })!
+  g.scale(S, S)
+  g.strokeStyle = 'rgba(28, 86, 128, 0.95)'
+  g.lineWidth = 1.1
+  g.lineCap = 'round'
+  const tuft = (x: number, y: number) => {
+    g.beginPath()
+    g.moveTo(x - 4, y)
+    g.lineTo(x + 4, y)
+    g.moveTo(x, y)
+    g.lineTo(x, y - 4)
+    g.moveTo(x - 2, y)
+    g.lineTo(x - 3.2, y - 3)
+    g.moveTo(x + 2, y)
+    g.lineTo(x + 3.2, y - 3)
+    g.stroke()
+  }
+  tuft(7, 9)
+  tuft(21, 21)
+  return g.getImageData(0, 0, W * S, H * S)
+}
+
 const EMPTY_FC: FeatureCollection = { type: 'FeatureCollection', features: [] }
 
 /** GeoJSON sources whose layers are all switched off when the style is
@@ -307,6 +341,45 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
           'relief',
         ),
       )
+    // The bogs, in the Topo view: the stands' open and treed muskeg (the
+    // FRI's OMS and TMS), a blue tint under the old topo sheets' marsh tufts,
+    // the open bog the stronger. The relief's colours said nothing of them,
+    // and the Windy look's wash showed them, the air running faster over the
+    // open ground (Gavan, 2026-10-07). Under the LiDAR shade, the contours
+    // and the roads; with the relief's switch. National stands (the Sault,
+    // the Yukon) carry no wetland class, so none show there.
+    if (has('forest')) {
+      sources.forest = { type: 'vector', url: 'pmtiles://forest' }
+      const wet: FilterSpecification = ['==', ['get', 'group'], 'wetland']
+      const open = ['==', ['get', 'poly'], 'OMS'] as unknown as ExpressionSpecification
+      rasters.push(
+        tag(
+          {
+            id: 'relief-bog',
+            type: 'fill',
+            source: 'forest',
+            'source-layer': 'forest',
+            filter: wet,
+            layout: vis(o.layers.relief),
+            paint: { 'fill-color': '#4f86a8', 'fill-opacity': ['case', open, 0.32, 0.16] },
+          },
+          'relief',
+        ),
+        tag(
+          {
+            id: 'relief-bog-tufts',
+            type: 'fill',
+            source: 'forest',
+            'source-layer': 'forest',
+            minzoom: 12,
+            filter: wet,
+            layout: vis(o.layers.relief),
+            paint: { 'fill-pattern': BOG_TUFT, 'fill-opacity': ['case', open, 0.9, 0.5] },
+          },
+          'relief',
+        ),
+      )
+    }
   } else addRaster('hillshade')
   // the 1 m LiDAR shade rides above the DEM-drawn one where it is baked (the
   // core, z14+); both answer to the one Hillshade switch and slider

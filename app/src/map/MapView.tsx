@@ -10,7 +10,7 @@ import { placeColour } from '../state/pinColours'
 import { usePlacesStore } from '../state/placesStore'
 import { geoUrls, holdOpening, setMap, withMap } from './mapController'
 import { useMeasureStore } from '../measure/measureStore'
-import { baseTone, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour } from './mapStyle'
+import { baseTone, BOG_TUFT, bogTuftImage, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour } from './mapStyle'
 import { offlineComplete, registerAllDataFiles, sourceModes } from './pmtilesRegistry'
 import { showInfoPopup } from './infoPopup'
 import { showPlacePopup } from './placePopup'
@@ -211,6 +211,10 @@ export default function MapView() {
       }
       const m = map
       if (import.meta.env.DEV) (window as unknown as { __map?: unknown }).__map = m
+      // the bogs' marsh tufts (the Topo view), made the first time a layer asks for them
+      m.on('styleimagemissing', (e: { id: string }) => {
+        if (e.id === BOG_TUFT && !m.hasImage(BOG_TUFT)) m.addImage(BOG_TUFT, bogTuftImage(), { pixelRatio: 2 })
+      })
       // A view saved before VIEW_V and pressed into a corner of the box is
       // the old follow's doing, an out-of-area fix dragged to the nearest
       // corner, not a place anyone looked: it opens on the middle instead,
