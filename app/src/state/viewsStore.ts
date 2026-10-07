@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { DEFAULT_LAYERS, DEFAULT_OPACITY, useAppStore, type LayerOpacity, type LayerVisibility } from './appStore'
+import { DEFAULT_LAYERS, DEFAULT_OPACITY, useAppStore, type LayerOpacity, type LayerVisibility, type WindStyle } from './appStore'
 import { useSpotsStore } from './spotsStore'
 import { isFish, type Target } from '../spots/types'
 
@@ -34,12 +34,18 @@ export interface MapView {
   opacity: LayerOpacity
   heat: boolean
   builtIn?: boolean
+  /** the wind's look the view brings, with the wind on: the Wind view's
+   *  Contrast. A view without one hands back the look there was before. */
+  wind?: WindStyle
 }
 
 const L = (on: (keyof LayerVisibility)[]): LayerVisibility =>
   Object.fromEntries(Object.keys(DEFAULT_LAYERS).map((k) => [k, on.includes(k as keyof LayerVisibility)])) as unknown as LayerVisibility
 
 export const BUILT_IN: MapView[] = [
+  // the wind first: the Topo view's ground under the streaks in the Contrast look, white over a wash coloured by
+  // speed (Gavan, 2026-10-07: "a default view, call it Wind, the Windy version plus topo"); a fresh phone opens on it
+  { id: 'hunt-wind', name: 'Wind', mode: 'hunt', builtIn: true, heat: false, opacity: { ...DEFAULT_OPACITY, hillshade: 0.7 }, layers: L(['relief', 'hillshade', 'contours', 'roads', 'windFlow']), wind: 'contrast' },
   { id: 'hunt-scout', name: 'Scout', mode: 'hunt', builtIn: true, heat: true, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'contours', 'forest', 'fire', 'roads']) },
   { id: 'hunt-bush', name: 'Bush', mode: 'hunt', builtIn: true, heat: false, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'understory', 'contours', 'roads']) },
   // out hunting with a bow: the imagery at full strength, open lanes left clear and
@@ -56,7 +62,7 @@ export const BUILT_IN: MapView[] = [
 
 /** The views pinned at the top of the pill menu on a fresh phone (Gavan's, 2026-10-03: Scout too). */
 export const DEFAULT_PINNED: Record<Mode, string[]> = {
-  hunt: ['hunt-relief', 'hunt-bow', 'hunt-bush', 'hunt-terrain', 'hunt-scout'],
+  hunt: ['hunt-wind', 'hunt-relief', 'hunt-bow', 'hunt-bush', 'hunt-terrain', 'hunt-scout'],
   fish: ['fish-lake', 'fish-chart'],
 }
 
@@ -73,6 +79,12 @@ interface ViewsState {
   lastViewId: string | null
   /** per mode, the views at the top of the pill menu, in order; the rest sit under More */
   pinned: Record<Mode, string[]>
+  /** the wind's look from before a view brought its own (the Wind view's
+   *  Contrast), handed back when a view without one goes on; null when the
+   *  look on is the hunter's own */
+  lookBefore: WindStyle | null
+  /** the look picked by hand is the hunter's own: nothing to hand back */
+  keepLook: () => void
   setMode: (m: Mode) => void
   apply: (v: MapView) => void
   saveCurrent: (name: string) => MapView
@@ -85,6 +97,15 @@ interface ViewsState {
   setPinned: (mode: Mode, ids: string[]) => void
 }
 
+/** A phone that has kept no views yet: read before the store is made, which may write its key. */
+const freshPhone = (() => {
+  try {
+    return localStorage.getItem('huntapp-views') == null
+  } catch {
+    return false
+  }
+})()
+
 export const useViews = create<ViewsState>()(
   persist(
     (set, get) => ({
@@ -94,6 +115,8 @@ export const useViews = create<ViewsState>()(
       lastTarget: { hunt: 'moose', fish: 'laketrout' },
       lastViewId: 'hunt-bow',
       pinned: { hunt: [...DEFAULT_PINNED.hunt], fish: [...DEFAULT_PINNED.fish] },
+      lookBefore: null,
+      keepLook: () => set({ lookBefore: null }),
       setMode: (mode) => {
         const s = get()
         if (mode === s.mode) return
@@ -107,9 +130,19 @@ export const useViews = create<ViewsState>()(
         if (first) get().apply(first)
       },
       apply: (v) => {
-        const windFlow = useAppStore.getState().layers.windFlow
+        const a = useAppStore.getState()
+        // the wind keeps its own button, unless the view is about the wind
+        const windFlow = v.wind ? true : a.layers.windFlow
         useAppStore.setState({ layers: { ...DEFAULT_LAYERS, ...v.layers, windFlow }, opacity: { ...DEFAULT_OPACITY, ...v.opacity } })
         useSpotsStore.getState().setHeat(v.heat)
+        const before = get().lookBefore
+        if (v.wind) {
+          set({ lookBefore: before ?? a.flowTuning.windStyle })
+          a.setFlowTuning({ windStyle: v.wind })
+        } else if (before) {
+          a.setFlowTuning({ windStyle: before })
+          set({ lookBefore: null })
+        }
         set({ lastViewId: v.id })
       },
       saveCurrent: (name) => {
@@ -143,17 +176,25 @@ export const useViews = create<ViewsState>()(
       name: 'huntapp-views',
       // 1: the pinned views (the top of the pill menu) are the user's to pick and order
       // 2: the hunting default is Topo, Bow, Bush, Terrain; a v1 list never touched follows it
-      version: 2,
+      // 3: the Wind view, pinned first
+      version: 3,
       migrate: (persisted, from) => {
         const p = (persisted ?? {}) as Partial<ViewsState>
         if (!p.pinned) p.pinned = { hunt: [...DEFAULT_PINNED.hunt], fish: [...DEFAULT_PINNED.fish] }
         else if (from < 2 && p.pinned.hunt.join() === 'hunt-scout,hunt-bush,hunt-bow,hunt-terrain') p.pinned = { ...p.pinned, hunt: [...DEFAULT_PINNED.hunt] }
+        if (from < 3 && !p.pinned.hunt.includes('hunt-wind')) p.pinned = { ...p.pinned, hunt: ['hunt-wind', ...p.pinned.hunt] }
         return p as ViewsState
       },
-      partialize: (s) => ({ mode: s.mode, saved: s.saved, lastTarget: s.lastTarget, lastViewId: s.lastViewId, pinned: s.pinned }),
+      partialize: (s) => ({ mode: s.mode, saved: s.saved, lastTarget: s.lastTarget, lastViewId: s.lastViewId, pinned: s.pinned, lookBefore: s.lookBefore }),
     },
   ),
 )
+
+// a fresh phone opens on the Wind view, its look with it
+if (freshPhone) {
+  const wind = BUILT_IN.find((v) => v.id === 'hunt-wind')
+  if (wind) useViews.getState().apply(wind)
+}
 
 /** The views on offer in a mode: built in first, then the user's. */
 export function viewsFor(mode: Mode, saved = useViews.getState().saved): MapView[] {

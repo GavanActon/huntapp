@@ -7,8 +7,9 @@ import { snapshot } from '../log/snapshot'
 import { useMeasureStore } from '../measure/measureStore'
 import { campEnd, clearRoutes, useRoutes, youEnd } from '../routes/routeStore'
 import { isFish } from '../spots/types'
-import { CONTOUR_INTERVALS, useAppStore, type HotId, type LayerOpacity, type LeavesMode } from '../state/appStore'
+import { CONTOUR_INTERVALS, useAppStore, type HotId, type LayerOpacity, type LeavesMode, type WindStyle } from '../state/appStore'
 import { useSpotsStore } from '../state/spotsStore'
+import { useViews } from '../state/viewsStore'
 import { useGpsStore } from '../tracking/gpsStore'
 import { leavesWord } from '../weather/micro/leaves'
 import { coneSizeWord, drawnView, SCENT_HEIGHTS, useScent, type ScentView } from '../weather/micro/scent'
@@ -109,10 +110,20 @@ function WindFlowRows() {
   const setOp = useAppStore((s) => s.setWindFlowOpacity)
   const swirl = useAppStore((s) => s.flowTuning.windSwirl)
   const size = useAppStore((s) => s.flowTuning.windSize)
+  const style = useAppStore((s) => s.flowTuning.windStyle)
   const setFlowTuning = useAppStore((s) => s.setFlowTuning)
   return (
     <>
       <Seg label="Wind at" value={level} options={[['ground', 'Ground'], ['forecast', 'Forecast']] as const} onPick={setLevel} />
+      <Seg
+        label="Look"
+        value={style}
+        options={WIND_STYLES}
+        onPick={(v) => {
+          setFlowTuning({ windStyle: v })
+          useViews.getState().keepLook()
+        }}
+      />
       <Switch label="Turbulence" on={swirl} onChange={(v) => setFlowTuning({ windSwirl: v })} />
       <Slider label="Strength" value={Math.round(op * 100)} min={10} max={100} step={5} onChange={(v) => setOp(v / 100)} />
       <div className="hd-row">
@@ -135,6 +146,13 @@ function WindFlowRows() {
     </>
   )
 }
+
+/** The wind's looks (weather/windFlow.ts LOOKS): Contrast is white streaks over a wash coloured by speed. */
+const WIND_STYLES: readonly Opt<WindStyle>[] = [
+  ['standard', 'Standard'],
+  ['bold', 'Bold'],
+  ['contrast', 'Contrast'],
+]
 
 const LEAVES: readonly Opt<LeavesMode>[] = [
   ['auto', 'Auto'],
