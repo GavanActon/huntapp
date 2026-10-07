@@ -178,17 +178,19 @@ function dataManifest(): Plugin {
  *  writes it (manifest.webmanifest, with lang and scope filled in), and
  *  each other area's iPhone manifest is made from it (areaLinks). */
 const MANIFEST = {
-  name: 'Pic River — hunt & fish maps',
-  short_name: 'Pic River',
-  description: 'Offline topo, LiDAR, forest cover, lake depths, historical maps and weather for White Lake and the Pic River country',
-  theme_color: '#0f1a12',
-  background_color: '#0f1a12',
+  name: 'Groundwind',
+  short_name: 'Groundwind',
+  description: "Head-height wind and scent for hunting, from Environment Canada's HD forecast over LiDAR terrain. Works offline.",
+  theme_color: '#0a100b',
+  background_color: '#0a100b',
   display: 'standalone',
   orientation: 'any',
   start_url: '.',
   icons: [
     { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
     { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+    // the mark inside the central 80% circle, for a launcher that crops to its own shape
+    { src: 'icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
   ],
 } satisfies Partial<ManifestOptions>
 
@@ -204,7 +206,7 @@ const AREAS_SLOT = '/*AREAS*/{}'
  *  (Chrome would offer to rename an install to it). */
 function areaManifest(a: { id: string; name: string }, scope: string): string {
   return JSON.stringify({
-    name: `${a.name} — hunt maps`,
+    name: `${a.name} · Groundwind`,
     short_name: a.name,
     description: `Offline topo, LiDAR, forest cover and weather for ${a.name}`,
     start_url: `./?start=${a.id}`,

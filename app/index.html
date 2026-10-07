@@ -9,17 +9,18 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Pic River" />
-    <meta name="theme-color" content="#0f1a12" />
+    <meta name="apple-mobile-web-app-title" content="Groundwind" />
+    <meta name="theme-color" content="#0a100b" />
     <!-- search finds the app through groundwind.app, not this address -->
     <meta name="robots" content="noindex" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <link rel="preconnect" href="https://api.open-meteo.com" crossorigin />
     <link rel="preconnect" href="https://geo.weather.gc.ca" crossorigin />
-    <title>Pic River — hunt & fish maps</title>
+    <title>Groundwind</title>
     <style>
-      html, body { margin: 0; height: 100%; background: #0f1a12; }
-      #splash { position: fixed; inset: 0; background: #0f1a12; color: #eef5ea; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; z-index: 1000; transition: opacity 0.35s ease; }
+      html, body { margin: 0; height: 100%; background: #0a100b; }
+      #splash { position: fixed; inset: 0; background: #0a100b; color: #eef5ea; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; z-index: 1000; transition: opacity 0.35s ease; }
       #splash.gone { opacity: 0; pointer-events: none; }
       #splash .word { text-align: center; }
       #splash .word b { display: block; font-size: 22px; font-weight: 700; letter-spacing: 0.02em; }
@@ -67,7 +68,7 @@
           link.href = area.manifest
           document.head.appendChild(link)
           document.querySelector('meta[name="apple-mobile-web-app-title"]').setAttribute('content', area.name)
-          document.title = area.name + ' — hunt maps'
+          document.title = area.name + ' · Groundwind'
         } catch (e) {}
       })()
     </script>
@@ -75,10 +76,10 @@
   <body>
     <div id="root"></div>
     <div id="splash" aria-hidden="true">
-      <div class="word"><b>Pic River</b><span>White Lake · Manitouwadge</span></div>
+      <div class="word"><b>Groundwind</b><span>Wind and scent at head height</span></div>
     </div>
     <script>
-      // the place line is Pickle Lake's: another area's name when the page opens on one (the head's pick)
+      // the line under the name says what the app is: another area's name when the page opens on one (the head's pick)
       try {
         if (window.huntappArea) document.querySelector('#splash .word span').textContent = window.huntappArea
       } catch (e) {}

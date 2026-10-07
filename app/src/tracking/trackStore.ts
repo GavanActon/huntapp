@@ -301,7 +301,7 @@ export function trkXml(track: Track): string {
 
 /** A GPX document round its <wpt> and <trk> blocks. */
 export function gpxDoc(body: string): string {
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Pic River" xmlns="http://www.topografix.com/GPX/1/1">\n${body}\n</gpx>\n`
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Groundwind" xmlns="http://www.topografix.com/GPX/1/1">\n${body}\n</gpx>\n`
 }
 
 export function trackToGpx(track: Track): string {

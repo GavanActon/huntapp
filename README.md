@@ -1,4 +1,4 @@
-# Pic River — hunt & fish maps
+# Groundwind
 
 Offline-first map PWA for the camp on Pickle Lake, north-west of White
 River, Ontario (with McGill, Ketchup and Line Lakes; WMU 21B). Same shape as the Sandies boat app: full-bleed map, outlook strip on
