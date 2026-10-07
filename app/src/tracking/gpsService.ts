@@ -1,7 +1,7 @@
 import { takeHoldFollow } from '../areas/handoff'
 import { withMap } from '../map/mapController'
 import { useAppStore } from '../state/appStore'
-import { nearestInBounds } from '../config'
+import { followCenter } from '../config'
 import { useGpsStore, type Fix } from './gpsStore'
 import { requestCompass, startCompass, stopCompass, useCompass } from './compass'
 import { FixFilter } from './fixFilter'
@@ -50,10 +50,9 @@ export function startGps() {
       }
       gps.setFix(fix)
       gps.setStatus('on')
-      if (useAppStore.getState().follow) {
-        const { center } = nearestInBounds(fix.lon, fix.lat)
-        withMap((m) => m.easeTo({ center, duration: 500 }))
-      }
+      // a fix outside the area is the phone at home: the map stays where it is
+      const center = useAppStore.getState().follow ? followCenter(fix.lon, fix.lat) : null
+      if (center) withMap((m) => m.easeTo({ center, duration: 500 }))
     },
     (err) => {
       const s = useGpsStore.getState()
@@ -85,10 +84,8 @@ export function locateAndFollow() {
   remember(true)
   startGps()
   const fix = useGpsStore.getState().fix
-  if (fix) {
-    const { center } = nearestInBounds(fix.lon, fix.lat)
-    withMap((m) => m.easeTo({ center, zoom: Math.max(m.getZoom(), 13) }))
-  }
+  const center = fix ? followCenter(fix.lon, fix.lat) : null
+  if (center) withMap((m) => m.easeTo({ center, zoom: Math.max(m.getZoom(), 13) }))
 }
 
 /** The locate button: off → following, north up → following, heading up

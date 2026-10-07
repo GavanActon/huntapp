@@ -2,7 +2,7 @@ import maplibregl from 'maplibre-gl'
 import type { Map as MlMap } from 'maplibre-gl'
 import { onEachMap } from '../map/mapController'
 import { useAppStore } from '../state/appStore'
-import { nearestInBounds } from '../config'
+import { followCenter } from '../config'
 import { useMeasureStore } from '../measure/measureStore'
 import { useRoutes } from '../routes/routeStore'
 import { useScent } from '../weather/micro/scent'
@@ -181,9 +181,7 @@ export function initPositionLayer() {
     const map = current
     if (!map) return
     place(map, s.fix)
-    if (useAppStore.getState().follow) {
-      const { center } = nearestInBounds(s.fix.lon, s.fix.lat)
-      map.easeTo({ center, duration: 600 })
-    }
+    const center = useAppStore.getState().follow ? followCenter(s.fix.lon, s.fix.lat) : null
+    if (center) map.easeTo({ center, duration: 600 })
   })
 }

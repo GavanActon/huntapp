@@ -75,6 +75,21 @@ async function resolveGeo(): Promise<Map<string, string>> {
   return geo
 }
 
+/** Whether the view sits against one side and one end of the box at once
+ *  (and spans neither: a view zoomed out over the whole box is not in a
+ *  corner), within a hundredth of the box. */
+function pressedIntoCorner(m: maplibregl.Map): boolean {
+  const b = m.getBounds()
+  const [[w, s], [e, n]] = MAX_BOUNDS
+  const tx = (e - w) * 0.01
+  const ty = (n - s) * 0.01
+  const atW = b.getWest() - w < tx
+  const atE = e - b.getEast() < tx
+  const atS = b.getSouth() - s < ty
+  const atN = n - b.getNorth() < ty
+  return atW !== atE && atS !== atN
+}
+
 /** "51.47312, -90.18844": lat, lon to five places, for Copy coordinates. */
 export function fmtCoord(lon: number, lat: number): string {
   return `${lat.toFixed(5)}, ${lon.toFixed(5)}`
@@ -127,6 +142,14 @@ export default function MapView() {
       }
       const m = map
       if (import.meta.env.DEV) (window as unknown as { __map?: unknown }).__map = m
+      // A view saved before VIEW_V and pressed into a corner of the box is
+      // the old follow's doing, an out-of-area fix dragged to the nearest
+      // corner, not a place anyone looked: it opens on the middle instead,
+      // once (the next move saves a marked view)
+      if (saved && !saved.v && pressedIntoCorner(m)) {
+        devlog('map', `a corner view from an out-of-area fix · opened on the middle`)
+        m.jumpTo({ center: HOME.center, zoom: HOME.zoom, bearing: 0 })
+      }
 
       // the controller hands the map to the layer modules once the style is
       // parsed ('style.load'), not 'load': a live tile source that never
