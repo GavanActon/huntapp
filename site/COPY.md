@@ -13,7 +13,7 @@ Groundwind is the hunting app for the wind where you stand.
 - Your scent cone, from where you stand, on your ground.
 - Where he beds, where you can walk, where you can shoot, from the bush at eye level.
 - Each puff of powder calibrates the wind to what you actually felt.
-- Works with no cell service. HD weather and party status come in by satellite.
+- Works with no signal. HD weather and party status come in by satellite.
 Built on a physical wind model and published research for every layer.
 
 It's made for your phone. Point the camera here to open it there, then add it to your home screen.
@@ -128,7 +128,7 @@ warm spell, day 3: bedded through the heat, moving at night
 
 first cool day after 3 warm ones: expect movement
 
-## No bars. HD weather & party status by satellite.
+## No signal. HD weather & party status by satellite.
 
 Save your area at camp and all of it works offline. Out for days? Text from your inReach or iPhone and the newest HD forecast comes back by satellite.
 
