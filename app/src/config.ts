@@ -217,10 +217,18 @@ export const MAX_BOUNDS: [[number, number], [number, number]] = [
   [REGION.east, REGION.north],
 ]
 
-export function nearestInBounds(lon: number, lat: number): { center: [number, number]; clamped: boolean } {
+/**
+ * Where following a fix takes the map: the fix (kept inside the box) when
+ * it is in the region, and nowhere for one outside it, the phone at home
+ * (inRegion), which the map does not follow. Followed, it took the map to
+ * the box's nearest edge: opened from the Sault with location on, Lac
+ * Bailey came up pressed into its bottom-left corner, and that was saved
+ * as the view to open on next time (Gavan, 2026-10-07).
+ */
+export function followCenter(lon: number, lat: number): [number, number] | null {
+  if (!inRegion(lon, lat)) return null
   const [[w, s], [e, n]] = MAX_BOUNDS
-  const center: [number, number] = [Math.min(Math.max(lon, w), e), Math.min(Math.max(lat, s), n)]
-  return { center, clamped: center[0] !== lon || center[1] !== lat }
+  return [Math.min(Math.max(lon, w), e), Math.min(Math.max(lat, s), n)]
 }
 
 export interface PlaceDef {

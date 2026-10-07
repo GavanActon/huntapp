@@ -155,10 +155,15 @@ export interface SavedView {
   center: [number, number]
   zoom: number
   bearing: number
+  /** VIEW_V when saved by this build or later; missing on a view saved
+   *  while an out-of-area fix could still drag the map into a corner */
+  v?: number
 }
 
 // above ACTIVE_AREA: resolveActive saves a link's view while this module is still loading
 const VIEW_KEY = 'huntapp.lastView'
+/** Views saved since following stopped chasing a fix outside the area (config.ts followCenter). */
+const VIEW_V = 2
 
 function resolveActive(): AreaDef {
   let href = ''
@@ -304,5 +309,5 @@ export function loadView(areaId: string = ACTIVE_AREA.id): SavedView | null {
 }
 
 export function saveView(view: SavedView, areaId: string = ACTIVE_AREA.id): void {
-  writeAreaItem(VIEW_KEY, JSON.stringify(view), areaId)
+  writeAreaItem(VIEW_KEY, JSON.stringify({ ...view, v: VIEW_V }), areaId)
 }
