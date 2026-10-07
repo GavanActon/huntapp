@@ -843,3 +843,15 @@ footer .links a:hover { color: var(--ink); text-decoration: underline; }
   .beat h2, .hero.beat h1, .hero.beat .eyebrow { text-shadow: 0 1px 2px color-mix(in srgb, var(--bg) 95%, transparent), 0 2px 18px color-mix(in srgb, var(--bg) 90%, transparent); }
   .beat .loop .phone { width: min(100%, 240px); }
 }
+
+/* ---- phone spacing: the sections sit closer, the rule keeps a little air */
+@media (max-width: 859px) {
+  .breath { margin: 22px 0; }
+  .page main > .row, .page main > .model, .page main > .coda, .page main > .beta, .page main > .faq, .page main > .also { padding-block: 36px; }
+  .hero.beat > div:not(.ground) { padding-bottom: 20px; }
+  .beat .row-text { padding-bottom: 8px; }
+  .nose.row { padding-block: 24px; }
+  .strip-row { padding-top: 24px; }
+  .strip img { height: 220px; }
+  .page main > .beat.row { padding-bottom: 24px; }
+}
