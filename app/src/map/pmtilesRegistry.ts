@@ -98,7 +98,21 @@ class KeyedFetchSource implements Source {
 }
 
 const protocol = new Protocol()
-maplibregl.addProtocol('pmtiles', protocol.tile)
+/**
+ * A picture tile the archive does not hold is answered as not found. The
+ * areas are baked deep only in their core: zoomed in outside it, the topo,
+ * imagery and DEM have no tile, and pmtiles answered "no data", which left
+ * MapLibre's tile loading for good. It drew nothing (grey, the relief and
+ * shade gone over a whole tile at Lac Bailey's edge: Gavan, 2026-10-07)
+ * unless it happened to hold the coarser tile from zooming in there. A 404
+ * makes it fetch the parent and stretch it, the detail the edge has anyway.
+ * A missing vector tile still comes back empty: no features, drawn as such.
+ */
+maplibregl.addProtocol('pmtiles', async (params, abortController) => {
+  const r = await protocol.tilev4(params, abortController)
+  if (r.data == null) throw Object.assign(new Error(`no tile ${params.url}`), { status: 404 })
+  return r
+})
 
 export type DataSourceMode = 'local' | 'network' | 'missing'
 
