@@ -1,5 +1,6 @@
 -- Area requests from the site's form (and later the app's own button), the
--- app's usage stats (events, below) and the wind checks hunters share (checks).
+-- app's usage stats (events, below), the wind checks hunters share (checks)
+-- and a hunting party's sealed mailbox (party_items).
 -- Apply with: npx wrangler d1 execute groundwind --remote --file schema.sql
 -- Read with:  npx wrangler d1 execute groundwind --remote --command "SELECT * FROM requests ORDER BY at DESC"
 CREATE TABLE IF NOT EXISTS requests (
@@ -60,3 +61,25 @@ CREATE TABLE IF NOT EXISTS checks (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS checks_install_cid ON checks (install, cid);
 CREATE INDEX IF NOT EXISTS checks_ts ON checks (ts);
+
+-- A hunting party's mailbox (party.js, app/src/party/, docs/PARTY.md): what
+-- the phones in a party share, sealed on the phone with the party's key,
+-- which never comes here. A slot ('pos', 'hello') keeps a member's newest
+-- item of its kind only; the rest are kept 14 days. (party, member, seq) is
+-- unique, so a copy sent twice is stored once.
+CREATE TABLE IF NOT EXISTS party_items (
+  -- the readers' cursor (GET ?after=id): AUTOINCREMENT, so an id is never
+  -- reused. A slot's replacement deletes the newest row and inserts again,
+  -- and a reused id would sit behind every reader's cursor, unseen.
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  party TEXT NOT NULL,        -- the party's random id, from its invite
+  member TEXT NOT NULL,       -- the sender's random id in the party
+  seq INTEGER NOT NULL,       -- the sender's counter
+  slot TEXT,                  -- pos or hello: newest only; NULL: kept
+  body TEXT NOT NULL,         -- sealed (AES-GCM, base64url): iv and ciphertext
+  received INTEGER NOT NULL   -- ms
+);
+CREATE UNIQUE INDEX IF NOT EXISTS party_items_seq ON party_items (party, member, seq);
+CREATE INDEX IF NOT EXISTS party_items_read ON party_items (party, id);
+CREATE INDEX IF NOT EXISTS party_items_slot ON party_items (party, member, slot);
+CREATE INDEX IF NOT EXISTS party_items_received ON party_items (received);

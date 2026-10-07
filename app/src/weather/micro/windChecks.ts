@@ -99,8 +99,10 @@ export interface WindCheck {
   note?: string
   /** who made it: the initials in Settings; a partner's checks keep theirs */
   by?: string
-  /** taken in from a partner's file (merge): theirs, so never shared from this phone (checkShare.ts) */
+  /** taken in from a partner (a file's merge, or the party's takeIn): theirs, so never shared from this phone (checkShare.ts) */
   taken?: boolean
+  /** a party member's: their id in the party (party/party.ts) */
+  member?: string
   source: 'hand' | 'station'
   /** what the ground model said at that place and minute, before the check */
   model?: ModelCall
@@ -175,8 +177,19 @@ interface ChecksState {
   add: (c: Omit<WindCheck, 'id'>) => WindCheck
   /** a partner's checks, by id: the ones already here are left alone */
   merge: (cs: WindCheck[]) => number
+  /** a party member's checks as they stand now (party/party.ts): new ones in, changed ones replaced, never one of yours */
+  takeIn: (cs: WindCheck[]) => void
   remove: (id: string) => void
   clear: () => void
+}
+
+/** At most 500 kept: a party's checks go first, so a busy party never pushes out your own. */
+const MAX_CHECKS = 500
+function capped(cs: WindCheck[]): WindCheck[] {
+  let over = cs.length - MAX_CHECKS
+  if (over <= 0) return cs
+  const out = cs.filter((c) => !(c.taken && over-- > 0))
+  return out.slice(-MAX_CHECKS)
 }
 
 export const useWindChecks = create<ChecksState>()(
@@ -185,23 +198,34 @@ export const useWindChecks = create<ChecksState>()(
       checks: [],
       add: (c) => {
         // another puff of the check just made here: the same check, watched longer
-        const prev = c.source === 'hand' ? get().checks.find((o) => o.until == null && o.source === 'hand' && (o.by ?? '') === (c.by ?? '') && c.ts - o.ts >= 0 && c.ts - o.ts <= SERIES_MS && metresBetween(o.lon, o.lat, c.lon, c.lat) <= SERIES_M) : undefined
+        const prev = c.source === 'hand' ? get().checks.find((o) => o.until == null && !o.taken && o.source === 'hand' && (o.by ?? '') === (c.by ?? '') && c.ts - o.ts >= 0 && c.ts - o.ts <= SERIES_MS && metresBetween(o.lon, o.lat, c.lon, c.lat) <= SERIES_M) : undefined
         if (prev) {
           const folded = fold(prev, c)
           set((s) => ({ checks: s.checks.map((o) => (o.id === prev.id ? folded : o)) }))
           return folded
         }
         const check = { ...c, id: `wc${c.ts.toString(36)}${Math.random().toString(36).slice(2, 6)}` }
-        // the earlier checks here stop counting now
-        const replaced = (o: WindCheck) => o.until == null && o.ts <= c.ts && o.source === c.source && metresBetween(o.lon, o.lat, c.lon, c.lat) <= SUPERSEDE_M
-        set((s) => ({ checks: [...s.checks.map((o) => (replaced(o) ? { ...o, until: c.ts } : o)), check].slice(-500) }))
+        // your earlier checks here stop counting now (a partner's stop on their own phone)
+        const replaced = (o: WindCheck) => o.until == null && !o.taken && o.ts <= c.ts && o.source === c.source && metresBetween(o.lon, o.lat, c.lon, c.lat) <= SUPERSEDE_M
+        set((s) => ({ checks: capped([...s.checks.map((o) => (replaced(o) ? { ...o, until: c.ts } : o)), check]) }))
         return check
       },
       merge: (cs) => {
         const have = new Set(get().checks.map((c) => c.id))
         const fresh = cs.filter((c) => c && typeof c.id === 'string' && !have.has(c.id) && Number.isFinite(c.ts) && Number.isFinite(c.lon) && Number.isFinite(c.lat))
-        if (fresh.length) set((s) => ({ checks: [...s.checks, ...fresh.map((c) => ({ ...c, taken: true }))].sort((a, b) => a.ts - b.ts).slice(-500) }))
+        if (fresh.length) set((s) => ({ checks: capped([...s.checks, ...fresh.map((c) => ({ ...c, taken: true }))].sort((a, b) => a.ts - b.ts)) }))
         return fresh.length
+      },
+      takeIn: (cs) => {
+        const ok = cs.filter((c) => c && typeof c.id === 'string' && Number.isFinite(c.ts) && Number.isFinite(c.lon) && Number.isFinite(c.lat))
+        if (!ok.length) return
+        const byId = new Map(get().checks.map((c) => [c.id, c]))
+        for (const c of ok) {
+          const had = byId.get(c.id)
+          if (had && !had.taken) continue
+          byId.set(c.id, { ...c, taken: true })
+        }
+        set({ checks: capped([...byId.values()].sort((a, b) => a.ts - b.ts)) })
       },
       remove: (id) => set((s) => ({ checks: s.checks.filter((c) => c.id !== id) })),
       clear: () => set({ checks: [] }),

@@ -1,0 +1,156 @@
+/* The Party sheet (sheets/PartySheet.tsx) and the party's dots on the map
+   (party/partyLayer.ts). Rows, labels and buttons are areas.css's and ui.css's. */
+
+.pt-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: calc(16px * var(--ui-scale));
+}
+
+.pt-head .dim {
+  font-size: calc(12.5px * var(--ui-scale));
+  color: var(--c-text-dim);
+}
+
+.pt-initials {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: calc(14.5px * var(--ui-scale));
+}
+
+.pt-initials .coords-box {
+  width: 6.5em;
+  text-transform: uppercase;
+}
+
+.pt-member > :first-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pt-member:disabled {
+  opacity: 1;
+}
+
+.pt-member .dim {
+  white-space: normal;
+  text-align: right;
+}
+
+.pt-dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35);
+}
+
+.pt-dot-me {
+  background: var(--c-accent);
+}
+
+.pt-alone {
+  padding: 8px 2px 2px;
+}
+
+.pt-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 2px;
+  border-top: 1px solid rgba(var(--c-ink-rgb), 0.12);
+  border-bottom: 1px solid rgba(var(--c-ink-rgb), 0.12);
+  font-size: calc(14.5px * var(--ui-scale));
+}
+
+.pt-switch > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pt-switch small {
+  font-size: calc(12px * var(--ui-scale));
+  color: var(--c-text-dim);
+}
+
+/* the invite to scan: white, square, as big as the sheet allows */
+.pt-qr {
+  align-self: center;
+  width: min(62vw, 240px);
+  aspect-ratio: 1;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: #fff;
+}
+
+.pt-qr svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pt-leave {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  padding-top: 6px;
+  font-size: calc(13px * var(--ui-scale));
+}
+
+/* the party on the map: a tapped member's popup */
+.pt-pop {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 150px;
+}
+
+.pt-pop .dim {
+  color: var(--c-text-dim);
+  font-size: 12.5px;
+}
+
+/* a member on the map (party/partyLayer.ts): their initials in their colour, the age under it */
+.pt-mk {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+}
+
+.pt-mk b {
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  border-radius: 13px;
+  background: var(--pt);
+  box-shadow: 0 0 0 2px rgba(10, 14, 10, 0.85), 0 1px 6px rgba(0, 0, 0, 0.5);
+  color: #14100a;
+  font: 700 11px/1 system-ui, sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.pt-mk small {
+  color: #fff;
+  font: 700 10.5px/1 system-ui, sans-serif;
+  text-shadow: 0 0 2px #0a0e0a, 0 0 3px #0a0e0a, 0 1px 2px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
+}
+
+/* past two hours: a ring, its scent no longer drawn */
+.pt-mk.pt-old b {
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 0 3px var(--pt);
+  color: #fff;
+}

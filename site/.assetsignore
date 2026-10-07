@@ -6,3 +6,4 @@ schema.sql
 satbot.js
 stats.js
 checks.js
+party.js

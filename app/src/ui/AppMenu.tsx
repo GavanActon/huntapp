@@ -2,12 +2,13 @@ import { useRef, type JSX } from 'react'
 import { openHuntLog } from '../log/logView'
 import { useMapUpdates } from '../offline/updates'
 import { useAppStore, type Sheet } from '../state/appStore'
-import { IconBook, IconClock, IconGear, IconPin, IconPlaces, IconSatellite } from './icons'
+import { usePartyStore } from '../party/party'
+import { IconBook, IconClock, IconCrew, IconGear, IconPin, IconPlaces, IconSatellite } from './icons'
 import { useTapOff } from './tapOff'
 
 /**
- * The ⋯ menu behind the strip: Hunt log, Pins, Locations (the areas, each
- * with its Share), Weather by satellite (the request to text, and the
+ * The ⋯ menu behind the strip: Hunt log, Pins, Party (hunting together:
+ * docs/PARTY.md), Locations (the areas, each with its Share), Weather by satellite (the request to text, and the
  * answer pasted back), HuntOS (the field guide) and Settings, with the
  * new-maps count beside Settings when the server has some. It hangs under
  * the right end of whatever is position: relative around it (the folded
@@ -21,6 +22,8 @@ export default function AppMenu({ open, onClose }: { open: boolean; onClose: () 
   const ref = useRef<HTMLDivElement>(null)
   const openSheet = useAppStore((s) => s.openSheet)
   const newMaps = useMapUpdates((s) => s.pending.length)
+  const party = usePartyStore((s) => s.party)
+  const partyN = usePartyStore((s) => Object.keys(s.members).length)
   useTapOff(ref, open, onClose)
   if (!open) return null
   const go = (s: Sheet) => {
@@ -45,6 +48,11 @@ export default function AppMenu({ open, onClose }: { open: boolean; onClose: () 
         <IconPin />
         Pins
         <span className="dim">›</span>
+      </button>
+      <button className="wx-menu-row" role="menuitem" onClick={() => go({ kind: 'party' })}>
+        <IconCrew />
+        Party
+        {party ? <span className="dim">{partyN ? `${partyN + 1} in it` : 'just you'} ›</span> : <span className="dim">›</span>}
       </button>
       <button className="wx-menu-row" role="menuitem" onClick={() => go({ kind: 'locations' })}>
         <IconPlaces />
