@@ -13,7 +13,7 @@ Groundwind is the hunting app for the wind where you stand.
 - Your scent cone, from where you stand, on your ground.
 - Where he beds, where you can walk, where you can shoot, from the bush at eye level.
 - Each puff of powder calibrates the wind to what you actually felt.
-- Runs on your phone with no bars.
+- Works with no cell service. HD weather and party status come in by satellite.
 Built on a physical wind model and published research for every layer.
 
 It's made for your phone. Point the camera here to open it there, then add it to your home screen.
