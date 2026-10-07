@@ -98,8 +98,23 @@ export function onFirstIdle(m: MlMap, fn: () => void, fallbackMs = 2500) {
     done = true
     fn()
   }
-  m.once('idle', go)
-  window.setTimeout(go, fallbackMs)
+  void opening.then(() => {
+    // the opening's zoom in landed on a map that has already settled: now
+    if (openingHeld && m.loaded() && !m.isMoving()) return go()
+    m.once('idle', go)
+    window.setTimeout(go, fallbackMs)
+  })
+}
+
+/** The map's opening (MapView: a coarse view first, then in to the one it
+ *  opens on). First-idle work waits for it to land, so the wind and the
+ *  first scoring start on the view the map opens to, not on the coarse one
+ *  it passes through, and don't take the frames the zoom in needs. */
+let opening: Promise<void> = Promise.resolve()
+let openingHeld = false
+export function holdOpening(p: Promise<void>) {
+  opening = p
+  openingHeld = true
 }
 
 /** Like withMap, but for the layer modules: also runs against any *later* map.
