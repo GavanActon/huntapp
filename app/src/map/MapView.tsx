@@ -10,7 +10,7 @@ import { placeColour } from '../state/pinColours'
 import { usePlacesStore } from '../state/placesStore'
 import { geoUrls, holdOpening, setMap, withMap } from './mapController'
 import { useMeasureStore } from '../measure/measureStore'
-import { baseTone, BOG_TUFT, bogTuftImage, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour } from './mapStyle'
+import { baseTone, BOG_TUFT, bogTuftImage, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour, lidarShadeBrightness } from './mapStyle'
 import { offlineComplete, registerAllDataFiles, sourceModes } from './pmtilesRegistry'
 import { showInfoPopup } from './infoPopup'
 import { showPlacePopup } from './placePopup'
@@ -371,6 +371,10 @@ export function applyLayerState(map: maplibregl.Map, layers: LayerVisibility, op
     }
     if (meta.opacityKey && l.type === 'color-relief') map.setPaintProperty(l.id, 'color-relief-opacity', opacity[meta.opacityKey])
     if (meta.opacityKey === 'forest' && l.type === 'fill') map.setPaintProperty(l.id, 'fill-opacity', opacity.forest)
+    // the LiDAR shade's light side toned to grey over the imagery only: set
+    // when the style was built, it stayed toned on a switch from the imagery
+    // to Terrain, and the old roads read greyer there than they should
+    if (l.id === 'hillshade-lidar') map.setPaintProperty(l.id, 'raster-brightness-max', lidarShadeBrightness(layers))
   }
   // a switch gone on: its source gets its file now
   flushDeferredGeo(map, layers)
