@@ -833,6 +833,14 @@ export interface Sitter {
   height: number
   /** you, out hunting: the cone follows your position (see hunting/hunting.ts) */
   live?: boolean
+  /** a party member, where their phone last said (party/party.ts): their id in the party and their initials */
+  party?: string
+  who?: string
+}
+
+/** What the card and the map call a sitter: "you", a party member's initials, or their number from 1. */
+export function sitterName(p: Sitter | undefined, k: number): string {
+  return p?.live ? 'you' : (p?.who ?? `${k + 1}`)
 }
 
 /** Close enough to where you stand that a person put there is you, not a second cone on top. */
@@ -876,6 +884,8 @@ interface ScentState {
   remove: (k: number) => void
   /** you, first in the list, at your position */
   putLive: (lon: number, lat: number) => void
+  /** the party members sitting now, after everyone else (party/party.ts); the same list again changes nothing */
+  setParty: (ps: Sitter[]) => void
   removeLive: () => void
   setPick: (k: number) => void
   setAdding: (v: boolean) => void
@@ -920,15 +930,26 @@ export const useScent = create<ScentState>()(
       move: (k, lon, lat) => set({ people: get().people.map((p, i) => (i === k ? { ...p, lon, lat } : p)), moving: null }),
       // your cone coming on is a request to see it, so hidden cones come back with it
       putLive: (lon, lat) => set({ people: [{ lon, lat, height: get().height, live: true }, ...get().people.filter((p) => !p.live)], pick: 0 }),
+      setParty: (ps) => {
+        const { people, pick } = get()
+        const next = [...people.filter((p) => !p.party), ...ps]
+        const same = next.length === people.length && next.every((p, i) => p.lon === people[i].lon && p.lat === people[i].lat && p.height === people[i].height && p.party === people[i].party && p.who === people[i].who && !!p.live === !!people[i].live)
+        if (same) return
+        // the one picked stays picked, wherever the list moved them
+        const was = people[pick]
+        const k = was ? next.findIndex((p) => (was.party ? p.party === was.party : p === was)) : -1
+        set({ people: next, pick: k >= 0 ? k : Math.max(0, Math.min(pick, next.length - 1)) })
+      },
       removeLive: () => {
         const rest = get().people.filter((p) => !p.live)
-        if (!rest.length) return get().clear()
+        // the party alone is not a sit of yours: your cone going takes theirs with it
+        if (!rest.some((p) => !p.party)) return get().clear()
         if (rest.length < get().people.length) set({ people: rest, pick: 0, moving: null })
       },
       remove: (k) => {
         const { people, pick } = get()
         const rest = people.filter((_, i) => i !== k)
-        if (!rest.length) return get().clear()
+        if (!rest.length || (!people[k]?.party && !rest.some((p) => !p.party))) return get().clear()
         set({ people: rest, pick: pick > k ? pick - 1 : Math.min(pick, rest.length - 1), moving: null })
       },
       setPick: (pick) => set({ pick }),
@@ -1084,7 +1105,7 @@ function drawEdges(map: MlMap, people: Sitter[], runs: (PlumeRun | null)[]) {
     if (tip) {
       // the label sits off the tip, on the side away from the person
       const a = `${tip[1] >= 0 ? 'bottom' : 'top'}-${tip[0] >= 0 ? 'left' : 'right'}`
-      features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [lon + tip[0] / kx, lat + tip[1] / ky] }, properties: { c, a, t: `${k + 1} · ${reachLabel(r.plume)}` } })
+      features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [lon + tip[0] / kx, lat + tip[1] / ky] }, properties: { c, a, t: `${sitterName(people[k], k)} · ${reachLabel(r.plume)}` } })
     }
   })
   const fc: FeatureCollection = { type: 'FeatureCollection', features }
@@ -1219,7 +1240,8 @@ function syncMarkers(map: MlMap | null) {
     let held = false
     const letGo = () => window.clearTimeout(hold)
     const holdOpen = () => {
-      if (!useScent.getState().people[k] || map.isMoving()) return
+      // a party member's height is theirs to set, on their phone
+      if (!useScent.getState().people[k] || useScent.getState().people[k].party || map.isMoving()) return
       held = true
       if (navigator.vibrate) navigator.vibrate(12)
       useScent.getState().setPick(k)
@@ -1246,7 +1268,7 @@ function syncMarkers(map: MlMap | null) {
       if (held) return (held = false)
       const p = useScent.getState().people[k]
       if (p && useMeasureStore.getState().active) return useMeasureStore.getState().addPoint([p.lon, p.lat])
-      if (p && useRoutes.getState().open) return useRoutes.getState().setTo({ lon: p.lon, lat: p.lat, kind: 'map', name: `${k + 1}` })
+      if (p && useRoutes.getState().open) return useRoutes.getState().setTo({ lon: p.lon, lat: p.lat, kind: 'map', name: sitterName(p, k) })
       useScent.getState().setPick(k)
     })
     const m = new maplibregl.Marker({ element: el, draggable: true })
@@ -1274,10 +1296,12 @@ function syncMarkers(map: MlMap | null) {
     const m = markers[k]
     if (k !== dragging) m.setLngLat([p.lon, p.lat])
     // you: the position dot is where your scent comes from, and it moves with you, not a finger
-    m.setDraggable(!p.live)
+    // a party member sits where their phone says: theirs to move, not a finger's here
+    m.setDraggable(!p.live && !p.party)
     const el = m.getElement()
-    el.style.display = p.live ? 'none' : ''
-    el.textContent = many ? String(k + 1) : ''
+    // you: the position dot; a party member: their own dot, with its age (party/partyLayer.ts)
+    el.style.display = p.live || p.party ? 'none' : ''
+    el.textContent = many ? sitterName(p, k) : ''
     el.classList.toggle('sp-many', many)
     el.classList.toggle('sp-pick', many && k === pick)
     // up a tree: the dot pale (in their own colours, its ring) and the stand's height under it
@@ -1717,11 +1741,11 @@ const listText = (ns: string[]) => (ns.length < 2 ? ns[0] : `${ns.slice(0, -1).j
  */
 export function groupSummary(g: Group, people: Sitter[] = []): { head: string; drift: string | null } {
   const adds = g.addsHa >= 0.1 ? ` · overlap adds ${areaText(g.addsHa)}` : ''
-  const name = (k: number) => (people[k]?.live ? 'you' : `${k + 1}`)
+  const name = (k: number) => sitterName(people[k], k)
   const onto = new Map<number, string[]>()
   for (const [a, b] of g.reaches) onto.set(a, [...(onto.get(a) ?? []), name(b)])
   // the first names the scent; the rest are short: "1's scent drifts over you · yours over 2"
-  const whose = (a: number, first: boolean) => (people[a]?.live ? (first ? 'Your scent' : 'yours') : `${a + 1}'s${first ? ' scent' : ''}`)
+  const whose = (a: number, first: boolean) => (people[a]?.live ? (first ? 'Your scent' : 'yours') : `${sitterName(people[a], a)}'s${first ? ' scent' : ''}`)
   const drift = [...onto].map(([a, bs], i) => `${whose(a, !i)} drifts over ${listText(bs)}`)
   return { head: `Noticeable over ${areaText(g.areaHa)} together${adds}`, drift: drift.length ? drift.join(' · ') : null }
 }

@@ -200,7 +200,8 @@ export function movesChip(r: MoveRead): string {
 
 /** A sound as a row: 'Bull grunt 6:11 · 300 m NNE · moving E' (the way he moved from the sound before, when it says). */
 export function soundRow(e: LogEntry, prev?: LogEntry): string {
-  const what = e.sound ? SOUND_NAMES[e.sound] : e.what === 'seen' ? 'Seen' : e.what === 'called' ? 'Called in' : 'Heard'
+  // a sound this version does not know (a party member's newer app) reads as heard
+  const what = (e.sound && SOUND_NAMES[e.sound]) || (e.what === 'seen' ? 'Seen' : e.what === 'called' ? 'Called in' : 'Heard')
   const parts = [`${what} ${clockShort(e.ts)}`]
   if (e.from) parts.push(`${tens(e.from.distM)} ${compass(e.from.bearing)}`)
   if (prev && e.ts - prev.ts <= RECENT_MS && metresTo(prev, e) >= 30) parts.push(`moving ${compass(bearingTo(prev, e))}`)

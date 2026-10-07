@@ -182,7 +182,8 @@ export default function HuntLogSheet(): JSX.Element {
     let badge: ReturnType<typeof verdict> = null
     if (ev.type === 'entry') {
       title = entryTitle(ev.e)
-      desc = entryDetail(ev.e, false)
+      // a party member's: their initials first
+      desc = [ev.e.by, entryDetail(ev.e, false)].filter(Boolean).join(' · ')
     } else if (ev.type === 'check') {
       title = `Wind · ${checkWords(ev.c)}`
       badge = verdict(ev.c)

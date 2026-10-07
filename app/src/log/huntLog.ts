@@ -85,6 +85,11 @@ export interface LogEntry {
   note?: string
   wx?: LogWeather
   model?: LogModel
+  /** a party member's (party/party.ts): their initials, and their id in the party */
+  by?: string
+  member?: string
+  /** taken in from the party: theirs, kept as they send it */
+  taken?: boolean
 }
 
 interface LogState {
@@ -92,11 +97,13 @@ interface LogState {
   add: (e: Omit<LogEntry, 'id'>) => LogEntry
   update: (id: string, patch: Partial<LogEntry>) => void
   remove: (id: string) => void
+  /** a party member's entries as they stand now: new ones in, changed ones replaced, never one of yours */
+  takeIn: (es: LogEntry[]) => void
 }
 
 export const useHuntLog = create<LogState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       entries: [],
       add: (e) => {
         const entry = { ...e, id: `lg${e.ts.toString(36)}${Math.random().toString(36).slice(2, 6)}` }
@@ -105,6 +112,17 @@ export const useHuntLog = create<LogState>()(
       },
       update: (id, patch) => set((s) => ({ entries: s.entries.map((e) => (e.id === id ? { ...e, ...patch } : e)) })),
       remove: (id) => set((s) => ({ entries: s.entries.filter((e) => e.id !== id) })),
+      takeIn: (es) => {
+        const ok = es.filter((e) => e && typeof e.id === 'string' && Number.isFinite(e.ts) && Number.isFinite(e.lon) && Number.isFinite(e.lat))
+        if (!ok.length) return
+        const byId = new Map(get().entries.map((e) => [e.id, e]))
+        for (const e of ok) {
+          const had = byId.get(e.id)
+          if (had && !had.taken) continue
+          byId.set(e.id, { ...e, taken: true })
+        }
+        set({ entries: [...byId.values()].sort((a, b) => a.ts - b.ts).slice(-2000) })
+      },
     }),
     { name: 'huntapp-log' },
   ),

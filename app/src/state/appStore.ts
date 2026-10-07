@@ -21,6 +21,7 @@ export type Sheet =
   | { kind: 'locations' }
   /** weather by satellite text: the request, then the paste */
   | { kind: 'sat' }
+  | { kind: 'party' }
 export type SheetKind = Sheet['kind']
 
 /** Each sheet's half-open height, % of the screen. */
@@ -40,6 +41,8 @@ export const SHEET_HALF_PCT: Record<SheetKind, number> = {
   locations: 34,
   // the request, its two buttons and the paste box
   sat: 62,
+  // the invite's QR code and the members under it
+  party: 72,
 }
 
 /** The sheet showing now: the top of the stack, or null when closed. */

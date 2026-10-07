@@ -2,7 +2,7 @@ import { useEffect, type JSX } from 'react'
 import { useAppStore } from '../state/appStore'
 import { clockShort } from '../time'
 import { groundWind } from '../weather/micro/model'
-import { clearPlaced, coneSizeWord, drawnView, GROUND_H, groupSummary, personColour, reachLabel, reliefReason, SCENT_HEIGHTS, sittersLine, useScent, type ScentView } from '../weather/micro/scent'
+import { clearPlaced, coneSizeWord, drawnView, GROUND_H, groupSummary, personColour, reachLabel, reliefReason, SCENT_HEIGHTS, sitterName, sittersLine, useScent, type ScentView } from '../weather/micro/scent'
 import { checkSpentAt, strongestCheck, useWindChecks } from '../weather/micro/windChecks'
 import { compass } from '../weather/openMeteo'
 import { useLookTick } from './useLookTick'
@@ -60,7 +60,7 @@ export default function ScentCard(): JSX.Element | null {
   const shown = drawnView(view, n)
   const party = many && group ? { head: sittersLine(group, n), drift: groupSummary(group, people).drift } : null
   const placed = people.some((p) => !p.live)
-  const who = (i: number) => (people[i]?.live ? 'You' : `${i + 1}`)
+  const who = (i: number) => (people[i]?.live ? 'You' : sitterName(people[i], i))
   const kmh = (v: number) => (units === 'imperial' ? Math.round(v * 0.621371) : Math.round(v))
   const slowed = g && g.kmh < g.regionalKmh * 0.8 ? ', slowed by the bush' : ''
   const offDrop = plume && reliefReason(plume)
@@ -117,7 +117,7 @@ export default function ScentCard(): JSX.Element | null {
                 </button>
               ))}
             </div>
-            {!at.live && (
+            {!at.live && !at.party && (
               <button className="linklike sc-remove" onClick={() => remove(k)}>
                 Remove {k + 1}
               </button>
@@ -130,6 +130,12 @@ export default function ScentCard(): JSX.Element | null {
             {party.drift && <div className="scent-line lc-amber">{party.drift}</div>}
           </>
         )}
+        {at.party ? (
+          // a party member's height is theirs, set on their phone
+          <div className="scent-line">
+            <span className="dim">{at.who} is</span> {at.height === GROUND_H ? 'on the ground' : `in a stand, ${at.height} m`}
+          </div>
+        ) : (
         <div className="sc-sec">
           <span className="sc-sec-name">{at.live || !many ? "You're at" : `${k + 1} is at`}</span>
           <div className="seg" role="radiogroup" aria-label={at.live || !many ? 'Where you sit' : `Where ${k + 1} sits`}>
@@ -140,6 +146,7 @@ export default function ScentCard(): JSX.Element | null {
             ))}
           </div>
         </div>
+        )}
         <div className="sc-sec">
           <span className="sc-sec-name">
             Cone size <span className="dim">· {coneSizeWord(risk)}</span>
