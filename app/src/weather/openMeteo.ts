@@ -301,11 +301,29 @@ export async function pointForecast(lon: number, lat: number): Promise<{ forecas
   }
 }
 
+// The hour stamps read as times once per forecast. The spot scoring asks
+// hourAt about 4,000 times in a launch's first seconds (a dozen asks for
+// every hour the strip scores), and reading the stamps from the first on
+// every ask froze the phone for a fifth of a second each scoring pass.
+// Keyed on the array, checked by its length and last stamp: hours appended
+// in place (the satellite's) read again.
+const stampMs = new WeakMap<string[], { n: number; last: string; ms: Float64Array }>()
+
+function hourTimes(f: PointForecast): Float64Array {
+  const times = f.hourly.time
+  const last = times[times.length - 1]
+  const hit = stampMs.get(times)
+  if (hit && hit.n === times.length && hit.last === last) return hit.ms
+  const ms = Float64Array.from(times, (t) => Date.parse(t))
+  stampMs.set(times, { n: times.length, last, ms })
+  return ms
+}
+
 export function hourRow(f: PointForecast, i: number): HourRow {
   const h = f.hourly
   const sat = !!f.sat && i >= f.sat.i0 && i <= f.sat.i1
   return {
-    time: new Date(h.time[i]),
+    time: new Date(hourTimes(f)[i]),
     windKmh: h.windKmh[i],
     gustKmh: h.gustKmh[i],
     windDir: h.windDir[i],
@@ -326,8 +344,7 @@ export function hourRow(f: PointForecast, i: number): HourRow {
 export function dayHours(f: PointForecast, dayStartMs: number): HourRow[] {
   const end = dayStartMs + 24 * 3600_000
   const out: HourRow[] = []
-  f.hourly.time.forEach((t, i) => {
-    const ms = Date.parse(t)
+  hourTimes(f).forEach((ms, i) => {
     if (ms >= dayStartMs && ms < end) out.push(hourRow(f, i))
   })
   return out
@@ -359,11 +376,17 @@ export function turnHour(a: number, b: number, t: number): number {
  * blend with.
  */
 export function hourAt(f: PointForecast, ms: number): HourRow | null {
-  const times = f.hourly.time
+  const times = hourTimes(f)
+  // the last stamp at or before the moment
   let idx = -1
-  for (let i = 0; i < times.length; i++) {
-    if (Date.parse(times[i]) <= ms) idx = i
-    else break
+  let lo = 0
+  let hi = times.length - 1
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    if (times[mid] <= ms) {
+      idx = mid
+      lo = mid + 1
+    } else hi = mid - 1
   }
   if (idx < 0) return null
   const a = hourRow(f, idx)

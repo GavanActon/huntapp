@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { memo, useDeferredValue, useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { inRegion } from '../config'
 import { useMapBearing } from '../map/mapBearing'
 import { MARK_KINDS, MARK_NAMES, useAppStore } from '../state/appStore'
@@ -143,6 +143,94 @@ function useHourTick(): void {
 }
 
 const bar = (v: number): CSSProperties => ({ '--bar': v.toFixed(2) }) as CSSProperties
+
+type Units = ReturnType<typeof useAppStore.getState>['units']
+const tempIn = (units: Units, c: number) => (units === 'imperial' ? Math.round(c * 1.8 + 32) : Math.round(c))
+const windIn = (units: Units, k: number) => (units === 'imperial' ? Math.round(k * 0.621371) : Math.round(k))
+
+/** The evening drain over an hour's cell, as shares of the hour, or null. */
+function drainAt(drains: DrainRun[], ms: number, floorNow: number): { l: number; r: number; label: boolean } | null {
+  for (const w of drains) {
+    if (w.endMs <= ms || w.startMs >= ms + H) continue
+    const l = Math.max(0, (w.startMs - ms) / H)
+    const r = Math.min(1, (w.endMs - ms) / H)
+    return { l, r, label: w.startMs >= ms || ms === floorNow }
+  }
+  return null
+}
+
+/** What an hour cell does when pressed and tapped: one object for the row,
+ *  its functions swapped every render, so a cell's own props stay the same. */
+interface CellActions {
+  down: (ms: number) => void
+  up: () => void
+  tap: (ms: number) => void
+}
+
+/**
+ * One hour of the row. The row is some 190 of them, and it rendered whole
+ * every time anything in the strip moved: on a launch the forecast, the
+ * hour scores, the plans and the ground model each landed and redrew every
+ * cell, a tenth of a second or more a time on a phone, just as the wind
+ * streaks started. Memoised on its own hour, a cell draws again only when
+ * that hour changes.
+ */
+const HourCell = memo(function HourCell({
+  h,
+  units,
+  active,
+  night,
+  warn,
+  activity,
+  drainL,
+  drainR,
+  drainLabel,
+  actions,
+}: {
+  h: HourRow
+  units: Units
+  active: boolean
+  night: boolean
+  warn: boolean
+  /** the quarry's activity bar, 0..1; null before the hours are scored */
+  activity: number | null
+  drainL: number | null
+  drainR: number | null
+  drainLabel: boolean
+  actions: RefObject<CellActions>
+}) {
+  const ms = h.time.getTime()
+  const midnight = h.time.getHours() === 0
+  return (
+    <button
+      data-ms={ms}
+      className={`wxcell${active ? ' wx-active' : ''}${night ? ' wxcell-night' : ''}${midnight ? ' wxcell-midnight' : ''}`}
+      onPointerDown={() => actions.current.down(ms)}
+      onPointerUp={() => actions.current.up()}
+      onPointerLeave={() => actions.current.up()}
+      onPointerCancel={() => actions.current.up()}
+      onContextMenu={(e) => e.preventDefault()}
+      onClick={() => actions.current.tap(ms)}
+    >
+      <span className="wxcell-h">{midnight ? dayShort(ms) : hourShort(ms)}</span>
+      <span className="wxday-wx">
+        <WindArrow deg={h.windDir} />
+        <b>{windIn(units, h.windKmh)}</b>
+      </span>
+      <span className="wxcell-wave">
+        {tempIn(units, h.tempC)}°{h.precipProbPct != null && h.precipProbPct >= 30 && <em>{h.precipProbPct}%</em>}
+      </span>
+      {isThunder(h.weatherCode) && <span className="wxcell-bolt wx-bolt">⚡</span>}
+      {warn && <span className="wxcell-warn">!</span>}
+      {activity != null && <span className="wxbar" style={bar(activity)} />}
+      {drainL != null && drainR != null && (
+        <span className="wxdrain" style={{ left: drainL === 0 ? -2 : `${drainL * 100}%`, right: drainR === 1 ? -2 : `${(1 - drainR) * 100}%` }}>
+          {drainLabel && <span className="wxdrain-label">drains</span>}
+        </span>
+      )}
+    </button>
+  )
+})
 
 /** A strip button's press and hold: `onHold` after 450 ms, and the click
  *  that follows the lift is swallowed. Spread `bind` on the button and
@@ -306,6 +394,12 @@ export default function WeatherStrip() {
 
   const plansByDay = useMemo(() => new Map(plans.map((p) => [p.dayStartMs, p])), [plans])
   const scoreByMs = useMemo(() => new Map(hourScores.map((h) => [h.ms, h])), [hourScores])
+  // What changes every cell at once (a forecast, the hours scored, the
+  // drains) reaches the row a moment later, in a render React can break
+  // up between frames, so the map and the wind keep drawing meanwhile.
+  // A tap on an hour is not deferred.
+  const cellHours = useDeferredValue(hours)
+  const cellScores = useDeferredValue(scoreByMs)
 
   const activeHourMs = planTimeMs == null ? floorNow : floorHourMs(planTimeMs)
   const selDayMs = startOfDayMs(planTimeMs ?? now)
@@ -320,6 +414,15 @@ export default function WeatherStrip() {
     heldHour.current = ms
     setPlanTime(ms === floorNow ? null : ms)
   })
+  const cellActions = useRef<CellActions>(null!)
+  cellActions.current = {
+    down: (ms) => {
+      pressedHour.current = ms
+      hourHold.bind.onPointerDown()
+    },
+    up: hourHold.bind.onPointerUp,
+    tap: (ms) => hourHold.tap(() => tapHour(ms))(),
+  }
 
   // the detail follows the picked hour; a fold or a new pick closes it, unless the pick was a hold
   useEffect(() => {
@@ -355,7 +458,7 @@ export default function WeatherStrip() {
       row.removeEventListener('scroll', onScroll)
       if (raf) window.cancelAnimationFrame(raf)
     }
-  }, [stripOpen, hours.length])
+  }, [stripOpen, cellHours.length])
   useEffect(() => {
     const row = cellsRef.current
     if (!row) return
@@ -363,7 +466,7 @@ export default function WeatherStrip() {
     if (!cell) return
     const left = cell.offsetLeft - row.offsetLeft
     if (left < row.scrollLeft || left + cell.offsetWidth > row.scrollLeft + row.clientWidth) row.scrollTo({ left, behavior: 'smooth' })
-  }, [activeHourMs, hours.length, stripOpen])
+  }, [activeHourMs, cellHours.length, stripOpen])
 
   // the evening drains under the hour row, one run per day in the row (and
   // the day before it, whose run carries into this morning); computed a
@@ -392,16 +495,7 @@ export default function WeatherStrip() {
       window.clearTimeout(t)
     }
   }, [stripOpen, subjLon, subjLat, firstDayMs, lastDayMs, groundTick, checks, forecast])
-
-  const drainAt = (ms: number): { l: number; r: number; label: boolean } | null => {
-    for (const w of drains) {
-      if (w.endMs <= ms || w.startMs >= ms + H) continue
-      const l = Math.max(0, (w.startMs - ms) / H)
-      const r = Math.min(1, (w.endMs - ms) / H)
-      return { l, r, label: w.startMs >= ms || ms === floorNow }
-    }
-    return null
-  }
+  const cellDrains = useDeferredValue(drains)
 
   // the picked hour's detail
   const detail = useMemo(() => {
@@ -435,8 +529,8 @@ export default function WeatherStrip() {
     },
   }
 
-  const temp = (c: number) => (units === 'imperial' ? Math.round(c * 1.8 + 32) : Math.round(c))
-  const wind = (k: number) => (units === 'imperial' ? Math.round(k * 0.621371) : Math.round(k))
+  const temp = (c: number) => tempIn(units, c)
+  const wind = (k: number) => windIn(units, k)
 
   const tapHour = (ms: number) => {
     if (ms === activeHourMs) setDetailMs((d) => (d === ms ? null : ms))
@@ -617,41 +711,25 @@ export default function WeatherStrip() {
             })}
           </div>
           )}
-          <div className={`wxstrip-cells${drains.length ? ' wx-drains' : ''}`} ref={cellsRef}>
-            {hours.map((h) => {
+          <div className={`wxstrip-cells${cellDrains.length ? ' wx-drains' : ''}`} ref={cellsRef}>
+            {cellHours.map((h) => {
               const ms = h.time.getTime()
-              const midnight = h.time.getHours() === 0
-              const sc = scoreByMs.get(ms)
-              const dr = drainAt(ms)
+              const sc = cellScores.get(ms)
+              const dr = drainAt(cellDrains, ms, floorNow)
               return (
-                <button
+                <HourCell
                   key={ms}
-                  data-ms={ms}
-                  className={`wxcell${ms === activeHourMs ? ' wx-active' : ''}${isNight(ms) ? ' wxcell-night' : ''}${midnight ? ' wxcell-midnight' : ''}`}
-                  {...hourHold.bind}
-                  onPointerDown={() => {
-                    pressedHour.current = ms
-                    hourHold.bind.onPointerDown()
-                  }}
-                  onClick={hourHold.tap(() => tapHour(ms))}
-                >
-                  <span className="wxcell-h">{midnight ? dayShort(ms) : hourShort(ms)}</span>
-                  <span className="wxday-wx">
-                    <WindArrow deg={h.windDir} />
-                    <b>{wind(h.windKmh)}</b>
-                  </span>
-                  <span className="wxcell-wave">
-                    {temp(h.tempC)}°{h.precipProbPct != null && h.precipProbPct >= 30 && <em>{h.precipProbPct}%</em>}
-                  </span>
-                  {isThunder(h.weatherCode) && <span className="wxcell-bolt wx-bolt">⚡</span>}
-                  {sc && sc.warnings.length > 0 && <span className="wxcell-warn">!</span>}
-                  {sc && <span className="wxbar" style={bar(activityBar(target, sc.activity))} />}
-                  {dr && (
-                    <span className="wxdrain" style={{ left: dr.l === 0 ? -2 : `${dr.l * 100}%`, right: dr.r === 1 ? -2 : `${(1 - dr.r) * 100}%` }}>
-                      {dr.label && <span className="wxdrain-label">drains</span>}
-                    </span>
-                  )}
-                </button>
+                  h={h}
+                  units={units}
+                  active={ms === activeHourMs}
+                  night={isNight(ms)}
+                  warn={!!sc && sc.warnings.length > 0}
+                  activity={sc ? activityBar(target, sc.activity) : null}
+                  drainL={dr?.l ?? null}
+                  drainR={dr?.r ?? null}
+                  drainLabel={!!dr?.label}
+                  actions={cellActions}
+                />
               )
             })}
           </div>

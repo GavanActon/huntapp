@@ -7,7 +7,7 @@
  * the hour bars under the strip are scored here too, grid or no grid.
  */
 import { dayPlans, hourScores } from './dayPlan'
-import type { GeoJSONSource, ImageSource, Map as MlMap } from 'maplibre-gl'
+import type { CanvasSource, GeoJSONSource, Map as MlMap } from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
 import { inRegion, REGION, SPOTS_RADIUS_M } from '../config'
 import { trackTime } from '../analytics'
@@ -24,8 +24,8 @@ import { useHuntLog } from '../log/huntLog'
 import { cachedPointForecast, pointForecast, type PointForecast } from '../weather/openMeteo'
 import { onWeatherRefreshed, onWeatherStatus, weatherStatus } from '../weather/refresh'
 import { cachedRecentDaily, deriveConditions, recentDailyMeans } from './conditions'
-import { habitat, loadHabitat, onHabitat, COVER } from './habitatGrid'
-import { huntPass, huntResult, huntRows, scoreTarget, type HuntPass, type ScoreResult } from './scoring'
+import { habitat, loadHabitat, onHabitat, COVER, type Habitat } from './habitatGrid'
+import { huntPass, huntResult, huntRows, scoreTarget, warmHuntBands, type HuntPass, type ScoreResult } from './scoring'
 import { loadMicro, onMicro } from '../weather/micro/model'
 import { useScent } from '../weather/micro/scent'
 import { currentProfile, ensureProfile, onProfile } from '../weather/boundaryLayer'
@@ -35,6 +35,8 @@ import { isFish, type HuntTarget } from './types'
 const HEAT_SRC = 'spots-heat'
 const PINS_SRC = 'spots-pins'
 let canvas: HTMLCanvasElement | null = null
+/** The window the heat canvas is placed over (paint), as its rows and columns. */
+let placedAt: string | null = null
 /** Heat pixels per grid cell: the canvas is drawn at this multiple and the
  *  cells feathered into each other, so the 30 m lattice does not read as
  *  a staircase. */
@@ -67,9 +69,11 @@ function ensureSources(m: MlMap) {
   if (m.getSource(HEAT_SRC)) return
   const h = habitat()
   if (!h) return
+  // a blank pixel over the region until the first paint sizes the canvas to its window and places it
   canvas = document.createElement('canvas')
-  canvas.width = h.cols * UP
-  canvas.height = h.rows * UP
+  canvas.width = 1
+  canvas.height = 1
+  placedAt = null
   const east = h.west + h.cols * h.dLon
   const south = h.north - h.rows * h.dLat
   m.addSource(HEAT_SRC, {
@@ -166,7 +170,9 @@ function pinImage(): ImageData {
   const c = document.createElement('canvas')
   c.width = w
   c.height = h
-  const g = c.getContext('2d')!
+  // drawn on the CPU: read back from a GPU canvas, a marker this small
+  // waited on everything the map had queued (some 50 ms on a phone's launch)
+  const g = c.getContext('2d', { willReadFrequently: true })!
   g.scale(S, S)
   const cx = 11
   const cy = 10
@@ -284,14 +290,25 @@ function heatRange(scores: Float32Array, cells: number[]): { lo: number; span: n
   return span >= DAY_MIN_SPAN ? { lo, span } : { lo: FIXED_LO, span: FIXED_SPAN }
 }
 
+/** The heat canvas's window as its corners, west-north first and clockwise. */
+function windowCorners(h: Habitat, wr0: number, wr1: number, wc0: number, wc1: number): [[number, number], [number, number], [number, number], [number, number]] {
+  const west = h.west + wc0 * h.dLon
+  const east = h.west + wc1 * h.dLon
+  const north = h.north - wr0 * h.dLat
+  const south = h.north - wr1 * h.dLat
+  return [
+    [west, north],
+    [east, north],
+    [east, south],
+    [west, south],
+  ]
+}
+
 function paint(scores: Float32Array | null, water: boolean, near: { lon: number; lat: number }) {
   lastPaint = { scores, water, near }
   const h = habitat()
   if (!canvas || !h) return
-  const ctx = canvas.getContext('2d')!
   const { cols, rows } = h
-  const W = cols * UP
-  const H = rows * UP
   // the painted window: nothing shows past a third beyond the radius, so
   // only those cells (and their pixels) are worked, not the whole region
   const ni = h.index(near.lon, near.lat)
@@ -307,8 +324,24 @@ function paint(scores: Float32Array | null, water: boolean, near: { lon: number;
   const py0 = wr0 * UP
   const pw = (wc1 - wc0) * UP
   const ph = (wr1 - wr0) * UP
-  ctx.clearRect(0, 0, W, H)
-  const img = ctx.createImageData(W, H)
+  // The canvas is the window, placed over it on the map, not the whole
+  // region: the region at UP× was 12 MB of pixels to fill and send to the
+  // GPU on every paint (two a scoring pass) and some 40 MB of buffers,
+  // nearly all of them blank. The window is under a quarter of that.
+  if (canvas.width !== pw || canvas.height !== ph) {
+    canvas.width = pw
+    canvas.height = ph
+  }
+  const ctx = canvas.getContext('2d')!
+  ctx.clearRect(0, 0, pw, ph)
+  const m = getMap()
+  const src = m?.getSource(HEAT_SRC) as (CanvasSource & { play?: () => void; pause?: () => void }) | undefined
+  const at = `${wr0},${wr1},${wc0},${wc1}`
+  if (src && placedAt !== at) {
+    src.setCoordinates(windowCorners(h, wr0, wr1, wc0, wc1))
+    placedAt = at
+  }
+  const img = ctx.createImageData(pw, ph)
   const d = img.data
   if (scores) {
     // per cell: heat coverage (0..1, the radius fade), tone along the ramp, wash coverage
@@ -357,16 +390,17 @@ function paint(scores: Float32Array | null, water: boolean, near: { lon: number;
       smooth(wash, cover, water, cols, rows, wr0, wr1, wc0, wc1)
     }
     for (let i = 0; i < tone.length; i++) tone[i] = cov[i] > 1e-4 ? tone[i] / cov[i] : 0
-    const level = new Uint8Array(W * H)
-    const cova = new Float32Array(W * H)
+    // canvas pixels from here on: (x, y) in the window, px0/py0 its offset in the region's
+    const level = new Uint8Array(pw * ph)
+    const cova = new Float32Array(pw * ph)
     const bold = useSpotsStore.getState().heatStrength
-    for (let y = py0; y < py0 + ph; y++) {
-      const fy = (y + 0.5) / UP - 0.5
+    for (let y = 0; y < ph; y++) {
+      const fy = (py0 + y + 0.5) / UP - 0.5
       const r0 = Math.max(0, Math.min(rows - 1, Math.floor(fy)))
       const r1 = Math.min(rows - 1, r0 + 1)
       const wy = Math.max(0, Math.min(1, fy - r0))
-      for (let x = px0; x < px0 + pw; x++) {
-        const fx = (x + 0.5) / UP - 0.5
+      for (let x = 0; x < pw; x++) {
+        const fx = (px0 + x + 0.5) / UP - 0.5
         const c0 = Math.max(0, Math.min(cols - 1, Math.floor(fx)))
         const c1 = Math.min(cols - 1, c0 + 1)
         const wx = Math.max(0, Math.min(1, fx - c0))
@@ -380,7 +414,7 @@ function paint(scores: Float32Array | null, water: boolean, near: { lon: number;
         const w11 = wx * wy
         const a = cov[i00] * w00 + cov[i01] * w01 + cov[i10] * w10 + cov[i11] * w11
         const w = wash[i00] * w00 + wash[i01] * w01 + wash[i10] * w10 + wash[i11] * w11
-        const p = y * W + x
+        const p = y * pw + x
         if (a > 0.002) {
           // tone weighted by coverage so an off neighbour feathers the edge without pulling the colour to amber
           const t = (tone[i00] * cov[i00] * w00 + tone[i01] * cov[i01] * w01 + tone[i10] * cov[i10] * w10 + tone[i11] * cov[i11] * w11) / a
@@ -401,12 +435,13 @@ function paint(scores: Float32Array | null, water: boolean, near: { lon: number;
       }
     }
     // a dark line where a band steps up to the next (the higher side), one canvas pixel wide
-    for (let y = Math.max(1, py0); y < Math.min(H - 1, py0 + ph); y++) {
-      for (let x = Math.max(1, px0); x < Math.min(W - 1, px0 + pw); x++) {
-        const p = y * W + x
+    // (the window's own border is past the radius's fade: never a band there)
+    for (let y = 1; y < ph - 1; y++) {
+      for (let x = 1; x < pw - 1; x++) {
+        const p = y * pw + x
         const l = level[p]
         if (!l) continue
-        if (level[p - 1] < l || level[p - W] < l || level[p + 1] < l || level[p + W] < l) {
+        if (level[p - 1] < l || level[p - pw] < l || level[p + 1] < l || level[p + pw] < l) {
           const o = p * 4
           d[o] *= EDGE_DARKEN
           d[o + 1] *= EDGE_DARKEN
@@ -416,9 +451,7 @@ function paint(scores: Float32Array | null, water: boolean, near: { lon: number;
       }
     }
   }
-  ctx.putImageData(img, 0, 0, px0, py0, pw, ph)
-  const m = getMap()
-  const src = m?.getSource(HEAT_SRC) as (ImageSource & { play?: () => void; pause?: () => void }) | undefined
+  ctx.putImageData(img, 0, 0)
   // a canvas source with animate:false needs a nudge to re-read
   src?.play?.()
   requestAnimationFrame(() => src?.pause?.())
@@ -489,7 +522,18 @@ async function recompute() {
   scoredGen = inputsGen
   const gen = ++passGen
   const m = getMap()
-  if (m) ensureSources(m)
+  // the first pass sets up the heat's layers and the bands' tables (the
+  // bush's light, a pass over every cell), each its own turn: in one, with
+  // the first strip, they were a quarter second just after the wind started
+  if (m && !m.getSource(HEAT_SRC)) {
+    ensureSources(m)
+    await nextTurn()
+    if (gen !== passGen) return
+  }
+  if (!isFish(s.target) && warmHuntBands()) {
+    await nextTurn()
+    if (gen !== passGen) return
+  }
   const t0 = performance.now()
   let work = 0
   let res: ScoreResult | null
@@ -506,27 +550,20 @@ async function recompute() {
     if (!p) res = null
     else {
       const [r0, r1] = p.win
+      const spent = { ms: 0 }
       if (s.heat) {
-        const t = performance.now()
+        // the rough copy goes in slices too: a quarter of the work was still
+        // a quarter second in one block on a phone, just as the streaks start
         const rough: HuntPass = { ...p, scores: new Float32Array(p.scores.length) }
-        huntRows(rough, r0, r1, 2)
+        if (!(await slicedRows(rough, r0, r1, 2, gen, spent))) return
+        const t = performance.now()
         paint(rough.scores, false, subj)
-        work += performance.now() - t
+        spent.ms += performance.now() - t
         await nextTurn()
         if (gen !== passGen) return
       }
-      // rows in small strips until a slice's time is spent, then a turn
-      let sliceStart = performance.now()
-      for (let r = r0; r < r1; r += STRIP_ROWS) {
-        const t = performance.now()
-        huntRows(p, r, Math.min(r1, r + STRIP_ROWS))
-        work += performance.now() - t
-        if (r + STRIP_ROWS < r1 && performance.now() - sliceStart >= SLICE_MS) {
-          await nextTurn()
-          if (gen !== passGen) return
-          sliceStart = performance.now()
-        }
-      }
+      if (!(await slicedRows(p, r0, r1, 1, gen, spent))) return
+      work += spent.ms
       const t = performance.now()
       res = huntResult(p)
       work += performance.now() - t
@@ -561,13 +598,33 @@ let inputsGen = 0
 let scoredGen = -1
 /** Counts passes begun: a pass that finds a newer one begun stops at its next strip. */
 let passGen = 0
-/** A hunt pass goes in strips of this many rows, and gives the browser a
- *  turn once a slice of them has run this long: the map keeps drawing at
- *  some 40 frames a second, and a fast phone pays for few turns */
-const STRIP_ROWS = 8
-const SLICE_MS = 24
+/** A hunt pass gives the browser a turn once a slice of rows has run this
+ *  long, checked after every row (two for the rough copy). It was 24 ms
+ *  checked every 8 rows, and an 8-row strip alone ran some 60 ms on a phone
+ *  just after launch: the streaks, which start then, hitched at every one.
+ *  A slice this short leaves the frame the wind and the map need. */
+const SLICE_MS = 8
 /** Back to the browser for a frame (or a tap) between strips. */
 const nextTurn = () => new Promise<void>((r) => window.setTimeout(r, 0))
+
+/** Rows r0..r1 of a pass, `step` at a time, with a turn whenever a slice's
+ *  time is spent; the time worked is added to `spent`. False when a newer
+ *  pass has begun (this one stops). */
+async function slicedRows(p: HuntPass, r0: number, r1: number, step: number, gen: number, spent: { ms: number }): Promise<boolean> {
+  let sliceStart = performance.now()
+  for (let r = r0; r < r1; r += step) {
+    const t = performance.now()
+    huntRows(p, r, Math.min(r1, r + step), step)
+    const now = performance.now()
+    spent.ms += now - t
+    if (r + step < r1 && now - sliceStart >= SLICE_MS) {
+      await nextTurn()
+      if (gen !== passGen) return false
+      sliceStart = performance.now()
+    }
+  }
+  return true
+}
 /** Data asks that came in while a weather sweep ran, folded into one pass at its end. */
 let heldForSweep = false
 

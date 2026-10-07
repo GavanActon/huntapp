@@ -1,5 +1,6 @@
 import type { Map as MlMap } from 'maplibre-gl'
 import { getMap, onEachMap, onFirstIdle, withMap } from '../map/mapController'
+import { devlog } from '../devlog'
 import { useAppStore } from '../state/appStore'
 import { lodOf, meanLod, onQuality, qualityProfile, reportFrame } from './flowQuality'
 import { centrePoint, compose, FrameAnchor, IDENTITY, invert, isIdentity, same, type Affine } from './frameAffine'
@@ -316,18 +317,73 @@ function readLuminance(map: MlMap, f: FieldGrid) {
   }
 }
 
-/** A first reading for a fresh field, on the next render. */
-function sampleLuminance(map: MlMap, f: FieldGrid) {
-  map.once('render', () => readLuminance(map, f))
-  map.triggerRepaint()
+/** Luminance from an RGBA readout, one per pixel; null for a blank one (a frame the browser would not give up). */
+function lumOf(d: Uint8ClampedArray, n: number): Float32Array | null {
+  const lum = new Float32Array(n)
+  let seen = false
+  for (let i = 0; i < n; i++) {
+    lum[i] = (0.2126 * d[i * 4] + 0.7152 * d[i * 4 + 1] + 0.0722 * d[i * 4 + 2]) / 255
+    if (d[i * 4 + 3]) seen = true
+  }
+  return seen ? lum : null
 }
 
-/** Renders at least this far apart are read again while the map is still
- *  drawing (an archive that never idles): a fallback, since every read is a
- *  GPU sync. The usual re-read is one per 'idle', when the tiles have landed. */
-const LUM_EVERY_MS = 2000
-/** Reads asked for by the map going idle are at least this far apart. */
+/** The bitmap road (lumBitmap) while this browser keeps it working. */
+let bitmapRoad = typeof createImageBitmap === 'function'
+let bitmapCanvas: HTMLCanvasElement | null = null
+
+/**
+ * The map under a cols×rows field, read the slow-to-ask, quick-to-wait way:
+ * the frame taken as a bitmap (a copy on the GPU, at once, while the frame
+ * is there to take: call it inside a 'render'), scaled down off the main
+ * thread, and read once it is ready. readLuminance's getImageData waits
+ * for the GPU to finish the frame it has just been given, and while the
+ * map loads that was 50–200 ms of the main thread a reading. Null when the
+ * road fails, and it is not tried again: readLuminance takes over.
+ */
+async function lumBitmap(map: MlMap, cols: number, rows: number): Promise<Float32Array | null> {
+  let bmp: ImageBitmap
+  try {
+    bmp = await createImageBitmap(map.getCanvas(), { resizeWidth: cols, resizeHeight: rows, resizeQuality: 'high' })
+  } catch {
+    bitmapRoad = false
+    return null
+  }
+  try {
+    const c = (bitmapCanvas ??= document.createElement('canvas'))
+    c.width = cols
+    c.height = rows
+    // on the CPU: the bitmap is already small, and this is the only read
+    const g = c.getContext('2d', { willReadFrequently: true })
+    if (!g) throw new Error('no 2d')
+    g.imageSmoothingEnabled = true
+    g.imageSmoothingQuality = 'high'
+    // a browser that ignored the resize hands a full frame: scaled here
+    g.drawImage(bmp, 0, 0, cols, rows)
+    const lum = lumOf(g.getImageData(0, 0, cols, rows).data, cols * rows)
+    if (!lum) throw new Error('blank frame')
+    return lum
+  } catch (e) {
+    bitmapRoad = false
+    devlog('flow', `inks · the bitmap read failed (${(e as Error).message}): reading the canvas`)
+    return null
+  } finally {
+    bmp.close()
+  }
+}
+
+/** A map still drawing this long after the last read (an archive that
+ *  never idles) is read anyway: a fallback, since a read while the GPU is
+ *  busy waits on it. The usual re-read is once the map has settled and
+ *  gone quiet (QUIET_MS). It was 2 s, and every launch's tiles kept the map
+ *  drawing that long: a stalled read two seconds into the streaks. */
+const LUM_EVERY_MS = 6000
+/** Reads asked for by the map settling are at least this far apart. */
 const LUM_MIN_GAP_MS = 1000
+/** How long the map must go without drawing, after it settles, before it
+ *  is read: with nothing else queued on the GPU a read is a millisecond,
+ *  with tiles still landing 50–200 ms on a phone. */
+const QUIET_MS = 400
 
 function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
   const cols = Math.ceil(w / FIELD_STEP) + 1
@@ -378,9 +434,7 @@ function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
     }
   }
   // the forecast field carries no spread, so no eddies at that level
-  const f: FieldGrid = { step: FIELD_STEP, cols, rows, vx, vy, live, lum: null, inkLum: null, swirl: ground ? boxBlur(swirl, cols, rows, SWIRL_BLUR, null) : null }
-  if (live) sampleLuminance(map, f)
-  return f
+  return { step: FIELD_STEP, cols, rows, vx, vy, live, lum: null, inkLum: null, swirl: ground ? boxBlur(swirl, cols, rows, SWIRL_BLUR, null) : null }
 }
 
 function sampleField(f: FieldGrid, x: number, y: number, out: Float32Array): void {
@@ -420,6 +474,38 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
 
   let field = buildField(map, w, h, atMs())
   if (!field.live) return { stop: () => {}, rebase: () => {}, refield: () => false, dead: true }
+  // A reading of the map under the field, inside a render (the GL canvas
+  // can only be read then), into whichever field is current when it lands.
+  // By the bitmap road it lands a moment later: a reading of a view the
+  // camera has since left (viewGen moved on) is dropped, and the next idle
+  // reads the new one. Read straight off the canvas, every reading is a GPU
+  // sync: on the phone 50–200 ms while the map loads.
+  let viewGen = 0
+  let bitmapBusy = false
+  let stopped = false
+  const readNow = () => {
+    if (!bitmapRoad) return readLuminance(map, field)
+    if (bitmapBusy) return
+    bitmapBusy = true
+    const gen = viewGen
+    void lumBitmap(map, field.cols, field.rows).then((lum) => {
+      bitmapBusy = false
+      if (stopped || gen !== viewGen) return
+      if (!lum) return readSoon()
+      field.lum = lum
+      field.inkLum = boxBlur(lum, field.cols, field.rows, INK_BLUR, field.inkLum)
+    })
+  }
+  let readPending = false
+  const readSoon = () => {
+    if (readPending) return
+    readPending = true
+    map.once('render', () => {
+      readPending = false
+      readNow()
+    })
+    map.triggerRepaint()
+  }
   const fieldOff = { x: 0, y: 0 }
   const swirl = makeSwirl(w, h, performance.now())
   const eddy = new Float32Array(2)
@@ -530,6 +616,9 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
       field = buildField(map, w, h, atMs())
       fieldOff.x = 0
       fieldOff.y = 0
+      viewGen++
+      // a new view under the field: what it crosses has to be read again
+      if (field.live) readSoon()
     }
     lod = lodOf(map, h)
     sizeActive()
@@ -540,13 +629,21 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
   // the air changed, not the view (a grid landed, the planning time moved,
   // the level switched): a new field under the particles already flying,
   // their trails kept. A restart would clear the canvas and fade in again.
+  // The map under the field is the same map, so the last reading of it
+  // carries over: on load the grid, the profile, the ground model and the
+  // ensemble land a second or so apart, and each used to read it again.
   const refield = () => {
     if (!isIdentity(anchor.current(map))) rebase()
     const f = buildField(map, w, h, atMs())
     if (!f.live) return false
+    // a field slid under a small pan was read where it was: a cell out at most, read again
+    const slid = fieldOff.x !== 0 || fieldOff.y !== 0
+    f.lum = field.lum
+    f.inkLum = field.inkLum
     field = f
     fieldOff.x = 0
     fieldOff.y = 0
+    if (!f.lum || slid) armQuiet()
     return true
   }
 
@@ -645,44 +742,58 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
   }
   raf = requestAnimationFrame(frame)
   const offQuality = onQuality(() => rebase())
-  // the map drawn again while the frame still matches the screen (tiles
-  // landing, a view's layers switched): read what is under the field again
-  let lumAt = 0
+  // When to read the map under the field again: once it has settled (every
+  // tile in, a view's layers switched) and then gone QUIET_MS without
+  // drawing, so the read waits on nothing else the GPU has queued. While
+  // tiles land the idles come in bursts, each followed by more drawing:
+  // only the last, quiet one is read. The clock starts with the streaks.
+  let lumAt = performance.now()
+  let quietTimer = 0
+  /** our own repaint for a read, and the idle that follows it */
+  let reading = false
+  let ownIdle = false
+  const readNext = () => {
+    lumAt = performance.now()
+    reading = true
+    ownIdle = true
+    map.once('render', () => {
+      reading = false
+      readNow()
+    })
+    map.triggerRepaint()
+  }
+  function armQuiet() {
+    clearTimeout(quietTimer)
+    const wait = Math.max(QUIET_MS, LUM_MIN_GAP_MS - (performance.now() - lumAt))
+    quietTimer = window.setTimeout(() => {
+      quietTimer = 0
+      if (same(anchor.current(map), IDENTITY)) readNext()
+    }, wait)
+  }
+  // The streaks start as the map settles, often with tiles still landing:
+  // a reading then would wait on all of them and be of a half-drawn map.
+  // The inks take the base's guess till the map has gone quiet.
+  armQuiet()
   const onRender = () => {
+    if (reading) return
+    // drawing again: not quiet (the next idle waits again)
+    if (quietTimer) {
+      clearTimeout(quietTimer)
+      quietTimer = 0
+    }
     const now = performance.now()
     if (now - lumAt < LUM_EVERY_MS || !same(anchor.current(map), IDENTITY)) return
     lumAt = now
-    readLuminance(map, field)
-  }
-  // the map settled (every tile in): one read on the next render, which
-  // is when the GL canvas can be read. While tiles are landing the map
-  // renders continuously, so the render clock alone read it every half
-  // second through the whole load, each a GPU stall.
-  let ownIdle = false
-  let lumTimer = 0
-  const readNext = () => {
-    lumAt = performance.now()
-    ownIdle = true
-    map.once('render', () => readLuminance(map, field))
-    map.triggerRepaint()
+    readNow()
   }
   const onIdle = () => {
     // the repaint asked for in readNext ends in an idle of its own: skip
-    // that one (a clock would not do: a read slower than the gap loops)
+    // that one, or every read would ask for the next
     if (ownIdle) {
       ownIdle = false
       return
     }
-    if (!same(anchor.current(map), IDENTITY)) return
-    // while tiles land the idles come in bursts: a read a second at most,
-    // the last burst's read kept so the settled map is what was read
-    const wait = LUM_MIN_GAP_MS - (performance.now() - lumAt)
-    if (wait <= 0) readNext()
-    else if (!lumTimer)
-      lumTimer = window.setTimeout(() => {
-        lumTimer = 0
-        if (same(anchor.current(map), IDENTITY)) readNext()
-      }, wait)
+    if (same(anchor.current(map), IDENTITY)) armQuiet()
   }
   map.on('render', onRender)
   map.on('idle', onIdle)
@@ -692,11 +803,12 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
     rebase,
     refield,
     stop: () => {
+      stopped = true
       cancelAnimationFrame(raf)
       offQuality()
       map.off('render', onRender)
       map.off('idle', onIdle)
-      clearTimeout(lumTimer)
+      clearTimeout(quietTimer)
       canvas.remove()
     },
   }
@@ -721,6 +833,16 @@ function airReady(ground: boolean): Promise<unknown> {
   return Promise.all([windGridInfo() ? null : g, ground ? Promise.all([loadMicro(), currentProfile() ? null : p]) : null])
 }
 
+/** The map whose first settled frame has been drawn (or OPEN_MS after its
+ *  style, if the tiles take longer): the streaks start no sooner, and only
+ *  once. The wind's data landing before then used to start them early, in
+ *  the thick of the load, and the first idle then started them over: the
+ *  trails wiped a second after they appeared. */
+let openedMap: MlMap | null = null
+/** The longest the streaks wait for the map to settle. The spot scoring's
+ *  own wait is longer (spotsLayer), so the wind has a second to itself. */
+const OPEN_MS = 1500
+
 function syncAmbient(map: MlMap) {
   const s = useAppStore.getState()
   const want = s.layers.windFlow && !reducedMotion() && document.visibilityState === 'visible'
@@ -729,7 +851,7 @@ function syncAmbient(map: MlMap) {
     ambient.stop()
     ambient = null
   }
-  if (!want) return
+  if (!want || openedMap !== map) return
   void airReady(useAppStore.getState().windLevel === 'ground').then(() => {
     if (ambient) return
     if (!useAppStore.getState().layers.windFlow) return
@@ -771,7 +893,14 @@ export function initWindFlow() {
     if (document.visibilityState === 'visible') sizeStreaks()
   })
   onEachMap((map) => {
-    onFirstIdle(map, () => syncAmbient(map))
+    onFirstIdle(
+      map,
+      () => {
+        openedMap = map
+        syncAmbient(map)
+      },
+      OPEN_MS,
+    )
     map.on('moveend', () => {
       if (ambient) ambient.rebase()
       else syncAmbient(map)

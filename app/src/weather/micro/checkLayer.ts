@@ -95,7 +95,8 @@ function images(map: MlMap) {
   const draw = (paint: (g: CanvasRenderingContext2D) => void) => {
     const cv = document.createElement('canvas')
     cv.width = cv.height = 28 * px
-    const g = cv.getContext('2d')!
+    // on the CPU: read back from a GPU canvas it waits on the map's queued frames
+    const g = cv.getContext('2d', { willReadFrequently: true })!
     g.scale(px, px)
     g.lineJoin = 'round'
     paint(g)

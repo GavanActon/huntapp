@@ -14,6 +14,7 @@ import { fileUrl } from '../areas'
 import { REGION, habitatFile } from '../config'
 import { devlog } from '../devlog'
 import { getStoredFile } from '../offline/fileStore'
+import type { FromUnzip, ToUnzip } from './unzipWorker'
 
 export interface LakeFacts {
   id: number
@@ -168,10 +169,58 @@ let loaded: Habitat | null = null
 let inflight: Promise<Habitat | null> | null = null
 const listeners = new Set<(h: Habitat) => void>()
 
-async function gunzip(blob: Blob): Promise<ArrayBuffer> {
-  if (typeof DecompressionStream === 'undefined') throw new Error('no DecompressionStream')
+function gunzipHere(blob: Blob): Promise<ArrayBuffer> {
   const ds = new DecompressionStream('gzip')
   return new Response(blob.stream().pipeThrough(ds)).arrayBuffer()
+}
+
+// The unzipping goes to a worker (unzipWorker.ts). A worker that cannot
+// start (an old browser, its file missing from an offline cache) hands
+// what it holds back to be unzipped here, and none is tried again.
+let unzipper: Worker | null = null
+let unzipDead = false
+let unzipId = 0
+const unzipping = new Map<number, { blob: Blob; ok: (b: ArrayBuffer) => void; fail: (e: Error) => void }>()
+
+function startUnzipper(): Worker | null {
+  if (unzipper || unzipDead) return unzipper
+  try {
+    const w = new Worker(new URL('./unzipWorker.ts', import.meta.url), { type: 'module' })
+    w.onmessage = (e: MessageEvent<FromUnzip>) => {
+      const job = unzipping.get(e.data.id)
+      unzipping.delete(e.data.id)
+      if (!job) return
+      // an error there (no unzipping in a worker on this browser) is tried here
+      if ('buf' in e.data) job.ok(e.data.buf)
+      else gunzipHere(job.blob).then(job.ok, job.fail)
+    }
+    w.onerror = (e) => {
+      e.preventDefault()
+      devlog('spots', `unzip worker failed · ${e.message || 'no message'} · unzipping on the main thread`)
+      unzipDead = true
+      unzipper = null
+      w.terminate()
+      for (const [id, job] of unzipping) {
+        unzipping.delete(id)
+        gunzipHere(job.blob).then(job.ok, job.fail)
+      }
+    }
+    unzipper = w
+  } catch {
+    unzipDead = true
+  }
+  return unzipper
+}
+
+function gunzip(blob: Blob): Promise<ArrayBuffer> {
+  if (typeof DecompressionStream === 'undefined') return Promise.reject(new Error('no DecompressionStream'))
+  const w = startUnzipper()
+  if (!w) return gunzipHere(blob)
+  const id = ++unzipId
+  return new Promise((ok, fail) => {
+    unzipping.set(id, { blob, ok, fail })
+    w.postMessage({ id, blob } satisfies ToUnzip)
+  })
 }
 
 /** Read a baked band file (this format: the habitat grid, the

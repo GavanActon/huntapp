@@ -7,7 +7,7 @@ import { getStoredFile } from '../offline/fileStore'
 import { markShown, useAppStore, type LayerOpacity, type LayerVisibility } from '../state/appStore'
 import { placeColour } from '../state/pinColours'
 import { usePlacesStore } from '../state/placesStore'
-import { geoUrls, onFirstIdle, setMap, withMap } from './mapController'
+import { geoUrls, setMap, withMap } from './mapController'
 import { useMeasureStore } from '../measure/measureStore'
 import { baseTone, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour } from './mapStyle'
 import { offlineComplete, registerAllDataFiles, sourceModes } from './pmtilesRegistry'
@@ -132,8 +132,8 @@ export default function MapView() {
       // parsed ('style.load'), not 'load': a live tile source that never
       // finishes would otherwise hold every layer back
       setMap(m)
-      // the GeoJSON of the layers that are off waits for the first settled frame
-      onFirstIdle(m, () => flushDeferredGeo(m))
+      // the GeoJSON of the layers that are off waits for its switch
+      // (flushDeferredGeo in the layer sync below)
       withMap((map) => {
         if (map !== m || m.getSource('pins')) return
         // saved / preset places ride on top of everything. The source is
@@ -273,7 +273,7 @@ export function applyLayerState(map: maplibregl.Map, layers: LayerVisibility, op
     if (meta.opacityKey && l.type === 'color-relief') map.setPaintProperty(l.id, 'color-relief-opacity', opacity[meta.opacityKey])
     if (meta.opacityKey === 'forest' && l.type === 'fill') map.setPaintProperty(l.id, 'fill-opacity', opacity.forest)
   }
-  // a switch gone on before the first idle: its source gets its file now
+  // a switch gone on: its source gets its file now
   flushDeferredGeo(map, layers)
   // the contour ink follows the base the view puts under it: the 1 m LiDAR
   // lines and the region's 10 m ones alike (only the LiDAR ones followed, so

@@ -144,6 +144,16 @@ export interface HuntPass {
   win: [number, number, number, number]
 }
 
+/** Build the hunt bands' tables for the loaded grid if they are not built
+ *  yet, so the first pass can give the browser a turn between them and its
+ *  rows. True when there was work to do. */
+export function warmHuntBands(): boolean {
+  const h = habitat()
+  if (!h || huntCache?.h === h) return false
+  huntCache = { h, b: huntBands(h) }
+  return true
+}
+
 export function huntPass(target: HuntTarget, c: Conditions, home: { lon: number; lat: number; name: string }, w: Weights = DEFAULT_WEIGHTS): HuntPass | null {
   const h = habitat()
   if (!h) return null
