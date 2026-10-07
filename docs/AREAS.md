@@ -304,23 +304,123 @@ therefore work the same in any area that has its layers.
 Lake depths, lake survey sheets and fish species are Ontario-only and are
 for fishing. An area without them simply has no Lake depths layer.
 
-## Requests: where this is heading
+## Live, SD and HD
 
-1. **Ask**: "Request this area" (on the "No detail here yet" card) sends the
-   point and a name to the Sandies server, where it waits in a queue.
-2. **Bake**: in a province that already has adapters (Ontario, Quebec), the
-   bake runs unattended: a point goes in and an area pack comes out.
-3. **Dig in**: a new province needs one round of research, like the
-   2026-10-03 Quebec check. It establishes which sources cover the point,
-   their licences, field names and quirks, and then the adapters get
-   written. After that, every point in that province is automatic. An agent
-   working from this doc's table could do most of that research.
-4. **Ship**: the pack is uploaded to the data store and added to
-   `areas.json`, and the phone that asked sees it next time it is online.
+Three levels of map (Gavan, 2026-10-05: "live mode plus sd plus hd"):
 
-A national baseline makes any request in Canada useful on the first day.
-`ca_forest.py` (adapter `ca.scanfi`) infers stands from the Canadian
-Forest Service's national 30 m maps:
+| | Where | What it is | Price |
+| --- | --- | --- | --- |
+| **Live** | Anywhere, with signal | National and world services drawn as they come, and the forecast at the point. Nothing baked, nothing offline. | Free |
+| **SD** | Anywhere in Canada, on request | An area baked from national data in minutes: stands, the habitat heat, a ground wind on 30 m terrain, routes. Offline. | Free |
+| **HD** | Where there is 1 m LiDAR | The full area: LiDAR relief and contours, bush thickness and shooting lanes, roughness from the point cloud, and WindNinja's momentum solve. | Paid, per area |
+
+Text weather (docs/SAT-FORECAST.md) is paid on its own, in bundles of
+texts.
+
+## Live: the map outside any area
+
+Until now the map is fenced to the active area's region (`MAX_BOUNDS` in
+config.ts), and a point in no area gets "No detail here yet". Live mode
+lifts the fence: with no area, the region follows the view, and only the
+layers that need no bake are drawn.
+
+- **Anywhere in the world:**
+  - the forecast at the point and the wind streaks: HRDPS 2.5 km over
+    Canada and the northern US, Open-Meteo's best match elsewhere;
+  - sun, moon and legal light;
+  - relief and contours drawn on the phone from 30 m terrain tiles (AWS
+    Terrain Tiles, Terrarium encoding; CORS-open, checked 2026-10-05);
+  - an OpenStreetMap base map;
+  - pins, tracks, the hunt log, and a scent cone from the forecast wind,
+    with no ground model under it.
+- **In Canada**, what `sources.ts` already serves live: the Canada Base
+  Map, Toporama contours, the MRDEM hillshade and GeoMet radar. NRCan's
+  STAC catalogue answers "is there 1 m LiDAR here, and when was it flown"
+  in one call (`--new` already asks it), which is what decides whether a
+  point can have HD.
+- **In Ontario**, LIO's live layers as well: hunting units, Crown land,
+  camps, parks, burns and lake depths. Quebec's servers refuse a browser,
+  so its layers only come with a bake.
+
+What it takes in the app: a state with no area. `REGION`, `CORE` and the
+rest are read by 16 files from the active area. With none, they come from
+the view, the grids are off, and the weather lattice follows the view
+(fetched again only after a big move). The ground wind, the Spots heat and
+routes offer "Get this area" instead.
+
+## Requests: SD and HD
+
+1. **Ask.** "Get this area", on the "No detail here yet" card and in Dig
+   in. Before anything is sent, the card shows what the point can have,
+   from live lookups:
+   - SD, anywhere in Canada;
+   - HD only where there is 1 m LiDAR, with the year it was flown;
+   - where the stands come from (the province's map, or inferred);
+   - the pack's size, and when it should be ready;
+   - a square to drag, 10 × 10 km by default, the block the site
+     promises.
+
+   HD is paid here. A request can also come by satellite text, as a line
+   the GW1 bot reads (`GA lat lon name`), so a spot sent from an inReach
+   can be asked for from the bush.
+2. **Queue.** The groundwind.app Worker already keeps the site form's
+   requests in D1 (`site/schema.sql`, whose `source` is site or app). The
+   app's button posts to the same `/api/request` and gets an id back.
+   Locations shows the area as "Requested".
+3. **Bake.** A bake agent on the pipeline PC polls the Worker, the way the
+   WindNinja runners poll the kit (`run.ps1 -Watch`), so nothing has to
+   reach in. For each request:
+   - `bake_area.py --new --lat … --lon … --name …`;
+   - for HD, `build_windcfd.py prepare`, which puts the 16 jobs where the
+     watching runners pick them up; once they are in, `collect`, then the
+     micro and coverage steps again;
+   - `area_checklist.py` as the gate. A clean area is uploaded and goes
+     into the areas list; a flagged one waits for a person.
+4. **Ship.** The pack goes to the data store and into the areas list. The
+   phone that asked picks it up the next time it has signal.
+
+A point in a province with no adapters still needs that province's dig-in
+first: one round of research, like the 2026-10-03 Quebec check, into which
+sources cover the point, their licences, field names and quirks. Then the
+adapters get written, and after that every point in the province bakes
+unattended. An agent working from the adapter table above could do most of
+that research.
+
+### How a new area fills in
+
+Each stage is a usable map, published as it finishes. A phone with signal
+takes the newer files, and Locations shows how far the area's wind has
+got.
+
+| Stage | Ready | What it adds | Ground wind |
+| --- | --- | --- | --- |
+| Live | At once | The layers above | The forecast's only |
+| SD | About 15 min, the wind in 6 | Stands, the habitat heat, the going grid and routes, the micro grid on the MRDEM, offline topo and imagery | The neutral 2D solve, thermals and the canopy rules; no slots or LiDAR edges |
+| HD: LiDAR | About 1 h, more where the point cloud is big | 1 m relief and contours, bush thickness and lanes; habitat and micro baked again on them | Tree lines, slots, and roughness from the measured trees |
+| HD: momentum | About 2 h more for a 10 × 10 km core, on XEVO and xonix together | WindNinja's 16 directions | The full model |
+
+The SD times are Highland Lake's, the first area with no LiDAR
+(2026-10-04): the stands took about a minute, the elevation grid from the
+MRDEM 5 minutes, and the habitat, micro and going grids 11 seconds
+together. Its topo and imagery tiles took 9 minutes more.
+
+- **Forecast first.** The app uses the momentum solve only when the grid
+  has all 16 directions (`model.ts`), and falls back to the neutral solve
+  until then. If it took the momentum wherever the two directions either
+  side of the wind are in, the jobs could run in the order the next three
+  days' HRDPS winds need them. The coming weekend's wind would then be the
+  full model in under an hour.
+- **Lessons start at zero.** Wind-check lessons are kept per area, so a new
+  area runs on the model's defaults until its own checks come in.
+- **Filled in by the bake:** the declination (WMM), the time zone, the
+  asked-for point as the home preset, the relief range and the coverage
+  report. Not yet: the hunting zone, outside the provinces with adapters.
+
+### The national baseline
+
+SD rests on the national maps, so any point in Canada gets one on the
+first day. `ca_forest.py` (adapter `ca.scanfi`) infers stands from the
+Canadian Forest Service's national 30 m maps:
 - **SCANFI v2:** each species' share of the crown, height, closure and
   median age, as of 2025.
 - **CanLaD v1.1:** the latest cut or burn and its year, 1985–2025.
@@ -339,12 +439,34 @@ Tried and dropped there: telling hardwood from conifer by the leaf-off
 against the leaf-on HRDEM surface models. Bare branches still hold the
 surface up.
 
-Bakes run on the PC that has the pipeline (Python 3.13/3.14, GDAL, and
-gigabytes of point cloud), then later on a cloud machine. Whether requests
-are open to every user or by invitation is still to be decided. A full area
-is 120–200 MB: Pickle Lake's pack is 120 MB, and Lac Bailey's is 198 MB
-because its core is 10 × 10 km. The 1 m LiDAR hillshade is the largest
-part, at 62 MB.
+### Paying
+
+- **HD is paid per area** (Gavan, 2026-10-05). Live and SD are free.
+- **Text weather is paid in bundles** (Gavan, 2026-10-05); see
+  SAT-FORECAST.md, Paying for it.
+- The web app can sell with Stripe. In an app-store build, an HD pack is
+  digital content unlocked in the app, which Apple and Google take through
+  their own billing (App Store rule 3.1.1, Play's payments policy). The
+  licence must work offline.
+- Open: one payment or one a season; whether a party shares an HD area
+  (the Camp plan idea); whether the demo areas stay HD for everyone; the
+  prices.
+
+### What it takes
+
+- **Live:** the state with no area in the app, plus the base map and
+  terrain tiles.
+- **Hosting:** area data moves to R2 (Hosting, above). Pages caps a site at
+  1 GB, and a full area is 120–200 MB: Pickle Lake's pack is 120 MB, and
+  Lac Bailey's is 198 MB because its core is 10 × 10 km. The 1 m LiDAR
+  hillshade is the largest part, at 62 MB.
+- **Requests:** the app's button, the bake agent, and paying.
+- **Compute:** bakes run on the PC that has the pipeline (Python 3.13/3.14,
+  GDAL, and gigabytes of point cloud), and WindNinja on XEVO and xonix.
+  Later a cloud machine: a rough estimate is a few dollars of compute per
+  HD area, not measured.
+- **Still to decide:** whether requests are open to every user or by
+  invitation, and the largest square a request may draw.
 
 ## Licences
 
@@ -523,5 +645,6 @@ Still open:
   little light against Pickle Lake's single-photon survey.
 - The pack is large for a phone. Smaller tiles, or leaving the historical
   sheets out, would bring it down.
-- The request flow and the move to R2 are next. See Requests and Hosting.
+- The request flow and the move to R2 are next. See Live, SD and HD,
+  Requests and Hosting.
 - The inferred stands (`ca_forest.py`) are not field-checked; NBAC burns before 1985 are not wired in.

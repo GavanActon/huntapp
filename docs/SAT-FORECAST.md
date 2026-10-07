@@ -155,10 +155,27 @@ Each forecast is two messages on an inReach plan, one out and one back.
   - whether a carrier's satellite texting sends to an ordinary number
   - how Garmin Messenger shows a 160-character reply, and whether it copies whole
 
+## Paying for it
+
+Text weather is paid, in bundles of texts (Gavan, 2026-10-05; the map's
+levels are in AREAS.md, Live, SD and HD). Every reply costs a Twilio
+message, and today the bot answers any number. Proposed, not built:
+
+- Credits are kept against the number that texts: the inReach's, or the
+  phone's. That keeps it free of accounts, as the request already is.
+- A bundle is bought on the site or in the app and tied to that number.
+- A number with none left gets one line back saying where to top up,
+  instead of a forecast.
+
+Open: the bundle sizes and prices, and whether a new number gets a few
+texts free. In an app-store build, Apple may count texts bought in the app
+as digital content and want its own billing for them. Check before the
+store build.
+
 ## Not done
 
 - One-tap loading in the native app: a link in the reply opening the app
   (Universal Links, App Links), and on Android reading Garmin Messenger's
   notification so the forecast loads with the phone in a pocket.
-- A limit on texts per number. Every reply costs a Twilio message.
+- Paying for it (above), which is also the limit on texts per number.
 - The site's own page for a request, for someone without the app.
