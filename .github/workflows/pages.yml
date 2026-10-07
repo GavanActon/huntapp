@@ -41,3 +41,15 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+  # After the deploy: purge Cloudflare's cache for hunt.groundwind.app and
+  # fetch the cold-open files through it (app/scripts/warm-cache.sh), so the
+  # first phone finds the bundle and the grids at the edge. Without the
+  # CF_CACHE_TOKEN secret it warms without purging.
+  warm:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sleep 20 && bash app/scripts/warm-cache.sh
+        env:
+          CF_CACHE_TOKEN: ${{ secrets.CF_CACHE_TOKEN }}
