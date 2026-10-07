@@ -57,7 +57,7 @@
 
 <header class="top">
   <a class="mark" href="/" aria-label="Groundwind home">
-    <img src="img/mark.png" width="390" height="245" alt="">
+    <img src="img/app-icon.png" width="192" height="192" alt="">
     <b>Groundwind</b>
     <span class="pill">Beta</span>
   </a>
@@ -66,12 +66,14 @@
 
 <main>
 
-<section class="hero" aria-labelledby="hero-title">
+<section class="hero beat" aria-labelledby="hero-title">
+  <div class="ground" aria-hidden="true"><img src="media/bull.jpg" alt="" fetchpriority="high" style="object-position: 68% 50%; --focal-m: 62% 40%"></div>
   <div>
     <p class="eyebrow">The first rule of hunting</p>
     <h1 id="hero-title">Don't get winded.</h1>
+    <p class="lede">Groundwind is the hunting app for the wind where you stand.</p>
     <ul class="skim" aria-label="What Groundwind gives you">
-      <li>The HD forecast, solved over 1&nbsp;m LiDAR and every stand of trees, down to head height where your scent leaves you.</li>
+      <li>Your HD forecast, solved over HD LiDAR and every stand of trees, down to head height where your scent leaves you.</li>
       <li>Your scent cone, from where you stand, on your ground.</li>
       <li>Where he beds, where you can walk, where you can shoot, from the bush at eye level.</li>
       <li>Each puff of powder calibrates the wind to what you actually felt.</li>
@@ -79,7 +81,7 @@
     </ul>
     <p class="hero-proof">Built on a physical wind model and published research for every layer.</p>
     <div class="ctas">
-      <a class="btn btn-go" href="/app">Open the beta</a>
+      <a class="btn btn-go" href="/app">Open the app</a>
       <a class="btn btn-quiet" href="#request">Request your spot</a>
     </div>
     <div class="qr">
@@ -88,68 +90,60 @@
     </div>
   </div>
 
-  <figure class="hero-photo">
-    <img src="media/hand.jpg" width="2000" height="1116" alt="A gloved hand holding a phone at a lake edge, the scent cone drawn on the map" fetchpriority="high">
-  </figure>
 </section>
 
-<figure class="beat-photo">
-  <img src="media/bull.jpg" width="2000" height="1116" alt="A bull moose at the edge of a misty bog, head up, testing the air, seen through spruce" loading="lazy">
-  <figcaption>He smells you long before he sees you.</figcaption>
-</figure>
+<hr class="breath">
 
-<section class="row after-photo nose" id="nose" aria-labelledby="p0-title">
+<section class="row nose" id="nose" aria-labelledby="p0-title">
   <div class="row-text">
     <h2 id="p0-title">He lives by his nose.</h2>
     <p>A moose reads the air the way you read a map. He circles downwind of a call before he commits, and one thread of your scent in the wrong place ends the hunt before it starts. You never know it happened. <a href="/moose-calling-wind">Why the bull circles for your wind.</a></p>
   </div>
 </section>
 
-<figure class="beat-photo">
-  <img src="media/valley.jpg" width="2000" height="1116" alt="A hunter on a rocky slope at dusk, looking over a valley where mist has pooled in the low ground" loading="lazy">
-  <figcaption>Dusk. The cold air slides downhill, whatever the sky is doing.</figcaption>
-</figure>
+<hr class="breath">
 
-<section class="row after-photo pillar" id="scent" aria-labelledby="p1-title">
+<section class="row beat pillar" id="scent" aria-labelledby="p1-title">
+  <div class="ground" aria-hidden="true"><img src="media/valley.jpg" alt="" loading="lazy" style="object-position: 78% 50%; --focal-m: 75% 45%"></div>
   <div class="row-text">
-    <h2 id="p1-title">The wind at your face isn't the wind in the forecast.</h2>
-    <p>The forecast is made for 10&nbsp;m up over open ground. Your scent leaves you at head height under the trees, where it bends over the ridge, slows in the spruce and drains downhill once the sun is off the slope. Groundwind draws your scent cone where it's really going.</p>
+    <h2 id="p1-title">The wind at your face isn't what's in your forecast.</h2>
+    <p>Forecasts are calibrated 10&nbsp;m up over open ground. Your scent leaves you at head height under the trees, where it bends over the ridge, slows in the spruce and drains downhill at dusk. Groundwind shows you where your scent is really going.</p>
     <details class="dig">
       <summary>How</summary>
       <div class="dig-body">
-        <h3>Behind the summit</h3>
-        <p>In the clip, at Highland Lake in the Yukon, the forecast draws one straight south wind over the mountain. On the ground the wind breaks off the summit and circles back, so if you sit on the north face your scent runs back up toward the top and spreads in every direction. The lee of a ridge or a tree line tumbles the same way, and the scent cone widens to match.</p>
-        <h3>Cold air at dusk</h3>
-        <p>Once the sun is down, the air on a slope cools and slides downhill, whatever the forecast says. Here, on the same mountain at 8 pm, the forecast is a south wind at 11&nbsp;km/h, and your scent drains east down the slope instead.</p>
+        <div class="dig-detail">
+          <figure class="loop dig-loop">
+    <div class="phone"><video data-loop src="media/eddy.mp4" poster="media/eddy.jpg" muted loop playsinline preload="none" aria-label="Highland Lake in the Yukon on a south wind: the forecast's one straight wind over a 1700 m summit, then the ground wind breaking off behind the summit and circling back, then a scent cone dropped in the eddy, spreading every way and mostly back toward the summit"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
+    <figcaption class="readout">Highland Lake, Yukon, <b>Mon 5 Oct, 5 pm</b><br><span class="s">The wind comes back behind the summit</span></figcaption>
+  </figure>
+          <ol class="stack" aria-label="Three ways the ground wind leaves the forecast">
+            <li><b>Behind the summit</b><span>At Highland Lake the forecast draws one straight south wind over the mountain. On the ground it breaks off the summit and circles back, so on the north face your scent runs back up toward the top and spreads every way. The lee of a ridge or a tree line tumbles the same way.</span></li>
+            <li><b>Cold air at dusk</b><span>Once the sun is down the air on a slope cools and slides downhill, whatever the forecast says. On the same mountain at 8&nbsp;pm, with a south wind in the forecast, your scent drains east down the slope.</span></li>
+            <li><b>Up a tree</b><span>From a stand your scent rides the air before it comes down. Off a 6&nbsp;m bank on a still night it is strong right below you from the ground, comes down 60&nbsp;m out from a 4&nbsp;m stand and 160&nbsp;m out from 6&nbsp;m. Hold your dot to say how high you sit.</span></li>
+          </ol>
+        </div>
+        <div class="dig-proof">
         <figure class="loop">
           <div class="phone"><video data-loop src="media/drain.mp4" poster="media/drain.jpg" muted loop playsinline preload="none" aria-label="Highland Lake in the Yukon at 8 pm, after sunset: the forecast's one south wind, then the ground wind sliding downhill, then a scent cone draining east down the slope, away from the forecast's north"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
           <figcaption class="readout">Highland Lake, Yukon, <b>Tue 6 Oct, 8 pm</b><br><span class="s">Forecast south, scent drains east</span></figcaption>
         </figure>
-        <h3>Up a tree</h3>
-        <p>Hold your dot to say where you sit, on the ground or in a 4 or 6&nbsp;m stand. From a stand your scent rides the air before it comes down.</p>
-        <p>In the clip, on a still night off a 6&nbsp;m bank at Pickle Lake, the scent is strong right below you from the ground, comes down 60&nbsp;m out from a 4&nbsp;m stand, and 160&nbsp;m out from 6&nbsp;m. How much a stand buys depends on the drop and the air. A lake warmer than the air, or a land breeze, mixes it back down sooner, and the cone shows that too.</p>
         <figure class="loop">
           <div class="phone"><video data-loop src="media/stand.mp4" poster="media/stand.jpg" muted loop playsinline preload="none" aria-label="A sit on a 6 m bank at Pickle Lake on a still Thursday night: the scent cone strong right below you from the ground, then cleared near you from a 4 m stand, coming down 60 m out, and from a 6 m stand 160 m out"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
           <figcaption class="readout">Pickle Lake, Ontario, <b>Thu 8 Oct, 10 pm</b><br><span class="s">From the ground, then 4 and 6 m up</span></figcaption>
         </figure>
+        </div>
+        <img class="inset" src="media/saddle.jpg" width="1600" height="893" alt="A bow hunter in a tree saddle up an aspen, bow and pack hung on the trunk, looking out over the bush" loading="lazy">
       </div>
     </details>
   </div>
-  <figure class="loop">
-    <div class="phone"><video data-loop src="media/eddy.mp4" poster="media/eddy.jpg" muted loop playsinline preload="none" aria-label="Highland Lake in the Yukon on a south wind: the forecast's one straight wind over a 1700 m summit, then the ground wind breaking off behind the summit and circling back, then a scent cone dropped in the eddy, spreading every way and mostly back toward the summit"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
-    <figcaption class="readout">Highland Lake, Yukon, <b>Mon 5 Oct, 5 pm</b><br><span class="s">The wind comes back behind the summit</span></figcaption>
-  </figure>
 </section>
 
-<figure class="beat-photo">
-  <img src="media/saddle.jpg" width="2000" height="1116" alt="A bow hunter in a tree saddle up an aspen, bow and pack hung on the trunk, looking out over the bush" loading="lazy">
-  <figcaption>From a stand your scent rides the air before it comes down. The model knows how far.</figcaption>
-</figure>
+<hr class="breath">
 
-<section class="model after-photo" id="science" aria-labelledby="sci-title">
+<section class="model" id="science" aria-labelledby="sci-title">
   <div class="model-text">
-    <h2 id="sci-title">So we built the wind on your ground.</h2>
-    <p>Groundwind takes the 2.5&nbsp;km HD forecast and solves it over 1&nbsp;m LiDAR and every stand of trees, then adds the thermals, the leaves and the swirl, down to head height for any minute of the week. The cone is drawn where your scent is really going, from the ground or from your stand.</p>
+    <h2 id="sci-title">So we built the wind for your ground.</h2>
+    <p>Groundwind takes the 2.5&nbsp;km HD forecast and solves it over HD LiDAR and every stand of trees, then adds the thermals, the leaves and the swirl, down to head height for any minute of the week. The cone is drawn where your scent is really going, from the ground or from your stand.</p>
     <p class="proof">Every layer is built on <a href="/hunting-thermals#src">published research</a>, and it all runs on your phone with no bars.</p>
     <figure class="loop model-loop">
       <div class="phone"><video data-loop src="media/thermals.mp4" poster="media/thermals.jpg" muted loop playsinline preload="none" aria-label="Pickle Lake on a calm, sunny afternoon last week: the forecast's light wind drawn the same everywhere, then the ground wind, with the lake breeze pushing the air off the lake onto every shore, then a scent cone carried inland"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
@@ -166,18 +160,20 @@
   </ol>
 </section>
 
-<figure class="beat-photo">
-  <img src="media/edge.jpg" width="2000" height="1116" alt="A hunter walking the edge between a dark spruce thicket and an open old burn with aspen regrowth" loading="lazy">
-  <figcaption>The thicket is where he beds. The burn is where he feeds, and where you can walk and see.</figcaption>
-</figure>
+<hr class="breath">
 
-<section class="row after-photo flip pillar" id="bush" aria-labelledby="p4-title">
+<section class="row beat pillar" id="bush" aria-labelledby="p4-title">
+  <div class="ground" aria-hidden="true"><img src="media/edge.jpg" alt="" loading="lazy" style="object-position: 62% 50%; --focal-m: 60% 45%"></div>
   <div class="row-text">
     <h2 id="p4-title">Know the bush before you're in it.</h2>
-    <p>The same LiDAR reads the brush at eye level. The fir thicket that takes an hour to cross and announces you the whole way is where he beds through the day. The old burn and the hardwood edge are where he feeds, where you can walk quietly and where you can see far enough to shoot. Bush view shows which is which, and the shooting lanes show how far you can see from any spot, so you plan the walk in and the sit before you leave camp.</p>
+    <p>The LiDAR reads the brush at eye level. The thicket that takes an hour to cross is where he beds. The old burn is where he feeds, where you walk quietly and where you can see far enough to shoot. Plan the walk in and the sit before you leave camp.</p>
     <details class="dig">
       <summary>How</summary>
       <div class="dig-body">
+  <figure class="loop dig-loop">
+    <div class="phone"><video data-loop src="media/bushview.mp4" poster="media/bushview.jpg" muted loop playsinline preload="none" aria-label="A lake narrows at Lac Bailey in Québec: the land alone, then the shooting lanes showing where you can see and shoot, then the Bush view colouring the brush from open on the 1991 burn to thicket in the fir"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
+    <figcaption class="readout">Lac Bailey, <b>Québec</b><br><span class="s">The 1991 burn is open, the fir is thicket</span></figcaption>
+  </figure>
         <h3>Bush and sight lines</h3>
         <p>Bush thickness comes from the LiDAR point cloud as open, light, thick or thicket. It decides how far you'll see, how loud the walk is, and where a moose can stand unseen.</p>
         <ul class="uses">
@@ -188,7 +184,7 @@
     </ul>
         <p>Eye-level cover isn't the canopy. A closed canopy shades the brush out, while a cut or a burn fills in with suckers and saplings. Groundwind counts the LiDAR returns between 0.5 and 3&nbsp;m against everything below 3&nbsp;m, cell by 10&nbsp;m cell. Where the point cloud hasn't been fetched yet, it estimates the brush from each stand's age and makeup.</p>
         <h3>On the move</h3>
-        <p>A lot of moose hunting is moving. You angle in on a bull you've heard, still-hunt an edge or work round a bluff, and that's where a forecast is least use. Before you step round the corner, see what the air is doing there and how far you'll see.</p>
+        <p>A lot of moose and elk hunting is moving. You angle in on a bull you've heard, still-hunt an edge or work round a bluff, and that's where a forecast is least use. Before you step round the corner, see what the air is doing there and how far you'll see.</p>
         <ul class="uses">
       <li><b>Angle</b><span>Log his grunts with Heard. The map draws his line and where he'd swing to get your wind, so you can angle in from the right side.</span></li>
       <li><b>Wind</b><span>The streaks run at head height: over the bluff, down the draw, round the edge of the stand.</span></li>
@@ -204,41 +200,34 @@
       </div>
     </details>
   </div>
-  <figure class="loop">
-    <div class="phone"><video data-loop src="media/bushview.mp4" poster="media/bushview.jpg" muted loop playsinline preload="none" aria-label="A lake narrows at Lac Bailey in Québec: the land alone, then the shooting lanes showing where you can see and shoot, then the Bush view colouring the brush from open on the 1991 burn to thicket in the fir"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
-    <figcaption class="readout">Lac Bailey, <b>Québec</b><br><span class="s">The 1991 burn is open, the fir is thicket</span></figcaption>
-  </figure>
 </section>
 
-<figure class="beat-photo">
-  <img src="media/puff.jpg" width="2000" height="1116" alt="A hunter puffing wind powder among black spruce and birch, the powder drifting away" loading="lazy">
-  <figcaption>Every puff is a reading of the wind that matters, the one at your face.</figcaption>
-</figure>
+<hr class="breath">
 
-<section class="row after-photo flip pillar" id="learn" aria-labelledby="p2-title">
+<section class="row beat pillar" id="learn" aria-labelledby="p2-title">
+  <div class="ground" aria-hidden="true"><img class="mirror" src="media/puff.jpg" alt="" loading="lazy" style="object-position: 70% 40%; --focal-m: 65% 30%"></div>
   <div class="row-text">
     <h2 id="p2-title">Each puff calibrates the wind.</h2>
-    <p>Puff your powder and tap where it went. The wind calibrates to what you actually felt, and it remembers how the air moves where you hunt, like the drain off a ridge at dusk or the wind funnelling down a slot in the trees.</p>
+    <p>Puff your powder and tap where it went. The wind calibrates to what you actually felt, and remembers how the air moves where you hunt.</p>
     <details class="dig">
       <summary>How</summary>
       <div class="dig-body">
+  <figure class="loop dig-loop">
+    <div class="phone"><video data-loop src="media/sharpen.mp4" poster="media/sharpen.jpg" muted loop playsinline preload="none" aria-label="A wind check in the app: the scent cone drawn from the forecast, a tap on the powder's direction, the saved check, then the cone swung round to the wind that was felt"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
+    <figcaption class="readout">Forecast <b>toward E, 13 km/h</b> · powder <b>toward N</b><br><span class="s">One check, and the cone follows.</span></figcaption>
+  </figure>
         <p>A check pulls the ground wind inside its ring toward what you felt, and it fades with time, more slowly if you say the wind has held. It also becomes a lesson for its kind of air, like cold air draining, a lake breeze or a slot in the trees. That lesson is a turn and a speed correction the model applies wherever that air turns up, forgotten over about two weeks.</p>
         <p>Each check saves what the forecast and the model said beside what you felt, so the hunt log keeps score of how often each was right. If you say yes when the app asks, your checks also come to us without your name or notes, and they teach the ground wind where it's wrong. Settings, then Share wind checks, switches it off.</p>
       </div>
     </details>
   </div>
-  <figure class="loop">
-    <div class="phone"><video data-loop src="media/sharpen.mp4" poster="media/sharpen.jpg" muted loop playsinline preload="none" aria-label="A wind check in the app: the scent cone drawn from the forecast, a tap on the powder's direction, the saved check, then the cone swung round to the wind that was felt"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
-    <figcaption class="readout">Forecast <b>toward E, 13 km/h</b> · powder <b>toward N</b><br><span class="s">One check, and the cone follows.</span></figcaption>
-  </figure>
 </section>
 
-<figure class="beat-photo">
-  <img src="media/camp.jpg" width="2000" height="1116" alt="Two hunters on a tailgate at dusk looking at one phone, a lantern and a wall tent behind" loading="lazy">
-  <figcaption>The night before, on the evening wind.</figcaption>
-</figure>
+<hr class="breath">
 
-<section class="row after-photo pillar" id="plan" aria-labelledby="p3-title">
+<figure class="strip"><img src="media/camp.jpg" alt="Two hunters on a tailgate at dusk looking at one phone, a lantern and a wall tent behind" loading="lazy" style="object-position: 50% 45%"></figure>
+
+<section class="row pillar strip-row" id="plan" aria-labelledby="p3-title">
   <div class="row-text">
     <h2 id="p3-title">Plan the sit. Walk in. Hunt.</h2>
     <p>Put the party where you'll sit tonight and see whose scent drifts over whom, where the wind swirls and where they're likely to be. It saves you walking in to find the wind totally in the wrong place.</p>
@@ -359,14 +348,13 @@
   </figure>
 </section>
 
-<figure class="beat-photo">
-  <img src="media/lake.jpg" width="2000" height="1116" alt="A camo hunting pack leaning on a lichen-covered rock at a lake shore, a satellite messenger clipped to its strap" loading="lazy">
-  <figcaption>Out for days. The forecast comes back by satellite.</figcaption>
-</figure>
+<hr class="breath">
 
-<section class="row after-photo pillar" id="nobars" aria-labelledby="p5-title">
+<figure class="strip"><img src="media/lake.jpg" alt="A camo hunting pack leaning on a lichen-covered rock at a lake shore, a satellite messenger clipped to its strap" loading="lazy" style="object-position: 50% 70%"></figure>
+
+<section class="row pillar strip-row" id="nobars" aria-labelledby="p5-title">
   <div class="row-text">
-    <h2 id="p5-title">No bars? Doesn't matter.</h2>
+    <h2 id="p5-title">No bars. HD weather &amp; party status by satellite.</h2>
     <p>Save your area at camp and all of it works offline. Out for days? Text from your inReach or iPhone and the newest HD forecast comes back by satellite.</p>
     <details class="dig">
       <summary>How</summary>
@@ -383,6 +371,8 @@
   </figure>
 </section>
 
+<hr class="breath">
+
 <section class="coda" aria-labelledby="help-title">
   <figure class="said">
     <blockquote><p>Prepare as much as you can, bring the best tools you can to the hunt, and adjust it while you're out there, because we all know the best plans don't survive contact with the real world.</p></blockquote>
@@ -394,12 +384,11 @@
   </div>
 </section>
 
-<figure class="beat-photo">
-  <img src="media/ridge.jpg" width="1376" height="768" alt="A rifle hunter working along a rocky ridge above a river valley in the mountains, autumn colour on the slopes" loading="lazy">
-  <figcaption>Moose woods or elk country. Highland Lake in the Yukon is one of the three areas you can open now.</figcaption>
-</figure>
+<hr class="breath">
 
-<section class="beta after-photo" aria-label="Join the beta">
+<figure class="strip"><img src="media/ridge.jpg" alt="A rifle hunter working along a rocky ridge above a river valley in the mountains" loading="lazy" style="object-position: 50% 80%"></figure>
+
+<section class="beta strip-row" aria-label="Join the beta">
   <div class="live">
     <h2>Try it on our spots.</h2>
     <ul class="areas">
@@ -444,6 +433,8 @@
   </form>
 </section>
 
+<hr class="breath">
+
 <section class="faq" id="faq" aria-labelledby="faq-title">
   <h2 id="faq-title">Questions</h2>
   <div class="faq-list">
@@ -477,6 +468,8 @@
     </details>
   </div>
 </section>
+
+<hr class="breath">
 
 <section class="also" id="notes" aria-labelledby="notes-title">
   <h2 id="notes-title">Field notes</h2>

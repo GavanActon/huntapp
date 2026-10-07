@@ -791,3 +791,55 @@ footer .links a:hover { color: var(--ink); text-decoration: underline; }
   .hero { grid-template-columns: 1fr 1fr; align-items: start; }
   .hero-photo { padding-top: 12px; }
 }
+
+/* ---- ground beats: the photo is the beat's ground, the phone floats over it */
+.beat { position: relative; isolation: isolate; border-top: 0; }
+.beat > .ground { position: absolute; inset: 0 calc(50% - 50vw); z-index: -1; overflow: hidden; pointer-events: none; }
+.beat > .ground img { display: block; width: 100%; height: min(100%, 760px); object-fit: cover;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 16%, #000 68%, transparent); mask-image: linear-gradient(to bottom, transparent, #000 16%, #000 68%, transparent); }
+.beat > .ground::after { content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--bg) 96%, transparent) 0 30%, color-mix(in srgb, var(--bg) 70%, transparent) 46%, color-mix(in srgb, var(--bg) 8%, transparent) 64%, transparent); }
+.beat .row-text { padding-block: 72px 40px; }
+.beat .loop .phone { width: min(100%, 260px); }
+.dig-loop { justify-items: start; margin: 4px 0 20px; }
+.dig-loop .phone { justify-self: start; }
+.dig-loop .readout { text-align: left; }
+.hero.beat { padding-block: 0; }
+.hero.beat > div:not(.ground) { padding-block: 64px 56px; }
+.strip { margin: 0 calc(50% - 50vw); }
+.strip img { display: block; width: 100%; height: clamp(240px, 36vw, 480px); object-fit: cover;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 22%, #000 78%, transparent); mask-image: linear-gradient(to bottom, transparent, #000 22%, #000 78%, transparent); }
+.strip-row { border-top: 0; }
+.mark img { height: 36px; border-radius: 9px; background: none; }
+.breath { border: 0; height: 1px; background: var(--line); margin: 48px 0; }
+.page main > section, .page main > figure { border-top: 0; }
+@media (min-width: 860px) { .breath { margin: 72px 0; } }
+.beat .row-text > h2 { max-width: 560px; }
+.beat .row-text > p { max-width: 34em; }
+.dig-detail { display: grid; gap: 28px; margin-bottom: 24px; }
+.dig-detail .phone { width: min(100%, 260px); }
+.dig-proof { display: grid; gap: 28px; margin-bottom: 24px; }
+.inset { width: 100%; height: auto; border-radius: 8px; }
+.mirror { transform: scaleX(-1); }
+.skim { border-color: color-mix(in srgb, var(--ink) 22%, transparent); }
+@media (min-width: 860px) {
+  .beat.row { min-height: 680px; align-items: center; }
+  .beat .row-text { padding-block: 96px 64px; }
+  .beat .loop { padding-block: 72px; justify-self: end; }
+  .beat.row:not(:has(> .loop)) { grid-template-columns: minmax(0, 1.05fr) 0.95fr; min-height: 720px; }
+  .beat.row:has(details.dig[open]) .row-text { grid-column: 1 / -1; }
+  .dig-detail { grid-template-columns: 0.9fr 1.1fr; gap: 56px; align-items: start; }
+  .dig-proof { grid-template-columns: 1fr 1fr; }
+  .hero.beat { min-height: 720px; align-items: center; }
+  .hero.beat > div:not(.ground) { padding-block: 96px 80px; }
+  .beat.pillar:has(details.dig[open]) { align-items: start; }
+}
+@media (max-width: 859px) {
+  .beat > .ground { inset: 0 -20px; }
+  .beat > .ground img { height: min(100%, 360px); object-position: var(--focal-m, 60% 40%) !important;
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 45%, transparent 95%); mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 45%, transparent 95%); }
+  .beat > .ground::after { background: linear-gradient(to bottom, transparent 28%, color-mix(in srgb, var(--bg) 35%, transparent) 55%, color-mix(in srgb, var(--bg) 82%, transparent) 76%, var(--bg) 93%); }
+  .beat .row-text, .hero.beat > div:not(.ground) { padding-top: 200px; }
+  .beat h2, .hero.beat h1, .hero.beat .eyebrow { text-shadow: 0 1px 2px color-mix(in srgb, var(--bg) 95%, transparent), 0 2px 18px color-mix(in srgb, var(--bg) 90%, transparent); }
+  .beat .loop .phone { width: min(100%, 240px); }
+}
