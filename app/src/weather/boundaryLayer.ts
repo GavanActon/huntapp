@@ -100,10 +100,24 @@ function circSd(degs: number[]): number {
 }
 
 /** The profile over an area's home, in its time zone: the active area's
- *  unless another is named. */
+ *  unless another is named. The ensemble is asked with the rest, not after. */
 async function fetchProfile(home: { lon: number; lat: number } = homePlace(), timezone: string = TIMEZONE): Promise<Profile> {
+  const ens = fetchEnsemble(home, timezone).catch((e) => {
+    devlog('wind', `profile: ensemble miss · ${(e as Error).message}`)
+    return null
+  })
+  const p = await fetchFrame(home, timezone)
+  p.ens = await ens
+  return p
+}
+
+/** The profile without the ensemble: the seven-day frame from the blend,
+ *  HRDPS's own hours dropped in, both asked at once. */
+async function fetchFrame(home: { lon: number; lat: number }, timezone: string): Promise<Profile> {
   const common = { latitude: home.lat.toFixed(4), longitude: home.lon.toFixed(4), wind_speed_unit: 'kmh', timezone, past_days: '1' }
-  // the seven-day frame from the blend, HRDPS's own hours dropped in
+  const hrdps = om('https://api.open-meteo.com/v1/forecast', { ...common, hourly: VARS.join(','), forecast_days: '2', models: 'gem_hrdps_continental' })
+  // the blend failing leaves it unawaited: caught here, so not an unhandled rejection
+  hrdps.catch(() => {})
   const j = await om('https://api.open-meteo.com/v1/forecast', { ...common, hourly: VARS.join(','), forecast_days: '7', models: 'best_match' })
   const h = j.hourly as Record<string, (number | null)[] | string[]>
   const num = (k: string) => (h[k] as (number | null)[]).map((v) => (v == null ? NaN : v))
@@ -123,7 +137,7 @@ async function fetchProfile(home: { lon: number; lat: number } = homePlace(), ti
     ens: null,
   }
   try {
-    const hj = await om('https://api.open-meteo.com/v1/forecast', { ...common, hourly: VARS.join(','), forecast_days: '2', models: 'gem_hrdps_continental' })
+    const hj = await hrdps
     const hh = hj.hourly as Record<string, (number | null)[] | string[]>
     const idx = new Map(p.time.map((t, i) => [t, i]))
     const map: [keyof Profile, string][] = [
@@ -147,37 +161,51 @@ async function fetchProfile(home: { lon: number; lat: number } = homePlace(), ti
   } catch (e) {
     devlog('wind', `profile: HRDPS miss · ${(e as Error).message}`)
   }
-  try {
-    const ej = await om('https://ensemble-api.open-meteo.com/v1/ensemble', {
-      latitude: common.latitude,
-      longitude: common.longitude,
-      wind_speed_unit: 'kmh',
-      timezone,
-      hourly: 'wind_speed_10m,wind_direction_10m',
-      forecast_days: '3',
-      models: 'gem_global_ensemble',
-    })
-    const eh = ej.hourly as Record<string, (number | null)[] | string[]>
-    const dirKeys = Object.keys(eh).filter((k) => k.startsWith('wind_direction_10m'))
-    const spdKeys = Object.keys(eh).filter((k) => k.startsWith('wind_speed_10m'))
-    const time = eh.time as string[]
-    const dirSd: number[] = []
-    const spdSd: number[] = []
-    const spdMean: number[] = []
-    time.forEach((_, i) => {
-      const ds = dirKeys.map((k) => (eh[k] as (number | null)[])[i]).filter((v): v is number => v != null)
-      const ss = spdKeys.map((k) => (eh[k] as (number | null)[])[i]).filter((v): v is number => v != null)
-      const m = ss.reduce((a, b) => a + b, 0) / Math.max(1, ss.length)
-      spdMean.push(m)
-      spdSd.push(Math.sqrt(ss.reduce((a, b) => a + (b - m) ** 2, 0) / Math.max(1, ss.length)))
-      // a calm member's direction is noise: weight the spread by speed
-      dirSd.push(ds.length >= 5 ? circSd(ds.filter((_, k) => (ss[k] ?? 0) >= 3)) : NaN)
-    })
-    p.ens = { time, dirSd, spdSd, spdMean }
-  } catch (e) {
-    devlog('wind', `profile: ensemble miss · ${(e as Error).message}`)
-  }
   return p
+}
+
+/** The GEPS ensemble's spread over an area's home, three days. */
+async function fetchEnsemble(home: { lon: number; lat: number }, timezone: string): Promise<NonNullable<Profile['ens']>> {
+  const ej = await om('https://ensemble-api.open-meteo.com/v1/ensemble', {
+    latitude: home.lat.toFixed(4),
+    longitude: home.lon.toFixed(4),
+    wind_speed_unit: 'kmh',
+    timezone,
+    hourly: 'wind_speed_10m,wind_direction_10m',
+    forecast_days: '3',
+    models: 'gem_global_ensemble',
+  })
+  const eh = ej.hourly as Record<string, (number | null)[] | string[]>
+  const dirKeys = Object.keys(eh).filter((k) => k.startsWith('wind_direction_10m'))
+  const spdKeys = Object.keys(eh).filter((k) => k.startsWith('wind_speed_10m'))
+  const time = eh.time as string[]
+  const dirSd: number[] = []
+  const spdSd: number[] = []
+  const spdMean: number[] = []
+  time.forEach((_, i) => {
+    const ds = dirKeys.map((k) => (eh[k] as (number | null)[])[i]).filter((v): v is number => v != null)
+    const ss = spdKeys.map((k) => (eh[k] as (number | null)[])[i]).filter((v): v is number => v != null)
+    const m = ss.reduce((a, b) => a + b, 0) / Math.max(1, ss.length)
+    spdMean.push(m)
+    spdSd.push(Math.sqrt(ss.reduce((a, b) => a + (b - m) ** 2, 0) / Math.max(1, ss.length)))
+    // a calm member's direction is noise: weight the spread by speed
+    dirSd.push(ds.length >= 5 ? circSd(ds.filter((_, k) => (ss[k] ?? 0) >= 3)) : NaN)
+  })
+  return { time, dirSd, spdSd, spdMean }
+}
+
+/** How long a new profile waits on a slow ensemble before it goes out
+ *  without it: the ensemble only widens the spread, and its server can sit
+ *  on a request for minutes (2026-10-05: 4 s, then 344 s). Later than this,
+ *  it is patched in when it lands. */
+const ENS_GRACE_MS = 2000
+
+/** The last profile's ensemble, while it still runs past now: better than
+ *  none while a new one is late or missed. */
+function priorEns(p: Profile): Profile['ens'] {
+  const e = profile?.ens
+  if (!profile || !e?.time.length || Math.abs(profile.lat - p.lat) > 1e-4 || Math.abs(profile.lon - p.lon) > 1e-4) return null
+  return Date.parse(e.time[e.time.length - 1]) > Date.now() ? e : null
 }
 
 /** The profile, fetching when there is none or it is old. */
@@ -185,12 +213,34 @@ export function ensureProfile(force = false): Promise<Profile | null> {
   if (!force && profile && Date.now() - profile.fetchedAt < MAX_AGE_MS) return Promise.resolve(profile)
   if (!navigator.onLine) return Promise.resolve(profile)
   if (inflight) return inflight
-  inflight = fetchProfile()
-    .then((p) => {
+  const home = homePlace()
+  // undefined while it is out, null once it missed
+  let ens: Profile['ens'] | undefined
+  const ensOut = fetchEnsemble(home, TIMEZONE).then(
+    (e) => (ens = e),
+    (e) => {
+      devlog('wind', `profile: ensemble miss · ${(e as Error).message}`)
+      return (ens = null)
+    },
+  )
+  inflight = fetchFrame(home, TIMEZONE)
+    .then(async (p) => {
+      if (ens === undefined) await Promise.race([ensOut, new Promise((r) => setTimeout(r, ENS_GRACE_MS))])
+      const late = ens === undefined
+      p.ens = ens ?? priorEns(p)
       profile = p
       writeAreaItem(KEY, JSON.stringify(p))
-      devlog('wind', `profile · ${p.time.length} h · HRDPS ${p.hrdpsHours} h · ensemble ${p.ens ? 'yes' : 'no'}`)
+      devlog('wind', `profile · ${p.time.length} h · HRDPS ${p.hrdpsHours} h · ensemble ${late ? 'late' : ens ? 'yes' : 'no'}`)
       for (const cb of listeners) cb()
+      if (late)
+        void ensOut.then((e) => {
+          // a newer profile (a refresh) has taken its place: leave that one be
+          if (!e || profile !== p) return
+          p.ens = e
+          writeAreaItem(KEY, JSON.stringify(p))
+          devlog('wind', 'profile · ensemble in late')
+          for (const cb of listeners) cb()
+        })
       return p
     })
     .catch((e) => {

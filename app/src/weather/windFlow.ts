@@ -3,8 +3,8 @@ import { getMap, onEachMap, onFirstIdle, withMap } from '../map/mapController'
 import { useAppStore } from '../state/appStore'
 import { lodOf, meanLod, onQuality, qualityProfile, reportFrame } from './flowQuality'
 import { centrePoint, compose, FrameAnchor, IDENTITY, invert, isIdentity, same, type Affine } from './frameAffine'
-import { ensureWeatherGrid, onWeatherGrid, onWeatherTick, windSampler } from './windGrid'
-import { ensureProfile, onProfile } from './boundaryLayer'
+import { ensureWeatherGrid, onWeatherGrid, onWeatherTick, windGridInfo, windSampler } from './windGrid'
+import { currentProfile, ensureProfile, onProfile } from './boundaryLayer'
 import { groundSampler, loadMicro, microGrid, onMicro } from './micro/model'
 import { useWindChecks } from './micro/windChecks'
 import { currentTextStop } from '../ui/textScale'
@@ -61,7 +61,7 @@ interface FieldGrid {
 
 /**
  * Where the ground model says the air swirls (a tree-line eddy, a small
- * opening, a slot across the wind) the mean alone draws a slow straight
+ * opening, a slot across the wind, the tumbling lee of a hill or ridge) the mean alone draws a slow straight
  * drift: the opposite of what is going on. So those cells get an eddy field
  * on top of the mean, and settled or calm air a gentler one (scent hangs
  * and spreads every way). The spread alone is not the cue: at head height
@@ -708,6 +708,19 @@ function reducedMotion(): boolean {
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
 }
 
+/**
+ * What the streaks wait for: the ground model's file and, only when the
+ * phone has none, the forecast. An old forecast draws at once and the new
+ * one is fetched behind it (onWeatherGrid, onProfile resample the streaks
+ * when it lands). Opened after a while, the wind used to sit until every
+ * request was back.
+ */
+function airReady(ground: boolean): Promise<unknown> {
+  const g = ensureWeatherGrid()
+  const p = ground ? ensureProfile() : null
+  return Promise.all([windGridInfo() ? null : g, ground ? Promise.all([loadMicro(), currentProfile() ? null : p]) : null])
+}
+
 function syncAmbient(map: MlMap) {
   const s = useAppStore.getState()
   const want = s.layers.windFlow && !reducedMotion() && document.visibilityState === 'visible'
@@ -717,7 +730,7 @@ function syncAmbient(map: MlMap) {
     ambient = null
   }
   if (!want) return
-  void Promise.all([ensureWeatherGrid(), useAppStore.getState().windLevel === 'ground' ? Promise.all([loadMicro(), ensureProfile()]) : null]).then(() => {
+  void airReady(useAppStore.getState().windLevel === 'ground').then(() => {
     if (ambient) return
     if (!useAppStore.getState().layers.windFlow) return
     const eng = startEngine(map, { warm: wasLive, level: () => useAppStore.getState().windFlowOpacity })
@@ -736,7 +749,7 @@ function refreshAmbient(map: MlMap) {
     return
   }
   const ground = useAppStore.getState().windLevel === 'ground'
-  void Promise.all([ensureWeatherGrid(), ground ? Promise.all([loadMicro(), ensureProfile()]) : null]).then(() => {
+  void airReady(ground).then(() => {
     if (ambient !== eng) return
     if (!eng.refield()) syncAmbient(map)
   })
