@@ -20,6 +20,7 @@ import { initRoutes, useRoutes } from './routes/routeStore'
 import { initRouteLayer } from './routes/routeLayer'
 import { initScentLayer } from './weather/micro/scent'
 import { initCheckLayer } from './weather/micro/checkLayer'
+import { initPartyLayer } from './party/partyLayer'
 import { initMapUpdates } from './offline/updates'
 import { initAppUpdate, reloadApp, useAppUpdate } from './offline/appUpdate'
 import { initLive } from './hunting/hunting'
@@ -134,6 +135,7 @@ export default function App() {
     initSpotsLayer()
     initLogLayer()
     initCheckLayer()
+    initPartyLayer()
     initMapUpdates()
     initAppUpdate()
     initMoveLayer()

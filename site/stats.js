@@ -107,6 +107,7 @@ const KEY_PROP = {
   log_entry: 'species',
   wind_check: 'strength',
   check_share: 'on',
+  party: 'what',
   route: 'status',
   download: 'ok',
   sat_paste: 'ok',
