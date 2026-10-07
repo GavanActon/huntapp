@@ -13,6 +13,11 @@
     <meta name="theme-color" content="#0a100b" />
     <!-- search finds the app through groundwind.app, not this address -->
     <meta name="robots" content="noindex" />
+    <!-- the app needs a secure page (service worker, the party's sealing):
+         a plain http visit to its own host goes to https -->
+    <script>
+      if (location.protocol === 'http:' && location.hostname.endsWith('groundwind.app')) location.replace('https://' + location.host + location.pathname + location.search + location.hash)
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <link rel="preconnect" href="https://api.open-meteo.com" crossorigin />
