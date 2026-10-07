@@ -153,7 +153,7 @@
   color: var(--c-text-faint);
 }
 
-/* HuntOS, the field guide, in its own sheet: folded sections, prose inside */
+/* How we hunt here, the field guide, in its own sheet: folded sections, prose inside */
 .guide-sec > summary {
   cursor: pointer;
   padding: 8px 4px;

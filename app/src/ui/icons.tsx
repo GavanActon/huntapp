@@ -485,7 +485,7 @@ export const IconClock = (p: IconProps) => (
   </svg>
 )
 
-/** HuntOS, the field guide: an open book. */
+/** How we hunt here, the field guide: an open book. */
 export const IconBook = (p: IconProps) => (
   <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <path d="M12 6.5c-1.6-1.3-3.8-1.8-8-1.8v13.5c4.2 0 6.4.5 8 1.8 1.6-1.3 3.8-1.8 8-1.8V4.7c-4.2 0-6.4.5-8 1.8Z" />

@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import guide from '../../../../docs/HUNTOS.md?raw'
 
 /**
- * HuntOS, its own sheet beside Settings in the ⋯ menu: the field guide (docs/HUNTOS.md, bundled at build
+ * How we hunt here, its own sheet beside Settings in the ⋯ menu: the field guide (docs/HUNTOS.md, bundled at build
  * time so it reads offline), one folded section per heading, and a search
  * that opens the sections holding the words. The doc is the one source:
  * edit it after a hunt and the app has it on the next build.

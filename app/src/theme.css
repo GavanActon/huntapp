@@ -1,6 +1,6 @@
 /* ============================================================
    Huntapp design tokens — a dark forest chrome over the map,
-   with an Outdoor variant (opaque bone, dark ink) for daylight
+   with an Outdoor variant (opaque birch, dark ink) for daylight
    ============================================================ */
 
 :root {
@@ -38,8 +38,8 @@
   --c-fair: #cfccb4;
   /* the trail behind you */
   --c-track: #59e0b8;
-  /* a warning is clay, never a yellow */
-  --c-warn: #e2845a;
+  /* a warning is rose: never yellow, and never orange, which is scent */
+  --c-warn: #f2879d;
   --c-danger: #ff6b6b;
 
   /* depth ramp reference (matches map raster) */
@@ -73,32 +73,32 @@
 }
 
 /* Outdoor (Settings): for sun on the phone. Opaque surfaces, no glass,
-   dark ink on bone, the same accents darkened to hold their contrast. */
+   dark ink on birch, the same accents darkened to hold their contrast. */
 :root[data-theme='outdoor'] {
-  --c-bg: #f3f0e7;
-  --c-bg-rgb: 243, 240, 231;
+  --c-bg: #eaeee8;
+  --c-bg-rgb: 234, 238, 232;
   --c-bg-raised: #ffffff;
-  --c-surface: rgba(248, 246, 240, 0.97);
-  --c-surface-heavy: rgba(252, 251, 247, 0.99);
+  --c-surface: rgba(243, 246, 241, 0.97);
+  --c-surface-heavy: rgba(249, 250, 248, 0.99);
   --c-cell: rgba(255, 255, 255, 0.92);
-  --c-cell-night: rgba(216, 212, 200, 0.92);
+  --c-cell-night: rgba(208, 214, 205, 0.92);
   --c-ink-rgb: 38, 52, 36;
   --c-border: rgba(var(--c-ink-rgb), 0.18);
   --c-border-strong: rgba(var(--c-ink-rgb), 0.36);
   --c-text: #121a10;
   --c-text-dim: #3f4d3a;
-  --c-text-faint: #66745f;
+  --c-text-faint: #5d6b56;
   --c-accent: #5a6b3e;
   --c-accent-rgb: 90, 107, 62;
   --c-accent-dim: rgba(var(--c-accent-rgb), 0.22);
   --c-on-accent: #ffffff;
   --c-wind: #0b6fae;
   --c-wind-rgb: 11, 111, 174;
-  --c-good: #2f7d2a;
-  --c-good-rgb: 47, 125, 42;
+  --c-good: #2b7527;
+  --c-good-rgb: 43, 117, 39;
   --c-fair: #6f6f4e;
   --c-track: #0f8a6a;
-  --c-warn: #b0532a;
+  --c-warn: #a83f73;
   --c-danger: #b8262c;
   --glass-filter: none;
   --shadow-panel: 0 4px 16px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(var(--c-ink-rgb), 0.08);

@@ -586,7 +586,7 @@ nothing that matters: at that cell the mechanical part stays under
   "Wind sharpened" card says the verdict, the pull, the lesson's tally and
   when to check next; the live card asks for a check when the last one has
   faded below a quarter, when it missed and 20 min have passed, or when a
-  sit has none. HuntOS §3 says the same for the hunter.
+  sit has none. How we hunt here (§3) says the same for the hunter.
 - A camp station can later post checks with `source: 'station'`.
 - The phone's barometer is not available to a web app.
 

@@ -3,7 +3,7 @@ import GuideSection from '../panels/GuideSection'
 import './settings.css'
 
 /**
- * HuntOS, the field guide, as its own sheet from the ⋯ menu, beside
+ * How we hunt here, the field guide, as its own sheet from the ⋯ menu, beside
  * Settings. The host draws the title row and its Done; the guide itself
  * (folded sections and a search) is GuideSection.
  */

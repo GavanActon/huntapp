@@ -23,7 +23,7 @@ const TITLES: Record<SheetKind, string> = {
   pins: 'Pins',
   huntlog: 'Hunt log',
   settings: 'Settings',
-  guide: 'HuntOS',
+  guide: 'How we hunt here',
   buttons: '',
   views: '',
   offline: 'Maps on this phone',

@@ -282,7 +282,7 @@ export interface AppState {
   setLeaves: (v: LeavesMode) => void
   textSize: SizeStop
   setTextSize: (v: SizeStop) => void
-  /** Outdoor: opaque bone chrome and dark ink for sun on the phone; persisted */
+  /** Outdoor: opaque birch chrome and dark ink for sun on the phone; persisted */
   outdoor: boolean
   setOutdoor: (v: boolean) => void
   /** your initials, on the wind checks you share with the party */

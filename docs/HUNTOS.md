@@ -1,4 +1,4 @@
-# HuntOS: how we hunt here
+# How we hunt here
 
 The field guide behind the app. One place for what we know about hunting
 moose (and the rest) out of the Pickle Lake camp: how the weather moves

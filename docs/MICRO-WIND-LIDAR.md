@@ -384,7 +384,7 @@ assumes a polygon-constant value (a per-stand mean, say).
   trails the grey LiDAR shade shows) should now call the cell open, with
   a tree-line shelter note, where before it was inside a stand.
 - Wind checks already logged (`windChecks`) rescore against the new grid:
-  the bias per regime should not get worse. Read it off the HuntOS sheet.
+  the bias per regime should not get worse. Read it off the How we hunt here sheet.
 
 ### As built (2026-10-04)
 

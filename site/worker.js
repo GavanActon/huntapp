@@ -15,7 +15,7 @@ import { eventsExport, eventsIngest, statsQuery } from './stats.js'
 const APP = 'https://gavanacton.github.io/huntapp/'
 // pages that may send a request: the site, and later the app's own button
 const ORIGINS = ['https://groundwind.app', 'https://gavanacton.github.io']
-const GAME = new Set(['moose', 'deer', 'bear', 'grouse'])
+const GAME = new Set(['moose', 'elk', 'deer', 'bear', 'grouse'])
 
 export default {
   async fetch(request, env) {
