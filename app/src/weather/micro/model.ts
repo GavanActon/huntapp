@@ -96,6 +96,7 @@ export interface GroundWind {
   inGrid: boolean
   /** the cell is a slot in the trees: the slot rule decided the direction */
   inSlot: boolean
+  inWoods: boolean
   /** the season's lesson applied to this call (bias.ts), if it was worth applying */
   bias: { deg: number; ratio: number } | null
 }
@@ -358,6 +359,8 @@ interface Eval {
   dirFrom: number
   inGrid: boolean
   slot: boolean
+  /** the cell is in a stand: the head-height wind came down through a canopy */
+  woods: boolean
   bias: Bias | null
 }
 
@@ -494,7 +497,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     // off the grid: an open-ground profile, nothing local
     const f = 0.7 * (1 - 0.6 * lay.stable)
     const sp = U * f
-    return { e: Ue * f, n: Un * f, sigma: 15 + 60 * Math.exp(-sp / 3.6 / 0.6), regime: sp < 0.8 ? 'calm' : 'wind', swirl: false, gusty: ctx.gf >= 1.8 && U >= 8, parts: [{ key: 'terrain', kmh: sp, toward: (dirFrom + 180) % 360 }], reasons, local10: U, U, dirFrom, inGrid: false, slot: false, bias: null }
+    return { e: Ue * f, n: Un * f, sigma: 15 + 60 * Math.exp(-sp / 3.6 / 0.6), regime: sp < 0.8 ? 'calm' : 'wind', swirl: false, gusty: ctx.gf >= 1.8 && U >= 8, parts: [{ key: 'terrain', kmh: sp, toward: (dirFrom + 180) % 360 }], reasons, local10: U, U, dirFrom, inGrid: false, slot: false, woods: false, bias: null }
   }
 
   // ---- terrain and roughness: the two lids, blended by stability ----
@@ -573,7 +576,10 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   }
   // a stable surface layer thins the wind toward the ground well below
   // the neutral log law (Monin–Obukhov: u2/u10 ≈ 0.4–0.5 on a clear calm night)
-  const gm = cf * (th === 0 ? 1 - 0.45 * s : 1)
+  // under a canopy too: the AmeriFlux towers (pipeline/towers/fit.py,
+  // 2026-10-07) put the floor at about 0.6 of its mixed-air share when the
+  // air above is settled (Treehaven mixedwood 0.13 stable / 0.28 unstable)
+  const gm = cf * (th === 0 ? 1 - 0.45 * s : 1 - 0.3 * s)
   let mechE = e10 * gm * shelter
   let mechN = n10 * gm * shelter
   // a slot in the trees: the along-slot part of the wind runs the length of
@@ -696,7 +702,11 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   // the cell is a slot. Applied to the model's own vector before the
   // checks nearby blend in, so a check made now still corrects locally on
   // top of it.
-  const lesson: Lesson = slot ? 'slot' : regime
+  // plain wind under a canopy is its own lesson: how much of the wind
+  // above the trees the floor gets (the canopy decay, build_microclimate)
+  // is the least certain number in the chain, and the checks of 2026
+  // called it 3–4× low in breezy air
+  const lesson: Lesson = slot ? 'slot' : th > 0 && regime === 'wind' ? 'woods' : regime
   const lessonBias = biasFor(ctx.biases, lesson)
   const applied = biasMatters(lessonBias) && spOwn >= 0.8
   if (applied) {
@@ -814,7 +824,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     if (lay.source === 'estimate') reasons.push('No layering forecast cached: stability estimated from the sky and the wind')
   }
 
-  return { e: E, n: N, sigma, regime, swirl: swirl || tumble >= TUMBLE_SWIRL, gusty, parts, reasons, local10, U, dirFrom, inGrid: true, slot: !!slot, bias: applied ? lessonBias : null }
+  return { e: E, n: N, sigma, regime, swirl: swirl || tumble >= TUMBLE_SWIRL, gusty, parts, reasons, local10, U, dirFrom, inGrid: true, slot: !!slot, woods: th > 0, bias: applied ? lessonBias : null }
 }
 
 function headlineOf(ev: Eval, kmh: number, dirFrom: number, gustKmh: number): string {
@@ -864,6 +874,7 @@ export function groundWind(lon: number, lat: number, ms: number): GroundWind | n
     layering: ctx.lay,
     inGrid: ev.inGrid,
     inSlot: ev.slot,
+    inWoods: ev.woods,
     bias: ev.bias ? { deg: ev.bias.deg, ratio: ev.bias.ratio } : null,
   }
 }

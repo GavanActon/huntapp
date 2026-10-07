@@ -203,7 +203,7 @@ export default function WindCheckCard() {
       ...(heldOn ? { held: true } : {}),
       ...(useAppStore.getState().who ? { by: useAppStore.getState().who } : {}),
       source: 'hand',
-      model: g ? { dirFrom: g.dirFrom, kmh: g.kmh, regime: g.regime, sigmaDeg: g.sigmaDeg, decoupled: g.decoupled, slot: g.inSlot, ...(g.bias ? { bias: g.bias } : {}) } : undefined,
+      model: g ? { dirFrom: g.dirFrom, kmh: g.kmh, regime: g.regime, sigmaDeg: g.sigmaDeg, decoupled: g.decoupled, slot: g.inSlot, woods: g.inWoods, ...(g.bias ? { bias: g.bias } : {}) } : undefined,
       forecast: forecastAt(at.lon, at.lat, now),
     })
     setSaving(false)

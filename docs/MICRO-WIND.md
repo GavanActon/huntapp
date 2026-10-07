@@ -570,6 +570,14 @@ nothing that matters: at that cell the mechanical part stays under
   pseudo-checks of zero bias in the mean, a 14-day e-folding on each
   check's weight, a swinging check at half weight, the turn capped at
   ±45° and the ratio within 0.5–2. Below 5° and 15% nothing is applied.
+  **Wind under the trees** (2026-10-07) is its own lesson: plain wind in
+  a stand (`model.woods`) teaches the canopy decay rather than the
+  regime, with the ratio allowed 0.25–4, since the 60 checks of Sep–Oct
+  2026 felt breezy where the floor was called at 3 km/h. A calm check
+  under moving treetops (`aloft`) counts there at calm's 0.3 km/h, the
+  clearest case of the canopy holding the wind off; elsewhere a calm
+  check still teaches no ratio. Checks made before the flag stay in the
+  plain-wind lesson.
   The reasons say "Turned 18° clockwise by 6 wind checks in plain wind
   this season"; the hunt log's "How the map is doing" tallies hits by
   lesson and shows what each has learned.

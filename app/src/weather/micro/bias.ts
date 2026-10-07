@@ -22,10 +22,11 @@ import { STRENGTH_KMH, type WindCheck } from './windChecks'
  * checks before a lesson moves far.
  */
 
-export type Lesson = 'slot' | 'wind' | 'drainage' | 'pooled' | 'upslope' | 'lakeBreeze' | 'landBreeze' | 'calm'
+export type Lesson = 'slot' | 'woods' | 'wind' | 'drainage' | 'pooled' | 'upslope' | 'lakeBreeze' | 'landBreeze' | 'calm'
 
 export const LESSON_WORDS: Record<Lesson, string> = {
   slot: 'slots in the trees',
+  woods: 'wind under the trees',
   wind: 'plain wind',
   drainage: 'draining cold air',
   pooled: 'settled cold air',
@@ -48,6 +49,9 @@ export const PRIOR_N = 4
 const FORGET_DAYS = 14
 const MAX_DEG = 45
 const RATIO_RANGE: [number, number] = [0.5, 2]
+// the canopy decay can be off by more than the regimes can: Gavan's 60
+// checks of Sep–Oct 2026 felt breezy where the model called 3 km/h
+const WOODS_RATIO_RANGE: [number, number] = [0.25, 4]
 const NONE: Bias = { deg: 0, ratio: 1, n: 0 }
 
 /** Which lesson a check teaches: the slot rule where the model saw a slot, else the regime. */
@@ -55,6 +59,7 @@ export function lessonOf(c: WindCheck): Lesson | null {
   const m = c.model
   if (!m) return null
   if (m.slot) return 'slot'
+  if (m.woods && m.regime === 'wind') return 'woods'
   return m.regime as Lesson
 }
 
@@ -72,7 +77,9 @@ export function residualRatio(c: WindCheck): number | null {
   const m = c.model
   if (!m || m.kmh < 1) return null
   const felt = STRENGTH_KMH[c.strength]
-  if (felt < 1) return null
+  // a calm floor under moving treetops is the canopy lesson's clearest
+  // case, not a lull: it counts, at calm's few tenths of a km/h
+  if (felt < 1 && !(c.aloft === true && lessonOf(c) === 'woods')) return null
   return felt / (m.kmh / (m.bias?.ratio ?? 1))
 }
 
@@ -106,9 +113,10 @@ export function learnBiases(checks: WindCheck[], ms: number): Map<Lesson, Bias> 
     // the prior is PRIOR_N unit vectors along zero
     const deg = (Math.atan2(a.s, a.c + PRIOR_N) * 180) / Math.PI
     const ratio = Math.exp(a.lr / (a.wr + PRIOR_N))
+    const range = lesson === 'woods' ? WOODS_RATIO_RANGE : RATIO_RANGE
     out.set(lesson, {
       deg: Math.max(-MAX_DEG, Math.min(MAX_DEG, deg)),
-      ratio: Math.max(RATIO_RANGE[0], Math.min(RATIO_RANGE[1], ratio)),
+      ratio: Math.max(range[0], Math.min(range[1], ratio)),
       n: Math.max(a.wd, a.wr),
     })
   }

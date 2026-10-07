@@ -334,15 +334,24 @@ LARCH_LED = 0.6
 CLASS_HARDWOOD = {CON_DENSE: 0.1, MIXED: 0.5, HARD: 0.9}
 
 
-def in_stand(h: np.ndarray, crown: np.ndarray, conifer: np.ndarray) -> np.ndarray:
+def in_stand(h: np.ndarray, crown: np.ndarray, conifer: np.ndarray, hardwood_leaf: np.ndarray) -> np.ndarray:
     """The head-height (2 m) fraction of the local 10 m wind in a stand h m
     tall: log profile down to the top (d = 0.67 h), then the canopy's
-    exponential decay; the attenuation coefficient grows with the closure and
-    the conifer share, both in % (Cionco 1965: 1–4 across canopies)."""
+    exponential decay; the attenuation coefficient grows with the closure,
+    the conifer share and the hardwood share in leaf, all in %.
+
+    Fitted 2026-10-07 to eight AmeriFlux towers (pipeline/towers/fit.py,
+    docs/SCALE-PLAN.md phase 1): the floor at 2 m holds 0.21-0.33 of the
+    first level over the canopy in black spruce, 0.20 under 24 m mixedwood,
+    0.22 under lodgepole, 0.11 under closed hardwood in leaf, Sep-Nov
+    medians over years. The Cionco range used before (a = 1.44-3.8) gave
+    0.04-0.07 for the same stands: 4-6x low, the under-call the 2026 field
+    checks found. Now a runs about 1.3 (open spruce) to 2.0 (closed
+    hardwood in leaf); the hardwood term goes with the leaves."""
     zc0 = np.maximum(0.1 * h, 0.3)
     d = 0.67 * h
     f_top = np.log(np.maximum(h - d, 0.5) / zc0) / np.log(10 / zc0)
-    a = 1.0 + 2.2 * np.clip(crown / 100, 0.2, 1) + 0.6 * np.clip(conifer / 100, 0, 1)
+    a = 0.7 + 1.7 * np.clip(crown / 100, 0.2, 1) + 0.5 * np.clip(conifer / 100, 0, 1) + 0.3 * np.clip(hardwood_leaf / 100, 0, 1)
     return f_top * np.exp(-a * (1 - 2 / np.maximum(h, 2.1)))
 
 
@@ -365,7 +374,7 @@ def leaves_down_report(canopy: np.ndarray, bare: np.ndarray, crown: np.ndarray, 
     stands, by cover class, with the closure each reads and, for scale, an
     open stand's (closure at the coefficient's 0.2 floor) of the same height
     and conifer: the line the bake prints."""
-    open_stand = np.clip(in_stand(h, np.zeros_like(crown), conifer), 0.04, 0.95)
+    open_stand = np.clip(in_stand(h, np.zeros_like(crown), conifer, np.zeros_like(crown)), 0.04, 0.95)
     parts = []
     for k in (TREED_WET, CON_DENSE, CON_OPEN, MIXED, HARD):
         m = (cover == k) & (h > 0)
@@ -509,6 +518,15 @@ def main() -> None:
 
     # ---- 4. canopy ----
     tall = np.isin(cover, (TREED_WET, CON_DENSE, CON_OPEN, MIXED, HARD))
+    # A cell the maps gave no class at all (cottage lots, developed land:
+    # 12 % of the Sault core) where the point cloud measured a stand is a
+    # stand. Left as open ground it drew a comb of 30 m lawns through
+    # 20 m trees, with the shelter and pocket swirl along every seam
+    # (2026-10-06). A classed open cell keeps its class, as below.
+    if src is not None:
+        unclassed = (cover == 0) & (src == 1) & (height >= 3)
+        print(f"  canopy: {int(unclassed.sum())} unclassed cells with measured trees read as stands")
+        tall = tall | unclassed
     h = np.where(tall, np.where(known_height(height, src), height, np.where(cover == TREED_WET, 6.0, 12.0)), 0.0)
     h = np.where(h < 3, 0, h)
     # open ground: log profile 2 m over 10 m, on the class's z0. The law holds
@@ -521,7 +539,7 @@ def main() -> None:
     # speed ratio's.
     z0l = np.maximum(z0_class, 0.01)
     f_open = np.log(2 / z0l) / np.log(10 / z0l)
-    canopy = np.where(h > 0, in_stand(h, crown, conifer), f_open)
+    canopy = np.where(h > 0, in_stand(h, crown, conifer, hab["hardwood"]), f_open)
     canopy = np.clip(canopy, 0.04, 0.95)
     print(f"  canopy: head-height fraction {canopy[h > 0].mean():.2f} in stands, {canopy[(h == 0) & ~water].mean():.2f} in the open · {time.time() - t0:.0f}s")
     # The same with the leaves down. The closure is leaf-on, the point cloud's
@@ -531,7 +549,7 @@ def main() -> None:
     # season. Open ground keeps its fraction. The roughness above (z0, the
     # speed ratio) stays leaf-on: docs/MICRO-WIND.md, Limits.
     crown_bare, evergreen = leaves_down(cover, crown, conifer, hab["hardwood"], hab["lead"])
-    canopy_bare = np.clip(np.where(h > 0, in_stand(h, crown_bare, evergreen), f_open), 0.04, 0.95)
+    canopy_bare = np.clip(np.where(h > 0, in_stand(h, crown_bare, evergreen, np.zeros_like(crown)), f_open), 0.04, 0.95)
     assert (canopy_bare >= canopy).all(), "leaves down must not shelter a stand more than leaves on"
     print(leaves_down_report(canopy, canopy_bare, crown, crown_bare, conifer, cover, h, header["coverNames"]))
 

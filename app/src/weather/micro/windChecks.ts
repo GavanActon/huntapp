@@ -74,6 +74,8 @@ export interface ModelCall {
   decoupled?: boolean
   /** the cell was a slot in the trees: its own lesson, apart from the regime's */
   slot?: boolean
+  /** the cell was in a stand: with plain wind, the canopy lesson */
+  woods?: boolean
   /** the season's correction the call already carried (bias.ts), so the lesson is taken from the raw call */
   bias?: { deg: number; ratio: number }
 }
