@@ -94,10 +94,11 @@ def no_lidar() -> bool:
 def mrdem_core():
     """The core plus MARGIN_DEG from the 30 m MRDEM, bilinear onto a
     MRDEM_CELL_M grid in its own CRS: (array, transform, crs, nodata)."""
+    import stage
     from rasters import MRDEM
 
     box = (CORE["west"] - MARGIN_DEG, CORE["south"] - MARGIN_DEG, CORE["east"] + MARGIN_DEG, CORE["north"] + MARGIN_DEG)
-    with rasterio.Env(**GDAL_ENV), rasterio.open(f"/vsicurl/{MRDEM}") as src:
+    with rasterio.Env(**GDAL_ENV), rasterio.open(stage.source(MRDEM, box)) as src:  # a local copy when one holds the box
         b = transform_bounds("EPSG:4326", src.crs, *box, densify_pts=21)
         w = window_from_bounds(*b, src.transform).round_offsets().round_lengths()
         a = src.read(1, window=w).astype(np.float32)

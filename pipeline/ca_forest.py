@@ -54,6 +54,7 @@ from rasterio.windows import from_bounds
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import area  # noqa: E402  (first: it takes --area out of argv)
+import stage  # noqa: E402
 from common import OUT_DIR, REGION  # noqa: E402
 
 SCANFI = "https://ftp.maps.canada.ca/pub/nrcan_rncan/Forests_Foret/SCANFI/v2/SCANFI_{kind}_{layer}_{year}_v2_20260119.tif"
@@ -114,7 +115,7 @@ def read_all() -> tuple[dict[str, np.ndarray], rasterio.Affine, str]:
         name, url = item
         for attempt in range(5):
             try:
-                with rasterio.open("/vsicurl/" + url) as ds:
+                with rasterio.open(stage.source(url, box)) as ds:  # a local copy when one holds the box
                     b = transform_bounds("EPSG:4326", ds.crs, *box, densify_pts=21)
                     w = from_bounds(*b, ds.transform).round_offsets().round_lengths()
                     a = ds.read(1, window=w, boundless=True, fill_value=ds.nodata)

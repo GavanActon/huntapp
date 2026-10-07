@@ -34,7 +34,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-AREAS_DIR = ROOT / "app" / "src" / "areas"
+# HUNTAPP_AREAS_DIR: area files kept out of the app's list, as tiles.py's are
+AREAS_DIR = Path(os.environ["HUNTAPP_AREAS_DIR"]).resolve() if os.environ.get("HUNTAPP_AREAS_DIR") else ROOT / "app" / "src" / "areas"
 CACHE_DIR = ROOT / "pipeline" / "raw"
 DEFAULT_AREA = "pickle-lake"
 ID_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")

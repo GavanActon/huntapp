@@ -18,6 +18,7 @@ import rasterio
 from rasterio.warp import transform_bounds
 from rasterio.windows import from_bounds
 
+import stage
 from common import CACHE_DIR, REGION, grid_covers
 
 MRDEM = "https://canelevation-dem.s3.ca-central-1.amazonaws.com/mrdem-30/mrdem-30-dtm.tif"
@@ -41,12 +42,12 @@ def fetch(name: str) -> dict:
         return out
     url = SOURCES[name]
     t = time.time()
-    print(f"fetching {name} from {url} (slow: minutes)")
+    box = (REGION["west"] - PAD_DEG, REGION["south"] - PAD_DEG, REGION["east"] + PAD_DEG, REGION["north"] + PAD_DEG)
+    path_in = stage.source(url, box)  # a local copy when one holds the box (stage.py)
+    print(f"fetching {name} from {path_in}" + (" (slow: minutes)" if path_in.startswith("/vsicurl/") else ""))
     with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif", GDAL_HTTP_MAX_RETRY="6", GDAL_HTTP_RETRY_DELAY="2"):
-        with rasterio.open(f"/vsicurl/{url}") as src:
-            b = transform_bounds(
-                "EPSG:4326", src.crs, REGION["west"] - PAD_DEG, REGION["south"] - PAD_DEG, REGION["east"] + PAD_DEG, REGION["north"] + PAD_DEG
-            )
+        with rasterio.open(path_in) as src:
+            b = transform_bounds("EPSG:4326", src.crs, *box)
             w = from_bounds(*b, src.transform).round_offsets().round_lengths()
             arr = src.read(1, window=w)
             tr = src.window_transform(w)
