@@ -46,16 +46,17 @@ const EMPTY_FC: FeatureCollection = { type: 'FeatureCollection', features: [] }
 /** GeoJSON sources whose layers are all switched off when the style is
  *  built start empty, with the real file noted here: MapLibre fetches and
  *  indexes a GeoJSON source the moment it is added, hidden or not, and the
- *  forest stands alone are 5 MB. They are filled in once the map has drawn
- *  its first settled frame, or the moment their switch goes on
- *  (flushDeferredGeo), whichever comes first. */
+ *  forest stands alone are 5 MB. They are filled in the moment their switch
+ *  goes on (flushDeferredGeo). They were filled at the first settled frame
+ *  too, unasked: MapLibre takes the tiles it cuts from them on the main
+ *  thread, and on a phone that was a quarter-second hitch in the wind
+ *  streaks a few seconds after every launch, for layers nobody had on. */
 export const deferredGeo = new Map<string, { url: string; group: keyof LayerVisibility }>()
 
-/** Give the deferred sources their data: all of them, or with `layers`
- *  only those whose group is now on. */
-export function flushDeferredGeo(map: MlMap, layers?: LayerVisibility) {
+/** Give the deferred sources whose group is now on their data. */
+export function flushDeferredGeo(map: MlMap, layers: LayerVisibility) {
   for (const [id, { url, group }] of deferredGeo) {
-    if (layers && !layers[group]) continue
+    if (!layers[group]) continue
     const src = map.getSource(id) as GeoJSONSource | undefined
     if (src) src.setData(url)
     deferredGeo.delete(id)
