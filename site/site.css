@@ -1,10 +1,9 @@
 /* Layout: one reading column that opens into text | phone rows on wide screens.
    The app's own screens are the pictures; the type is trail-sign condensed caps
-   over a quiet body, with instrument readouts in mono. Dark first, like the app;
-   the light theme is paper: cream, deep green and copper. */
+   over a quiet body, with instrument readouts in mono. Dark forest for everyone, like the bush at dusk; there is no light theme. */
 :root {
-  --bg: #0c1e17;
-  --raised: #152b22;
+  --bg: #08140f;
+  --raised: #10211a;
   --ink: #f1e9d6;
   --dim: #c9c4a9;
   --faint: #93a58c;
@@ -16,51 +15,13 @@
   --wind: #4fc7ff;
   --scent: #e8873f;
   --good: #9fd36f;
-  --bezel: #0a1a13;
+  --bezel: #06100c;
   --shadow: 0 30px 60px -24px rgba(0, 0, 0, 0.7);
   --f-display: 'Sofia Sans Extra Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
   --f-body: 'Sofia Sans', -apple-system, 'Segoe UI', Roboto, sans-serif;
   --f-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   color-scheme: dark;
-}
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    --bg: #efe8d4;
-    --raised: #f8f3e6;
-    --ink: #15291c;
-    --dim: #3e5243;
-    --faint: #637461;
-    --line: rgba(24, 50, 36, 0.16);
-    --line-strong: rgba(24, 50, 36, 0.34);
-    --accent: #1f4a30;
-    --accent-dim: rgba(31, 74, 48, 0.12);
-    --on-accent: #f1e9d6;
-    --wind: #0b6fae;
-    --scent: #b5521a;
-    --good: #2f7a2b;
-    --bezel: #183224;
-    --shadow: 0 30px 60px -28px rgba(40, 50, 30, 0.4);
-    color-scheme: light;
-  }
-}
-:root[data-theme="light"] {
-  --bg: #efe8d4;
-  --raised: #f8f3e6;
-  --ink: #15291c;
-  --dim: #3e5243;
-  --faint: #637461;
-  --line: rgba(24, 50, 36, 0.16);
-  --line-strong: rgba(24, 50, 36, 0.34);
-  --accent: #1f4a30;
-  --accent-dim: rgba(31, 74, 48, 0.12);
-  --on-accent: #f1e9d6;
-  --wind: #0b6fae;
-  --scent: #b5521a;
-  --good: #2f7a2b;
-  --bezel: #183224;
-  --shadow: 0 30px 60px -28px rgba(40, 50, 30, 0.4);
-  color-scheme: light;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
