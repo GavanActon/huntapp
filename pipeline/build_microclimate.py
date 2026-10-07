@@ -346,7 +346,11 @@ def in_stand(h: np.ndarray, crown: np.ndarray, conifer: np.ndarray, hardwood_lea
     0.22 under lodgepole, 0.11 under closed hardwood in leaf, Sep-Nov
     medians over years. The Cionco range used before (a = 1.44-3.8) gave
     0.04-0.07 for the same stands: 4-6x low, the under-call the 2026 field
-    checks found. Now a runs about 1.3 (open spruce) to 2.0 (closed
+    checks found. The tower fit on its own (a = 0.3 + 1.0 crown + 0.3
+    conifer + 0.8 hardwood) over-called the stands 2x against Gavan's 60
+    checks of Sep-Oct 2026 (pipeline/towers/score.py); the curve below sits
+    between the two and lands on them (felt/call 1.0x in stands, 63% of
+    checks within 2x). a runs about 1.1 (open spruce) to 2.7 (closed
     hardwood in leaf); the hardwood term goes with the leaves."""
     zc0 = np.maximum(0.1 * h, 0.3)
     d = 0.67 * h
