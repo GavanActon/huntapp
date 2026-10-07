@@ -1,22 +1,22 @@
 /* Layout: one reading column that opens into text | phone rows on wide screens.
    The app's own screens are the pictures; the type is trail-sign condensed caps
    over a quiet body, with instrument readouts in mono. Dark first, like the app;
-   the light theme is the app's Outdoor palette, on birch. */
+   the light theme is paper: cream, deep green and copper. */
 :root {
-  --bg: #0a100b;
-  --raised: #141c15;
-  --ink: #f3f8ef;
-  --dim: #bccbb7;
-  --faint: #879b85;
-  --line: rgba(190, 214, 182, 0.18);
-  --line-strong: rgba(190, 214, 182, 0.38);
-  --accent: #d3dfb4;
-  --accent-dim: rgba(211, 223, 180, 0.16);
-  --on-accent: #121709;
+  --bg: #0c1e17;
+  --raised: #152b22;
+  --ink: #f1e9d6;
+  --dim: #c9c4a9;
+  --faint: #93a58c;
+  --line: rgba(226, 214, 180, 0.16);
+  --line-strong: rgba(226, 214, 180, 0.36);
+  --accent: #d2a85c;
+  --accent-dim: rgba(210, 168, 92, 0.16);
+  --on-accent: #16301f;
   --wind: #4fc7ff;
-  --scent: #ff9d4d;
-  --good: #86d97a;
-  --bezel: #000;
+  --scent: #e8873f;
+  --good: #9fd36f;
+  --bezel: #0a1a13;
   --shadow: 0 30px 60px -24px rgba(0, 0, 0, 0.7);
   --f-display: 'Sofia Sans Extra Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
   --f-body: 'Sofia Sans', -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -26,40 +26,40 @@
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --bg: #eaeee8;
-    --raised: #f6f8f4;
-    --ink: #121a10;
-    --dim: #3f4d3a;
-    --faint: #5d6b56;
-    --line: rgba(38, 52, 36, 0.16);
-    --line-strong: rgba(38, 52, 36, 0.34);
-    --accent: #5a6b3e;
-    --accent-dim: rgba(90, 107, 62, 0.14);
-    --on-accent: #ffffff;
+    --bg: #efe8d4;
+    --raised: #f8f3e6;
+    --ink: #15291c;
+    --dim: #3e5243;
+    --faint: #637461;
+    --line: rgba(24, 50, 36, 0.16);
+    --line-strong: rgba(24, 50, 36, 0.34);
+    --accent: #1f4a30;
+    --accent-dim: rgba(31, 74, 48, 0.12);
+    --on-accent: #f1e9d6;
     --wind: #0b6fae;
-    --scent: #ad4210;
-    --good: #2b7527;
-    --bezel: #1a1f18;
-    --shadow: 0 30px 60px -28px rgba(30, 40, 25, 0.45);
+    --scent: #b5521a;
+    --good: #2f7a2b;
+    --bezel: #183224;
+    --shadow: 0 30px 60px -28px rgba(40, 50, 30, 0.4);
     color-scheme: light;
   }
 }
 :root[data-theme="light"] {
-  --bg: #eaeee8;
-  --raised: #f6f8f4;
-  --ink: #121a10;
-  --dim: #3f4d3a;
-  --faint: #5d6b56;
-  --line: rgba(38, 52, 36, 0.16);
-  --line-strong: rgba(38, 52, 36, 0.34);
-  --accent: #5a6b3e;
-  --accent-dim: rgba(90, 107, 62, 0.14);
-  --on-accent: #ffffff;
+  --bg: #efe8d4;
+  --raised: #f8f3e6;
+  --ink: #15291c;
+  --dim: #3e5243;
+  --faint: #637461;
+  --line: rgba(24, 50, 36, 0.16);
+  --line-strong: rgba(24, 50, 36, 0.34);
+  --accent: #1f4a30;
+  --accent-dim: rgba(31, 74, 48, 0.12);
+  --on-accent: #f1e9d6;
   --wind: #0b6fae;
-  --scent: #ad4210;
-  --good: #2b7527;
-  --bezel: #1a1f18;
-  --shadow: 0 30px 60px -28px rgba(30, 40, 25, 0.45);
+  --scent: #b5521a;
+  --good: #2f7a2b;
+  --bezel: #183224;
+  --shadow: 0 30px 60px -28px rgba(40, 50, 30, 0.4);
   color-scheme: light;
 }
 
@@ -100,7 +100,7 @@ p { margin: 0; }
 /* ---- header */
 .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 18px; }
 .mark { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-.mark svg { width: 30px; height: 30px; flex: none; }
+.mark img { width: auto; height: 34px; border-radius: 5px; flex: none; background: #0c1e17; /* the mark keeps its own ground on paper */ }
 .mark b { font: 800 1.75rem/1 var(--f-display); text-transform: uppercase; letter-spacing: 0.02em; }
 .pill {
   font: 500 0.68rem/1 var(--f-mono);
@@ -771,3 +771,23 @@ footer .links a:hover { color: var(--ink); text-decoration: underline; }
 .notes-grid a { text-decoration: none; display: grid; gap: 10px; align-content: start; }
 .notes-grid .go { font: 500 0.74rem/1 var(--f-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
 .notes-grid a:hover h3 { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 2px; }
+
+/* ---- story: the skim list in the hero, a photo over each beat */
+.eyebrow { font: 600 0.9rem/1 var(--f-body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); margin: 0 0 14px; }
+.skim { list-style: none; margin: 26px 0 0; padding: 18px 0; border-block: 1px solid var(--line); display: grid; gap: 10px; max-width: 34em; }
+.skim li { display: grid; grid-template-columns: 14px 1fr; gap: 12px; align-items: baseline; font: 500 1.08rem/1.4 var(--f-body); color: var(--ink); }
+.skim li::before { content: ''; height: 2px; background: var(--accent); align-self: start; margin-top: 0.72em; }
+.hero-proof { font-size: 0.9rem; color: var(--faint); margin: 14px 0 0; }
+.hero-photo { margin: 0; }
+.hero-photo img { width: 100%; height: auto; border-radius: 12px; box-shadow: var(--shadow); }
+.beat-photo { margin: 0; padding-top: 64px; border-top: 1px solid var(--line); display: grid; gap: 10px; }
+.beat-photo img { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 12px; }
+.beat-photo figcaption { font-size: 0.85rem; color: var(--faint); }
+.row.after-photo, .model.after-photo, .beta.after-photo { border-top: 0; padding-top: 28px; }
+.nose .row-text { max-width: 40em; }
+@media (min-width: 860px) {
+  .beat-photo { padding-top: 88px; }
+  .row.after-photo, .model.after-photo, .beta.after-photo { padding-top: 36px; }
+  .hero { grid-template-columns: 1fr 1fr; align-items: start; }
+  .hero-photo { padding-top: 12px; }
+}
