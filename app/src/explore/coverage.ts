@@ -15,14 +15,17 @@ const BLOCKS_MAX = 6.5
 
 // the palette: sage for ground that can have HD, grey for SD only, gold
 // and blue for what is baked, copper for what is asked for
-const GREY = 'rgba(154,163,154,0.22)'
-const SAGE = 'rgba(143,174,107,0.30)'
-const SAGE_DEEP = 'rgba(120,160,80,0.42)'
-const GOLD = 'rgba(217,179,74,0.55)'
-const BLUE = 'rgba(95,168,211,0.5)'
-const COPPER = 'rgba(214,122,60,0.6)'
-const LINE = 'rgba(238,245,234,0.28)'
-const PICK = '#eef5ea'
+// light over the topo sheet: the lakes stay blue through it (Gavan, 2026-10-08)
+const GREY = 'rgba(90,90,90,0.10)'
+const SAGE = 'rgba(120,160,80,0.14)'
+const SAGE_DEEP = 'rgba(100,150,60,0.20)'
+const GOLD = 'rgba(217,179,74,0.38)'
+const BLUE = 'rgba(95,168,211,0.34)'
+const COPPER = 'rgba(214,122,60,0.45)'
+const LINE = 'rgba(40,60,40,0.35)'
+const BLOCK_GREY = 'rgba(154,163,154,0.22)'
+const BLOCK_SAGE = 'rgba(120,160,80,0.42)'
+const PICK = '#1f3b1f'
 
 export function coverageSource(): SourceSpecification {
   return { type: 'vector', url: `pmtiles://${COVERAGE_KEY}`, promoteId: { tiles: 'id' } }
@@ -38,7 +41,7 @@ export function coverageLayers(): LayerSpecification[] {
       maxzoom: BLOCKS_MAX,
       paint: {
         // the share of the block's tiles with 1 m LiDAR, grey to sage
-        'fill-color': ['interpolate', ['linear'], ['coalesce', ['get', 'lidar'], 0], 0, GREY, 1, SAGE_DEEP],
+        'fill-color': ['interpolate', ['linear'], ['coalesce', ['get', 'lidar'], 0], 0, BLOCK_GREY, 1, BLOCK_SAGE],
         'fill-outline-color': 'rgba(0,0,0,0)',
       },
     },
@@ -74,7 +77,7 @@ export function coverageLayers(): LayerSpecification[] {
       minzoom: 8.5,
       paint: {
         'line-color': ['case', ['boolean', ['feature-state', 'picked'], false], PICK, LINE],
-        'line-width': ['case', ['boolean', ['feature-state', 'picked'], false], 2.5, 0.6],
+        'line-width': ['case', ['boolean', ['feature-state', 'picked'], false], 2.5, 0.8],
       },
     },
   ]

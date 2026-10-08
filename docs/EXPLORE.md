@@ -137,6 +137,39 @@ Canada Base Map, the MRDEM shade and Toporama. What is there:
   lake" → Ketchup Lake · lake · Thunder Bay · ON → the map at z11 on it;
   "N 48° 55.57' W 85° 35.92'" → a Go to row.
 
+- 2026-10-08, after a look at the deployed view ("really hard to see … I
+  see names but not lakes"): Explore's base from z7 is now the whole
+  Toporama sheet (`sources.ts` toposheet, the WMS's `WMS-Toporama`
+  layer): blue lakes with shores, creeks, woods, contours, roads, names.
+  The quiet geometry base and the names layer carry the zooms below 7.
+  The grid's tint is a tenth of what it was so the lakes stay blue, the
+  cells are hairlines, the picked cell a dark outline.
+
+### Next: the box you draw, not the cell
+
+Gavan, 2026-10-08: "I might just want to draw a grid and download that
+area. Tiles are pretty massive. Sucks when your lake is in the middle of
+a line." He is right, and the shot shows it: Pickle Lake sits on the edge
+of cell 629-411. So the lattice stays the catalogue and the pipeline's
+unit, and the thing a hunter asks for becomes a box they draw:
+
+- A square from the tap, 10 × 10 km by default, dragged to move and
+  pulled at the corners to resize, its size in km and the pack's size in
+  MB shown as it changes.
+- Its coverage is read off the tiles under it: HD possible where every
+  tile has 1 m LiDAR, the newest year flown, the stands' source.
+- SD for a box: the tiles under it are baked or already there (shared,
+  stitching cell for cell), and the pack is cut to the box: the grids
+  cropped, the display layers baked for the box.
+- HD for a box: the box is the core and the region its margin, exactly
+  as Lac Bailey's 10 × 10 km was baked; no lattice line can cut a lake.
+- The request carries the box, not a cell id; the Worker stores it and
+  the agent bakes it.
+
+Effort: the box on the map about a day, the request and the cropped pack
+with the bake agent of SD-HD-PLAN.md. The cell card stays until the box
+is in, then goes.
+
 Not yet: the request state from D1 (only this phone's asks show), the
 declination in Explore (0), the weather time zone (Toronto's), the US,
 Protomaps, the point clouds in the index, stub areas for requested cells.

@@ -59,7 +59,7 @@ export const BUILT_IN: MapView[] = [
   { id: 'hunt-relief', name: 'Topo', mode: 'hunt', builtIn: true, heat: false, opacity: { ...DEFAULT_OPACITY, hillshade: 0.7 }, layers: L(['relief', 'hillshade', 'contours', 'roads']) },
   { id: 'hunt-land', name: 'Land', mode: 'hunt', builtIn: true, heat: false, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'crown', 'wmu', 'camps', 'parks', 'roads']) },
   // the map anywhere in Canada, the grid of cells and asking for one (docs/EXPLORE.md): a switch, not a layer set
-  { id: 'hunt-explore', name: 'Explore', mode: 'hunt', builtIn: true, heat: false, opacity: { ...DEFAULT_OPACITY, hillshade: 0.7 }, layers: L(['hillshade', 'topo', 'roads']), explore: true },
+  { id: 'hunt-explore', name: 'Explore', mode: 'hunt', builtIn: true, heat: false, opacity: { ...DEFAULT_OPACITY, hillshade: 0.3 }, layers: L(['hillshade', 'roads']), explore: true },
   { id: 'fish-lake', name: 'Lake', mode: 'fish', builtIn: true, heat: true, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'bathy']) },
   { id: 'fish-chart', name: 'Chart', mode: 'fish', builtIn: true, heat: true, opacity: DEFAULT_OPACITY, layers: L(['bathy', 'topo']) },
 ]

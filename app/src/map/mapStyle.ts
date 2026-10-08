@@ -254,6 +254,12 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
         paint: o.explore ? { 'raster-saturation': -0.3, 'raster-brightness-max': 0.75, 'raster-contrast': 0.05 } : { 'raster-saturation': -0.7, 'raster-brightness-max': 0.45, 'raster-contrast': 0.1 },
       },
     ]
+    // Explore: the Toporama sheet over it from z7, the map one reads lakes off
+    if (o.explore && LIVE_RASTER.toposheet) {
+      const ts = LIVE_RASTER.toposheet
+      sources.toposheet = { type: 'raster', tiles: ts.tiles, tileSize: ts.tileSize, attribution: ts.attribution, minzoom: ts.minzoom, maxzoom: ts.maxzoom }
+      base.push({ id: 'toposheet', type: 'raster', source: 'toposheet', minzoom: ts.minzoom, paint: { 'raster-opacity': 0.92, 'raster-resampling': 'linear' } })
+    }
   }
   base = base.map((l) => (l.type === 'background' ? { ...l, paint: { ...l.paint, 'background-color': groundColour(o.layers) } } : l))
   const firstSymbol = base.findIndex((l) => l.type === 'symbol')
@@ -452,11 +458,12 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
     sources[COVERAGE_SOURCE] = coverageSource()
     rasters.push(...coverageLayers())
   }
-  // the names of lakes, rivers and towns, over the grid (sources.ts labels)
+  // the names of lakes, rivers and towns over the grid, zoomed out where the
+  // quiet base is all there is; the Toporama sheet brings its own from z7
   if (o.explore && LIVE_RASTER.labels) {
     const lb = LIVE_RASTER.labels
     sources.labels = { type: 'raster', tiles: lb.tiles, tileSize: lb.tileSize, attribution: lb.attribution, maxzoom: lb.maxzoom }
-    rasters.push({ id: 'explore-labels', type: 'raster', source: 'labels', paint: { 'raster-opacity': 0.95, 'raster-resampling': 'linear' } })
+    rasters.push({ id: 'explore-labels', type: 'raster', source: 'labels', maxzoom: LIVE_RASTER.toposheet?.minzoom ?? 24, paint: { 'raster-opacity': 0.95, 'raster-resampling': 'linear' } })
   }
   // the MNR lake survey sheets (Pickle 1978, Ketchup 1978, McGill 1979),
   // fitted to the shoreline and baked as ink on transparency: the true
