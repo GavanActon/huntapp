@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import gzip
 import json
+import sys
 import math
 import struct
 import time
@@ -43,6 +44,7 @@ from pathlib import Path
 import numpy as np
 import rasterio
 import shapely
+from habfile import write_hab
 from habfile import write_hab
 from rasterio import features
 from rasterio.transform import from_origin
@@ -94,8 +96,9 @@ CONIFER_LEAD = {"Sb", "Sw", "Bf", "Pj", "Pw", "Pr", "Cw", "La"}
 # under the survivors the photo shows, or round a fen the map left
 # unburned, is not a disturbance.
 FOREST_SOURCE = adapter(BAKE, "forest")
-FOREST_UPDATED = FOREST_SOURCE == "qc.ecoforestier"
-INVENTORY = {"on.fri": "FRI", "qc.ecoforestier": "carte écoforestière"}.get(FOREST_SOURCE or "", "forest map")
+# a map that names every polygon, stand or not, and carries its own burns: Quebec's, and BC's VRI (bc_forest.py)
+FOREST_UPDATED = FOREST_SOURCE in ("qc.ecoforestier", "bc.vri")
+INVENTORY = {"on.fri": "FRI", "qc.ecoforestier": "carte écoforestière", "bc.vri": "VRI"}.get(FOREST_SOURCE or "", "forest map")
 
 # Where the bush band (thick) comes from. By default the estimate from the
 # forest map (bush_thickness). An area whose bake.habitatBush is
@@ -105,6 +108,11 @@ INVENTORY = {"on.fri": "FRI", "qc.ecoforestier": "carte écoforestière"}.get(FO
 # burn's 35-year-old regrowth, where the LiDAR finds mostly light to
 # moderate bush.
 BUSH_FROM_POINTCLOUD = BAKE.get("habitatBush") == "pointcloud"
+# With no point cloud, the bush-thickness model (pipeline/bush, docs/BUSH-MODEL.md)
+# predicts the understory from what is seen from space wherever it has been
+# trained, unless the area says bake.habitatBush: "estimate". The estimate
+# stays on roads and water, and where the imagery never saw the cell.
+BUSH_FROM_MODEL = not BUSH_FROM_POINTCLOUD and BAKE.get("habitatBush") != "estimate"
 
 # Stand height and closure (bands height and crown) are the point cloud's
 # wherever it measured, in every area that has one (measured_canopy). A
@@ -240,6 +248,51 @@ def species_keys(summary: str | None) -> list[str]:
 LEAD_SB, LEAD_PJ, LEAD_SW, LEAD_BF, LEAD_CW, LEAD_LA, LEAD_PT, LEAD_BW = range(1, 9)
 
 
+def modelled_bush(est: np.ndarray, cover: np.ndarray, map_says: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray | None, np.ndarray | None, dict]:
+    """The bush band from the bush-thickness model (pipeline/bush/predict.py)
+    for an area with no point cloud: the understory NRD predicted from
+    satellite imagery, radar and the national rasters on this lattice, on
+    the estimate's scale by the fixed curve the model documents, with the
+    model's spread (80th minus 20th percentile) beside it. The estimate
+    stays on water and roads and where no leaf-on imagery saw the cell. The
+    header carries that curve as bushCalib, so the going grid reads the NRD
+    back exactly. Returns the band, its source per cell (0 water, 2 the
+    estimate, 3 the model), the spread and the header; with no model
+    trained yet, the estimate as it is.
+
+    `map_says` marks the cells where the forest map names the ground
+    outright (open herb, lichen, rock, ice, open fen, a tall-shrub thicket:
+    a map that knows every polygon, FOREST_UPDATED) and the model, trained
+    on Ontario's boreal, has nothing to add: those keep the estimate (the
+    map's word, thickSrc 2). Gavan 2026-10-08: "some layered approach with
+    other inputs"."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent / "bush"))
+    import features as F
+    import predict as P
+
+    if not P.available():
+        print("  no bush model trained yet (pipeline/bush/train.py): bush from the forest-map estimate alone")
+        return est, None, None, {"thickFrom": "the forest-map estimate: no bush model trained yet"}
+    print("  bush from the bush model (satellite imagery, radar, national rasters) ...")
+    out = P.modelled(F.Grid("EPSG:4326", TRANSFORM, COLS, ROWS))
+    # kept for the map layer (pipeline/bush/render.py), so it need not pull the imagery again
+    np.savez_compressed(cached(f"bushmodel-{REGION['id']}.npz"), nrd=out["nrd"], q20=out["q20"], q80=out["q80"], transform=np.array(TRANSFORM)[:6], crs=np.array("EPSG:4326"), cover=cover.astype(np.uint8), notes=np.array(json.dumps(out["notes"]["bushModel"])))
+    ok = np.isfinite(out["nrd"]) & ~np.isin(cover, (WATER, ROAD))
+    if map_says is not None and map_says.any():
+        print(f"  the {INVENTORY} names the ground on {100 * map_says[cover != WATER].mean():.0f}% of the land (open herb, lichen, rock, fen, tall shrub): its word, not the model's, there")
+        ok &= ~map_says
+    thick = np.where(ok, P.to_estimate(np.nan_to_num(out["nrd"])), est).astype(np.float32)
+    spread = np.where(ok, P.to_estimate(np.nan_to_num(out["q80"])) - P.to_estimate(np.nan_to_num(out["q20"])), 0).astype(np.float32)
+    src = np.where(cover == WATER, 0, np.where(ok, 3, 2)).astype(np.uint8)
+    print(f"  bush from the model on {100 * ok.sum() / max(1, (cover != WATER).sum()):.0f}% of the land: thick (0.7) on {100 * (thick[ok] >= 0.7).mean():.0f}% of it, the estimate said {100 * (est[ok] >= 0.7).mean():.0f}%")
+    header = {
+        "thickFrom": "the bush model's NRD (satellite imagery, radar, SCANFI, CanLaD, terrain; docs/BUSH-MODEL.md) on the estimate's scale where thickSrc is 3; the forest-map estimate on water, roads, cells no leaf-on imagery saw, and ground the map names outright (open herb, lichen, rock, fen, tall shrub) (thickSrc 2)",
+        "bushCalib": P.calib_header(thick),
+        "bushModel": out["notes"]["bushModel"],
+    }
+    return thick, src, spread, header
+
+
 def young_thickness(age: np.ndarray) -> np.ndarray:
     """Eye-level density of regrowth by years since a cut, burn or stand
     origin (docs/HUNT-FISH-SCIENCE.md, "Bush thickness"): slash and
@@ -253,7 +306,7 @@ def young_thickness(age: np.ndarray) -> np.ndarray:
     return t
 
 
-def bush_thickness(cover, stand_age, dist_age, f_cc, f_lead, f_poly) -> np.ndarray:
+def bush_thickness(cover, stand_age, dist_age, f_cc, f_lead, f_poly, f_ht=None) -> np.ndarray:
     """Eye-level bush thickness per cell, 0 (open: see and walk) to 1 (a
     wall). An estimate from what the stand is and how old, not a
     measurement: the forest inventory describes the canopy, and the brush
@@ -272,10 +325,17 @@ def bush_thickness(cover, stand_age, dist_age, f_cc, f_lead, f_poly) -> np.ndarr
     T[old & (cover == MIXED)] = 0.65
     T[old & (cover == HARDWOOD)] = 0.55
     # lead species: jack pine floors stay open (lichen and blueberry);
-    # fir and cedar keep branches to the ground
+    # fir and cedar keep branches to the ground. That floor is the crowns'
+    # share of the cell: an open subalpine fir stand at 15 % closure (BC's
+    # SWB) is fir thickets with lichen flats between, not a wall, so where
+    # the map gives a closure the floor runs from 0.4 at 10 % up to 0.75 at
+    # 50 % and above (Gavan 2026-10-08: the estimate called 62 % of
+    # Blanchard River thick where the imagery model found 5 %)
     forest = np.isin(cover, (CONIFER_DENSE, CONIFER_OPEN, MIXED, HARDWOOD, TREED_WET))
     T[forest & (f_lead == LEAD_PJ)] -= 0.15
-    T[forest & np.isin(f_lead, (LEAD_BF, LEAD_CW))] = np.maximum(T[forest & np.isin(f_lead, (LEAD_BF, LEAD_CW))], 0.75)
+    branchy = forest & np.isin(f_lead, (LEAD_BF, LEAD_CW))
+    floor = np.where(f_cc > 0, 0.4 + 0.35 * np.clip((f_cc - 10) / 40, 0, 1), 0.75).astype(np.float32)
+    T[branchy] = np.maximum(T[branchy], floor[branchy])
     # canopy closure moves the understory the other way: light makes brush
     mid = known & (stand_age > 40) & (f_cc > 0)
     T[mid & (f_cc < 40)] += 0.1
@@ -286,6 +346,8 @@ def bush_thickness(cover, stand_age, dist_age, f_cc, f_lead, f_poly) -> np.ndarr
     T[young] = yt[young]
     # the classes with no stand
     T[cover == SHRUB] = 0.85  # alder runs
+    if f_ht is not None:  # a map that gives the shrub layer a height (BC's VRI: tall shrub 2 m+, low shrub under): knee-high scrub is not a wall
+        T[(cover == SHRUB) & (f_ht > 0) & (f_ht < 2)] = 0.4
     T[cover == OPEN_WET] = 0.15  # sedge and leatherleaf, knee high
     T[cover == BARREN] = 0.1
     T[cover == ROAD] = 0.05
@@ -673,10 +735,15 @@ def main() -> None:
     d_cover = edt_m(cover_mask)
     # hiding cover: any thick bush (young thickets, alder, fir and cedar,
     # dense spruce), not only tall dense conifer. Patches of half a hectare up
-    thick = bush_thickness(map_cover, stand_age, dist_age, f_cc, f_lead, f_poly)
-    thick_src, thick_header = None, {}
+    thick = bush_thickness(map_cover, stand_age, dist_age, f_cc, f_lead, f_poly, f_ht)
+    thick_src, thick_header, thick_spread = None, {}, None
+    # where a map that knows every polygon names open or non-vegetated ground,
+    # or a tall-shrub thicket, its word stands over the model's guess
+    map_says = FOREST_UPDATED & (np.isin(f_poly, (2, 6, 8)) | f_rock | ((f_poly == 4) & (f_ht >= 2)))
     if BUSH_FROM_POINTCLOUD:
         thick, thick_src, thick_header = measured_bush(thick, cover)
+    elif BUSH_FROM_MODEL:
+        thick, thick_src, thick_spread, thick_header = modelled_bush(thick, cover, map_says)
     thick_mask = thick >= 0.7
     tl, tn = ndimage.label(thick_mask)
     if tn:
@@ -797,7 +864,8 @@ def main() -> None:
             np.round(thick * 250).astype(np.uint8),
             1 / 250,
             "eye-level bush thickness, 0 open to 1 a wall ("
-            + ("the LiDAR's where thickSrc is 1, else the " if thick_src is not None else "")
+            + ("the LiDAR's where thickSrc is 1, else the " if BUSH_FROM_POINTCLOUD and thick_src is not None else "")
+            + ("the bush model's from satellite imagery where thickSrc is 3, else the " if thick_src is not None and (thick_src == 3).any() else "")
             + "estimate from stand type, age, closure, disturbance)",
         ),
         ("distThick", q8(d_thick, 10), 10, "m to thick hiding cover, patches of 0.5 ha up (×10)"),
@@ -813,7 +881,9 @@ def main() -> None:
     for d, arr in fetch_dirs.items():
         bands.append((f"fetch{d}", arr, 1, f"water cells: fetch in cells with wind from {d}"))
     if thick_src is not None:
-        bands.append(("thickSrc", thick_src, 1, "where thick comes from: 0 water, 1 LiDAR, 2 forest-map estimate"))
+        bands.append(("thickSrc", thick_src, 1, "where thick comes from: 0 water, 1 LiDAR, 2 forest-map estimate, 3 the bush model (satellite)"))
+    if thick_spread is not None:
+        bands.append(("thickSpread", np.round(np.clip(thick_spread, 0, 1) * 250).astype(np.uint8), 1 / 250, "the bush model's doubt: its 80th minus 20th percentile, on thick's scale"))
     if canopy_src is not None:
         # both surveys so far were flown in leaf (build_vegstructure.py), and a hunt is in the fall
         meaning = (
@@ -856,7 +926,8 @@ def main() -> None:
             "lidarCells": int((thick_src == 1).sum()),
             "thickShareOfLand": round(float((thick[land] >= 0.7).mean()), 3),
             "thickShareWhereLidar": round(float((thick[thick_src == 1] >= 0.7).mean()), 3) if (thick_src == 1).any() else None,
-            "estimateToLidar": [{"estimate": a, "lidar_median": b, "cells": n} for a, b, n in thick_header["bushCalib"]],
+            "estimateToLidar": [{"estimate": a, "lidar_median": b, "cells": n} for a, b, n in thick_header.get("bushCalib", [])],
+            **thick_header.get("bushModel", {}),
         }
     if canopy_src is not None:
         summary["canopy"] = canopy["summary"]

@@ -4,6 +4,12 @@
 import { ACTIVE_AREA, AREA_LIST, DEFAULT_AREA, areaById, exploreFromId, type AreaDef } from './areas'
 
 const AREA = ACTIVE_AREA
+/** What the core's fine relief was made from: NRCan's 1 m LiDAR unless the
+ *  area says otherwise (ArcticDEM 2 m north of about 59.7°). Its name heads
+ *  the shade, contour and elevation labels; its credit goes on the map. */
+export const FINE_RELIEF: { name: string; attribution: string } = AREA.fineRelief ?? { name: 'LiDAR 1 m', attribution: 'HRDEM LiDAR © Natural Resources Canada' }
+/** the first word of that, for a short label ("LiDAR contours", "ArcticDEM contours") */
+export const FINE_RELIEF_WORD = FINE_RELIEF.name.split(' ')[0]
 
 /**
  * Where the map opens with nothing better (no fix, no saved view): the
@@ -79,9 +85,9 @@ const PMTILES: (Omit<DataFileDef, 'file'> & { stem: string })[] = [
   { key: 'topo', stem: 'topo', kind: 'raster', label: 'Topographic map' },
   { key: 'satellite', stem: 'satellite', kind: 'raster', label: 'Imagery' },
   { key: 'hillshade', stem: 'hillshade', kind: 'raster', label: 'Hillshade (30 m)' },
-  { key: 'hillshadeLidar', stem: 'hillshade-lidar', kind: 'raster', label: 'LiDAR hillshade (1 m)' },
-  { key: 'dem', stem: 'dem', kind: 'raster', label: 'Elevation (1 m LiDAR, 30 m around)' },
-  { key: 'contours', stem: 'contours', kind: 'vector', label: 'LiDAR contours (1 m)' },
+  { key: 'hillshadeLidar', stem: 'hillshade-lidar', kind: 'raster', label: `${FINE_RELIEF.name} hillshade` },
+  { key: 'dem', stem: 'dem', kind: 'raster', label: `Elevation (${FINE_RELIEF.name}, 30 m around)` },
+  { key: 'contours', stem: 'contours', kind: 'vector', label: `${FINE_RELIEF.name} contours` },
   { key: 'contoursWide', stem: 'contours-wide', kind: 'vector', label: 'Contours (10 m, whole region)' },
   { key: 'forest', stem: 'forest', kind: 'vector', label: 'Forest cover' },
   { key: 'understory', stem: 'understory', kind: 'raster', label: 'Bush thickness (LiDAR)' },

@@ -1,35 +1,46 @@
 {
  "cover": {
-  "nodata": 7596,
-  "water": 7700,
-  "open wetland": 113,
+  "nodata": 17762,
+  "water": 7756,
+  "open wetland": 292,
   "treed wetland": 0,
-  "dense conifer": 3677,
-  "open conifer": 246602,
-  "mixedwood": 142374,
-  "hardwood": 297,
-  "shrub / alder": 59889,
-  "young regen": 21107,
-  "rock / barren": 3695,
-  "road": 0
+  "dense conifer": 11632,
+  "open conifer": 131775,
+  "mixedwood": 2659,
+  "hardwood": 284,
+  "shrub / alder": 112587,
+  "young regen": 0,
+  "rock / barren": 155895,
+  "road": 1546
  },
  "landform": {
-  "flat": 192449,
-  "ridge": 89138,
-  "valley": 87702,
-  "saddle": 18,
-  "bench": 410,
-  "peak": 109,
-  "slope": 123224
+  "flat": 88402,
+  "ridge": 108015,
+  "valley": 142791,
+  "saddle": 78,
+  "bench": 227,
+  "peak": 126,
+  "slope": 102549
  },
- "disturbed": 169067,
- "inferredCuts": 21107,
+ "disturbed": 0,
+ "inferredCuts": 0,
  "lakes": [
   {
-   "id": 1,
+   "id": 2,
    "name": null,
-   "areaHa": 0.2,
-   "fetchMaxM": 59,
+   "areaHa": 1.2,
+   "fetchMaxM": 179,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 3,
+   "name": null,
+   "areaHa": 1.2,
+   "fetchMaxM": 179,
    "maxDepth": null,
    "meanDepth": null,
    "secchi": null,
@@ -38,446 +49,6 @@
   },
   {
    "id": 4,
-   "name": null,
-   "areaHa": 0.4,
-   "fetchMaxM": 89,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 6,
-   "name": null,
-   "areaHa": 0.2,
-   "fetchMaxM": 59,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 7,
-   "name": null,
-   "areaHa": 0.3,
-   "fetchMaxM": 89,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 9,
-   "name": null,
-   "areaHa": 0.4,
-   "fetchMaxM": 89,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 10,
-   "name": null,
-   "areaHa": 0.2,
-   "fetchMaxM": 89,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 11,
-   "name": null,
-   "areaHa": 0.5,
-   "fetchMaxM": 89,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 12,
-   "name": null,
-   "areaHa": 0.5,
-   "fetchMaxM": 119,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 16,
-   "name": null,
-   "areaHa": 0.2,
-   "fetchMaxM": 89,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 17,
-   "name": null,
-   "areaHa": 0.4,
-   "fetchMaxM": 89,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 19,
-   "name": null,
-   "areaHa": 0.9,
-   "fetchMaxM": 149,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 20,
-   "name": null,
-   "areaHa": 0.2,
-   "fetchMaxM": 59,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 23,
-   "name": null,
-   "areaHa": 0.7,
-   "fetchMaxM": 119,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 25,
-   "name": null,
-   "areaHa": 0.2,
-   "fetchMaxM": 119,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 26,
-   "name": null,
-   "areaHa": 0.3,
-   "fetchMaxM": 89,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 28,
-   "name": null,
-   "areaHa": 0.3,
-   "fetchMaxM": 89,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 29,
-   "name": null,
-   "areaHa": 1.0,
-   "fetchMaxM": 149,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 30,
-   "name": null,
-   "areaHa": 2.7,
-   "fetchMaxM": 388,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 31,
-   "name": null,
-   "areaHa": 0.2,
-   "fetchMaxM": 59,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 32,
-   "name": null,
-   "areaHa": 0.2,
-   "fetchMaxM": 59,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 33,
-   "name": null,
-   "areaHa": 1.8,
-   "fetchMaxM": 328,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 34,
-   "name": null,
-   "areaHa": 0.3,
-   "fetchMaxM": 89,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 38,
-   "name": null,
-   "areaHa": 0.3,
-   "fetchMaxM": 89,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 42,
-   "name": null,
-   "areaHa": 0.3,
-   "fetchMaxM": 89,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 44,
-   "name": null,
-   "areaHa": 0.2,
-   "fetchMaxM": 89,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 45,
-   "name": null,
-   "areaHa": 0.9,
-   "fetchMaxM": 179,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 47,
-   "name": null,
-   "areaHa": 38.0,
-   "fetchMaxM": 1522,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 48,
-   "name": null,
-   "areaHa": 1.0,
-   "fetchMaxM": 208,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 49,
-   "name": null,
-   "areaHa": 0.3,
-   "fetchMaxM": 119,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 50,
-   "name": null,
-   "areaHa": 0.3,
-   "fetchMaxM": 89,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 51,
-   "name": null,
-   "areaHa": 0.7,
-   "fetchMaxM": 179,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 52,
-   "name": null,
-   "areaHa": 0.3,
-   "fetchMaxM": 119,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 54,
-   "name": null,
-   "areaHa": 0.2,
-   "fetchMaxM": 89,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 56,
-   "name": null,
-   "areaHa": 0.4,
-   "fetchMaxM": 119,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 57,
-   "name": null,
-   "areaHa": 1.0,
-   "fetchMaxM": 179,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 58,
-   "name": null,
-   "areaHa": 0.5,
-   "fetchMaxM": 149,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 59,
-   "name": null,
-   "areaHa": 0.5,
-   "fetchMaxM": 119,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 61,
-   "name": null,
-   "areaHa": 0.4,
-   "fetchMaxM": 119,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 62,
-   "name": null,
-   "areaHa": 0.5,
-   "fetchMaxM": 119,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 63,
-   "name": null,
-   "areaHa": 0.2,
-   "fetchMaxM": 89,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 64,
-   "name": null,
-   "areaHa": 0.2,
-   "fetchMaxM": 59,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 65,
    "name": null,
    "areaHa": 1.1,
    "fetchMaxM": 208,
@@ -488,9 +59,9 @@
    "depthModel": null
   },
   {
-   "id": 66,
+   "id": 5,
    "name": null,
-   "areaHa": 0.5,
+   "areaHa": 1.2,
    "fetchMaxM": 149,
    "maxDepth": null,
    "meanDepth": null,
@@ -499,10 +70,10 @@
    "depthModel": null
   },
   {
-   "id": 67,
+   "id": 6,
    "name": null,
-   "areaHa": 0.4,
-   "fetchMaxM": 89,
+   "areaHa": 1.1,
+   "fetchMaxM": 208,
    "maxDepth": null,
    "meanDepth": null,
    "secchi": null,
@@ -510,20 +81,9 @@
    "depthModel": null
   },
   {
-   "id": 70,
+   "id": 7,
    "name": null,
-   "areaHa": 3.6,
-   "fetchMaxM": 298,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 71,
-   "name": null,
-   "areaHa": 0.4,
+   "areaHa": 1.0,
    "fetchMaxM": 119,
    "maxDepth": null,
    "meanDepth": null,
@@ -532,73 +92,7 @@
    "depthModel": null
   },
   {
-   "id": 72,
-   "name": null,
-   "areaHa": 1.9,
-   "fetchMaxM": 358,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 73,
-   "name": null,
-   "areaHa": 2.2,
-   "fetchMaxM": 328,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 76,
-   "name": null,
-   "areaHa": 2.6,
-   "fetchMaxM": 417,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 77,
-   "name": null,
-   "areaHa": 5.2,
-   "fetchMaxM": 358,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 78,
-   "name": null,
-   "areaHa": 0.2,
-   "fetchMaxM": 59,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 79,
-   "name": null,
-   "areaHa": 2.3,
-   "fetchMaxM": 268,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 81,
+   "id": 8,
    "name": null,
    "areaHa": 14.5,
    "fetchMaxM": 597,
@@ -609,10 +103,10 @@
    "depthModel": null
   },
   {
-   "id": 82,
+   "id": 10,
    "name": null,
-   "areaHa": 0.3,
-   "fetchMaxM": 89,
+   "areaHa": 6.7,
+   "fetchMaxM": 477,
    "maxDepth": null,
    "meanDepth": null,
    "secchi": null,
@@ -620,10 +114,10 @@
    "depthModel": null
   },
   {
-   "id": 83,
+   "id": 11,
    "name": null,
-   "areaHa": 0.8,
-   "fetchMaxM": 179,
+   "areaHa": 6.4,
+   "fetchMaxM": 328,
    "maxDepth": null,
    "meanDepth": null,
    "secchi": null,
@@ -631,10 +125,10 @@
    "depthModel": null
   },
   {
-   "id": 84,
+   "id": 12,
    "name": null,
-   "areaHa": 2.4,
-   "fetchMaxM": 447,
+   "areaHa": 5.9,
+   "fetchMaxM": 477,
    "maxDepth": null,
    "meanDepth": null,
    "secchi": null,
@@ -642,9 +136,108 @@
    "depthModel": null
   },
   {
-   "id": 85,
+   "id": 13,
    "name": null,
-   "areaHa": 0.8,
+   "areaHa": 1.0,
+   "fetchMaxM": 149,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 14,
+   "name": null,
+   "areaHa": 0.9,
+   "fetchMaxM": 149,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 15,
+   "name": null,
+   "areaHa": 0.9,
+   "fetchMaxM": 149,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 17,
+   "name": null,
+   "areaHa": 4.7,
+   "fetchMaxM": 417,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 18,
+   "name": null,
+   "areaHa": 4.7,
+   "fetchMaxM": 298,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 19,
+   "name": null,
+   "areaHa": 2.8,
+   "fetchMaxM": 238,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 20,
+   "name": null,
+   "areaHa": 4.0,
+   "fetchMaxM": 507,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 22,
+   "name": null,
+   "areaHa": 3.3,
+   "fetchMaxM": 298,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 23,
+   "name": null,
+   "areaHa": 3.1,
+   "fetchMaxM": 298,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 25,
+   "name": null,
+   "areaHa": 0.7,
    "fetchMaxM": 119,
    "maxDepth": null,
    "meanDepth": null,
@@ -653,10 +246,10 @@
    "depthModel": null
   },
   {
-   "id": 86,
+   "id": 26,
    "name": null,
-   "areaHa": 4.2,
-   "fetchMaxM": 388,
+   "areaHa": 0.7,
+   "fetchMaxM": 119,
    "maxDepth": null,
    "meanDepth": null,
    "secchi": null,
@@ -664,9 +257,9 @@
    "depthModel": null
   },
   {
-   "id": 88,
+   "id": 28,
    "name": null,
-   "areaHa": 1.4,
+   "areaHa": 2.2,
    "fetchMaxM": 208,
    "maxDepth": null,
    "meanDepth": null,
@@ -675,10 +268,10 @@
    "depthModel": null
   },
   {
-   "id": 90,
+   "id": 29,
    "name": null,
-   "areaHa": 1.3,
-   "fetchMaxM": 179,
+   "areaHa": 2.3,
+   "fetchMaxM": 238,
    "maxDepth": null,
    "meanDepth": null,
    "secchi": null,
@@ -686,10 +279,10 @@
    "depthModel": null
   },
   {
-   "id": 91,
+   "id": 30,
    "name": null,
-   "areaHa": 21.6,
-   "fetchMaxM": 1313,
+   "areaHa": 2.2,
+   "fetchMaxM": 238,
    "maxDepth": null,
    "meanDepth": null,
    "secchi": null,
@@ -697,10 +290,10 @@
    "depthModel": null
   },
   {
-   "id": 92,
+   "id": 31,
    "name": null,
-   "areaHa": 10.8,
-   "fetchMaxM": 686,
+   "areaHa": 1.9,
+   "fetchMaxM": 238,
    "maxDepth": null,
    "meanDepth": null,
    "secchi": null,
@@ -708,7 +301,40 @@
    "depthModel": null
   },
   {
-   "id": 93,
+   "id": 33,
+   "name": null,
+   "areaHa": 2.1,
+   "fetchMaxM": 208,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 34,
+   "name": null,
+   "areaHa": 1.9,
+   "fetchMaxM": 238,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 35,
+   "name": null,
+   "areaHa": 1.8,
+   "fetchMaxM": 238,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 37,
    "name": null,
    "areaHa": 1.7,
    "fetchMaxM": 238,
@@ -719,95 +345,7 @@
    "depthModel": null
   },
   {
-   "id": 94,
-   "name": null,
-   "areaHa": 6.0,
-   "fetchMaxM": 597,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 95,
-   "name": null,
-   "areaHa": 7.0,
-   "fetchMaxM": 417,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 96,
-   "name": null,
-   "areaHa": 3.8,
-   "fetchMaxM": 388,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 97,
-   "name": null,
-   "areaHa": 37.6,
-   "fetchMaxM": 1821,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 98,
-   "name": null,
-   "areaHa": 1.4,
-   "fetchMaxM": 268,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 100,
-   "name": "Highland Lake",
-   "areaHa": 89.5,
-   "fetchMaxM": 1522,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 101,
-   "name": "Narrow Lake",
-   "areaHa": 107.8,
-   "fetchMaxM": 3134,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 102,
-   "name": null,
-   "areaHa": 3.2,
-   "fetchMaxM": 298,
-   "maxDepth": null,
-   "meanDepth": null,
-   "secchi": null,
-   "species": [],
-   "depthModel": null
-  },
-  {
-   "id": 103,
+   "id": 39,
    "name": null,
    "areaHa": 1.3,
    "fetchMaxM": 238,
@@ -818,10 +356,428 @@
    "depthModel": null
   },
   {
-   "id": 104,
+   "id": 77,
    "name": null,
-   "areaHa": 3.2,
-   "fetchMaxM": 358,
+   "areaHa": 0.6,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 78,
+   "name": null,
+   "areaHa": 0.6,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 79,
+   "name": null,
+   "areaHa": 0.7,
+   "fetchMaxM": 208,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 80,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 149,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 81,
+   "name": null,
+   "areaHa": 0.6,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 82,
+   "name": null,
+   "areaHa": 0.7,
+   "fetchMaxM": 149,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 83,
+   "name": null,
+   "areaHa": 0.6,
+   "fetchMaxM": 149,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 84,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 85,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 86,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 89,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 91,
+   "name": null,
+   "areaHa": 0.3,
+   "fetchMaxM": 59,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 92,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 93,
+   "name": null,
+   "areaHa": 0.3,
+   "fetchMaxM": 59,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 96,
+   "name": null,
+   "areaHa": 0.3,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 97,
+   "name": null,
+   "areaHa": 0.3,
+   "fetchMaxM": 59,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 99,
+   "name": null,
+   "areaHa": 0.3,
+   "fetchMaxM": 59,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 100,
+   "name": null,
+   "areaHa": 0.3,
+   "fetchMaxM": 59,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 101,
+   "name": null,
+   "areaHa": 0.3,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 106,
+   "name": null,
+   "areaHa": 0.3,
+   "fetchMaxM": 59,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 155,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 156,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 157,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 158,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 162,
+   "name": null,
+   "areaHa": 0.8,
+   "fetchMaxM": 149,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 163,
+   "name": null,
+   "areaHa": 0.9,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 164,
+   "name": null,
+   "areaHa": 2.9,
+   "fetchMaxM": 328,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 167,
+   "name": null,
+   "areaHa": 0.6,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 168,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 172,
+   "name": null,
+   "areaHa": 0.7,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 176,
+   "name": null,
+   "areaHa": 0.7,
+   "fetchMaxM": 149,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 177,
+   "name": null,
+   "areaHa": 0.3,
+   "fetchMaxM": 119,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 178,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 182,
+   "name": null,
+   "areaHa": 0.3,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 184,
+   "name": null,
+   "areaHa": 3.8,
+   "fetchMaxM": 298,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 185,
+   "name": null,
+   "areaHa": 3.5,
+   "fetchMaxM": 298,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 188,
+   "name": null,
+   "areaHa": 0.7,
+   "fetchMaxM": 149,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 189,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 89,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 190,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 89,
    "maxDepth": null,
    "meanDepth": null,
    "secchi": null,
@@ -830,45 +786,45 @@
   }
  ],
  "thick": {
-  "from": "the bush model's NRD (satellite imagery, radar, SCANFI, CanLaD, terrain; docs/BUSH-MODEL.md) on the estimate's scale where thickSrc is 3; the forest-map estimate on water, roads and cells no leaf-on imagery saw (thickSrc 2)",
+  "from": "the bush model's NRD (satellite imagery, radar, SCANFI, CanLaD, terrain; docs/BUSH-MODEL.md) on the estimate's scale where thickSrc is 3; the forest-map estimate on water, roads, cells no leaf-on imagery saw, and ground the map names outright (open herb, lichen, rock, fen, tall shrub) (thickSrc 2)",
   "lidarCells": 0,
-  "thickShareOfLand": 0.033,
+  "thickShareOfLand": 0.138,
   "thickShareWhereLidar": null,
   "estimateToLidar": [
    {
     "estimate": 0.0,
     "lidar_median": 0.0,
-    "cells": 70435
+    "cells": 63169
    },
    {
     "estimate": 0.2,
     "lidar_median": 0.15,
-    "cells": 70435
+    "cells": 63169
    },
    {
     "estimate": 0.45,
     "lidar_median": 0.3,
-    "cells": 70435
+    "cells": 63169
    },
    {
     "estimate": 0.7,
     "lidar_median": 0.45,
-    "cells": 70435
+    "cells": 63169
    },
    {
     "estimate": 0.85,
     "lidar_median": 0.6,
-    "cells": 70435
+    "cells": 63169
    },
    {
     "estimate": 0.95,
     "lidar_median": 0.75,
-    "cells": 70435
+    "cells": 63169
    },
    {
     "estimate": 1.0,
     "lidar_median": 1.0,
-    "cells": 70435
+    "cells": 63169
    }
   ],
   "trained": "2026-10-07",
@@ -883,10 +839,10 @@
   "cvAucThick": 0.755,
   "s2Scenes": {
    "leafon": 6,
-   "autumn": 2,
-   "spring": 4,
+   "autumn": 1,
+   "spring": 0,
    "snow": 4
   },
-  "seconds": 342
+  "seconds": 169
  }
 }

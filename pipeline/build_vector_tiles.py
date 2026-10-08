@@ -56,6 +56,7 @@ ARCHIVES: dict[str, list[str]] = {
 ATTRIBUTION = {
     "ON": {"forest": "FRI © Ontario Ministry of Natural Resources", "places": "© Ontario MNRF"},
     "QC": {"forest": "Carte écoforestière © Gouvernement du Québec", "places": "© Gouvernement du Québec"},
+    "BC": {"forest": "VRI © Province of British Columbia", "places": "© Province of British Columbia"},
 }
 # Themes a province's archives never carry: only open data goes in a pack,
 # and Quebec's hunting zones state no licence (qc_vectors.wmu). Not read

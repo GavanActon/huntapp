@@ -298,7 +298,7 @@ adapter that covers the area for each layer:
 
 | Layer | Ontario | Quebec | National / anywhere |
 | --- | --- | --- | --- |
-| 1 m LiDAR (relief, contours, DEM) | HRDEM | HRDEM | HRDEM, project found by STAC search |
+| 1 m LiDAR (relief, contours, DEM) | HRDEM | HRDEM | HRDEM, project found by STAC search; north of about 59.7°, where there is none, the **ArcticDEM 2 m** mosaic (Polar Geospatial Center, `bake.lidar: "arcticdem"`): a satellite-stereo surface model, canopy top over trees and ground in the open, its voids filled from the MRDEM. Highland Lake and Blanchard River use it (2026-10-08); it was found after both had gone out on the 30 m MRDEM alone, which is why every new area now gets a source survey first |
 | 30 m elevation, 10 m contours | — | — | MRDEM |
 | Forest stands and their age | FRI FIMv2 | Carte écoforestière (4th inventory) plus later cuts, fires and outbreaks | Inferred from SCANFI v2 (2025) and CanLaD (1985–2025): `ca_forest.py`, adapter `ca.scanfi` |
 | Burns | LIO fire | `ca_feu` layer | CanLaD in the inferred stands; NBAC (WFS, 1972–2025) checked, not wired |
@@ -310,6 +310,24 @@ adapter that covers the area for each layer:
 | Topo, historical sheets | — | — | Toporama, CanMatrix |
 | Bush thickness, shooting lanes | FRI SPL point clouds (COPC) | MRNF point clouds (LAZ) | canopy height from HRDEM surface minus ground |
 | Land cover | — | — | NRCan 2020 |
+
+**British Columbia** (added 2026-10-08 for Blanchard River, 59.96736,
+−136.72044, on the Haines Highway) has adapters of its own, all off the BC
+Geographic Warehouse's open WFS (`openmaps.gov.bc.ca/geo/pub/wfs`,
+GeoServer; `pipeline/bc_common.py`), under the Open Government Licence –
+British Columbia: `bc_vectors.py` for the Freshwater Atlas lakes, rivers,
+streams and wetlands, the Digital Road Atlas with TRIM's trails, the
+historical fire perimeters, the wildlife management units, parks and
+protected areas, and private parcels and reserves as the map's private
+land; `bc_forest.py` for the Vegetation Resources Inventory (VRI), a real
+stand map that also names every piece of ground with no stand (shrub,
+herb, alpine, rock, ice), with the province's later fires laid over it as
+`qc_forest.py` does. Two quirks of the server: its EPSG:4326 bounding box
+is lon,lat, and it leaves the geometry out of an answer whose property list
+does not name GEOMETRY. No imagery: the province's 1 m orthos stop east of
+134.4° W, the Yukon's mosaic at the border, and the BC imagery WMS's 2 m
+layer is a map there. No point cloud adapter yet (LidarBC has flown parts
+of the province; this spot has none, and no HRDEM).
 
 The derived bakes, `build_habitat.py`, `build_microclimate.py`,
 `build_going.py` and `build_vegstructure.py`, run unchanged on the normal

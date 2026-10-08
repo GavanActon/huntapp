@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState, type JSX } from 'react'
-import { GEO_THEMES, ZONE } from '../../config'
+import { FINE_RELIEF_WORD, GEO_THEMES, ZONE } from '../../config'
 import { sourceModes } from '../../map/pmtilesRegistry'
 import { geoModes } from '../../map/MapView'
 import { LIVE_RASTER, LIVE_VECTOR } from '../../sources'
@@ -36,7 +36,7 @@ const GROUPS: { title: string; defs: LayerDef[] }[] = [
       { key: 'topo', name: 'Topographic', opacity: 'topo', data: 'topo', live: 'topo' },
       { key: 'hillshade', name: 'Hillshade', opacity: 'hillshade', data: 'hillshade', live: 'hillshade' },
       { key: 'relief', name: 'Elevation colours', opacity: 'relief', data: 'dem' },
-      { key: 'contours', name: 'LiDAR contours', data: 'contours' },
+      { key: 'contours', name: `${FINE_RELIEF_WORD} contours`, data: 'contours' },
       { key: 'satellite', name: 'Imagery', opacity: 'satellite', data: 'satellite', live: 'satellite' },
     ],
   },
