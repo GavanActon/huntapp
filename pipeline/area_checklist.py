@@ -51,6 +51,7 @@ THUMB_W = 260
 MODEL_FIT = {
     "ON": ("ok", "Rules written for boreal Ontario"),
     "QC": ("warn", "Rules from Ontario's guides; the same boreal, not checked against Québec sightings"),
+    "BC": ("warn", "Rules from Ontario's guides; spruce-willow-birch and alpine country, not checked against BC sightings"),
 }
 LEAF_LAT = 52.0  # north of this, the default leaf dates (Ontario's boreal) run late
 HRDPS_EVERY_S = 6 * 3600  # how often --online asks again
@@ -122,12 +123,16 @@ def check_tier(ar: Area) -> None:
     a, b = ar.a, ar.a.get("bake") or {}
     cov = (ar.a.get("coverage") or {}).get("pmtiles") or {}
     lidar = cov.get("hillshadeLidar", {})
-    if "file" in lidar:
+    if "file" in lidar and b.get("lidar") == "arcticdem":
+        ar.add("Data", "Terrain", "ok", f"ArcticDEM 2 m surface model (canopy top over trees, ground in the open): {lidar.get('source', '')}")
+    elif "file" in lidar:
         ar.add("Data", "Terrain", "ok", f"1 m LiDAR ({lidar.get('vintage', '?')}): {lidar.get('source', '')}")
     else:
         ar.add("Data", "Terrain", "warn", "30 m national model (MRDEM) only: " + lidar.get("missing", "no 1 m LiDAR"))
     under = cov.get("understory", {})
-    if "file" in under:
+    if "file" in under and not b.get("pointcloud"):
+        ar.add("Data", "Bush and lanes", "warn", "bush from the satellite bush model (trained on Ontario LiDAR plots), no lanes: no point cloud here")
+    elif "file" in under:
         ar.add("Data", "Bush and lanes", "ok", "measured from the LiDAR point cloud")
     else:
         ar.add("Data", "Bush and lanes", "warn", "no point cloud: no Bush view or Bow lanes; sight lines and routes use the stand estimate")

@@ -69,12 +69,14 @@ ADAPTERS: dict[str, dict[str, tuple[str, list[str]]]] = {
         "on.lio": ("3.14", ["build_vectors.py", "bake"]),
         "qc": ("3.13", ["qc_vectors.py", "--area", "{id}"]),  # pyogrio: the TRQ territories are a file geodatabase
         "yt": ("3.14", ["yt_vectors.py", "--area", "{id}"]),
+        "bc": ("3.14", ["bc_vectors.py", "--area", "{id}"]),  # the BC Geographic Warehouse's open WFS
     },
     "forest": {
         "on.fri": ("3.13", ["build_forest.py"]),  # pyogrio: the FRI is a file geodatabase
         "qc.ecoforestier": ("3.14", ["qc_forest.py", "--area", "{id}"]),
         # anywhere in Canada with no provincial stands: inferred from the CFS's national 30 m maps
         "ca.scanfi": ("3.14", ["ca_forest.py", "--area", "{id}"]),
+        "bc.vri": ("3.14", ["bc_forest.py", "--area", "{id}"]),  # the province's Vegetation Resources Inventory
     },
     "pointcloud": {
         # the index read needs pyogrio once; it is cached after
@@ -173,6 +175,13 @@ def plan(a: dict) -> list[Step]:
         adapter_step("pointcloud", "pointcloud", a),
         Step("vegstructure", "3.14", [["build_vegstructure.py"]], skip=None if bake.get("pointcloud") else "no point cloud for this area", needs=("pointcloud",)),
         Step("habitat", "3.14", [["build_habitat.py"]], needs=("rasters", "vectors", "forest"), check=inputs("forest", "wetland", "watercourse")),
+        Step(
+            "bush",
+            "3.14",
+            [["bush/render.py"]],
+            skip="the point cloud's own bush layer (vegstructure)" if bake.get("pointcloud") else ("bake.habitatBush is estimate" if bake.get("habitatBush") == "estimate" else None),
+            needs=("habitat",),
+        ),
         Step(
             "lake-sheets",
             "3.14",
@@ -364,8 +373,9 @@ def bake(args) -> int:
 
 # ---- the coverage report --------------------------------------------------
 
-OGL_ON, OGL_CA, CC_BY, OGL_YT = "OGL-Ontario", "OGL-Canada", "CC BY 4.0", "OGL-Yukon"
+OGL_ON, OGL_CA, CC_BY, OGL_YT, OGL_BC = "OGL-Ontario", "OGL-Canada", "CC BY 4.0", "OGL-Yukon", "OGL-BC"
 DERIVED = "derived from the layers above"
+PGC = "ArcticDEM: free, cite PGC (NSF OPP awards)"
 # The app's layer keys (the "files" of an area file) and, for each, the
 # file's name before "-<id>" and the step that makes it (to say why a layer
 # is missing).
@@ -379,7 +389,7 @@ PMTILES = {
     "contours": ("contours", "contours"),
     "contoursWide": ("contours-wide", "contours-wide"),
     "forest": ("forest", "vector-tiles"),
-    "understory": ("understory", "vegstructure"),
+    "understory": ("understory", "vegstructure"),  # or the bush step, for an area with no point cloud (coverage below)
     "lanes": ("lanes", "vegstructure"),
     "bathy": ("bathy", None),
     "historical": ("historical", "historical"),
@@ -415,6 +425,15 @@ NOT_IN = {  # layers a province has no source for, or none open
         ("pmtiles", "understory"): "no LiDAR point cloud here",
         ("pmtiles", "lanes"): "no LiDAR point cloud here",
     },
+    "BC": {
+        ("geo", "camps"): "Ontario only: Crown land camps come from LIO",
+        ("geo", "bathy"): "Ontario only: lake bathymetry comes from LIO",
+        ("geo", "depth"): "Ontario only: lake depths need the ARA lake facts and the MNR sheets",
+        ("pmtiles", "bathySheets"): "Ontario only: MNR lake survey sheets",
+        ("pmtiles", "bathy"): "Ontario only: lake depths need the ARA lake facts and the MNR sheets",
+        ("pmtiles", "satellite"): "no open imagery here: the province's 1 m orthos (1995-2004) stop east of 134.4° W and the Yukon's SPOT mosaic at the border; nothing baked",
+        ("pmtiles", "lanes"): "no point-cloud adapter for BC yet (LidarBC where it has flown); the bush layer (understory) is the bush model's",
+    },
 }
 # Why a layer the area leaves out of its files (its pack) is not in its
 # maps, whatever the bake has left on disk, where there is more to say.
@@ -434,14 +453,16 @@ def known_sources(a: dict, lidar: list[str], pc_years: str | None) -> dict[tuple
     years = [y for y in (hrdem_years(u) for u in lidar) if y]
     lidar_txt = names[0] + (f", gaps filled from {', '.join(names[1:])}" if len(names) > 1 else "") if names else "the area's HRDEM projects"
     lidar_v = (years[0] + (f", gaps {', '.join(years[1:])}" if len(years) > 1 else "")) if years else None
+    if bake.get("lidar") == "arcticdem":
+        lidar_txt, lidar_v = "ArcticDEM 2 m mosaic v4.1 (a satellite-stereo surface model, voids filled from the MRDEM), Polar Geospatial Center", "2 m, 2007-2022 imagery"
     forest_v = options(bake, "forest").get("vintage")
     forest_v = str(forest_v) if forest_v is not None else None
     out = {
         ("pmtiles", "topo"): {"source": "Toporama hypsography (contours and spot heights), NRCan WMS", "licence": OGL_CA},
         ("pmtiles", "hillshade"): {"source": "MRDEM 30 m hillshade, NRCan WMS", "licence": OGL_CA},
-        ("pmtiles", "hillshadeLidar"): {"source": f"HRDEM 1 m LiDAR DTM, NRCan: {lidar_txt}", "licence": OGL_CA, "vintage": lidar_v},
-        ("pmtiles", "dem"): {"source": f"MRDEM 30 m, with HRDEM 1 m LiDAR over the core ({lidar_txt}), NRCan", "licence": OGL_CA, "vintage": lidar_v},
-        ("pmtiles", "contours"): {"source": f"HRDEM 1 m LiDAR DTM, NRCan: {lidar_txt}", "licence": OGL_CA, "vintage": lidar_v},
+        ("pmtiles", "hillshadeLidar"): {"source": lidar_txt if bake.get("lidar") == "arcticdem" else f"HRDEM 1 m LiDAR DTM, NRCan: {lidar_txt}", "licence": PGC if bake.get("lidar") == "arcticdem" else OGL_CA, "vintage": lidar_v},
+        ("pmtiles", "dem"): {"source": f"MRDEM 30 m, NRCan, with {lidar_txt} over the core" if bake.get("lidar") == "arcticdem" else f"MRDEM 30 m, with HRDEM 1 m LiDAR over the core ({lidar_txt}), NRCan", "licence": OGL_CA, "vintage": lidar_v},
+        ("pmtiles", "contours"): {"source": lidar_txt if bake.get("lidar") == "arcticdem" else f"HRDEM 1 m LiDAR DTM, NRCan: {lidar_txt}", "licence": PGC if bake.get("lidar") == "arcticdem" else OGL_CA, "vintage": lidar_v},
         ("pmtiles", "contoursWide"): {"source": "MRDEM 30 m DTM, NRCan", "licence": OGL_CA},
         ("pmtiles", "historical"): {"source": "CanMatrix2 1:50 000 NTS scans, NRCan: " + ", ".join(bake.get("nts") or []), "licence": OGL_CA},
         ("grids", "habitat"): {
@@ -482,6 +503,19 @@ def known_sources(a: dict, lidar: list[str], pc_years: str | None) -> dict[tuple
             ("geo", "fire"): {"source": "Yukon fire history, Wildland Fire Management, GeoYukon", "licence": OGL_YT},
             ("geo", "roads"): {"source": "Yukon Road Network and surface disturbance lines (access roads, trails), GeoYukon", "licence": OGL_YT},
             ("baseGeo", "waterbody"): {"source": "CanVec 1:50 000 waterbodies, via GeoYukon", "licence": OGL_CA},
+        }
+    elif a["jurisdiction"] == "BC":
+        vri = {"source": "Vegetation Resources Inventory (VRI) forest cover, Province of British Columbia, with later fire perimeters laid over", "licence": OGL_BC, "vintage": forest_v}
+        out |= {
+            ("pmtiles", "forest"): vri,
+            ("pmtiles", "places"): {"source": "BC Geographic Warehouse: wildlife management units, parks, private parcels and reserves, fire perimeters, roads and trails", "licence": OGL_BC},
+            ("geo", "wmu"): {"source": "Wildlife Management Units, Province of British Columbia", "licence": OGL_BC},
+            ("geo", "crown"): {"source": "ParcelMap BC parcels not Crown, and Indian reserves", "licence": OGL_BC},
+            ("geo", "parks"): {"source": "Parks, conservancies, ecological reserves and protected areas (TANTALIS), Province of British Columbia", "licence": OGL_BC},
+            ("geo", "fire"): {"source": "Fire perimeters, historical, BC Wildfire Service", "licence": OGL_BC},
+            ("geo", "roads"): {"source": "Digital Road Atlas (resource roads included) and TRIM trails, Province of British Columbia", "licence": OGL_BC},
+            ("geo", "forest"): vri,
+            ("baseGeo", "waterbody"): {"source": "Freshwater Atlas lakes and rivers, Province of British Columbia", "licence": OGL_BC},
         }
     elif a["jurisdiction"] == "QC":
         eco = {"source": "Carte écoforestière (MRNF), with later cuts, burns and outbreaks laid over", "licence": CC_BY, "vintage": forest_v}
@@ -545,8 +579,10 @@ def coverage(area, results: dict[str, str]) -> dict:
             why = LEFT_OUT.get((group, key), "not in this area's maps")
         if not why and step in results and not results[step].startswith("ok"):
             why = f"{step} step {results[step]}"
-        if not why and key in ("understory", "lanes") and not bake.get("pointcloud"):
-            why = "no point cloud for this area"
+        if not why and key == "lanes" and not bake.get("pointcloud"):
+            why = "no point cloud for this area: lanes are a 10 m LiDAR measure"
+        if not why and key == "understory" and not bake.get("pointcloud"):
+            why = "no point cloud for this area and no bush model layer baked (bush step)"
         if not why and key == "bathySheets" and not bake.get("lakeSheets"):
             why = "no lake survey sheets for this area"
         return {"missing": why or "not baked yet"}
@@ -686,6 +722,17 @@ def new_area(args) -> str:
         print(f"no 1 m LiDAR over the core ({e})" if no_lidar else f"no HRDEM list yet ({e}); the bake will search for it")
         hrdem = []
 
+    arctic: list[str] = []
+    if no_lidar:
+        try:
+            from build_hillshade import arcticdem_search
+
+            arctic = arcticdem_search(core)
+        except (SystemExit, Exception) as e:  # noqa: BLE001
+            print(f"no ArcticDEM list yet ({e})")
+        if arctic:
+            print("ArcticDEM 2 m covers the core: the relief, shade and contours come from it (bake.lidar arcticdem)")
+            no_lidar = False
     # what the province's adapters make, and the app fields that go with them,
     # taken from the area already baked there
     example = {"ON": area.DEFAULT_AREA, "QC": "lac-bailey"}.get(j)
@@ -699,6 +746,13 @@ def new_area(args) -> str:
         files = {
             "pmtiles": ["topo", "satellite", "hillshade", "hillshadeLidar", "dem", "contours", "contoursWide", "forest", "historical", "places"],
             "geo": ["wmu", "crown", "fire", "roads"],
+            "baseGeo": ["waterbody"],
+            "grids": ["habitat", "micro", "going"],
+        }
+    if j == "BC":  # the BC adapters' layers (bc_vectors.py, bc_forest.py); no open imagery in the north-west
+        files = {
+            "pmtiles": ["topo", "hillshade", "hillshadeLidar", "dem", "contours", "contoursWide", "forest", "understory", "historical", "places"],
+            "geo": ["wmu", "crown", "parks", "fire", "roads"],
             "baseGeo": ["waterbody"],
             "grids": ["habitat", "micro", "going"],
         }
@@ -716,6 +770,12 @@ def new_area(args) -> str:
             "imagery": "yt.spot",
             "pointcloud": None,
         },
+        "BC": {
+            "vectors": "bc",
+            "forest": {"adapter": "bc.vri", "vintage": None},
+            "imagery": None,
+            "pointcloud": None,
+        },
         "QC": {
             "vectors": "qc",
             "forest": {"adapter": "qc.ecoforestier", "vintage": "4th inventory, with cuts, burns and outbreaks to 2025"},
@@ -724,7 +784,7 @@ def new_area(args) -> str:
             "pointcloud": {"adapter": "qc.mrnf_laz", "bbox": box_around(lon, lat, 6, 6)},
         },
     }
-    zone_label = {"ON": "WMU", "QC": "Zone", "YT": "GMS"}.get(j, "Zone")
+    zone_label = {"ON": "WMU", "QC": "Zone", "YT": "GMS", "BC": "MU"}.get(j, "Zone")
     a = {
         "id": area_id,
         "name": args.name,
@@ -735,14 +795,17 @@ def new_area(args) -> str:
         "core": core,
         "regionMaxzoom": pickle["regionMaxzoom"],
         "declination": declination(lat, lon),
-        "timezone": {"YT": "America/Whitehorse"}.get(j) or ("America/Winnipeg" if j == "ON" and lon < -90 else "America/Toronto"),
+        "timezone": {"YT": "America/Whitehorse", "BC": "America/Vancouver"}.get(j) or ("America/Winnipeg" if j == "ON" and lon < -90 else "America/Toronto"),
         "zone": {"label": zone_label, "name": None},
         "relief": None,  # the bake fills it in from the core's elevations
         "base": f"areas/{area_id}/",
         "surveyedLakes": [],
         "live": {"lio": j == "ON", "satellite": {"ON": "lio", "QC": "qc"}.get(j)},
         "attribution": ex.get("attribution")
-        or {"YT": {"vectors": "© Government of Yukon", "lakes": "CanVec © Natural Resources Canada", "bush": ""}}.get(j)
+        or {
+            "YT": {"vectors": "© Government of Yukon", "lakes": "CanVec © Natural Resources Canada", "bush": ""},
+            "BC": {"vectors": "© Province of British Columbia", "lakes": "Freshwater Atlas © Province of British Columbia", "bush": ""},
+        }.get(j)
         or {"vectors": "", "lakes": "", "bush": ""},
         "presets": [{"name": "Requested spot", "lon": lon, "lat": lat, "kind": "stand", "note": f"Area requested {date.today().isoformat()}"}],
         "bundle": {
@@ -755,7 +818,7 @@ def new_area(args) -> str:
         "bake": {
             "outDir": f"app/public/data/areas/{area_id}",
             "hrdem": hrdem,
-            **({"lidar": "none"} if no_lidar else {}),
+            **({"lidar": "arcticdem", "arcticdem": arctic} if arctic else {"lidar": "none"} if no_lidar else {}),
             **bake_by.get(j, {"vectors": None, "forest": None, "imagery": None, "pointcloud": None}),
             "nts": nts_50k_sheets(region["west"], region["south"], region["east"], region["north"]),
         },
@@ -781,7 +844,7 @@ def main() -> int:
     ap.add_argument("--lat", type=float)
     ap.add_argument("--lon", type=float)
     ap.add_argument("--name")
-    ap.add_argument("--jurisdiction", help="ON, QC or YT (with adapters); others get the national layers only")
+    ap.add_argument("--jurisdiction", help="ON, QC, YT or BC (with adapters); others get the national layers only")
     ap.add_argument("--id", help="--new: the area's id (default: from the name)")
     ap.add_argument("--core-km", type=float, help="--new: the core's half-width (default: Pickle Lake's size)")
     ap.add_argument("--region-km", type=float, help="--new: the region's half-width (default: Pickle Lake's size)")
