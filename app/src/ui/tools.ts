@@ -1,6 +1,5 @@
 import { useScent } from '../weather/micro/scent'
 import { useHeardForm } from './HeardCard'
-import { useCheckForm } from './WindCheckCard'
 
 /**
  * A button that waits for a map tap (Person, Scent with no fix, Heard)
@@ -13,6 +12,5 @@ export function releaseArmed(): void {
   if (sc.adding) sc.setAdding(false)
   const hf = useHeardForm.getState()
   if (hf.placing) hf.arm()
-  const cf = useCheckForm.getState()
-  if (cf.aim) cf.setAim(false)
+  // the wind check card takes the map's taps while it is up, but it is not armed: it stays, and a sheet over the map simply gets no taps to it
 }

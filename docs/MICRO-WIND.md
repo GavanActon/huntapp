@@ -567,14 +567,21 @@ nothing that matters: at that cell the mechanical part stays under
   taps (which way it goes, how hard). The model's own call for that spot
   and minute is saved first. With no usable fix the next tap on the map is
   the spot.
-- **Which way, without the compass**: the rose of arrows turns with the
-  phone's compass only while the reading is steady (held up to point, an
-  iPhone's heading whirls: `compass.ts` holds it), and stops turning at
-  the first pick. Gavan (2026-09-29) could not use the phone's orientation
-  at all in the field, so the map is the reference instead: "ahead" then
-  a tap on the map in front of you turns the rose to face that way; or a
-  tap on the map where the powder went is the direction itself, no rose
-  needed. A second map tap or arrow is the swing.
+- **Which way, three ways, one direction** (reworked 2026-10-08, Gavan:
+  "no swinging, just a single direction"): an arrow on the rose, which
+  turns with the phone's compass only while the reading is steady (held
+  up to point, an iPhone's heading whirls: `compass.ts` holds it) and
+  stops turning once a way is given; a tap on the map where the powder
+  went, which the card takes until the check is saved (a tap off the card
+  is that, not a close; Gavan, 2026-09-29, could not use the phone's
+  orientation in the field, so the map is the reference); or "ahead",
+  the way the phone points, saved as the direction (it used to arm a map
+  tap and then still ask for an arrow: the bug Gavan hit 2026-10-08):
+  the way you look at a spot seen from afar, else the compass's heading,
+  else the track's course while walking (0.6 kn and a fix under 90 s
+  old), else the card asks for a tap on the map in front of you. The last
+  given wins; there is no second arrow. A wind that swings is read off a
+  series of puffs (below), not asked.
 - **The air above the trees, fitted to the sit** (2026-10-08,
   `micro/ambientFit.ts`; Gavan: "what's the wind doing here, this is the
   most likely reason"). Until then each check was a patch (below), and a
@@ -659,7 +666,8 @@ nothing that matters: at that cell the mechanical part stays under
   the transport, which works at camp with no signal. Later: the same file
   over the satellite messenger.
 - **Swinging**: a check can carry the arc the wind swung through while it
-  was watched (45–180°). It holds the spread open — sigma at least
+  was watched (45–180°), from its puffs in a series (below; until
+  2026-10-08 a second arrow on the rose could say it). It holds the spread open — sigma at least
   `w·arc/2` for each blended check — and the quarter tightening a nearby
   check usually brings is skipped: a check that says "it swings" is not
   evidence of a steady wind.
@@ -712,9 +720,11 @@ nothing that matters: at that cell the mechanical part stays under
   says nearly everything. The chips are set to that: an arm's reach
   (0.75 m) in a one-count is about 3 km/h (light), a stride or two 5–6
   (breezy's floor), 10 ft (3 m) 11, and past 10 ft in a second it is gone
-  (windy, 13 and anything above). The card says so under the chips: judge
-  the first second after it leaves your hand. Old checks keep their words
-  and fall in the same ranges.
+  (windy, 13 and anything above). Each chip says three things, short:
+  how far in a second, what the powder looks like, what you feel (the
+  line under "How hard?" that explained the first-second rule was cut
+  the same day: Gavan, "cut the text under that"). Old checks keep their
+  words and fall in the same ranges.
 - **How many, how often** (Gavan's question, 2026-10-02; the numbers
   since 2026-10-08): a check leads the ground wind where it was made 90%,
   77% an hour on, 55% at two, nothing past 3 h, and from the second check

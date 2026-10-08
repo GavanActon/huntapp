@@ -75,25 +75,23 @@ export const STRENGTH_KMH: Record<Strength, number> = { calm: 0.3, drift: 1.5, l
  * middle, so a check at the top can pull but cannot pin.
  */
 export const STRENGTH_RANGE: Record<Strength, [number, number]> = { calm: [0, 1], drift: [1, 2.5], light: [2.5, 6], breezy: [6, 13], windy: [13, Infinity] }
-/** What to look for, at each step: the powder in its first second, then
- *  the face, the leaves and the branches (Beaufort 0–4, read at head
- *  height in the bush). Count one as it leaves your hand. */
+/** Each step in three, short and plain (Gavan, 2026-10-08): how far the
+ *  powder gets in a second, what it looks like, what you feel (the face,
+ *  the leaves, the branches: Beaufort 0–4 at head height in the bush). */
 export const STRENGTH_CUE: Record<Strength, string> = {
-  calm: 'powder hangs, falls straight · nothing on the face',
-  drift: 'creeps: out of arm’s reach takes 2–3 s · just on the face',
-  light: 'out of arm’s reach in a one-count, gone in a few feet · leaves rustle',
-  breezy: '5–6 ft in a one-count, 10 ft takes two · twigs moving',
-  windy: '10 ft or more in a one-count, snatched away · branches swaying',
+  calm: 'Stays put · falls straight down · nothing on the face',
+  drift: 'Under arm’s reach in 1 s · creeps along in a cloud · barely on the face',
+  light: 'Arm’s reach in 1 s · thins out in a few feet · on the face, leaves rustle',
+  breezy: '5–6 ft in 1 s · streams off, gone quick · pushes on the face, twigs move',
+  windy: '10 ft or more in 1 s · snatched away · hat wants to go, branches sway',
 }
 export const STRENGTH_LABEL: Record<Strength, string> = {
   calm: 'Dead calm',
-  drift: 'Drift: powder hangs, then creeps',
-  light: 'Light: out of arm’s reach in a second',
+  drift: 'Drift: under arm’s reach in a second',
+  light: 'Light: arm’s reach in a second',
   breezy: 'Breezy: 5–6 ft in a second',
   windy: 'Windy: 10 ft or more in a second',
 }
-/** How to read a puff, in a line under the chips. */
-export const PUFF_HOW = 'Judge the first second after it leaves your hand, not how far it goes before it fades: the powder thins faster in more wind.'
 
 /** What the treetops (or the water) far off showed: Beaufort's land and lake signs, read at a distance. */
 export type Seen = 'still' | 'leaves' | 'branches' | 'sway' | 'bend'

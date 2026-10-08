@@ -175,7 +175,6 @@ function watchTools() {
   })
   useCheckForm.subscribe((s, p) => {
     if (s.arming && !p.arming) track('arm', { what: 'check' })
-    if (s.aim && !p.aim) track('arm', { what: 'check_ahead' })
     form(formNow())
   })
   useScent.subscribe((s, p) => {
