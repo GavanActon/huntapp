@@ -130,7 +130,7 @@ first cool day after 3 warm ones: expect movement
 
 ## No signal. HD weather & party status by satellite.
 
-Save your area at camp and all of it works offline. Out for days? Text from your inReach or iPhone and the newest HD forecast comes back by satellite.
+Save your area at camp and all of it works offline. Out for days? Text from your inReach or iPhone and the newest HD forecast comes back by satellite and pulled into the app, so you’re always ready for the next ridge.
 
 [How, the dig-in. Opens on tap.]
 
