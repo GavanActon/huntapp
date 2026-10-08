@@ -132,11 +132,16 @@ export const LIVE_RASTER: Partial<Record<'base' | 'labels' | 'toposheet' | 'sate
     maxzoom: 16,
   },
   // ECCC GeoMet radar, rain rate at 1 km; no TIME = the latest sweep.
+  // Asked for at zoom 8 at most, where a tile's pixel is about 400 m: the
+  // map stretches it in closer and blends between the radar's 1 km cells.
+  // Asked for at 12, each cell came back as a block of solid pixels, and
+  // zoomed in a shower drew as hard pale-blue squares (Gavan, 2026-10-07,
+  // Lac Bailey). One or two requests a view, too, not a screenful.
   radar: {
     tiles: [wms('https://geo.weather.gc.ca/geomet', 'RADAR_1KM_RRAI')],
     tileSize: 256,
     attribution: 'Radar © Environment and Climate Change Canada',
-    maxzoom: 12,
+    maxzoom: 8,
   },
 }
 

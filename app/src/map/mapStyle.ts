@@ -997,7 +997,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
     sources.radar = { type: 'raster', tiles: radar.tiles, tileSize: radar.tileSize, attribution: radar.attribution, maxzoom: radar.maxzoom }
     vectors.push(
       tag(
-        { id: 'radar', type: 'raster', source: 'radar', layout: vis(o.layers.weather), paint: { 'raster-opacity': 0.7 } },
+        { id: 'radar', type: 'raster', source: 'radar', layout: vis(o.layers.weather), paint: { 'raster-opacity': 0.7, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } },
         'weather',
       ),
     )
