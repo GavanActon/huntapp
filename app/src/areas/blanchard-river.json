@@ -88,7 +88,7 @@
       },
       "dem": {
         "file": "dem-blanchard-river.pmtiles",
-        "bytes": 8399065,
+        "bytes": 8411855,
         "source": "MRDEM 30 m, NRCan, with ArcticDEM 2 m mosaic v4.1 (a satellite-stereo surface model, voids filled from the MRDEM), Polar Geospatial Center over the core",
         "licence": "OGL-Canada",
         "vintage": "2 m, 2007-2022 imagery"
@@ -182,14 +182,14 @@
     "grids": {
       "habitat": {
         "file": "habitat-blanchard-river.hab",
-        "bytes": 2868286,
+        "bytes": 3070627,
         "source": "derived: MRDEM, NRCan 2020 land cover, forest stands, water, wetlands, roads and burns",
         "licence": "derived from the layers above",
         "vintage": "generated 2026-10-08"
       },
       "micro": {
         "file": "micro-blanchard-river.hab",
-        "bytes": 3687839,
+        "bytes": 12515426,
         "source": "derived: the habitat grid and the MRDEM",
         "licence": "derived from the layers above",
         "vintage": "generated 2026-10-08"
