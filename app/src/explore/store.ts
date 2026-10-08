@@ -38,6 +38,8 @@ interface ExploreState {
   email: string
   select: (s: Selected | null) => void
   markRequested: (id: string, r: Requested) => void
+  /** the ask taken back: the mark goes, whatever the queue says */
+  unrequest: (id: string) => void
   setEmail: (email: string) => void
 }
 
@@ -70,6 +72,11 @@ export const useExplore = create<ExploreState>()((set, get) => ({
   select: (selected) => set({ selected }),
   markRequested: (id, r) => {
     set({ requested: { ...get().requested, [id]: r } })
+    keep(get())
+  },
+  unrequest: (id) => {
+    const { [id]: _gone, ...rest } = get().requested
+    set({ requested: rest })
     keep(get())
   },
   setEmail: (email) => {

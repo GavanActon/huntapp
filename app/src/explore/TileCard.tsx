@@ -31,6 +31,7 @@ export default function TileCard() {
   const email = useExplore((s) => s.email)
   const setEmail = useExplore((s) => s.setEmail)
   const markRequested = useExplore((s) => s.markRequested)
+  const unrequest = useExplore((s) => s.unrequest)
   const select = useExplore((s) => s.select)
   const addPlace = usePlacesStore((s) => s.add)
   const [busy, setBusy] = useState<'sd' | 'hd' | null>(null)
@@ -69,6 +70,22 @@ export default function TileCard() {
     }
   }
 
+  async function cancel() {
+    // the mark goes now; the queue hears when there is signal (the Worker
+    // sets the ask to cancelled; one still being baked just is not sent)
+    unrequest(tile.id)
+    try {
+      await fetch(`${API}/api/request`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ cancel: true, email, tile: tile.id, source: 'app' }),
+      })
+      devlog('explore', `cancelled ${tile.id}`)
+    } catch {
+      devlog('explore', `cancel of ${tile.id} not sent`)
+    }
+  }
+
   function pin() {
     addPlace({ name: `Spot ${tile.id.slice(2)}`, lon: cur.lon, lat: cur.lat, kind: 'stand', note: `Explore, ${new Date().toLocaleDateString()}` })
     setPinned(true)
@@ -102,7 +119,10 @@ export default function TileCard() {
         )}
         {req && (
           <div className="tilecard-req">
-            Requested · {req.kind.toUpperCase()} · {new Date(req.at).toLocaleDateString()} · the email comes when it is ready
+            Requested · {req.kind.toUpperCase()} · {new Date(req.at).toLocaleDateString()} · the email comes when it is ready{' '}
+            <button className="link" onClick={cancel}>
+              Cancel
+            </button>
           </div>
         )}
       </div>

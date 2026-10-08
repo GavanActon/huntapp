@@ -93,6 +93,15 @@ async function areaRequest(request, env) {
   }
   // a bot fills every field, the hidden one too: thank it and keep nothing
   if (body?.website) return json({ ok: true }, 200, cors)
+  // Explore: an ask taken back (docs/EXPLORE.md): the phone's own email and
+  // cell, only an ask still waiting; one being baked just is not sent
+  if (body?.cancel) {
+    const email = String(body.email ?? '').trim().slice(0, 200)
+    const tile = String(body.tile ?? '')
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^t-\d{1,4}-\d{1,4}$/.test(tile)) return json({ error: 'cancel' }, 400, cors)
+    const r = await env.DB.prepare("UPDATE requests SET status = 'cancelled' WHERE email = ? AND tile = ? AND status = 'new'").bind(email, tile).run()
+    return json({ ok: true, cancelled: r.meta?.changes ?? 0 }, 200, cors)
+  }
 
   const email = String(body?.email ?? '').trim().slice(0, 200)
   const place = String(body?.where ?? '').trim().slice(0, 500)
