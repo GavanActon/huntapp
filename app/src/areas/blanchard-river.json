@@ -3,9 +3,9 @@
   "name": "Blanchard River",
   "jurisdiction": "BC",
   "centre": [-136.7204444, 59.9673583],
-  "home": { "center": [-136.7204444, 59.9673583], "zoom": 13 },
-  "region": { "west": -136.891, "south": 59.897, "east": -136.55, "north": 60.037 },
-  "core": { "west": -136.81, "south": 59.922, "east": -136.631, "north": 60.013, "maxzoom": 15 },
+  "home": { "center": [-136.74049, 59.96918], "zoom": 13 },
+  "region": { "west": -136.931, "south": 59.897, "east": -136.55, "north": 60.037 },
+  "core": { "west": -136.85, "south": 59.922, "east": -136.631, "north": 60.013, "maxzoom": 15 },
   "regionMaxzoom": 13,
   "declination": 17.5,
   "timezone": "America/Vancouver",
@@ -16,9 +16,12 @@
   "surveyedLakes": [],
   "live": { "lio": false, "satellite": null },
   "attribution": { "vectors": "© Province of British Columbia", "lakes": "Freshwater Atlas © Province of British Columbia", "bush": "" },
-  "presets": [{ "name": "Requested spot", "lon": -136.7204444, "lat": 59.9673583, "kind": "stand", "note": "Area requested 2026-10-07" }],
+  "presets": [
+    { "name": "Requested spot", "lon": -136.7204444, "lat": 59.9673583, "kind": "stand", "note": "Area requested 2026-10-07" },
+    { "name": "West spot", "lon": -136.76054, "lat": 59.971, "kind": "stand", "note": "Requested 2026-10-08" }
+  ],
   "bundle": {
-    "description": "Topo, imagery, LiDAR relief and contours, forest stands, water, roads, and the habitat, wind and going grids around Blanchard River; full detail within 5 km of the spot."
+    "description": "Topo, imagery, LiDAR relief and contours, forest stands, water, roads, and the habitat, wind and going grids around Blanchard River; full detail within about 5 km of both spots."
   },
   "files": {
     "pmtiles": [
@@ -58,26 +61,26 @@
       "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
       "topo": {
         "file": "topo-blanchard-river.pmtiles",
-        "bytes": 8047365,
+        "bytes": 8881335,
         "source": "Toporama hypsography (contours and spot heights), NRCan WMS",
         "licence": "OGL-Canada"
       },
       "satellite": {
         "file": "satellite-blanchard-river.pmtiles",
-        "bytes": 2773384,
+        "bytes": 2981148,
         "source": "Sentinel-2 L2A leaf-on median composite, 10 m, 12 scenes (Earth Search, AWS); no provincial imagery here",
         "licence": "Copernicus Sentinel data: free and open, credit required",
         "vintage": "summers 2023-2024"
       },
       "hillshade": {
         "file": "hillshade-blanchard-river.pmtiles",
-        "bytes": 11340210,
+        "bytes": 12894880,
         "source": "MRDEM 30 m hillshade, NRCan WMS",
         "licence": "OGL-Canada"
       },
       "hillshadeLidar": {
         "file": "hillshade-lidar-blanchard-river.pmtiles",
-        "bytes": 17320718,
+        "bytes": 21291175,
         "source": "ArcticDEM 2 m mosaic v4.1 (a satellite-stereo surface model, voids filled from the MRDEM), Polar Geospatial Center",
         "licence": "ArcticDEM: free, cite PGC (NSF OPP awards)",
         "vintage": "2 m, 2007-2022 imagery",
@@ -85,33 +88,33 @@
       },
       "dem": {
         "file": "dem-blanchard-river.pmtiles",
-        "bytes": 7438590,
+        "bytes": 8399065,
         "source": "MRDEM 30 m, NRCan, with ArcticDEM 2 m mosaic v4.1 (a satellite-stereo surface model, voids filled from the MRDEM), Polar Geospatial Center over the core",
         "licence": "OGL-Canada",
         "vintage": "2 m, 2007-2022 imagery"
       },
       "contours": {
         "file": "contours-blanchard-river.pmtiles",
-        "bytes": 4899760,
+        "bytes": 5568800,
         "source": "ArcticDEM 2 m mosaic v4.1 (a satellite-stereo surface model, voids filled from the MRDEM), Polar Geospatial Center",
         "licence": "ArcticDEM: free, cite PGC (NSF OPP awards)",
         "vintage": "2 m, 2007-2022 imagery"
       },
       "contoursWide": {
         "file": "contours-wide-blanchard-river.pmtiles",
-        "bytes": 1406746,
+        "bytes": 1445398,
         "source": "MRDEM 30 m DTM, NRCan",
         "licence": "OGL-Canada"
       },
       "forest": {
         "file": "forest-blanchard-river.pmtiles",
-        "bytes": 435700,
+        "bytes": 474499,
         "source": "Vegetation Resources Inventory (VRI) forest cover, Province of British Columbia, with later fire perimeters laid over",
         "licence": "OGL-BC"
       },
       "understory": {
         "file": "understory-blanchard-river.pmtiles",
-        "bytes": 6686518,
+        "bytes": 8650346,
         "source": "Bush model (docs/BUSH-MODEL.md): the eye-level understory predicted at 30 m from Sentinel-2 seasons, PALSAR, SCANFI, CanLaD and the MRDEM, trained on 435 plots of Ontario leaf-on LiDAR; faded where the model is unsure. Modelled, not measured",
         "licence": "Copernicus Sentinel data; JAXA ALOS PALSAR mosaic (free, attribution); OGL-Canada; CanLaD CC BY 4.0",
         "vintage": "imagery 2023-2025, model trained 2026-10-08"
@@ -120,14 +123,14 @@
       "bathy": { "missing": "Ontario only: lake depths need the ARA lake facts and the MNR sheets" },
       "historical": {
         "file": "historical-blanchard-river.pmtiles",
-        "bytes": 6055332,
+        "bytes": 6612540,
         "source": "CanMatrix2 1:50 000 NTS scans, NRCan: 114P15, 115A02",
         "licence": "OGL-Canada"
       },
       "bathySheets": { "missing": "Ontario only: MNR lake survey sheets" },
       "places": {
         "file": "places-blanchard-river.pmtiles",
-        "bytes": 45698,
+        "bytes": 45951,
         "source": "BC Geographic Warehouse: wildlife management units, parks, private parcels and reserves, fire perimeters, roads and trails",
         "licence": "OGL-BC"
       }
@@ -148,7 +151,7 @@
       },
       "parks": {
         "file": "parks-blanchard-river.geojson",
-        "bytes": 5565,
+        "bytes": 5662,
         "source": "Parks, conservancies, ecological reserves and protected areas (TANTALIS), Province of British Columbia",
         "licence": "OGL-BC"
       },
@@ -171,7 +174,7 @@
     "baseGeo": {
       "waterbody": {
         "file": "waterbody-blanchard-river.geojson",
-        "bytes": 395987,
+        "bytes": 399678,
         "source": "Freshwater Atlas lakes and rivers, Province of British Columbia",
         "licence": "OGL-BC"
       }
@@ -179,21 +182,21 @@
     "grids": {
       "habitat": {
         "file": "habitat-blanchard-river.hab",
-        "bytes": 2523144,
+        "bytes": 2868286,
         "source": "derived: MRDEM, NRCan 2020 land cover, forest stands, water, wetlands, roads and burns",
         "licence": "derived from the layers above",
         "vintage": "generated 2026-10-08"
       },
       "micro": {
         "file": "micro-blanchard-river.hab",
-        "bytes": 3287353,
+        "bytes": 3687839,
         "source": "derived: the habitat grid and the MRDEM",
         "licence": "derived from the layers above",
         "vintage": "generated 2026-10-08"
       },
       "going": {
         "file": "going-blanchard-river.hab",
-        "bytes": 3210984,
+        "bytes": 3932138,
         "source": "derived: HRDEM LiDAR, point-cloud bush or the forest-map estimate, water, wetlands and roads",
         "licence": "derived from the layers above",
         "vintage": "generated 2026-10-08"

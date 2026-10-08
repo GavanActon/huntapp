@@ -1,6 +1,6 @@
 {
  "cells": [
-  1344,
+  1647,
   1014
  ],
  "cell_m": [
@@ -14,62 +14,62 @@
   {
    "estimate": 0.0,
    "lidar_median": 0.0,
-   "cells": 63169
+   "cells": 70658
   },
   {
    "estimate": 0.2,
    "lidar_median": 0.15,
-   "cells": 63169
+   "cells": 70658
   },
   {
    "estimate": 0.45,
    "lidar_median": 0.3,
-   "cells": 63169
+   "cells": 70658
   },
   {
    "estimate": 0.7,
    "lidar_median": 0.45,
-   "cells": 63169
+   "cells": 70658
   },
   {
    "estimate": 0.85,
    "lidar_median": 0.6,
-   "cells": 63169
+   "cells": 70658
   },
   {
    "estimate": 0.95,
    "lidar_median": 0.75,
-   "cells": 63169
+   "cells": 70658
   },
   {
    "estimate": 1.0,
    "lidar_median": 1.0,
-   "cells": 63169
+   "cells": 70658
   }
  ],
  "bush_land_percentiles": {
-  "10": 0.024,
+  "10": 0.027,
   "25": 0.075,
-  "50": 0.135,
-  "75": 0.248,
-  "90": 0.332,
+  "50": 0.162,
+  "75": 0.265,
+  "90": 0.335,
   "99": 0.598
  },
  "rough_m_land_percentiles": {
-  "10": 0.012,
+  "10": 0.013,
   "25": 0.019,
   "50": 0.03,
-  "75": 0.051,
-  "90": 0.082,
-  "99": 0.207
+  "75": 0.049,
+  "90": 0.08,
+  "99": 0.201
  },
  "ground": {
-  "upland": 1312665,
-  "water": 11910,
+  "upland": 1581787,
+  "water": 23845,
   "marsh": 0,
-  "open peatland": 40,
-  "swamp": 14533,
-  "road": 947,
-  "stream": 22721
+  "open peatland": 68,
+  "swamp": 34805,
+  "road": 2894,
+  "stream": 26659
  }
 }

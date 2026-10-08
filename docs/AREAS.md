@@ -337,6 +337,16 @@ not. Any area whose province has no imagery service can take it
 (`bake.imagery: "ca.s2summer"`). No point cloud adapter yet (LidarBC has
 flown parts of the province; this spot has none, and no HRDEM).
 
+The area's core was widened 2.2 km west the next day (core west −136.85,
+region west −136.931) for a second spot, 59.971, −136.76054, so that the
+walk in from the highway is in full detail. To grow a core: edit the
+area file's boxes, move the area's cached grids aside
+(`pipeline/raw/*-<id>.npz` and `raw/s2/satellite-<id>.tif`; each stops
+with "does not reach over this area's core" rather than fetch again; the
+WFS caches are keyed by their query and refetch by themselves), bake the
+whole area, and run the momentum solve again (`build_windcfd.py prepare`,
+the runners, `collect`, then `--only micro`).
+
 The derived bakes, `build_habitat.py`, `build_microclimate.py`,
 `build_going.py` and `build_vegstructure.py`, run unchanged on the normal
 forms. The Spots score, the ground wind, the routes and the scent cone
