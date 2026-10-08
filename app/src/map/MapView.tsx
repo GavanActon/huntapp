@@ -11,7 +11,7 @@ import { placeColour } from '../state/pinColours'
 import { usePlacesStore } from '../state/placesStore'
 import { geoUrls, holdOpening, setMap, withMap } from './mapController'
 import { useMeasureStore } from '../measure/measureStore'
-import { baseTone, BOG_TUFT, bogTuftImage, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour, standIn } from './mapStyle'
+import { baseTone, BOG_TUFT, bogTuftImage, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour, lidarShadeShown, reliefShadePaint, standIn, syncUnderlays } from './mapStyle'
 import { offlineComplete, registerAllDataFiles, registerDataFile, sourceModes } from './pmtilesRegistry'
 import { showInfoPopup } from './infoPopup'
 import { showPlacePopup } from './placePopup'
@@ -231,6 +231,14 @@ export default function MapView() {
       }
       const m = map
       if (import.meta.env.DEV) (window as unknown as { __map?: unknown }).__map = m
+      // the live layers under the baked ones, on only where they can show:
+      // set before the first frame asks for tiles, then as the view moves
+      const underlays = () => {
+        const s = useAppStore.getState()
+        syncUnderlays(m, s.layers, s.opacity)
+      }
+      m.on('style.load', underlays)
+      m.on('move', underlays)
       // the cell picked and the ones asked for, as feature state on the grid
       let was = { picked: null as string | null, requested: [] as string[] }
       const sync = () => {
@@ -404,7 +412,7 @@ export function applyLayerState(map: maplibregl.Map, layers: LayerVisibility, op
     if (l.type === 'background') map.setPaintProperty(l.id, 'background-color', groundColour(layers))
     const meta = (l as { metadata?: { group?: keyof LayerVisibility; opacityKey?: keyof LayerOpacity } }).metadata
     if (!meta?.group) continue
-    const on = layers[meta.group]
+    const on = l.id === 'hillshade-lidar' ? lidarShadeShown(layers, opacity) : layers[meta.group]
     map.setLayoutProperty(l.id, 'visibility', on ? 'visible' : 'none')
     if (meta.opacityKey && l.type === 'raster') {
       map.setPaintProperty(l.id, 'raster-opacity', opacity[meta.opacityKey])
@@ -413,10 +421,14 @@ export function applyLayerState(map: maplibregl.Map, layers: LayerVisibility, op
       else if (BASE_SATURATION[meta.opacityKey] != null || l.id === meta.opacityKey) map.setPaintProperty(l.id, 'raster-saturation', BASE_SATURATION[meta.opacityKey] ?? 0)
     }
     if (meta.opacityKey && l.type === 'color-relief') map.setPaintProperty(l.id, 'color-relief-opacity', opacity[meta.opacityKey])
+    // the DEM-drawn shade: harder over the whole imagery, the slider its strength there
+    if (l.id === 'relief-shade') for (const [k, v] of Object.entries(reliefShadePaint(layers, opacity))) map.setPaintProperty(l.id, k, v)
     if (meta.opacityKey === 'forest' && l.type === 'fill') map.setPaintProperty(l.id, 'fill-opacity', opacity.forest)
   }
   // a switch gone on: its source gets its file now
   flushDeferredGeo(map, layers)
+  // the Imagery and Hillshade switches just put the live layers back on: off again where the baked cover them
+  syncUnderlays(map, layers, opacity)
   // the contour ink follows the base the view puts under it: the 1 m LiDAR
   // lines and the region's 10 m ones alike (only the LiDAR ones followed, so
   // zoomed out the Bow kept the Topo view's umber, near black on the bush:

@@ -110,6 +110,83 @@ export function flushDeferredGeo(map: MlMap, layers: LayerVisibility) {
  *  and the fine lines of the skid trails are unchanged. */
 export const lidarShadeBrightness = (layers: LayerVisibility) => (layers.satellite ? 0.5 : 1)
 
+/** Over the imagery at a light strength (the Bow view's 0.35) the LiDAR
+ *  shade is next to nothing: hidden on its own it changed 0.2% of the
+ *  pixels over land at z15 and 1.6% at z16.5, a faint lightening of the
+ *  slopes and no trails (those come from the DEM-drawn shade under it), for
+ *  reads of the area's biggest archive on every zoom in. So over the imagery
+ *  it waits until the Hillshade slider is past half, where it shows (30% of
+ *  the pixels at full strength) (2026-10-08). */
+const LIDAR_OVER_IMAGERY_FROM = 0.5
+export const lidarShadeShown = (layers: LayerVisibility, opacity: LayerOpacity) =>
+  layers.hillshade && !(layers.satellite && opacity.hillshade <= LIDAR_OVER_IMAGERY_FROM)
+
+/** The imagery on at full strength: nothing under it shows. */
+const imageryWhole = (layers: LayerVisibility, opacity: LayerOpacity) => layers.satellite && opacity.satellite >= 0.99
+
+/** The DEM-drawn shade's paint. Over the imagery at full strength it
+ *  carries the hills alone inside the box (the live MRDEM shade is under
+ *  the baked imagery there, syncUnderlays), so it is drawn harder: a lower
+ *  sun and stronger lit and dark sides, Gavan's "even more contrasty" over
+ *  the turned-up shade he was shown (2026-10-08, E of the candidates), and
+ *  the Hillshade slider sets its strength, the Bow view's 0.35 being that
+ *  look. Elsewhere it is as it was, the slider not on it. */
+const IMAGERY_SHADE_AT = 0.35
+export function reliefShadePaint(layers: LayerVisibility, opacity: LayerOpacity): Record<string, unknown> {
+  if (!imageryWhole(layers, opacity))
+    return {
+      'hillshade-illumination-altitude': [30, 30, 30, 30],
+      'hillshade-highlight-color': ['rgba(255,250,235,0.35)', 'rgba(255,250,235,0.45)', 'rgba(255,250,235,0.35)', 'rgba(255,250,235,0.2)'],
+      'hillshade-shadow-color': ['rgba(16,20,12,0.6)', 'rgba(16,20,12,0.8)', 'rgba(16,20,12,0.6)', 'rgba(16,20,12,0.35)'],
+      'hillshade-exaggeration': 0.85,
+    }
+  const k = opacity.hillshade / IMAGERY_SHADE_AT
+  const a = (v: number) => Math.min(1, v * k).toFixed(3)
+  return {
+    'hillshade-illumination-altitude': [20, 20, 20, 20],
+    'hillshade-highlight-color': [0.7, 0.85, 0.7, 0.4].map((v) => `rgba(255,250,235,${a(v)})`),
+    'hillshade-shadow-color': [1, 1, 1, 0.75].map((v) => `rgba(16,20,12,${a(v)})`),
+    'hillshade-exaggeration': 1,
+  }
+}
+
+/** Whether the live MRDEM shade was put under the baked imagery (buildMapStyle). */
+let liveShadeUnderImagery = false
+
+/** The live services under the baked layers, fetched only where they can
+ *  show. Inside the box the Toporama sheet is under the opaque base map in
+ *  every view, and with the imagery on at full strength the base map and
+ *  the live imagery are under the baked imagery too (the live imagery is
+ *  the same pictures). Hidden one at a time in the Bow view none of the
+ *  three changed a pixel, and they were about 90 tile requests to three slow
+ *  government servers at every opening (2026-10-08). The live MRDEM shade
+ *  goes the same way: it sits under the baked imagery, so in the box the
+ *  DEM-drawn shade carries the hills (Gavan, 2026-10-08: off, it is the one
+ *  streamed). Past the box's edge they are the map, and they come back on
+ *  the moment the view reaches it; under the baked imagery nothing changes
+ *  inside the box when they do. A hidden layer is neither fetched nor read
+ *  ahead (prefetch.ts). Run on every move and after every switch
+ *  (applyLayerState puts them back with their switches). */
+export function syncUnderlays(map: MlMap, layers: LayerVisibility, opacity: LayerOpacity) {
+  if (!map.getLayer('base')) return
+  ;({ layers, opacity } = standIn(layers, opacity))
+  const b = map.getBounds()
+  const inside = b.getWest() >= REGION.west && b.getEast() <= REGION.east && b.getSouth() >= REGION.south && b.getNorth() <= REGION.north
+  const imagery = imageryWhole(layers, opacity) && !!map.getLayer('satellite')
+  // the base map is only drawn in and around the box, and the live imagery covers the province round it
+  const liveImagery = !!map.getLayer('satellite-live')
+  const show: Record<string, boolean> = {
+    toposheet: !inside,
+    base: !(imagery && (inside || liveImagery)),
+    'satellite-live': layers.satellite && !(imagery && inside),
+    ...(liveShadeUnderImagery ? { 'hillshade-live': layers.hillshade && !(imagery && inside) } : {}),
+  }
+  for (const [id, on] of Object.entries(show)) {
+    const want = on ? 'visible' : 'none'
+    if (map.getLayer(id) && (map.getLayoutProperty(id, 'visibility') ?? 'visible') !== want) map.setLayoutProperty(id, 'visibility', want)
+  }
+}
+
 /** What the contour lines sit on: the view's base, read off its layers,
  *  topmost raster first. The wind streaks read the drawn map instead
  *  (windFlow.ts), since a lake and the land beside it want different inks. */
@@ -366,17 +443,22 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
     const lakes = o.geo.get('waterbody')
     if (lakes) sources.lakes = { type: 'geojson', data: geoData('lakes', lakes, 'relief'), attribution: ATTRIBUTION.lakes }
     // with signal the live MRDEM shade under the DEM's: the DEM stops at the
-    // box, the service shows through beyond it, the same switch and strength
+    // box, the service shows through beyond it, the same switch and strength.
+    // Under the baked imagery too, where there is one: over the imagery it is
+    // the DEM-drawn shade alone inside the box (syncUnderlays)
+    liveShadeUnderImagery = false
     if (o.online && LIVE_RASTER.hillshade) {
       const hs = LIVE_RASTER.hillshade
       sources['hillshade-live'] = { type: 'raster', tiles: hs.tiles, tileSize: hs.tileSize, attribution: hs.attribution, ...(hs.maxzoom != null ? { maxzoom: hs.maxzoom } : {}) }
-      rasters.push(
-        tag(
-          { id: 'hillshade-live', type: 'raster', source: 'hillshade-live', layout: vis(o.layers.hillshade), paint: { 'raster-opacity': o.opacity.hillshade, 'raster-resampling': 'linear' } },
-          'hillshade',
-          'hillshade',
-        ),
-      )
+      const shade = tag(
+        { id: 'hillshade-live', type: 'raster', source: 'hillshade-live', layout: vis(o.layers.hillshade), paint: { 'raster-opacity': o.opacity.hillshade, 'raster-resampling': 'linear' } },
+        'hillshade',
+        'hillshade',
+      ) as LayerSpecification
+      const baked = has('satellite') ? rasters.findIndex((l) => l.id === 'satellite') : -1
+      if (baked >= 0) rasters.splice(baked, 0, shade)
+      else rasters.push(shade)
+      liveShadeUnderImagery = baked >= 0
     }
     rasters.push(
       tag(
@@ -399,10 +481,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
           paint: {
             'hillshade-method': 'multidirectional',
             'hillshade-illumination-direction': [270, 315, 0, 45],
-            'hillshade-illumination-altitude': [30, 30, 30, 30],
-            'hillshade-highlight-color': ['rgba(255,250,235,0.35)', 'rgba(255,250,235,0.45)', 'rgba(255,250,235,0.35)', 'rgba(255,250,235,0.2)'],
-            'hillshade-shadow-color': ['rgba(16,20,12,0.6)', 'rgba(16,20,12,0.8)', 'rgba(16,20,12,0.6)', 'rgba(16,20,12,0.35)'],
-            'hillshade-exaggeration': 0.85,
+            ...reliefShadePaint(o.layers, o.opacity),
           },
         } as LayerSpecification,
         'hillshade',
@@ -472,7 +551,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
           type: 'raster',
           source: 'hillshadeLidar',
           minzoom: CORE_HANDOFF,
-          layout: vis(o.layers.hillshade),
+          layout: vis(lidarShadeShown(o.layers, o.opacity)),
           paint: { 'raster-opacity': o.opacity.hillshade, 'raster-resampling': 'linear', 'raster-brightness-max': lidarShadeBrightness(o.layers) },
         },
         'hillshade',

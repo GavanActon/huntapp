@@ -50,7 +50,9 @@ export const BUILT_IN: MapView[] = [
   { id: 'hunt-bush', name: 'Bush', mode: 'hunt', builtIn: true, heat: false, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'understory', 'contours', 'roads']) },
   // out hunting with a bow: the imagery at full strength, open lanes left clear and
   // thick bush shaded dark (the lanes layer, not the colour scale, which washes it out),
-  // and the grey 1 m LiDAR shade, light, for the old skid trails through the thick stuff
+  // and the shade at 0.35: in the box that is the DEM-drawn one, drawn hard over the imagery
+  // (reliefShadePaint), which carries the hills and the old skid trails; the 1 m LiDAR one
+  // showed next to nothing at this strength over the imagery, so it stays off (lidarShadeShown)
   { id: 'hunt-bow', name: 'Bow', mode: 'hunt', builtIn: true, heat: false, opacity: { ...DEFAULT_OPACITY, hillshade: 0.35, satellite: 1 }, layers: L(['satellite', 'hillshade', 'lanes', 'contours', 'roads']) },
   { id: 'hunt-terrain', name: 'Terrain', mode: 'hunt', builtIn: true, heat: false, opacity: { ...DEFAULT_OPACITY, hillshade: 0.9 }, layers: L(['hillshade', 'contours', 'roads']) },
   { id: 'hunt-sit', name: 'Sit', mode: 'hunt', builtIn: true, heat: false, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'contours', 'roads']) },
