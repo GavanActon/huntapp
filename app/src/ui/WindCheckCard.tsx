@@ -9,7 +9,8 @@ import { clockShort } from '../time'
 import { useAppStore } from '../state/appStore'
 import { requestCompass, startCompass, stopCompass, useCompass } from '../tracking/compass'
 import { useGpsStore } from '../tracking/gpsStore'
-import Rose, { Arrow } from './Rose'
+import { useMapBearing } from '../map/mapBearing'
+import Rose, { Arrow, sector } from './Rose'
 import ShareChecksAsk from './ShareChecksAsk'
 import { useTapOff } from './tapOff'
 import './ground.css'
@@ -27,20 +28,24 @@ import './ground.css'
  * default (tapping how hard with no way given takes it, no more taps: the
  * way you look at a spot seen from afar, else the compass's heading, else
  * your track while you walk), or an arrow on the rose. The last given
- * wins; with nothing to read ahead from, Save says so. A tap on the map
- * closes the card (for an hour that day it was the way the powder went;
- * Gavan: "I should be able to tap the map to exit"). The arc of a wind
- * that swings comes from a series of puffs (windChecks.ts fold), not
- * from a second tap. While the card is up the strip and the live card
- * are off the screen (App.tsx): the map and the rose, nothing else.
+ * wins. The middle shows the way given and a tap on it takes it back, as
+ * does a tap on the lit arrow, so "ahead" can be backed out of (Gavan:
+ * "clicking ahead locks it in, I can't back out"). With nothing to read
+ * ahead from, Save says so. A tap on the map closes the card (for an hour
+ * that day it was the way the powder went; Gavan: "I should be able to
+ * tap the map to exit"). The arc of a wind that swings comes from a
+ * series of puffs (windChecks.ts fold), not from a second tap. While the
+ * card is up the strip and the live card are off the screen (App.tsx):
+ * the map and the rose, nothing else.
  *
- * The rose turns with the phone when it has a compass, so the arrow to
- * tap is the one pointing where the powder really goes, not a compass
- * point to work out in the bush; without one, north is up. Once a way is
- * given the rose stops turning, so the arrow stays under the finger that
- * picked it and the phone can go back in a pocket. Save always answers:
- * saved (what the map said, what it reads now, the sit's score, when to
- * check next), or what is still missing.
+ * The rose is the map's compass: it turns only as the map is turned
+ * (north up, or heading up with the map), so its arrows read against the
+ * map the hunter is looking at and hold still under a finger. Until
+ * 2026-10-08 it turned with the live compass heading, and as the phone
+ * wandered the arrows slid out from under taps, which then went missing
+ * (Gavan: "I click a bunch of times, doesn't set it"). Save always
+ * answers: saved (what the map said, what it reads now, the sit's score,
+ * when to check next), or what is still missing.
  *
  * Saved, the card says what moved (2026-10-08): the map's call before the
  * check against what it reads there now, with the sit's checks fitted as
@@ -123,10 +128,14 @@ export default function WindCheckCard() {
   const at = useCheckForm((s) => s.at)!
   const close = useCheckForm((s) => s.close)
   const add = useWindChecks((s) => s.add)
-  const heading = useCompass((s) => s.heading)
-  const status = useCompass((s) => s.status)
-  const [toward, setToward] = useState<number | null>(null)
-  /** how the way was given, and what "ahead" was read from */
+  // the rose is the map's compass: it turns only as the map is turned, so
+  // the arrows hold still under a finger (turned by the live heading they
+  // slid as the phone wandered, and taps on them went missing: Gavan,
+  // 2026-10-08)
+  const bearing = useMapBearing((s) => s.bearing)
+  /** the way the powder goes, a true bearing; null until given */
+  const [dir, setDirState] = useState<number | null>(null)
+  /** how it was given, and what "ahead" was read from */
   const [via, setVia] = useState<{ how: 'arrow' | 'ahead'; read?: string } | null>(null)
   const [strength, setStrength] = useState<Strength | null>(null)
   /** seen from afar: what the treetops did */
@@ -147,29 +156,25 @@ export default function WindCheckCard() {
   const ref = useRef<HTMLDivElement>(null)
   // a tap off the card, the map included, closes it
   useTapOff(ref, true, close)
-  /** where the rose stood when the way was first given */
-  const held = useRef<number | null>(null)
 
+  // the compass runs while the card is up; it is read only when "ahead" is asked
   useEffect(() => {
     startCompass()
     return () => stopCompass()
   }, [])
 
-  // the rose turns so its top is where the phone points, and holds still
-  // from the first way given on: the arrow stays where the finger left it
-  const live = status === 'on' && heading != null
-  // seen from your fix: the rose faces the spot, the way you are looking
+  // seen from your fix: "ahead" is the way you look, from the fix to the spot
   const sight = seen && at.from ? bearingTo(at.from, at.lon, at.lat) : null
-  const spin = sight ?? (live ? heading : 0)
   const calm = seen ? seenAs === 'still' : strength === 'calm'
-  const picked = toward != null && !calm
-  const turn = picked && held.current != null ? held.current : spin
 
-  /** The way the powder went, one direction: the last given wins. */
-  const pick = (deg: number, how: 'arrow' | 'ahead', read?: string) => {
-    const d = Math.round(((deg % 360) + 360) % 360)
-    if (held.current == null) held.current = spin
-    setToward(d)
+  /** The way, one direction: the last given wins; null takes it back. */
+  const setDir = (deg: number | null, how: 'arrow' | 'ahead' = 'arrow', read?: string) => {
+    if (deg == null) {
+      setDirState(null)
+      setVia(null)
+      return
+    }
+    setDirState(Math.round(((deg % 360) + 360) % 360))
     setVia({ how, read })
     if (calm) {
       setStrength(null)
@@ -177,13 +182,13 @@ export default function WindCheckCard() {
     }
     setMissing(null)
   }
+  /** An arrow: that way. The lit arrow again: no way given. */
+  const tapArrow = (b: number) => setDir(dir != null && sector(dir) === b ? null : b)
 
-  /** "ahead": it goes the way the phone points, and that is the direction
-   *  saved (Gavan, 2026-10-08: it used to arm a map tap and then still
-   *  ask for an arrow). Seen from afar that is the way you look; else the
-   *  compass's heading (held at the last reading it believed while the
-   *  phone whirls: compass.ts); else the track's course while you walk;
-   *  with none of those, a tap on the map in front of you. */
+  /** "ahead": the way the phone points. Seen from afar that is the way you
+   *  look; else the compass's heading (held at the last reading it
+   *  believed while the phone whirls: compass.ts); else the track's course
+   *  while you walk. Null with none of those. */
   const aheadDeg = (): { deg: number; read: string } | null => {
     if (sight != null) return { deg: sight, read: 'the way you look' }
     const cs = useCompass.getState()
@@ -193,30 +198,33 @@ export default function WindCheckCard() {
     return null
   }
   const NO_AHEAD = 'No compass and not walking: tap the arrow the powder follows'
-  const ahead = () => {
+  /** The middle: "ahead" takes the way the phone points; with a way given
+   *  (ahead or an arrow) it shows it, and a tap takes it back. */
+  const tapMiddle = () => {
+    if (dir != null) return setDir(null)
     const a = aheadDeg()
-    if (a) pick(a.deg, 'ahead', a.read)
+    if (a) setDir(a.deg, 'ahead', a.read)
     else setMissing(NO_AHEAD)
   }
   /** Ahead is the default (Gavan, 2026-10-08: "someone clicks breezy, assume
    *  it's in the direction they're pointed"): tapping how hard with no way
-   *  given yet takes the way the phone points, quietly; with nothing to
-   *  read it from, Save asks for a tap on the map. */
+   *  given takes the way the phone points, quietly; with nothing to read it
+   *  from, Save says so. */
   const aheadByDefault = () => {
-    if (toward != null) return
+    if (dir != null) return
     const a = aheadDeg()
-    if (a) pick(a.deg, 'ahead', a.read)
+    if (a) setDir(a.deg, 'ahead', a.read)
   }
 
   const save = async () => {
     if (seen) return saveSeen()
     if (!strength) return setMissing('Tap how hard it is blowing')
-    let dir = toward
-    if (!calm && dir == null) {
+    let d = dir
+    if (!calm && d == null) {
       const a = aheadDeg()
       if (!a) return setMissing(NO_AHEAD)
-      dir = a.deg
-      pick(a.deg, 'ahead', a.read)
+      d = a.deg
+      setDir(a.deg, 'ahead', a.read)
     }
     setSaving(true)
     const now = Date.now()
@@ -233,7 +241,7 @@ export default function WindCheckCard() {
       ts: now,
       lon: at.lon,
       lat: at.lat,
-      dirFrom: calm || dir == null ? null : (dir + 180) % 360,
+      dirFrom: calm || d == null ? null : (d + 180) % 360,
       strength,
       ...(aloft ? { aloft: true } : {}),
       ...(heldOn ? { held: true } : {}),
@@ -266,19 +274,19 @@ export default function WindCheckCard() {
   // keep (that is head height); the forecast's is the one it scores
   const saveSeen = () => {
     if (!seenAs) return setMissing('Tap how hard they are moving')
-    let dir = toward
-    if (!calm && dir == null) {
+    let d = dir
+    if (!calm && d == null) {
       const a = aheadDeg()
       if (!a) return setMissing(NO_AHEAD)
-      dir = a.deg
-      pick(a.deg, 'ahead', a.read)
+      d = a.deg
+      setDir(a.deg, 'ahead', a.read)
     }
     const now = Date.now()
     const c = add({
       ts: now,
       lon: at.lon,
       lat: at.lat,
-      dirFrom: calm || dir == null ? null : (dir + 180) % 360,
+      dirFrom: calm || d == null ? null : (d + 180) % 360,
       strength: SEEN_STRENGTH[seenAs],
       seen: seenAs,
       ...(at.from ? { seenFrom: { lon: at.from.lon, lat: at.from.lat } } : {}),
@@ -405,18 +413,21 @@ export default function WindCheckCard() {
         </div>
       )}
       <div className="gc-q">{seen ? 'Which way do the treetops lean?' : 'Which way does the powder go?'}</div>
-      <Rose turn={turn} value={calm ? null : toward} onPick={(b) => pick(b, 'arrow')} label={(b) => `toward ${compass(b)}`}>
+      <Rose turn={bearing} value={calm ? null : dir} onPick={tapArrow} label={(b) => `toward ${compass(b)}`}>
         {calm ? (
           <span className="gc-mid-word">calm</span>
-        ) : toward != null ? (
-          <span className="gc-mid-pick">
-            <Arrow toward={toward - turn} size={30} />
-            <b>{towardWords(toward)}</b>
-            {via?.how === 'ahead' && <span className="gc-mid-word">ahead{via.read ? ` · ${via.read}` : ''}</span>}
-          </span>
+        ) : dir != null ? (
+          // the way given: tap it to take it back
+          <button className="gc-lock gc-lock-on" onClick={tapMiddle} aria-label="take the way back">
+            <Arrow toward={dir - bearing} size={24} />
+            <span>
+              {compass(dir)}
+              {via?.how === 'ahead' ? ' · ahead' : ''}
+            </span>
+          </button>
         ) : (
-          // "ahead": it goes the way you face, and that is the direction saved
-          <button className="gc-lock" onClick={ahead}>
+          // "ahead": it goes the way the phone points, and that is the direction saved
+          <button className="gc-lock" onClick={tapMiddle}>
             <Arrow toward={0} size={20} />
             <span>ahead</span>
           </button>

@@ -56,7 +56,7 @@
 .gc-dir.gc-north { border-color: rgba(255, 120, 110, 0.7); }
 .gc-dir.gc-north span { color: #ff8a80; }
 .gc-dir.gc-on.gc-north span { color: var(--c-accent); }
-.gc-rose .gc-dir { transition: transform 0.12s linear; touch-action: manipulation; }
+.gc-rose .gc-dir { touch-action: manipulation; }
 /* a wind that swings: the shorter arc between the two arrows, a band under them */
 .gc-rose .gc-arc {
   position: absolute; inset: 0; border-radius: 50%; pointer-events: none; opacity: 0.18;

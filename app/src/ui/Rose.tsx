@@ -3,10 +3,10 @@ import { compass } from '../weather/openMeteo'
 
 /**
  * Eight arrows round a middle, for picking a way: the powder's in a wind
- * check, a moose's in HeardCard. It turns by `turn` (the phone's compass
- * heading) so the top arrow points where the phone does, and the arrow to
- * tap is the one pointing at the thing itself, not a compass point to work
- * out in the bush. A picked bearing lights its nearest arrow, and a second
+ * check, a moose's in HeardCard. It turns by `turn`: the map's bearing in
+ * the wind check, so it reads against the map as turned (the live compass
+ * heading moved the arrows under a finger and taps went missing,
+ * 2026-10-08); the phone's heading where a card still passes that. A picked bearing lights its nearest arrow, and a second
  * one (a wind that swings) lights too, with the shorter arc between them
  * faintly shaded.
  *

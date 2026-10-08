@@ -576,11 +576,13 @@ nothing that matters: at that cell the mechanical part stays under
   and then still ask for an arrow: the bug Gavan hit 2026-10-08): the way
   you look at a spot seen from afar, else the compass's heading, else the
   track's course while walking (0.6 kn and a fix under 90 s old); or an
-  arrow on the rose, which turns with the phone's compass only while the
-  reading is steady (held up to point, an iPhone's heading whirls:
-  `compass.ts` holds it) and stops turning once a way is given. The last
-  given wins; there is no second arrow, and with nothing to read ahead
-  from Save asks for an arrow. A tap on the map closes the card (for an
+  arrow on the rose. The last
+  given wins; the middle shows the way and a tap on it (or on the lit
+  arrow) takes it back, so ahead can be backed out of; there is no
+  second arrow, and with nothing to read ahead from Save asks for an
+  arrow. The rose is the map's compass, turned only as the map is (its
+  arrows used to turn with the live heading and slid out from under taps,
+  which went missing: Gavan, 2026-10-08). A tap on the map closes the card (for an
   hour that day it was the way the powder went; Gavan: "I should be able
   to tap the map to exit"), and while the card is up the weather strip
   and the live card are off the screen. A wind that swings is read off a
