@@ -177,6 +177,20 @@ export interface FlowTuning {
 }
 export const FLOW_TUNING_DEFAULTS: FlowTuning = { windDensity: 2500, windSpeed: 1, windTrail: 0.97, windHue: 195, windSat: 100, windSize: 'large', windSwirl: true, windStyle: 'standard' }
 
+/** How much of the area's detail the map draws. 'full': all of it, every
+ *  view as it was. 'light': none of the high-res layers (the 1 m LiDAR
+ *  shade) and nothing live in the area under the baked layers, light to
+ *  stream (the Photo and Topo Lite views). 'auto': all of it once the area's
+ *  maps are saved on the phone, light until then (the hunting views, Bow and
+ *  Topo). Gavan, 2026-10-08: "if downloaded show high res, otherwise light".
+ *  Set by the view last picked, so a switch flipped after keeps it. */
+export type MapDetail = 'full' | 'auto' | 'light'
+
+/** The high-res layers draw. `offlineReady` is read at the map's start, when
+ *  the archives are opened: saved maps are read from the phone from the next
+ *  open on, so that is when the detail comes in. */
+export const fineDetail = (s: Pick<AppState, 'detail' | 'offlineReady'>): boolean => s.detail === 'full' || (s.detail === 'auto' && s.offlineReady)
+
 /** The wind's look: the streaks as they were, bolder ones, or white ones
  *  over a wash coloured by the wind's speed, as windy.com draws it (Contrast). */
 export type WindStyle = 'standard' | 'bold' | 'contrast'
@@ -255,6 +269,8 @@ export interface AppState {
   setLayer: (k: keyof LayerVisibility, v: boolean) => void
   opacity: LayerOpacity
   setOpacity: (k: keyof LayerOpacity, v: number) => void
+  /** how much the map draws, from the view last picked (MapDetail); persisted */
+  detail: MapDetail
   /** colour saturation per raster layer, -1..1 (0 as shot); persisted */
   saturation: Partial<Record<keyof LayerOpacity, number>>
   setSaturation: (k: keyof LayerOpacity, v: number) => void
@@ -352,6 +368,7 @@ export const useAppStore = create<AppState>()(
       setLayer: (k, v) => set((s) => ({ layers: { ...s.layers, [k]: v } })),
       opacity: START_OPACITY,
       setOpacity: (k, v) => set((s) => ({ opacity: { ...s.opacity, [k]: v } })),
+      detail: 'full',
       saturation: {},
       setSaturation: (k, v) => set((s) => ({ saturation: { ...s.saturation, [k]: v } })),
       starred: [],
@@ -436,6 +453,7 @@ export const useAppStore = create<AppState>()(
       partialize: (s) => ({
         layers: s.layers,
         opacity: s.opacity,
+        detail: s.detail,
         saturation: s.saturation,
         starred: s.starred,
         historicalYear: s.historicalYear,

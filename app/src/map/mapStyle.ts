@@ -33,6 +33,8 @@ export interface StyleOpts {
   online?: boolean
   /** Explore on at build: the coverage grid shown */
   explore?: boolean
+  /** the high-res layers drawn (appStore fineDetail): false is the light map */
+  hd: boolean
   /** which pmtiles keys are reachable (from registerAllDataFiles) */
   available: Set<string>
   /** baked GeoJSON per theme: a URL (local blob or server file) when found */
@@ -116,10 +118,12 @@ export const lidarShadeBrightness = (layers: LayerVisibility) => (layers.satelli
  *  slopes and no trails (those come from the DEM-drawn shade under it), for
  *  reads of the area's biggest archive on every zoom in. So over the imagery
  *  it waits until the Hillshade slider is past half, where it shows (30% of
- *  the pixels at full strength) (2026-10-08). */
+ *  the pixels at full strength) (2026-10-08). It is the heaviest layer to
+ *  stream, too, 1.1 MB of Topo's 1.9 MB on a zoom in: the light map
+ *  (`hd` false) goes without it. */
 const LIDAR_OVER_IMAGERY_FROM = 0.5
-export const lidarShadeShown = (layers: LayerVisibility, opacity: LayerOpacity) =>
-  layers.hillshade && !(layers.satellite && opacity.hillshade <= LIDAR_OVER_IMAGERY_FROM)
+export const lidarShadeShown = (layers: LayerVisibility, opacity: LayerOpacity, hd: boolean) =>
+  hd && layers.hillshade && !(layers.satellite && opacity.hillshade <= LIDAR_OVER_IMAGERY_FROM)
 
 /** The imagery on at full strength: nothing under it shows. */
 const imageryWhole = (layers: LayerVisibility, opacity: LayerOpacity) => layers.satellite && opacity.satellite >= 0.99
@@ -164,22 +168,26 @@ let liveShadeUnderImagery = false
  *  DEM-drawn shade carries the hills (Gavan, 2026-10-08: off, it is the one
  *  streamed). Past the box's edge they are the map, and they come back on
  *  the moment the view reaches it; under the baked imagery nothing changes
- *  inside the box when they do. A hidden layer is neither fetched nor read
- *  ahead (prefetch.ts). Run on every move and after every switch
- *  (applyLayerState puts them back with their switches). */
-export function syncUnderlays(map: MlMap, layers: LayerVisibility, opacity: LayerOpacity) {
+ *  inside the box when they do. The light map (`hd` false) takes the
+ *  elevation colours (at 0.9) for ground enough too: the base map and the
+ *  live shade under them are off in the box, the Topo view's 384 KB of a
+ *  zoom in. A hidden layer is neither fetched nor read ahead (prefetch.ts).
+ *  Run on every move and after every switch (applyLayerState puts them back
+ *  with their switches). */
+export function syncUnderlays(map: MlMap, layers: LayerVisibility, opacity: LayerOpacity, hd: boolean) {
   if (!map.getLayer('base')) return
   ;({ layers, opacity } = standIn(layers, opacity))
   const b = map.getBounds()
   const inside = b.getWest() >= REGION.west && b.getEast() <= REGION.east && b.getSouth() >= REGION.south && b.getNorth() <= REGION.north
   const imagery = imageryWhole(layers, opacity) && !!map.getLayer('satellite')
+  const relief = !hd && layers.relief && !!map.getLayer('relief-colour')
   // the base map is only drawn in and around the box, and the live imagery covers the province round it
   const liveImagery = !!map.getLayer('satellite-live')
   const show: Record<string, boolean> = {
     toposheet: !inside,
-    base: !(imagery && (inside || liveImagery)),
+    base: !((imagery && (inside || liveImagery)) || (relief && inside)),
     'satellite-live': layers.satellite && !(imagery && inside),
-    ...(liveShadeUnderImagery ? { 'hillshade-live': layers.hillshade && !(imagery && inside) } : {}),
+    'hillshade-live': layers.hillshade && !(inside && ((imagery && liveShadeUnderImagery) || relief)),
   }
   for (const [id, on] of Object.entries(show)) {
     const want = on ? 'visible' : 'none'
@@ -551,7 +559,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
           type: 'raster',
           source: 'hillshadeLidar',
           minzoom: CORE_HANDOFF,
-          layout: vis(lidarShadeShown(o.layers, o.opacity)),
+          layout: vis(lidarShadeShown(o.layers, o.opacity, o.hd)),
           paint: { 'raster-opacity': o.opacity.hillshade, 'raster-resampling': 'linear', 'raster-brightness-max': lidarShadeBrightness(o.layers) },
         },
         'hillshade',
