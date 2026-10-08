@@ -42,6 +42,7 @@ import { initLogLayer } from './log/logLayer'
 import LogCard, { useLogForm } from './ui/LogCard'
 import ViewPill from './ui/ViewPill'
 import { initDepthLayer } from './map/depthLayer'
+import { initTilePrefetch } from './map/prefetch'
 import { initSpotsLayer } from './spots/spotsLayer'
 import { initAreaArrival } from './areas/arrive'
 import AreaOffer from './ui/AreaOffer'
@@ -137,6 +138,7 @@ export default function App() {
     initTrackLayer()
     initDepthLayer()
     initSpotsLayer()
+    initTilePrefetch()
     initLogLayer()
     initCheckLayer()
     initPartyLayer()

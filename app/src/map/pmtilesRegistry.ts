@@ -109,10 +109,59 @@ const protocol = new Protocol()
  * A missing vector tile still comes back empty: no features, drawn as such.
  */
 maplibregl.addProtocol('pmtiles', async (params, abortController) => {
+  const hit = warmTake(params.url)
+  if (hit) return hit
   const r = await protocol.tilev4(params, abortController)
   if (r.data == null) throw Object.assign(new Error(`no tile ${params.url}`), { status: 404 })
   return r
 })
+
+// ---- tiles read ahead (prefetch.ts): a small memory cache in front of the protocol ----
+
+interface Warm {
+  data: ArrayBuffer
+  cacheControl?: string
+  expires?: string
+}
+const warm = new Map<string, Warm>()
+let warmBytes = 0
+/** how much read-ahead is kept: raster tiles run 20–60 KB, so a few hundred */
+const WARM_CAP = 24 << 20
+
+export function warmHas(url: string): boolean {
+  return warm.has(url)
+}
+
+let hits = 0
+/** tiles the map took from the warm cache this run (the devlog's measure of the read-ahead) */
+export function warmHits(): number {
+  return hits
+}
+
+/** A warm tile for the map, moved to the back of the line (the least recently asked for goes first). */
+function warmTake(url: string): Warm | null {
+  const w = warm.get(url)
+  if (!w) return null
+  hits++
+  warm.delete(url)
+  warm.set(url, w)
+  return w
+}
+
+/** Read a tile into the warm cache (nothing for one the archive lacks). */
+export async function warmTile(url: string, abortController: AbortController): Promise<void> {
+  if (warm.has(url)) return
+  const r = await protocol.tilev4({ url, type: 'arrayBuffer' }, abortController)
+  const data = r.data as ArrayBuffer | null | undefined
+  if (!data) return
+  warm.set(url, { data, cacheControl: r.cacheControl, expires: r.expires })
+  warmBytes += data.byteLength
+  for (const [k, v] of warm) {
+    if (warmBytes <= WARM_CAP) break
+    warm.delete(k)
+    warmBytes -= v.data.byteLength
+  }
+}
 
 export type DataSourceMode = 'local' | 'network' | 'missing'
 

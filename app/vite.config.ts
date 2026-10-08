@@ -407,7 +407,8 @@ export default defineConfig({
           // live map services: cache what has been looked at, for the drive out
           // (Quebec's imagery too, for an area there)
           {
-            urlPattern: /^https:\/\/(maps\.geogratis\.gc\.ca|datacube\.services\.geo\.ca|ws\.lioservices\.lrc\.gov\.on\.ca|ws\.gisdynamic\.lrc\.gov\.on\.ca|server\.arcgisonline\.com|tiles\.arcgis\.com|servicesmatriciels\.mern\.gouv\.qc\.ca)\//,
+            // the live base map (NRCan CBMT) among them: it came off the network on every pan, downloaded area or not (2026-10-07)
+            urlPattern: /^https:\/\/(maps-cartes\.services\.geo\.ca|maps\.geogratis\.gc\.ca|datacube\.services\.geo\.ca|ws\.lioservices\.lrc\.gov\.on\.ca|ws\.gisdynamic\.lrc\.gov\.on\.ca|server\.arcgisonline\.com|tiles\.arcgis\.com|servicesmatriciels\.mern\.gouv\.qc\.ca)\//,
             handler: 'CacheFirst',
             options: { cacheName: 'live-tiles', expiration: { maxEntries: 6000, maxAgeSeconds: 60 * 60 * 24 * 120 }, cacheableResponse: { statuses: [0, 200] } },
           },
