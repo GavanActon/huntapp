@@ -117,12 +117,28 @@ export interface AreaDef {
   bake?: Record<string, unknown>
   /** what the last bake made, layer by layer (the Offline sheet's What's in it) */
   coverage?: AreaCoverage
+  /** Explore (explore/index.ts): a stand-in area the map is unfenced in, nothing baked, listed nowhere */
+  virtual?: boolean
 }
 
 /** Pickle Lake: the area the app opens on with nothing saved, and the
  *  owner of everything saved before there were areas (the bare storage
  *  keys, the preset ids preset-0 …). */
 export const DEFAULT_AREA = 'pickle-lake'
+/** The area Explore runs as (areas/explore.json): the whole country, nothing baked. */
+export const EXPLORE_ID = 'explore'
+/** the area Explore was entered from, kept while in it (explore/index.ts) */
+export const EXPLORE_FROM_KEY = 'huntapp-explore-from'
+/** The area Explore was entered from, else the default: Explore's home and its way back. */
+export function exploreFromId(): string {
+  try {
+    const id = localStorage.getItem(EXPLORE_FROM_KEY)
+    if (id && id !== EXPLORE_ID && Object.hasOwn(AREAS, id)) return id
+  } catch {
+    /* the default */
+  }
+  return DEFAULT_AREA
+}
 
 /** The phone's choice of area. */
 const AREA_KEY = 'huntapp-area'
@@ -140,6 +156,8 @@ const defs = (Object.values(import.meta.glob('./*.json', { eager: true, import: 
   console.warn(`area file ${String(a?.id)} left out: ${bad} is missing or not what the app reads`)
   return false
 })
+  // the real areas first: a link's spot is looked for in them before Explore's country-wide box
+  .sort((a, b) => Number(!!a.virtual) - Number(!!b.virtual))
 
 /** Every area the app knows, by id. */
 export const AREAS: Readonly<Record<string, AreaDef>> = Object.fromEntries(defs.map((a) => [a.id, a]))
@@ -228,6 +246,8 @@ export const AREA_LIST: readonly AreaDef[] = [ACTIVE_AREA, ...defs.filter((a) =>
  *  active one first; null when it is in none. */
 export function areaAt(lon: number, lat: number, marginDeg = 0): AreaDef | null {
   for (const a of AREA_LIST) {
+    // Explore's box is the country: it holds a point only while the app is in it
+    if (a.virtual && a.id !== ACTIVE_AREA.id) continue
     const r = a.region
     if (lon >= r.west - marginDeg && lon <= r.east + marginDeg && lat >= r.south - marginDeg && lat <= r.north + marginDeg) return a
   }

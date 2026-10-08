@@ -96,7 +96,7 @@ export default function PinsSheet(): JSX.Element {
   const where = (p: SavedPlace, folded: boolean) => (p.id === home.id || folded ? p.kind : `${p.kind} · ${elsewhere(p)?.name ?? fromHome(p.lon, p.lat, home)}`)
   // another area's presets go in its fold; your own pins there stay with the rest of yours
   const inFold = (p: SavedPlace) => p.savedAt === 0 && elsewhere(p) != null
-  const folds = AREA_LIST.filter((a) => a.id !== ACTIVE_AREA.id)
+  const folds = AREA_LIST.filter((a) => a.id !== ACTIVE_AREA.id && !a.virtual)
     .map((a) => ({ area: a, theirs: places.filter((p) => inFold(p) && placeArea(p)?.id === a.id) }))
     .filter((f) => f.theirs.length > 0)
   const toggleFold = (id: string) => setUnfolded((u) => (u.includes(id) ? u.filter((x) => x !== id) : [...u, id]))

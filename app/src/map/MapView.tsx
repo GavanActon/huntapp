@@ -12,7 +12,7 @@ import { usePlacesStore } from '../state/placesStore'
 import { geoUrls, holdOpening, setMap, withMap } from './mapController'
 import { useMeasureStore } from '../measure/measureStore'
 import { baseTone, BOG_TUFT, bogTuftImage, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour } from './mapStyle'
-import { offlineComplete, registerAllDataFiles, sourceModes } from './pmtilesRegistry'
+import { offlineComplete, registerAllDataFiles, registerDataFile, sourceModes } from './pmtilesRegistry'
 import { showInfoPopup } from './infoPopup'
 import { showPlacePopup } from './placePopup'
 import { useScent } from '../weather/micro/scent'
@@ -26,6 +26,9 @@ import type { FeatureCollection } from 'geojson'
 import 'maplibre-gl/dist/maplibre-gl.css'
 // the tap popup's score circle (the rest of the popup is in ui.css)
 import '../ui/sheets/digin.css'
+import { EXPLORE, exploreMoved, exploreTap } from '../explore'
+import { COVERAGE_FILE, COVERAGE_KEY, syncCoverageState } from '../explore/coverage'
+import { useExplore } from '../explore/store'
 
 /** Your pins and the preset places, each as the strip's marks say. */
 function placesGeoJson(): FeatureCollection {
@@ -189,6 +192,8 @@ export default function MapView() {
       const listing = await bootManifest()
       const known = listing ? new Set(Object.keys(listing.files)) : null
       const [available, geo] = await Promise.all([registerAllDataFiles(known), resolveGeo(known)])
+      // Explore: the coverage index's archive, kept out of every area's list (explore/coverage.ts)
+      if (EXPLORE && (await registerDataFile(COVERAGE_KEY, COVERAGE_FILE)) !== 'missing') available.add(COVERAGE_KEY)
       if (cancelled) return
       geoUrls.clear()
       for (const [k, v] of geo) geoUrls.set(k, v)
@@ -210,7 +215,7 @@ export default function MapView() {
           zoom: saved?.zoom ?? HOME.zoom,
           bearing: saved?.bearing ?? 0,
           maxBounds: MAX_BOUNDS,
-          minZoom: 7,
+          minZoom: EXPLORE ? 4 : 7,
           maxZoom: 18,
           // a tap whose finger drifts a little is still a tap (the default 3 px loses thumbs)
           clickTolerance: 6,
@@ -224,6 +229,19 @@ export default function MapView() {
       }
       const m = map
       if (import.meta.env.DEV) (window as unknown as { __map?: unknown }).__map = m
+      if (EXPLORE) {
+        // the tile picked and the ones asked for, as feature state on the grid
+        let was = { picked: null as string | null, requested: [] as string[] }
+        const sync = () => {
+          const st = useExplore.getState()
+          was = syncCoverageState(m, st.selected?.tile.id ?? null, st.requested, was)
+        }
+        m.on('load', () => {
+          exploreMoved(m)
+          sync()
+        })
+        useExplore.subscribe(sync)
+      }
       // the bogs' marsh tufts (the Topo view), made the first time a layer asks for them
       m.on('styleimagemissing', (e: { id: string }) => {
         if (e.id === BOG_TUFT && !m.hasImage(BOG_TUFT)) m.addImage(BOG_TUFT, bogTuftImage(), { pixelRatio: 2 })
@@ -277,6 +295,7 @@ export default function MapView() {
       m.on('moveend', () => {
         const c = m.getCenter()
         saveView({ center: [c.lng, c.lat], zoom: m.getZoom(), bearing: m.getBearing() })
+        if (EXPLORE) exploreMoved(m)
       })
       m.on('dragstart', () => useAppStore.getState().setFollow(false))
 
@@ -306,6 +325,8 @@ export default function MapView() {
         // "ahead" armed on the wind check: the tap is what is in front of you
         const cf = useCheckForm.getState()
         if (cf.at && cf.aim) return cf.mapTap(e.lngLat.lng, e.lngLat.lat)
+        // Explore: the tap picks the cell under it (explore/index.ts)
+        if (EXPLORE) return exploreTap(m, e)
         // a place, a numbered pin, a wind check or a kept route has its own tap
         const hit = m.queryRenderedFeatures(e.point, { layers: ['pins-pt', 'spots-pin', 'windchecks-hit', 'routes-hit', 'huntlog-dot'].filter((id) => m.getLayer(id)) })
         if (hit.length) return

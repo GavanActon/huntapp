@@ -101,14 +101,17 @@ async function areaRequest(request, env) {
   const game = (Array.isArray(body.game) ? body.game : []).map(String).filter((g) => GAME.has(g)).join(',')
   const [lat, lon] = pointOf(body, place)
   const source = body.source === 'app' ? 'app' : 'site'
+  // Explore's tile card: the cell of the SD lattice asked for, and SD or HD (docs/EXPLORE.md)
+  const tile = /^t-\d{1,4}-\d{1,4}$/.test(String(body.tile ?? '')) ? String(body.tile) : null
+  const kind = body.kind === 'hd' ? 'hd' : body.kind === 'sd' ? 'sd' : null
 
   // a hash of the sender's address, kept only to slow a flood
   const who = await hashOf(request.headers.get('CF-Connecting-IP') ?? '')
   const recent = await env.DB.prepare("SELECT COUNT(*) AS n FROM requests WHERE who = ? AND at > datetime('now', '-1 hour')").bind(who).first('n')
   if (recent >= 5) return json({ error: 'busy' }, 429, cors)
 
-  await env.DB.prepare('INSERT INTO requests (email, place, lat, lon, game, source, country, who) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-    .bind(email, place, lat, lon, game, source, request.cf?.country ?? null, who)
+  await env.DB.prepare('INSERT INTO requests (email, place, lat, lon, game, source, country, who, tile, kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .bind(email, place, lat, lon, game, source, request.cf?.country ?? null, who, tile, kind)
     .run()
   return json({ ok: true }, 200, cors)
 }

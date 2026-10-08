@@ -82,6 +82,7 @@ function writeJson(key: string, v: unknown) {
 function loadOnServer(): Record<string, string[]> {
   const out: Record<string, string[]> = {}
   for (const a of AREA_LIST) {
+    if (a.virtual) continue
     const v = readJson(serverKey(a.id))
     if (Array.isArray(v)) out[a.id] = v as string[]
   }
@@ -123,7 +124,7 @@ export function keepsArea(b: BundleDef): boolean {
   })
 }
 
-const LABELS = new Map(AREA_LIST.flatMap(dataFiles).map((d) => [d.file, d.label]))
+const LABELS = new Map(AREA_LIST.filter((a) => !a.virtual).flatMap(dataFiles).map((d) => [d.file, d.label]))
 const labelOf = (name: string) => LABELS.get(name) ?? name.replace(/-[a-z-]+\.(geojson|hab)$/, '').replace(/[_-]/g, ' ')
 
 async function fetchJson<T>(url: string, opts: { timeoutMs?: number; cache?: RequestCache } = {}): Promise<T | null> {

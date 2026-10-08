@@ -4,6 +4,7 @@ import type { ExpressionSpecification, FilterSpecification, GeoJSONSource, Layer
 import { ATTRIBUTION, CONTOUR_FINE_FROM, CORE, REGION_MAXZOOM, RELIEF, ZONE } from '../config'
 import { LIVE_RASTER, LIVE_VECTOR } from '../sources'
 import type { ContourInterval, LayerOpacity, LayerVisibility } from '../state/appStore'
+import { COVERAGE_KEY, COVERAGE_SOURCE, coverageLayers, coverageSource } from '../explore/coverage'
 
 /** Bush-tuned flavour of the Protomaps dark basemap: dark green land, navy
  *  water, so the topo, hillshade and forest layers carry the contrast. */
@@ -443,6 +444,11 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   }
   addRaster('topo')
   addRaster('historical', { 'raster-saturation': -0.2 })
+  // Explore's grid: the coverage index over the base, under everything else (explore/coverage.ts)
+  if (has(COVERAGE_KEY)) {
+    sources[COVERAGE_SOURCE] = coverageSource()
+    rasters.push(...coverageLayers())
+  }
   // the MNR lake survey sheets (Pickle 1978, Ketchup 1978, McGill 1979),
   // fitted to the shoreline and baked as ink on transparency: the true
   // surveyed contours and soundings. They answer to the Lake depths switch.

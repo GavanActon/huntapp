@@ -3,6 +3,8 @@ import { useAppStore } from '../state/appStore'
 import { currentView, splitViews, useViews, type MapView } from '../state/viewsStore'
 import { IconCheck, IconChevronDown, IconLayers, IconTrash } from './icons'
 import { useTapOff } from './tapOff'
+import { areaById } from '../areas'
+import { EXPLORE, enterExplore, exploreFrom, leaveExplore } from '../explore'
 import './views.css'
 
 /**
@@ -50,8 +52,13 @@ export default function ViewPill() {
         className="viewpill-name"
         role="menuitem"
         onClick={() => {
-          apply(v)
           close()
+          // Explore is an area, not a layer set: the pick switches the app there
+          if (v.explore && !EXPLORE) {
+            enterExplore()
+            return
+          }
+          apply(v)
         }}
       >
         <span>{v.name}</span>
@@ -75,6 +82,19 @@ export default function ViewPill() {
     <div className="viewpill-wrap" ref={box}>
       {open && (
         <div className="viewpill-menu glass" role="menu" aria-label="Views">
+          {EXPLORE && (
+            <button
+              className="viewpill-name"
+              role="menuitem"
+              onClick={() => {
+                close()
+                leaveExplore()
+              }}
+            >
+              <span>Back to {areaById(exploreFrom())?.name ?? 'the area'}</span>
+              <span className="dim">&lsaquo;</span>
+            </button>
+          )}
           {first.map(row)}
           {more ? (
             <>

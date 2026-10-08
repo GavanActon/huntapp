@@ -1,0 +1,66 @@
+/* The Explore tile card, in the bottom bar like the other cards. */
+.tilecard {
+  margin: 0 8px 8px;
+  padding: 10px 12px 12px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.tilecard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.tilecard-lines > div {
+  margin: 2px 0;
+}
+.tilecard-grade {
+  font-weight: 600;
+}
+.tilecard-grade.hd {
+  color: #b7f06a;
+}
+.tilecard-grade.sd {
+  color: #c9d1c6;
+}
+.tilecard-req {
+  margin-top: 6px;
+  color: #f0b27a;
+}
+.tilecard-ask {
+  margin-top: 8px;
+}
+.tilecard-ask input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(238, 245, 234, 0.25);
+  background: rgba(10, 20, 12, 0.5);
+  color: inherit;
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+.tilecard-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.tilecard-btns .btn {
+  flex: 1 1 auto;
+}
+.tilecard-err {
+  margin-top: 6px;
+  color: #ffb3a0;
+}
+.tilecard .link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  text-decoration: underline;
+  font: inherit;
+}

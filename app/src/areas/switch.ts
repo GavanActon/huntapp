@@ -36,6 +36,8 @@ function inArea(a: AreaDef, lon: number, lat: number): boolean {
 function offlineGaps(area: AreaDef): string | null {
   const maps = offlineReady(area.id)
   const home = area.presets[0]
+  // Explore bakes nothing and has no home of its own: nothing to be short of
+  if (!home) return null
   const f = cachedPointForecast(home.lon, home.lat)
   const last = f?.hourly.time[f.hourly.time.length - 1]
   const wx = last != null && Date.parse(last) > Date.now()
