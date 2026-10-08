@@ -21,7 +21,19 @@
     "description": "Topo, imagery, LiDAR relief and contours, forest stands, water, roads, and the habitat, wind and going grids around Blanchard River; full detail within 5 km of the spot."
   },
   "files": {
-    "pmtiles": ["topo", "hillshade", "hillshadeLidar", "dem", "contours", "contoursWide", "forest", "understory", "historical", "places"],
+    "pmtiles": [
+      "topo",
+      "satellite",
+      "hillshade",
+      "hillshadeLidar",
+      "dem",
+      "contours",
+      "contoursWide",
+      "forest",
+      "understory",
+      "historical",
+      "places"
+    ],
     "geo": ["wmu", "crown", "parks", "fire", "roads"],
     "baseGeo": ["waterbody"],
     "grids": ["habitat", "micro", "going"]
@@ -32,7 +44,7 @@
     "lidar": "arcticdem",
     "vectors": "bc",
     "forest": { "adapter": "bc.vri", "vintage": null },
-    "imagery": null,
+    "imagery": "ca.s2summer",
     "pointcloud": null,
     "nts": ["114P15", "115A02"],
     "arcticdem": [
@@ -51,7 +63,11 @@
         "licence": "OGL-Canada"
       },
       "satellite": {
-        "missing": "no open imagery here: the province's 1 m orthos (1995-2004) stop east of 134.4° W and the Yukon's SPOT mosaic at the border; nothing baked"
+        "file": "satellite-blanchard-river.pmtiles",
+        "bytes": 2773384,
+        "source": "Sentinel-2 L2A leaf-on median composite, 10 m, 12 scenes (Earth Search, AWS); no provincial imagery here",
+        "licence": "Copernicus Sentinel data: free and open, credit required",
+        "vintage": "summers 2023-2024"
       },
       "hillshade": {
         "file": "hillshade-blanchard-river.pmtiles",

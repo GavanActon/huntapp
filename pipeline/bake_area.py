@@ -166,7 +166,14 @@ def plan(a: dict) -> list[Step]:
         adapter_step("vectors", "vectors", a),
         adapter_step("forest", "forest", a),
         Step("topo", "3.14", [["build_tiles.py", *topo]]),
-        Step("satellite", "3.14", [["build_tiles.py", "satellite"]], skip=None if bake.get("imagery") else "no imagery source for this area (bake.imagery)"),
+        Step(
+            "satellite",
+            "3.14",
+            # a province's tile service (build_tiles.IMAGERY), or where none covers the area
+            # the Sentinel-2 leaf-on composite (s2_imagery.py, adapter ca.s2summer)
+            [["s2_imagery.py"] if str(bake.get("imagery") or "").startswith("ca.s2") else ["build_tiles.py", "satellite"]],
+            skip=None if bake.get("imagery") else "no imagery source for this area (bake.imagery)",
+        ),
         Step("historical", "3.14", [["build_historical.py"]], skip=None if bake.get("nts") else "no NTS sheets listed (bake.nts)"),
         Step("hillshade", "3.14", [["build_hillshade.py"]], needs=("vectors",)),
         Step("dem", "3.14", [["build_dem.py"]]),
@@ -431,7 +438,6 @@ NOT_IN = {  # layers a province has no source for, or none open
         ("geo", "depth"): "Ontario only: lake depths need the ARA lake facts and the MNR sheets",
         ("pmtiles", "bathySheets"): "Ontario only: MNR lake survey sheets",
         ("pmtiles", "bathy"): "Ontario only: lake depths need the ARA lake facts and the MNR sheets",
-        ("pmtiles", "satellite"): "no open imagery here: the province's 1 m orthos (1995-2004) stop east of 134.4° W and the Yukon's SPOT mosaic at the border; nothing baked",
         ("pmtiles", "lanes"): "no point-cloud adapter for BC yet (LidarBC where it has flown); the bush layer (understory) is the bush model's",
     },
 }
@@ -507,6 +513,7 @@ def known_sources(a: dict, lidar: list[str], pc_years: str | None) -> dict[tuple
     elif a["jurisdiction"] == "BC":
         vri = {"source": "Vegetation Resources Inventory (VRI) forest cover, Province of British Columbia, with later fire perimeters laid over", "licence": OGL_BC, "vintage": forest_v}
         out |= {
+            ("pmtiles", "satellite"): {"source": "Sentinel-2 L2A leaf-on median composite, 10 m (Earth Search, AWS); the province's orthos stop east of 134° W", "licence": "Copernicus Sentinel data: free and open, credit required"},
             ("pmtiles", "forest"): vri,
             ("pmtiles", "places"): {"source": "BC Geographic Warehouse: wildlife management units, parks, private parcels and reserves, fire perimeters, roads and trails", "licence": OGL_BC},
             ("geo", "wmu"): {"source": "Wildlife Management Units, Province of British Columbia", "licence": OGL_BC},
@@ -751,7 +758,7 @@ def new_area(args) -> str:
         }
     if j == "BC":  # the BC adapters' layers (bc_vectors.py, bc_forest.py); no open imagery in the north-west
         files = {
-            "pmtiles": ["topo", "hillshade", "hillshadeLidar", "dem", "contours", "contoursWide", "forest", "understory", "historical", "places"],
+            "pmtiles": ["topo", "satellite", "hillshade", "hillshadeLidar", "dem", "contours", "contoursWide", "forest", "understory", "historical", "places"],
             "geo": ["wmu", "crown", "parks", "fire", "roads"],
             "baseGeo": ["waterbody"],
             "grids": ["habitat", "micro", "going"],
@@ -773,7 +780,7 @@ def new_area(args) -> str:
         "BC": {
             "vectors": "bc",
             "forest": {"adapter": "bc.vri", "vintage": None},
-            "imagery": None,
+            "imagery": "ca.s2summer",  # no provincial imagery in the north-west: a Sentinel-2 leaf-on composite
             "pointcloud": None,
         },
         "QC": {
