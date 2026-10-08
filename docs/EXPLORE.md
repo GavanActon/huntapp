@@ -126,6 +126,17 @@ Canada Base Map, the MRDEM shade and Toporama. What is there:
   at the Manitoba border), a tap on Pickle's north cell gives t-629-410,
   ON, LiDAR 2021 (2 surveys), FRI 2010, LIO, grade 3; no errors.
 
+- Added the same night on Gavan's look at the shots ("hard to see where
+  you're looking on just a green screen"): the Canada Base Map's names
+  as a live text layer over the grid (`sources.ts` labels), the base less
+  desaturated in Explore so water reads, and a Where-to box in the bottom
+  bar while no cell is picked: a lake or a town by name through NRCan's
+  Canadian Geographical Names service (`geonames.json`, CORS-open, no
+  key), or coordinates in any form `map/coords.ts` reads, with Paste and
+  Me; a hit eases the map there with the ring. Checked headless: "ketchup
+  lake" → Ketchup Lake · lake · Thunder Bay · ON → the map at z11 on it;
+  "N 48° 55.57' W 85° 35.92'" → a Go to row.
+
 Not yet: the request state from D1 (only this phone's asks show), the
 declination in Explore (0), the weather time zone (Toronto's), the US,
 Protomaps, the point clouds in the index, stub areas for requested cells.
