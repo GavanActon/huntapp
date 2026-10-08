@@ -153,6 +153,10 @@ export default function OutingCard({ id }: { id: string }): JSX.Element | null {
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   useTapOff(menuRef, menu, () => setMenu(false))
+  // a tap off the card is for the map: the card goes, the hunt log stays
+  // closed (‹ Back is the way back to the log)
+  const cardRef = useRef<HTMLDivElement>(null)
+  useTapOff(cardRef, true, () => setTopCard(null))
 
   const o = outingById(id)
   const from = o?.startMs
@@ -223,7 +227,7 @@ export default function OutingCard({ id }: { id: string }): JSX.Element | null {
   ].sort((a, b) => a.ts - b.ts)
 
   return (
-    <div className="topcard" role="region" aria-label="Outing">
+    <div className="topcard" role="region" aria-label="Outing" ref={cardRef}>
       <div className="topcard-head">
         <button className="topcard-back" aria-label="Back to the hunt log" onClick={back}>
           ‹

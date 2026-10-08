@@ -1,4 +1,4 @@
-import { useEffect, type JSX } from 'react'
+import { useEffect, useRef, type JSX } from 'react'
 import { useAppStore } from '../state/appStore'
 import { clockShort } from '../time'
 import { groundWind } from '../weather/micro/model'
@@ -6,6 +6,7 @@ import { clearPlaced, coneSizeWord, drawnView, GROUND_H, groupSummary, personCol
 import { checkSpentAt, strongestCheck, useWindChecks } from '../weather/micro/windChecks'
 import { compass } from '../weather/openMeteo'
 import { useLookTick } from './useLookTick'
+import { useTapOff } from './tapOff'
 import './live.css'
 
 /**
@@ -19,7 +20,8 @@ import './live.css'
  * smaller (only what is strong counts) to bigger (scent counts sooner, the
  * wind wanders more), how it is drawn, and with a party placed, whose line it
  * is, Remove and Clear (+ Person is the live card's, and the map popup's
- * Scent). ‹ Back returns the live card.
+ * Scent). ‹ Back returns the live card; so does a tap off the card, on the
+ * map (the app-wide rule, tapOff).
  */
 
 const VIEWS: { v: ScentView; name: string; many?: boolean }[] = [
@@ -42,6 +44,8 @@ export default function ScentCard(): JSX.Element | null {
   const units = useAppStore((s) => s.units)
   const setTopCard = useAppStore((s) => s.setTopCard)
   const n = people.length
+  const ref = useRef<HTMLDivElement>(null)
+  useTapOff(ref, true, () => setTopCard(null))
   // everyone cleared while it was open: back to the live card
   useEffect(() => {
     if (!n) setTopCard(null)
@@ -66,7 +70,7 @@ export default function ScentCard(): JSX.Element | null {
   const offDrop = plume && reliefReason(plume)
 
   return (
-    <div className="topcard">
+    <div className="topcard" ref={ref}>
       <div className="topcard-head">
         <button className="topcard-back" onClick={() => setTopCard(null)}>
           ‹ Back
