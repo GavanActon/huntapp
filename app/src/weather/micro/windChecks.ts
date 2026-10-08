@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { revealMark } from '../../state/appStore'
 import { compass } from '../openMeteo'
 
 /**
@@ -21,11 +22,13 @@ import { compass } from '../openMeteo'
  * puffs every way say swirly, with no question asked. A check with one
  * puff can still say it swings, with a second arrow on the rose.
  *
- * Otherwise a new check replaces the ones before it within SUPERSEDE_M:
- * the air there is what was felt last, and one arrow shows where you
- * stand, not a pile of them pointing every way. The old ones stay in the
- * log, scored, but stop counting (and drawing) from the moment the new
- * one was made.
+ * Otherwise a new check is one more, and they add up (Gavan, 2026-10-08:
+ * "multiple data points are additive"): every check near enough and
+ * recent enough counts at its own weight, so two checks at a spot carry
+ * more than one, the newest the most, and where they disagree the spread
+ * opens (model.ts). An older one's arrow fades as its pull does. Until
+ * that day a new check within 100 m retired the ones before it (`until`);
+ * those stamps are kept for the log and no longer count.
  *
  * Two optional answers ride on a check. "Treetops moving, calm here" is
  * the ground air come loose from the wind above (decoupled), the one
@@ -145,14 +148,11 @@ export interface WindCheck {
    *  before the ground model brings it down. Scored like the model's call,
    *  so the log shows how far off a forecast is where you sit. */
   forecast?: { dirFrom: number; kmh: number }
-  /** replaced by a newer check near it at this moment: it counts until then */
+  /** retired by a newer check near it, before checks added up (2026-10-08):
+   *  kept for the log's replaced_at, no longer read */
   until?: number
 }
 
-/** A newer check this close replaces an older one. */
-export const SUPERSEDE_M = 100
-/** A newer look at the treetops this close replaces an older one: a tap on a far stand is good to a few hundred metres. */
-export const SEEN_SUPERSEDE_M = 500
 /** A puff this close and this soon after the last one folds into it. */
 export const SERIES_M = 40
 export const SERIES_MS = 6 * 60_000
@@ -236,18 +236,17 @@ export const useWindChecks = create<ChecksState>()(
       add: (c) => {
         // another puff of the check just made here: the same check, watched longer
         // (a look at the treetops far off is one look: it never folds)
-        const prev = c.source === 'hand' && !c.seen ? get().checks.find((o) => o.until == null && !o.taken && o.source === 'hand' && !o.seen && (o.by ?? '') === (c.by ?? '') && c.ts - o.ts >= 0 && c.ts - o.ts <= SERIES_MS && metresBetween(o.lon, o.lat, c.lon, c.lat) <= SERIES_M) : undefined
+        const prev = c.source === 'hand' && !c.seen ? get().checks.find((o) => !o.taken && o.source === 'hand' && !o.seen && (o.by ?? '') === (c.by ?? '') && c.ts - o.ts >= 0 && c.ts - o.ts <= SERIES_MS && metresBetween(o.lon, o.lat, c.lon, c.lat) <= SERIES_M) : undefined
         if (prev) {
           const folded = fold(prev, c)
           set((s) => ({ checks: s.checks.map((o) => (o.id === prev.id ? folded : o)) }))
+          revealMark('wind')
           return folded
         }
+        // one more: the checks before it here keep counting beside it
         const check = { ...c, id: `wc${c.ts.toString(36)}${Math.random().toString(36).slice(2, 6)}` }
-        // your earlier checks here stop counting now (a partner's stop on their own phone);
-        // felt and seen are different air, so each only replaces its own kind
-        const reach = c.seen ? SEEN_SUPERSEDE_M : SUPERSEDE_M
-        const replaced = (o: WindCheck) => o.until == null && !o.taken && o.ts <= c.ts && o.source === c.source && !o.seen === !c.seen && metresBetween(o.lon, o.lat, c.lon, c.lat) <= reach
-        set((s) => ({ checks: capped([...s.checks.map((o) => (replaced(o) ? { ...o, until: c.ts } : o)), check]) }))
+        set((s) => ({ checks: capped([...s.checks, check]) }))
+        revealMark('wind')
         return check
       },
       merge: (cs) => {
@@ -335,7 +334,6 @@ export function seenWeight(c: WindCheck, lon: number, lat: number, ms: number): 
 }
 
 function reachWeight(c: WindCheck, lon: number, lat: number, ms: number, len: number, max: number): number {
-  if (c.until != null && ms >= c.until) return 0
   const dt = Math.abs(ms - c.ts)
   if (dt > maxOf(c)) return 0
   const d = metresBetween(lon, lat, c.lon, c.lat)
@@ -356,19 +354,23 @@ export function checkPull(c: WindCheck, lon: number, lat: number, ms: number): n
 export const PULL_SHOWN = 0.1
 const W_SHOWN = PULL_SHOWN / (1 - PULL_SHOWN)
 
-/** How far from the check it still makes up PULL_SHOWN of the wind at a moment, metres (0 = spent). */
-export function checkReachM(c: WindCheck, ms: number): number {
-  if (c.until != null && ms >= c.until) return 0
+/** How far from the check it still makes up `share` of the wind at a moment, metres (0 = not even where it was made). */
+export function checkRadiusM(c: WindCheck, ms: number, share: number): number {
   const dt = Math.abs(ms - c.ts)
   if (dt > maxOf(c)) return 0
   const [len, max, w0] = c.seen ? [SEEN_LEN_M, SEEN_MAX_M, SEEN_W0] : [LEN_M, MAX_M, 1]
-  return Math.max(0, Math.min(max, len * (Math.log(w0 / W_SHOWN) - dt / tauOf(c))))
+  return Math.max(0, Math.min(max, len * (Math.log((w0 * (1 - share)) / share) - dt / tauOf(c))))
+}
+
+/** How far from the check it still makes up PULL_SHOWN of the wind at a moment, metres (0 = spent). */
+export function checkReachM(c: WindCheck, ms: number): number {
+  return checkRadiusM(c, ms, PULL_SHOWN)
 }
 
 /** When a check stops making up PULL_SHOWN of the wind even where it was made. */
 export function checkSpentAt(c: WindCheck): number {
   const w0 = c.seen ? SEEN_W0 : 1
-  return Math.min(c.until ?? Infinity, c.ts + Math.min(maxOf(c), tauOf(c) * Math.log(w0 / W_SHOWN)))
+  return c.ts + Math.min(maxOf(c), tauOf(c) * Math.log(w0 / W_SHOWN))
 }
 
 /** Did the model call the layering? Only for a check that said what the

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { ACTIVE_AREA, AREA_LIST, DEFAULT_AREA, areaAt, areaById, type AreaDef } from '../areas'
 import type { PlaceDef } from '../config'
+import { revealMark } from './appStore'
 
 export interface SavedPlace extends PlaceDef {
   id: string
@@ -39,6 +40,7 @@ export const usePlacesStore = create<PlacesState>()(
       add: (p) => {
         const sp: SavedPlace = { ...p, id: `p-${Date.now().toString(36)}`, savedAt: Date.now() }
         set({ places: [...get().places, sp] })
+        revealMark('pins')
         return sp
       },
       update: (id, patch) =>

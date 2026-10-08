@@ -579,6 +579,12 @@ nothing that matters: at that cell the mechanical part stays under
   `exp(−Δt/40 min)·exp(−d/300 m)`, averaged into the model vector. Every
   check counts the same, so where two people's checks disagree the side
   with more of them nearby carries the direction, and the reasons say so.
+  Checks add up (Gavan, 2026-10-08: "multiple data points are additive"):
+  from 2026-09-29 a new check within 100 m retired the ones before it
+  (`until`), so a second check threw the first away; now none retires
+  another, two checks at a spot carry two thirds of the answer, and an
+  older one weighs less only by its age. The old `until` stamps stay in
+  the log (replaced_at) and are no longer read.
 - **Several checks that disagree** (2026-09-30): the average of two
   checks 90° apart would read as a steady wind down the middle, and of two
   opposite ones as a calm. So the checks' own circular spread (the
@@ -678,10 +684,10 @@ nothing that matters: at that cell the mechanical part stays under
   the lessons skip it; it is scored against the forecast (calm under
   6 km/h), carries `strength` as the nearest felt word for older readers
   (the Worker's check, an older phone in the party, which would read it
-  as felt), `seenFrom` the fix, and it neither folds puffs nor replaces a
-  felt check (a newer seen check within 500 m replaces an older one). On
-  the map its arrow has a ring and its reach a dashed edge over a 4%
-  wash. Not field-checked: how well treetop lean reads at 300–800 m, and
+  as felt), `seenFrom` the fix, and it never folds puffs. On the map its
+  arrow has a ring, and two rings of reach: the inner, washed, as far as it
+  makes up half the wind above (1.7 km when made, gone after ~28 min), the
+  outer a faint dashed edge as far as a tenth (7.2 km when made). Not field-checked: how well treetop lean reads at 300–800 m, and
   whether two thirds is the right trust against HRDPS, want a season of
   seen checks beside powder ones.
 - A camp station can later post checks with `source: 'station'`.

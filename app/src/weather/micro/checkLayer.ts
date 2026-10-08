@@ -6,7 +6,7 @@ import { closeOnTapOff } from '../../map/tapPopup'
 import { markShown, useAppStore } from '../../state/appStore'
 import { timeLabel } from '../../time'
 import { compass } from '../openMeteo'
-import { aloftVerdict, checkFelt, checkPull, checkReachM, checkSpentAt, forecastVerdict, steadiness, useWindChecks, verdict, type WindCheck } from './windChecks'
+import { aloftVerdict, checkFelt, checkPull, checkRadiusM, checkReachM, checkSpentAt, forecastVerdict, steadiness, useWindChecks, verdict, type WindCheck } from './windChecks'
 
 /**
  * The wind checks still in effect, on the map. Each is an arrow where it
@@ -15,8 +15,10 @@ import { aloftVerdict, checkFelt, checkPull, checkReachM, checkSpentAt, forecast
  * as the check ages and goes when it is spent, so what is on the map is
  * what is correcting the wind. Tap the arrow for how much it pulls there,
  * when it runs out, and to take it away. A check seen from afar (the
- * treetops over there) has a ring round its arrow, and its reach, the wind
- * above the trees for kilometres, is a dashed edge over the faintest wash.
+ * treetops over there) has a ring round its arrow and two rings of reach,
+ * the wind above the trees being one air for kilometres: the inner, washed,
+ * as far as it makes up half the wind there (while it still does), and
+ * the outer, a faint dashed edge, as far as a tenth.
  *
  * "In effect" is at the planning time, not the clock: plan an hour back
  * and the checks from then are the ones drawn. An outing from the hunt
@@ -81,7 +83,12 @@ function features(at: number): FeatureCollection {
   }
   for (const c of checksInEffect(at)) {
     const pull = checkPull(c, c.lon, c.lat, at)
-    out.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring(c, checkReachM(c, at))] }, properties: { id: c.id, pull, seen: !!c.seen } })
+    if (c.seen) {
+      // seen: where it makes up half the wind above, washed, then its far edge
+      const half = checkRadiusM(c, at, 0.5)
+      if (half > 0) out.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring(c, half)] }, properties: { id: c.id, pull, seen: true, fill: true, faint: false } })
+      out.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring(c, checkReachM(c, at))] }, properties: { id: c.id, pull, seen: true, fill: false, faint: true } })
+    } else out.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring(c, checkReachM(c, at))] }, properties: { id: c.id, pull, seen: false, fill: true, faint: false } })
     out.push({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [c.lon, c.lat] },
@@ -177,13 +184,13 @@ function ensure(map: MlMap) {
   map.addSource(SRC, { type: 'geojson', data })
   const reach = ['==', ['geometry-type'], 'Polygon'] as ['==', ['geometry-type'], string]
   const pt = ['==', ['geometry-type'], 'Point'] as ['==', ['geometry-type'], string]
-  map.addLayer({ id: 'windchecks-reach', type: 'fill', source: SRC, filter: reach, paint: { 'fill-color': '#bfe6ff', 'fill-opacity': ['*', ['case', ['get', 'seen'], 0.04, 0.16], ['get', 'pull']] } })
+  map.addLayer({ id: 'windchecks-reach', type: 'fill', source: SRC, filter: reach, paint: { 'fill-color': '#bfe6ff', 'fill-opacity': ['case', ['boolean', ['get', 'fill'], false], ['*', ['case', ['boolean', ['get', 'seen'], false], 0.08, 0.16], ['get', 'pull']], 0] } })
   map.addLayer({
     id: 'windchecks-edge',
     type: 'line',
     source: SRC,
     filter: reach,
-    paint: { 'line-color': '#bfe6ff', 'line-opacity': ['interpolate', ['linear'], ['get', 'pull'], 0.1, 0.35, 0.5, 0.8], 'line-width': 1.2, 'line-dasharray': [3, 3] },
+    paint: { 'line-color': '#bfe6ff', 'line-opacity': ['case', ['boolean', ['get', 'faint'], false], 0.3, ['interpolate', ['linear'], ['get', 'pull'], 0.1, 0.35, 0.5, 0.8]], 'line-width': 1.2, 'line-dasharray': [3, 3] },
   })
   map.addLayer({
     id: 'windchecks-pt',
@@ -191,7 +198,7 @@ function ensure(map: MlMap) {
     source: SRC,
     filter: pt,
     layout: {
-      'icon-image': ['case', ['get', 'calm'], CALM, ['get', 'seen'], SEEN, ARROW],
+      'icon-image': ['case', ['boolean', ['get', 'calm'], false], CALM, ['boolean', ['get', 'seen'], false], SEEN, ARROW],
       'icon-rotate': ['get', 'toward'],
       'icon-rotation-alignment': 'map',
       'icon-allow-overlap': true,
@@ -225,14 +232,17 @@ function popupHtml(c: WindCheck, at: number): string {
     ? `<li>The model had ${c.model.kmh < 1 ? 'near calm' : `toward ${compass((c.model.dirFrom + 180) % 360)}`}${v ? ` · <b class="gc-verdict gc-${v}">${v === 'agree' ? 'agreed' : v === 'close' ? 'close' : 'missed'}</b>` : ''}${av ? `; the air ${c.model.decoupled ? 'come loose from the wind above' : 'mixed with the wind above'} · <b class="gc-verdict gc-${av}">${av === 'agree' ? 'agreed' : 'missed'}</b>` : ''}</li>`
     : ''
   const pull = Math.round(checkPull(c, c.lon, c.lat, at) * 100)
-  const reachM = checkReachM(c, at)
-  const reach = reachM >= 1000 ? `${(reachM / 1000).toFixed(1)} km` : `${Math.round(reachM / 10) * 10} m`
+  const dist = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m / 10) * 10} m`)
+  const reach = dist(checkReachM(c, at))
+  const half = c.seen ? checkRadiusM(c, at, 0.5) : 0
   const spent = checkSpentAt(c)
   const when = useAppStore.getState().planTimeMs == null ? 'now' : 'at the planned time'
   return (
     `<div class="pg-head"><span>Wind sharpened · ${esc(timeLabel(c.ts))}${c.by ? ` · ${esc(c.by)}` : ''}</span></div>` +
     `<ul class="pp-reasons"><li>You ${c.seen ? 'saw' : 'felt'}: ${esc(felt)}</li>${model}${forecast}` +
-    `<li>In effect ${when}: ${pull}% of the ${c.seen ? 'wind above the trees' : 'ground wind'} here, less farther out, to about ${reach} (the ring)</li>` +
+    (c.seen
+      ? `<li>In effect ${when}: ${pull}% of the wind above the trees here${half > 0 ? `, half or more to about ${dist(half)} (the inner ring)` : ''}, a tenth to about ${reach} (the outer)</li>`
+      : `<li>In effect ${when}: ${pull}% of the ground wind here, less farther out, to about ${reach} (the ring)</li>`) +
     `<li>${spent > at ? `Fades out by ${esc(timeLabel(spent))}` : 'About spent'}</li></ul>` +
     `<div class="pg-acts"><button class="linklike ck-remove" type="button">remove this check</button></div>`
   )

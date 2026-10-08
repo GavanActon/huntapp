@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Habitat } from '../spots/habitatGrid'
 import type { HuntTarget } from '../spots/types'
+import { revealMark } from '../state/appStore'
 
 /**
  * The hunt log: what the hunter actually saw, heard or found, and the
@@ -140,6 +141,8 @@ export const useHuntLog = create<LogState>()(
       add: (e) => {
         const entry = { ...e, id: `lg${e.ts.toString(36)}${Math.random().toString(36).slice(2, 6)}` }
         set((s) => ({ entries: [...s.entries, entry].slice(-2000) }))
+        // logged with the game dots off, it would not show: they come on
+        revealMark('game')
         return entry
       },
       update: (id, patch) => set((s) => ({ entries: s.entries.map((e) => (e.id === id ? { ...e, ...patch } : e)) })),

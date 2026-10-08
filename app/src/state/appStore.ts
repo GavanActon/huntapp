@@ -213,6 +213,14 @@ const ALL_MARKS: Record<MarkKind, boolean> = { pins: true, places: true, tracks:
 /** A mark on the map now: picked in the list and not all hidden by the tap. */
 export const markShown = (s: Pick<AppState, 'marks' | 'marksHidden'>, k: MarkKind): boolean => !s.marksHidden && s.marks[k]
 
+/** Something of a kind just placed by hand: its marks come on if they were
+ *  off, so it shows where it was put (Gavan, 2026-10-08: a pin dropped with
+ *  the pins off showed its name and no pin). */
+export function revealMark(k: MarkKind): void {
+  const s = useAppStore.getState()
+  if (!markShown(s, k)) s.setMark(k, true)
+}
+
 /** Contour interval choices for the LiDAR lines, metres. */
 export const CONTOUR_INTERVALS = [1, 2, 5, 10] as const
 export type ContourInterval = (typeof CONTOUR_INTERVALS)[number]
