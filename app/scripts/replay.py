@@ -125,6 +125,30 @@ async ({ lon, lat, ms }) => {
 }
 """
 
+# one check judged by the others of its day (--loo): the raw rules, then
+# the others blended in with the fit of the air above held off (the local
+# blend alone), then with it on. Each check carries the call the phone
+# logged, so the lessons and the likeness have what they have on a phone.
+LOO_JS = """
+async ({ me, others }) => {
+  const m = await import('/src/weather/micro/model.ts')
+  const w = await import('/src/weather/micro/windChecks.ts')
+  await m.microReadyFor(me.ts, 20000)
+  const call = (g) => (g ? { kmh: g.kmh, dirFrom: g.dirFrom, regime: g.regime } : null)
+  w.useWindChecks.setState({ checks: [] })
+  const raw = call(m.groundWind(me.lon, me.lat, me.ts))
+  w.useWindChecks.setState({ checks: others })
+  m.setAmbientFit(false)
+  const blend = call(m.groundWind(me.lon, me.lat, me.ts))
+  m.setAmbientFit(true)
+  const fit = call(m.groundWind(me.lon, me.lat, me.ts))
+  const f = m.ambientFitFor(me.ts, me.lon, me.lat)
+  w.useWindChecks.setState({ checks: [] })
+  const cell = m.microCell(me.lon, me.lat, me.ts) || {}
+  return { raw, blend, fit, treeH: cell.treeH, canopy: cell.canopy, info: f ? { turn: f.fit.turn, ratio: Math.exp(f.fit.lnRatio), weight: f.weight, n: f.fit.count, sure: f.fit.sure, gain: f.fit.gain } : null }
+}
+"""
+
 # every momentum direction in before the day's checks, so a direction
 # landing late never changes a sample between runs
 REST_JS = """
@@ -195,6 +219,33 @@ def run(args) -> list[dict]:
                 continue
             page.evaluate(REST_JS)
             print(f"  {day}: ready in {time.time() - t0:.0f} s ({len(todays)} checks)", flush=True)
+            if args.loo:
+                objs = [as_check(c, k) for k, c in enumerate(todays)]
+                for n, c in enumerate(todays):
+                    t1 = time.time()
+                    others = [o for k, o in enumerate(objs) if k != n]
+                    r = page.evaluate(LOO_JS, {"me": objs[n], "others": others})
+                    if time.time() - t1 > 5:
+                        print(f"    check {n + 1}/{len(todays)} took {time.time() - t1:.0f} s", flush=True)
+                    row = {k: v for k, v in c.items() if k != "local"}
+                    row["timeLocal"] = c["local"].strftime("%Y-%m-%d %H:%M")
+                    row["place"] = place_of(c["lat"], c["lon"])
+                    row["hourBand"] = hour_band(c["local"])
+                    for name in ("raw", "blend", "fit"):
+                        g = r.get(name)
+                        if g:
+                            row[f"{name}Kmh"] = round(g["kmh"], 2)
+                            row[f"{name}Dir"] = round(g["dirFrom"])
+                            row[f"{name}Regime"] = g["regime"]
+                    row["treeH"] = r.get("treeH")
+                    row["canopy"] = r.get("canopy")
+                    info = r.get("info")
+                    if info:
+                        row.update(fitTurn=round(info["turn"]), fitRatio=round(info["ratio"], 2), fitWeight=round(info["weight"], 2), fitN=info["n"], fitSure=round(info["sure"], 2), fitGain=round(info["gain"], 2))
+                    rows.append(row)
+                page.unroute_all(behavior="ignoreErrors")
+                ctx.close()
+                continue
             for n, c in enumerate(todays):
                 t1 = time.time()
                 r = page.evaluate(CHECK_JS, {"lon": c["lon"], "lat": c["lat"], "ms": c["ts"]})
@@ -232,6 +283,24 @@ def run(args) -> list[dict]:
             page.unroute_all(behavior="ignoreErrors")
             ctx.close()
     return rows
+
+
+def as_check(c: dict, k: int) -> dict:
+    """A GPX check as the store holds one (windChecks.ts WindCheck): the felt
+    wind, and the call the phone logged as `model` (no woods or slot flag:
+    the likeness in model.ts then sits between)."""
+    out = {
+        "id": f"gpx{k}",
+        "ts": c["ts"],
+        "lon": c["lon"],
+        "lat": c["lat"],
+        "dirFrom": None if c["feltStrength"] == "calm" else c["feltDirFrom"],
+        "strength": c["feltStrength"],
+        "source": "hand",
+    }
+    if c.get("loggedDirFrom") is not None and c.get("loggedKmh") is not None:
+        out["model"] = {"dirFrom": c["loggedDirFrom"], "kmh": c["loggedKmh"], "regime": c.get("loggedRegime") or "wind", "sigmaDeg": 30}
+    return out
 
 
 def wait_ready(page, ms: int, home: dict, tries: int = 3, each_s: int = 45) -> dict | None:
@@ -304,6 +373,7 @@ def main() -> int:
     ap.add_argument("--url", default="http://localhost:5195/")
     ap.add_argument("--out")
     ap.add_argument("--days", help="local days to run, comma separated")
+    ap.add_argument("--loo", action="store_true", help="each check judged by the others of its day: raw rules, the local blend, the fit of the air above")
     args = ap.parse_args()
     rows = run(args)
     if not rows:
@@ -317,6 +387,21 @@ def main() -> int:
         w.writerows(rows)
     print(f"wrote {out} ({len(rows)} rows)")
 
+    if args.loo:
+        print("\nEach check judged by the others of its day (leave one out):")
+        for name, label in (("raw", "raw rules"), ("blend", "local blend only"), ("fit", "fit + blend")):
+            score(rows, label, f"{name}Kmh", f"{name}Dir")
+        fitted = [r for r in rows if r.get("fitN")]
+        print(f"  ({len(fitted)} of {len(rows)} checks had a sit's fit reaching them; the rest stand alone or the checks left the forecast's air as it was)")
+        for key in ("place", "hourBand"):
+            for v in sorted({r.get(key, "") for r in rows}):
+                sel = [r for r in rows if r.get(key, "") == v]
+                for name, label in (("raw", f"{v}, raw"), ("blend", f"{v}, blend"), ("fit", f"{v}, fit")):
+                    score(sel, label, f"{name}Kmh", f"{name}Dir")
+        for lab, sel in (("in a stand", [r for r in rows if (r.get("treeH") or 0) >= 6]), ("open ground", [r for r in rows if (r.get("treeH") or 0) < 6])):
+            for name in ("raw", "blend", "fit"):
+                score(sel, f"{lab}, {name}", f"{name}Kmh", f"{name}Dir")
+        return 0
     if any("rulesOffKmh" in r for r in rows):
         print("\nThe shoreline rules off, then on, on the same air:")
         score(rows, "all, rules off", "rulesOffKmh", "rulesOffDirFrom")

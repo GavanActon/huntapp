@@ -60,24 +60,40 @@ import { compass } from '../openMeteo'
 
 export type Strength = 'calm' | 'drift' | 'light' | 'breezy' | 'windy'
 
-/** What each word means at head height, km/h. */
+/** What each word means at head height, km/h: the middle of its range, for a single number. */
 export const STRENGTH_KMH: Record<Strength, number> = { calm: 0.3, drift: 1.5, light: 5, breezy: 12, windy: 22 }
-/** What to look for, at each step: the face, the powder, the leaves, the
- *  branches (Beaufort 0–4, read at head height in the bush). */
+/**
+ * What each word covers, km/h, a range not a number. The powder shows the
+ * first second of travel and no more: it thins faster the harder it blows,
+ * so how far it goes before it fades says little, and how far it gets in a
+ * one-count says nearly everything. An arm's reach is about 0.75 m, a step
+ * about the same, 10 ft is 3 m; 1 m/s is 3.6 km/h. So arm's reach in a
+ * one-count is about 3 km/h, a stride 5–6, 10 ft 11, and past 10 ft in
+ * a second the powder is simply gone: the top of the scale is open-ended
+ * (windy is 13 and anything above). The fit of the air to the checks
+ * (ambientFit.ts) scores the model's speed against the range, never the
+ * middle, so a check at the top can pull but cannot pin.
+ */
+export const STRENGTH_RANGE: Record<Strength, [number, number]> = { calm: [0, 1], drift: [1, 2.5], light: [2.5, 6], breezy: [6, 13], windy: [13, Infinity] }
+/** What to look for, at each step: the powder in its first second, then
+ *  the face, the leaves and the branches (Beaufort 0–4, read at head
+ *  height in the bush). Count one as it leaves your hand. */
 export const STRENGTH_CUE: Record<Strength, string> = {
-  calm: 'nothing on the face · powder falls straight',
-  drift: 'powder hangs, then creeps · just on the face',
-  light: 'felt on the face · leaves rustle',
-  breezy: 'leaves and twigs moving · powder streams away',
-  windy: 'small branches swaying · a hat wants to go',
+  calm: 'powder hangs, falls straight · nothing on the face',
+  drift: 'creeps: out of arm’s reach takes 2–3 s · just on the face',
+  light: 'out of arm’s reach in a one-count, gone in a few feet · leaves rustle',
+  breezy: '5–6 ft in a one-count, 10 ft takes two · twigs moving',
+  windy: '10 ft or more in a one-count, snatched away · branches swaying',
 }
 export const STRENGTH_LABEL: Record<Strength, string> = {
   calm: 'Dead calm',
   drift: 'Drift: powder hangs, then creeps',
-  light: 'Light: felt on the face, leaves rustle',
-  breezy: 'Breezy: leaves and twigs moving',
-  windy: 'Windy: small branches swaying',
+  light: 'Light: out of arm’s reach in a second',
+  breezy: 'Breezy: 5–6 ft in a second',
+  windy: 'Windy: 10 ft or more in a second',
 }
+/** How to read a puff, in a line under the chips. */
+export const PUFF_HOW = 'Judge the first second after it leaves your hand, not how far it goes before it fades: the powder thins faster in more wind.'
 
 /** What the treetops (or the water) far off showed: Beaufort's land and lake signs, read at a distance. */
 export type Seen = 'still' | 'leaves' | 'branches' | 'sway' | 'bend'
@@ -297,10 +313,23 @@ export function metresBetween(aLon: number, aLat: number, bLon: number, bLat: nu
   return Math.hypot((aLon - bLon) * kx, (aLat - bLat) * 110_574)
 }
 
-const TAU_MS = 40 * 60_000
-const LEN_M = 300
-const MAX_MS = 2 * 3600_000
+/**
+ * A felt check's reach, as the place's own correction. Since 2026-10-08 the
+ * air above the trees is fitted to the sit's checks first (ambientFit.ts,
+ * applied in model.ts), and the field everywhere moves with that; what is
+ * left at each check is this place's, so its reach is shorter (150 m
+ * e-folding) and stronger (W0 = 9: nine parts check to one part model
+ * where and when it was made, 90%) and it holds longer (an hour's
+ * e-folding, nothing past three), since a place effect lasts as long as
+ * the regime does. model.ts also scales it by likeness: a check under the
+ * trees corrects the trees first, a check in a slot the slots.
+ */
+const TAU_MS = 60 * 60_000
+const LEN_M = 150
+const MAX_MS = 3 * 3600_000
 const MAX_M = 800
+/** a felt check's weight where and when it was made: nine, so it leads the ground wind there 90% */
+const W0 = 9
 
 /** A check's time scale: a wind that has held for a while is trusted twice as long. */
 function tauOf(c: WindCheck): number {
@@ -318,13 +347,14 @@ const SEEN_LEN_M = 2500
 const SEEN_MAX_M = 8000
 const SEEN_W0 = 2
 
-/** How far a check reaches: 40 min and 300 m e-folding, nothing past 2 h
- *  or 800 m (80 min and 3 h for a wind that had held). Returns the weight
+/** How far a felt check reaches as the place's own correction: W0 where
+ *  and when it was made, an hour and 150 m e-folding, nothing past 3 h or
+ *  800 m (2 h and 4.5 h for a wind that had held). Returns the weight
  *  (0 = out of reach). A seen check never blends in as head-height air: 0
  *  here, its weight is seenWeight's. */
 export function checkWeight(c: WindCheck, lon: number, lat: number, ms: number): number {
   if (c.seen) return 0
-  return reachWeight(c, lon, lat, ms, LEN_M, MAX_M)
+  return W0 * reachWeight(c, lon, lat, ms, LEN_M, MAX_M)
 }
 
 /** A seen check's weight on the forecast wind at a spot and moment (0 = out of reach, or a felt check). */
@@ -343,8 +373,9 @@ function reachWeight(c: WindCheck, lon: number, lat: number, ms: number, len: nu
 
 /** A check's share of the ground wind at a spot and moment: model.ts
  *  averages the model's wind with each check at its weight w, so a check
- *  alone makes up w / (1 + w) of the answer (half, where and when it was made).
- *  A seen check's share is of the wind above the trees there, the same way. */
+ *  alone makes up w / (1 + w) of the answer (90%, where and when it was
+ *  made). A seen check's share is of the wind above the trees there, the
+ *  same way (two thirds where it was seen). */
 export function checkPull(c: WindCheck, lon: number, lat: number, ms: number): number {
   const w = c.seen ? seenWeight(c, lon, lat, ms) : checkWeight(c, lon, lat, ms)
   return w / (1 + w)
@@ -358,7 +389,7 @@ const W_SHOWN = PULL_SHOWN / (1 - PULL_SHOWN)
 export function checkRadiusM(c: WindCheck, ms: number, share: number): number {
   const dt = Math.abs(ms - c.ts)
   if (dt > maxOf(c)) return 0
-  const [len, max, w0] = c.seen ? [SEEN_LEN_M, SEEN_MAX_M, SEEN_W0] : [LEN_M, MAX_M, 1]
+  const [len, max, w0] = c.seen ? [SEEN_LEN_M, SEEN_MAX_M, SEEN_W0] : [LEN_M, MAX_M, W0]
   return Math.max(0, Math.min(max, len * (Math.log((w0 * (1 - share)) / share) - dt / tauOf(c))))
 }
 
@@ -369,7 +400,7 @@ export function checkReachM(c: WindCheck, ms: number): number {
 
 /** When a check stops making up PULL_SHOWN of the wind even where it was made. */
 export function checkSpentAt(c: WindCheck): number {
-  const w0 = c.seen ? SEEN_W0 : 1
+  const w0 = c.seen ? SEEN_W0 : W0
   return c.ts + Math.min(maxOf(c), tauOf(c) * Math.log(w0 / W_SHOWN))
 }
 
@@ -390,6 +421,11 @@ export function verdict(c: WindCheck): 'agree' | 'close' | 'miss' | null {
 /** The same test for the forecast as it stood at the check. */
 export function forecastVerdict(c: WindCheck): 'agree' | 'close' | 'miss' | null {
   return judge(c, c.forecast)
+}
+
+/** The same test for any call: the fit's leave-one-out score (ambientFit.ts) judges the probe's calls with it. */
+export function judgeCall(c: WindCheck, m: { dirFrom: number; kmh: number } | undefined): 'agree' | 'close' | 'miss' | null {
+  return judge(c, m)
 }
 
 function judge(c: WindCheck, m: { dirFrom: number; kmh: number } | undefined): 'agree' | 'close' | 'miss' | null {

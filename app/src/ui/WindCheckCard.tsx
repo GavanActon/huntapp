@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { create } from 'zustand'
 import { cachedPointForecast, compass, hourAt } from '../weather/openMeteo'
 import { windSampler } from '../weather/windGrid'
-import { groundWind, loadMicro } from '../weather/micro/model'
-import { checkFelt, checkPull, checkReachM, checkSpentAt, forecastVerdict, SEEN_CUE, SEEN_STRENGTH, steadiness, towardWords, useWindChecks, verdict, type Seen, type Strength, type WindCheck, STRENGTH_CUE } from '../weather/micro/windChecks'
+import { groundWind, loadMicro, sitScoreFor } from '../weather/micro/model'
+import { nextPuff } from '../weather/micro/ambientFit'
+import { angleDiff, checkFelt, checkPull, checkReachM, checkSpentAt, forecastVerdict, PUFF_HOW, SEEN_CUE, SEEN_STRENGTH, steadiness, towardWords, useWindChecks, verdict, type Seen, type Strength, type WindCheck, STRENGTH_CUE } from '../weather/micro/windChecks'
 import { LESSON_WORDS, lessonOf, lessonScores, PRIOR_N, biasMatters, biasWords } from '../weather/micro/bias'
 import { clockShort } from '../time'
 import { useAppStore } from '../state/appStore'
@@ -36,6 +37,14 @@ import './ground.css'
  * "ahead" in the middle arms the next tap on the map as what is in front
  * of you: the rose turns to face it (map/MapView.tsx hands the tap over,
  * and the tap off the card that would close it is off while it waits).
+ *
+ * Saved, the card says what moved (2026-10-08): the map's call before the
+ * check against what it reads there now, with the sit's checks fitted as
+ * the air above the trees (ambientFit.ts); a leave-one-out score for the
+ * sit, the forecast against the map before the checks against the map
+ * now, each check judged by the fit made from the others, so the number
+ * is honest and climbs as the checks teach; and the puff that would teach
+ * the most next.
  *
  * Opened on a spot away from you (the map popup's Wind), it is a check
  * seen, not felt: the treetops (or the water) over there, out glassing.
@@ -138,6 +147,10 @@ export default function WindCheckCard() {
   const [heldOn, setHeldOn] = useState(false)
   const [missing, setMissing] = useState<string | null>(null)
   const [saved, setSaved] = useState<WindCheck | null>(null)
+  /** the map's call there now, with this check in */
+  const [after, setAfter] = useState<ReturnType<typeof groundWind>>(null)
+  /** the sit scored check by check (a second's work, asked off the tap) */
+  const [sit, setSit] = useState<ReturnType<typeof sitScoreFor>>(null)
   const [saving, setSaving] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   // a tap off the card closes it, except while "ahead" waits for one on the map
@@ -235,6 +248,22 @@ export default function WindCheckCard() {
       model: g ? { dirFrom: g.dirFrom, kmh: g.kmh, regime: g.regime, sigmaDeg: g.sigmaDeg, decoupled: g.decoupled, slot: g.inSlot, woods: g.inWoods, ...(g.bias ? { bias: g.bias } : {}) } : undefined,
       forecast: forecastAt(at.lon, at.lat, now),
     })
+    // what the map reads there now, this check in; then the sit's score, off the tap
+    let a: ReturnType<typeof groundWind> = null
+    try {
+      a = g ? groundWind(at.lon, at.lat, now) : null
+    } catch {
+      a = null
+    }
+    setAfter(a)
+    setSit(null)
+    window.setTimeout(() => {
+      try {
+        setSit(sitScoreFor(now))
+      } catch {
+        setSit(null)
+      }
+    }, 60)
     setSaving(false)
     setSaved(c)
   }
@@ -307,10 +336,15 @@ export default function WindCheckCard() {
     const lesson = lessonOf(saved)
     const score = lesson ? lessonScores(useWindChecks.getState().checks, verdict).find((r) => r.lesson === lesson) : undefined
     const n = score ? score.agree + score.close + score.miss : 0
+    const puff = nextPuff(sit?.fit ?? null, sit?.count ?? 1)
     const next =
-      v === 'miss'
+      puff ??
+      (v === 'miss'
         ? 'Check again in 20 or 30 min: if it has held, say "same as a while ago" and it is trusted twice as long.'
-        : 'Check again in about 40 min, or the moment it shifts: a puff within 6 min folds into this one as a swing.'
+        : 'Check again in about 40 min, or the moment it shifts: a puff within 6 min folds into this one as a swing.')
+    // the map's call moved: 10° or a quarter in speed
+    const moved = after && m ? angleDiff(after.dirFrom, m.dirFrom) >= 10 || Math.abs(Math.log(Math.max(after.kmh, 0.3) / Math.max(m.kmh, 0.3))) >= Math.log(1.25) : false
+    const sc = sit && sit.score.n >= 2 ? sit.score : null
     return (
       <div className="tripbuilder glass ground-card" ref={ref}>
         <div className="tb-head">
@@ -334,9 +368,36 @@ export default function WindCheckCard() {
             <>Saved without the map's call (it had not loaded) · you felt {felt}</>
           )}
         </div>
+        {after && m && (
+          <div className="gc-line">
+            {moved ? (
+              <>
+                Now reads <b>{callWords(after)}</b> here
+              </>
+            ) : (
+              <>Still reads {callWords(after)} here</>
+            )}
+          </div>
+        )}
         {fv && saved.forecast && (
           <div className="gc-line">
             The forecast <b className={`gc-verdict gc-${fv}`}>{VERDICT_WORDS[fv]}</b> · it said {callWords(saved.forecast)}
+          </div>
+        )}
+        {after?.ambient && after.ambient.count >= 2 && (
+          <div className="gc-line">
+            This sit&rsquo;s {after.ambient.count} checks: {after.ambient.words} · holds till ~{clockShort(after.ambient.holdsUntil)} unless the forecast shifts
+          </div>
+        )}
+        {sc && (
+          <div className="gc-line gc-sit">
+            Right at this sit&rsquo;s {sc.n} checks, each judged by the others:{' '}
+            {sc.forecast.n > 0 && (
+              <>
+                forecast <b>{sc.forecast.agree}/{sc.forecast.n}</b> ·{' '}
+              </>
+            )}
+            map before your checks <b>{sc.raw.agree}/{sc.n}</b> · map now <b className={sc.fit.agree > sc.raw.agree ? 'gc-verdict gc-agree' : ''}>{sc.fit.agree}/{sc.n}</b>
           </div>
         )}
         <div className="gc-line">
@@ -397,7 +458,8 @@ export default function WindCheckCard() {
       {/* how the rose works is under Layers, "About what is drawn"; "ahead" armed is the one thing said here */}
       {!picked && aim && <div className="gc-note">Tap the map in front of you</div>}
       <div className="gc-q">How hard?</div>
-      {/* each step with what to look for: the face, the powder, the leaves, the branches; seen, the treetops and the water */}
+      {/* each step with what to look for: the powder in its first second, the face, the leaves, the branches; seen, the treetops and the water */}
+      {!seen && <div className="gc-note">{PUFF_HOW}</div>}
       {seen ? (
         <div className="gc-strength gc-cues">
           {SEENS.map((s) => (

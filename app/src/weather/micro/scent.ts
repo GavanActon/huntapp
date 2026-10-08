@@ -1769,6 +1769,33 @@ export function clearPlaced(): void {
   useScent.setState({ people: live, pick: 0, adding: false })
 }
 
+/** The people placed by hand, carried over a reload the app makes itself
+ *  (new maps saved, offline/downloads.ts): kept in sessionStorage and taken
+ *  once. You come back with your first fix, the party with its feed. */
+const CARRY_KEY = 'huntapp-scent-carry'
+
+export function carryPlaced(): void {
+  const { people, hidden, card } = useScent.getState()
+  const placed = people.filter((p) => !p.live && !p.party)
+  if (!placed.length) return
+  try {
+    sessionStorage.setItem(CARRY_KEY, JSON.stringify({ people: placed, hidden, card }))
+  } catch {
+    /* private mode: they go with the reload */
+  }
+}
+
+function takeCarried(): { people: Sitter[]; hidden: boolean; card: boolean } | null {
+  try {
+    const raw = sessionStorage.getItem(CARRY_KEY)
+    sessionStorage.removeItem(CARRY_KEY)
+    const c = raw ? JSON.parse(raw) : null
+    return Array.isArray(c?.people) && c.people.length ? c : null
+  } catch {
+    return null
+  }
+}
+
 /** The party's line: '2 sitters · scent over 5.2 ha'. */
 export function sittersLine(g: Group, n: number): string {
   return `${n} sitters · scent over ${areaText(g.areaHa)}`
@@ -1870,5 +1897,12 @@ export function initScentLayer() {
     onProfile(airChanged)
     onWeatherGrid(airChanged)
     onRelief(airChanged)
+    // back from a reload for new maps: the people placed before it, after
+    // you and before the party, as a tap would have put them
+    const carried = takeCarried()
+    if (carried) {
+      const now = useScent.getState().people
+      useScent.setState({ people: [...now.filter((p) => p.live), ...carried.people, ...now.filter((p) => !p.live)], pick: 0, hidden: carried.hidden, card: carried.card })
+    }
   })
 }

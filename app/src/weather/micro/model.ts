@@ -5,13 +5,15 @@ import { useAppStore } from '../../state/appStore'
 import { homePlace } from '../../state/placesStore'
 import { useSpotsStore } from '../../state/spotsStore'
 import { estimateWaterTemp } from '../../spots/conditions'
-import { startOfDayMs } from '../../time'
+import { clockShort, startOfDayMs } from '../../time'
+import { otherAreaAt } from '../../areas'
 import { layeringAt, onProfile, type Layering } from '../boundaryLayer'
 import { cachedPointForecast, compass, hourAt } from '../openMeteo'
 import { sunPosition } from '../sun'
 import { onWeatherGrid, windGridCovers, windGridInfo, windSampler } from '../windGrid'
-import { angleDiff, checkWeight, metresBetween, SEEN_KMH, seenWeight, STRENGTH_KMH, useWindChecks, type WindCheck } from './windChecks'
+import { angleDiff, checkWeight, metresBetween, SEEN_KMH, seenWeight, STRENGTH_KMH, useWindChecks, type Strength, type WindCheck } from './windChecks'
 import { biasFor, biasMatters, biasWords, learnBiases, type Bias, type Lesson } from './bias'
+import { fitAmbient, fitHoldsUntil, fitMatters, fitWeightAt, fitWords, sessionAt, sessionsOf, sitScore as scoreSit, type AmbientFit, type MapProbeFn, type ProbeFn, type SitScore } from './ambientFit'
 import { leavesDown, leavesNote } from './leaves'
 
 /**
@@ -30,8 +32,11 @@ import { leavesDown, leavesNote } from './leaves'
  *              leaf or bare by the season (leaves.ts), the shelter and
  *              eddies downwind of a tree line, and the channelling along a
  *              slot between two of them
- *   checks     the hunter's own wind checks nearby, blended in; treetops
- *              seen moving far off turn the forecast wind itself (seen)
+ *   checks     the sit's checks fitted as a turn and a ratio on the
+ *              forecast wind (ambientFit.ts), applied before the land and
+ *              the trees so the whole neighbourhood moves together; what
+ *              is left at each check blended in locally by likeness;
+ *              treetops seen moving far off turn the forecast wind itself (seen)
  *
  * and a direction spread (sigma) from the ground speed, the stability, the
  * canopy, edge eddies, how gusty the hour is and the ensemble's
@@ -103,6 +108,21 @@ export interface GroundWind {
   inWoods: boolean
   /** the season's lesson applied to this call (bias.ts), if it was worth applying */
   bias: { deg: number; ratio: number } | null
+  /** the sit's checks, fitted as the air above the trees (ambientFit.ts), as applied here */
+  ambient: AmbientApplied | null
+}
+
+export interface AmbientApplied {
+  /** the turn on the forecast direction here, degrees + clockwise, after the weight */
+  turn: number
+  /** the ratio on the forecast speed here, after the weight */
+  ratio: number
+  /** how much of the fit reaches this spot and moment, 0–1 */
+  weight: number
+  count: number
+  sure: number
+  holdsUntil: number
+  words: string
 }
 
 // ---------------------------------------------------------------- the grid
@@ -468,6 +488,17 @@ interface Ctx {
   biases: Map<Lesson, Bias>
   /** how far the hardwoods' leaves are down, 0 in leaf to 1 bare (leaves.ts) */
   leaves: number
+  /** the sit's fit of the air above the trees, to apply by distance and age; `full` for a probe, applied as is */
+  ambient: Applied | null
+  /** a probe while a momentum direction is still on its way: the lids for every candidate alike */
+  lidsOnly?: boolean
+}
+
+interface Applied {
+  turn: number
+  lnRatio: number
+  fit: AmbientFit | null
+  full: boolean
 }
 
 /**
@@ -505,7 +536,7 @@ function seenShifts(ms: number, checks: WindCheck[]): SeenShift[] {
   return out
 }
 
-function makeCtx(ms: number): Ctx {
+function makeCtx(ms: number, withAmbient = true): Ctx {
   const home = homePlace()
   const sun = sunPosition(ms, home.lat, home.lon)
   const f = cachedPointForecast(home.lon, home.lat)
@@ -529,7 +560,116 @@ function makeCtx(ms: number): Ctx {
     seen: seenShifts(ms, useWindChecks.getState().checks),
     biases: learnBiases(useWindChecks.getState().checks, ms),
     leaves: leavesDown(ms),
+    ambient: withAmbient ? ambientFor(ms) : null,
   }
+}
+
+// ---------------------------------------------------------------- the sit's checks as the air above the trees
+
+/** The fits can be held off for a before/after on the same checks (scripts/replay.py); the app never does. */
+let fitsOn = true
+export function setAmbientFit(on: boolean): void {
+  fitsOn = on
+  bump()
+}
+
+const fitCache = new Map<string, AmbientFit | null>()
+const scoreCache = new Map<string, SitScore>()
+let sessMemo: { checks: WindCheck[]; sessions: WindCheck[][] } | null = null
+
+/** The sits of this area's felt checks (ambientFit.ts), memoised on the store's array. */
+function sessions(): WindCheck[][] {
+  const checks = useWindChecks.getState().checks
+  if (sessMemo && sessMemo.checks === checks) return sessMemo.sessions
+  const here = checks.filter((c) => !c.seen && !otherAreaAt(c.lon, c.lat))
+  sessMemo = { checks, sessions: sessionsOf(here) }
+  return sessMemo.sessions
+}
+
+function sessionKey(s: WindCheck[]): string {
+  return s.map((c) => `${c.id}:${c.ts}:${c.dirFrom}:${c.strength}:${c.swingDeg ?? ''}:${c.puffs ?? 1}:${c.held ? 1 : 0}`).join('|')
+}
+
+function momAllIn(): boolean {
+  return !hasMom || momU.every(Boolean)
+}
+
+/** The ground model at a check's cell and minute under a candidate air, no
+ *  checks blended in: the raw rules under that forecast. One context per
+ *  check minute, reused across the candidates. */
+function probeFor(): ProbeFn {
+  const ctxs = new Map<number, Ctx>()
+  const lidsOnly = !momAllIn()
+  return (c, turn, lnRatio) => {
+    let base = ctxs.get(c.ts)
+    if (!base) {
+      base = makeCtx(c.ts, false)
+      ctxs.set(c.ts, base)
+    }
+    const ctx: Ctx = { ...base, checks: [], ambient: { turn, lnRatio, fit: null, full: true }, lidsOnly }
+    const ev = evaluate(ctx, c.lon, c.lat, false)
+    return ev ? { kmh: Math.hypot(ev.e, ev.n), dirFrom: (towardOf(ev.e, ev.n) + 180) % 360, regime: ev.regime, woods: ev.woods } : null
+  }
+}
+
+/** The ground model at a check as the map reads it from the others: they
+ *  blend in by likeness and the fit applies by distance and age, as on the
+ *  map; only the check itself is left out. */
+function mapProbe(): MapProbeFn {
+  return (c, others, fit) => {
+    const base = makeCtx(c.ts, false)
+    const ctx: Ctx = { ...base, checks: others, biases: learnBiases(others, c.ts), ambient: fit ? { turn: fit.turn, lnRatio: fit.lnRatio, fit, full: false } : null }
+    const ev = evaluate(ctx, c.lon, c.lat, false)
+    return ev ? { kmh: Math.hypot(ev.e, ev.n), dirFrom: (towardOf(ev.e, ev.n) + 180) % 360, regime: ev.regime, woods: ev.woods } : null
+  }
+}
+
+function sessionFit(s: WindCheck[]): AmbientFit | null {
+  const key = sessionKey(s)
+  const hit = fitCache.get(key)
+  if (hit !== undefined) return hit
+  const fit = fitAmbient(s, probeFor())
+  fitCache.set(key, fit)
+  // the probes want every direction of the solve: the rest in behind the view, for the next fit
+  if (hasMom && file && !momAllIn()) void loadRestOfMicro()
+  return fit
+}
+
+function ambientFor(ms: number): Applied | null {
+  if (!fitsOn) return null
+  const s = sessionAt(sessions(), ms)
+  if (!s) return null
+  const fit = sessionFit(s)
+  if (!fitMatters(fit)) return null
+  return { turn: fit.turn, lnRatio: fit.lnRatio, fit, full: false }
+}
+
+/** The sit's fit of the air above the trees that applies at a moment, and
+ *  its weight at a spot then (at the fit's own centre without one); null
+ *  where no sit's checks reach, or the checks did not move it. */
+export function ambientFitFor(ms: number, lon?: number, lat?: number): { fit: AmbientFit; weight: number } | null {
+  const a = ambientFor(ms)
+  if (!a?.fit) return null
+  const f = a.fit
+  return { fit: f, weight: fitWeightAt(f, lon ?? f.lon, lat ?? f.lat, ms) }
+}
+
+/**
+ * The sit at a moment, scored check by check with the fit made from the
+ * others (ambientFit.ts sitScore), beside the raw model and the forecast.
+ * Tens of fits for a sit of ten: a second or so, so the card asks off the
+ * tap. Null with no sit then.
+ */
+export function sitScoreFor(ms: number): { fit: AmbientFit | null; score: SitScore; count: number } | null {
+  const s = sessionAt(sessions(), ms)
+  if (!s) return null
+  const key = sessionKey(s)
+  let score = scoreCache.get(key)
+  if (!score) {
+    score = scoreSit(s, probeFor(), mapProbe())
+    scoreCache.set(key, score)
+  }
+  return { fit: sessionFit(s), score, count: s.length }
 }
 
 /** How much harder a gust blows than the mean at 10 m this minute, 1–3. */
@@ -639,7 +779,16 @@ interface Eval {
   bias: Bias | null
   /** the gusts here against the hour's gust factor: 1.3 in the gusty zone inside a windward edge */
   gustMul?: number
+  /** how much of the sit's fit of the air above reached this cell, 0–1 */
+  fitW: number
 }
+
+/** How much a felt check's vector can say, by how hard it blew: at drift
+ *  the powder's direction wanders (the noon checks of 2026 went every way
+ *  at drift, and blended in full they dragged each other round), and a
+ *  calm is as often a lull between gusts as a calm. Breezy and windy
+ *  point. Scales a check's weight in the local blend. */
+const CHECK_CONF: Record<Strength, number> = { calm: 0.6, drift: 0.5, light: 0.8, breezy: 1, windy: 1 }
 
 const EDGE_STEPS = [15, 30, 45, 60, 90, 120, 160, 200]
 const _reg = new Float32Array(2)
@@ -804,6 +953,21 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
       U *= Math.exp(l / (1 + seenW))
     }
   }
+  // ---- the sit's checks, as the air above the trees ----
+  // The turn and the ratio the sit's checks fitted to the forecast
+  // (ambientFit.ts), applied here before the land and the trees bring the
+  // wind down, so every cell near the checks moves with them, ground never
+  // checked included; full among the checks, a Gaussian off them, fading
+  // for hours after the last. A probe (fitting) applies a candidate as is.
+  let fitW = 0
+  if (ctx.ambient) {
+    const a = ctx.ambient
+    fitW = a.full ? 1 : a.fit ? fitWeightAt(a.fit, lon, lat, ctx.ms) : 0
+    if (fitW > 0.02) {
+      dirFrom = (((dirFrom + a.turn * fitW) % 360) + 360) % 360
+      U *= Math.exp(a.lnRatio * fitW)
+    } else fitW = 0
+  }
   const lay = ctx.lay
   const reasons: string[] | null = withReasons ? [] : null
   const [Ue, Un] = vec(U, dirFrom + 180)
@@ -814,14 +978,14 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     // off the grid: an open-ground profile, nothing local
     const f = 0.7 * (1 - 0.6 * lay.stable)
     const sp = U * f
-    return { e: Ue * f, n: Un * f, sigma: 15 + 60 * Math.exp(-sp / 3.6 / 0.6), regime: sp < 0.8 ? 'calm' : 'wind', swirl: false, gusty: ctx.gf >= 1.8 && U >= 8, parts: [{ key: 'terrain', kmh: sp, toward: (dirFrom + 180) % 360 }], reasons, local10: U, U, dirFrom, forecastU, inGrid: false, slot: false, woods: false, bias: null }
+    return { e: Ue * f, n: Un * f, sigma: 15 + 60 * Math.exp(-sp / 3.6 / 0.6), regime: sp < 0.8 ? 'calm' : 'wind', swirl: false, gusty: ctx.gf >= 1.8 && U >= 8, parts: [{ key: 'terrain', kmh: sp, toward: (dirFrom + 180) % 360 }], reasons, local10: U, U, dirFrom, forecastU, inGrid: false, slot: false, woods: false, bias: null, fitW }
   }
 
   // ---- terrain and roughness: the two lids, blended by stability ----
   const s = lay.stable
   let e10: number
   let n10: number
-  if (hasMom && fullIn && momentumAt(i, U, dirFrom)) {
+  if (hasMom && fullIn && !ctx.lidsOnly && momentumAt(i, U, dirFrom)) {
     // by day the momentum solve; it is neutral air only, so a still night still goes to the stable lid
     e10 = (1 - s) * momE + s * (b(K_SUE, i) * Ue + b(K_SUN, i) * Un)
     n10 = (1 - s) * momN + s * (b(K_SVE, i) * Ue + b(K_SVN, i) * Un)
@@ -1111,9 +1275,14 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   }
 
   // ---- the hunters' checks nearby ----
-  // Each check nearby is averaged into the model's vector at its weight
-  // (windChecks.ts: by time and distance), every check counting the same,
-  // so with several people's checks the side with more of them carries it.
+  // What the sit's fit above did not account for at a check is the place's
+  // own. Each check nearby is averaged into the model's vector at its
+  // weight (windChecks.ts: nine to one where and when it was made, by time
+  // and distance), scaled by likeness: a check made under the trees
+  // corrects cells under the trees in full and open ground at a third, a
+  // check in a slot the slots; one with no call saved sits between. Every
+  // check counts the same otherwise, so with several people's checks the
+  // side with more of them carries it.
   // Where the checks disagree with each other (the wind swinging between
   // two checks, or two people feeling different things) the average alone
   // would read as a steady wind down the middle, or cancel to a calm: the
@@ -1133,8 +1302,14 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   let nearest: { min: number; m: number; ago: boolean } | null = null
   // a check logged as swinging holds the spread open at its own arc
   let swingFloor = 0
+  const likeOf = (c: WindCheck): number => {
+    const m = c.model
+    if (!m || m.woods == null) return 0.6
+    return !!m.woods === th > 0 && !!m.slot === !!slot ? 1 : 0.3
+  }
   for (const c of ctx.checks) {
-    const w = checkWeight(c, lon, lat, ctx.ms)
+    // and by how much a puff that hard can say: a drift wanders, a breezy puff points
+    const w = checkWeight(c, lon, lat, ctx.ms) * likeOf(c) * CHECK_CONF[c.strength]
     if (w < 0.03) continue
     const k = STRENGTH_KMH[c.strength]
     const [ce, cn] = c.dirFrom == null ? [0, 0] : vec(k, c.dirFrom + 180)
@@ -1222,10 +1397,15 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
       const turned = angleDiff(dirFrom, forecastDir) >= 10 ? `from the ${compass(dirFrom)} (the forecast had ${compass(forecastDir)})` : 'from where the forecast had it'
       reasons.push(`Treetops seen ${where}, ${seenNear.min} min ${seenNear.ago ? 'before' : 'after'} this time: the wind above is ${turned}${Math.abs(k) >= 10 ? `, ${Math.abs(k)}% ${k > 0 ? 'stronger' : 'lighter'}` : ''}`)
     }
+    if (ctx.ambient?.fit && fitW >= 0.1) {
+      const f = ctx.ambient.fit
+      const own = ctx.checks.some((c) => !c.taken && f.ids.includes(c.id))
+      reasons.push(`Sharpened by ${own ? 'your' : 'the party\u2019s'} ${f.count} check${f.count === 1 ? '' : 's'} this sit: ${fitWords(f)}${fitW < 0.9 ? ` (${Math.round(fitW * 100)}% of it reaches here)` : ''} · holds till ~${clockShort(fitHoldsUntil(f))} unless the forecast shifts`)
+    }
     if (lay.source === 'estimate') reasons.push('No layering forecast cached: stability estimated from the sky and the wind')
   }
 
-  return { e: E, n: N, sigma, regime, swirl: swirl || tumble >= TUMBLE_SWIRL, gusty, parts, reasons, local10, U, dirFrom, forecastU, inGrid: true, slot: !!slot, woods: th > 0, bias: applied ? lessonBias : null, gustMul }
+  return { e: E, n: N, sigma, regime, swirl: swirl || tumble >= TUMBLE_SWIRL, gusty, parts, reasons, local10, U, dirFrom, forecastU, inGrid: true, slot: !!slot, woods: th > 0, bias: applied ? lessonBias : null, gustMul, fitW }
 }
 
 function headlineOf(ev: Eval, kmh: number, dirFrom: number, gustKmh: number): string {
@@ -1278,6 +1458,10 @@ export function groundWind(lon: number, lat: number, ms: number): GroundWind | n
     inSlot: ev.slot,
     inWoods: ev.woods,
     bias: ev.bias ? { deg: ev.bias.deg, ratio: ev.bias.ratio } : null,
+    ambient:
+      ev.fitW > 0 && ctx.ambient?.fit
+        ? { turn: ctx.ambient.turn * ev.fitW, ratio: Math.exp(ctx.ambient.lnRatio * ev.fitW), weight: ev.fitW, count: ctx.ambient.fit.count, sure: ctx.ambient.fit.sure, holdsUntil: fitHoldsUntil(ctx.ambient.fit), words: fitWords(ctx.ambient.fit) }
+        : null,
   }
 }
 
@@ -1295,6 +1479,8 @@ const dayMemo = new Map<string, Window[]>()
 const bump = () => {
   version++
   dayMemo.clear()
+  fitCache.clear()
+  scoreCache.clear()
 }
 listeners.add(bump)
 onProfile(bump)

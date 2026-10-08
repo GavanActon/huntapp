@@ -575,16 +575,74 @@ nothing that matters: at that cell the mechanical part stays under
   a tap on the map in front of you turns the rose to face that way; or a
   tap on the map where the powder went is the direction itself, no rose
   needed. A second map tap or arrow is the swing.
-- **Blending**: within 2 h and 800 m, weight
-  `exp(−Δt/40 min)·exp(−d/300 m)`, averaged into the model vector. Every
-  check counts the same, so where two people's checks disagree the side
-  with more of them nearby carries the direction, and the reasons say so.
+- **The air above the trees, fitted to the sit** (2026-10-08,
+  `micro/ambientFit.ts`; Gavan: "what's the wind doing here, this is the
+  most likely reason"). Until then each check was a patch (below), and a
+  model saying south under a hunter feeling northeast came out east, a
+  direction the air never took, forgotten in 40 min. Now the checks are
+  read the other way round: the forecast wind the model starts from is
+  the unknown, a turn and a speed ratio on it, one for the whole sit.
+  - A **sit** is this area's felt checks in order, split where more than
+    2 h passes or a check is 3 km from the sit's centre. A sit's fit uses
+    its newest 16 checks, each weighted `exp(−age/2 h)` against the newest
+    (4 h for a check that said the wind had held, 0.7× for a swing).
+  - Each candidate (turn every 15° round the circle × ratio ×0.4–×3, then
+    5° and 10% steps round the best) is pushed through the ground model
+    at every check's own cell and minute, with no checks blended in (the
+    probe): a check in a slot is judged against what the slot would do
+    under that air, a check on the bog against the bog's. The forecast is
+    the prior (40° and ×1.6 at one sigma).
+  - A check's direction is a Gaussian of 30° about the probe's call (plus
+    half the arc of a swing; 90° when the call is near calm), on a floor
+    of a tenth so one wild check cannot carry it. Its **speed is a range**
+    (`STRENGTH_RANGE`: calm under 1, drift 1–2.5, light 2.5–6, breezy
+    6–13, windy 13 and up km/h): the term is the probability the model's
+    speed, with a ×2 log-normal error, falls inside, so a check at the top
+    of the scale pulls the ratio up but never pins it. Under a canopy the
+    speed counts half: it says as much about the trees' share as the air.
+  - The fit is applied in `evaluate` before the land and the trees bring
+    the wind down, so every cell near the checks moves together, ground
+    never checked included, and a slot or a lee swings with it. Full among
+    the checks, a Gaussian of 2.5 km (the forecast's own grid: one air)
+    off their centre, and it **holds for hours**: an e-folding of 3 h after
+    the last check (6 h held), since the forecast's error at a place
+    changes on the forecast's time scale. It is an offset, not a
+    direction: when the forecast veers the field veers with it.
+  - It applies only when it matters (8° or ×1.2) and the checks prefer it
+    to the forecast as it stands by e to one per check (`gain`). `sure` is
+    the posterior's share within ±20° of the best turn.
+  - The reasons say "Sharpened by your 10 checks this sit: the air above
+    the trees runs 50° left of the forecast at about half its speed ·
+    holds till ~2:30 unless the forecast shifts"; the map draws a faint
+    1.5 km halo round the sit while the fit is in effect.
+- **The place's own, blended in** (`checkWeight`): what the fit did not
+  account for at a check is that place's. Each felt check is averaged into
+  the model vector at weight `9·exp(−Δt/60 min)·exp(−d/150 m)`, nothing
+  past 3 h or 800 m (2 h and 4.5 h for a wind that had held), **scaled by
+  likeness**: a check made under the trees corrects cells under the trees
+  in full and open ground at a third, a check in a slot the slots, one with
+  no call saved sits between (0.6). So a check leads the ground wind 90%
+  where and when it was made (it used to be half, which left a model that
+  missed by 90° still a quarter in charge), 55% at 300 m on like ground,
+  and a place effect lasts as long as the regime does. Every check counts
+  the same otherwise, so where two people's checks disagree the side with
+  more of them nearby carries the direction, and the reasons say so.
   Checks add up (Gavan, 2026-10-08: "multiple data points are additive"):
   from 2026-09-29 a new check within 100 m retired the ones before it
   (`until`), so a second check threw the first away; now none retires
-  another, two checks at a spot carry two thirds of the answer, and an
-  older one weighs less only by its age. The old `until` stamps stay in
-  the log (replaced_at) and are no longer read.
+  another, and an older one weighs less only by its age. The old `until`
+  stamps stay in the log (replaced_at) and are no longer read.
+- **The sit's score** (`sitScore`, the "Wind sharpened" card): each check
+  of the sit judged by the fit made from the others (leave one out),
+  beside the raw model and the forecast the check carried: "forecast 2/10
+  · map before your checks 4/10 · map now 8/10". It cannot be gamed by
+  fitting a check to itself, and it is the number that climbs as the
+  checks teach. The card also says what the map read there before the
+  check and what it reads now, the sit's fit in a sentence, and the puff
+  that would teach the most next: one in the open when every check so far
+  was under the canopy (the speed splits between the air above and the
+  trees' share only with one), one under the trees when every check was
+  in the open, one more where you will sit when the checks disagree.
 - **Several checks that disagree** (2026-09-30): the average of two
   checks 90° apart would read as a steady wind down the middle, and of two
   opposite ones as a calm. So the checks' own circular spread (the
@@ -647,11 +705,23 @@ nothing that matters: at that cell the mechanical part stays under
   lesson and shows what each has learned.
 - **Scoring**: agree within 45° (or both calm), close within 90°. The
   Weather tab shows the running tally.
-- **How many, how often** (Gavan's question, 2026-10-02): a check leads
-  the ground wind where it was made for ~40 min (pull 50% at the spot and
-  minute, 27% at 40 min, 10% at ~90 min, nothing past 2 h), so a sit wants
-  one at the start, one ~40 min on and one at any shift; puffs within
-  6 min and 40 m fold into one check (the swing). A lesson has PRIOR_N = 4
+- **Reading a puff** (2026-10-08, Gavan: "out of reach within a second,
+  10 ft out within a second"): the powder shows the first second of
+  travel and no more. It thins faster the harder it blows, so how far it
+  goes before it fades says little and how far it gets in a one-count
+  says nearly everything. The chips are set to that: an arm's reach
+  (0.75 m) in a one-count is about 3 km/h (light), a stride or two 5–6
+  (breezy's floor), 10 ft (3 m) 11, and past 10 ft in a second it is gone
+  (windy, 13 and anything above). The card says so under the chips: judge
+  the first second after it leaves your hand. Old checks keep their words
+  and fall in the same ranges.
+- **How many, how often** (Gavan's question, 2026-10-02; the numbers
+  since 2026-10-08): a check leads the ground wind where it was made 90%,
+  77% an hour on, 55% at two, nothing past 3 h, and from the second check
+  of a sit the air above is fitted and holds for hours, so a sit wants one
+  at the start, a second 50 m or more away to fit rather than patch, one
+  at any shift, and one in the open if the rest were under the trees;
+  puffs within 6 min and 40 m fold into one check (the swing). A lesson has PRIOR_N = 4
   phantom checks of zero bias, so n checks apply n/(n+4) of the mean
   residual (1 → 20%, 4 → 50%, 12 → 75%), with a 14-day e-folding: four or
   five checks per regime per week teaches it, then maintenance. The
@@ -698,6 +768,24 @@ nothing that matters: at that cell the mechanical part stays under
 - **Not validated in the field yet.** The constants are from the literature
   and one evening's check. The wind checks exist to measure and correct
   it; keep logging them.
+- The fit of the air above and the 90% local blend (§8) are scored only
+  by replay so far (`scripts/replay.py --loo`, each of the 60 checks of
+  Sep–Oct 2026 judged by the others of its day), not by a sit in the
+  field. Over all 60: direction within 45° 40% raw, 42% with the local
+  blend, 43% with the fit as well (the median miss 68° → 53° → 48°); speed
+  within 2× 38% → 55% → 55% (median ×0.32 → ×0.57); calm agreed 100% →
+  86%. The fit reached 10 of the 60 (sits of two or more checks in air
+  the forecast wind could move): there, direction 30% → 50% → 60% and
+  speed 10% → 80%. On the ten breezy-or-windy checks direction went 40%
+  → 60% → 70%. The bog's dawn and dusk checks (24) sit in drainage and
+  pooled air the ambient cannot move: 53% → 58% from the blend alone. The
+  midday drifts that pointed every way got worse under any blend (38% →
+  25% by day): a drift's direction is weak evidence, hence its half
+  weight, and swirling air scores as a coin toss whatever is drawn. So
+  most of the gain so far is the blend's; the fit's is direction in real
+  wind. Its reach (2.5 km) and hold (3 h) are first guesses at the
+  forecast's own scales, and one sit of one check moving the air cost a
+  hit, hence the two-check rule.
 - The slot rule too is one evening at one cell (2026-09-29), and it is the
   biggest single change to a head-height direction the model makes. About a
   fifth of the open ground in the core reads as a slot, so it wants checks

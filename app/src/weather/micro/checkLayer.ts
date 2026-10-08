@@ -7,6 +7,7 @@ import { markShown, useAppStore } from '../../state/appStore'
 import { timeLabel } from '../../time'
 import { compass } from '../openMeteo'
 import { aloftVerdict, checkFelt, checkPull, checkRadiusM, checkReachM, checkSpentAt, forecastVerdict, steadiness, useWindChecks, verdict, type WindCheck } from './windChecks'
+import { ambientFitFor } from './model'
 
 /**
  * The wind checks still in effect, on the map. Each is an arrow where it
@@ -20,6 +21,10 @@ import { aloftVerdict, checkFelt, checkPull, checkRadiusM, checkReachM, checkSpe
  * as far as it makes up half the wind there (while it still does), and
  * the outer, a faint dashed edge, as far as a tenth.
  *
+ * Where a sit's checks have fitted the air above the trees (ambientFit.ts)
+ * a wide faint halo sits round them, HALO_M across, fading as the fit
+ * does: the ground that is the checks' now rather than the forecast's.
+ *
  * "In effect" is at the planning time, not the clock: plan an hour back
  * and the checks from then are the ones drawn. An outing from the hunt
  * log replays its checks instead: every arrow made in its hours, spent or
@@ -31,12 +36,14 @@ const ARROW = 'windcheck-arrow'
 const CALM = 'windcheck-calm'
 const SEEN = 'windcheck-seen'
 const KY = 110_574
+/** the halo of a sit's fit: the forecast's own grid is 2.5 km, so one air, drawn to its half-weight edge */
+const HALO_M = 1500
 
 function ms(): number {
   return useAppStore.getState().planTimeMs ?? Date.now()
 }
 
-function ring(c: WindCheck, r: number): [number, number][] {
+function ring(c: { lon: number; lat: number }, r: number): [number, number][] {
   const kx = 111_320 * Math.cos((c.lat * Math.PI) / 180)
   const pts: [number, number][] = []
   for (let k = 0; k <= 64; k++) {
@@ -95,6 +102,9 @@ function features(at: number): FeatureCollection {
       properties: { id: c.id, pull, calm: c.dirFrom == null, seen: !!c.seen, toward: c.dirFrom == null ? 0 : (c.dirFrom + 180) % 360 },
     })
   }
+  // the sit's fit of the air above, under the rings: faint, wide, fading with it
+  const fit = ambientFitFor(at)
+  if (fit && fit.weight >= 0.1) out.unshift({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring(fit.fit, HALO_M)] }, properties: { id: 'ambient', pull: 0.35 * fit.weight, seen: false, fill: true, faint: true } })
   return { type: 'FeatureCollection', features: out }
 }
 

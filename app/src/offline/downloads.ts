@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import { ACTIVE_AREA, areaById, fileUrl } from '../areas'
 import { useAppStore } from '../state/appStore'
-import { useScent } from '../weather/micro/scent'
+import { flushTrackSave } from '../tracking/trackStore'
+import { carryPlaced } from '../weather/micro/scent'
 import { fetchAreaWeather } from '../weather/refresh'
 import { deleteStoredFile, downloadToStore, listStored, requestPersistence } from './fileStore'
 import { bundleOf, bundleOnServer, refreshPending, serverManifest, useMapUpdates } from './updates'
@@ -26,7 +27,7 @@ interface DownloadState {
   fileCount: number
   loaded: number
   total: number
-  /** the last run's failure, or the reload note when a live setup is up */
+  /** the last run's failure */
   error: string | null
   /** files the server has not built yet, from the last run */
   skipped: string[]
@@ -53,21 +54,19 @@ export function fmtBytes(n: number): string {
   return `${(n / 1e3).toFixed(0)} KB`
 }
 
-/** The new maps come into use on a reload. People placed by hand are never
- *  saved, so with any up it waits; the live cone alone comes back by itself
- *  after the reload, so it doesn't hold it up. */
-function reloadUnlessLive(note: string) {
-  if (useScent.getState().people.some((p) => !p.live)) useDownloads.setState({ error: note })
-  else window.location.reload()
-}
-
 /** Saved or removed maps come into use on a reload, and only the area the
- *  app is in has any in use. The new-maps list follows what is saved now
- *  either way: with the reload held up (people placed), it kept saying
- *  "2 new" for maps just downloaded (Gavan, 2026-10-04). */
-function afterChange(areaId: string, note: string) {
+ *  app is in has any in use, so for it the reload is made at once: it used
+ *  to wait with people placed by hand and ask for one ("just make it
+ *  happen", Gavan, 2026-10-08). They are carried over it (scent.ts
+ *  carryPlaced), the live cone and the party come back by themselves, and
+ *  the walk being recorded is written first. The new-maps list follows
+ *  what is saved now either way, for the other areas' rows. */
+function afterChange(areaId: string) {
   refreshPending()
-  if (areaId === ACTIVE_AREA.id) reloadUnlessLive(note)
+  if (areaId !== ACTIVE_AREA.id) return
+  carryPlaced()
+  flushTrackSave()
+  window.location.reload()
 }
 
 /** Download the area's files not on the phone, or with `replace` these files whether or not they are. */
@@ -115,7 +114,7 @@ export async function downloadFiles(files: string[], replace = false, areaId: st
     }
     set({ active: false, skipped: missing })
     if (missing.length < todo.length) {
-      afterChange(areaId, 'Saved. Reload to use the new maps.')
+      afterChange(areaId)
       // another area's maps saved while there is signal: its weather too, so
       // a first arrival with none has a forecast to work the ground wind from
       // (the area the app is in has the sweep's already)
@@ -132,7 +131,7 @@ export async function downloadFiles(files: string[], replace = false, areaId: st
 export async function removeFiles(files: string[], areaId: string = ACTIVE_AREA.id): Promise<void> {
   for (const f of files) await deleteStoredFile(f)
   useDownloads.setState({ storedAt: Date.now(), error: null, skipped: [], areaId })
-  afterChange(areaId, 'Removed. Reload to finish.')
+  afterChange(areaId)
 }
 
 /**
