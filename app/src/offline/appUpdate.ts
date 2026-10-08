@@ -16,9 +16,13 @@ import { BUILD } from '../diagnostics'
  *    bundle; a different one means a newer build is there, and the worker
  *    is told to update at once instead of in its own time.
  *  - When the new worker takes control, this page is still the old code
- *    until it reloads. A reload is done the moment the app is brought to
- *    the front (nothing is in hand then); open and in use, a chip offers
- *    it instead, and Settings says which build is here and which is there.
+ *    until it reloads. A reload is done at once when the page is young
+ *    (FRESH_MS: a reload or a cold open that found a newer build, nothing
+ *    in hand yet; without this one reload after a deploy landed on the
+ *    old build, the new worker in control but the old page still up:
+ *    Gavan, 2026-10-08, "did the reload") and the moment the app is
+ *    brought to the front; open and in use, a chip offers it instead, and
+ *    Settings says which build is here and which is there.
  *  - Checks: on start, when the app comes to the front, when signal
  *    returns, and every half hour; never more than once a minute.
  */
@@ -36,6 +40,9 @@ export const useAppUpdate = create<AppUpdateState>(() => ({ latest: null, ready:
 
 let reg: ServiceWorkerRegistration | undefined
 let lastCheck = 0
+const loadedAt = Date.now()
+/** a page this young has nothing in hand: a new build in control is run at once */
+const FRESH_MS = 20_000
 const MIN_GAP_MS = 60_000
 const PERIOD_MS = 30 * 60_000
 
@@ -80,7 +87,10 @@ export function initAppUpdate(after?: Promise<unknown>): void {
       immediate: true,
       // the plugin would reload the page the moment the new worker is in;
       // in use, the chip offers it instead (and coming to the front reloads)
-      onNeedReload: () => useAppUpdate.setState({ ready: true }),
+      onNeedReload: () => {
+        useAppUpdate.setState({ ready: true })
+        if (Date.now() - loadedAt < FRESH_MS) reloadApp()
+      },
       onRegisteredSW(_url, r) {
         reg = r
         if (r && useAppUpdate.getState().latest) void r.update()
@@ -98,6 +108,7 @@ export function initAppUpdate(after?: Promise<unknown>): void {
       }
       devlog('app', 'new build ready')
       useAppUpdate.setState({ ready: true })
+      if (Date.now() - loadedAt < FRESH_MS) reloadApp()
     })
   }
   document.addEventListener('visibilitychange', () => {

@@ -71,6 +71,17 @@ export default function Rose({
           key={b}
           className={`gc-dir${isOn(b) ? ' gc-on' : ''}${b === 0 ? ' gc-north' : ''}`}
           style={{ ['--a' as string]: `${b - t}deg` }}
+          // picked on the press: nothing that happens between a press and
+          // its release (a focus scroll, a style, a re-render) can lose it
+          // (Gavan, 2026-10-08, on a PC: "icon moves, nothing happens");
+          // the click still picks, for a keyboard, and picking twice is
+          // the same pick
+          onPointerDown={(e) => {
+            if (e.button === 0 || e.pointerType !== 'mouse') {
+              e.preventDefault()
+              onPick(b)
+            }
+          }}
           onClick={() => onPick(b)}
           aria-label={label(b)}
           aria-pressed={isOn(b)}

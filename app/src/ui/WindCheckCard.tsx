@@ -10,6 +10,7 @@ import { useAppStore } from '../state/appStore'
 import { requestCompass, startCompass, stopCompass, useCompass } from '../tracking/compass'
 import { useGpsStore } from '../tracking/gpsStore'
 import { useMapBearing } from '../map/mapBearing'
+import { devlog } from '../devlog'
 import Rose, { Arrow } from './Rose'
 import ShareChecksAsk from './ShareChecksAsk'
 import { useTapOff } from './tapOff'
@@ -170,10 +171,12 @@ export default function WindCheckCard() {
   /** The way, one direction: the last given wins; null takes it back. */
   const setDir = (deg: number | null, how: 'arrow' | 'ahead' = 'arrow', read?: string) => {
     if (deg == null) {
+      devlog('wind', 'rose: way cleared')
       setDirState(null)
       setVia(null)
       return
     }
+    devlog('wind', `rose: ${compass(deg)} by ${how}${read ? ` (${read})` : ''}`)
     setDirState(Math.round(((deg % 360) + 360) % 360))
     setVia({ how, read })
     if (calm) {
