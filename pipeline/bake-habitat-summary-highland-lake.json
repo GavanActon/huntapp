@@ -828,5 +828,65 @@
    "species": [],
    "depthModel": null
   }
- ]
+ ],
+ "thick": {
+  "from": "the bush model's NRD (satellite imagery, radar, SCANFI, CanLaD, terrain; docs/BUSH-MODEL.md) on the estimate's scale where thickSrc is 3; the forest-map estimate on water, roads and cells no leaf-on imagery saw (thickSrc 2)",
+  "lidarCells": 0,
+  "thickShareOfLand": 0.033,
+  "thickShareWhereLidar": null,
+  "estimateToLidar": [
+   {
+    "estimate": 0.0,
+    "lidar_median": 0.0,
+    "cells": 70435
+   },
+   {
+    "estimate": 0.2,
+    "lidar_median": 0.15,
+    "cells": 70435
+   },
+   {
+    "estimate": 0.45,
+    "lidar_median": 0.3,
+    "cells": 70435
+   },
+   {
+    "estimate": 0.7,
+    "lidar_median": 0.45,
+    "cells": 70435
+   },
+   {
+    "estimate": 0.85,
+    "lidar_median": 0.6,
+    "cells": 70435
+   },
+   {
+    "estimate": 0.95,
+    "lidar_median": 0.75,
+    "cells": 70435
+   },
+   {
+    "estimate": 1.0,
+    "lidar_median": 1.0,
+    "cells": 70435
+   }
+  ],
+  "trained": "2026-10-07",
+  "plots": 320,
+  "areas": [
+   "area-lac-bailey",
+   "area-pickle-lake",
+   "area-sault-test"
+  ],
+  "cvR": 0.526,
+  "cvR90m": 0.551,
+  "cvAucThick": 0.755,
+  "s2Scenes": {
+   "leafon": 6,
+   "autumn": 2,
+   "spring": 4,
+   "snow": 4
+  },
+  "seconds": 342
+ }
 }

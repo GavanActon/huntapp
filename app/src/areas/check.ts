@@ -75,6 +75,8 @@ export function badAreaField(v: unknown): string | null {
     ['files', files != null && [files.pmtiles, files.geo, files.baseGeo, files.grids].every(Array.isArray)],
     // optional; when there, the zoom is a number (map/mapStyle.ts contourFilters)
     ['contours.fineFrom', a.contours == null || (contours != null && (contours.fineFrom == null || isNum(contours.fineFrom)))],
+    // optional; when there, the fine relief's name and credit (ArcticDEM areas)
+    ['fineRelief', a.fineRelief == null || (obj(a.fineRelief) != null && isStr(obj(a.fineRelief)?.name) && isStr(obj(a.fineRelief)?.attribution))],
     // optional; when there, the area's own four days for the leaves
     ['leaves', a.leaves == null || (leaves != null && isLeaves(leaves))],
   ]

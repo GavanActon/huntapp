@@ -11,6 +11,7 @@
   "timezone": "America/Whitehorse",
   "zone": { "label": "GMS", "name": "4-09" },
   "relief": [920, 1684],
+  "fineRelief": { "name": "ArcticDEM 2 m", "attribution": "ArcticDEM © Polar Geospatial Center, University of Minnesota" },
   "base": "areas/highland-lake/",
   "surveyedLakes": [],
   "live": { "lio": false, "satellite": null },
@@ -20,7 +21,19 @@
     "description": "Topo, 1.5 m satellite imagery, 30 m relief and contours, forest stands inferred from the national forest maps, burns, water, game management subzones, First Nation settlement land, and the habitat, wind and going grids around Highland Lake; no 1 m LiDAR here."
   },
   "files": {
-    "pmtiles": ["topo", "satellite", "hillshade", "dem", "contoursWide", "forest", "historical", "places"],
+    "pmtiles": [
+      "topo",
+      "satellite",
+      "hillshade",
+      "hillshadeLidar",
+      "dem",
+      "contours",
+      "contoursWide",
+      "forest",
+      "understory",
+      "historical",
+      "places"
+    ],
     "geo": ["wmu", "crown", "fire", "roads"],
     "baseGeo": ["waterbody"],
     "grids": ["habitat", "micro", "going"]
@@ -28,7 +41,7 @@
   "bake": {
     "outDir": "app/public/data/areas/highland-lake",
     "hrdem": [],
-    "lidar": "none",
+    "lidar": "arcticdem",
     "vectors": "yt",
     "forest": {
       "adapter": "ca.scanfi",
@@ -37,10 +50,11 @@
     },
     "imagery": "yt.spot",
     "pointcloud": null,
-    "nts": ["105M07"]
+    "nts": ["105M07"],
+    "arcticdem": ["https://pgc-opendata-dems.s3.us-west-2.amazonaws.com/arcticdem/mosaics/v4.1/2m/40_11/40_11_2_2_2m_v4.1_dem.tif"]
   },
   "coverage": {
-    "checked": "2026-10-05",
+    "checked": "2026-10-07",
     "pmtiles": {
       "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
       "topo": {
@@ -62,14 +76,28 @@
         "source": "MRDEM 30 m hillshade, NRCan WMS",
         "licence": "OGL-Canada"
       },
-      "hillshadeLidar": { "missing": "no 1 m LiDAR here: the nearest HRDEM survey is tens of km away" },
+      "hillshadeLidar": {
+        "file": "hillshade-lidar-highland-lake.pmtiles",
+        "bytes": 6390892,
+        "source": "ArcticDEM 2 m mosaic v4.1 (a satellite-stereo surface model, voids filled from the MRDEM), Polar Geospatial Center",
+        "licence": "ArcticDEM: free, cite PGC (NSF OPP awards)",
+        "vintage": "2 m, 2007-2022 imagery",
+        "note": "ArcticDEM 2 m (with the MRDEM in its voids) over 100% of the core"
+      },
       "dem": {
         "file": "dem-highland-lake.pmtiles",
-        "bytes": 4803741,
-        "source": "MRDEM 30 m, with HRDEM 1 m LiDAR over the core (mrdem-30), NRCan",
-        "licence": "OGL-Canada"
+        "bytes": 4721869,
+        "source": "MRDEM 30 m, NRCan, with ArcticDEM 2 m mosaic v4.1 (a satellite-stereo surface model, voids filled from the MRDEM), Polar Geospatial Center over the core",
+        "licence": "OGL-Canada",
+        "vintage": "2 m, 2007-2022 imagery"
       },
-      "contours": { "missing": "no 1 m LiDAR here: the MRDEM's contours stand in" },
+      "contours": {
+        "file": "contours-highland-lake.pmtiles",
+        "bytes": 877494,
+        "source": "ArcticDEM 2 m mosaic v4.1 (a satellite-stereo surface model, voids filled from the MRDEM), Polar Geospatial Center",
+        "licence": "ArcticDEM: free, cite PGC (NSF OPP awards)",
+        "vintage": "2 m, 2007-2022 imagery"
+      },
       "contoursWide": { "file": "contours-wide-highland-lake.pmtiles", "bytes": 897059, "source": "MRDEM 30 m DTM, NRCan", "licence": "OGL-Canada" },
       "forest": {
         "file": "forest-highland-lake.pmtiles",
@@ -78,7 +106,13 @@
         "licence": "OGL-Canada; CanLaD CC BY 4.0",
         "vintage": "SCANFI 2025; CanLaD 1985-2025"
       },
-      "understory": { "missing": "no LiDAR point cloud here" },
+      "understory": {
+        "file": "understory-highland-lake.pmtiles",
+        "bytes": 3739007,
+        "source": "Bush model (docs/BUSH-MODEL.md): the eye-level understory predicted at 30 m from Sentinel-2 seasons, PALSAR, SCANFI, CanLaD and the MRDEM, trained on 320 plots of Ontario leaf-on LiDAR; faded where the model is unsure. Modelled, not measured",
+        "licence": "Copernicus Sentinel data; JAXA ALOS PALSAR mosaic (free, attribution); OGL-Canada; CanLaD CC BY 4.0",
+        "vintage": "imagery 2023-2025, model trained 2026-10-07"
+      },
       "lanes": { "missing": "no LiDAR point cloud here" },
       "bathy": { "missing": "Ontario only: lake depths need the ARA lake facts and the MNR sheets" },
       "historical": {
@@ -132,24 +166,24 @@
     "grids": {
       "habitat": {
         "file": "habitat-highland-lake.hab",
-        "bytes": 1880472,
+        "bytes": 2700432,
         "source": "derived: MRDEM, NRCan 2020 land cover, forest stands, water, wetlands, roads and burns",
         "licence": "derived from the layers above",
-        "vintage": "generated 2026-10-04"
+        "vintage": "generated 2026-10-07"
       },
       "micro": {
         "file": "micro-highland-lake.hab",
-        "bytes": 8449086,
+        "bytes": 8956680,
         "source": "derived: the habitat grid and the MRDEM",
         "licence": "derived from the layers above",
-        "vintage": "generated 2026-10-05"
+        "vintage": "generated 2026-10-07"
       },
       "going": {
         "file": "going-highland-lake.hab",
-        "bytes": 898061,
+        "bytes": 1059293,
         "source": "derived: HRDEM LiDAR, point-cloud bush or the forest-map estimate, water, wetlands and roads",
         "licence": "derived from the layers above",
-        "vintage": "generated 2026-10-04"
+        "vintage": "generated 2026-10-07"
       }
     }
   }

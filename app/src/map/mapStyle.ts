@@ -1,7 +1,7 @@
 import { DARK, layers as basemapLayers } from '@protomaps/basemaps'
 import type { FeatureCollection } from 'geojson'
 import type { ExpressionSpecification, FilterSpecification, GeoJSONSource, LayerSpecification, Map as MlMap, StyleSpecification } from 'maplibre-gl'
-import { ATTRIBUTION, CONTOUR_FINE_FROM, CORE, REGION_MAXZOOM, RELIEF, ZONE } from '../config'
+import { ATTRIBUTION, CONTOUR_FINE_FROM, CORE, FINE_RELIEF, REGION_MAXZOOM, RELIEF, ZONE } from '../config'
 import { LIVE_RASTER, LIVE_VECTOR } from '../sources'
 import type { ContourInterval, LayerOpacity, LayerVisibility } from '../state/appStore'
 
@@ -300,7 +300,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   // to take over at all.
   const dem = has('dem')
   if (dem) {
-    sources.dem = { type: 'raster-dem', url: 'pmtiles://dem', encoding: 'mapbox', tileSize: 256, attribution: 'MRDEM, HRDEM LiDAR © Natural Resources Canada' }
+    sources.dem = { type: 'raster-dem', url: 'pmtiles://dem', encoding: 'mapbox', tileSize: 256, attribution: `MRDEM © Natural Resources Canada, ${FINE_RELIEF.attribution}` }
     const lakes = o.geo.get('waterbody')
     if (lakes) sources.lakes = { type: 'geojson', data: geoData('lakes', lakes, 'relief'), attribution: ATTRIBUTION.lakes }
     rasters.push(
@@ -389,7 +389,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   // the 1 m LiDAR shade rides above the DEM-drawn one where it is baked (the
   // core, z14+); both answer to the one Hillshade switch and slider
   if (has('hillshadeLidar')) {
-    sources.hillshadeLidar = { type: 'raster', url: 'pmtiles://hillshadeLidar', tileSize: 256, minzoom: CORE_MINZOOM }
+    sources.hillshadeLidar = { type: 'raster', url: 'pmtiles://hillshadeLidar', tileSize: 256, minzoom: CORE_MINZOOM, attribution: FINE_RELIEF.attribution }
     rasters.push(
       tag(
         {

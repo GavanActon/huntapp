@@ -99,6 +99,11 @@ export interface AreaDef {
    *  as further out they run together (map/mapStyle.ts contourFilters).
    *  Left out, every line shows at every zoom, as at Pickle Lake */
   contours?: { fineFrom?: number }
+  /** what the core's fine relief (the shade, the contours, the DEM's core)
+   *  was made from when it is not NRCan's 1 m LiDAR: its name for the
+   *  layer labels ("ArcticDEM 2 m") and the credit the map shows. Left
+   *  out, the LiDAR wording */
+  fineRelief?: { name: string; attribution: string }
   /** when the hardwoods' leaves come out and fall, for the ground wind.
    *  Left out, the boreal defaults at about 49° N, as both areas have it */
   leaves?: AreaLeaves

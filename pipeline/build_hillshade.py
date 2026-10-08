@@ -19,6 +19,13 @@ fly-in lakes) gets the same cache from the 30 m MRDEM, bilinear onto a
 MRDEM_CELL_M grid, so the DEM tiles and the going grid bake unchanged.
 No shade is drawn from it: the MRDEM hillshade tiles already are that.
 
+North of about 59.7° (bake.lidar "arcticdem") the cache comes from the
+ArcticDEM 2 m mosaic (v4.1, Polar Geospatial Center; optical stereo, so a
+surface model: canopy top over trees, ground in the open), read tile by
+tile like the HRDEM, its voids filled from the MRDEM and feathered in.
+The shade and the contours are then drawn from it as from the LiDAR.
+bake.arcticdem lists the tiles' DEM urls, else a STAC search finds them.
+
 The lakes are left unshaded (lakes.py): the LiDAR ground model is not
 flattened on water here, and its 0.2-1 m of noise drew as texture on the
 lakes over the imagery (Gavan, 2026-09-28, in the Bow view).
@@ -43,6 +50,8 @@ from common import CACHE_DIR, CORE, OUT_DIR, REGION, REGION_MAXZOOM, grid_covers
 from lakes import lake_mask_1m
 
 STAC_SEARCH = "https://datacube.services.geo.ca/stac/api/search"
+ARCTICDEM_STAC = "https://stac.pgc.umn.edu/api/v1/search"
+ARCTICDEM_COLLECTION = "arcticdem-mosaics-v4.1-2m"
 MARGIN_DEG = 0.004  # a few hundred metres past the core, so edge tiles shade cleanly
 OVERSAMPLE = 2
 FEATHER_M = 30.0  # an older survey filling a newer one's gaps is blended into it over this far
@@ -91,6 +100,35 @@ def no_lidar() -> bool:
     return BAKE.get("lidar") == "none"
 
 
+def arcticdem() -> bool:
+    return BAKE.get("lidar") == "arcticdem"
+
+
+def arcticdem_search(box: dict) -> list[str]:
+    """The ArcticDEM 2 m mosaic tiles that meet a lon/lat box: their DEM urls (COGs on S3)."""
+    import requests
+
+    bbox = [box["west"] - MARGIN_DEG, box["south"] - MARGIN_DEG, box["east"] + MARGIN_DEG, box["north"] + MARGIN_DEG]
+    for attempt in range(3):
+        try:
+            r = requests.post(ARCTICDEM_STAC, json={"collections": [ARCTICDEM_COLLECTION], "bbox": bbox, "limit": 50}, timeout=60)
+            r.raise_for_status()
+            items = r.json().get("features", [])
+            break
+        except Exception as e:  # noqa: BLE001
+            print(f"  ArcticDEM STAC: {str(e)[:80]}; again")
+            time.sleep(5 * (attempt + 1))
+    else:
+        raise SystemExit("the ArcticDEM STAC search failed: list the tiles' DEM urls in bake.arcticdem instead")
+    urls = sorted(f["assets"]["dem"]["href"] for f in items if "dem" in f.get("assets", {}))
+    print(f"  ArcticDEM tiles over the core: {', '.join(u.rsplit('/', 1)[-1] for u in urls) or 'none'}")
+    return urls
+
+
+def arcticdem_sources() -> list[str]:
+    return list(BAKE.get("arcticdem") or []) or arcticdem_search(CORE)
+
+
 def mrdem_core():
     """The core plus MARGIN_DEG from the 30 m MRDEM, bilinear onto a
     MRDEM_CELL_M grid in its own CRS: (array, transform, crs, nodata)."""
@@ -122,6 +160,8 @@ def checkpoint_tags(sources: list[str]) -> list[str]:
     the survey's year where that is unique, else its place in the list."""
     if len(sources) == 1:
         return [""]
+    if arcticdem():
+        return [f"-{i}" for i in range(len(sources))]
     years = [survey_years(s)[:4] for s in sources]
     return [f"-{y}" if y and years.count(y) == 1 else f"-{i}" for i, y in enumerate(years)]
 
@@ -145,7 +185,7 @@ def read_survey(source: str, tag: str, need: np.ndarray | None = None, onto=None
             crs = src.crs.to_string()
             if need is not None and not (onto[2] == crs and onto[1] == (H, W) and tuple(onto[0])[:6] == tuple(transform)[:6]):
                 need = None  # another grid: read it all, fetch_core warps it over
-            print(f"reading {W}x{H} px at {src.res[0]} m from {project(source)} in blocks …")
+            print(f"reading {W}x{H} px at {src.res[0]} m from {source.rsplit('/', 1)[-1] if arcticdem() else project(source)} in blocks …")
             part = CACHE_DIR / f"lidar-{REGION['id']}{tag}-partial.npy"
             done = CACHE_DIR / f"lidar-{REGION['id']}{tag}-done.npy"
             BS = 1024
@@ -237,7 +277,7 @@ def fetch_core(sources: list[str] | None = None):
         elev, transform, crs, nodata = mrdem_core()
         np.savez_compressed(cache, elev=elev, transform=np.array(transform)[:6], crs=crs, nodata=nodata, sources=np.array(["mrdem-30"]), feather_m=0.0)
         return elev, transform, crs, nodata
-    sources = sources or hrdem_sources()
+    sources = sources or (arcticdem_sources() if arcticdem() else hrdem_sources())
     tags = checkpoint_tags(sources)
     t = time.time()
     elev, transform, crs, nodata = read_survey(sources[0], tags[0])
@@ -246,7 +286,7 @@ def fetch_core(sources: list[str] | None = None):
         gap = elev == nodata
         if not gap.any():
             break
-        print(f"  {gap.mean() * 100:.2f}% of the window has no data: filling it from {project(source)}")
+        print(f"  {gap.mean() * 100:.2f}% of the window has no data: filling it from {source.rsplit('/', 1)[-1] if arcticdem() else project(source)}")
         # the gaps, and the newer data near enough to them to be feathered
         need = np.zeros_like(gap)
         box, d = gap_distance(gap, abs(transform.a))
@@ -277,6 +317,20 @@ def fetch_core(sources: list[str] | None = None):
         del older
         used.append(source)
         print(f"  filled {int(fill.sum())} px, feathered {blended} px at the seam")
+    if arcticdem():
+        gap = elev == nodata
+        if gap.any():
+            # the stereo voids (water, shadow, cloud): the MRDEM's ground, feathered in
+            print(f"  {gap.mean() * 100:.2f}% of the window is void: filling it from the MRDEM")
+            m, mt, mcrs, mnd = mrdem_core()
+            older = np.full(elev.shape, np.nan, dtype=np.float32)
+            reproject(source=m, destination=older, src_transform=mt, src_crs=mcrs, src_nodata=mnd, dst_transform=transform, dst_crs=crs, dst_nodata=np.nan, resampling=Resampling.bilinear)
+            ok = np.isfinite(older)
+            fill = gap & ok
+            blended = feather(elev, older, ok, gap, abs(transform.a))
+            elev[fill] = older[fill]
+            used.append("mrdem-30")
+            print(f"  filled {int(fill.sum())} px, feathered {blended} px at the seam")
     print(f"  read in {time.time() - t:.0f} s · nodata px {(elev == nodata).sum()} ({(elev == nodata).mean() * 100:.2f}% of the window)")
     np.savez_compressed(cache, elev=elev, transform=np.array(transform)[:6], crs=crs, nodata=nodata, sources=np.array(used), feather_m=FEATHER_M)
     for tag in tags:
@@ -301,8 +355,9 @@ def main(sources: list[str] | None = None):
         return
     elev, transform, crs, nodata = fetch_core(sources)
     share = core_share(elev, transform, crs, nodata)
-    print(f"LiDAR over {share * 100:.1f}% of the core")
-    note_source(f"hillshade-lidar-{REGION['id']}.pmtiles", note=f"LiDAR over {share * 100:.0f}% of the core")
+    what = "ArcticDEM 2 m (with the MRDEM in its voids)" if arcticdem() else "LiDAR"
+    print(f"{what} over {share * 100:.1f}% of the core")
+    note_source(f"hillshade-lidar-{REGION['id']}.pmtiles", note=f"{what} over {share * 100:.0f}% of the core")
     elev = np.where(elev == nodata, np.nan, elev)
     wet, _, _ = lake_mask_1m(elev, transform, crs)
     fill = np.nanmean(elev)
@@ -357,7 +412,7 @@ def main(sources: list[str] | None = None):
     write_raster_pmtiles(
         OUT_DIR / f"hillshade-lidar-{REGION['id']}.pmtiles",
         f"hillshade-lidar-{REGION['id']}",
-        "HRDEM LiDAR © Natural Resources Canada",
+        "ArcticDEM © Polar Geospatial Center, University of Minnesota" if arcticdem() else "HRDEM LiDAR © Natural Resources Canada",
         REGION_MAXZOOM + 1,
         CORE["maxzoom"],
         render,
