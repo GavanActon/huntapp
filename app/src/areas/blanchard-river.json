@@ -202,5 +202,24 @@
         "vintage": "generated 2026-10-08"
       }
     }
+  },
+  "profile": {
+    "checked": "2026-10-08",
+    "treeline": {
+      "m": 1440,
+      "alpineShare": 0.309,
+      "from": "the 98th percentile of the treed cells' elevation in the habitat grid; 31% of the land is above it, 98% of that open",
+      "north": 1470,
+      "south": 1400
+    },
+    "ecoregion": {
+      "cec1": "6",
+      "cec2": "6.1",
+      "cec3": "6.1.6",
+      "name": "Yukon-Stikine Highlands/Boreal Mountains and Plateaus",
+      "family": "Boreal Cordillera"
+    },
+    "north": true,
+    "stands": { "shrubHeight": true, "leadSpecies": true }
   }
 }

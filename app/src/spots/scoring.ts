@@ -7,6 +7,7 @@ import { CORE, SPOTS_RADIUS_M } from '../config'
 import { habitat, type Habitat } from './habitatGrid'
 import type { Conditions } from './conditions'
 import { activityVerdict, describeCell, habitatScore, huntBands, siteFactor, viewM, type HuntBands } from './huntRules'
+import { huntCtx, type HuntCtx } from './placeRules'
 import { cellScore, describeFishCell, fishBands, fishContext, fishVerdict, seasonOpen, type FishBands } from './fishRules'
 import { isFish, type Spot, type Target, type Verdict } from './types'
 import { DEFAULT_WEIGHTS, weigh, type Part, type PointCase, type Weights } from './weights'
@@ -136,8 +137,8 @@ export interface HuntPass {
   w: Weights
   h: Habitat
   b: HuntBands
-  warm: boolean
-  lateFall: boolean
+  /** the day as the rules read it cell by cell: the species, the heat, the snow */
+  ctx: HuntCtx
   log: Float32Array | null
   scores: Float32Array
   /** scoreWindow's rows and columns */
@@ -165,8 +166,7 @@ export function huntPass(target: HuntTarget, c: Conditions, home: { lon: number;
     w,
     h,
     b: huntCache.b,
-    warm: c.tempC > 14 && c.sinceSunriseH > 2 && c.toSunsetH > 1.5,
-    lateFall: c.dayOfYear >= 288,
+    ctx: huntCtx(target, c),
     // the hunter's own log: fresh sign pulls, blank sits push
     log: w.log > 0 ? logBoostGrid(h, target, c.timeMs) : null,
     scores: new Float32Array(h.size),
@@ -178,13 +178,13 @@ export function huntPass(target: HuntTarget, c: Conditions, home: { lon: number;
  *  cell across and down is scored, and each fills its 2×2 block: the rough
  *  copy the heat map paints first, for a quarter of the work. */
 export function huntRows(p: HuntPass, r0: number, r1: number, step = 1): void {
-  const { target, b, h, c, w, warm, lateFall, log, scores } = p
+  const { target, b, h, c, w, ctx, log, scores } = p
   const [, , c0, c1] = p.win
   const cols = h.cols
   for (let r = r0; r < r1; r += step)
     for (let cc = c0; cc < c1; cc += step) {
       const i = r * cols + cc
-      const hs = habitatScore(target, b, i, warm, lateFall, w)
+      const hs = habitatScore(target, b, i, ctx, w)
       if (hs < 0.2) continue
       const s = hs * siteFactor(target, b, h, i, c, undefined, w) * (log ? weigh(log[i], w.log) : 1)
       scores[i] = s
@@ -309,10 +309,9 @@ export function pointCase(target: Target, lon: number, lat: number, c: Condition
   }
   if (!huntCache || huntCache.h !== h) huntCache = { h, b: huntBands(h) }
   const b = huntCache.b
-  const warm = c.tempC > 14 && c.sinceSunriseH > 2 && c.toSunsetH > 1.5
   const habitatParts: Part[] = []
   const siteParts: Part[] = []
-  const hs = habitatScore(target, b, i, warm, c.dayOfYear >= 288, w, habitatParts)
+  const hs = habitatScore(target, b, i, huntCtx(target, c), w, habitatParts)
   let sm = siteFactor(target, b, h, i, c, undefined, w, siteParts)
   const reasons = describeCell(target, b, h, i, c)
   const log = w.log > 0 ? logBoostGrid(h, target, c.timeMs) : null

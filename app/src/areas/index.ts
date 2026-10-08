@@ -62,6 +62,26 @@ export interface AreaLeaves {
   fallBare: string
 }
 
+/** What the scorer has to know about the place that no one cell says
+ *  (pipeline/build_profile.py, read by spots/profile.ts). Left out, the
+ *  rules are boreal Ontario's, as they were before profiles. */
+export interface AreaProfile {
+  /** the day it was worked out */
+  checked: string
+  /** where the trees give out, m: the 98th percentile of the treed cells'
+   *  heights, and on north and south faces where there were enough; null
+   *  where the forest runs to the tops (no alpine to speak of) */
+  treeline: { m: number; north?: number; south?: number; alpineShare: number; from: string } | null
+  /** the CEC North American ecoregion (Levels I-III) at the centre */
+  ecoregion: { cec1: string; cec2: string; cec3: string; name: string; family: string } | null
+  /** the north's slower regrowth and its rut calendar (Tundra, Taiga, the
+   *  Northwestern Forested Mountains, or north of 57°) */
+  north: boolean
+  /** what the stand map can be trusted for: shrub heights measured (VRI,
+   *  écoforestier), and the lead species mapped rather than inferred */
+  stands: { shrubHeight: boolean; leadSpecies: boolean }
+}
+
 /** The bake's coverage report (pipeline/bake_area.py), written into the
  *  area file: every layer the app knows, by kind, as baked or missing. */
 export interface AreaCoverage {
@@ -122,6 +142,8 @@ export interface AreaDef {
   bake?: Record<string, unknown>
   /** what the last bake made, layer by layer (the Offline sheet's What's in it) */
   coverage?: AreaCoverage
+  /** the habitat profile the location-aware rules read (spots/profile.ts) */
+  profile?: AreaProfile
   /** Explore (explore/index.ts): a stand-in area the map is unfenced in, nothing baked, listed nowhere */
   virtual?: boolean
 }

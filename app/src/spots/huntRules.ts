@@ -16,6 +16,26 @@ import type { Conditions } from './conditions'
 import { compass8, WARM_HIGH_C } from './conditions'
 import { groundForScoring, REGIME_LABEL } from '../weather/micro/model'
 import type { Factor, HuntTarget, Verdict } from './types'
+import { presence, PROFILE, QUARRY_NAMES, regsLines, treelineOffsets } from './profile'
+import type { Quarry } from './regs'
+import {
+  dzOf,
+  forestGrouseBand,
+  grizzly,
+  mooseBand,
+  northBlackBear,
+  northRegrowth,
+  northRut,
+  openCountry,
+  openEdge,
+  packOutAccess,
+  ptarmigan,
+  roadPressure,
+  shrubBrowse,
+  slopeFactor,
+  type HuntCtx,
+  type Tally,
+} from './placeRules'
 
 // ---- lookups shared by the scorer, read once per pass ----
 export interface HuntBands {
@@ -54,6 +74,15 @@ export interface HuntBands {
   height: Uint8Array | null
   /** the view from every cell, m, by 15° sector, filled as asked (viewAt) */
   views: (Uint8Array | undefined)[]
+  /** height over the area's treeline, m, per cell (spots/profile.ts);
+   *  null where it has none (boreal flats) */
+  dz: Float32Array | null
+  /** the carry back to a road, a boat lake or camp (×50 m on the flat,
+   *  the climb counted), m to a paved highway (×20), m to a stream line
+   *  (×10); null with a habitat file baked before 2026-10-08 */
+  packOut: Uint8Array | null
+  distHighway: Uint8Array | null
+  distStream: Uint8Array | null
 }
 
 export function huntBands(h: Habitat): HuntBands {
@@ -84,6 +113,10 @@ export function huntBands(h: Habitat): HuntBands {
     elev: h.has('elev') && h.scale('elev') === 1 ? (h.raw('elev') as Uint16Array) : null,
     height: h.has('height') && h.scale('height') === 1 ? u8('height') : null,
     views: [],
+    dz: treelineOffsets(h.has('elev') && h.scale('elev') === 1 ? (h.raw('elev') as Uint16Array) : null, u8('aspect'), u8('slope')),
+    packOut: h.has('packOut') ? u8('packOut') : null,
+    distHighway: h.has('distHighway') ? u8('distHighway') : null,
+    distStream: h.has('distStream') ? u8('distStream') : null,
   }
 }
 
@@ -270,19 +303,43 @@ function edgeFromBrowse(distM: number): number {
   return 0.15
 }
 
-/** Static habitat value 0..1 of a land cell for a target. `warm` shifts
- *  moose and bear toward shade (afternoon above 14 °C). */
-export function habitatScore(t: HuntTarget, b: HuntBands, i: number, warm: boolean, lateFall: boolean, w: Weights = DEFAULT_WEIGHTS, parts?: Part[]): number {
+/** Static habitat value 0..1 of a land cell for a target: the best of the
+ *  species it stands for that day (ctx.members, spots/profile.ts), each
+ *  scored by its own rules. `ctx.warm` shifts moose and bear toward shade. */
+export function habitatScore(t: HuntTarget, b: HuntBands, i: number, ctx: HuntCtx, w: Weights = DEFAULT_WEIGHTS, parts?: Part[]): number {
+  const cover = b.cover[i]
+  if (cover === COVER.water || cover === COVER.nodata) return 0
+  const ms = ctx.members
+  if (ms.length === 1) return quarryScore(ms[0], t, b, i, ctx, w, parts)
+  let best = -1
+  let who = ms[0]
+  for (const q of ms) {
+    const v = quarryScore(q, t, b, i, ctx, w)
+    if (v > best) {
+      best = v
+      who = q
+    }
+  }
+  return parts ? quarryScore(who, t, b, i, ctx, w, parts) : best
+}
+
+/** One species' habitat value of a land cell, 0..1: the place's own rules
+ *  (placeRules.ts) for grizzly, ptarmigan and the north's black bear, the
+ *  Ontario rules with the place's changes for the rest. */
+function quarryScore(q: Quarry, t: HuntTarget, b: HuntBands, i: number, ctx: HuntCtx, w: Weights, parts?: Part[]): number {
+  // with two species in the running, each line says whose it is
+  const tag = parts && ctx.members.length > 1 ? `${QUARRY_NAMES[q]}: ` : ''
   const add = (key: Part['key'], label: string, v: number) => {
-    parts?.push({ key, label, value: v, kind: 'bonus' })
+    parts?.push({ key, label: tag + label, value: v, kind: 'bonus' })
     return v * w[key]
   }
   const times = (key: Part['key'], label: string, m: number) => {
-    parts?.push({ key, label, value: m, kind: 'mult' })
+    parts?.push({ key, label: tag + label, value: m, kind: 'mult' })
     return weigh(m, w[key])
   }
+  const x: Tally = { add, times }
+  const { warm, lateFall } = ctx
   const cover = b.cover[i]
-  if (cover === COVER.water || cover === COVER.nodata) return 0
   const dist = b.disturb[i]
   const dCover = b.distCover[i] * 10
   const dBrowse = b.distBrowse[i] * 10
@@ -292,7 +349,10 @@ export function habitatScore(t: HuntTarget, b: HuntBands, i: number, warm: boole
   const landFrac = b.landFrac[i] / 255
   let s: number
 
-  if (t === 'moose' || t === 'deer') {
+  if (q === 'grizzly') s = grizzly(b, i, ctx, x)
+  else if (q === 'ptarmigan') s = ptarmigan(b, i, ctx, x)
+  else if (q === 'blackBear' && (PROFILE.north || PROFILE.treeline != null)) s = northBlackBear(b, i, ctx, x, presence('grizzly') !== 'absent')
+  else if (t === 'moose' || t === 'deer') {
     // browse value by cover, overridden by the disturbance curve on burns and cuts
     let browse: number
     switch (cover) {
@@ -303,7 +363,8 @@ export function habitatScore(t: HuntTarget, b: HuntBands, i: number, warm: boole
         browse = b.hardwood[i] >= 40 ? 0.85 : 0.65
         break
       case COVER.shrub:
-        browse = 0.9
+        // tall willow, not the dwarf birch and heath above the trees (placeRules.ts)
+        browse = shrubBrowse(b, i)
         break
       case COVER.regen:
         browse = 0.3
@@ -326,7 +387,10 @@ export function habitatScore(t: HuntTarget, b: HuntBands, i: number, warm: boole
       default:
         browse = 0.1
     }
-    if (dist < 255) browse = Math.max(browse * 0.5, disturbanceCurve(dist))
+    // the north regrows slower; over the treeline a burn comes back as heath, not willow
+    if (dist < 255 && !(dzOf(b, i) > 100)) browse = Math.max(browse * 0.5, PROFILE.north ? northRegrowth(dist) : disturbanceCurve(dist))
+    // the subalpine belt and over it: open country (placeRules.ts)
+    const open = openCountry(b, i)
     const isCover = cover === COVER.coniferDense || cover === COVER.treedWet
     // interspersion: browse near cover, cover near browse. The stand's own
     // value is one part, the edge bonus another, so each has its knob.
@@ -334,16 +398,20 @@ export function habitatScore(t: HuntTarget, b: HuntBands, i: number, warm: boole
     // beds in a young thicket or an alder run as readily
     const hide = hidingCover(b, i)
     const base = isCover ? browse * 0.3 : browse * 0.45
-    const edge = isCover ? 0.35 * edgeFromBrowse(dBrowse) : browse * 0.55 * edgeFromCover(hide.m)
+    const edge = isCover ? 0.35 * edgeFromBrowse(dBrowse) : browse * 0.55 * (open ? openEdge(hide.m) : edgeFromCover(hide.m))
     s = add('browse', isCover ? 'conifer cover' : 'browse value', base) + add('edge', isCover ? 'browse within reach' : hide.thick ? 'near thick cover' : 'near the conifer edge', edge)
     // water: cows and calves on shores and beaver meadows; bulls come to them in the rut
-    if (dLake <= 200 || dWet <= 100) s += add('shore', 'shore or beaver meadow', 0.15)
+    // lakes are few at the treeline, and Denali's moose ate next to no water plants; the willow is on the creeks
+    if (dLake <= 200 || dWet <= 100) s += add('shore', 'shore or beaver meadow', open ? 0.05 : 0.15)
+    if (b.dz && b.distStream && b.distStream[i] * 10 <= 100 && !(dzOf(b, i) > 50) && (cover === COVER.shrub || cover === COVER.hardwood || cover === COVER.mixed)) s += add('shore', 'a willow creek draw', 0.1)
     if (dLake <= 60 && dist >= 5 && dist <= 30) s += add('shore', 'a cut running to the shore', 0.1)
     // funnels
-    if (lf === LANDFORM.saddle) s += add('funnel', 'a saddle', 0.15)
-    if (landFrac < 0.5) s += add('funnel', 'a neck between waters', 0.2)
-    else if (landFrac < 0.65) s += add('funnel', 'a point or shoreline strip', 0.08)
-    if (lf === LANDFORM.bench && dWet <= 300) s += add('funnel', 'a bench above a wetland', 0.05)
+    // nothing shows mountain moose using saddles or necks as funnels: a third in open country
+    const fk = open ? 1 / 3 : 1
+    if (lf === LANDFORM.saddle) s += add('funnel', 'a saddle', 0.15 * fk)
+    if (landFrac < 0.5) s += add('funnel', 'a neck between waters', 0.2 * fk)
+    else if (landFrac < 0.65) s += add('funnel', 'a point or shoreline strip', 0.08 * fk)
+    if (lf === LANDFORM.bench && dWet <= 300) s += add('funnel', 'a bench above a wetland', 0.05 * fk)
     if (warm) {
       // heat: beds in shade by day (Renecker & Hudson 14 °C)
       if (isCover) s *= times('heat', 'shade on a warm day', 1.5)
@@ -360,6 +428,10 @@ export function habitatScore(t: HuntTarget, b: HuntBands, i: number, warm: boole
       }
       if (hidingCover(b, i).m <= 500) s += add('edge', 'cover within 500 m', 0.15)
     }
+    // the treeline band (with the snow), and steep ground (placeRules.ts)
+    const band = mooseBand(b, i, ctx)
+    if (band.f !== 1) s *= times('terrain', band.label, band.f)
+    if (b.slope[i] >= 12) s *= times('terrain', `steep ground (${b.slope[i]}°)`, slopeFactor(b.slope[i]))
   } else if (t === 'grouse') {
     const age = b.age[i]
     const conif = b.conifer[i]
@@ -397,6 +469,8 @@ export function habitatScore(t: HuntTarget, b: HuntBands, i: number, warm: boole
     if (b.distWater[i] * 10 <= 50 && (cover === COVER.shrub || cover === COVER.mixed || cover === COVER.hardwood)) s += add('shore', 'water within 50 m', 0.2)
     if (b.distRoad[i] * 20 <= 40) s += add('access', 'roadside grit and clover', 0.25)
     if (dCover <= 60 && (cover === COVER.hardwood || cover === COVER.mixed)) s += add('edge', 'hardwood–conifer edge', 0.1)
+    const gb = forestGrouseBand(b, i)
+    if (gb < 1) s *= times('terrain', 'near the treeline: few forest grouse', gb)
   } else {
     // bear: berries in young disturbance and dry jack pine, then denning cover
     if (dist >= 3 && dist <= 20) s = 1.0
@@ -426,6 +500,8 @@ export function habitatScore(t: HuntTarget, b: HuntBands, i: number, warm: boole
 
 /** Moose calling effectiveness by date (Ontario rut, peak 25 Sept–5 Oct). */
 export function rutFactor(month: number, doy: number): { f: number; phase: string } {
+  // the north's calendar: the same peak, an earlier climb, done by 11 Oct (placeRules.ts)
+  if (PROFILE.north) return northRut(doy)
   // day of year for the season markers (non-leap; a day off never matters here)
   if (doy < 258) return { f: 0.2, phase: month >= 8 ? 'pre-rut' : 'off-season' }
   if (doy <= 265) return { f: 0.5, phase: 'early rut: bulls locating, cow calls' }
@@ -519,11 +595,33 @@ export function activityVerdict(t: HuntTarget, c: Conditions, w: Weights = DEFAU
   if (t === 'bear' && c.month >= 10 && c.dayOfYear >= 288) notes.push('Berries are done: bears drift to thick conifer uplands before denning.')
   notes.push(`Moon ${Math.round(c.moonIllum * 100)} % lit: no measured effect on movement.`)
   if (!c.hrdps) notes.push('This hour is beyond the HRDPS horizon: blended forecast.')
+  // the season and what is legal, the zone's own lines, the grizzly card (spots/profile.ts)
+  const regs = regsLines(t, c.timeMs)
+  warnings.push(...regs.warnings)
+  notes.push(...regs.notes)
 
   const activity = factors.reduce((a, f) => a * (f.key ? weigh(f.mult, w[f.key]) : f.mult), 1)
   const head =
     activity >= 0.85 ? 'Prime' : activity >= 0.6 ? 'Good' : activity >= 0.4 ? 'Fair' : activity >= 0.25 ? 'Slow' : 'Poor'
-  const what = t === 'moose' ? (c.windKmh <= 15 && rut.f >= 0.5 ? 'for calling' : 'for a sit') : t === 'grouse' ? 'for walking roads and edges' : t === 'bear' ? 'on the berry cuts' : 'for a sit'
+  const mountains = PROFILE.treeline != null
+  const what =
+    t === 'moose'
+      ? c.windKmh <= 15 && rut.f >= 0.5
+        ? 'for calling'
+        : mountains
+          ? 'for glassing'
+          : 'for a sit'
+      : t === 'grouse'
+        ? mountains && presence('ptarmigan') !== 'absent'
+          ? 'for ptarmigan and grouse'
+          : 'for walking roads and edges'
+        : t === 'bear'
+          ? PROFILE.north || mountains
+            ? c.dayOfYear < 274
+              ? 'on the berry slopes'
+              : 'toward the dens'
+            : 'on the berry cuts'
+          : 'for a sit'
   return { activity, headline: `${head} ${what}`, factors, warnings, notes }
 }
 
@@ -535,7 +633,7 @@ export function siteFactor(t: HuntTarget, b: HuntBands, h: Habitat, i: number, c
   // same products in the same order, so the same score to the bit
   if (!reasons && !parts) {
     siteCore(t, b, h, i, c, undefined, null)
-    return weigh(SITE[0], w.scent) * weigh(SITE[1], w.visibility) * weigh(SITE[2], w.access)
+    return weigh(SITE[0], w.scent) * weigh(SITE[1], w.visibility) * weigh(SITE[2], w.access) * weigh(SITE[3], w.pressure)
   }
   const sp = siteParts(t, b, h, i, c, reasons)
   parts?.push(...sp)
@@ -551,11 +649,13 @@ export function siteParts(t: HuntTarget, b: HuntBands, h: Habitat, i: number, c:
     { key: 'scent', label: labels[0], value: SITE[0], kind: 'mult' },
     { key: 'visibility', label: labels[1], value: SITE[1], kind: 'mult' },
     { key: 'access', label: labels[2], value: SITE[2], kind: 'mult' },
+    // road traffic, where the grid has a highway band and it bites
+    ...(SITE[3] !== 1 ? [{ key: 'pressure' as const, label: labels[3], value: SITE[3], kind: 'mult' as const }] : []),
   ]
 }
 
 /** siteCore's answer: scent, view, access, each 0..1, unweighed */
-const SITE = new Float64Array(3)
+const SITE = new Float64Array(4)
 /** the five gusts' weights the scent part averages over the direction spread */
 const SPREAD_W = [-2, -1, 0, 1, 2].map((k) => Math.exp(-((k * 0.75) ** 2) / 2))
 
@@ -685,13 +785,19 @@ function siteCore(t: HuntTarget, b: HuntBands, h: Habitat, i: number, c: Conditi
   let access = dRoad <= 150 ? 0.85 : dRoad <= 2500 ? 1 : dRoad <= 4000 ? 0.8 : 0.5
   if (dLake <= 120) access = Math.max(access, 0.95) // by boat
   if (t === 'grouse') access = dRoad <= 60 ? 1 : dRoad <= 800 ? 0.9 : 0.6
+  // the carry out where the grid has it (placeRules.ts), and the traffic apart from it
+  const carry = packOutAccess(t, b, i)
+  if (carry) access = carry.access
+  const press = roadPressure(t, b, i)
   SITE[0] = g
   SITE[1] = vis
   SITE[2] = access
+  SITE[3] = press.f
   if (!labels) return
   labels[0] = calm ? (gw ? 'still air at ground' : 'thermals') : gw ? 'ground air against the feeding side' : 'wind against the feeding side'
   labels[1] = visLabel
-  labels[2] = dLake <= 120 && dRoad > 150 ? 'reachable by boat' : dRoad <= 150 ? 'right by a road' : dRoad <= 2500 ? `${dRoad < 1000 ? `${dRoad} m` : `${(dRoad / 1000).toFixed(1)} km`} from a road` : 'a long walk in'
+  labels[3] = press.label
+  labels[2] = carry ? carry.label : dLake <= 120 && dRoad > 150 ? 'reachable by boat' : dRoad <= 150 ? 'right by a road' : dRoad <= 2500 ? `${dRoad < 1000 ? `${dRoad} m` : `${(dRoad / 1000).toFixed(1)} km`} from a road` : 'a long walk in'
 }
 
 /** Words for a cell: what it is and why it scores. */
@@ -729,6 +835,10 @@ export function describeCell(t: HuntTarget, b: HuntBands, h: Habitat, i: number,
   else if (lf === LANDFORM.bench) out.push('a bench: bedding ground')
   else if (lf === LANDFORM.valley) out.push('a drainage: scent runs down it at dusk')
   if (b.landFrac[i] / 255 < 0.5) out.push('a neck of land between waters')
+  const dz = dzOf(b, i)
+  if (dz === dz) out.push(Math.abs(dz) < 25 ? 'at the treeline' : `${Math.round(Math.abs(dz) / 10) * 10} m ${dz < 0 ? 'below' : 'above'} the treeline`)
+  const carry = packOutAccess(t, b, i)
+  if (carry) out.push(carry.label)
   const dRoad = b.distRoad[i] * 20
   if (dRoad <= 60) out.push('on a bush road')
   else if (dRoad < 5000) out.push(`${dRoad < 1000 ? `${dRoad} m` : `${(dRoad / 1000).toFixed(1)} km`} from a road`)

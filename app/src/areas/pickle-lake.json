@@ -192,5 +192,12 @@
         "vintage": "generated 2026-09-30"
       }
     }
+  },
+  "profile": {
+    "checked": "2026-10-08",
+    "treeline": null,
+    "ecoregion": { "cec1": "5", "cec2": "5.1", "cec3": "5.1.6", "name": "Abitibi Plains and Rivière Rupert Plateau", "family": "Softwood Shield" },
+    "north": false,
+    "stands": { "shrubHeight": false, "leadSpecies": true }
   }
 }

@@ -30,6 +30,22 @@ const isLeaves = (v: Fields) => {
   return days.every(isDay) && days.every((d, k) => k === 0 || (days[k - 1] as string) < (d as string))
 }
 
+/** The habitat profile (pipeline/build_profile.py): the north flag, the
+ *  stand map's two flags, and a treeline that is either none or a height
+ *  (its north and south faces numbers when there). */
+const isProfile = (p: Fields | undefined) => {
+  if (!p) return false
+  const t = p.treeline == null ? null : obj(p.treeline)
+  const stands = obj(p.stands)
+  return (
+    typeof p.north === 'boolean' &&
+    stands != null &&
+    typeof stands.shrubHeight === 'boolean' &&
+    typeof stands.leadSpecies === 'boolean' &&
+    (p.treeline == null || (t != null && isNum(t.m) && (t.north == null || isNum(t.north)) && (t.south == null || isNum(t.south))))
+  )
+}
+
 /** The first field the app reads that an area file lacks or holds as the
  *  wrong kind, by its path ('core.maxzoom'); null when all are there. */
 export function badAreaField(v: unknown): string | null {
@@ -81,6 +97,8 @@ export function badAreaField(v: unknown): string | null {
     ['fineRelief', a.fineRelief == null || (obj(a.fineRelief) != null && isStr(obj(a.fineRelief)?.name) && isStr(obj(a.fineRelief)?.attribution))],
     // optional; when there, the area's own four days for the leaves
     ['leaves', a.leaves == null || (leaves != null && isLeaves(leaves))],
+    // optional; when there, the habitat profile's fields the rules read (spots/profile.ts)
+    ['profile', a.profile == null || isProfile(obj(a.profile))],
   ]
   return fields.find(([, ok]) => !ok)?.[0] ?? null
 }

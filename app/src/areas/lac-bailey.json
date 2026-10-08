@@ -198,5 +198,12 @@
         "vintage": "generated 2026-10-04"
       }
     }
+  },
+  "profile": {
+    "checked": "2026-10-08",
+    "treeline": null,
+    "ecoregion": { "cec1": "5", "cec2": "5.1", "cec3": "5.1.3", "name": "Central Laurentians and Mecatina Plateau", "family": "Softwood Shield" },
+    "north": false,
+    "stands": { "shrubHeight": true, "leadSpecies": true }
   }
 }

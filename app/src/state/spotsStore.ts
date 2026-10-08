@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Target } from '../spots/types'
+import { isFish, type Target } from '../spots/types'
+import { targetStanding } from '../spots/profile'
 import type { ScoreResult } from '../spots/scoring'
 import type { Conditions } from '../spots/conditions'
 import type { DayPlan, HourActivity } from '../spots/dayPlan'
@@ -89,7 +90,9 @@ export const useSpotsStore = create<SpotsState>()(
       partialize: (s) => ({ target: s.target, heat: s.heat, heatScale: s.heatScale, heatStrength: s.heatStrength, detail: s.detail, weights: s.weights }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<SpotsState>
-        return { ...current, ...p, weights: { ...START_WEIGHTS, ...(p.weights ?? {}) }, scent: false }
+        // a quarry saved elsewhere that is not here (deer in the Yukon mountains) comes back as moose
+        const target = p.target && !isFish(p.target) && !targetStanding(p.target).show ? 'moose' : p.target
+        return { ...current, ...p, target: target ?? current.target, weights: { ...START_WEIGHTS, ...(p.weights ?? {}) }, scent: false }
       },
     },
   ),

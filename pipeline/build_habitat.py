@@ -51,7 +51,7 @@ from rasterio.transform import from_origin
 from rasterio.warp import Resampling, reproject
 from scipy import ndimage
 
-from area import BAKE, LAKE_SHEETS, adapter, cached, note_source, summary_path
+from area import AREA, BAKE, LAKE_SHEETS, adapter, cached, note_source, summary_path
 from common import CORE, OUT_DIR, REGION
 from rasters import fetch
 
@@ -172,6 +172,64 @@ def edt_m(mask: np.ndarray) -> np.ndarray:
 
 def q8(values: np.ndarray, step: float) -> np.ndarray:
     return np.clip(np.round(values / step), 0, 255).astype(np.uint8)
+
+
+# a lake a boat or a float plane works from (ha); the area may say otherwise (bake.transport.lakeHa)
+BOAT_LAKE_HA = float((BAKE.get("transport") or {}).get("lakeHa", 20))
+# metres of walking a metre of climb is worth with a load on: 100 m up is a km on the flat
+CLIMB_M = 10.0
+
+
+def road_kind(p: dict) -> str:
+    """What a road is to a hunter, from whichever province's words it has:
+    'highway' (paved, through traffic: the pressure), 'road' (a truck or a
+    quad gets meat out on it) or 'trail' (on foot). BC's DRA/TRIM KIND,
+    Ontario's MNRF SURFACE_TYPE, Quebec's forest-road class."""
+    kind = str(p.get("KIND") or "").lower()
+    surface = str(p.get("SURFACE_TYPE") or "").lower()
+    if kind.startswith("trail"):
+        return "trail"
+    if kind.startswith("highway") or "paved" in kind or "paved" in surface or "asphalt" in surface:
+        return "highway"
+    return "road"
+
+
+def pack_out(elev: np.ndarray, passable: np.ndarray, sources: np.ndarray) -> np.ndarray:
+    """The cost, in metres on the flat, of carrying meat from each cell back
+    to the nearest road, boat lake or camp: the walk plus CLIMB_M per metre
+    of climb on the way back (docs/research/reports/Mountain hunt habitat
+    rules.md, fix 3). Dijkstra outward from the sources over the 8-neighbour
+    lattice; water a boat does not work from is not walked across. Cells it
+    cannot reach are inf."""
+    n = ROWS * COLS
+    idx = np.arange(n).reshape(ROWS, COLS)
+    z = elev.astype(np.float64)
+    src_l, dst_l, w_l = [], [], []
+    for dr in (-1, 0, 1):
+        for dc in (-1, 0, 1):
+            if dr == 0 and dc == 0:
+                continue
+            rs = slice(max(0, -dr), ROWS - max(0, dr))
+            cs = slice(max(0, -dc), COLS - max(0, dc))
+            rd = slice(max(0, dr), ROWS - max(0, -dr))
+            cd = slice(max(0, dc), COLS - max(0, -dc))
+            ok = passable[rs, cs] & passable[rd, cd]
+            # the edge runs outward from the transport, a → b; the load comes back b → a,
+            # so the climb is a's height over b's
+            step = math.hypot(dr * DY_M, dc * DX_M)
+            w = step + CLIMB_M * np.maximum(0.0, z[rs, cs] - z[rd, cd])
+            src_l.append(idx[rs, cs][ok])
+            dst_l.append(idx[rd, cd][ok])
+            w_l.append(w[ok])
+    from scipy.sparse import csr_matrix
+    from scipy.sparse.csgraph import dijkstra
+
+    g = csr_matrix((np.concatenate(w_l), (np.concatenate(src_l), np.concatenate(dst_l))), shape=(n, n))
+    starts = idx[sources & passable]
+    if starts.size == 0:
+        return np.full((ROWS, COLS), np.inf, dtype=np.float32)
+    d = dijkstra(g, directed=True, indices=starts, min_only=True)
+    return d.reshape(ROWS, COLS).astype(np.float32)
 
 
 def fetch_cells(water: np.ndarray, lake_id: np.ndarray) -> dict[str, np.ndarray]:
@@ -616,6 +674,9 @@ def main() -> None:
     stream = burn([(g, 1) for g in geoms(wc)], all_touched=True).astype(bool)
     wetland = burn([(g, 1) for g in geoms(wet)]).astype(bool)
     road = burn([(g, 1) for g in geoms(roads)], all_touched=True).astype(bool)
+    kinds = [road_kind(f["properties"]) for f in roads]
+    drivable = burn([(g, 1) for g, k in zip(geoms(roads), kinds) if k != "trail"], all_touched=True).astype(bool)
+    highway = burn([(g, 1) for g, k in zip(geoms(roads), kinds) if k == "highway"], all_touched=True).astype(bool)
     fire_year = burn([(g, int(f["properties"].get("FIRE_YEAR") or 0)) for g, f in zip(geoms(fire), fire)], dtype=np.uint16)
 
     fg = geoms(forest)
@@ -739,6 +800,23 @@ def main() -> None:
     d_lake = edt_m(lake_mask)
     d_wetland = edt_m(wetland | (cover == OPEN_WET) | (cover == TREED_WET))
     d_road = edt_m(road)
+    d_highway = edt_m(highway)
+    d_stream = edt_m(stream & ~water)
+    # ---- pack-out: the way back with the meat, to a road a truck gets to, a lake a boat or a
+    #      float plane works from, or the area's own camp and landings ----
+    sizes = np.bincount(lake_id.ravel())
+    boat_ids = np.flatnonzero(sizes * DX_M * DY_M / 1e4 >= BOAT_LAKE_HA)
+    boat_lake = np.isin(lake_id, boat_ids[boat_ids > 0])
+    camps = np.zeros((ROWS, COLS), dtype=bool)
+    for p in AREA.get("presets") or []:
+        if p.get("kind") in ("camp", "landing"):
+            r, c = int((N - p["lat"]) / D_LAT), int((p["lon"] - W) / D_LON)
+            if 0 <= r < ROWS and 0 <= c < COLS:
+                camps[r, c] = True
+    passable = ~water | boat_lake
+    d_pack = pack_out(dem, passable, drivable | boat_lake | camps)
+    print(f"  pack-out: {int(drivable.sum())} road cells, {len(boat_ids[boat_ids > 0])} boat lakes (≥ {BOAT_LAKE_HA:g} ha), {int(camps.sum())} camps; "
+          f"median {np.median(d_pack[passable & ~water & np.isfinite(d_pack)]) / 1000:.1f} km-eq · {time.time() - t0:.0f}s")
     cover_mask = np.isin(cover, (CONIFER_DENSE, TREED_WET))
     d_cover = edt_m(cover_mask)
     # hiding cover: any thick bush (young thickets, alder, fir and cedar,
@@ -884,6 +962,14 @@ def main() -> None:
         ("distBrowse", q8(d_browse, 10), 10, "m to browse habitat (×10)"),
         ("bearBrowse", bear_q, 360 / 250, "compass bearing to nearest browse (255 = in browse)"),
         ("distRoad", q8(d_road, 20), 20, "m to a bush road (×20)"),
+        ("distHighway", q8(d_highway, 20), 20, "m to a paved highway (×20)"),
+        ("distStream", q8(d_stream, 10), 10, "m to a stream or river line (×10)"),
+        (
+            "packOut",
+            q8(np.where(np.isfinite(d_pack), d_pack, 1e9), 50),
+            50,
+            f"the carry back to a road, a lake of {BOAT_LAKE_HA:g} ha or more, or camp: m walked + {CLIMB_M:g} × m climbed (×50; 255 beyond 12.7 km or cut off)",
+        ),
         ("distInlet", q8(d_inlet, 10), 10, "m to a stream inlet or outlet on a lake (×10)"),
         ("lakeId", lake_id, 1, "lake index into lakes[] (0 land)"),
         ("distShore", q8(d_shore, 10), 10, "water cells: m to land (×10)"),

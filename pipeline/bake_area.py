@@ -182,6 +182,8 @@ def plan(a: dict) -> list[Step]:
         adapter_step("pointcloud", "pointcloud", a),
         Step("vegstructure", "3.14", [["build_vegstructure.py"]], skip=None if bake.get("pointcloud") else "no point cloud for this area", needs=("pointcloud",)),
         Step("habitat", "3.14", [["build_habitat.py"]], needs=("rasters", "vectors", "forest"), check=inputs("forest", "wetland", "watercourse")),
+        # the area's habitat profile (treeline, ecoregion, what the stand map is good for) into its file
+        Step("profile", "3.14", [["build_profile.py"]], needs=("habitat",)),
         Step(
             "bush",
             "3.14",

@@ -16,7 +16,8 @@ import { onWeatherGrid } from '../weather/windGrid'
 import { drainWindow, groundAirAround, loadMicro, onMicro, REGIME_TIP } from '../weather/micro/model'
 import { useWindChecks } from '../weather/micro/windChecks'
 import { activityBar } from '../spots/grades'
-import { FISH_TARGETS, HUNT_TARGETS, TARGET_NAMES, type Target } from '../spots/types'
+import { FISH_TARGETS, HUNT_TARGETS, isFish, TARGET_NAMES, type Target } from '../spots/types'
+import { targetStanding } from '../spots/profile'
 import { agoLabel, clockShort, dayLabel, dayShort, floorHourMs, hourAmPm, hourMinShort, hourShort, isToday, startOfDayMs } from '../time'
 import { IconCheck, IconChevronDown, IconChevronUp, IconDots, IconGrid, IconGridOff, IconHeat, IconPin, IconSun } from './icons'
 import AppMenu from './AppMenu'
@@ -586,6 +587,7 @@ export default function WeatherStrip() {
       }}
     >
       {TARGET_NAMES[t]}
+      {!isFish(t) && targetStanding(t).word && <span className="dim"> · {targetStanding(t).word}</span>}
       {t === target && (
         <span className="wx-menu-check">
           <IconCheck size={16} />
@@ -607,7 +609,8 @@ export default function WeatherStrip() {
         </button>
         {quarryOpen && (
           <div className="menu-pop" role="menu" aria-label="What you are after">
-            {HUNT_TARGETS.map(quarryRow)}
+            {/* only what is here and may be hunted (spots/profile.ts): no deer in the BC mountains */}
+            {HUNT_TARGETS.filter((t) => targetStanding(t).show).map(quarryRow)}
             <div className="wx-menu-rule" />
             {FISH_TARGETS.map(quarryRow)}
           </div>

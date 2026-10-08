@@ -186,5 +186,18 @@
         "vintage": "generated 2026-10-08"
       }
     }
+  },
+  "profile": {
+    "checked": "2026-10-08",
+    "treeline": {
+      "m": 1390,
+      "alpineShare": 0.129,
+      "from": "the 98th percentile of the treed cells' elevation in the habitat grid; 13% of the land is above it, 82% of that open",
+      "north": 1380,
+      "south": 1350
+    },
+    "ecoregion": { "cec1": "6", "cec2": "6.1", "cec3": "6.1.5", "name": "Watson Highlands", "family": "Boreal Cordillera" },
+    "north": true,
+    "stands": { "shrubHeight": false, "leadSpecies": false }
   }
 }

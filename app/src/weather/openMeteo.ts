@@ -38,6 +38,9 @@ export interface PointForecast {
     precipProbPct: (number | null)[]
     precipMm: number[]
     snowCm: number[]
+    /** snow on the ground, cm (Open-Meteo's blend; absent in forecasts
+     *  cached before it was asked for, and in satellite hours) */
+    snowDepthCm?: (number | null)[]
     cloudPct: number[]
     pressureHpa: number[]
   }
@@ -65,6 +68,8 @@ export interface HourRow {
   precipProbPct: number | null
   precipMm: number
   snowCm: number
+  /** snow on the ground, cm; null where the forecast does not say */
+  snowDepthCm: number | null
   cloudPct: number
   pressureHpa: number
   /** True where the hour's numbers are HRDPS's own. */
@@ -83,6 +88,7 @@ const HOURLY = [
   'precipitation_probability',
   'precipitation',
   'snowfall',
+  'snow_depth',
   'weather_code',
   'cloud_cover',
   'surface_pressure',
@@ -90,7 +96,8 @@ const HOURLY = [
   'wind_direction_10m',
   'wind_gusts_10m',
 ]
-const HRDPS_HOURLY = HOURLY.filter((h) => h !== 'precipitation_probability')
+// HRDPS's own hours leave the snow on the ground to the blend
+const HRDPS_HOURLY = HOURLY.filter((h) => h !== 'precipitation_probability' && h !== 'snow_depth')
 
 function cacheKey(lon: number, lat: number) {
   return `${CACHE_PREFIX}${lon.toFixed(2)},${lat.toFixed(2)}`
@@ -172,6 +179,8 @@ export async function fetchPointForecast(lon: number, lat: number): Promise<Poin
       precipProbPct: (h.precipitation_probability as (number | null)[]) ?? (h.time as string[]).map(() => null),
       precipMm: h.precipitation as number[],
       snowCm: h.snowfall as number[],
+      // metres on the wire
+      snowDepthCm: (h.snow_depth as (number | null)[] | undefined)?.map((v) => (v == null ? null : v * 100)),
       cloudPct: h.cloud_cover as number[],
       pressureHpa: h.surface_pressure as number[],
     },
@@ -337,6 +346,7 @@ export function hourRow(f: PointForecast, i: number): HourRow {
     precipProbPct: h.precipProbPct[i] ?? null,
     precipMm: h.precipMm[i],
     snowCm: h.snowCm[i],
+    snowDepthCm: h.snowDepthCm?.[i] ?? null,
     cloudPct: h.cloudPct[i],
     pressureHpa: h.pressureHpa[i],
     hrdps: i < (f.hrdpsHours ?? 0) || sat,

@@ -51,8 +51,21 @@ THUMB_W = 260
 MODEL_FIT = {
     "ON": ("ok", "Rules written for boreal Ontario"),
     "QC": ("warn", "Rules from Ontario's guides; the same boreal, not checked against Québec sightings"),
-    "BC": ("warn", "Rules from Ontario's guides; spruce-willow-birch and alpine country, not checked against BC sightings"),
+    "BC": ("warn", "Rules from Ontario's guides with the place's profile (treeline band, northern regrowth, grizzly, ptarmigan); not checked against BC sightings"),
+    "YT": ("warn", "Rules from Ontario's guides with the place's profile (treeline band, northern regrowth, grizzly, ptarmigan); not checked against Yukon sightings"),
 }
+REGS_TS = ROOT / "app" / "src" / "spots" / "regs.ts"
+
+
+def regs_zones() -> set[tuple[str, str]]:
+    """(jurisdiction, zone) pairs the species table (spots/regs.ts) has a book read in for."""
+    import re
+
+    out: set[tuple[str, str]] = set()
+    text = REGS_TS.read_text(encoding="utf-8") if REGS_TS.exists() else ""
+    for j, zones in re.findall(r"jurisdiction: '([A-Z]+)',\s*zones: \[([^\]]*)\]", text):
+        out.update((j, z) for z in re.findall(r"'([^']+)'", zones))
+    return out
 LEAF_LAT = 52.0  # north of this, the default leaf dates (Ontario's boreal) run late
 HRDPS_EVERY_S = 6 * 3600  # how often --online asks again
 _HRDPS: dict[str, tuple[float, tuple[str, str]]] = {}
@@ -233,6 +246,22 @@ def check_model(ar: Area) -> None:
     j = ar.a.get("jurisdiction", "?")
     st, why = MODEL_FIT.get(j, ("warn", f"rules written for boreal Ontario, not checked in {j}'s country"))
     ar.add("Model", "Moose model", st, why)
+    # the place's profile (pipeline/build_profile.py) and its zone in the species table (spots/regs.ts)
+    p = ar.a.get("profile")
+    if not p:
+        ar.add("Model", "Profile", "warn", "no habitat profile: scored as boreal Ontario; bake_area.py --only profile")
+    else:
+        tl = p.get("treeline")
+        eco = p.get("ecoregion") or {}
+        words = [f"{eco.get('cec3', '?')} {eco.get('name', '')}".strip(), f"treeline {tl['m']} m" if tl else "forest to the tops", "the north's calendars" if p.get("north") else "boreal calendars"]
+        if not p.get("stands", {}).get("leadSpecies", True):
+            words.append("lead species inferred")
+        ar.add("Model", "Profile", "ok", f"{'; '.join(words)} (worked out {p.get('checked', '?')})")
+    zone = (ar.a.get("zone") or {}).get("name", "?")
+    if (j, zone) in regs_zones():
+        ar.add("Model", "Species and seasons", "ok", f"{j} {zone} is in the species table")
+    else:
+        ar.add("Model", "Species and seasons", "info", f"{j} {zone} is not in the species table (app/src/spots/regs.ts): every target shown, no season lines")
 
 
 def check_deploy(ar: Area) -> None:

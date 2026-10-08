@@ -24,6 +24,8 @@ export interface Conditions {
   /** largest swing of direction (degrees) over the next 4 hours */
   windShiftDeg: number
   tempC: number
+  /** snow on the ground at the forecast point, cm; null where unknown */
+  snowDepthCm: number | null
   cloudPct: number
   precipMmH: number
   weatherCode: number
@@ -255,6 +257,7 @@ export function deriveConditions(f: PointForecast, timeMs: number, recent: Recen
     windPersistH: persist,
     windShiftDeg: shift,
     tempC: now.tempC,
+    snowDepthCm: now.snowDepthCm,
     cloudPct: now.cloudPct,
     precipMmH: now.precipMm,
     weatherCode: now.weatherCode,

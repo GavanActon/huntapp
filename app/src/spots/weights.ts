@@ -22,6 +22,7 @@ export type WeightKey =
   | 'scent'
   | 'visibility'
   | 'access'
+  | 'pressure'
   | 'log'
   // the habitat
   | 'browse'
@@ -29,6 +30,7 @@ export type WeightKey =
   | 'shore'
   | 'funnel'
   | 'heat'
+  | 'terrain'
 
 export type WeightGroup = 'day' | 'site' | 'habitat'
 
@@ -55,12 +57,14 @@ export const WEIGHT_DEFS: WeightDef[] = [
   { key: 'scent', label: 'Scent', desc: 'Wind and thermals against the feeding side', group: 'site', hunt: true },
   { key: 'visibility', label: 'Downwind view', desc: 'How far you see downwind through the bush, where a circling animal shows', group: 'site', hunt: true },
   { key: 'log', label: 'Your log', desc: 'Fresh sightings pull the map toward them; blank sits push a little', group: 'site', hunt: true },
-  { key: 'access', label: 'Roads and landings', desc: 'How reachable the spot is; turn off to ignore roads', group: 'site', hunt: true },
+  { key: 'access', label: 'Roads and landings', desc: 'How reachable the spot is, and how far the meat has to come out; turn off to ignore roads', group: 'site', hunt: true },
+  { key: 'pressure', label: 'Road traffic', desc: 'Moose and bear shy from a busy highway and the roads', group: 'site', hunt: true },
   { key: 'browse', label: 'Browse and cover', desc: 'The stand itself: species, age, cuts and burns', group: 'habitat', hunt: true },
   { key: 'edge', label: 'Edges', desc: 'Browse near cover, cover near browse', group: 'habitat', hunt: true },
   { key: 'shore', label: 'Shores and wetlands', desc: 'Lakes, beaver meadows, cuts running to water', group: 'habitat', hunt: true },
   { key: 'funnel', label: 'Funnels', desc: 'Saddles, necks of land, benches', group: 'habitat', hunt: true },
   { key: 'heat', label: 'Shade in heat', desc: 'Warm days push moose into conifer', group: 'habitat', hunt: true },
+  { key: 'terrain', label: 'Height and slope', desc: 'The treeline band in the mountains, the snow, steep ground', group: 'habitat', hunt: true },
 ]
 
 export type Weights = Record<WeightKey, number>
