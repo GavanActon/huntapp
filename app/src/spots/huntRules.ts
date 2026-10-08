@@ -50,6 +50,10 @@ export interface HuntBands {
   through30: Float32Array | null
   /** ground elevation, m; null with a habitat file baked without it */
   elev: Uint16Array | null
+  /** stand height, m (what a sight line has to clear to look over the trees) */
+  height: Uint8Array | null
+  /** the view from every cell, m, by 15° sector, filled as asked (viewAt) */
+  views: (Uint8Array | undefined)[]
 }
 
 export function huntBands(h: Habitat): HuntBands {
@@ -78,6 +82,8 @@ export function huntBands(h: Habitat): HuntBands {
     distThick: h.has('distThick') ? u8('distThick') : null,
     through30: h.has('thick') ? transmission(u8('thick'), u8('cover')) : null,
     elev: h.has('elev') && h.scale('elev') === 1 ? (h.raw('elev') as Uint16Array) : null,
+    height: h.has('height') && h.scale('height') === 1 ? u8('height') : null,
+    views: [],
   }
 }
 
@@ -90,23 +96,27 @@ function transmission(thick: Uint8Array, cover: Uint8Array): Float32Array {
   return out
 }
 
-/** Cell steps along a bearing, 30 m apart out to 240 m, per whole degree:
- *  the same for every cell, so worked out once. */
-const stepCache = new Map<number, Int32Array>()
-function stepsFor(h: Habitat, bearing: number): Int32Array {
+/** Cell steps along a bearing, 30 m apart out to 240 m, per whole degree,
+ *  with how far out each one's cell really is (a diagonal step lands
+ *  further than 30 m): the same for every cell, so worked out once. */
+const stepCache = new Map<number, { st: Int32Array; d: Float32Array }>()
+function stepsFor(h: Habitat, bearing: number): { st: Int32Array; d: Float32Array } {
   const key = ((Math.round(bearing) % 360) + 360) % 360
-  let st = stepCache.get(key)
-  if (!st) {
-    st = new Int32Array(16)
+  let s = stepCache.get(key)
+  if (!s) {
+    const st = new Int32Array(16)
+    const d = new Float32Array(8)
     const rad = (key * Math.PI) / 180
     for (let k = 0; k < 8; k++) {
       const m = 30 * (k + 1)
       st[2 * k] = Math.round((-Math.cos(rad) * m) / h.cellM[1])
       st[2 * k + 1] = Math.round((Math.sin(rad) * m) / h.cellM[0])
+      d[k] = Math.max(1, Math.hypot(st[2 * k] * h.cellM[1], st[2 * k + 1] * h.cellM[0]))
     }
-    stepCache.set(key, st)
+    s = { st, d }
+    stepCache.set(key, s)
   }
-  return st
+  return s
 }
 
 /** How far you see through bush of thickness t (0..1), metres: about 80 m
@@ -124,25 +134,113 @@ function hidingCover(b: HuntBands, i: number): { m: number; thick: boolean } {
   return t < conifer ? { m: t, thick: true } : { m: conifer, thick: false }
 }
 
-/** Expected view along a bearing from cell i, m: the light that gets
- *  through each 30 m of bush, summed, out to 240 m. Water and open bog
- *  are seen across. */
+/** The hunter's eye over the ground, and the height of what you look for
+ *  (the body of a standing moose or deer), m. */
+const EYE_M = 1.5
+const MARK_M = 1.5
+/** The top of the eye-level bush the thickness band measures (0.5–3 m), m. */
+const BUSH_TOP_M = 3
+/** The ground band is in whole metres, so a sight line this close to eye
+ *  height over a cell is taken as level with it: rounding never makes a
+ *  rise to hide behind or a dip to look over. */
+const NOISE_M = 1
+/** Below this share of light, a step is not seen. */
+const SEEN_MIN = 0.03
+
+/** the cells along one sight line (viewM, one call at a time) */
+const lineCells = new Int32Array(8)
+
+/** Expected view along a bearing from cell i, m: for each 30 m step out to
+ *  240 m, the chance you see a moose standing there, summed. The bush
+ *  between passes a share of light per cell (water and open bog are seen
+ *  across), and the ground decides where the sight line runs: a rise
+ *  between you and the step hides it, and where the line runs high over a
+ *  cell (off a ridge, across a dip) it passes over that cell's bush, all
+ *  of it once it clears the stand's top. On level ground, or with no
+ *  ground band, it is the bush alone. */
 export function viewM(b: HuntBands, h: Habitat, i: number, bearing: number): number {
   const tr = b.through30!
-  const st = stepsFor(h, bearing)
-  const r0 = (i / h.cols) | 0
-  const c0 = i - r0 * h.cols
-  let tau = Math.sqrt(tr[i]) // half your own cell
+  const { st, d } = stepsFor(h, bearing)
+  const cols = h.cols
+  const r0 = (i / cols) | 0
+  const c0 = i - r0 * cols
+  const el = b.elev
+  const ht = b.height
+  const own = Math.sqrt(tr[i]) // half your own cell
+  let tau = own // the light through every cell so far, the line at eye height over each
   let range = 0
+  const eye = el ? el[i] + EYE_M : 0
+  // the slopes a sight line keeps between to run level (within NOISE_M of
+  // eye height) over every cell so far: such a line sees what the flat does
+  let lo = -Infinity
+  let hi = Infinity
   for (let k = 0; k < 8; k++) {
     const rr = r0 + st[2 * k]
     const cc = c0 + st[2 * k + 1]
-    if (rr < 0 || cc < 0 || rr >= h.rows || cc >= h.cols) break
-    range += tau * 30
-    tau *= tr[rr * h.cols + cc]
-    if (tau < 0.03) break
+    if (rr < 0 || cc < 0 || rr >= h.rows || cc >= cols) break
+    const at = rr * cols + cc
+    if (!el) {
+      range += tau * 30
+      tau *= tr[at]
+      if (tau < SEEN_MIN) break
+      continue
+    }
+    lineCells[k] = at
+    const z = el[at] - eye
+    const dk = d[k]
+    const a = (z + MARK_M) / dk // the sight line to this step, rise per metre
+    if (a <= hi && (a >= lo || tau < SEEN_MIN)) {
+      // level the whole way: the bush alone; or lost in it with nothing to look over
+      if (a >= lo && tau >= SEEN_MIN) range += tau * 30
+    } else {
+      // the line runs high or low somewhere: cell by cell, at its own height
+      let p = own
+      for (let j = 0; j < k; j++) {
+        const cj = lineCells[j]
+        const c = a * d[j] - (el[cj] - eye) // the line's height over this cell's ground
+        if (c <= EYE_M + NOISE_M) {
+          p *= tr[cj]
+          // the ground rises into the line: hidden (softly, by the rounding)
+          if (c < EYE_M - NOISE_M) p *= c > -NOISE_M ? (c + NOISE_M) / EYE_M : 0
+        } else {
+          // high over the cell: through less of its bush, none once over the top
+          const top = ht && ht[cj] > BUSH_TOP_M ? ht[cj] : BUSH_TOP_M
+          if (c < top + NOISE_M) p *= Math.pow(tr[cj], (top + NOISE_M - c) / (top - EYE_M))
+        }
+        if (p < SEEN_MIN) break
+      }
+      if (p >= SEEN_MIN) range += p * 30
+    }
+    tau *= tr[at]
+    const l = (z + EYE_M - NOISE_M) / dk
+    const u = (z + EYE_M + NOISE_M) / dk
+    if (l > lo) lo = l
+    if (u < hi) hi = u
   }
   return range
+}
+
+/** The view is kept by 15° sector: the downwind arc's ±30° is two sectors
+ *  either side, and 15° moves a step at 240 m by about one cell. */
+const SECTOR_DEG = 15
+const SECTORS = 360 / SECTOR_DEG
+
+/** viewM at the nearest 15° sector, kept in whole metres. Over the ground
+ *  it costs several times the bush-only view, and a pass asks three
+ *  bearings of every cell; each cell's own ground wind lands in the same
+ *  few sectors pass after pass (a weather sweep, another quarry, the next
+ *  hour), so each cell works a sector out once. A sector's grid is made
+ *  when first asked (~0.3–0.4 MB; 24 at most). */
+export function viewAt(b: HuntBands, h: Habitat, i: number, bearing: number): number {
+  const s = ((Math.round(bearing / SECTOR_DEG) % SECTORS) + SECTORS) % SECTORS
+  let v = b.views[s]
+  if (!v) v = b.views[s] = new Uint8Array(h.size).fill(255)
+  let m = v[i]
+  if (m === 255) {
+    m = Math.min(254, Math.round(viewM(b, h, i, s * SECTOR_DEG)))
+    v[i] = m
+  }
+  return m
 }
 
 const OPEN_COVER = new Set<number>([COVER.water, COVER.openWet, COVER.regen, COVER.shrub, COVER.barren, COVER.road])
@@ -546,16 +644,17 @@ function siteCore(t: HuntTarget, b: HuntBands, h: Habitat, i: number, c: Conditi
 
   // the view: can you see what circles downwind (a grouse flushes any
   // way, so for grouse it is the view all round)? From the bush
-  // thickness where the bake has it, else from open cover classes
+  // thickness and the ground where the bake has them, else from open
+  // cover classes
   const down = (windDir + 180) % 360
   let vis: number
   let visLabel = ''
   if (b.through30) {
-    // the bearings written out, each as (br + 360) % 360 as before: no array a cell
+    // the bearings written out, no array a cell (viewAt wraps them)
     const range =
       t === 'grouse'
-        ? (viewM(b, h, i, 0) + viewM(b, h, i, 90) + viewM(b, h, i, 180) + viewM(b, h, i, 270)) / 4
-        : (viewM(b, h, i, (down - 30 + 360) % 360) + viewM(b, h, i, (down + 360) % 360) + viewM(b, h, i, (down + 30 + 360) % 360)) / 3
+        ? (viewAt(b, h, i, 0) + viewAt(b, h, i, 90) + viewAt(b, h, i, 180) + viewAt(b, h, i, 270)) / 4
+        : (viewAt(b, h, i, down - 30) + viewAt(b, h, i, down) + viewAt(b, h, i, down + 30)) / 3
     // a sitter needs the view; a grouse hunter walks the thick and flushes
     // birds out of it, so for grouse thick bush costs a shot, not the spot
     vis = t === 'grouse' ? 0.82 + 0.18 * Math.min(1, range / 60) : 0.6 + 0.4 * Math.min(1, range / 100)

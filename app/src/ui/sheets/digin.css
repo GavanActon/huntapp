@@ -166,33 +166,9 @@ button.pp-game {
   line-height: 1.35;
 }
 
-/* the eight distances: two per line, the point bold */
-.digin-see {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px 8px;
-  font-size: calc(13px * var(--ui-scale));
-  color: var(--c-text);
-  font-variant-numeric: tabular-nums;
-}
-
-.digin-see > span {
-  display: flex;
-  gap: 5px;
-  white-space: nowrap;
-}
-
-.digin-see b {
-  min-width: 2.2em;
-  font-weight: 700;
-}
-
-.digin-see .open {
-  color: var(--c-good);
-}
-
-.digin-see .thick {
-  color: var(--c-text-dim);
+/* a row that only says (Sight lines): no press shade, nothing opens */
+div.digin-row:active {
+  background: none;
 }
 
 /* Set up here (primary), Route in */

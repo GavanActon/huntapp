@@ -197,6 +197,18 @@ rock and road the view is taken as 400 m.
    through, summed out to 240 m. Multiplier 0.6 with no view to 1.0 at
    100 m. For grouse, the view all round and a softer 0.82–1.0: the grouse
    hunter walks the thick and flushes birds out of it.
+   Over the ground (the habitat's elevation, whole metres): the sight line
+   runs from the eye (1.5 m) to a moose's body (1.5 m) at each step. A rise
+   between hides the step, and where the line runs more than 1 m above eye
+   height over a cell (off a ridge onto a flat, across a dip) it passes
+   through less of that cell's bush, none once it clears the stand height
+   (at least the 3 m bush layer). Within 1 m of eye height the ground counts
+   as level, so rounding never makes a rise or a dip. On the Pickle grid
+   86 % of sight lines are unchanged and 2 % change band (open / partly /
+   thick), mostly hills hiding or opening the view. Dig in's Sight lines
+   row says it in words ("open NE, E · thick W"), not metres. The scoring
+   keeps each cell's view by 15° sector, since working it out over the
+   ground costs several times the bush alone.
 2. *Hiding cover* for the moose, deer and bear edge terms: the nearer of
    tall dense conifer and any thick patch (thickness ≥ 0.7, half a hectare
    up). A moose beds in a young thicket or an alder run as readily as in

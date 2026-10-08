@@ -25,8 +25,8 @@ import './digin.css'
 /**
  * Dig in: the tapped spot, one sheet. Where it is from camp, its score
  * with the three reasons that made it (Scoring › for the arithmetic and
- * the knobs), what the wind does to scent there through the day and how
- * far you see each way, each opened in place, then Set up here and Route
+ * the knobs), what the wind does to scent there through the day (opened in
+ * place), which ways the bush is open or thick, then Set up here and Route
  * in. The point is the store's `digIn` (the white ring), never a place
  * selection, so the heat, the pins and the strip stay where they are.
  */
@@ -105,7 +105,6 @@ export default function DigInSheet({ lon, lat }: { lon: number; lat: number }): 
   const [said, setSaid] = useState<{ row: 'share' | 'copy'; text: string } | null>(null)
   const saidTimer = useRef<number | undefined>(undefined)
   const [windOpen, setWindOpen] = useState(false)
-  const [seeOpen, setSeeOpen] = useState(false)
   // the ground model, the layering profile and the wind grid arrive on their own time
   const [tick, setTick] = useState(0)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -159,14 +158,18 @@ export default function DigInSheet({ lon, lat }: { lon: number; lat: number }): 
 
   // ---- how far you see (tick: the grid may land after the sheet opens)
   const lines = useMemo(() => (fish ? null : sightLines(lon, lat)), [fish, lon, lat, tick])
+  // "open NE, E · thick W": which ways you see out (80 m or more) and which
+  // the bush or the ground closes in (under 35 m), the rest unsaid. Words,
+  // not metres: the bush is a 30 m grid's guess, not a rangefinder
   const open = lines?.filter((l) => l.m >= 80).map((l) => compass(l.bearing)) ?? []
   const thick = lines?.filter((l) => l.m < 35).map((l) => compass(l.bearing)) ?? []
-  const dist = (m: number) => (units === 'imperial' ? `${Math.round(m * 1.0936)} yd` : `${Math.round(m)} m`)
-  // "80 m+ NE, E · under 35 m W": how far the bush lets you see, by direction
-  const seeWords = lines
-    ? [open.length ? `${dist(80)}+ ${open.join(', ')}` : '', thick.length ? `under ${dist(35)} ${thick.join(', ')}` : ''].filter(Boolean).join(' · ') ||
-      `${dist(Math.min(...lines.map((l) => l.m)))}–${dist(Math.max(...lines.map((l) => l.m)))} all round`
-    : ''
+  const seeWords = !lines
+    ? ''
+    : open.length === lines.length
+      ? 'open all round'
+      : thick.length === lines.length
+        ? 'thick all round'
+        : [open.length ? `open ${open.join(', ')}` : '', thick.length ? `thick ${thick.join(', ')}` : ''].filter(Boolean).join(' · ') || 'partly open all round'
 
   // ---- the ⋯ menu
   const pin = () => {
@@ -223,14 +226,6 @@ export default function DigInSheet({ lon, lat }: { lon: number; lat: number }): 
         <span className="dim">{opened ? '⌄' : '›'}</span>
       </button>
     )
-  const seeRow = (opened: boolean) => (
-    <button className="digin-row" aria-expanded={opened} onClick={() => setSeeOpen(!opened)}>
-      <span>
-        <b>Sight lines</b> <span className="dim">·</span> {seeWords}
-      </span>
-      <span className="dim">{opened ? '⌄' : '›'}</span>
-    </button>
-  )
 
   return (
     <div className="digin">
@@ -327,23 +322,14 @@ export default function DigInSheet({ lon, lat }: { lon: number; lat: number }): 
           </div>
         )}
 
-        {/* ---- See: how far, each way ---- */}
-        {lines &&
-          (!seeOpen ? (
-            seeRow(false)
-          ) : (
-            <div className="digin-open">
-              {seeRow(true)}
-              <div className="digin-see">
-                {lines.map((l) => (
-                  <span key={l.bearing} className={l.m >= 80 ? 'open' : l.m < 35 ? 'thick' : undefined}>
-                    <b>{compass(l.bearing)}</b>
-                    {dist(l.m)}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))}
+        {/* ---- Sight lines: which ways are open, which thick ---- */}
+        {lines && (
+          <div className="digin-row">
+            <span>
+              <b>Sight lines</b> <span className="dim">·</span> {seeWords}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="digin-acts">

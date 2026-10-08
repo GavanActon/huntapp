@@ -67,7 +67,7 @@ Bush thickness comes from the LiDAR point cloud as open, light, thick or thicket
 
 - **Bush** The Bush view colours the brush between 0.5 and 3 m, from open to thicket.
 - **Range** The Bow view is your range: open lanes stay clear and thick bush goes dark, so you know where you'll be able to see and shoot.
-- **Sight lines** Dig in on any spot for how far you'll see in eight directions, in metres.
+- **Sight lines** Dig in on any spot for which ways you'll see out and which the bush or a rise closes in.
 - **Going** Routes and the moose scores both read it: thick bush is slow and loud to walk, and it's cover.
 Eye-level cover isn't the canopy. A closed canopy shades the brush out, while a cut or a burn fills in with suckers and saplings. Groundwind counts the LiDAR returns between 0.5 and 3 m against everything below 3 m, cell by 10 m cell. Where the point cloud hasn't been fetched yet, it estimates the brush from each stand's age and makeup.
 

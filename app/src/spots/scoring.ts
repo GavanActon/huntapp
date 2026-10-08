@@ -342,7 +342,7 @@ export function weighed(p: Part, w: Weights): number {
 }
 
 /** How far you see from a point on bearings 0, 45, …, 315, in metres
- *  (Dig in's "See" row); null without the bush-thickness band
+ *  (Dig in's "Sight lines" row says it in words); null without the bush-thickness band
  *  (`through30 == null`) or off the grid. */
 export function sightLines(lon: number, lat: number): { bearing: number; m: number }[] | null {
   const h = habitat()
