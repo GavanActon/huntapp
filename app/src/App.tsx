@@ -180,11 +180,11 @@ export default function App() {
       <div className="toparea">
         <TopBar />
         <WeatherStrip />
-        {topCard ? <TopCardHost /> : <LiveCard />}
+        {!EXPLORE && (topCard ? <TopCardHost /> : <LiveCard />)}
       </div>
       {!sheetOpen && !formUp && (
         <div className="leftstack">
-          {!viewMenuOpen && <HotColumn side="far" />}
+          {!viewMenuOpen && !EXPLORE && <HotColumn side="far" />}
           {!measuring && (
             <div className="leftfoot">
               <ViewPill />

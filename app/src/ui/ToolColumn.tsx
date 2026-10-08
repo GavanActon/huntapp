@@ -7,6 +7,7 @@ import { useGpsStore } from '../tracking/gpsStore'
 import HotColumn from './HotColumn'
 import { IconCompass, IconLocate } from './icons'
 import './ground.css'
+import { EXPLORE } from '../explore'
 
 /**
  * The near column, under the thumb: the compass on top only while the map
@@ -39,7 +40,7 @@ export default function ToolColumn(): JSX.Element {
           <IconCompass rotation={-Math.round(bearing)} />
         </button>
       )}
-      <HotColumn side="near" />
+      {!EXPLORE && <HotColumn side="near" />}
       <button className={locateClass} style={locating && !follow ? { opacity: 0.8, outline: '1.5px solid var(--c-accent)' } : undefined} onClick={toggleLocate} aria-label={locateLabel}>
         <IconLocate />
       </button>

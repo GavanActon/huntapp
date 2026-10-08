@@ -26,6 +26,7 @@ import { useLookTick } from './useLookTick'
 import { useTapOff } from './tapOff'
 import { useLoadProgress } from '../offline/loadProgress'
 import './strip.css'
+import { EXPLORE } from '../explore'
 
 /**
  * The outlook strip at the top of the map. Its head is what you are after
@@ -598,6 +599,8 @@ export default function WeatherStrip() {
   // and the rest
   const head = (
     <div className={`wx-head${{ normal: '', large: ' wx-head-lg', xlarge: ' wx-head-xl' }[stripButtons]}`}>
+      {/* Explore (docs/EXPLORE.md): no grids, no heat, no hours; the marks and the menu stay */}
+      {!EXPLORE && (
       <span className="wx-quarry" ref={quarryRef}>
         <button className="wx-chip" onClick={() => setQuarryOpen((o) => !o)} aria-haspopup="menu" aria-expanded={quarryOpen}>
           {TARGET_NAMES[target]} <span className="dim">▾</span>
@@ -610,6 +613,8 @@ export default function WeatherStrip() {
           </div>
         )}
       </span>
+      )}
+      {!EXPLORE && (
       <span className="wx-quarry" ref={heatRef}>
         <button
           className={`wx-heat${heat ? ' on' : ''}${heatMenu ? ' held' : ''}`}
@@ -647,12 +652,17 @@ export default function WeatherStrip() {
           </div>
         )}
       </span>
+      )}
+      {!EXPLORE && (
       <button className={`wx-heat wx-theme${outdoor ? ' on' : ''}`} onClick={() => setOutdoor(!outdoor)} aria-pressed={outdoor} aria-label="Outdoor · light chrome for sun">
         <IconSun size={ico} />
       </button>
+      )}
+      {!EXPLORE && (
       <button className={`wx-heat wx-theme${hotHidden ? ' on' : ''}`} onClick={() => setHotHidden(!hotHidden)} aria-pressed={hotHidden} aria-label={hotHidden ? 'Show the map buttons' : 'Hide the map buttons'}>
         {hotHidden ? <IconGridOff size={ico} /> : <IconGrid size={ico} />}
       </button>
+      )}
       <span className="wx-quarry" ref={marksRef}>
         <button
           className={`wx-heat wx-theme${marksOn ? ' on' : ''}${marksMenu ? ' held' : ''}`}
@@ -682,13 +692,19 @@ export default function WeatherStrip() {
           </div>
         )}
       </span>
-      {f ? <span className="wx-spacer" /> : <span className="wx-spacer wxstrip-empty">{emptyText}</span>}
-      {planTimeMs != null && (
+      {EXPLORE ? (
+        <span className="wx-spacer wxstrip-empty">Explore · anywhere in Canada</span>
+      ) : f ? (
+        <span className="wx-spacer" />
+      ) : (
+        <span className="wx-spacer wxstrip-empty">{emptyText}</span>
+      )}
+      {!EXPLORE && planTimeMs != null && (
         <button className="wx-now" onClick={() => setPlanTime(null)}>
           Now
         </button>
       )}
-      {!stripOpen && (
+      {!EXPLORE && !stripOpen && (
         <button className="wx-open" onClick={() => setStripOpen(true)} aria-label="Open the strip">
           <IconChevronDown size={18} />
         </button>
@@ -711,7 +727,7 @@ export default function WeatherStrip() {
         />
       )}
       {head}
-      {f && (
+      {f && !EXPLORE && (
         <>
           {stripOpen && (
           <div className="wxstrip-days">
