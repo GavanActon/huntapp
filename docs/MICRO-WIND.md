@@ -577,8 +577,10 @@ nothing that matters: at that cell the mechanical part stays under
   you look at a spot seen from afar, else the compass's heading, else the
   track's course while walking (0.6 kn and a fix under 90 s old); or an
   arrow on the rose. The last
-  given wins; the middle shows the way and a tap on it (or on the lit
-  arrow) takes it back, so ahead can be backed out of; there is no
+  given wins and the lit arrow again keeps it (for an hour a second tap
+  cleared it, which read as the tap not taking); the lit arrow is solid
+  like a chip picked; the middle shows the way as a word and a tap on it
+  clears, so ahead can be backed out of; there is no
   second arrow, and with nothing to read ahead from Save asks for an
   arrow. The rose is the map's compass, turned only as the map is (its
   arrows used to turn with the live heading and slid out from under taps,

@@ -13,7 +13,8 @@
   color: var(--c-text-dim); display: flex; flex-direction: column; align-items: center; justify-content: center;
   font-size: 10px; font-weight: 600; gap: 1px; cursor: pointer; padding: 0;
 }
-.gc-dir.gc-on { background: var(--c-accent-dim); border-color: var(--c-accent); color: var(--c-accent); }
+/* the way given: solid, like a chip picked, and a touch bigger (the washed accent read as not picked: Gavan, 2026-10-08) */
+.gc-dir.gc-on { background: var(--c-accent); border-color: var(--c-accent); color: var(--c-on-accent); transform: rotate(var(--a)) translateY(-64px) rotate(calc(-1 * var(--a))) scale(1.15); box-shadow: 0 0 0 3px var(--c-accent-dim); }
 .gc-dir:disabled { opacity: 0.35; }
 .gc-rose-mid { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 12px; text-align: center; }
 .gc-strength { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -50,12 +51,14 @@
 }
 /* armed: the next tap on the map is what is ahead */
 .gc-lock.gc-lock-on { background: var(--c-accent); color: var(--c-on-accent); }
+.gc-lock.gc-lock-on b { font-size: 15px; font-weight: 700; }
+.gc-lock.gc-lock-on span { font-size: 10px; opacity: 0.85; }
 .gc-opts { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; }
 .pp-acts .pp-log { background: transparent; border: 1px solid var(--c-border-strong); color: var(--c-text); }
 /* the wind check's rose: north marked, the pick shown big in the middle, a Save that says what is missing */
 .gc-dir.gc-north { border-color: rgba(255, 120, 110, 0.7); }
 .gc-dir.gc-north span { color: #ff8a80; }
-.gc-dir.gc-on.gc-north span { color: var(--c-accent); }
+.gc-dir.gc-on.gc-north span { color: var(--c-on-accent); }
 .gc-rose .gc-dir { touch-action: manipulation; }
 /* a wind that swings: the shorter arc between the two arrows, a band under them */
 .gc-rose .gc-arc {

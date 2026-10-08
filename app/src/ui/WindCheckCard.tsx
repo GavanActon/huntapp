@@ -10,7 +10,7 @@ import { useAppStore } from '../state/appStore'
 import { requestCompass, startCompass, stopCompass, useCompass } from '../tracking/compass'
 import { useGpsStore } from '../tracking/gpsStore'
 import { useMapBearing } from '../map/mapBearing'
-import Rose, { Arrow, sector } from './Rose'
+import Rose, { Arrow } from './Rose'
 import ShareChecksAsk from './ShareChecksAsk'
 import { useTapOff } from './tapOff'
 import './ground.css'
@@ -28,8 +28,8 @@ import './ground.css'
  * default (tapping how hard with no way given takes it, no more taps: the
  * way you look at a spot seen from afar, else the compass's heading, else
  * your track while you walk), or an arrow on the rose. The last given
- * wins. The middle shows the way given and a tap on it takes it back, as
- * does a tap on the lit arrow, so "ahead" can be backed out of (Gavan:
+ * wins; the lit arrow again keeps it. The middle shows the way given as
+ * a word, and a tap on it clears, so "ahead" can be backed out of (Gavan:
  * "clicking ahead locks it in, I can't back out"). With nothing to read
  * ahead from, Save says so. A tap on the map closes the card (for an hour
  * that day it was the way the powder went; Gavan: "I should be able to
@@ -182,8 +182,9 @@ export default function WindCheckCard() {
     }
     setMissing(null)
   }
-  /** An arrow: that way. The lit arrow again: no way given. */
-  const tapArrow = (b: number) => setDir(dir != null && sector(dir) === b ? null : b)
+  /** An arrow: that way; the lit one again keeps it (a second tap used to
+   *  clear it, which read as the tap not taking: Gavan, 2026-10-08). */
+  const tapArrow = (b: number) => setDir(b)
 
   /** "ahead": the way the phone points. Seen from afar that is the way you
    *  look; else the compass's heading (held at the last reading it
@@ -417,13 +418,10 @@ export default function WindCheckCard() {
         {calm ? (
           <span className="gc-mid-word">calm</span>
         ) : dir != null ? (
-          // the way given: tap it to take it back
+          // the way given, in a word (an arrow here read as the arrow having moved); a tap takes it back
           <button className="gc-lock gc-lock-on" onClick={tapMiddle} aria-label="take the way back">
-            <Arrow toward={dir - bearing} size={24} />
-            <span>
-              {compass(dir)}
-              {via?.how === 'ahead' ? ' · ahead' : ''}
-            </span>
+            <b>{compass(dir)}</b>
+            <span>{via?.how === 'ahead' ? 'ahead · clear' : 'clear'}</span>
           </button>
         ) : (
           // "ahead": it goes the way the phone points, and that is the direction saved
