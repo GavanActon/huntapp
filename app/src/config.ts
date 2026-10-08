@@ -1,7 +1,7 @@
 // Central place for region + data-file configuration, all of it the active
 // area's (areas/index.ts). A new hunting area = a new app/src/areas/<id>.json
 // plus a pipeline run (docs/AREAS.md).
-import { ACTIVE_AREA, AREA_LIST, DEFAULT_AREA, areaById, exploreFromId, type AreaDef } from './areas'
+import { ACTIVE_AREA, AREA_LIST, DEFAULT_AREA, type AreaDef } from './areas'
 
 const AREA = ACTIVE_AREA
 /** What the core's fine relief was made from: NRCan's 1 m LiDAR unless the
@@ -260,8 +260,7 @@ export const PLACES: PlaceDef[] = AREA.presets.map((p) => ({ ...p }))
 /** The area's home (its first preset) as a chip names it: Camp at Pickle
  *  Lake, Shared spot at Lac Bailey. The area file's name, not the pin's:
  *  presets go back to the file on every load anyway. */
-// Explore has no presets: its home is the area it was entered from (placesStore does the same)
-const HOME_PRESET: PlaceDef = AREA.presets[0] ?? areaById(exploreFromId())?.presets[0] ?? { name: 'Home', lon: AREA.home.center[0], lat: AREA.home.center[1], kind: 'camp' }
+const HOME_PRESET: PlaceDef = AREA.presets[0] ?? { name: 'Home', lon: AREA.home.center[0], lat: AREA.home.center[1], kind: 'camp' }
 export const HOME_NAME = HOME_PRESET.name
 
 /** The home in a sentence: 'camp' as one says it, a common name with 'the'

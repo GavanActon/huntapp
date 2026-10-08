@@ -1,4 +1,4 @@
-import { ACTIVE_AREA, type AreaBox, type AreaDef } from '../areas'
+import type { AreaBox, AreaDef } from '../areas'
 import { REGION, TIMEZONE } from '../config'
 import { trackTime } from '../analytics'
 import { devlog } from '../devlog'
@@ -35,9 +35,25 @@ const KEY = keyOf(REGION.id)
 const MAX_AGE_MS = 60 * 60_000
 
 let grid: WindGrid | null = null
-/** Explore: the box the field is fetched over follows the view (explore/index.ts). */
+/** The box the field is fetched over when the view is away from the area
+ *  (explore/index.ts viewMoved): memory only, never the phone's copy, which
+ *  stays the area's own for camp with no signal. Null: the area's region. */
 let viewBox: AreaBox | null = null
-export function setWindBox(box: AreaBox): void {
+export function setWindBox(box: AreaBox | null): void {
+  if (!box) {
+    if (!viewBox) return
+    viewBox = null
+    grid = null
+    try {
+      const raw = localStorage.getItem(KEY)
+      if (raw) grid = JSON.parse(raw) as WindGrid
+    } catch {
+      /* fetched again below */
+    }
+    void ensureWeatherGrid()
+    for (const cb of gridListeners) cb()
+    return
+  }
   // a new fetch only once the centre has left the box there is
   if (viewBox) {
     const cx = (box.west + box.east) / 2
@@ -124,16 +140,18 @@ export async function fetchAreaWindGrid(area: AreaDef): Promise<boolean> {
  *  there is (possibly a stale copy, possibly null). */
 export function ensureWeatherGrid(): Promise<WindGrid | null> {
   if (grid && Date.now() - grid.fetchedAt < MAX_AGE_MS) return Promise.resolve(grid)
-  // Explore's region is the country: no field until the view says where (setWindBox)
-  if (ACTIVE_AREA.virtual && !viewBox) return Promise.resolve(grid)
   if (inflight) return inflight
-  inflight = fetchGrid(viewBox ?? REGION)
+  const box = viewBox
+  inflight = fetchGrid(box ?? REGION)
     .then((g) => {
       grid = g
-      try {
-        localStorage.setItem(KEY, JSON.stringify(g))
-      } catch {
-        /* ignore */
+      // the area's own field is kept for camp; a view's elsewhere is not
+      if (!box) {
+        try {
+          localStorage.setItem(KEY, JSON.stringify(g))
+        } catch {
+          /* ignore */
+        }
       }
       devlog('wind', `grid · ${g.time.length} h`)
       trackTime('wind_grid')

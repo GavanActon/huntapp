@@ -47,7 +47,6 @@ import { initSpotsLayer } from './spots/spotsLayer'
 import { initAreaArrival } from './areas/arrive'
 import AreaOffer from './ui/AreaOffer'
 import { initStatsWatch } from './stats/watch'
-import { EXPLORE, applyExploreView } from './explore'
 import TileCard from './explore/TileCard'
 import WhereTo from './explore/WhereTo'
 
@@ -108,6 +107,7 @@ export default function App() {
   const logging = useLogForm((s) => s.at != null)
   const hearing = useHeardForm((s) => s.open)
   const checking = useCheckForm((s) => s.at != null)
+  const EXPLORE = useAppStore((s) => s.exploreMode)
   const barRef = useRef<HTMLDivElement>(null)
   // a tall form in the bar (a moose heard, a wind check, an entry) would
   // ride the columns up over the strip and the live card: they wait for it
@@ -161,7 +161,6 @@ export default function App() {
     initStatsWatch()
     // last: location comes back on if it was on at the last look, and recording with it
     resumeLocation()
-    if (EXPLORE) applyExploreView()
     const on = () => setOnline(true)
     const off = () => setOnline(false)
     window.addEventListener('online', on)
@@ -183,7 +182,7 @@ export default function App() {
         {!EXPLORE && (topCard ? <TopCardHost /> : <LiveCard />)}
         {/* Explore: Where to and the cell card sit up here under the strip, so the pill and My location keep the foot (Gavan, 2026-10-08) */}
         {EXPLORE && <WhereTo />}
-        {EXPLORE && <TileCard />}
+        <TileCard />
       </div>
       {!sheetOpen && !formUp && (
         <div className="leftstack">

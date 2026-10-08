@@ -26,7 +26,6 @@ import { useLookTick } from './useLookTick'
 import { useTapOff } from './tapOff'
 import { useLoadProgress } from '../offline/loadProgress'
 import './strip.css'
-import { EXPLORE } from '../explore'
 
 /**
  * The outlook strip at the top of the map. Its head is what you are after
@@ -281,6 +280,7 @@ export default function WeatherStrip() {
   const nudge = useMapsNudge()
   const openSheetFor = useAppStore((s) => s.openSheet)
   const stripOpen = useAppStore((s) => s.stripOpen)
+  const EXPLORE = useAppStore((s) => s.exploreMode)
   const setStripOpen = useAppStore((s) => s.setStripOpen)
   const planTimeMs = useAppStore((s) => s.planTimeMs)
   const setPlanTime = useAppStore((s) => s.setPlanTime)

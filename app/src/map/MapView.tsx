@@ -1,7 +1,7 @@
 import maplibregl from 'maplibre-gl'
 import { useEffect, useRef, useState } from 'react'
 import { devlog } from '../devlog'
-import { fileUrl, loadView, saveView } from '../areas'
+import { DATA_BASE, fileUrl, loadView, saveView } from '../areas'
 import { peekSwitchThen } from '../areas/handoff'
 import { BASE_GEO, baseGeoFile, DATA_FILES, GEO_THEMES, geoFile, HOME, MAX_BOUNDS } from '../config'
 import { getStoredFile } from '../offline/fileStore'
@@ -26,7 +26,7 @@ import type { FeatureCollection } from 'geojson'
 import 'maplibre-gl/dist/maplibre-gl.css'
 // the tap popup's score circle (the rest of the popup is in ui.css)
 import '../ui/sheets/digin.css'
-import { EXPLORE, exploreMoved, exploreTap } from '../explore'
+import { EXPLORE_LAYERS, exploreTap, viewMoved } from '../explore'
 import { COVERAGE_FILE, COVERAGE_KEY, syncCoverageState } from '../explore/coverage'
 import { useExplore } from '../explore/store'
 
@@ -192,8 +192,9 @@ export default function MapView() {
       const listing = await bootManifest()
       const known = listing ? new Set(Object.keys(listing.files)) : null
       const [available, geo] = await Promise.all([registerAllDataFiles(known), resolveGeo(known)])
-      // Explore: the coverage index's archive, kept out of every area's list (explore/coverage.ts)
-      if (EXPLORE && (await registerDataFile(COVERAGE_KEY, COVERAGE_FILE)) !== 'missing') available.add(COVERAGE_KEY)
+      // the coverage index's archive, outside every area's folder (explore/coverage.ts)
+      const online = useAppStore.getState().online
+      if (online && (await registerDataFile(COVERAGE_KEY, COVERAGE_FILE, null, `${DATA_BASE}explore/${COVERAGE_FILE}`)) !== 'missing') available.add(COVERAGE_KEY)
       if (cancelled) return
       geoUrls.clear()
       for (const [k, v] of geo) geoUrls.set(k, v)
@@ -203,7 +204,7 @@ export default function MapView() {
       devlog('map', `sources · ${[...sourceModes].map(([k, m]) => `${k}:${m}`).join(' ')} · geo ${[...geo.keys()].join(',') || 'none'}`)
 
       const { layers, opacity, contourInterval } = useAppStore.getState()
-      const style = buildMapStyle({ base: import.meta.env.BASE_URL, layers, opacity, contourInterval, available, geo, explore: EXPLORE })
+      const style = buildMapStyle({ base: import.meta.env.BASE_URL, layers, opacity, contourInterval, available, geo, online, explore: useAppStore.getState().exploreMode })
       // the last view in this area (a switch saves the one to open on)
       const saved = loadView()
 
@@ -214,8 +215,9 @@ export default function MapView() {
           center: saved?.center ?? HOME.center,
           zoom: saved?.zoom ?? HOME.zoom,
           bearing: saved?.bearing ?? 0,
-          maxBounds: MAX_BOUNDS,
-          minZoom: EXPLORE ? 4 : 7,
+          // fenced to the box only with no signal: there is nothing to show past it then
+          ...(online ? {} : { maxBounds: MAX_BOUNDS }),
+          minZoom: online ? 4 : 7,
           maxZoom: 18,
           // a tap whose finger drifts a little is still a tap (the default 3 px loses thumbs)
           clickTolerance: 6,
@@ -229,19 +231,25 @@ export default function MapView() {
       }
       const m = map
       if (import.meta.env.DEV) (window as unknown as { __map?: unknown }).__map = m
-      if (EXPLORE) {
-        // the tile picked and the ones asked for, as feature state on the grid
-        let was = { picked: null as string | null, requested: [] as string[] }
-        const sync = () => {
-          const st = useExplore.getState()
-          was = syncCoverageState(m, st.selected?.tile.id ?? null, st.requested, was)
-        }
-        m.on('load', () => {
-          exploreMoved(m)
-          sync()
-        })
-        useExplore.subscribe(sync)
+      // the cell picked and the ones asked for, as feature state on the grid
+      let was = { picked: null as string | null, requested: [] as string[] }
+      const sync = () => {
+        const st = useExplore.getState()
+        was = syncCoverageState(m, st.selected?.tile.id ?? null, st.requested, was)
       }
+      m.on('load', () => {
+        if (useAppStore.getState().online) viewMoved(m)
+        sync()
+      })
+      useExplore.subscribe(sync)
+      // Explore on: the grid shows; off: it goes, and the fence follows the signal
+      useAppStore.subscribe((s, prev) => {
+        if (s.exploreMode !== prev.exploreMode) for (const id of EXPLORE_LAYERS) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', s.exploreMode ? 'visible' : 'none')
+        if (s.online !== prev.online) {
+          m.setMaxBounds(s.online ? null : MAX_BOUNDS)
+          m.setMinZoom(s.online ? 4 : 7)
+        }
+      })
       // the bogs' marsh tufts (the Topo view), made the first time a layer asks for them
       m.on('styleimagemissing', (e: { id: string }) => {
         if (e.id === BOG_TUFT && !m.hasImage(BOG_TUFT)) m.addImage(BOG_TUFT, bogTuftImage(), { pixelRatio: 2 })
@@ -295,7 +303,7 @@ export default function MapView() {
       m.on('moveend', () => {
         const c = m.getCenter()
         saveView({ center: [c.lng, c.lat], zoom: m.getZoom(), bearing: m.getBearing() })
-        if (EXPLORE) exploreMoved(m)
+        if (useAppStore.getState().online) viewMoved(m)
       })
       m.on('dragstart', () => useAppStore.getState().setFollow(false))
 
@@ -325,8 +333,8 @@ export default function MapView() {
         // "ahead" armed on the wind check: the tap is what is in front of you
         const cf = useCheckForm.getState()
         if (cf.at && cf.aim) return cf.mapTap(e.lngLat.lng, e.lngLat.lat)
-        // Explore: the tap picks the cell under it (explore/index.ts)
-        if (EXPLORE) return exploreTap(m, e)
+        // outside every baked box the tap picks the cell under it for the card (explore/index.ts)
+        if (exploreTap(m, e)) return
         // a place, a numbered pin, a wind check or a kept route has its own tap
         const hit = m.queryRenderedFeatures(e.point, { layers: ['pins-pt', 'spots-pin', 'windchecks-hit', 'routes-hit', 'huntlog-dot'].filter((id) => m.getLayer(id)) })
         if (hit.length) return

@@ -178,15 +178,16 @@ function absoluteDataUrl(file: string): string {
  *  the list has is trusted, its header read with its first tile, which
  *  spares the 16 KB probe each of fifteen archives cost before the map
  *  could be made; one the list lacks is missing; with no list, the probe. */
-export async function registerDataFile(key: string, file: string, known: boolean | null = null): Promise<DataSourceMode> {
+export async function registerDataFile(key: string, file: string, known: boolean | null = null, url?: string): Promise<DataSourceMode> {
   const blob = await getStoredFile(file)
   if (!blob && known === false) {
     sourceModes.set(key, 'missing')
     return 'missing'
   }
+  // `url`: an archive outside the area's folder (the coverage index under data/explore/)
   const source: Source = blob
     ? new BlobSource(blob, key)
-    : new KeyedFetchSource(absoluteDataUrl(file), key)
+    : new KeyedFetchSource(url ?? absoluteDataUrl(file), key)
   const p = new PMTiles(source)
   let mode: DataSourceMode = blob ? 'local' : 'network'
   if (blob || !known) {

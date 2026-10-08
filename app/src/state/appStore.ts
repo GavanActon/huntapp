@@ -299,6 +299,9 @@ export interface AppState {
   setFollow: (v: boolean) => void
   online: boolean
   setOnline: (v: boolean) => void
+  /** Explore (explore/index.ts): the coverage grid, Where to and a quieter chrome on the one map */
+  exploreMode: boolean
+  setExploreMode: (v: boolean) => void
   offlineReady: boolean
   setOfflineReady: (v: boolean) => void
   missingData: string[]
@@ -384,6 +387,8 @@ export const useAppStore = create<AppState>()(
       setFollow: (follow) => set({ follow }),
       online: navigator.onLine,
       setOnline: (online) => set({ online }),
+      exploreMode: false,
+      setExploreMode: (exploreMode) => set({ exploreMode }),
       offlineReady: false,
       setOfflineReady: (offlineReady) => set({ offlineReady }),
       missingData: [],

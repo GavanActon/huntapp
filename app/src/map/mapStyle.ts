@@ -1,7 +1,8 @@
 import { DARK, layers as basemapLayers } from '@protomaps/basemaps'
 import type { FeatureCollection } from 'geojson'
 import type { ExpressionSpecification, FilterSpecification, GeoJSONSource, LayerSpecification, Map as MlMap, StyleSpecification } from 'maplibre-gl'
-import { ATTRIBUTION, CONTOUR_FINE_FROM, CORE, FINE_RELIEF, REGION_MAXZOOM, RELIEF, ZONE } from '../config'
+import { ACTIVE_AREA, AREA_LIST } from '../areas'
+import { ATTRIBUTION, CONTOUR_FINE_FROM, CORE, FINE_RELIEF, REGION, REGION_MAXZOOM, RELIEF, ZONE } from '../config'
 import { LIVE_RASTER, LIVE_VECTOR } from '../sources'
 import type { ContourInterval, LayerOpacity, LayerVisibility } from '../state/appStore'
 import { COVERAGE_KEY, COVERAGE_SOURCE, coverageLayers, coverageSource } from '../explore/coverage'
@@ -28,7 +29,9 @@ export interface StyleOpts {
   opacity: LayerOpacity
   /** metres between the LiDAR contour lines drawn */
   contourInterval: ContourInterval
-  /** Explore (explore/index.ts): the base kept readable, the names over the grid */
+  /** with signal the map is not fenced: the live layers beyond the baked box, the boxes drawn (explore/index.ts) */
+  online?: boolean
+  /** Explore on at build: the coverage grid shown */
   explore?: boolean
   /** which pmtiles keys are reachable (from registerAllDataFiles) */
   available: Set<string>
@@ -242,24 +245,33 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
     base = basemapLayers('basemap', BUSH, { lang: 'en' })
   } else {
     const b = LIVE_RASTER.base!
-    sources.base = { type: 'raster', tiles: b.tiles, tileSize: b.tileSize, attribution: b.attribution, maxzoom: b.maxzoom }
-    base = [
-      { id: 'background', type: 'background', paint: { 'background-color': BUSH.background } },
-      {
-        id: 'base',
-        type: 'raster',
-        source: 'base',
-        // quiet: the base is furniture, the data layers own the contrast;
-        // in Explore it is the ground itself, so the water keeps its blue
-        paint: o.explore ? { 'raster-saturation': -0.3, 'raster-brightness-max': 0.75, 'raster-contrast': 0.05 } : { 'raster-saturation': -0.7, 'raster-brightness-max': 0.45, 'raster-contrast': 0.1 },
-      },
-    ]
-    // Explore: the Toporama sheet over it from z7, the map one reads lakes off
-    if (o.explore && LIVE_RASTER.toposheet) {
-      const ts = LIVE_RASTER.toposheet
-      sources.toposheet = { type: 'raster', tiles: ts.tiles, tileSize: ts.tileSize, attribution: ts.attribution, minzoom: ts.minzoom, maxzoom: ts.maxzoom }
-      base.push({ id: 'toposheet', type: 'raster', source: 'toposheet', minzoom: ts.minzoom, paint: { 'raster-opacity': 0.92, 'raster-resampling': 'linear' } })
+    // the quiet base inside the baked box only when there is signal (bounds):
+    // beyond it the country shows as itself, the Toporama sheet from z7 and
+    // the geometry map with its names below that
+    const box: [number, number, number, number] = [REGION.west, REGION.south, REGION.east, REGION.north]
+    sources.base = { type: 'raster', tiles: b.tiles, tileSize: b.tileSize, attribution: b.attribution, maxzoom: b.maxzoom, ...(o.online ? { bounds: box } : {}) }
+    base = [{ id: 'background', type: 'background', paint: { 'background-color': BUSH.background } }]
+    if (o.online) {
+      sources.country = { type: 'raster', tiles: b.tiles, tileSize: b.tileSize, attribution: b.attribution, maxzoom: 7 }
+      base.push({ id: 'country', type: 'raster', source: 'country', maxzoom: 7, paint: { 'raster-saturation': -0.3, 'raster-brightness-max': 0.8, 'raster-resampling': 'linear' } })
+      if (LIVE_RASTER.labels) {
+        const lb = LIVE_RASTER.labels
+        sources.labels = { type: 'raster', tiles: lb.tiles, tileSize: lb.tileSize, attribution: lb.attribution, maxzoom: lb.maxzoom }
+        base.push({ id: 'country-labels', type: 'raster', source: 'labels', maxzoom: 7, paint: { 'raster-opacity': 0.95, 'raster-resampling': 'linear' } })
+      }
+      if (LIVE_RASTER.toposheet) {
+        const ts = LIVE_RASTER.toposheet
+        sources.toposheet = { type: 'raster', tiles: ts.tiles, tileSize: ts.tileSize, attribution: ts.attribution, minzoom: ts.minzoom, maxzoom: ts.maxzoom }
+        base.push({ id: 'toposheet', type: 'raster', source: 'toposheet', minzoom: ts.minzoom, paint: { 'raster-opacity': 0.92, 'raster-resampling': 'linear' } })
+      }
     }
+    base.push({
+      id: 'base',
+      type: 'raster',
+      source: 'base',
+      // quiet: the base is furniture, the data layers own the contrast
+      paint: { 'raster-saturation': -0.7, 'raster-brightness-max': 0.45, 'raster-contrast': 0.1 },
+    })
   }
   base = base.map((l) => (l.type === 'background' ? { ...l, paint: { ...l.paint, 'background-color': groundColour(o.layers) } } : l))
   const firstSymbol = base.findIndex((l) => l.type === 'symbol')
@@ -270,6 +282,27 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   const addRaster = (key: 'satellite' | 'hillshade' | 'topo' | 'historical', extraPaint: Record<string, unknown> = {}) => {
     if (has(key)) {
       sources[key] = { type: 'raster', url: `pmtiles://${key}`, tileSize: 256 }
+      // with signal the live service under the baked archive: the archive
+      // stops at the box, the service shows through beyond it, same switch
+      const live = o.online ? LIVE_RASTER[key] : undefined
+      if (live) {
+        sources[`${key}-live`] = {
+          type: 'raster',
+          tiles: live.tiles,
+          tileSize: live.tileSize,
+          attribution: live.attribution,
+          ...(live.minzoom != null ? { minzoom: live.minzoom } : {}),
+          ...(live.maxzoom != null ? { maxzoom: live.maxzoom } : {}),
+          ...(live.scheme ? { scheme: live.scheme } : {}),
+        }
+        rasters.push(
+          tag(
+            { id: `${key}-live`, type: 'raster', source: `${key}-live`, layout: vis(o.layers[key]), paint: { 'raster-opacity': o.opacity[key], 'raster-resampling': 'linear', ...extraPaint } },
+            key,
+            key,
+          ),
+        )
+      }
     } else {
       const live = LIVE_RASTER[key]
       if (!live) return
@@ -313,6 +346,19 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
     sources.dem = { type: 'raster-dem', url: 'pmtiles://dem', encoding: 'mapbox', tileSize: 256, attribution: `MRDEM © Natural Resources Canada, ${FINE_RELIEF.attribution}` }
     const lakes = o.geo.get('waterbody')
     if (lakes) sources.lakes = { type: 'geojson', data: geoData('lakes', lakes, 'relief'), attribution: ATTRIBUTION.lakes }
+    // with signal the live MRDEM shade under the DEM's: the DEM stops at the
+    // box, the service shows through beyond it, the same switch and strength
+    if (o.online && LIVE_RASTER.hillshade) {
+      const hs = LIVE_RASTER.hillshade
+      sources['hillshade-live'] = { type: 'raster', tiles: hs.tiles, tileSize: hs.tileSize, attribution: hs.attribution, ...(hs.maxzoom != null ? { maxzoom: hs.maxzoom } : {}) }
+      rasters.push(
+        tag(
+          { id: 'hillshade-live', type: 'raster', source: 'hillshade-live', layout: vis(o.layers.hillshade), paint: { 'raster-opacity': o.opacity.hillshade, 'raster-resampling': 'linear' } },
+          'hillshade',
+          'hillshade',
+        ),
+      )
+    }
     rasters.push(
       tag(
         {
@@ -453,17 +499,36 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   }
   addRaster('topo')
   addRaster('historical', { 'raster-saturation': -0.2 })
-  // Explore's grid: the coverage index over the base, under everything else (explore/coverage.ts)
+  // the coverage grid (explore/coverage.ts), shown while Explore is on
   if (has(COVERAGE_KEY)) {
     sources[COVERAGE_SOURCE] = coverageSource()
-    rasters.push(...coverageLayers())
+    rasters.push(...coverageLayers().map((l) => ({ ...l, layout: { ...(l.layout ?? {}), ...vis(!!o.explore) } }) as LayerSpecification))
   }
-  // the names of lakes, rivers and towns over the grid, zoomed out where the
-  // quiet base is all there is; the Toporama sheet brings its own from z7
-  if (o.explore && LIVE_RASTER.labels) {
-    const lb = LIVE_RASTER.labels
-    sources.labels = { type: 'raster', tiles: lb.tiles, tileSize: lb.tileSize, attribution: lb.attribution, maxzoom: lb.maxzoom }
-    rasters.push({ id: 'explore-labels', type: 'raster', source: 'labels', maxzoom: LIVE_RASTER.toposheet?.minzoom ?? 24, paint: { 'raster-opacity': 0.95, 'raster-resampling': 'linear' } })
+  // every baked box drawn, the area's own strongest, named zoomed out
+  if (o.online) {
+    const boxes = AREA_LIST.filter((a) => !a.virtual)
+    sources['area-boxes'] = {
+      type: 'geojson',
+      data: {
+        type: 'FeatureCollection',
+        features: boxes.map((a) => ({
+          type: 'Feature',
+          properties: { id: a.id, name: a.name, active: a.id === ACTIVE_AREA.id },
+          geometry: { type: 'Polygon', coordinates: [[[a.region.west, a.region.south], [a.region.east, a.region.south], [a.region.east, a.region.north], [a.region.west, a.region.north], [a.region.west, a.region.south]]] },
+        })),
+      },
+    }
+    rasters.push(
+      { id: 'area-boxes-line', type: 'line', source: 'area-boxes', paint: { 'line-color': '#1f3b1f', 'line-width': ['case', ['get', 'active'], 2, 1.2], 'line-opacity': 0.75 } },
+      {
+        id: 'area-boxes-label',
+        type: 'symbol',
+        source: 'area-boxes',
+        maxzoom: 10,
+        layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Medium'], 'text-size': 12, 'text-anchor': 'bottom', 'symbol-placement': 'point' },
+        paint: { 'text-color': '#1f3b1f', 'text-halo-color': 'rgba(238,245,234,0.9)', 'text-halo-width': 1.4 },
+      },
+    )
   }
   // the MNR lake survey sheets (Pickle 1978, Ketchup 1978, McGill 1979),
   // fitted to the shoreline and baked as ink on transparency: the true

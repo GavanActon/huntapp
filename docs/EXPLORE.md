@@ -145,6 +145,29 @@ Canada Base Map, the MRDEM shade and Toporama. What is there:
   The grid's tint is a tenth of what it was so the lakes stay blue, the
   cells are hairlines, the picked cell a dark outline.
 
+### The one map (built 2026-10-08, Gavan: "Explorer is built into the view somehow")
+
+Explore stopped being an area. With signal the map is never fenced
+(`maxBounds` off, zoom down to 4; the fence comes back offline), and in
+every view the baked archive sits over the live service for the same
+layer, so beyond the box the imagery, the shade and the contours stream
+on: the quiet base keeps to the box (`bounds` on its source), the
+Toporama sheet shows the country from z7 and the geometry map with its
+names below that; a province's imagery, the MRDEM shade and Toporama's
+contours sit under the baked satellite, DEM shade and topo with the same
+switch and strength. Every baked box is outlined and named zoomed out.
+The wind lattice follows the view (the area's own box while over it, kept
+on the phone; a memory-only box elsewhere), so the streaks run everywhere:
+the forecast's outside the box, the ground wind's inside it, the
+difference visible at the edge. Explore is a toggle in the view pill
+(`appStore.exploreMode`): the coverage grid, the Where-to box and the
+quieter chrome; a tap outside every box opens the cell card in any mode.
+The explore pseudo-area, its view and the switch are gone.
+
+Not yet: a national imagery service (provinces only), contours beyond
+the box in views that use the LiDAR contours, the fence lifting when
+signal comes back without a reload.
+
 ### Next: the box you draw, not the cell
 
 Gavan, 2026-10-08: "I might just want to draw a grid and download that

@@ -3,8 +3,7 @@ import { useAppStore } from '../state/appStore'
 import { currentView, splitViews, useViews, type MapView } from '../state/viewsStore'
 import { IconCheck, IconChevronDown, IconLayers, IconTrash } from './icons'
 import { useTapOff } from './tapOff'
-import { areaById } from '../areas'
-import { EXPLORE, enterExplore, exploreFrom, leaveExplore } from '../explore'
+import { setExplore } from '../explore'
 import './views.css'
 
 /**
@@ -29,6 +28,8 @@ export default function ViewPill() {
   const open = useAppStore((s) => s.viewMenuOpen)
   const setOpen = useAppStore((s) => s.setViewMenuOpen)
   const openSheet = useAppStore((s) => s.openSheet)
+  const online = useAppStore((s) => s.online)
+  const explore = useAppStore((s) => s.exploreMode)
   const [more, setMore] = useState(false)
   const box = useRef<HTMLDivElement>(null)
 
@@ -52,13 +53,8 @@ export default function ViewPill() {
         className="viewpill-name"
         role="menuitem"
         onClick={() => {
-          close()
-          // Explore is an area, not a layer set: the pick switches the app there
-          if (v.explore && !EXPLORE) {
-            enterExplore()
-            return
-          }
           apply(v)
+          close()
         }}
       >
         <span>{v.name}</span>
@@ -82,17 +78,19 @@ export default function ViewPill() {
     <div className="viewpill-wrap" ref={box}>
       {open && (
         <div className="viewpill-menu glass" role="menu" aria-label="Views">
-          {EXPLORE && (
+          {/* Explore: a mode over any view (explore/index.ts), with signal */}
+          {online && (
             <button
-              className="viewpill-name"
-              role="menuitem"
+              className={`viewpill-name${explore ? ' on' : ''}`}
+              role="menuitemcheckbox"
+              aria-checked={explore}
               onClick={() => {
                 close()
-                leaveExplore()
+                setExplore(!explore)
               }}
             >
-              <span>Back to {areaById(exploreFrom())?.name ?? 'the area'}</span>
-              <span className="dim">&lsaquo;</span>
+              <span>Explore · the country, the grid, a search</span>
+              {explore && <IconCheck size={18} />}
             </button>
           )}
           {first.map(row)}

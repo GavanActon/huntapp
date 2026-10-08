@@ -130,20 +130,6 @@ export interface AreaDef {
  *  owner of everything saved before there were areas (the bare storage
  *  keys, the preset ids preset-0 …). */
 export const DEFAULT_AREA = 'pickle-lake'
-/** The area Explore runs as (areas/explore.json): the whole country, nothing baked. */
-export const EXPLORE_ID = 'explore'
-/** the area Explore was entered from, kept while in it (explore/index.ts) */
-export const EXPLORE_FROM_KEY = 'huntapp-explore-from'
-/** The area Explore was entered from, else the default: Explore's home and its way back. */
-export function exploreFromId(): string {
-  try {
-    const id = localStorage.getItem(EXPLORE_FROM_KEY)
-    if (id && id !== EXPLORE_ID && Object.hasOwn(AREAS, id)) return id
-  } catch {
-    /* the default */
-  }
-  return DEFAULT_AREA
-}
 
 /** The phone's choice of area. */
 const AREA_KEY = 'huntapp-area'

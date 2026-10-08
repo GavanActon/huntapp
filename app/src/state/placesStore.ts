@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { ACTIVE_AREA, AREA_LIST, DEFAULT_AREA, areaAt, areaById, exploreFromId, type AreaDef } from '../areas'
+import { ACTIVE_AREA, AREA_LIST, DEFAULT_AREA, areaAt, areaById, type AreaDef } from '../areas'
 import type { PlaceDef } from '../config'
 
 export interface SavedPlace extends PlaceDef {
@@ -27,11 +27,7 @@ function presetId(areaId: string, i: number): string {
 /** Every area's presets, the active area's first: its camp is places[0],
  *  the camp everything without a fix or a pick counts from (homePlace). */
 function seed(): SavedPlace[] {
-  // in Explore (no presets of its own) the area it was entered from comes
-  // first, so its camp is the home the forecast profile is asked at
-  const from = ACTIVE_AREA.virtual ? areaById(exploreFromId()) : null
-  const order = from ? [from, ...AREA_LIST.filter((a) => a.id !== from.id)] : AREA_LIST
-  return order.filter((a) => !a.virtual).flatMap((a) => a.presets.map((p, i) => ({ ...p, id: presetId(a.id, i), savedAt: 0 })))
+  return AREA_LIST.filter((a) => !a.virtual).flatMap((a) => a.presets.map((p, i) => ({ ...p, id: presetId(a.id, i), savedAt: 0 })))
 }
 
 export const usePlacesStore = create<PlacesState>()(

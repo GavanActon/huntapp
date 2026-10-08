@@ -7,7 +7,6 @@ import { useGpsStore } from '../tracking/gpsStore'
 import HotColumn from './HotColumn'
 import { IconCompass, IconLocate } from './icons'
 import './ground.css'
-import { EXPLORE } from '../explore'
 
 /**
  * The near column, under the thumb: the compass on top only while the map
@@ -22,6 +21,7 @@ export default function ToolColumn(): JSX.Element {
   const headingUp = useGpsStore((s) => s.headingUp)
   const acquiring = useGpsStore((s) => s.status === 'acquiring')
   const rotated = Math.abs(bearing) > 0.5
+  const EXPLORE = useAppStore((s) => s.exploreMode)
 
   const locateClass = `fab${locating && follow ? ' active' : ''}${headingUp ? ' fab-heading' : ''}${acquiring ? ' fab-acquiring' : ''}`
   const locateLabel = !locating ? 'Show my position' : !follow ? 'Follow my position' : headingUp ? 'Turn location off' : 'Turn the map the way I face'
