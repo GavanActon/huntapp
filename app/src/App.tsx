@@ -47,6 +47,9 @@ import { initSpotsLayer } from './spots/spotsLayer'
 import { initAreaArrival } from './areas/arrive'
 import AreaOffer from './ui/AreaOffer'
 import { initStatsWatch } from './stats/watch'
+import { EXPLORE, applyExploreView } from './explore'
+import TileCard from './explore/TileCard'
+import WhereTo from './explore/WhereTo'
 
 /** What has gone wrong (offline with maps missing, no location), and with
  *  the map turned the way you face, the heading: the way that is up. */
@@ -158,6 +161,7 @@ export default function App() {
     initStatsWatch()
     // last: location comes back on if it was on at the last look, and recording with it
     resumeLocation()
+    if (EXPLORE) applyExploreView()
     const on = () => setOnline(true)
     const off = () => setOnline(false)
     window.addEventListener('online', on)
@@ -176,11 +180,14 @@ export default function App() {
       <div className="toparea">
         <TopBar />
         <WeatherStrip />
-        {topCard ? <TopCardHost /> : <LiveCard />}
+        {!EXPLORE && (topCard ? <TopCardHost /> : <LiveCard />)}
+        {/* Explore: Where to and the cell card sit up here under the strip, so the pill and My location keep the foot (Gavan, 2026-10-08) */}
+        {EXPLORE && <WhereTo />}
+        {EXPLORE && <TileCard />}
       </div>
       {!sheetOpen && !formUp && (
         <div className="leftstack">
-          {!viewMenuOpen && <HotColumn side="far" />}
+          {!viewMenuOpen && !EXPLORE && <HotColumn side="far" />}
           {!measuring && (
             <div className="leftfoot">
               <ViewPill />

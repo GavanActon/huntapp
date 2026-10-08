@@ -64,11 +64,13 @@ export function badAreaField(v: unknown): string | null {
     ['attribution', isStr(attribution?.vectors) && isStr(attribution?.lakes) && isStr(attribution?.bush)],
     [
       'presets',
-      presets.length > 0 &&
+      // Explore (a virtual area) has none: its home is the area it was entered from (state/placesStore.ts)
+      (a.virtual === true && presets.length === 0) ||
+      (presets.length > 0 &&
         presets.every((p) => {
           const q = obj(p)
           return q != null && isStr(q.name) && isNum(q.lon) && isNum(q.lat)
-        }),
+        })),
     ],
     ['bundle.description', isStr(obj(a.bundle)?.description)],
     ['surveyedLakes', Array.isArray(a.surveyedLakes)],

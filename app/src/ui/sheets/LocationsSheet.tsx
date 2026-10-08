@@ -49,7 +49,7 @@ export default function LocationsSheet(): JSX.Element {
   return (
     <div className="pins">
       <div className="place-list">
-        {AREA_LIST.map((a) => {
+        {AREA_LIST.filter((a) => !a.virtual).map((a) => {
           const here = a.id === ACTIVE_AREA.id
           const b = bundleOf(a.id)
           const saved = b != null && keepsArea(b)

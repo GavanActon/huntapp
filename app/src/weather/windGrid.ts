@@ -1,4 +1,4 @@
-import type { AreaBox, AreaDef } from '../areas'
+import { ACTIVE_AREA, type AreaBox, type AreaDef } from '../areas'
 import { REGION, TIMEZONE } from '../config'
 import { trackTime } from '../analytics'
 import { devlog } from '../devlog'
@@ -35,6 +35,19 @@ const KEY = keyOf(REGION.id)
 const MAX_AGE_MS = 60 * 60_000
 
 let grid: WindGrid | null = null
+/** Explore: the box the field is fetched over follows the view (explore/index.ts). */
+let viewBox: AreaBox | null = null
+export function setWindBox(box: AreaBox): void {
+  // a new fetch only once the centre has left the box there is
+  if (viewBox) {
+    const cx = (box.west + box.east) / 2
+    const cy = (box.south + box.north) / 2
+    if (cx > viewBox.west && cx < viewBox.east && cy > viewBox.south && cy < viewBox.north) return
+  }
+  viewBox = box
+  grid = null
+  void ensureWeatherGrid()
+}
 let inflight: Promise<WindGrid | null> | null = null
 const gridListeners = new Set<() => void>()
 const tickListeners = new Set<() => void>()
@@ -111,8 +124,10 @@ export async function fetchAreaWindGrid(area: AreaDef): Promise<boolean> {
  *  there is (possibly a stale copy, possibly null). */
 export function ensureWeatherGrid(): Promise<WindGrid | null> {
   if (grid && Date.now() - grid.fetchedAt < MAX_AGE_MS) return Promise.resolve(grid)
+  // Explore's region is the country: no field until the view says where (setWindBox)
+  if (ACTIVE_AREA.virtual && !viewBox) return Promise.resolve(grid)
   if (inflight) return inflight
-  inflight = fetchGrid()
+  inflight = fetchGrid(viewBox ?? REGION)
     .then((g) => {
       grid = g
       try {

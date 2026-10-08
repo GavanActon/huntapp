@@ -14,8 +14,12 @@ CREATE TABLE IF NOT EXISTS requests (
   source TEXT,           -- site or app
   country TEXT,          -- Cloudflare's guess from the connection
   who TEXT,              -- a hash of the sender's address, only to slow a flood
-  status TEXT NOT NULL DEFAULT 'new'
+  status TEXT NOT NULL DEFAULT 'new',
+  tile TEXT,             -- Explore: the SD lattice cell asked for (t-<i>-<j>, docs/EXPLORE.md)
+  kind TEXT              -- sd or hd
 );
+-- a table made before 2026-10-08 needs the two columns added:
+--   ALTER TABLE requests ADD COLUMN tile TEXT; ALTER TABLE requests ADD COLUMN kind TEXT;
 CREATE INDEX IF NOT EXISTS requests_who_at ON requests (who, at);
 
 -- The app's usage stats (app/src/analytics.ts → /api/events, stats.js;

@@ -8,7 +8,7 @@ import { useAppStore } from '../../state/appStore'
 import { IconCheck, IconDownload, IconTrash } from '../icons'
 import './settings.css'
 
-const LABELS = new Map(AREA_LIST.flatMap(dataFiles).map((d) => [d.file, d.label]))
+const LABELS = new Map(AREA_LIST.filter((a) => !a.virtual).flatMap(dataFiles).map((d) => [d.file, d.label]))
 /** A baked file's name for the list: the data file's label, else the theme with its area and extension off. */
 const labelOf = (name: string, areaId: string) =>
   LABELS.get(name) ??
@@ -48,7 +48,7 @@ export default function OfflineSheet(): JSX.Element {
   const stored = new Map(listStored().map((s) => [s.name, s]))
   return (
     <div className="settings">
-      {AREA_LIST.map((a) => (
+      {AREA_LIST.filter((a) => !a.virtual).map((a) => (
         <AreaMaps key={a.id} area={a} stored={stored} />
       ))}
       {quota && quota.quota > 0 && (

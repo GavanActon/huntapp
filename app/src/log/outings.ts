@@ -59,7 +59,7 @@ interface Stamp {
  *  is in: that is a stand at Lac Bailey, and the log's outings (and their
  *  ids, which a switch opens one by) must come out the same in any area.
  *  An area whose home is a stand has no camp and so no at-camp rule. */
-const CAMPS = AREA_LIST.flatMap((a) => a.presets.filter((p) => p.kind === 'camp'))
+const CAMPS = AREA_LIST.filter((a) => !a.virtual).flatMap((a) => a.presets.filter((p) => p.kind === 'camp'))
 
 function atCamp(s: { lon: number; lat: number }): boolean {
   return CAMPS.some((c) => metresBetween(s.lon, s.lat, c.lon, c.lat) <= AT_CAMP_M)

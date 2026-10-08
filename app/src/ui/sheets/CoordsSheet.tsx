@@ -227,7 +227,7 @@ export default function CoordsSheet({ text: given }: { text?: string }): JSX.Ele
       {note && <div className="coords-help">{note}</div>}
       {/* every area's home, this one first (Gavan, 2026-10-04) */}
       <div className="coords-list">
-        {AREA_LIST.map((a) => (
+        {AREA_LIST.filter((a) => !a.virtual).map((a) => (
           <button key={a.id} className="coords-row" onClick={() => goHome(a)}>
             <span>{a.name}</span>
             <span className="dim">{a.presets[0]?.name}</span>

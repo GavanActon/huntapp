@@ -37,6 +37,8 @@ export interface MapView {
   /** the wind's look the view brings, with the wind on: the Wind view's
    *  Contrast. A view without one hands back the look there was before. */
   wind?: WindStyle
+  /** Explore: picking it switches the app to the explore area (explore/index.ts) */
+  explore?: boolean
 }
 
 const L = (on: (keyof LayerVisibility)[]): LayerVisibility =>
@@ -56,6 +58,8 @@ export const BUILT_IN: MapView[] = [
   { id: 'hunt-sit', name: 'Sit', mode: 'hunt', builtIn: true, heat: false, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'contours', 'roads']) },
   { id: 'hunt-relief', name: 'Topo', mode: 'hunt', builtIn: true, heat: false, opacity: { ...DEFAULT_OPACITY, hillshade: 0.7 }, layers: L(['relief', 'hillshade', 'contours', 'roads']) },
   { id: 'hunt-land', name: 'Land', mode: 'hunt', builtIn: true, heat: false, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'crown', 'wmu', 'camps', 'parks', 'roads']) },
+  // the map anywhere in Canada, the grid of cells and asking for one (docs/EXPLORE.md): a switch, not a layer set
+  { id: 'hunt-explore', name: 'Explore', mode: 'hunt', builtIn: true, heat: false, opacity: { ...DEFAULT_OPACITY, hillshade: 0.3 }, layers: L(['hillshade', 'roads']), explore: true },
   { id: 'fish-lake', name: 'Lake', mode: 'fish', builtIn: true, heat: true, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'bathy']) },
   { id: 'fish-chart', name: 'Chart', mode: 'fish', builtIn: true, heat: true, opacity: DEFAULT_OPACITY, layers: L(['bathy', 'topo']) },
 ]
@@ -63,7 +67,7 @@ export const BUILT_IN: MapView[] = [
 /** The views pinned at the top of the pill menu on a fresh phone (Gavan's, 2026-10-03: Scout too;
  *  2026-10-07: "base load should be Bow with range on", so Bow first and the phone opens on it). */
 export const DEFAULT_PINNED: Record<Mode, string[]> = {
-  hunt: ['hunt-bow', 'hunt-wind', 'hunt-relief', 'hunt-bush', 'hunt-terrain', 'hunt-scout'],
+  hunt: ['hunt-bow', 'hunt-wind', 'hunt-relief', 'hunt-bush', 'hunt-terrain', 'hunt-scout', 'hunt-explore'],
   fish: ['fish-lake', 'fish-chart'],
 }
 

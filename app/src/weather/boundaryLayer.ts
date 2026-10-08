@@ -257,6 +257,7 @@ export function ensureProfile(force = false): Promise<Profile | null> {
  *  the app is switched there (weather/refresh.ts fetchAreaWeather). This
  *  run's profile is not touched: it is the active area's. */
 export async function fetchAreaProfile(area: AreaDef): Promise<boolean> {
+  if (!area.presets[0]) return false // Explore: no home of its own
   try {
     const p = await fetchProfile(area.presets[0], area.timezone)
     writeAreaItem(KEY, JSON.stringify(p), area.id)

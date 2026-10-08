@@ -93,6 +93,15 @@ async function areaRequest(request, env) {
   }
   // a bot fills every field, the hidden one too: thank it and keep nothing
   if (body?.website) return json({ ok: true }, 200, cors)
+  // Explore: an ask taken back (docs/EXPLORE.md): the phone's own email and
+  // cell, only an ask still waiting; one being baked just is not sent
+  if (body?.cancel) {
+    const email = String(body.email ?? '').trim().slice(0, 200)
+    const tile = String(body.tile ?? '')
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^t-\d{1,4}-\d{1,4}$/.test(tile)) return json({ error: 'cancel' }, 400, cors)
+    const r = await env.DB.prepare("UPDATE requests SET status = 'cancelled' WHERE email = ? AND tile = ? AND status = 'new'").bind(email, tile).run()
+    return json({ ok: true, cancelled: r.meta?.changes ?? 0 }, 200, cors)
+  }
 
   const email = String(body?.email ?? '').trim().slice(0, 200)
   const place = String(body?.where ?? '').trim().slice(0, 500)
@@ -101,14 +110,17 @@ async function areaRequest(request, env) {
   const game = (Array.isArray(body.game) ? body.game : []).map(String).filter((g) => GAME.has(g)).join(',')
   const [lat, lon] = pointOf(body, place)
   const source = body.source === 'app' ? 'app' : 'site'
+  // Explore's tile card: the cell of the SD lattice asked for, and SD or HD (docs/EXPLORE.md)
+  const tile = /^t-\d{1,4}-\d{1,4}$/.test(String(body.tile ?? '')) ? String(body.tile) : null
+  const kind = body.kind === 'hd' ? 'hd' : body.kind === 'sd' ? 'sd' : null
 
   // a hash of the sender's address, kept only to slow a flood
   const who = await hashOf(request.headers.get('CF-Connecting-IP') ?? '')
   const recent = await env.DB.prepare("SELECT COUNT(*) AS n FROM requests WHERE who = ? AND at > datetime('now', '-1 hour')").bind(who).first('n')
   if (recent >= 5) return json({ error: 'busy' }, 429, cors)
 
-  await env.DB.prepare('INSERT INTO requests (email, place, lat, lon, game, source, country, who) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-    .bind(email, place, lat, lon, game, source, request.cf?.country ?? null, who)
+  await env.DB.prepare('INSERT INTO requests (email, place, lat, lon, game, source, country, who, tile, kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .bind(email, place, lat, lon, game, source, request.cf?.country ?? null, who, tile, kind)
     .run()
   return json({ ok: true }, 200, cors)
 }

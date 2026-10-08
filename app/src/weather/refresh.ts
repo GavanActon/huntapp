@@ -168,7 +168,7 @@ export function refreshWeather(reason: string, force = false): Promise<void> {
  * app is switched there, the sweep above keeps it fresh.
  */
 export async function fetchAreaWeather(area: AreaDef): Promise<void> {
-  if (!navigator.onLine || area.id === ACTIVE_AREA.id) return
+  if (!navigator.onLine || area.id === ACTIVE_AREA.id || !area.presets[0]) return
   const stands = usePlacesStore.getState().places.filter((p) => p.kind === 'stand' && placeArea(p)?.id === area.id)
   // one fetch per forecast: a point's is kept to 0.01° (openMeteo), and the home is often a stand too
   const seen = new Set<string>()
