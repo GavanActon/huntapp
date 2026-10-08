@@ -80,14 +80,14 @@ export const STRENGTH_RANGE: Record<Strength, [number, number]> = { calm: [0, 1]
  *  the leaves, the branches: Beaufort 0–4 at head height in the bush). */
 export const STRENGTH_CUE: Record<Strength, string> = {
   calm: 'Stays put · falls straight down · nothing on the face',
-  drift: 'Under arm’s reach in 1 s · creeps along in a cloud · barely on the face',
+  drift: 'Within arm’s reach in 1 s · creeps along in a cloud · barely on the face',
   light: 'Arm’s reach in 1 s · thins out in a few feet · on the face, leaves rustle',
   breezy: '5–6 ft in 1 s · streams off, gone quick · pushes on the face, twigs move',
   windy: '10 ft or more in 1 s · snatched away · hat wants to go, branches sway',
 }
 export const STRENGTH_LABEL: Record<Strength, string> = {
   calm: 'Dead calm',
-  drift: 'Drift: under arm’s reach in a second',
+  drift: 'Drift: within arm’s reach in a second',
   light: 'Light: arm’s reach in a second',
   breezy: 'Breezy: 5–6 ft in a second',
   windy: 'Windy: 10 ft or more in a second',

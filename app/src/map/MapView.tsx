@@ -18,7 +18,6 @@ import { showPlacePopup } from './placePopup'
 import { useScent } from '../weather/micro/scent'
 import { useRoutes } from '../routes/routeStore'
 import { useHeardForm } from '../ui/HeardCard'
-import { useCheckForm } from '../ui/WindCheckCard'
 import { showLogPopup } from '../log/logLayer'
 import { useHuntLog } from '../log/huntLog'
 
@@ -338,9 +337,6 @@ export default function MapView() {
         if (scent.adding) return scent.add(e.lngLat.lng, e.lngLat.lat)
         // Heard pressed: the tap is where it was; what it was comes next
         if (useHeardForm.getState().placing) return useHeardForm.getState().show({ lon: e.lngLat.lng, lat: e.lngLat.lat })
-        // the wind check up and not yet saved: the tap is where the powder went
-        const cf = useCheckForm.getState()
-        if (cf.at && cf.takes) return cf.mapTap(e.lngLat.lng, e.lngLat.lat)
         // outside every baked box the tap picks the cell under it for the card (explore/index.ts)
         if (exploreTap(m, e)) return
         // a place, a numbered pin, a wind check or a kept route has its own tap

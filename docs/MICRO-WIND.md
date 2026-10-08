@@ -568,19 +568,22 @@ nothing that matters: at that cell the mechanical part stays under
   and minute is saved first. With no usable fix the next tap on the map is
   the spot.
 - **Which way, three ways, one direction** (reworked 2026-10-08, Gavan:
-  "no swinging, just a single direction"): an arrow on the rose, which
-  turns with the phone's compass only while the reading is steady (held
-  up to point, an iPhone's heading whirls: `compass.ts` holds it) and
-  stops turning once a way is given; a tap on the map where the powder
-  went, which the card takes until the check is saved (a tap off the card
-  is that, not a close; Gavan, 2026-09-29, could not use the phone's
-  orientation in the field, so the map is the reference); or "ahead",
-  the way the phone points, saved as the direction (it used to arm a map
-  tap and then still ask for an arrow: the bug Gavan hit 2026-10-08):
-  the way you look at a spot seen from afar, else the compass's heading,
-  else the track's course while walking (0.6 kn and a fix under 90 s
-  old), else the card asks for a tap on the map in front of you. The last
-  given wins; there is no second arrow. A wind that swings is read off a
+  "no swinging, just a single direction"; later that day "default to
+  ahead: someone clicks breezy, assume it's in the direction they're
+  pointed", so tapping how hard with no way given takes ahead, no more
+  taps, and the card's title no longer names the place): "ahead", the
+  way the phone points, saved as the direction (it used to arm a map tap
+  and then still ask for an arrow: the bug Gavan hit 2026-10-08): the way
+  you look at a spot seen from afar, else the compass's heading, else the
+  track's course while walking (0.6 kn and a fix under 90 s old); or an
+  arrow on the rose, which turns with the phone's compass only while the
+  reading is steady (held up to point, an iPhone's heading whirls:
+  `compass.ts` holds it) and stops turning once a way is given. The last
+  given wins; there is no second arrow, and with nothing to read ahead
+  from Save asks for an arrow. A tap on the map closes the card (for an
+  hour that day it was the way the powder went; Gavan: "I should be able
+  to tap the map to exit"), and while the card is up the weather strip
+  and the live card are off the screen. A wind that swings is read off a
   series of puffs (below), not asked.
 - **The air above the trees, fitted to the sit** (2026-10-08,
   `micro/ambientFit.ts`; Gavan: "what's the wind doing here, this is the

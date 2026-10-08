@@ -178,8 +178,9 @@ export default function App() {
       <MapView />
       <div className="toparea">
         <TopBar />
-        <WeatherStrip />
-        {!EXPLORE && (topCard ? <TopCardHost /> : <LiveCard />)}
+        {/* sharpening the wind: the map and the rose, nothing else up top (Gavan, 2026-10-08) */}
+        {!checking && <WeatherStrip />}
+        {!EXPLORE && !checking && (topCard ? <TopCardHost /> : <LiveCard />)}
         {/* Explore: Where to and the cell card sit up here under the strip, so the pill and My location keep the foot (Gavan, 2026-10-08) */}
         {EXPLORE && <WhereTo />}
         <TileCard />

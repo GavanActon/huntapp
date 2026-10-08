@@ -22,14 +22,17 @@ import './ground.css'
  * should say you are making it better): the ground wind, the cones and
  * the swing get truer where you are.
  *
- * Which way, three ways, one direction (Gavan, 2026-10-08, "no swinging,
- * just a single direction"): an arrow on the rose; a tap on the map where
- * the powder went, which the card takes until it is saved (a tap off the
- * card is that, not a close); or "ahead", the way you face, read from the
- * compass while it is steady, else your track while you walk, else a tap
- * on the map in front of you. The last of the three given wins. The arc
- * of a wind that swings comes from a series of puffs (windChecks.ts
- * fold), not from a second tap.
+ * Which way, one direction (Gavan, 2026-10-08, "no swinging, just a
+ * single direction"): "ahead", the way the phone points, which is the
+ * default (tapping how hard with no way given takes it, no more taps: the
+ * way you look at a spot seen from afar, else the compass's heading, else
+ * your track while you walk), or an arrow on the rose. The last given
+ * wins; with nothing to read ahead from, Save says so. A tap on the map
+ * closes the card (for an hour that day it was the way the powder went;
+ * Gavan: "I should be able to tap the map to exit"). The arc of a wind
+ * that swings comes from a series of puffs (windChecks.ts fold), not
+ * from a second tap. While the card is up the strip and the live card
+ * are off the screen (App.tsx): the map and the rose, nothing else.
  *
  * The rose turns with the phone when it has a compass, so the arrow to
  * tap is the one pointing where the powder really goes, not a compass
@@ -70,34 +73,23 @@ interface CheckForm {
   at: CheckAt | null
   /** the Sharpen button with no fix to stand on: the next tap on the map is where the check is made */
   arming: boolean
-  /** the card takes the map's taps as the way the powder went: from opening until it is saved */
-  takes: boolean
-  /** the last tap on the map while the form is up, numbered so each one counts */
-  tap: { lon: number; lat: number; n: number } | null
   open: (lon: number, lat: number, label: string, seen?: { from: { lon: number; lat: number } | null }) => void
   arm: () => void
-  setTakes: (v: boolean) => void
-  /** the map's tap, while the form owns it */
-  mapTap: (lon: number, lat: number) => void
   close: () => void
 }
-export const useCheckForm = create<CheckForm>((set, get) => ({
+export const useCheckForm = create<CheckForm>((set) => ({
   at: null,
   arming: false,
-  takes: false,
-  tap: null,
   open: (lon, lat, label, seen) => {
     // from the tap that opened the form: iOS only grants the compass from one
     void requestCompass()
-    set({ at: { lon, lat, label, ...(seen ? { seen: true, from: seen.from } : {}) }, arming: false, takes: true, tap: null })
+    set({ at: { lon, lat, label, ...(seen ? { seen: true, from: seen.from } : {}) }, arming: false })
   },
   arm: () => {
     void requestCompass()
-    set({ at: null, arming: true, takes: false, tap: null })
+    set({ at: null, arming: true })
   },
-  setTakes: (takes) => set({ takes }),
-  mapTap: (lon, lat) => set({ tap: { lon, lat, n: (get().tap?.n ?? 0) + 1 } }),
-  close: () => set({ at: null, arming: false, takes: false, tap: null }),
+  close: () => set({ at: null, arming: false }),
 }))
 
 /** The forecast wind at a place and minute as the map draws it: the HRDPS
@@ -129,15 +121,13 @@ const SEENS: Seen[] = ['still', 'leaves', 'branches', 'sway', 'bend']
 
 export default function WindCheckCard() {
   const at = useCheckForm((s) => s.at)!
-  const takes = useCheckForm((s) => s.takes)
-  const tap = useCheckForm((s) => s.tap)
   const close = useCheckForm((s) => s.close)
   const add = useWindChecks((s) => s.add)
   const heading = useCompass((s) => s.heading)
   const status = useCompass((s) => s.status)
   const [toward, setToward] = useState<number | null>(null)
   /** how the way was given, and what "ahead" was read from */
-  const [via, setVia] = useState<{ how: 'arrow' | 'map' | 'ahead'; read?: string } | null>(null)
+  const [via, setVia] = useState<{ how: 'arrow' | 'ahead'; read?: string } | null>(null)
   const [strength, setStrength] = useState<Strength | null>(null)
   /** seen from afar: what the treetops did */
   const [seenAs, setSeenAs] = useState<Seen | null>(null)
@@ -155,8 +145,8 @@ export default function WindCheckCard() {
   const [sit, setSit] = useState<ReturnType<typeof sitScoreFor>>(null)
   const [saving, setSaving] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-  // while the card takes the map's taps as the powder's way, a tap off it is one of them; saved, a tap off closes it
-  useTapOff(ref, !takes, close)
+  // a tap off the card, the map included, closes it
+  useTapOff(ref, true, close)
   /** where the rose stood when the way was first given */
   const held = useRef<number | null>(null)
 
@@ -176,7 +166,7 @@ export default function WindCheckCard() {
   const turn = picked && held.current != null ? held.current : spin
 
   /** The way the powder went, one direction: the last given wins. */
-  const pick = (deg: number, how: 'arrow' | 'map' | 'ahead', read?: string) => {
+  const pick = (deg: number, how: 'arrow' | 'ahead', read?: string) => {
     const d = Math.round(((deg % 360) + 360) % 360)
     if (held.current == null) held.current = spin
     setToward(d)
@@ -194,29 +184,40 @@ export default function WindCheckCard() {
    *  compass's heading (held at the last reading it believed while the
    *  phone whirls: compass.ts); else the track's course while you walk;
    *  with none of those, a tap on the map in front of you. */
-  const ahead = () => {
-    if (sight != null) return pick(sight, 'ahead', 'the way you look')
+  const aheadDeg = (): { deg: number; read: string } | null => {
+    if (sight != null) return { deg: sight, read: 'the way you look' }
     const cs = useCompass.getState()
-    if (cs.status === 'on' && cs.heading != null) return pick(cs.heading, 'ahead', 'compass')
+    if (cs.status === 'on' && cs.heading != null) return { deg: cs.heading, read: 'compass' }
     const fix = useGpsStore.getState().fix
-    if (fix && fix.cog != null && (fix.sogKn ?? 0) >= 0.6 && Date.now() - fix.ts < 90_000) return pick(fix.cog, 'ahead', 'your track')
-    setMissing('No compass and not walking: tap the map in front of you')
+    if (fix && fix.cog != null && (fix.sogKn ?? 0) >= 0.6 && Date.now() - fix.ts < 90_000) return { deg: fix.cog, read: 'your track' }
+    return null
   }
-
-  // a tap on the map: where the powder went (seen: the way the treetops
-  // lean), as good as an arrow and no compass needed
-  const tapN = tap?.n ?? 0
-  useEffect(() => {
-    if (!tap || saved) return
-    pick(bearingTo(at, tap.lon, tap.lat), 'map')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tapN])
+  const NO_AHEAD = 'No compass and not walking: tap the arrow the powder follows'
+  const ahead = () => {
+    const a = aheadDeg()
+    if (a) pick(a.deg, 'ahead', a.read)
+    else setMissing(NO_AHEAD)
+  }
+  /** Ahead is the default (Gavan, 2026-10-08: "someone clicks breezy, assume
+   *  it's in the direction they're pointed"): tapping how hard with no way
+   *  given yet takes the way the phone points, quietly; with nothing to
+   *  read it from, Save asks for a tap on the map. */
+  const aheadByDefault = () => {
+    if (toward != null) return
+    const a = aheadDeg()
+    if (a) pick(a.deg, 'ahead', a.read)
+  }
 
   const save = async () => {
     if (seen) return saveSeen()
-    if (!strength && toward == null) return setMissing('Tap the arrow the powder follows, or the map where it went, or ahead; then how hard it is blowing (or calm)')
     if (!strength) return setMissing('Tap how hard it is blowing')
-    if (!calm && toward == null) return setMissing('Tap the way the powder went: an arrow, the map, or ahead')
+    let dir = toward
+    if (!calm && dir == null) {
+      const a = aheadDeg()
+      if (!a) return setMissing(NO_AHEAD)
+      dir = a.deg
+      pick(a.deg, 'ahead', a.read)
+    }
     setSaving(true)
     const now = Date.now()
     // the model's call first, before this check can sway it; a check is
@@ -232,7 +233,7 @@ export default function WindCheckCard() {
       ts: now,
       lon: at.lon,
       lat: at.lat,
-      dirFrom: calm || toward == null ? null : (toward + 180) % 360,
+      dirFrom: calm || dir == null ? null : (dir + 180) % 360,
       strength,
       ...(aloft ? { aloft: true } : {}),
       ...(heldOn ? { held: true } : {}),
@@ -241,8 +242,6 @@ export default function WindCheckCard() {
       model: g ? { dirFrom: g.dirFrom, kmh: g.kmh, regime: g.regime, sigmaDeg: g.sigmaDeg, decoupled: g.decoupled, slot: g.inSlot, woods: g.inWoods, ...(g.bias ? { bias: g.bias } : {}) } : undefined,
       forecast: forecastAt(at.lon, at.lat, now),
     })
-    // saved: the map's taps are its own again
-    useCheckForm.getState().setTakes(false)
     // what the map reads there now, this check in; then the sit's score, off the tap
     let a: ReturnType<typeof groundWind> = null
     try {
@@ -266,15 +265,20 @@ export default function WindCheckCard() {
   // a look at the treetops: the wind above the trees, so no model call to
   // keep (that is head height); the forecast's is the one it scores
   const saveSeen = () => {
-    if (!seenAs && toward == null) return setMissing('Tap the arrow the treetops lean, or the map that way, or ahead; then how hard they are moving')
     if (!seenAs) return setMissing('Tap how hard they are moving')
-    if (!calm && toward == null) return setMissing('Tap the way the treetops lean')
+    let dir = toward
+    if (!calm && dir == null) {
+      const a = aheadDeg()
+      if (!a) return setMissing(NO_AHEAD)
+      dir = a.deg
+      pick(a.deg, 'ahead', a.read)
+    }
     const now = Date.now()
     const c = add({
       ts: now,
       lon: at.lon,
       lat: at.lat,
-      dirFrom: calm || toward == null ? null : (toward + 180) % 360,
+      dirFrom: calm || dir == null ? null : (dir + 180) % 360,
       strength: SEEN_STRENGTH[seenAs],
       seen: seenAs,
       ...(at.from ? { seenFrom: { lon: at.from.lon, lat: at.from.lat } } : {}),
@@ -283,7 +287,6 @@ export default function WindCheckCard() {
       source: 'hand',
       forecast: forecastAt(at.lon, at.lat, now),
     })
-    useCheckForm.getState().setTakes(false)
     setSaved(c)
   }
 
@@ -389,7 +392,7 @@ export default function WindCheckCard() {
   return (
     <div className="tripbuilder glass ground-card" ref={ref}>
       <div className="tb-head">
-        <span className="tb-title">Sharpen the wind · {at.label}</span>
+        <span className="tb-title">Sharpen the wind{seen ? ` · ${at.label}` : ''}</span>
       </div>
       {at.seen && !at.from && (
         <div className="gc-strength">
@@ -419,7 +422,6 @@ export default function WindCheckCard() {
           </button>
         )}
       </Rose>
-      {toward == null && !calm && <div className="gc-note">{seen ? 'An arrow, or tap the map the way they lean, or ahead' : 'An arrow, or tap the map where it went, or ahead'}</div>}
       <div className="gc-q">How hard?</div>
       {/* each step in three: how far in a second, what the powder looks like, what you feel; seen, the treetops and the water */}
       {seen ? (
@@ -431,6 +433,7 @@ export default function WindCheckCard() {
               onClick={() => {
                 setSeenAs(s)
                 setMissing(null)
+                if (s !== 'still') aheadByDefault()
               }}
               aria-pressed={seenAs === s}
             >
@@ -448,6 +451,7 @@ export default function WindCheckCard() {
               onClick={() => {
                 setStrength(s)
                 setMissing(null)
+                if (s !== 'calm') aheadByDefault()
               }}
               aria-pressed={strength === s}
             >
