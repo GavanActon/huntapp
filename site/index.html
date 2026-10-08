@@ -461,6 +461,7 @@
     <details>
       <summary>What happens to my data?</summary>
       <p>Your track, pins and hunt log stay on your phone. What comes to us is usage stats: which buttons and screens get used and for how long, under a random id for the phone, so we know what to make better. Never where you are, your pins or anything you type, and Settings, then Usage stats switches it off. Your wind checks come only if you say yes when the app asks, after your first one: where and when each was made, what you felt and what the map said, without your name or notes. They teach the wind map where it's wrong, other hunters never see them, and Settings, then Share wind checks switches it off. Anything else comes only if you send it: a spot you share, or a log you upload when something's wrong. The forecast is fetched from Open-Meteo for your area.</p>
+      <p>This site counts its visits the same way: which parts of a page come on screen and for how long, what gets tapped and where a visit came from, under a random id for your browser and never anything you type. A browser with Global Privacy Control on sends nothing.</p>
     </details>
     <details>
       <summary>How right is the ground wind?</summary>
@@ -502,6 +503,7 @@
 
 </div>
 
+<script src="/visit.js"></script>
 <script src="site.js"></script>
 <script>
 // area requests go to the site's worker (worker.js, schema.sql)
@@ -510,12 +512,14 @@ const REQUEST_URL = '/api/request'
 ;(() => {
   const form = document.getElementById('request')
   const msg = document.getElementById('req-msg')
+  // how it went, for the site's stats (visit.js): never the email or the place
+  const told = (result, game) => window.gwTrack?.('request', { result, game: game?.join(',') })
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
     const email = form.email.value.trim()
     const where = form.where.value.trim()
-    if (!email || !form.email.checkValidity()) return (msg.textContent = 'Add an email we can reach you at.'), form.email.focus()
-    if (!where) return (msg.textContent = 'Add where you hunt: coordinates or a place name.'), form.where.focus()
+    if (!email || !form.email.checkValidity()) return (msg.textContent = 'Add an email we can reach you at.'), form.email.focus(), told('no_email')
+    if (!where) return (msg.textContent = 'Add where you hunt: coordinates or a place name.'), form.where.focus(), told('no_where')
     const game = [...form.querySelectorAll('input[name="game"]:checked')].map((i) => i.value)
     if (!REQUEST_URL) return (msg.textContent = "Requests aren't switched on yet. Nothing was sent.")
     msg.textContent = 'Sending…'
@@ -525,12 +529,14 @@ const REQUEST_URL = '/api/request'
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ email, where, game, website: form.website.value }),
       })
-      if (r.status === 429) return (msg.textContent = 'Lots of requests from here just now. Try again in an hour.')
+      if (r.status === 429) return (msg.textContent = 'Lots of requests from here just now. Try again in an hour.'), told('busy', game)
       if (!r.ok) throw new Error(String(r.status))
       form.reset()
       msg.textContent = "Got it. We'll build it and email you when it's ready, within 48 hours."
+      told('sent', game)
     } catch {
       msg.textContent = "That didn't go through. Check your connection and try again."
+      told('failed', game)
     }
   })
 })()

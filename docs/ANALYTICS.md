@@ -1,8 +1,9 @@
 # Usage stats: who uses the app, and what they use
 
 Which parts of the app get used, by how many phones, how often and for how
-long. The data is ours, in our own D1 database: raw events you can query
-with SQL, pull as CSV, or read on a dashboard at groundwind.app/stats.
+long; and what visitors to the site see and do ([The site](#the-site)).
+The data is ours, in our own D1 database: raw events you can query with
+SQL, pull as CSV, or read on a dashboard at groundwind.app/stats.
 
 Built 2026-10-05. Tested end to end against a local Worker. Going live
 takes a schema push, a secret and two deploys: see [Going live](#going-live).
@@ -66,8 +67,8 @@ Every event row has `install`, `session`, `seq`, `ts`, `name`, `area`,
 
 | Event | When | Props |
 |---|---|---|
-| `first_open` | the first launch with stats on | `known` (the app was on the phone before the stats: not a new user), `via` (spot / area link), `ref` (referrer host), `utm_source`, `utm_medium`, `utm_campaign` |
-| `launch` | every cold start | `platform` (ios, android, windows, mac), `os` (major), `browser`, `standalone` (home screen), `vp`, `dpr`, `lang`, `tz`, `mem`, `launches`, `age_d` (days since first open), `queued` (left unsent by the last run) |
+| `first_open` | the first launch with stats on | `known` (the app was on the phone before the stats: not a new user), `via` (spot / area link), `ref` (referrer host), `utm_source`, `utm_medium`, `utm_campaign`, `site` (the site visit that sent it: [Into the app](#into-the-app)) |
+| `launch` | every cold start | `platform` (ios, android, windows, mac), `os` (major), `browser`, `standalone` (home screen), `vp`, `dpr`, `lang`, `tz`, `mem`, `launches`, `age_d` (days since first open), `queued` (left unsent by the last run), `site` (opened from the site's "Open the app") |
 | `session_start` | first event after 30 min quiet | `n` (the phone's session count), `gap_h` |
 | `show` / `hide` | the app comes to the front / is put away | hide: `fg_s` (seconds in front), `taps` (map), `pans`, `zooms`, `clicks` |
 | `app_updated` | first launch on a new build | `from` |
@@ -185,6 +186,135 @@ The dashboard's **Download CSV**, or
 One row per event, props as a JSON column. It loads into pandas, a
 notebook or Excel as is.
 
+## The site
+
+What visits to groundwind.app see and do: which parts of each page come on
+screen and for how long, the loops watched, what gets tapped and opened, the
+request form's steps, how fast the page comes up, where the visit came from,
+and whether it went on into the app. Built 2026-10-08, tested end to end
+against a local Worker. Kept in its own table, `site_events`, so a passing
+visitor isn't counted as a phone in the app's numbers.
+
+```
+browser (site/visit.js, on every page)
+  └─ events in memory, sent every 15 s, at 40, and when the page is put away (sendBeacon)
+       └─ POST /api/visits, text/plain, the site's own pages only
+            └─ groundwind.app Worker (site/sitestats.js) → D1 groundwind.site_events
+                 ├─ GET /api/site-stats     (dashboard: groundwind.app/stats, The site)
+                 └─ GET /api/visits/export  (every row as CSV)
+```
+
+- **A visitor** is a browser: a random 16-hex id made on its first page
+  (`gw-visitor` in localStorage). Another browser or a cleared one is
+  another visitor.
+- **A visit** (`session`) is a run of pages with no 30-minute gap, shared
+  by the site's tabs (`gw-visit`). A tab come back to after the gap starts
+  a new one, with a `view` marked `again` so its referrer isn't counted
+  twice.
+- **A page load** (`view`, 12 hex) is one page opened. Each event carries
+  the load's counter, and `(view, seq)` is unique, so a batch sent twice is
+  stored once.
+- **Seen**: a part of the page is on screen when it fills half the screen,
+  or most of itself when it is short, sampled every half second. A second
+  of that makes it `seen`, so a part flicked past doesn't count. The parts
+  are `main > section` on the homepage and the guide (by id, else class:
+  the hero is `hero`, the closing quote `coda`, the form's block `beta`),
+  and on an article the stretch under each `h2` (`top` above the first).
+- **Time** counts only while the page is in front and in use: after 90 s
+  with no scroll, tap or key it stops, so a tab left open on a section
+  doesn't run up minutes.
+
+### What stays out
+
+- Never what is typed in the form, never a position: the form reports only
+  the box first used, how sending went and the game boxes ticked. Labels
+  come from the page's own text.
+- **Nothing is sent** from a browser with Global Privacy Control on (the
+  Worker also drops anything arriving with `Sec-GPC: 1`), one driven by a
+  script (`navigator.webdriver`: the loops' recordings, the screenshot
+  scripts), a crawler (by its user agent, in the browser and again in the
+  Worker), or one switched off: a browser that has opened the dashboard
+  sets `gw-site-off`, and so does any page opened with `?notrack` (for a
+  phone you don't want to sign in to the dashboard on).
+- The coarse "where" is Cloudflare's country for the upload. The site's
+  FAQ ("What happens to my data?") says this, 2026-10-08.
+
+### Into the app
+
+A tap on any "Open the app" link adds `?v=<visitor>` as it goes
+(groundwind.app/app passes the query on to the app). The app reads it once
+at start (`app/src/analytics.ts`), puts it on `first_open` and `launch` as
+`site`, and takes it out of the address, so a reload or a shared link
+doesn't carry it. The dashboard joins the two: phones whose first open came
+from a visit in the window, and what those phones went on to do. On iOS the
+home-screen app keeps its own storage, so a phone added to the home screen
+after opening from the site makes a second first open with no `site`.
+
+### The site's events
+
+Every row has `visitor`, `session`, `view`, `seq`, `ts`, `page` (the path:
+`/`, `/guide`, `/moose-weather` …, `/404` for a page not found), `name`,
+`props` as JSON, `country` and `received`.
+
+| Event | When | Props |
+|---|---|---|
+| `view` | a page opened | `new` (the browser's first page), `visits` (its visit count), `ref` (the linking site's host) or `from` (the site's own page before), `utm_source`, `utm_medium`, `utm_campaign`, `hash`, `vp`, `dpr`, `platform`, `browser`, `lang`, `tz`, `conn`, `reduced` (reduced motion), `nav` (navigate, reload, back_forward), `again`, `path` (on /404) |
+| `seen` | a part first on screen for a second | `sec`, `i` (its place on the page), `t` (seconds after the page opened) |
+| `dwell` | the page put away | `sec`, `s` (seconds on screen since the last time it was put away) |
+| `hide` / `show` | put away / back | hide: `fg_s` (seconds in front and in use), `depth` (% of the page reached, the most so far), `at` (the part most on screen); show: `gap_s` |
+| `click` | a link or a button | `el` (label), `sec`, `kind` (link, button …), `to` (`/app`, a path, `#request`, another site's host, `mailto`), `tab` (middle click) |
+| `dead_click` | a tap on something that does nothing | `what` (tag and its text or alt, 50 characters), `sec`. Twenty per page load at most |
+| `dig` / `dig_close` | a details opened / closed | `el` (its summary: How, As a table, an FAQ question), `sec`; close: `s` |
+| `loop_play` | a loop first played on screen | `loop` (the file's name), `sec` |
+| `watch` | the page put away | `loop`, `s` (seconds it played on screen) |
+| `loop_tap` | a tap on a loop | `loop`, `act` (pause, play) |
+| `loop_wait` | a loop on screen behind its play button | `loop`, `sec`, `reduced` (Low Power Mode or reduced motion) |
+| `form_start` | the request form's first box used | `field` |
+| `request` | a send tried | `result` (sent, no_email, no_where, busy, failed), `game` |
+| `vitals` | the first time the page is put away | `lcp`, `fcp`, `ttfb`, `dom`, `load` (ms from the page's start), `cls` (the worst burst), `inp` (the slowest tap answered, ms). Safari reports only some |
+| `error` / `asset_error` | a script error (five per page load) / a loop or photo that didn't load | `msg`, `at` / `what`, `name` |
+
+Adding one: `gwTrack('name', { … })` from a page's own script
+(`window.gwTrack` is there when `visit.js` is sending), or a line in
+`visit.js`. Add it to the table here.
+
+### Reading the site's
+
+The dashboard's **The site** tab (the window and **Leave out** apply as on
+the app's; an 8-hex id there leaves out a phone or a browser): visitors,
+median time a visit, the share of visits that opened the app, new phones
+from the site, spots requested; visitors per day; where visits came from
+(utm source, else the linking site, else direct) with each source's share
+to the app; **What they see**: for a page, each part in page order with the
+share of loads that saw it and the seconds it held them; **Where they
+left**; pages with time and depth; taps; what was opened; the loops; taps
+on nothing; into the app (visits, then the phones and what they did); the
+request form; devices, countries, speed, errors and the latest events.
+
+```sql
+-- the homepage, part by part: share of loads that saw it, seconds each
+WITH v AS (SELECT COUNT(DISTINCT view) AS n FROM site_events WHERE page = '/' AND name = 'view')
+SELECT json_extract(props, '$.sec') AS sec, MIN(json_extract(props, '$.i')) AS i,
+       ROUND(100.0 * COUNT(DISTINCT CASE WHEN name = 'seen' THEN view END) / (SELECT n FROM v)) AS pct,
+       ROUND(SUM(CASE WHEN name = 'dwell' THEN json_extract(props, '$.s') ELSE 0 END) / MAX(1, COUNT(DISTINCT CASE WHEN name = 'seen' THEN view END))) AS s_each
+FROM site_events WHERE page = '/' AND name IN ('seen', 'dwell') GROUP BY sec ORDER BY i;
+
+-- one visit's whole story, in order
+SELECT datetime(ts/1000, 'unixepoch') AS utc, page, name, props FROM site_events WHERE session = '…' ORDER BY ts, seq;
+```
+
+`curl -H "Authorization: Bearer $KEY" "https://groundwind.app/api/visits/export?days=30" > site.csv`
+for every row.
+
+### The site's limits
+
+A homepage read top to bottom is 35 to 45 events (a `seen` and a `dwell`
+per part, the loops, the view, the hide), a glance at the hero 5. Each
+event is three rows written (the row and two indexes), out of the same
+100,000 a day as the app's, so about 800 full homepage reads a day before
+the $5 plan. `/api/visits` shares the `EVENTS_LIMIT` rate limit under its
+own key (`site:<address>`): 30 batches a minute per address.
+
 ## Wind checks
 
 The hunters' wind checks are the ground model's lessons: where it is wrong
@@ -264,7 +394,12 @@ From `site/`:
    build that reaches the Worker before step 1 wait on the phone and
    arrive on a later try.
 5. Open `groundwind.app/stats`, then put your own phone's id in
-   **Leave out phones**.
+   **Leave out**.
+
+The site's stats (2026-10-08) need step 1 again (it adds `site_events`)
+and step 3; the app's half (`site` on `first_open` and `launch`) goes with
+the app's next build. Open the dashboard once in each browser you use, or
+any page with `?notrack` on a phone, so your own visits stay out.
 
 ## Local testing
 
@@ -284,3 +419,12 @@ VITE_EVENTS_API=http://localhost:8799 npx vite --port 5191
 A browser driven by Playwright sends nothing unless the test hides
 `navigator.webdriver`
 (`Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false })`).
+
+For the site, give the browser its user agent at launch
+(`args=[f'--user-agent={UA}']`), not only the context's: a page leaving for
+another site (Open the app) sends its last batch from outside the tab,
+with the stock "HeadlessChrome" agent, and the Worker drops it as a bot.
+Don't `route()` either: with a route on, Playwright holds every request,
+and the leaving beacon can die with the tab. To keep the real app from
+loading, point its host at nothing:
+`--host-resolver-rules=MAP hunt.groundwind.app 127.0.0.1:9`.

@@ -1,6 +1,7 @@
 -- Area requests from the site's form (and later the app's own button), the
--- app's usage stats (events, below), the wind checks hunters share (checks)
--- and a hunting party's sealed mailbox (party_items).
+-- app's usage stats (events, below), the site's own (site_events), the wind
+-- checks hunters share (checks) and a hunting party's sealed mailbox
+-- (party_items).
 -- Apply with: npx wrangler d1 execute groundwind --remote --file schema.sql
 -- Read with:  npx wrangler d1 execute groundwind --remote --command "SELECT * FROM requests ORDER BY at DESC"
 CREATE TABLE IF NOT EXISTS requests (
@@ -41,6 +42,28 @@ CREATE TABLE IF NOT EXISTS events (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS events_install_seq ON events (install, seq);
 CREATE INDEX IF NOT EXISTS events_ts ON events (ts);
+
+-- The site's own stats (site/visit.js → /api/visits, sitestats.js; the
+-- events and the queries in docs/ANALYTICS.md "The site"): which parts of a
+-- page came on screen and for how long, the loops watched, what was tapped
+-- and opened, and where the visit came from. A random id per browser, never
+-- what's typed in the request form. Kept apart from the app's events, so a
+-- passing visitor isn't counted as a phone.
+CREATE TABLE IF NOT EXISTS site_events (
+  id INTEGER PRIMARY KEY,
+  visitor TEXT NOT NULL,      -- 16 hex, made once per browser (localStorage gw-visitor)
+  session TEXT NOT NULL,      -- 12 hex, new after 30 min with nothing done
+  view TEXT NOT NULL,         -- 12 hex, one page load
+  seq INTEGER NOT NULL,       -- the page load's counter: a batch sent twice is stored once
+  ts INTEGER NOT NULL,        -- when it happened, ms, the browser's clock put right by the batch's skew
+  page TEXT NOT NULL,         -- the path: /, /guide, /moose-weather … (/404 for a page not found)
+  name TEXT NOT NULL,         -- what happened: view, seen, dwell, click, dig, loop_play … (docs/ANALYTICS.md)
+  props TEXT,                 -- JSON, small: which section, which button, how long …
+  country TEXT,               -- Cloudflare's guess from the upload
+  received INTEGER NOT NULL   -- when it reached us, ms
+);
+CREATE UNIQUE INDEX IF NOT EXISTS site_events_view_seq ON site_events (view, seq);
+CREATE INDEX IF NOT EXISTS site_events_ts ON site_events (ts);
 
 -- Wind checks the hunters chose to share (app/src/weather/micro/checkShare.ts
 -- → /api/checks, checks.js; docs/ANALYTICS.md "Wind checks"). Asked once, at

@@ -2,6 +2,8 @@
 // keeps area requests (D1, schema.sql), /api/sms and /api/wx answer weather
 // requests sent by satellite text (satbot.js), /api/events takes the app's
 // usage stats and /api/stats and /api/export read them back (stats.js),
+// /api/visits takes the site's own and /api/site-stats and
+// /api/visits/export read them back (sitestats.js),
 // /api/checks takes the wind checks hunters share and /api/checks/export
 // reads them back (checks.js), /api/party is a hunting party's sealed
 // mailbox (party.js), and everything else is the static site in this folder
@@ -10,6 +12,7 @@
 import { checksExport, checksIngest } from './checks.js'
 import { partyApi } from './party.js'
 import { smsWebhook, wxQuery } from './satbot.js'
+import { siteStatsQuery, visitsExport, visitsIngest } from './sitestats.js'
 import { eventsExport, eventsIngest, statsQuery } from './stats.js'
 
 // where the app lives for now: links, the QR code and shares all go through
@@ -33,6 +36,9 @@ export default {
     if (url.pathname === '/api/events') return eventsIngest(request, env)
     if (url.pathname === '/api/stats') return statsQuery(request, env)
     if (url.pathname === '/api/export') return eventsExport(request, env)
+    if (url.pathname === '/api/visits') return visitsIngest(request, env)
+    if (url.pathname === '/api/site-stats') return siteStatsQuery(request, env)
+    if (url.pathname === '/api/visits/export') return visitsExport(request, env)
     if (url.pathname === '/api/checks') return checksIngest(request, env)
     if (url.pathname === '/api/checks/export') return checksExport(request, env)
     if (url.pathname === '/api/party') return partyApi(request, env)
