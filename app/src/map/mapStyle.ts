@@ -180,7 +180,7 @@ let liveShadeUnderImagery = false
  *  view as it was; the wind's colours as the ground (windGround) the same. A hidden layer is neither fetched nor read ahead (prefetch.ts).
  *  Run on every move and after every switch (applyLayerState puts them back
  *  with their switches). */
-export function syncUnderlays(map: MlMap, layers: LayerVisibility, opacity: LayerOpacity, hd: boolean) {
+export function syncUnderlays(map: MlMap, layers: LayerVisibility, opacity: LayerOpacity, hd: boolean, explore = false) {
   if (!map.getLayer('base')) return
   ;({ layers, opacity } = standIn(layers, opacity))
   const b = map.getBounds()
@@ -192,7 +192,11 @@ export function syncUnderlays(map: MlMap, layers: LayerVisibility, opacity: Laye
   // the base map is only drawn in and around the box, and the live imagery covers the province round it
   const liveImagery = !!map.getLayer('satellite-live')
   const show: Record<string, boolean> = {
-    toposheet: !inside,
+    // under the whole imagery (the baked in the box, the province's round it) the Toporama
+    // sheet only ever showed while the photo was on its way: a topo map first on a slow
+    // phone's opening (Gavan, 2026-10-08, a dry run on Bow). Explore keeps it, for where
+    // the province's imagery stops
+    toposheet: !inside && !(imagery && liveImagery && !explore),
     base: !((imagery && (inside || liveImagery)) || ((relief || wind) && inside)),
     'satellite-live': layers.satellite && !(imagery && inside),
     'hillshade-live': layers.hillshade && !(inside && ((imagery && liveShadeUnderImagery) || relief || wind)),
