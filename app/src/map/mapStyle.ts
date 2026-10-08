@@ -2,7 +2,7 @@ import { DARK, layers as basemapLayers } from '@protomaps/basemaps'
 import type { FeatureCollection } from 'geojson'
 import type { ExpressionSpecification, FilterSpecification, GeoJSONSource, LayerSpecification, Map as MlMap, StyleSpecification } from 'maplibre-gl'
 import { ACTIVE_AREA, AREA_LIST } from '../areas'
-import { ATTRIBUTION, CONTOUR_FINE_FROM, CORE, FINE_RELIEF, REGION, REGION_MAXZOOM, RELIEF, ZONE } from '../config'
+import { ATTRIBUTION, CONTOUR_FINE_FROM, CORE, DATA_FILES, FINE_RELIEF, LIVE, REGION, REGION_MAXZOOM, RELIEF, ZONE } from '../config'
 import { LIVE_RASTER, LIVE_VECTOR } from '../sources'
 import type { ContourInterval, LayerOpacity, LayerVisibility } from '../state/appStore'
 import { COVERAGE_KEY, COVERAGE_SOURCE, coverageLayers, coverageSource } from '../explore/coverage'
@@ -227,7 +227,26 @@ const FONT = ['Noto Sans Regular']
 const FONT_MED = ['Noto Sans Medium']
 const HALO = { 'text-halo-color': 'rgba(10,20,12,0.92)', 'text-halo-width': 1.2 }
 
+/** An area with no imagery at all, baked or live (Blanchard River, BC:
+ *  the province's orthos stop east of 134° W and the Yukon's mosaic at
+ *  the border). */
+export const NO_IMAGERY = !LIVE.satellite && !DATA_FILES.some((d) => d.key === 'satellite')
+
+/** A view that asks for imagery where there is none (Bow, Sit, Land) gets
+ *  the Topo look instead: the relief colours and a full hillshade, so the
+ *  core is not the dimmed base map alone, grey and needing signal (Gavan,
+ *  2026-10-08, Blanchard River: "Grey I see. Sat image no"). The view and
+ *  the sheet keep their own switches; this is only what is drawn. */
+export function standIn(layers: LayerVisibility, opacity: LayerOpacity): { layers: LayerVisibility; opacity: LayerOpacity } {
+  if (!NO_IMAGERY || !layers.satellite) return { layers, opacity }
+  return {
+    layers: { ...layers, satellite: false, relief: true, hillshade: true },
+    opacity: { ...opacity, hillshade: Math.max(opacity.hillshade, 0.7) },
+  }
+}
+
 export function buildMapStyle(o: StyleOpts): StyleSpecification {
+  o = { ...o, ...standIn(o.layers, o.opacity) }
   const sources: StyleSpecification['sources'] = {}
   const has = (k: string) => o.available.has(k)
   deferredGeo.clear()

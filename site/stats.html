@@ -6,8 +6,9 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Groundwind usage</title>
 <style>
-/* The app's usage stats (docs/ANALYTICS.md): read from /api/stats with the
-   key kept in this browser. Not linked from the site. */
+/* The app's usage stats and the site's (docs/ANALYTICS.md): read from
+   /api/stats and /api/site-stats with the key kept in this browser. Not
+   linked from the site. */
 :root {
   color-scheme: light;
   --page: #f9f9f7;
@@ -109,6 +110,8 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; color: var(-
 .bars .row-hit:hover .fill, .bars .row-hit:focus-visible .fill { background: var(--series-hover); }
 .bars .num { color: var(--ink-2); font-size: 0.8rem; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 .bars .row-hit { display: contents; }
+/* a phone: long names give way to the bars */
+@media (max-width: 600px) { .bars { grid-template-columns: minmax(0, 1.3fr) minmax(48px, 1fr) auto; } }
 
 .heat { display: grid; grid-template-columns: 34px repeat(24, minmax(0, 1fr)); gap: 2px; }
 .heat .cell { aspect-ratio: 1 / 1; border-radius: 3px; min-height: 10px; }
@@ -153,6 +156,9 @@ details.tv summary { color: var(--ink-2); font-size: 0.8rem; cursor: pointer; }
       <h1>Groundwind usage</h1>
       <div class="stamp" id="stamp">Not loaded</div>
     </div>
+    <div class="seg" role="group" aria-label="Whose stats" id="tabs">
+      <button data-tab="app">The app</button><button data-tab="site">The site</button>
+    </div>
   </div>
 
   <div id="keybox" hidden>
@@ -168,7 +174,7 @@ details.tv summary { color: var(--ink-2); font-size: 0.8rem; cursor: pointer; }
     <div class="seg" role="group" aria-label="Window" id="range">
       <button data-d="7">7 days</button><button data-d="30">30 days</button><button data-d="90">90 days</button><button data-d="365">1 year</button>
     </div>
-    <label class="inline">Leave out phones <input type="text" id="exclude" placeholder="8-hex ids, comma separated"></label>
+    <label class="inline">Leave out <input type="text" id="exclude" placeholder="8-hex ids of phones or browsers"></label>
     <button class="btn" id="reload">Refresh</button>
     <button class="btn" id="csv">Download CSV</button>
     <button class="btn" id="forget">Forget key</button>
@@ -184,11 +190,13 @@ const $ = (s) => document.querySelector(s)
 const KEY = 'gw-stats-key'
 const EXCL = 'gw-stats-exclude'
 const DAYS = 'gw-stats-days'
+const TAB = 'gw-stats-tab'
 const store = {
   get(k) { try { return localStorage.getItem(k) } catch { return null } },
   set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v) } catch { /* private window */ } },
 }
 let days = Number(store.get(DAYS)) || 30
+let tab = store.get(TAB) === 'site' ? 'site' : 'app'
 let data = null
 
 // ------------------------------------------------------------------ DOM
@@ -599,6 +607,195 @@ function render(d) {
   out.append(c14)
 }
 
+// ------------------------------------------------------------------ the site
+
+// the homepage's sections, as a reader knows them (index.html)
+const SECTIONS = {
+  '/': { hero: "Hero · Don't get winded", nose: 'He lives by his nose', scent: "The wind at your face isn't the forecast", science: 'We built the wind for your ground', bush: 'Know the bush', learn: 'Each puff calibrates', plan: 'Plan the sit', nobars: 'No signal', coda: 'We need your help', beta: 'Try it · Request your spot', faq: 'Questions', notes: 'Field notes' },
+}
+const secName = (page, id) => SECTIONS[page]?.[id] ?? id ?? '–'
+let sitePage = '/'
+
+function renderSite(d) {
+  const out = $('#out')
+  out.classList.remove('refetch')
+  out.replaceChildren()
+  const me = store.get('gw-visitor')
+  $('#stamp').textContent = `Last ${d.days} days · as of ${when(d.at)} · ${fmt(d.total.visitors)} browsers since ${d.total.first ? when(d.total.first) : '–'} · this browser's own visits are left out${me ? ` (${me.slice(0, 8)})` : ''}`
+  if (!d.total.visitors) {
+    out.append(h('p', { class: 'empty' }, 'No visits yet. They start arriving once the site with visit.js is deployed and someone opens it.'))
+    return
+  }
+  const t = d.totals
+  const sess = d.sessions.map((r) => r.fg ?? 0).sort((x, y) => x - y)
+  const pagesPer = d.sessions.reduce((a, r) => a + r.pages, 0) / Math.max(1, d.sessions.length)
+  const app = d.app ?? {}
+  const tile = (label, value, note, hero) => h('div', { class: `tile${hero ? ' hero' : ''}` }, h('div', { class: 'label' }, label), h('div', { class: 'value' }, value), note ? h('div', { class: 'note' }, note) : null)
+  out.append(h('div', { class: 'tiles' },
+    tile('Visitors', fmt(t.visitors), `${fmt(t.new_visitors)} new · ${fmt(t.sessions)} visits · ${fmt(t.views)} pages`, true),
+    tile('Time on the site, median visit', mins(quantile(sess, 0.5)), `p75 ${mins(quantile(sess, 0.75))} · ${pagesPer.toFixed(1)} pages a visit`),
+    tile('Visits that opened the app', pct(t.app_sessions, t.sessions), `${fmt(t.app_sessions)} visits · ${fmt(t.app_visitors)} visitors`),
+    tile('New phones from the site', fmt(app.new_phones), `first open came from a visit · ${fmt(app.launches)} phones launched from one`),
+    tile('Spots requested', fmt(t.requests), `${pct(t.requests, t.sessions)} of visits`),
+  ))
+
+  // the days, and where they came from
+  const by = Object.fromEntries(d.daily.map((r) => [r.day, r]))
+  const days_ = filledDays([]).map((r) => by[r.day] ?? { day: r.day, visitors: 0, sessions: 0, views: 0, new_visitors: 0, to_app: 0, fg_min: 0 })
+  const g1 = h('div', { class: 'grid2' })
+  const c1 = card('Visitors per day', 'Browsers with at least one page open that day')
+  columns(c1, days_.map((r) => ({ label: dayLabel(r.day), head: dayLabel(r.day), value: r.visitors, tip: [['Visitors', fmt(r.visitors), true], ['New', fmt(r.new_visitors)], ['Visits', fmt(r.sessions)], ['Pages', fmt(r.views)], ['Opened the app', fmt(r.to_app)], ['Minutes', fmt(r.fg_min)]] })), { label: 'Visitors' })
+  c1.append(tableView([{ k: 'day', t: 'Day' }, { k: 'visitors', t: 'Visitors', n: 1 }, { k: 'new_visitors', t: 'New', n: 1 }, { k: 'sessions', t: 'Visits', n: 1 }, { k: 'views', t: 'Pages', n: 1 }, { k: 'to_app', t: 'To the app', n: 1 }, { k: 'fg_min', t: 'Minutes', n: 1 }], days_))
+  const c2 = card('Where they came from', 'Each visit by its first page: the utm source, else the site that linked, else typed or a bookmark')
+  table(c2, [{ k: 'src', t: 'From' }, { k: 'campaign', t: 'Campaign' }, { k: 'landing', t: 'Landed on' }, { k: 'sessions', t: 'Visits', n: 1 }, { k: 'visitors', t: 'Visitors', n: 1 }, { k: 'app', t: 'To the app', n: 1, f: (v) => `${v}%` }, { k: 'requests', t: 'Requests', n: 1 }],
+    d.sources.map((r) => ({ ...r, app: Math.round((100 * r.to_app) / Math.max(1, r.sessions)) })), { sort: 'sessions' })
+  g1.append(c1, c2)
+  out.append(g1)
+
+  // what they see, page by page
+  const pages = [...d.pages].sort((a, b) => b.views - a.views)
+  if (!pages.some((p) => p.page === sitePage)) sitePage = pages[0]?.page ?? '/'
+  const pick = h('select', { 'aria-label': 'Page' }, pages.map((p) => h('option', { value: p.page }, `${p.page} · ${fmt(p.views)} loads`)))
+  pick.value = sitePage
+  const seeSub = h('p', { class: 'sub' })
+  const seeHost = h('div')
+  const leaveHost = h('div')
+  const c3 = h('section', { class: 'card' }, h('h2', null, 'What they see'), seeSub, h('div', { class: 'row' }, pick), seeHost)
+  const c4 = card('Where they left', 'The part on screen when a visit last put the site away, for visits that ended on this page', leaveHost)
+  const showPage = () => {
+    sitePage = pick.value
+    const p = pages.find((x) => x.page === sitePage) ?? { views: 0 }
+    seeSub.textContent = `Share of the ${fmt(p.views)} loads that had each part on screen for a second or more, in page order, and the seconds it held each one.${p.measured ? ` ${p.depth}% of the way down on average, ${pct(p.bottom, p.measured)} reached the bottom, ${mins(p.avg_s)} a load.` : ''}`
+    const rows = d.sections.filter((r) => r.page === sitePage).sort((a, b) => (a.i ?? 99) - (b.i ?? 99))
+    seeHost.replaceChildren()
+    barList(seeHost, rows.map((r) => ({
+      name: secName(sitePage, r.sec), value: r.seen, max: p.views,
+      text: `${pct(r.seen, p.views)} · ${r.seen ? mins(r.s / r.seen) : '–'}`,
+      tip: [['Loads that saw it', `${fmt(r.seen)} of ${fmt(p.views)}`, true], ['On screen, each', r.seen ? mins(r.s / r.seen) : '–'], ['In all', mins(r.s)], ['First seen after', mins(r.t)]],
+    })))
+    seeHost.append(tableView([{ k: 'sec', t: 'Part' }, { k: 'seen', t: 'Loads', n: 1 }, { k: 'reach', t: '% loads', n: 1, f: (v) => `${v}%` }, { k: 'each', t: 'Seconds each', n: 1 }, { k: 's', t: 'Seconds in all', n: 1 }, { k: 't', t: 'First seen at, s', n: 1 }],
+      rows.map((r) => ({ ...r, sec: secName(sitePage, r.sec), reach: Math.round((100 * r.seen) / Math.max(1, p.views)), each: r.seen ? Math.round(r.s / r.seen) : null }))))
+    const ex = d.exits.filter((r) => r.page === sitePage)
+    const all = ex.reduce((a, r) => a + r.n, 0)
+    leaveHost.replaceChildren()
+    if (!all) return leaveHost.append(h('p', { class: 'empty' }, 'No visit has ended here yet.'))
+    barList(leaveHost, ex.map((r) => ({ name: secName(sitePage, r.at), value: r.n, max: all, text: `${pct(r.n, all)} · ${fmt(r.n)}`, tip: [['Visits that left here', fmt(r.n), true], ['Share', pct(r.n, all)]] })))
+  }
+  pick.addEventListener('change', showPage)
+  const g2 = h('div', { class: 'grid2' })
+  g2.append(c3, c4)
+  out.append(g2)
+  showPage()
+
+  // pages
+  const c5 = card('Pages', 'Loads, time in front and in use, and how far down they got')
+  table(c5, [{ k: 'page', t: 'Page' }, { k: 'views', t: 'Loads', n: 1 }, { k: 'visitors', t: 'Visitors', n: 1 }, { k: 'avg_s', t: 'Time a load', n: 1, f: (v) => mins(v) }, { k: 'depth', t: 'Down, avg', n: 1, f: (v) => (v == null ? '–' : `${v}%`) }, { k: 'bottom_pct', t: 'Reached the bottom', n: 1, f: (v) => (v == null ? '–' : `${v}%`) }],
+    pages.map((p) => ({ ...p, bottom_pct: p.measured ? Math.round((100 * p.bottom) / p.measured) : null })), { sort: 'views' })
+  out.append(c5)
+
+  // taps and opens
+  const g3 = h('div', { class: 'grid2' })
+  const c6 = card('Taps', 'Every link and button by its label, the part of the page it sits in, and where it goes')
+  const tq = h('input', { type: 'text', placeholder: 'Filter', 'aria-label': 'Filter taps' })
+  const tapHost = h('div')
+  const showTaps = () => {
+    const f = tq.value.trim().toLowerCase()
+    tapHost.replaceChildren()
+    table(tapHost, [{ k: 'page', t: 'Page' }, { k: 'where', t: 'Where' }, { k: 'el', t: 'Label' }, { k: 'href', t: 'Goes to' }, { k: 'n', t: 'Taps', n: 1, f: fmt }, { k: 'visitors', t: 'Visitors', n: 1 }],
+      d.clicks.map((c) => ({ ...c, where: secName(c.page, c.sec) })).filter((c) => !f || `${c.page} ${c.where} ${c.el} ${c.href}`.toLowerCase().includes(f)), { sort: 'n' })
+  }
+  tq.addEventListener('input', showTaps)
+  c6.append(h('div', { class: 'row' }, tq), tapHost)
+  showTaps()
+  const c7 = card('Opened', 'Each "How", table and question opened, by how many page loads, and how long it stayed open')
+  table(c7, [{ k: 'page', t: 'Page' }, { k: 'where', t: 'Where' }, { k: 'el', t: 'Summary' }, { k: 'views', t: 'Loads', n: 1 }, { k: 'opens', t: 'Opens', n: 1 }, { k: 'avg_s', t: 'Open, avg', n: 1, f: (v) => mins(v) }],
+    d.digs.map((r) => ({ ...r, where: secName(r.page, r.sec) })), { sort: 'views' })
+  g3.append(c6, c7)
+  out.append(g3)
+
+  // loops and taps on nothing
+  const g4 = h('div', { class: 'grid2' })
+  const c8 = card('Loops', 'Loads where each loop played on screen, seconds watched, taps to pause or play, and loads where it waited behind the play button (Low Power Mode, reduced motion)')
+  table(c8, [{ k: 'page', t: 'Page' }, { k: 'loop', t: 'Loop' }, { k: 'plays', t: 'Played', n: 1 }, { k: 'each', t: 'Watched, each', n: 1, f: (v) => mins(v) }, { k: 'pauses', t: 'Paused', n: 1 }, { k: 'played', t: 'Tapped to play', n: 1 }, { k: 'waits', t: 'Waited', n: 1 }],
+    d.loops.map((r) => ({ ...r, each: r.plays ? r.s / r.plays : null })), { sort: 'plays' })
+  const c9 = card('Taps on nothing', 'Taps on a photo, a heading or a list that does nothing: what people expect to be a button')
+  table(c9, [{ k: 'page', t: 'Page' }, { k: 'where', t: 'Where' }, { k: 'what', t: 'What', cls: 'wrap' }, { k: 'n', t: 'Taps', n: 1 }, { k: 'visitors', t: 'Visitors', n: 1 }],
+    d.dead.map((r) => ({ ...r, where: secName(r.page, r.sec) })), { sort: 'n' })
+  g4.append(c8, c9)
+  out.append(g4)
+
+  // into the app, and the request form
+  const g5 = h('div', { class: 'grid2' })
+  const c10 = card('Into the app', 'Visits, then the phones whose first open came from one (by the ?v= on Open the app), and what those phones did')
+  const steps = [
+    ['Visits', t.sessions, 'visits'],
+    ['Tapped Open the app', t.app_sessions, 'visits'],
+    ['First open in the app', app.new_phones, 'phones'],
+    ['Tapped the map', app.tapped, 'phones'],
+    ['Dug in on a spot', app.dug_in, 'phones'],
+    ['Made a wind check', app.checked, 'phones'],
+    ['Came back another day', app.returned, 'phones'],
+  ]
+  barList(c10, steps.map(([name, v, unit], i) => ({
+    name, value: v ?? 0, max: i < 2 ? t.sessions : Math.max(1, app.new_phones ?? 0), text: `${fmt(v ?? 0)} ${unit}`,
+    tip: [[unit, fmt(v ?? 0), true], ...(i === 1 ? [['Of visits', pct(v, t.sessions)]] : i > 2 ? [['Of new phones', pct(v, app.new_phones)]] : [])],
+  })))
+  const c11 = card('Request your spot', 'Loads that had the form on screen, the box they began in, and how sending went. Never the email or the place.')
+  const formSeen = d.sections.find((r) => r.page === '/' && r.sec === 'beta')?.seen ?? 0
+  const started = d.form.filter((r) => r.name === 'form_start')
+  const results = d.form.filter((r) => r.name === 'request')
+  const startedN = started.reduce((a, r) => a + r.n, 0)
+  const sentN = results.filter((r) => r.result === 'sent').reduce((a, r) => a + r.n, 0)
+  const top = Math.max(1, formSeen, startedN)
+  barList(c11, [
+    { name: 'Saw the form', value: formSeen, max: top, text: fmt(formSeen), tip: [['Loads', fmt(formSeen), true]] },
+    { name: 'Began it', value: startedN, max: top, text: fmt(startedN), tip: started.length ? started.map((r) => [`First box: ${r.field}`, fmt(r.n)]) : [['Began', '0']] },
+    { name: 'Sent', value: sentN, max: top, text: fmt(sentN), tip: [['Sent', fmt(sentN), true]] },
+  ])
+  const how = {}
+  const games = {}
+  for (const r of results) {
+    const o = (how[r.result] ??= { result: r.result, n: 0 })
+    o.n += r.n
+    if (r.result === 'sent') for (const g of (r.game ?? '').split(',').filter(Boolean)) games[g] = (games[g] ?? 0) + r.n
+  }
+  if (results.length) table(c11, [{ k: 'result', t: 'How sending went' }, { k: 'n', t: 'Times', n: 1 }], Object.values(how), { sort: 'n' })
+  if (Object.keys(games).length) table(c11, [{ k: 'g', t: 'Game ticked' }, { k: 'n', t: 'Requests', n: 1 }], Object.entries(games).map(([g, n]) => ({ g, n })), { sort: 'n' })
+  g5.append(c10, c11)
+  out.append(g5)
+
+  // who, how fast, what broke
+  const g6 = h('div', { class: 'grid2' })
+  const c12 = card('Devices', 'From each page load: the screen (a phone under 600 px wide, a tablet under 1100), the platform and the browser')
+  table(c12, [{ k: 'screen', t: 'Screen' }, { k: 'platform', t: 'Platform' }, { k: 'browser', t: 'Browser' }, { k: 'visitors', t: 'Visitors', n: 1 }], d.devices, { sort: 'visitors' })
+  const c13 = card('Countries', null)
+  table(c13, [{ k: 'country', t: 'Country' }, { k: 'visitors', t: 'Visitors', n: 1 }, { k: 'sessions', t: 'Visits', n: 1 }], d.countries, { sort: 'visitors' })
+  g6.append(c12, c13)
+  out.append(g6)
+
+  const g7 = h('div', { class: 'grid2' })
+  const byPage = {}
+  for (const r of d.vitals) (byPage[r.page] ??= []).push(r)
+  const qt = (rows, k, p) => quantile(rows.map((r) => r[k]).filter((v) => v != null).sort((a, b) => a - b), p)
+  const secs = (v) => (v == null ? '–' : (v / 1000).toFixed(1))
+  const whole = (v) => (v == null ? '–' : Math.round(v))
+  const c14 = card('Speed', 'Per page: the biggest paint (LCP, median and p75) and the first paint in seconds, the slowest tap answered (INP) and the server (TTFB) in ms, layout shift at p75. Safari reports only some.')
+  table(c14, [{ k: 'page', t: 'Page' }, { k: 'n', t: 'Loads', n: 1 }, { k: 'lcp', t: 'LCP', n: 1 }, { k: 'lcp75', t: 'p75', n: 1 }, { k: 'fcp', t: 'First paint', n: 1 }, { k: 'inp', t: 'INP', n: 1 }, { k: 'cls', t: 'CLS', n: 1 }, { k: 'ttfb', t: 'TTFB', n: 1 }],
+    Object.entries(byPage).map(([page, rows]) => ({
+      page, n: rows.length,
+      lcp: secs(qt(rows, 'lcp', 0.5)), lcp75: secs(qt(rows, 'lcp', 0.75)), fcp: secs(qt(rows, 'fcp', 0.5)),
+      inp: whole(qt(rows, 'inp', 0.5)), cls: qt(rows, 'cls', 0.75)?.toFixed(3) ?? '–', ttfb: whole(qt(rows, 'ttfb', 0.5)),
+    })), { sort: 'n' })
+  const c15 = card('Errors', 'Script errors (five per page load at most), and loops or photos that did not load')
+  table(c15, [{ k: 'name', t: 'Kind' }, { k: 'msg', t: 'Message or file', cls: 'wrap' }, { k: 'at', t: 'At' }, { k: 'visitors', t: 'Visitors', n: 1 }, { k: 'n', t: 'Times', n: 1 }, { k: 'last', t: 'Last', f: (v) => when(v) }], d.errors)
+  g7.append(c14, c15)
+  out.append(g7)
+
+  const c16 = card('Latest events', 'The newest 60, as they were stored')
+  table(c16, [{ k: 'ts', t: 'When', f: (v) => when(v) }, { k: 'visitor', t: 'Browser' }, { k: 'page', t: 'Page' }, { k: 'name', t: 'Event' }, { k: 'props', t: 'Details', cls: 'wrap' }], d.recent)
+  out.append(c16)
+}
+
 // ------------------------------------------------------------------ loading
 
 function query() {
@@ -610,14 +807,19 @@ async function load() {
   const key = store.get(KEY)
   if (!key) return askKey()
   $('#out').classList.add('refetch')
+  const want = tab
   try {
-    const r = await fetch(`/api/stats?${query()}`, { headers: { Authorization: `Bearer ${key}` } })
+    const r = await fetch(`${want === 'site' ? '/api/site-stats' : '/api/stats'}?${query()}`, { headers: { Authorization: `Bearer ${key}` } })
     if (r.status === 401) return askKey('That key was not taken.')
     if (!r.ok) throw new Error(`HTTP ${r.status}`)
-    data = await r.json()
+    const got = await r.json()
+    if (want !== tab) return // switched while it loaded
+    data = got
+    // a browser that reads the stats leaves its own visits to the site out (visit.js)
+    store.set('gw-site-off', '1')
     $('#keybox').hidden = true
     $('#filters').hidden = false
-    render(data)
+    tab === 'site' ? renderSite(data) : render(data)
   } catch (e) {
     $('#out').classList.remove('refetch')
     $('#stamp').textContent = `Could not load: ${e.message}`
@@ -657,17 +859,29 @@ for (const b of document.querySelectorAll('#range button')) {
   })
 }
 $('#csv').addEventListener('click', async () => {
-  const r = await fetch(`/api/export?${query()}`, { headers: { Authorization: `Bearer ${store.get(KEY)}` } })
+  const r = await fetch(`${tab === 'site' ? '/api/visits/export' : '/api/export'}?${query()}`, { headers: { Authorization: `Bearer ${store.get(KEY)}` } })
   if (!r.ok) return alert(`Export failed: HTTP ${r.status}`)
   const url = URL.createObjectURL(await r.blob())
-  const a = h('a', { href: url, download: `groundwind-events-${days}d.csv` })
+  const a = h('a', { href: url, download: `groundwind-${tab === 'site' ? 'site' : 'events'}-${days}d.csv` })
   document.body.append(a)
   a.click()
   a.remove()
   setTimeout(() => URL.revokeObjectURL(url), 5000)
 })
+for (const b of document.querySelectorAll('#tabs button')) {
+  b.setAttribute('aria-pressed', String(b.dataset.tab === tab))
+  b.addEventListener('click', () => {
+    if (b.dataset.tab === tab) return
+    tab = b.dataset.tab
+    store.set(TAB, tab)
+    for (const o of document.querySelectorAll('#tabs button')) o.setAttribute('aria-pressed', String(o === b))
+    data = null
+    $('#out').replaceChildren()
+    load()
+  })
+}
 // the theme follows the system; re-draw so the ramps pick the right end
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => data && render(data))
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => data && (tab === 'site' ? renderSite(data) : render(data)))
 load()
 </script>
 </body>

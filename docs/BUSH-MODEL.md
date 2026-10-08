@@ -232,8 +232,42 @@ things changed in the habitat bake:
   branches to the ground" set 0.75 under every fir stand; an open
   subalpine fir stand is fir clumps with lichen flats between. Where the
   map gives a closure the floor runs from 0.4 at 10 % to 0.75 at 50 %
-  and above; Blanchard's rules now say 22 % thick, and the final grid 14 %
-  thick, 64 % open. Not field-checked.
+  and above; Blanchard's rules now say 21 % thick. With the retrained model
+  (below) and the measured shrub values, Blanchard's final grid is 7 %
+  thick and 72 % open (the model alone: NRD mean 0.15, thick on 0 % of
+  the cells it sees), Highland Lake's 1 % thick and 70 % open (the
+  rules had said 36 %). Not field-checked.
+
+**What the northern LiDAR says the VRI's classes are** (115 plots,
+11,377 cells, each cell's VRI polygon looked up; `thick` is NRD ≥ 0.45,
+`open` ≤ 0.24):
+
+| VRI class | n | NRD | thick | open |
+|---|---|---|---|---|
+| treed conifer, open | 3,426 | 0.30 | 0.16 | 0.40 |
+| treed conifer, sparse | 1,049 | 0.29 | 0.16 | 0.48 |
+| treed conifer, dense | 881 | 0.25 | 0.03 | 0.50 |
+| treed broadleaf, dense | 1,250 | 0.21 | 0.01 | 0.64 |
+| treed broadleaf, open | 858 | 0.29 | 0.14 | 0.45 |
+| treed mixed, open | 662 | 0.30 | 0.20 | 0.40 |
+| low shrub, open | 466 | 0.30 | 0.23 | 0.47 |
+| low shrub, sparse | 129 | 0.12 | 0.00 | 0.75 |
+| tall shrub, open / dense / sparse | 261 / 167 / 78 | 0.29 / 0.28 / 0.18 | 0.06 / 0.11 / 0.01 | 0.35–0.71 |
+| herb, dense | 381 | 0.01 | 0.00 | 0.99 |
+| graminoid, dense | 205 | 0.03 | 0.00 | 0.97 |
+| bryoid | 208 | 0.08–0.13 | 0.00 | 0.83 |
+| exposed land | 40 | 0.03 | 0.00 | 0.97 |
+
+So the first version of the layering, which took the VRI's tall shrub as
+a wall (0.85, the alder run's value), was wrong by the LiDAR's own
+measure: willow and dwarf birch let most returns through. The rules now
+put a mapped tall shrub at 0.42 and a low one at 0.35 on the estimate's
+scale, and the map's word is kept over the model only for the open
+classes (herb, bryoid, rock, ice, open fen), which measure 0.01–0.13 and
+leave nothing for the model to add. Shrub goes back to the model, which
+now has northern shrub plots to learn it from. The north as a whole is
+moderate at eye level by this measure: NRD 0.2–0.3 under nearly every
+treed class, thick on under a fifth of the cells.
 
 ## Teaching the model the north (started 2026-10-08)
 
@@ -241,10 +275,32 @@ The labels are all Ontario's, 46–52° N. Open leaf-on LiDAR north of 56°:
 
 | Source | Where | When | Access |
 |---|---|---|---|
-| **LidarBC** (`north.py`) | northern BC: the Peace to the Liard 2024–25 (30,000 tiles, UTM 10), Atlin 2021 (143 tiles, UTM 8); BWBS boreal, SWB and ESSF subalpine, alpine | June–September flights, the date in each file name | plain LAZ tiles, ~235 MB and 40 M points each, on the province's object store; index on an ArcGIS FeatureServer |
+| **LidarBC** (`north.py`) | northern BC: the Peace to the Liard 2024–25 (30,000 tiles, UTM 10), Atlin 2021 (143 tiles, UTM 8); BWBS boreal, SWB and ESSF subalpine, alpine | flight windows in each file name (start_end); kept when the window starts in June and ends by 15 September, before the aspen and willow drop (18 of the first 119 draws ran into October and were dropped); the 2021 programme's names carry no date, its report gives 2021-06-26 to 2021-09-10 | plain LAZ tiles, ~235 MB and 40 M points each, on the province's object store; index on an ArcGIS FeatureServer |
 | USGS 3DEP, Alaska | Tok 2024 (EMRI_3, 100 B points, by the Yukon border), Healy 2024 (subalpine and alpine), Delta Junction Sept 2021, Mat-Su, Glacier Bay B3 2019 | summer flights, QL1–2 (WESM) | EPT octrees on AWS, EPSG:3857 (reproject before gridding); no SCANFI or CanLaD there, so a model variant without the national rasters |
 | NEON AOP | BONA, DEJU, HEAL (interior Alaska) | July–August, yearly 2017–2025 | NEON API, DP1.30003.001 |
 | Yukon | none open as point clouds found | | |
+
+### Results (2026-10-08: 115 northern plots, 11,076 cells, in with Ontario's 320)
+
+The northern plots are open at eye level by the LiDAR's measure: NRD
+mean 0.25, thick on 11 % of cells, open on 52 %. Scored on them:
+
+| Trained on | r (30 m) | r (90 m) | RMSE | bias | AUC thick | AUC open |
+|---|---|---|---|---|---|---|
+| Ontario's plots alone (what the north had) | 0.66 | 0.71 | 0.138 | +0.04 | 0.89 | 0.75 |
+| its own plots too, in the spatial folds | 0.61 | 0.64 | 0.139 | +0.04 | 0.85 | 0.77 |
+
+So the Ontario model already carried north: the imagery seasons read
+the understory the same way at 57° as at 49°, and the folds with the
+north in (two far blocks, each predicted without the other) score no
+better. The one that was wrong at Blanchard River was the rules table,
+not the model: 62 % thick against the model's 5 %, and the LiDAR says
+the north's treed ground is thick on 3–20 % of cells by class. The
+final model is trained on both sets; the Ontario spatial-fold score is
+unchanged (r 0.54, 0.59 at 90 m) and the HD areas held out score as
+before (Pickle 0.57, Sault 0.75, Lac Bailey 0.66). The per-stratum
+view adds a shrub stratum at r 0.55 (3,003 cells, bias 0.00) now that
+the north supplies most of it.
 
 `north.py` samples 300 m squares over LidarBC's leaf-on tiles with
 `plots.py`'s strata (the open classes drawn harder: they are what the

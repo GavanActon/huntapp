@@ -249,8 +249,9 @@ function standalone(): boolean {
   return nav.standalone === true || matchMedia('(display-mode: standalone)').matches
 }
 
-/** Where a first open came from: the referrer's host, the utm tags, and
- *  whether it was a shared link (an area's or a spot's: which, never the spot). */
+/** Where a first open came from: the referrer's host, the utm tags, the
+ *  site visit that sent it, and whether it was a shared link (an area's or
+ *  a spot's: which, never the spot). */
 function source(): Props {
   const u = new URL(location.href)
   const ref = document.referrer ? new URL(document.referrer).hostname : null
@@ -260,6 +261,24 @@ function source(): Props {
     utm_medium: u.searchParams.get('utm_medium'),
     utm_campaign: u.searchParams.get('utm_campaign'),
     via: /(^|[#&])at=/.test(u.hash) ? 'spot' : u.searchParams.has('area') ? 'area' : null,
+    site: siteVisit,
+  }
+}
+
+/** The site visit that opened the app: groundwind.app's "Open the app" adds
+ *  ?v=, the browser's random id on the site (site/visit.js), so the site's
+ *  stats can follow a visit into the app. Read once, then taken out of the
+ *  address, so a reload or a shared link doesn't carry it. */
+let siteVisit: string | undefined
+function takeSiteVisit(): string | undefined {
+  try {
+    const m = /[?&]v=([^&#]*)/.exec(location.search)
+    if (!m) return undefined
+    const search = location.search.replace(/([?&])v=[^&]*&?/, '$1').replace(/[?&]$/, '')
+    history.replaceState(history.state, '', location.pathname + search + location.hash)
+    return /^[a-f0-9]{16}$/.test(m[1]) ? m[1] : undefined
+  } catch {
+    return undefined
   }
 }
 
@@ -386,6 +405,7 @@ function onHide() {
  * front. Stores are watched from stats/watch.ts once the app is up.
  */
 export function initAnalytics(): void {
+  siteVisit = takeSiteVisit()
   on = read(OFF_KEY) !== '1'
   meta = loadMeta()
   try {
@@ -424,6 +444,9 @@ function start() {
     launches: meta.launches,
     age_d: (now - meta.first) / 86_400_000,
     queued: waiting,
+    // opened from the site's "Open the app": the first open carries it too,
+    // and a phone that had the app already shows only here
+    site: siteVisit,
   })
   if (document.visibilityState === 'visible') onShow()
 

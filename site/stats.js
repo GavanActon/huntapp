@@ -65,7 +65,7 @@ export async function eventsIngest(request, env) {
   return json({ ok: true, n: r.meta?.changes ?? rows.length }, 200, cors)
 }
 
-function authorized(request, env, url) {
+export function authorized(request, env, url) {
   if (!env.STATS_KEY) return false
   const auth = request.headers.get('Authorization') ?? ''
   const key = auth.startsWith('Bearer ') ? auth.slice(7) : (url.searchParams.get('key') ?? '')
@@ -74,7 +74,7 @@ function authorized(request, env, url) {
 
 /** What every query shares: the window, the time zone the days are cut in,
  *  and the phones left out (yours, by the 8-hex id Settings shows). */
-function params(url) {
+export function params(url) {
   const days = Math.min(400, Math.max(1, Number(url.searchParams.get('days')) || 30))
   // minutes east of UTC, as the dashboard's browser has it (Toronto in summer: -240)
   const tzMin = Math.max(-840, Math.min(840, Math.round(Number(url.searchParams.get('tz')) || 0)))

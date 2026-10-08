@@ -11,7 +11,7 @@ import { placeColour } from '../state/pinColours'
 import { usePlacesStore } from '../state/placesStore'
 import { geoUrls, holdOpening, setMap, withMap } from './mapController'
 import { useMeasureStore } from '../measure/measureStore'
-import { baseTone, BOG_TUFT, bogTuftImage, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour } from './mapStyle'
+import { baseTone, BOG_TUFT, bogTuftImage, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour, standIn } from './mapStyle'
 import { offlineComplete, registerAllDataFiles, registerDataFile, sourceModes } from './pmtilesRegistry'
 import { showInfoPopup } from './infoPopup'
 import { showPlacePopup } from './placePopup'
@@ -398,6 +398,7 @@ const BASE_SATURATION: Partial<Record<keyof LayerOpacity, number>> = { satellite
 
 export function applyLayerState(map: maplibregl.Map, layers: LayerVisibility, opacity: LayerOpacity, saturation: Partial<Record<keyof LayerOpacity, number>> = {}) {
   if (!map.isStyleLoaded() && !map.getStyle()) return
+  ;({ layers, opacity } = standIn(layers, opacity)) // no imagery here: the Topo look stands in for it
   for (const l of map.getStyle().layers) {
     // the ground under everything follows the base the view puts on it
     if (l.type === 'background') map.setPaintProperty(l.id, 'background-color', groundColour(layers))

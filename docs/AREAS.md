@@ -324,10 +324,18 @@ stand map that also names every piece of ground with no stand (shrub,
 herb, alpine, rock, ice), with the province's later fires laid over it as
 `qc_forest.py` does. Two quirks of the server: its EPSG:4326 bounding box
 is lon,lat, and it leaves the geometry out of an answer whose property list
-does not name GEOMETRY. No imagery: the province's 1 m orthos stop east of
-134.4° W, the Yukon's mosaic at the border, and the BC imagery WMS's 2 m
-layer is a map there. No point cloud adapter yet (LidarBC has flown parts
-of the province; this spot has none, and no HRDEM).
+does not name GEOMETRY. No provincial imagery: the province's 1 m orthos
+stop east of 134.4° W, the Yukon's mosaic at the border, and the BC
+imagery WMS's 2 m layer is a map there. So the area's imagery is a
+**Sentinel-2 leaf-on composite** (`pipeline/s2_imagery.py`, adapter
+`ca.s2summer`, Gavan 2026-10-08: "summer is better than none"): the
+clearest scenes of the last three summers from Earth Search, each masked
+by its scene classification, the per-pixel median in red, green and blue
+at 10 m, tiled to zoom 14 with the Copernicus credit. Lakes, burns, the
+willow flats against the fir and the alpine line show; single trees do
+not. Any area whose province has no imagery service can take it
+(`bake.imagery: "ca.s2summer"`). No point cloud adapter yet (LidarBC has
+flown parts of the province; this spot has none, and no HRDEM).
 
 The derived bakes, `build_habitat.py`, `build_microclimate.py`,
 `build_going.py` and `build_vegstructure.py`, run unchanged on the normal
