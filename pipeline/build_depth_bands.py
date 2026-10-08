@@ -37,6 +37,7 @@ from rasterio.transform import from_origin  # noqa: E402
 from rasterio.warp import Resampling, reproject  # noqa: E402
 from scipy import ndimage  # noqa: E402
 
+import habfile  # noqa: E402
 from area import LAKE_SHEETS  # noqa: E402
 from common import OUT_DIR, REGION  # noqa: E402
 
@@ -46,13 +47,11 @@ SURVEY_DIR = Path(__file__).parent / "raw" / "bathy"
 
 
 def read_hab():
-    raw = gzip.open(OUT_DIR / f"habitat-{REGION['id']}.hab", "rb").read()
-    n = struct.unpack("<I", raw[:4])[0]
-    h = json.loads(raw[4 : 4 + n])
+    h, raw = habfile.read_hab_raw(OUT_DIR / f"habitat-{REGION['id']}.hab")
+    scale = {b["name"]: b["scale"] for b in h["bands"]}
 
     def band(name):
-        b = next(b for b in h["bands"] if b["name"] == name)
-        return np.frombuffer(raw, dtype=np.dtype(b["dtype"]), count=h["cols"] * h["rows"], offset=4 + n + b["offset"]).reshape(h["rows"], h["cols"]), b["scale"]
+        return raw[name], scale[name]
 
     return h, band
 

@@ -113,19 +113,24 @@ export function bundleOnServer(files: string[], areaId: string = ACTIVE_AREA.id)
   return files.filter((f) => set.has(f))
 }
 
-/** The phone keeps some of the area's maps offline. */
+/** The phone keeps some of the area's maps offline: saved by a Download. A
+ *  grid kept from a view (auto, spots/habitatGrid.ts) does not count: a
+ *  phone that never asked to save the area is not told the rest is new. */
 export function keepsArea(b: BundleDef): boolean {
-  return b.files.some((f) => manifestGet(f))
+  return b.files.some((f) => {
+    const i = manifestGet(f)
+    return i != null && !i.auto
+  })
 }
 
 const LABELS = new Map(AREA_LIST.flatMap(dataFiles).map((d) => [d.file, d.label]))
 const labelOf = (name: string) => LABELS.get(name) ?? name.replace(/-[a-z-]+\.(geojson|hab)$/, '').replace(/[_-]/g, ' ')
 
-async function fetchJson<T>(url: string): Promise<T | null> {
+async function fetchJson<T>(url: string, opts: { timeoutMs?: number; cache?: RequestCache } = {}): Promise<T | null> {
   try {
     const ctl = new AbortController()
-    const t = setTimeout(() => ctl.abort(), 10_000)
-    const r = await fetch(url, { cache: 'no-store', signal: ctl.signal })
+    const t = setTimeout(() => ctl.abort(), opts.timeoutMs ?? 10_000)
+    const r = await fetch(url, { cache: opts.cache ?? 'no-store', signal: ctl.signal })
     clearTimeout(t)
     if (!r.ok) return null
     return (await r.json()) as T
@@ -138,17 +143,46 @@ async function fetchJson<T>(url: string): Promise<T | null> {
  *  again from them when files are saved or removed without a reload. */
 const manifests = new Map<string, DataManifest>()
 
+function noteManifest(areaId: string, j: DataManifest): void {
+  manifests.set(areaId, j)
+  const files = Object.keys(j.files)
+  useMapUpdates.setState((s) => ({ onServer: { ...s.onServer, [areaId]: files } }))
+  writeJson(serverKey(areaId), files)
+}
+
 /** The area's manifest from the server, or null without one (no signal,
  *  not built), and what it says the server has noted for the area. Pickle
  *  Lake's address is data/manifest.json, as ever. */
 export async function serverManifest(areaId: string): Promise<DataManifest | null> {
   const j = await fetchJson<DataManifest>(fileUrl('manifest.json', areaId))
   if (!j || typeof j.files !== 'object' || j.files == null) return null
-  manifests.set(areaId, j)
-  const files = Object.keys(j.files)
-  useMapUpdates.setState((s) => ({ onServer: { ...s.onServer, [areaId]: files } }))
-  writeJson(serverKey(areaId), files)
+  noteManifest(areaId, j)
   return j
+}
+
+let boot: Promise<DataManifest | null> | null = null
+
+/** The area's manifest at start, asked once and early: which files the
+ *  server has, so the map's style needs no probing of each archive and
+ *  theme (25 requests before the first tile, 2026-10-07), and the hash a
+ *  grid kept from the view is stored under. The browser's cache may answer
+ *  (a stale list costs a missed file at worst); a slow answer is not waited
+ *  on past a few seconds, and the probes stand in. */
+export function bootManifest(): Promise<DataManifest | null> {
+  if (boot) return boot
+  boot = (async () => {
+    if (!navigator.onLine) return null
+    const j = await fetchJson<DataManifest>(fileUrl('manifest.json'), { timeoutMs: 4000, cache: 'default' })
+    if (!j || typeof j.files !== 'object' || j.files == null) return null
+    noteManifest(ACTIVE_AREA.id, j)
+    return j
+  })()
+  return boot
+}
+
+/** A file's hash in the active area's manifest, when one has been seen this run. */
+export function manifestHashFor(name: string): string | undefined {
+  return manifests.get(ACTIVE_AREA.id)?.files[name]?.hash
 }
 
 /** The bundle files that differ from the server's, for a phone that keeps any of them. */

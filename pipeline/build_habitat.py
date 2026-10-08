@@ -43,6 +43,7 @@ from pathlib import Path
 import numpy as np
 import rasterio
 import shapely
+from habfile import write_hab
 from rasterio import features
 from rasterio.transform import from_origin
 from rasterio.warp import Resampling, reproject
@@ -837,16 +838,9 @@ def main() -> None:
         "lakes": lakes,
         "bands": [],
     }
-    payload = bytearray()
-    for name, arr, scale, meaning in bands:
-        arr = np.ascontiguousarray(arr)
-        header["bands"].append({"name": name, "dtype": str(arr.dtype), "scale": scale, "offset": len(payload), "meaning": meaning})
-        payload += arr.tobytes()
-    hj = json.dumps(header, separators=(",", ":")).encode("utf-8")
-    raw = struct.pack("<I", len(hj)) + hj + bytes(payload)
     out = OUT_DIR / f"habitat-{REGION['id']}.hab"
-    out.write_bytes(gzip.compress(raw, 9))
-    print(f"wrote {out.name}: {len(raw) / 1e6:.1f} MB raw, {out.stat().st_size / 1e6:.2f} MB gzipped, {len(bands)} bands · {time.time() - t0:.0f}s")
+    w = write_hab(out, header, bands)
+    print(f"wrote {out.name}: {w['raw'] / 1e6:.1f} MB raw, {w['size'] / 1e6:.2f} MB packed, {w['bands']} bands · {time.time() - t0:.0f}s")
     # a human-readable summary next to it
     summary = {
         "cover": {COVER_NAMES[i]: int((cover == i).sum()) for i in range(len(COVER_NAMES))},

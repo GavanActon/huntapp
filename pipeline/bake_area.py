@@ -58,6 +58,8 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Callable
 
+import habfile
+
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 
@@ -502,9 +504,7 @@ def known_sources(a: dict, lidar: list[str], pc_years: str | None) -> dict[tuple
 
 def hab_generated(path: Path) -> str | None:
     """The date a .hab grid's header says it was made."""
-    with gzip.open(path, "rb") as f:
-        n = struct.unpack("<I", f.read(4))[0]
-        return json.loads(f.read(n)).get("generated")
+    return habfile.read_header(path).get("generated")
 
 
 def coverage(area, results: dict[str, str]) -> dict:

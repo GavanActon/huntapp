@@ -23,6 +23,8 @@ import { initCheckLayer } from './weather/micro/checkLayer'
 import { initPartyLayer } from './party/partyLayer'
 import { initMapUpdates } from './offline/updates'
 import { initAppUpdate, reloadApp, useAppUpdate } from './offline/appUpdate'
+import { warmStart } from './offline/warmStart'
+import { loadMicro } from './weather/micro/model'
 import { initLive } from './hunting/hunting'
 import { initMoveLayer } from './hunting/moveLayer'
 import HeardCard, { useHeardForm } from './ui/HeardCard'
@@ -122,6 +124,8 @@ export default function App() {
   }, [sheetOpen])
 
   useEffect(() => {
+    // the grids and the weather first: nothing of the first view waits for the map
+    warmStart()
     initTheme()
     initTextScale()
     initMeasureLayer()
@@ -137,7 +141,10 @@ export default function App() {
     initCheckLayer()
     initPartyLayer()
     initMapUpdates()
-    initAppUpdate()
+    // the worker's install fetches the bundle again for its cache: after the
+    // wind is up (its base bands in, a few seconds for the rest), not beside it
+    const wait = (ms: number) => new Promise<void>((r) => window.setTimeout(r, ms))
+    initAppUpdate(Promise.race([loadMicro().then(() => wait(6000)), wait(25_000)]))
     initMoveLayer()
     initLive()
     initRoutes()

@@ -211,6 +211,11 @@ const CORE_HANDOFF = REGION_MAXZOOM + 0.5
  *  nothing out there, as before. */
 const BUSH_MINZOOM = 10
 const BUSH_LAYER_MINZOOM = BUSH_MINZOOM - 1.5
+/** The lanes are on for a fresh phone, and at the opening's zoom (13 and
+ *  the coarse pass through 11) a metre-wide lane is under a pixel: their
+ *  tiles were 330 KB of a cold open's first seconds for nothing to see
+ *  (2026-10-07). They come in a notch further in than the opening. */
+const LANES_LAYER_MINZOOM = 13.5
 
 const FONT = ['Noto Sans Regular']
 const FONT_MED = ['Noto Sans Medium']
@@ -427,7 +432,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
           id: 'lanes',
           type: 'raster',
           source: 'lanes',
-          minzoom: BUSH_LAYER_MINZOOM,
+          minzoom: LANES_LAYER_MINZOOM,
           layout: vis(o.layers.lanes),
           paint: { 'raster-opacity': o.opacity.lanes, 'raster-resampling': 'linear' },
         },

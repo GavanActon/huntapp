@@ -69,19 +69,25 @@ export function reloadApp(): void {
 
 let wired = false
 
-export function initAppUpdate(): void {
+/** `after`: the worker is registered once this settles (App: the wind up on
+ *  a cold open), since its install fetches the bundle's files again for its
+ *  cache, some 0.8 MB that otherwise ran beside the grids on the line. */
+export function initAppUpdate(after?: Promise<unknown>): void {
   if (wired) return
   wired = true
-  registerSW({
-    immediate: true,
-    // the plugin would reload the page the moment the new worker is in;
-    // in use, the chip offers it instead (and coming to the front reloads)
-    onNeedReload: () => useAppUpdate.setState({ ready: true }),
-    onRegisteredSW(_url, r) {
-      reg = r
-      if (r && useAppUpdate.getState().latest) void r.update()
-    },
-  })
+  const register = () =>
+    registerSW({
+      immediate: true,
+      // the plugin would reload the page the moment the new worker is in;
+      // in use, the chip offers it instead (and coming to the front reloads)
+      onNeedReload: () => useAppUpdate.setState({ ready: true }),
+      onRegisteredSW(_url, r) {
+        reg = r
+        if (r && useAppUpdate.getState().latest) void r.update()
+      },
+    })
+  if (after) void after.then(register, register)
+  else register()
   if ('serviceWorker' in navigator) {
     // the first worker taking control is the install, not an update
     let had = navigator.serviceWorker.controller != null

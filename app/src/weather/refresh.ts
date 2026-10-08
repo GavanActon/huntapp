@@ -126,14 +126,19 @@ export function refreshWeather(reason: string, force = false): Promise<void> {
     let fetched = 0
     let tried = 0
     let error: string | null = null
+    // The wind field and the air's layering (the ground wind's inputs, what
+    // the streaks wait for) go first and beside the places, not after them:
+    // asked at the sweep's end they came in 4 to 9 s after a cold start,
+    // behind seven places' serial calls (2026-10-07)
+    const gridOut = ensureWeatherGrid()
+    const profileOut = ensureProfile(force)
     for (const s of subjects()) {
       const cached = cachedPointForecast(s.lon, s.lat)
       if (!force && !forecastStale(cached, now)) continue
       tried++
       try {
-        await fetchPointForecast(s.lon, s.lat)
-        // the Spots scorer's ten-day means, on the same signal window
-        await recentDailyMeans(s.lon, s.lat)
+        // the forecast and the Spots scorer's ten-day means, on the same signal window, as one round trip
+        await Promise.all([fetchPointForecast(s.lon, s.lat), recentDailyMeans(s.lon, s.lat)])
         fetched++
       } catch (e) {
         error = (e as Error).message
@@ -141,10 +146,8 @@ export function refreshWeather(reason: string, force = false): Promise<void> {
         if (!navigator.onLine) break
       }
     }
-    // the wind field on the same signal window
-    await ensureWeatherGrid()
-    // the air's layering and the ensemble spread: the ground wind's inputs
-    await ensureProfile(force)
+    await gridOut
+    await profileOut
     devlog('wx', `sweep (${reason}) · ${fetched} fetched`)
     if (fetched) setStatus({ lastOkAt: Date.now(), lastError: null })
     else if (tried) setStatus({ lastFailAt: Date.now(), lastError: error ?? 'no signal' })

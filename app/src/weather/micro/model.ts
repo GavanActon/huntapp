@@ -1,6 +1,6 @@
 import { microFile } from '../../config'
 import { devlog } from '../../devlog'
-import { loadBandFile, type Band, type Habitat } from '../../spots/habitatGrid'
+import { openBandFile, PREVIEW, type Band, type BandFile, type Habitat } from '../../spots/habitatGrid'
 import { useAppStore } from '../../state/appStore'
 import { homePlace } from '../../state/placesStore'
 import { useSpotsStore } from '../../state/spotsStore'
@@ -143,9 +143,15 @@ let hasBare = false
 const MOM_STEP = 22.5
 const MOM_N = 16
 const momName = (k: number) => (k * MOM_STEP).toFixed(1).padStart(5, '0')
-let momU: Band[] | null = null
-let momV: Band[] | null = null
+// A direction's bands sit at its index once loaded: the file is read in
+// stages (habitatGrid.ts), the hour's two directions first, the rest once
+// the map is up, and a sample that finds one missing asks for it (askDir)
+// and blends the lids meanwhile
+let momU: (Band | null)[] = []
+let momV: (Band | null)[] = []
 let momScale = 0
+/** the file has the solve's bands at all */
+let hasMom = false
 // The solve's turbulence (2026-10-05 on): per direction, the spread of the
 // wind's direction at 10 m, WindNinja's velocity fluctuation against its
 // local wind. Most of an area sits near momRef, which is what the 12° the
@@ -154,52 +160,106 @@ let momScale = 0
 // only trees made turbulence here, so a bare mountain's lee eddies drew
 // smooth and narrow (Gavan, 2026-10-05, Highland Lake). A grid without the
 // bands keeps the old spread
-let momT: Band[] | null = null
+let momT: (Band | null)[] = []
 let momTScale = 0
 let momRef = 0
+let hasTurb = false
 /** degrees of tumble past which the place gets a word in the reasons, and past which it draws swirling */
 const TUMBLE_NOTE = 12
 const TUMBLE_SWIRL = 25
 
+/** the momentum solve's bands: mU, mV, mT by direction */
+const MOM_RE = /^m[UVT]\d{3}\.\d$/
+let file: BandFile | null = null
+/** the full-resolution base bands are the model's (not the preview's) */
+let fullIn = false
+/** settles when they are */
+let fullReady: Promise<void> = Promise.resolve()
+
+/** Bind the model's band table to a grid: the preview's (its names
+ *  prefixed) for the first seconds, then the full one. */
+function adopt(g: Habitat, prefix: string): void {
+  const next: Band[] = []
+  const nextScales: number[] = []
+  BAND_NAMES.forEach((n, k) => {
+    if (!g.has(prefix + n)) {
+      if (k === K_CANOPY_BARE) return
+      throw new Error(`micro grid: no band ${prefix + n}`)
+    }
+    next[k] = g.raw(prefix + n)
+    nextScales[k] = g.scale(prefix + n)
+  })
+  bands = next
+  scales = nextScales
+  hasBare = g.has(prefix + 'canopyBare')
+  grid = g
+  slotAxis = null
+}
+
+/**
+ * The grid, in stages (habitatGrid.ts reads the file by range): a coarse
+ * preview of the base bands first, when the file carries one, which the
+ * streaks and the cones draw on within a second or two of a cold open;
+ * the full base bands next, in place of it; then the two momentum
+ * directions the hour's wind sits between (ensureMomentumFor), which
+ * sharpen the field as they land; the other fourteen once the map is up
+ * (loadRestOfMicro). Resolves at the first stage there is. Null when the
+ * file is not baked and not cached.
+ */
 export function loadMicro(): Promise<Habitat | null> {
   if (grid) return Promise.resolve(grid)
   if (inflight) return inflight
-  inflight = loadBandFile(microFile(), 'wind')
-    .then((r) => {
-      if (!r) return null
-      const g = r.grid
-      BAND_NAMES.forEach((n, k) => {
-        if (!g.has(n)) {
-          if (k === K_CANOPY_BARE) return
-          throw new Error(`micro grid: no band ${n}`)
-        }
-        bands[k] = g.raw(n)
-        scales[k] = g.scale(n)
-      })
-      hasBare = g.has('canopyBare')
-      if (!hasBare) devlog('wind', 'micro grid has no canopyBare: the canopy stays in leaf whatever the date')
+  inflight = openBandFile(microFile(), 'wind', { priority: 'high' })
+    .then(async (f) => {
+      if (!f) return null
+      const names = f.names
+      const baseNames = names.filter((n) => !MOM_RE.test(n) && !n.startsWith(PREVIEW))
+      const previewNames = f.previewNames
       const dirs = Array.from({ length: MOM_N }, (_, k) => momName(k))
-      if (dirs.every((d) => g.has(`mU${d}`) && g.has(`mV${d}`))) {
-        momU = dirs.map((d) => g.raw(`mU${d}`))
-        momV = dirs.map((d) => g.raw(`mV${d}`))
-        momScale = g.scale(`mU${dirs[0]}`)
+      hasMom = dirs.every((d) => names.includes(`mU${d}`) && names.includes(`mV${d}`))
+      if (hasMom) {
+        momU = Array.from({ length: MOM_N }, (): Band | null => null)
+        momV = Array.from({ length: MOM_N }, (): Band | null => null)
+        momScale = f.header.bands.find((b) => b.name === `mU${dirs[0]}`)!.scale
       } else {
-        momU = momV = null
+        momU = momV = []
         devlog('wind', 'micro grid has no momentum solve: the day wind is the neutral lid')
       }
-      const mom = (r.header.model as { momentum?: { spreadRef?: number } } | undefined)?.momentum
-      if (momU && mom?.spreadRef != null && dirs.every((d) => g.has(`mT${d}`))) {
-        momT = dirs.map((d) => g.raw(`mT${d}`))
-        momTScale = g.scale(`mT${dirs[0]}`)
-        momRef = mom.spreadRef
+      const mom = (f.header.model as { momentum?: { spreadRef?: number } } | undefined)?.momentum
+      hasTurb = hasMom && mom?.spreadRef != null && dirs.every((d) => names.includes(`mT${d}`))
+      if (hasTurb) {
+        momT = Array.from({ length: MOM_N }, (): Band | null => null)
+        momTScale = f.header.bands.find((b) => b.name === `mT${dirs[0]}`)!.scale
+        momRef = mom!.spreadRef!
       } else {
-        momT = null
-        if (momU) devlog('wind', 'micro grid has no turbulence from the momentum solve: only trees make the air swirl')
+        momT = []
+        if (hasMom) devlog('wind', 'micro grid has no turbulence from the momentum solve: only trees make the air swirl')
       }
-      grid = g
-      slotAxis = null
-      for (const cb of listeners) cb()
-      return g
+      file = f
+      const full = async () => {
+        await f.load(baseNames, 'high')
+        adopt(f.grid, '')
+        fullIn = true
+        if (!hasBare) devlog('wind', 'micro grid has no canopyBare: the canopy stays in leaf whatever the date')
+        if (previewNames.length) devlog('wind', 'micro grid at full resolution')
+        for (const cb of listeners) cb()
+        if (hasMom) {
+          void ensureMomentumFor(planMs())
+          restTimer = window.setTimeout(() => void loadRestOfMicro(), REST_AFTER_MS)
+        } else void f.keep()
+      }
+      if (previewNames.length && f.preview) {
+        // the coarse copy first: the wind is up on it while the full bands come
+        await f.load(previewNames, 'high')
+        adopt(f.preview, PREVIEW)
+        for (const cb of listeners) cb()
+        fullReady = full()
+        fullReady.catch((e) => devlog('wind', `micro grid base bands failed · ${(e as Error).message}`))
+      } else {
+        fullReady = full()
+        await fullReady
+      }
+      return grid
     })
     .catch((e) => {
       devlog('wind', `micro grid load failed · ${(e as Error).message}`)
@@ -214,6 +274,164 @@ export function loadMicro(): Promise<Habitat | null> {
 
 export function microGrid(): Habitat | null {
   return grid
+}
+
+const planMs = () => useAppStore.getState().planTimeMs ?? Date.now()
+
+/** The two baked directions either side of a wind from dirFrom. */
+function sectorsOf(dirFrom: number): [number, number] {
+  const x = (((dirFrom % 360) + 360) % 360) / MOM_STEP
+  const k0 = Math.floor(x) % MOM_N
+  return [k0, (k0 + 1) % MOM_N]
+}
+
+/** The directions the hour's wind over the area sits between: the field
+ *  at the grid's corners and middle (it turns a little across the region),
+ *  else the camp's forecast hour. Null with no wind to go on yet. */
+function sectorsFor(ms: number): number[] | null {
+  const g = grid
+  if (!g) return null
+  const out = new Set<number>()
+  const add = (d: number) => {
+    for (const k of sectorsOf(d)) out.add(k)
+  }
+  const s = windGridCovers(ms) ? windSampler(ms) : null
+  if (s) {
+    const e = g.west + g.cols * g.dLon
+    const so = g.north - g.rows * g.dLat
+    const pts: [number, number][] = [
+      [g.west, g.north],
+      [e, g.north],
+      [g.west, so],
+      [e, so],
+      [(g.west + e) / 2, (g.north + so) / 2],
+    ]
+    for (const [lon, lat] of pts) if (s(lon, lat, _reg)) add(_reg[1])
+  }
+  if (!out.size) {
+    const home = homePlace()
+    const f = cachedPointForecast(home.lon, home.lat)
+    const h = f ? hourAt(f, ms) : null
+    if (h && Number.isFinite(h.windDir)) add(h.windDir)
+  }
+  return out.size ? [...out] : null
+}
+
+const dirLoads = new Map<number, Promise<void>>()
+/** directions something on screen asked for: their landing is told to everyone who reads the ground wind */
+const wantedDirs = new Set<number>()
+
+/** The solve's bands for these directions, those not in or on their way,
+ *  fetched and attached. Everyone who reads the ground wind hears when a
+ *  direction the view asked for lands; the rest coming in behind the view
+ *  (loadRestOfMicro, low) changes nothing on screen, so it says nothing,
+ *  which spares a second scoring pass. */
+function loadDirs(ks: number[], priority: RequestPriority): Promise<void> {
+  const f = file
+  if (!f || !hasMom) return Promise.resolve()
+  if (priority !== 'low') for (const k of ks) if (!momU[k]) wantedDirs.add(k)
+  const want = ks.filter((k) => !momU[k] && !dirLoads.has(k))
+  if (want.length) {
+    const names = want.flatMap((k) => [`mU${momName(k)}`, `mV${momName(k)}`, ...(hasTurb ? [`mT${momName(k)}`] : [])])
+    const run = f
+      .load(names, priority)
+      .then(() => {
+        const g = f.grid
+        for (const k of want) {
+          const d = momName(k)
+          momU[k] = g.raw(`mU${d}`)
+          momV[k] = g.raw(`mV${d}`)
+          if (hasTurb) momT[k] = g.raw(`mT${d}`)
+        }
+        const asked = want.filter((k) => wantedDirs.has(k))
+        for (const k of asked) wantedDirs.delete(k)
+        devlog('wind', `momentum ${want.map((k) => momName(k)).join(' ')}° in${asked.length ? '' : ' · behind the view'}`)
+        if (asked.length) for (const cb of listeners) cb()
+      })
+      .catch((e) => devlog('wind', `momentum ${want.map((k) => momName(k)).join(' ')}° failed · ${(e as Error).message}`))
+      .finally(() => {
+        for (const k of want) if (dirLoads.get(k) === run) dirLoads.delete(k)
+      })
+    for (const k of want) dirLoads.set(k, run)
+  }
+  return Promise.all(ks.map((k) => dirLoads.get(k))).then(() => undefined)
+}
+
+// a sample that finds a direction missing asks for it, once per frame
+const askedDirs = new Set<number>()
+let askTimer: number | null = null
+function askDir(k: number) {
+  if (momU[k] || dirLoads.has(k) || askedDirs.has(k)) return
+  askedDirs.add(k)
+  if (askTimer != null) return
+  askTimer = window.setTimeout(() => {
+    askTimer = null
+    const ks = [...askedDirs]
+    askedDirs.clear()
+    void loadDirs(ks, 'high')
+  }, 0)
+}
+
+/** The directions the hour's wind needs, fetched first: as soon as there
+ *  is wind data to pick them by, asking again for a while until there is.
+ *  A pick that misses is put right by the sampler's own asks. */
+export function ensureMomentumFor(ms: number): Promise<void> {
+  if (!hasMom || !file) return Promise.resolve()
+  const ks = sectorsFor(ms)
+  if (ks) return loadDirs(ks, 'high')
+  return new Promise((resolve) => {
+    let tries = 0
+    const again = () => {
+      const now = sectorsFor(ms)
+      if (now) return void loadDirs(now, 'high').then(resolve)
+      if (++tries > 20) return resolve()
+      window.setTimeout(again, 500)
+    }
+    window.setTimeout(again, 500)
+  })
+}
+
+/** The base bands at full resolution in (or the file found missing): what
+ *  the habitat grid waits for before taking its share of the line. */
+export async function microBaseReady(): Promise<void> {
+  await loadMicro()
+  await fullReady.catch(() => {})
+}
+
+/** For the spots pass: the base bands and the hour's directions, or as
+ *  much as comes within the cap (a stalled range must not hold the heat;
+ *  a direction landing later rescores). */
+export async function microReadyFor(ms: number, capMs = 6000): Promise<void> {
+  const g = await loadMicro()
+  if (!g) return
+  // the full base bands, not the preview (the heat is scored once, on the real grid)
+  await Promise.race([fullReady.catch(() => {}), new Promise<void>((r) => setTimeout(r, capMs))])
+  if (!hasMom) return
+  await Promise.race([ensureMomentumFor(ms), new Promise<void>((r) => setTimeout(r, capMs))])
+}
+
+let restTimer: number | null = null
+let restDone = false
+/** How long after the base bands the rest is fetched anyway, with no first heat to wait for (the heat off). */
+const REST_AFTER_MS = 12_000
+
+/** The other directions, after the first view (the heat's first pass, else
+ *  a while after the base bands), behind everything else on the line, so
+ *  a swing in the wind or a Dig in at another hour has them; then the whole
+ *  file is kept on the phone. */
+export function loadRestOfMicro(): Promise<void> {
+  const f = file
+  if (!f || restDone) return Promise.resolve()
+  restDone = true
+  if (restTimer != null) {
+    clearTimeout(restTimer)
+    restTimer = null
+  }
+  if (!hasMom) return f.keep()
+  return loadDirs(
+    Array.from({ length: MOM_N }, (_, k) => k),
+    'low',
+  ).then(() => f.keep())
 }
 
 /** Called when the micro grid lands, and when the leaves knob moves under
@@ -292,29 +510,41 @@ let momN = 0
  *  dirFrom: the two baked directions either side, each field turned with
  *  the wind to its own direction, weighted by how near it is (165° from the
  *  135° and 180° runs came within 2.5° of its own run, median). */
-function momentumAt(i: number, U: number, dirFrom: number): void {
+function momentumAt(i: number, U: number, dirFrom: number): boolean {
   const x = (((dirFrom % 360) + 360) % 360) / MOM_STEP
   const k0 = Math.floor(x) % MOM_N
+  const k1 = (k0 + 1) % MOM_N
   const t = x - Math.floor(x)
+  // a direction still on its way (the file comes in stages): asked for, and the lids stand in
+  if (!momU[k0] || !momU[k1]) {
+    askDir(k0)
+    askDir(k1)
+    return false
+  }
   momE = 0
   momN = 0
   momTurned(k0, i, U * (1 - t), t * MOM_STEP)
-  momTurned((k0 + 1) % MOM_N, i, U * t, (t - 1) * MOM_STEP)
+  momTurned(k1, i, U * t, (t - 1) * MOM_STEP)
+  return true
 }
 /** The solve's direction spread at a cell, degrees: the two nearest baked
- *  directions, weighted by how near. */
-function turbAt(i: number, dirFrom: number): number {
+ *  directions, weighted by how near. Null while either is on its way. */
+function turbAt(i: number, dirFrom: number): number | null {
   const x = (((dirFrom % 360) + 360) % 360) / MOM_STEP
   const k0 = Math.floor(x) % MOM_N
+  const k1 = (k0 + 1) % MOM_N
   const t = x - Math.floor(x)
-  return (momT![k0][i] * (1 - t) + momT![(k0 + 1) % MOM_N][i] * t) * momTScale
+  const a = momT[k0]
+  const b = momT[k1]
+  if (!a || !b) return null
+  return (a[i] * (1 - t) + b[i] * t) * momTScale
 }
 
 /** Direction k's field at a cell, times w, turned clockwise by deg. */
 function momTurned(k: number, i: number, w: number, deg: number): void {
   if (w === 0) return
-  const u = momU![k][i] * momScale
-  const v = momV![k][i] * momScale
+  const u = momU[k]![i] * momScale
+  const v = momV[k]![i] * momScale
   const c = Math.cos(deg * RAD)
   const sn = Math.sin(deg * RAD)
   momE += w * (u * c + v * sn)
@@ -504,19 +734,20 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   const s = lay.stable
   let e10: number
   let n10: number
-  if (momU) {
+  if (hasMom && fullIn && momentumAt(i, U, dirFrom)) {
     // by day the momentum solve; it is neutral air only, so a still night still goes to the stable lid
-    momentumAt(i, U, dirFrom)
     e10 = (1 - s) * momE + s * (b(K_SUE, i) * Ue + b(K_SUN, i) * Un)
     n10 = (1 - s) * momN + s * (b(K_SVE, i) * Ue + b(K_SVN, i) * Un)
   } else {
+    // no solve, or its directions for this wind not in yet: the two lids
     e10 = (1 - s) * (b(K_NUE, i) * Ue + b(K_NUN, i) * Un) + s * (b(K_SUE, i) * Ue + b(K_SUN, i) * Un)
     n10 = (1 - s) * (b(K_NVE, i) * Ue + b(K_NVN, i) * Un) + s * (b(K_SVE, i) * Ue + b(K_SVN, i) * Un)
   }
   // the air tumbling in the lee of the high ground, degrees of spread past
   // the area's ordinary: neutral air, like the solve, and a wind with some
   // push to it (in a near calm the slopes' own flows run the place)
-  const tumble = momT ? Math.max(0, turbAt(i, dirFrom) - momRef) * (1 - s) * clamp((U - 3) / 6, 0, 1) : 0
+  const spread = hasTurb && fullIn ? turbAt(i, dirFrom) : null
+  const tumble = spread != null ? Math.max(0, spread - momRef) * (1 - s) * clamp((U - 3) / 6, 0, 1) : 0
   const local10 = Math.hypot(e10, n10)
   // low ground under an inversion: the cold layer stays put under the wind
   const pool = b(K_POOL, i)

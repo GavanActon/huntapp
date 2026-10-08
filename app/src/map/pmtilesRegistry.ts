@@ -123,31 +123,42 @@ function absoluteDataUrl(file: string): string {
   return new URL(fileUrl(file), window.location.href).toString()
 }
 
-/** (Re)register one data file, preferring local storage. Probes the archive header
- *  so callers can omit sources that aren't reachable at all. */
-export async function registerDataFile(key: string, file: string): Promise<DataSourceMode> {
+/** (Re)register one data file, preferring local storage. `known`: whether
+ *  the server's file list has it (offline/updates.ts bootManifest). A
+ *  stored copy is probed (its header read, a torn file found out); a file
+ *  the list has is trusted, its header read with its first tile, which
+ *  spares the 16 KB probe each of fifteen archives cost before the map
+ *  could be made; one the list lacks is missing; with no list, the probe. */
+export async function registerDataFile(key: string, file: string, known: boolean | null = null): Promise<DataSourceMode> {
   const blob = await getStoredFile(file)
+  if (!blob && known === false) {
+    sourceModes.set(key, 'missing')
+    return 'missing'
+  }
   const source: Source = blob
     ? new BlobSource(blob, key)
     : new KeyedFetchSource(absoluteDataUrl(file), key)
   const p = new PMTiles(source)
   let mode: DataSourceMode = blob ? 'local' : 'network'
-  try {
-    await p.getHeader()
-  } catch {
-    mode = 'missing'
+  if (blob || !known) {
+    try {
+      await p.getHeader()
+    } catch {
+      mode = 'missing'
+    }
   }
   if (mode !== 'missing') protocol.add(p)
   sourceModes.set(key, mode)
   return mode
 }
 
-/** Register every configured data file. Returns the set of available source keys. */
-export async function registerAllDataFiles(): Promise<Set<string>> {
+/** Register every configured data file. Returns the set of available source
+ *  keys. `known`: the files the server lists, when the list has been seen. */
+export async function registerAllDataFiles(known: Set<string> | null = null): Promise<Set<string>> {
   const available = new Set<string>()
   await Promise.all(
     DATA_FILES.map(async (d) => {
-      const mode = await registerDataFile(d.key, d.file)
+      const mode = await registerDataFile(d.key, d.file, known ? known.has(d.file) : null)
       if (mode !== 'missing') available.add(d.key)
     }),
   )

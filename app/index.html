@@ -40,7 +40,8 @@
       // the icon takes the area's name
       (function () {
         try {
-          var AREAS = /*AREAS*/{}
+          var S = /*AREAS*/{}
+          var AREAS = S.areas || {}
           var known = function (id) { return id != null && Object.prototype.hasOwnProperty.call(AREAS, id) }
           var q = new URLSearchParams(location.search)
           var h = new URLSearchParams(location.hash.slice(1))
@@ -61,8 +62,24 @@
           if (asked == null) asked = h.get('area')
           var saved = null
           try { saved = localStorage.getItem('huntapp-area') } catch (e) {}
-          var id = spotIn || (known(asked) ? asked : known(saved) ? saved : known(q.get('start')) ? q.get('start') : null)
-          var area = id ? AREAS[id] : null
+          var id = spotIn || (known(asked) ? asked : known(saved) ? saved : known(q.get('start')) ? q.get('start') : null) || S.default
+          var area = known(id) ? AREAS[id] : null
+          // The wind grid's base bands (the first grid's first range), asked for now, a second
+          // or more before the app could ask, unless the phone keeps a copy; the app takes the
+          // response over (spots/habitatGrid.ts). The habitat grid follows them in the app, so
+          // they have the line to themselves. No-store: the browser's cache cannot serve a range
+          // of a file it holds gzip-encoded
+          try {
+            var g = area && area.grids && area.grids[0]
+            var kept = null
+            try { if (g) kept = localStorage.getItem('chartfile:' + g.file) } catch (e) {}
+            if (g && !kept && window.fetch && navigator.onLine !== false) {
+              var p = fetch(S.data + (area.base || '') + g.file, { cache: 'no-store', headers: { Range: 'bytes=0-' + (g.first - 1) }, priority: 'high' })
+              p.catch(function () {})
+              window.__gwPre = {}
+              window.__gwPre[g.file] = { p: p, first: g.first }
+            }
+          } catch (e) {}
           // Pickle Lake's manifest and words are the page's own
           if (!area || !area.manifest) return
           // for the splash's place line, further down

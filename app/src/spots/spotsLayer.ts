@@ -26,7 +26,7 @@ import { onWeatherRefreshed, onWeatherStatus, weatherStatus } from '../weather/r
 import { cachedRecentDaily, deriveConditions, recentDailyMeans } from './conditions'
 import { habitat, loadHabitat, onHabitat, COVER, type Habitat } from './habitatGrid'
 import { huntPass, huntResult, huntRows, scoreTarget, warmHuntBands, type HuntPass, type ScoreResult } from './scoring'
-import { loadMicro, onMicro } from '../weather/micro/model'
+import { loadMicro, loadRestOfMicro, microBaseReady, microReadyFor, onMicro } from '../weather/micro/model'
 import { useScent } from '../weather/micro/scent'
 import { currentProfile, ensureProfile, onProfile } from '../weather/boundaryLayer'
 import { useWindChecks } from '../weather/micro/windChecks'
@@ -476,11 +476,16 @@ async function recompute() {
   const subj0 = subject()
   if (!cachedPointForecast(subj0.lon, subj0.lat) && navigator.onLine) await pointForecast(subj0.lon, subj0.lat).catch(() => null)
   if (!cachedRecentDaily(subj0.lon, subj0.lat)) await recentDailyMeans(subj0.lon, subj0.lat)
+  // the wind grid's base bands first, the habitat grid after them (warmStart
+  // keeps that order on the line); the site rules read the ground wind and
+  // the wind profile, and with either still on its way the whole pass would
+  // only be done again when it lands
+  await microBaseReady()
   const h = await loadHabitat()
   if (h) {
-    // the site rules read the ground wind and the wind profile: with either
-    // still on its way the whole pass would only be done again when it lands
-    await loadMicro()
+    // and the two momentum directions the hour's wind sits between (the grid
+    // comes in stages), for the same reason
+    await microReadyFor(useAppStore.getState().planTimeMs ?? Date.now())
     if (currentProfile()) void ensureProfile()
     else await ensureProfile()
   }
@@ -576,6 +581,8 @@ async function recompute() {
   devlog('spots', `${s.target} scored in ${work.toFixed(0)} ms of work, ${(performance.now() - t0).toFixed(0)} ms in all · ${res?.spots.length ?? 0} spots · ${res?.verdict.headline ?? ''}`)
   s.setResult(res, c, 'ready', plans)
   trackTime('heat_scored')
+  // the first view is up: the rest of the wind grid can come, behind everything else
+  void loadRestOfMicro()
   const mm = getMap()
   if (!mm || !mm.getSource(HEAT_SRC)) return
   // the numbered pins follow the heat map

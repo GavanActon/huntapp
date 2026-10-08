@@ -67,6 +67,8 @@ from scipy import ndimage, sparse
 from scipy.sparse.linalg import splu
 
 import build_habitat as hb
+import habfile
+from habfile import write_hab
 from area import SCRATCH
 from common import CACHE_DIR, OUT_DIR, REGION
 
@@ -87,17 +89,7 @@ TURB_SCALE = 0.5  # uint8 turbulence spread bands, degrees: to 127.5° (it tops 
 
 
 def read_hab(path) -> tuple[dict, dict[str, np.ndarray]]:
-    raw = gzip.decompress(path.read_bytes())
-    hlen = struct.unpack("<I", raw[:4])[0]
-    header = json.loads(raw[4 : 4 + hlen])
-    base = 4 + hlen
-    n = header["cols"] * header["rows"]
-    bands = {}
-    for b in header["bands"]:
-        dt = np.dtype(b["dtype"])
-        a = np.frombuffer(raw, dtype=dt, count=n, offset=base + b["offset"]).reshape(header["rows"], header["cols"])
-        bands[b["name"]] = a.astype(np.float32) * b["scale"]
-    return header, bands
+    return habfile.read_hab(path)
 
 
 # ---------------------------------------------------------------- roughness
@@ -616,16 +608,14 @@ def main() -> None:
         "model": {"z0Ref": Z0_REF, "zBlend": Z_BLEND, "lidNeutral": LID_NEUTRAL, "lidStable": LID_STABLE, "bare": BARE, "larchLed": LARCH_LED, **({"momentum": {"directions": [d for d, _, _ in cfd], "solver": "WindNinja 4.0.0 momentum (OpenFOAM, RNG k-epsilon), trees, 10 m", **({"spreadRef": round(turb_ref, 2)} if turb else {})}} if cfd else {})},
         "bands": [],
     }
-    payload = bytearray()
-    for name, arr, scale, meaning in bands:
-        arr = np.ascontiguousarray(arr)
-        out_header["bands"].append({"name": name, "dtype": str(arr.dtype), "scale": scale, "offset": len(payload), "meaning": meaning})
-        payload += arr.tobytes()
-    hj = json.dumps(out_header, separators=(",", ":")).encode("utf-8")
-    raw = struct.pack("<I", len(hj)) + hj + bytes(payload)
+    # the momentum bands go last: the app reads the base bands first, then
+    # the two directions the hour's wind sits between, the rest when it is up
     out = OUT_DIR / f"micro-{REGION['id']}.hab"
-    out.write_bytes(gzip.compress(raw, 9))
-    print(f"wrote {out.name}: {len(raw) / 1e6:.1f} MB raw, {out.stat().st_size / 1e6:.2f} MB gzipped, {len(bands)} bands · {time.time() - t0:.0f}s")
+    late = [b[0] for b in bands if b[0][:2] in ("mU", "mV", "mT")]
+    # and a coarse copy of the base bands first, for the first seconds of a cold open
+    out_header, bands, early = habfile.with_preview(out_header, bands, skip=late)
+    w = write_hab(out, out_header, bands, late=late, early=early)
+    print(f"wrote {out.name}: {w['raw'] / 1e6:.1f} MB raw, {w['size'] / 1e6:.2f} MB packed, {w['bands']} bands · {time.time() - t0:.0f}s")
     # the solve's raw fields, for looking into it; a scratch run keeps its own
     np.savez_compressed((OUT_DIR if SCRATCH else CACHE_DIR) / f"micro-debug-{REGION['id']}.npz", dem=dem.astype(np.float32), pool=pool, kat=kat.astype(np.float32), rel=rel.astype(np.float32), breeze=breeze_max.astype(np.float32), canopy=canopy.astype(np.float32), canopyBare=canopy_bare.astype(np.float32), s=s.astype(np.float32), **{f"n{i}": a.astype(np.float32) for i, a in enumerate(neutral)}, **{f"s{i}": a.astype(np.float32) for i, a in enumerate(stable)})
 

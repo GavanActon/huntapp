@@ -173,34 +173,24 @@ def check_lattice(a: dict) -> None:
 
 # ---- .hab files -----------------------------------------------------------
 
-def read_hab(path: Path) -> tuple[dict, bytes]:
-    raw = path.read_bytes()
-    if raw[:2] == b"\x1f\x8b":
-        raw = gzip.decompress(raw)
-    hlen = struct.unpack("<I", raw[:4])[0]
-    return json.loads(raw[4 : 4 + hlen]), raw[4 + hlen :]
+def read_hab(path: Path) -> tuple[dict, dict]:
+    """A grid's header and its bands as stored, by name (habfile: v1 or v2);
+    a micro grid's preview bands are left out (they are not on the lattice)."""
+    h, raw = habfile.read_hab_raw(path)
+    h = {**h, "bands": [b for b in h["bands"] if not b["name"].startswith(habfile.PREVIEW_PREFIX)]}
+    return h, raw
 
 
-def bands_of(header: dict, payload: bytes):
-    import numpy as np
-
-    n = header["cols"] * header["rows"]
+def bands_of(header: dict, raw: dict):
     for b in header["bands"]:
-        a = np.frombuffer(payload, dtype=np.dtype(b["dtype"]), count=n, offset=b["offset"]).reshape(header["rows"], header["cols"])
-        yield b, a
+        yield b, raw[b["name"]]
 
 
 def write_hab(path: Path, header: dict, bands: list[tuple[dict, "object"]]) -> None:
-    import numpy as np
-
-    header = {**header, "bands": []}
-    payload = bytearray()
-    for b, a in bands:
-        a = np.ascontiguousarray(a)
-        header["bands"].append({**b, "offset": len(payload)})
-        payload += a.tobytes()
-    hj = json.dumps(header, separators=(",", ":")).encode("utf-8")
-    path.write_bytes(gzip.compress(struct.pack("<I", len(hj)) + hj + bytes(payload), 9))
+    """A tile's grid in the app's container (habfile), the momentum bands last."""
+    h = {k: v for k, v in header.items() if k not in ("bands", "codec", "first")}
+    out = [(b["name"], a, b["scale"], b.get("meaning", "")) for b, a in bands]
+    habfile.write_hab(path, h, out, late=[n for n, *_ in out if n[:2] in ("mU", "mV", "mT")])
 
 
 def crop_hab(src: Path, dst: Path, tid: str, r0: int, c0: int, rows: int, cols: int) -> None:

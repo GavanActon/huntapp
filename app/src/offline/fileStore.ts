@@ -39,6 +39,10 @@ export interface StoredFileInfo {
   savedAt: number
   /** the file's hash in the server's data manifest when it was saved (offline/updates.ts) */
   hash?: string
+  /** kept from a view (a grid that came down for the map, spots/habitatGrid.ts),
+   *  not saved by a Download: it counts for nothing in the Offline sheet's
+   *  reckoning of what the phone keeps, and is refreshed on its own */
+  auto?: boolean
 }
 
 export function manifestGet(name: string): StoredFileInfo | null {
@@ -142,6 +146,38 @@ export async function deleteStoredFile(name: string): Promise<void> {
   } catch {
     /* ignore */
   }
+}
+
+/** Keep a file already in hand (a grid that came down for the view): OPFS,
+ *  else Cache Storage. False when there is nowhere to write it. */
+export async function putStoredFile(name: string, blob: Blob, opts: { hash?: string; auto?: boolean } = {}): Promise<boolean> {
+  manifestDelete(name) // invalidate while writing
+  try {
+    const dir = await opfsDir(true)
+    if (dir && 'createWritable' in FileSystemFileHandle.prototype) {
+      const fh = await dir.getFileHandle(name, { create: true })
+      const writable = await fh.createWritable()
+      try {
+        await writable.write(blob)
+        await writable.close()
+      } catch (e) {
+        try {
+          await writable.abort()
+        } catch {
+          /* ignore */
+        }
+        throw e
+      }
+    } else {
+      if (typeof caches === 'undefined') return false
+      const cache = await caches.open(CACHE_NAME)
+      await cache.put(`/${DIR}/${name}`, new Response(blob))
+    }
+  } catch {
+    return false
+  }
+  manifestSet({ name, size: blob.size, savedAt: Date.now(), ...(opts.hash ? { hash: opts.hash } : {}), ...(opts.auto ? { auto: true } : {}) })
+  return true
 }
 
 export type ProgressFn = (loaded: number, total: number) => void

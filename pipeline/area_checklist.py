@@ -36,6 +36,7 @@ import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import habfile
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
@@ -79,18 +80,7 @@ class Area:
 # ---------------------------------------------------------------- reading
 
 def read_hab(path: Path, want: tuple[str, ...] = ()) -> tuple[dict, dict[str, np.ndarray]]:
-    raw = path.read_bytes()
-    if raw[:2] == b"\x1f\x8b":
-        raw = gzip.decompress(raw)
-    hlen = struct.unpack("<I", raw[:4])[0]
-    header = json.loads(raw[4 : 4 + hlen])
-    base, n = 4 + hlen, header["cols"] * header["rows"]
-    bands = {}
-    for b in header["bands"]:
-        if b["name"] in want:
-            a = np.frombuffer(raw, dtype=np.dtype(b["dtype"]), count=n, offset=base + b["offset"])
-            bands[b["name"]] = a.reshape(header["rows"], header["cols"]).astype(np.float32) * b["scale"]
-    return header, bands
+    return habfile.read_hab(path, want)
 
 
 def git(*args: str) -> tuple[int, str]:

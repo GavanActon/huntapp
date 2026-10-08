@@ -35,6 +35,7 @@ import rasterio
 from PIL import Image
 from scipy import ndimage
 
+import habfile
 from common import OUT_DIR, REGION
 
 Image.MAX_IMAGE_PIXELS = None
@@ -43,15 +44,11 @@ OUT_SCALE = 0.5  # output resolution relative to the scan
 
 
 def habitat_lake(name: str):
-    raw = gzip.open(OUT_DIR / f"habitat-{REGION['id']}.hab", "rb").read()
-    n = struct.unpack("<I", raw[:4])[0]
-    h = json.loads(raw[4 : 4 + n])
+    h, raw = habfile.read_hab_raw(OUT_DIR / f"habitat-{REGION['id']}.hab", ("lakeId",))
     lake = next((l for l in h["lakes"] if (l.get("name") or "").lower() == name.lower()), None)
     if not lake:
         raise SystemExit(f"{name}: not in the habitat lakes")
-    b = next(b for b in h["bands"] if b["name"] == "lakeId")
-    band = np.frombuffer(raw, dtype=np.dtype(b["dtype"]), count=h["cols"] * h["rows"], offset=4 + n + b["offset"]).reshape(h["rows"], h["cols"])
-    return band == lake["id"], h, lake
+    return raw["lakeId"] == lake["id"], h, lake
 
 
 def shoreline_points(gray: np.ndarray) -> np.ndarray:

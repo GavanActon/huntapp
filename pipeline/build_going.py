@@ -60,9 +60,11 @@ import time
 from datetime import date
 from pathlib import Path
 
+import habfile
 import numpy as np
 import rasterio
 import shapely
+from habfile import write_hab
 from rasterio import features
 from rasterio.transform import from_origin
 from rasterio.warp import Resampling, reproject
@@ -143,19 +145,8 @@ def crop(a: np.ndarray) -> np.ndarray:
 
 def read_hab(path: Path) -> tuple[dict, dict[str, np.ndarray]]:
     """The habitat grid's header, and its bands cropped to this lattice and cut 3×3."""
-    raw = gzip.decompress(path.read_bytes())
-    hlen = struct.unpack("<I", raw[:4])[0]
-    h = json.loads(raw[4 : 4 + hlen])
-    base = 4 + hlen
-    n = h["cols"] * h["rows"]
-    out = {}
-    for b in h["bands"]:
-        if b["name"] not in ("thick", "cover"):
-            continue
-        dt = np.dtype(b["dtype"])
-        a = np.frombuffer(raw, dtype=dt, count=n, offset=base + b["offset"]).reshape(h["rows"], h["cols"])
-        out[b["name"]] = crop(a.astype(np.float32) * b["scale"])
-    return h, out
+    h, bands = habfile.read_hab(path, ("thick", "cover"))
+    return h, {k: crop(v) for k, v in bands.items()}
 
 
 def lidar_layers(vpath: Path | None = None) -> tuple[np.ndarray, np.ndarray] | None:
@@ -357,16 +348,9 @@ def main() -> None:
         "lakes": [],
         "bands": [],
     }
-    payload = bytearray()
-    for name, arr, scale, meaning in bands:
-        arr = np.ascontiguousarray(arr)
-        header["bands"].append({"name": name, "dtype": str(arr.dtype), "scale": scale, "offset": len(payload), "meaning": meaning})
-        payload += arr.tobytes()
-    hj = json.dumps(header, separators=(",", ":")).encode("utf-8")
-    raw = struct.pack("<I", len(hj)) + hj + bytes(payload)
     out = OUT_DIR / f"going-{REGION['id']}.hab"
-    out.write_bytes(gzip.compress(raw, 9))
-    print(f"wrote {out.name}: {len(raw) / 1e6:.1f} MB raw, {out.stat().st_size / 1e6:.2f} MB gzipped - {time.time() - t0:.0f}s")
+    w = write_hab(out, header, bands)
+    print(f"wrote {out.name}: {w['raw'] / 1e6:.1f} MB raw, {w['size'] / 1e6:.2f} MB packed, {w['bands']} bands · {time.time() - t0:.0f}s")
 
     land = ground != WATER
     pct = lambda a, qs=(10, 25, 50, 75, 90, 99): {str(q): round(float(np.percentile(a, q)), 3) for q in qs}  # noqa: E731

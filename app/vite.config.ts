@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { closeSync, openSync, readdirSync, readFileSync, readSync, statSync } from 'node:fs'
 import type { ServerResponse } from 'node:http'
 import { fileURLToPath } from 'node:url'
 import { defineConfig, type Plugin } from 'vite'
@@ -232,10 +232,43 @@ function areaManifest(a: { id: string; name: string }, scope: string): string {
  */
 function areaLinks(): Plugin {
   const areaDir = fileURLToPath(new URL('./src/areas/', import.meta.url))
+  const dataDir = fileURLToPath(new URL('./public/data/', import.meta.url))
   let base = '/'
+  /** How many bytes of a grid the first view reads, for the page's early
+   *  fetch of it: a v2 file's header and the bands before its "first"
+   *  boundary (pipeline/habfile.py), else the whole file. Null when it is
+   *  not baked. */
+  const firstBytes = (path: string): number | null => {
+    try {
+      const fd = openSync(path, 'r')
+      try {
+        const head = Buffer.alloc(8)
+        readSync(fd, head, 0, 8, 0)
+        if (head.toString('latin1', 0, 4) !== 'HAB2') return statSync(path).size
+        const n = head.readUInt32LE(4)
+        const hj = Buffer.alloc(n)
+        readSync(fd, hj, 0, n, 8)
+        const h = JSON.parse(hj.toString('utf8')) as { first?: number; previewEnd?: number }
+        // a micro grid's preview bands come first, and are all the page asks for; the app reads the rest
+        return 8 + n + (h.previewEnd ?? h.first ?? 0)
+      } finally {
+        closeSync(fd)
+      }
+    } catch {
+      return null
+    }
+  }
+  interface AreaSlot {
+    id: string
+    name: string
+    region: AreaFile['region']
+    base: string
+    /** the grids the first view reads (the wind grid first), and how much of each */
+    grids: { file: string; first: number }[]
+  }
   // the area files the app would load (a bad one stops the build: dataManifest)
   const areas = () => {
-    const out: Pick<AreaFile, 'id' | 'name' | 'region'>[] = []
+    const out: AreaSlot[] = []
     for (const name of readdirSync(areaDir)) {
       if (!name.endsWith('.json')) continue
       try {
@@ -243,7 +276,14 @@ function areaLinks(): Plugin {
         if (badAreaField(a) != null) continue
         // the region's four numbers alone (areas/check.ts has them all numbers)
         const { west, south, east, north } = a.region
-        out.push({ id: a.id, name: a.name, region: { west, south, east, north } })
+        const grids: AreaSlot['grids'] = []
+        for (const g of ['micro', 'habitat']) {
+          if (!a.files.grids.includes(g)) continue
+          const file = `${g}-${a.id}.hab`
+          const first = firstBytes(dataDir + a.base + file)
+          if (first) grids.push({ file, first })
+        }
+        out.push({ id: a.id, name: a.name, region: { west, south, east, north }, base: a.base, grids })
       } catch {
         /* mid-write */
       }
@@ -253,12 +293,17 @@ function areaLinks(): Plugin {
   const fileOf = (id: string) => `manifest-${id}.webmanifest`
   const others = () => areas().filter((a) => a.id !== DEFAULT_AREA)
   // every area the app knows (a link naming one the build lacks is not taken), its region
-  // (a link's spot picks the area it is in first, as areas/start.ts does), and each one's
-  // manifest but Pickle Lake's, with < written as its escape: it goes inside a <script>
+  // (a link's spot picks the area it is in first, as areas/start.ts does), its folder and
+  // the grids the page fetches early, and each one's manifest but Pickle Lake's, with <
+  // written as its escape: it goes inside a <script>
   const slot = () =>
-    JSON.stringify(
-      Object.fromEntries(areas().map((a) => [a.id, a.id === DEFAULT_AREA ? { name: a.name, region: a.region } : { name: a.name, region: a.region, manifest: base + fileOf(a.id) }])),
-    ).replace(/</g, '\\u003c')
+    JSON.stringify({
+      default: DEFAULT_AREA,
+      data: `${base}data/`,
+      areas: Object.fromEntries(
+        areas().map((a) => [a.id, { name: a.name, region: a.region, base: a.base, grids: a.grids, ...(a.id === DEFAULT_AREA ? {} : { manifest: base + fileOf(a.id) }) }]),
+      ),
+    }).replace(/</g, '\\u003c')
   return {
     name: 'area-links',
     configResolved(config) {
@@ -340,6 +385,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       // the app registers the worker itself (offline/appUpdate.ts) so it can ask for updates
       injectRegister: false,
+      // the manifest's icons are not precached either (globIgnores below has the rest of icons/)
+      includeManifestIcons: false,
       manifest: MANIFEST,
       workbox: {
         // a new worker takes over as soon as it is in, not when every window
@@ -351,7 +398,8 @@ export default defineConfig({
         clientsClaim: true,
         // the areas' iPhone manifests too: an icon added with no signal still gets its area
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}', 'manifest-*.webmanifest'],
-        globIgnores: ['data/**', 'fonts/**', 'sprites/**'],
+        // the icons too (580 KB): the home screen reads them when the app is added, online
+        globIgnores: ['data/**', 'fonts/**', 'sprites/**', 'icons/**'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         runtimeCaching: [
           { urlPattern: /\/fonts\/.+\.pbf$/, handler: 'CacheFirst', options: { cacheName: 'glyphs', expiration: { maxEntries: 600 } } },

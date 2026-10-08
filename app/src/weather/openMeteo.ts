@@ -133,7 +133,11 @@ export async function fetchPointForecast(lon: number, lat: number): Promise<Poin
     wind_speed_unit: 'kmh',
     timezone: at.timezone,
   }
-  // the seven-day outlook first: it is the frame the HRDPS hours drop into
+  // HRDPS by name, asked at the same time as the frame its hours drop into:
+  // one round trip for the place, not two (a miss costs nothing, below)
+  const hrdpsOut = openMeteo({ ...common, hourly: HRDPS_HOURLY.join(','), forecast_days: '3', models: 'gem_hrdps_continental' })
+  hrdpsOut.catch(() => {})
+  // the seven-day outlook: the frame
   const j = await openMeteo({
     ...common,
     hourly: HOURLY.join(','),
@@ -184,9 +188,9 @@ export async function fetchPointForecast(lon: number, lat: number): Promise<Poin
     },
   }
 
-  // then HRDPS by name, overwriting the hours it covers; a miss costs nothing
+  // then HRDPS's hours over the frame's, where it has them; a miss costs nothing
   try {
-    const hj = await openMeteo({ ...common, hourly: HRDPS_HOURLY.join(','), forecast_days: '3', models: 'gem_hrdps_continental' })
+    const hj = await hrdpsOut
     const hh = hj.hourly as Record<string, (number | null)[] | string[]>
     const idx = new Map((f.hourly.time as string[]).map((t, i) => [t, i]))
     const fields: [keyof PointForecast['hourly'], string][] = [

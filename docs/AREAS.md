@@ -85,6 +85,21 @@ names already carry the area id, so two areas sit side by side.
 `data/areas/<id>/manifest.json`, and the list of areas is
 `data/areas/index.json`.
 
+The three grids (`habitat`, `micro`, `going`, extension `.hab`) are band
+files in the container `pipeline/habfile.py` writes and
+`app/src/spots/habitatGrid.ts` reads: a JSON header, then every band as its
+own zlib stream at a byte offset the header gives. The app reads what a view
+needs by HTTP range (or a slice of the phone's copy) instead of the whole
+file. The micro grid comes in stages: a coarse preview of its base bands
+(every third cell, ~0.4 MB, which the page itself asks for before the app
+has loaded), the base bands at full resolution, the two momentum directions
+the hour's wind sits between, and the other fourteen once the map is up. A
+grid that came from the server is kept on the phone afterwards (marked
+`auto` in the store), so the next open reads it from storage; the Offline
+sheet does not count such copies as a saved area. Files written before
+2026-10-07 (one gzip stream) are still read. To re-pack a file:
+`python pipeline/habfile.py <file.hab>`.
+
 ## In the app
 
 - **One active area at a time.** The active area is settled when the app

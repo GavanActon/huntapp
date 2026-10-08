@@ -5,6 +5,7 @@ import { fileUrl, loadView, saveView } from '../areas'
 import { peekSwitchThen } from '../areas/handoff'
 import { BASE_GEO, baseGeoFile, DATA_FILES, GEO_THEMES, geoFile, HOME, MAX_BOUNDS } from '../config'
 import { getStoredFile } from '../offline/fileStore'
+import { bootManifest } from '../offline/updates'
 import { markShown, useAppStore, type LayerOpacity, type LayerVisibility } from '../state/appStore'
 import { placeColour } from '../state/pinColours'
 import { usePlacesStore } from '../state/placesStore'
@@ -48,7 +49,8 @@ function placesGeoJson(): FeatureCollection {
  *  the live query). */
 export const geoModes = new Map<string, 'local' | 'network'>()
 
-async function resolveGeo(): Promise<Map<string, string>> {
+/** `known`: the files the server lists (bootManifest), which spares a HEAD per theme. */
+async function resolveGeo(known: Set<string> | null): Promise<Map<string, string>> {
   const geo = new Map<string, string>()
   geoModes.clear()
   const themes = [...GEO_THEMES.map((t) => [t, geoFile(t)] as const), ...BASE_GEO.map((t) => [t, baseGeoFile(t)] as const)]
@@ -60,6 +62,13 @@ async function resolveGeo(): Promise<Map<string, string>> {
         return void geo.set(t, URL.createObjectURL(blob))
       }
       if (!navigator.onLine) return
+      if (known) {
+        if (known.has(file)) {
+          geoModes.set(t, 'network')
+          geo.set(t, fileUrl(file))
+        }
+        return
+      }
       try {
         // the dev server answers every path with index.html: only JSON counts
         const url = fileUrl(file)
@@ -175,7 +184,11 @@ export default function MapView() {
     const arrival = peekSwitchThen()
 
     void (async () => {
-      const [available, geo] = await Promise.all([registerAllDataFiles(), resolveGeo()])
+      // the server's file list first (one small request, often cached): with
+      // it the archives and themes need no probing before the style is built
+      const listing = await bootManifest()
+      const known = listing ? new Set(Object.keys(listing.files)) : null
+      const [available, geo] = await Promise.all([registerAllDataFiles(known), resolveGeo(known)])
       if (cancelled) return
       geoUrls.clear()
       for (const [k, v] of geo) geoUrls.set(k, v)
