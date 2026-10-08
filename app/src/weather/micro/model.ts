@@ -592,10 +592,18 @@ interface Eval {
   /** the cell is in a stand: the head-height wind came down through a canopy */
   woods: boolean
   bias: Bias | null
+  /** the gusts here against the hour's gust factor: 1.3 in the gusty zone inside a windward edge */
+  gustMul?: number
 }
 
 const EDGE_STEPS = [15, 30, 45, 60, 90, 120, 160, 200]
 const _reg = new Float32Array(2)
+/** The shoreline rules (SHORE-WIND.md 1 and 2) can be held off for a
+ *  before/after on the same air (scripts/replay.py); the app never does. */
+let shoreRules = true
+export function setShoreRules(on: boolean): void {
+  shoreRules = on
+}
 
 // ---------------------------------------------------------------- slots in the trees
 
@@ -763,13 +771,80 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   // ---- canopy and edges ----
   const th = b(K_TREEH, i)
   // the leaves: the point clouds measured the hardwoods in leaf
-  const cf = canopyAt(i, ctx.leaves)
+  let cf = canopyAt(i, ctx.leaves)
   let shelter = 1
   let swirl = false
   let slotSwirl = false
   let edgeNote: string | null = null
   let walls = 0
+  let gustMul = 1
+  // inside the windward edge of a stand (SHORE-WIND.md rule 2): the first
+  // tree heights in carry the wind off the open ground upwind, from half
+  // the open share at the edge down to the stand's own by 5 h, and the
+  // air gusts hardest 3–8 h in, where the flow coming over the canopy
+  // reaches down (Dupont & Brunet 2008; Cassiani, Katul & Albertson 2008)
+  if (shoreRules && edges && th >= 6 && mech10 > 0.5) {
+    const from = towardOf(e10, n10) + 180
+    for (const x of EDGE_STEPS) {
+      const j = g.offset(i, from, x)
+      if (j < 0) break
+      if (b(K_TREEH, j) < 6) {
+        // open ground, not a one-cell gap: the cell beyond it is open too
+        const j2 = g.offset(i, from, x + 30)
+        if (j2 >= 0 && b(K_TREEH, j2) >= 6) break
+        const rel = x / th
+        if (rel < 5) {
+          const cfEdge = 0.5 * canopyAt(j, ctx.leaves)
+          if (cfEdge > cf) {
+            cf = cfEdge + (cf - cfEdge) * (rel / 5)
+            edgeNote = `${x} m inside the stand's edge: the wind off the open ground upwind gets in here`
+          }
+        }
+        if (rel >= 3 && rel < 8) gustMul = 1.3
+        break
+      }
+    }
+  }
+  // a tree line ahead on open ground (SHORE-WIND.md rule 1): the wind
+  // slows over the last ten tree heights before a wall, the part of it
+  // square onto the wall is held off and lifts over, and the rest runs
+  // along the wall (Raupach et al. 2001; the Sault WindNinja run with the
+  // trees as raised ground: 0.9 at 10 h, 0.76 at 5 h, 0.64 at 3.5 h)
+  let ahead = 1
+  let aheadN = 1
+  let wallE = 0
+  let wallN = 0
   const open = edges && th === 0 && mech10 > 0.5
+  if (open) {
+    const toward = towardOf(e10, n10)
+    for (const x of EDGE_STEPS) {
+      const j = g.offset(i, toward, x)
+      if (j < 0) break
+      const hj = b(K_TREEH, j)
+      if (hj >= 6) {
+        const rel = x / hj
+        if (rel < 10) {
+          ahead = 0.55 + 0.45 * clamp((rel - 1) / 9, 0, 1)
+          aheadN = rel < 2 ? 0.4 : rel < 5 ? 0.4 + (0.6 * (rel - 2)) / 3 : 1
+          // the wall's line: where it is nearest within 60° either side of downwind
+          let best = x
+          let brg = toward
+          for (const d of [-60, -45, -30, -15, 15, 30, 45, 60]) {
+            const f = fetchTo(g, i, toward + d)
+            if (f < best) {
+              best = f
+              brg = toward + d
+            }
+          }
+          wallE = Math.sin(brg * RAD)
+          wallN = Math.cos(brg * RAD)
+          if (rel < 1) swirl = true
+          edgeNote = `a ${Math.round(hj)} m tree line ${x} m ahead: the wind slows${aheadN < 1 ? ' and runs along it' : ' as it lifts over'}${rel < 1 ? ', eddying against it' : ''}`
+        }
+        break
+      }
+    }
+  }
   if (open) {
     const from = towardOf(e10, n10) + 180
     for (const x of EDGE_STEPS) {
@@ -844,6 +919,16 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
       const funnels = Math.abs(alongH) >= 2 * cross * Math.abs(shCross)
       edgeNote = `a ${Math.round(slot.width / 10) * 10} m slot in the trees running ${slotLine(slot.axis)}: ${funnels ? 'the wind funnels along it toward the' : 'the wind across it swirls, drifting toward the'} ${compass(towardOf(mechE, mechN))}`
     }
+  }
+  // only on a clean approach: a cell already sheltered by a wall upwind, or
+  // in a small opening, is a clearing between walls, not a windward edge
+  if (shoreRules && !slot && ahead < 1 && shelter === 1 && walls < 3) {
+    // split by the wall's line: the part square onto it is held off
+    const nrm = mechE * wallE + mechN * wallN
+    const tE = mechE - nrm * wallE
+    const tN = mechN - nrm * wallN
+    mechE = ahead * (tE + nrm * wallE * aheadN)
+    mechN = ahead * (tN + nrm * wallN * aheadN)
   }
   const mechG = Math.hypot(mechE, mechN)
   // enough wind, and enough of a gust factor, that the air comes down in bursts
@@ -1055,7 +1140,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     if (lay.source === 'estimate') reasons.push('No layering forecast cached: stability estimated from the sky and the wind')
   }
 
-  return { e: E, n: N, sigma, regime, swirl: swirl || tumble >= TUMBLE_SWIRL, gusty, parts, reasons, local10, U, dirFrom, inGrid: true, slot: !!slot, woods: th > 0, bias: applied ? lessonBias : null }
+  return { e: E, n: N, sigma, regime, swirl: swirl || tumble >= TUMBLE_SWIRL, gusty, parts, reasons, local10, U, dirFrom, inGrid: true, slot: !!slot, woods: th > 0, bias: applied ? lessonBias : null, gustMul }
 }
 
 function headlineOf(ev: Eval, kmh: number, dirFrom: number, gustKmh: number): string {
@@ -1086,7 +1171,7 @@ export function groundWind(lon: number, lat: number, ms: number): GroundWind | n
   const kmh = Math.hypot(ev.e, ev.n)
   const dirFrom = (towardOf(ev.e, ev.n) + 180) % 360
   // a gust gets through the shelter that thins the mean, so it is the mean × the factor
-  const gustKmh = kmh * ctx.gf
+  const gustKmh = kmh * ctx.gf * (ev.gustMul ?? 1)
   return {
     kmh,
     dirFrom,

@@ -169,6 +169,18 @@ knows the turbulence. Every area was rerun to keep it:
     120° or more.
   - A grid without the bands keeps the old spread.
 
+- **Fetch over water** (2026-10-07, [SHORE-WIND.md](SHORE-WIND.md) rule
+  3): a lake's speed-up takes about a kilometre of open water to build,
+  as an internal boundary layer grows off the upwind shore. The water's
+  speed ratio runs from 0.9 at the shore to its full value by 1,000 m of
+  fetch (`build_microclimate.py` FETCH_SHORE, FETCH_FULL_M; the habitat
+  grid's fetch bands by the direction the wind blows from): the 2D basis
+  bands by the mean fetch over the eight directions, each momentum band
+  by the fetch upwind of its own direction. The micro grid also carries
+  a `water` band for the browser's shoreline rules. At the Sault the
+  water's ratio is 0.92 within 100 m of a shore on average, 1.12 at
+  300–600 m, 1.37 past a kilometre.
+
 ### 3. Thermals
 
 - **Cold-air drainage** (baked):
@@ -287,6 +299,33 @@ knows the turbulence. Every area was rerun to keep it:
     recovery by ~10 h (Cleugh 1998; Dupont & Brunet 2008).
 - **Small openings**: trees within 45 m on three sides or more means the
   air swirls.
+- **A tree line ahead** (2026-10-07, [SHORE-WIND.md](SHORE-WIND.md) rule
+  1; the windward shore): from an open cell with wind, looking downwind
+  for the first stand over 6 m within 10 tree heights. The wind slows
+  over the approach, 1 at 10 h to 0.55 at 1 h (the Sault WindNinja run
+  with the trees as raised ground gave 0.9 at 10 h, 0.76 at 5 h, 0.64 at
+  3.5 h at 10 m), and the part of it square onto the wall's line (the
+  nearest of the wall within 60° either side of downwind) is held off,
+  × 0.4 inside 2 h recovering to 1 by 5 h, so at head height the wind
+  turns to run along the wall; inside 1 h it eddies against it. Only on a
+  clean approach: a cell already sheltered by a wall upwind, or in a
+  small opening, is a clearing between walls, and a slot keeps its own
+  rule. First-guess constants; the Sault transects fit them. Scent that
+  slows on the approach goes over by the cone's edge rule (§7).
+- **Inside the windward edge** (rule 2): a stand cell looking upwind for
+  open ground within 10 of its own heights (two cells of it, not a
+  one-cell gap). The head-height share runs from half the open cell's
+  share at the edge to the stand's own by 5 h, linearly, and from 3 h to
+  8 h in the gusts are × 1.3, where the flow coming over the canopy
+  reaches down (Dupont & Brunet 2008; Cassiani, Katul & Albertson 2008).
+  On the 60 Pickle checks replayed on the same air (scripts/replay.py,
+  rules off then on): the bog's 24 checks, 30 m inside a stand's edge,
+  went from 42% to 53% within 45° and from 32% to 53% within 2× in
+  speed (median ×0.26 to ×0.53 of felt); stands overall 31% to 44% in
+  speed; open ground, slots and the rest unchanged; the one open check
+  the approach rule touched was a forecast miss (HRDPS 8 km/h, felt
+  windy). Over all 60: direction within 45° 36% to 40%, speed within 2×
+  32% to 40%.
 
 ### 5. Slots and gaps
 
@@ -390,6 +429,25 @@ nothing that matters: at that cell the mechanical part stays under
     card gives the share by sector and how far it stays noticeable, or
     "past 700 m" when it runs off the grid, and says so on a stable
     night when scent hugs the ground.
+  - **Edges** (2026-10-07, [SHORE-WIND.md](SHORE-WIND.md) rule 4): a
+    particle moves in 2D, so where the head-height wind drops 20× at a
+    tree line it would slow and stack up 20× deeper, and the cone read
+    as running 400–600 m off a lake when the plume had in fact gone over
+    the trees. Now, where the mean head-height wind along a particle's
+    path falls to 0.6 of the fastest it has had since it last lost scent
+    (`EDGE_DROP`), and that reference was real moving air (1 m/s,
+    `EDGE_MIN`), the particle keeps only that share of its scent at nose
+    height; the rest went over with the air that did not get in. A
+    stand's own patchiness (10–30% from cell to cell) never counts. In
+    the slow air past an edge the puff keeps mixing upward at half the
+    fastest wind it met (`MIX_FROM_ABOVE`), since the air above drives it.
+    The card's `over` share says how much went over the trees. On the
+    archived 30 September afternoon (15 km/h over Pickle Lake toward the
+    north-east shore) the cone's reach fell from about 400 m to 95 m and
+    the 4–9% plateau along the shore went; cones released inside a stand
+    did not change (scripts/scent_test.py, before and after on the same
+    air). Not yet checked against a puff watched over the water. The card
+    says how much went over when it is 15% or more.
   - **Tree stand**: release at 4 or 6 m instead of 1.5 m, through the same
     reflected Gaussian. The grid is scaled to the same sit on the ground,
     so a stand reads as thinner near the tree, touching down farther out.

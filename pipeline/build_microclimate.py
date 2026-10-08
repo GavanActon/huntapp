@@ -144,6 +144,11 @@ def measured_roughness(z0: np.ndarray, table: np.ndarray, cover: np.ndarray, src
     return f"  z0 from the point cloud on {lidar.sum()} land cells, mean m by cover class (p10–p90) against the table's: " + "; ".join(parts)
 
 
+# the water's speed ratio at the shore, and the fetch by which it is the full one (docs/SHORE-WIND.md rule 3)
+FETCH_SHORE = 0.9
+FETCH_FULL_M = 1000.0
+
+
 def speed_ratio(z0: np.ndarray) -> np.ndarray:
     """Local 10 m wind over the regional 10 m wind, from the log law through
     a blending height where the two agree. Roughness takes a few hundred
@@ -410,11 +415,33 @@ def main() -> None:
     # downwind one; the air really comes down from above (an internal
     # boundary layer), which a layer this thin cannot carry. Measured
     # 2026-10-01: three quarters of the neutral turning was that artefact.
+    # ---- the fetch over water (docs/SHORE-WIND.md rule 3) ----
+    # A lake's speed-up takes about a kilometre of open water to build: an
+    # internal boundary layer grows off the upwind shore, and at the shore
+    # the wind over the water is still the land's. The water's ratio ramps
+    # from FETCH_SHORE at the shore to its full value by FETCH_FULL_M of
+    # fetch (build_habitat.py's fetch bands, water cells, by the direction
+    # the wind blows from): the basis bands by the mean fetch over the eight
+    # directions, since they serve every direction, the momentum bands each
+    # by the fetch upwind of its own. Land cells keep their ratio.
+    compass8 = ("N", "NE", "E", "SE", "S", "SW", "W", "NW")
+    fetch_m = {d: hab[f"fetch{d}"].astype(np.float64) * (DX + DY) / 2 for d in compass8} if all(f"fetch{d}" in hab for d in compass8) else None
+
+    def with_fetch(fm: np.ndarray) -> np.ndarray:
+        return np.where(water, FETCH_SHORE + (s - FETCH_SHORE) * np.clip(fm / FETCH_FULL_M, 0, 1), s)
+
+    if fetch_m is not None:
+        s_mean = with_fetch(np.mean(np.stack([fetch_m[d] for d in compass8]), axis=0))
+        near = water & (np.mean(np.stack([fetch_m[d] for d in compass8]), axis=0) < FETCH_FULL_M)
+        print(f"  fetch over water: the lake's ratio ramps from {FETCH_SHORE:.2f} to its full value by {FETCH_FULL_M:.0f} m of fetch; {100 * near.sum() / max(1, water.sum()):.0f}% of the water is within that of a shore on average")
+    else:
+        s_mean = s
+        print("  no fetch bands in the habitat grid: the lake's full ratio from the shore, as before")
     ones = np.ones_like(s)
     print("  neutral layer (air goes over the hills)")
-    neutral = [a * s for a in solve_basis(dem, ones, LID_NEUTRAL, big_sigma=100)]  # ~3 km
+    neutral = [a * s_mean for a in solve_basis(dem, ones, LID_NEUTRAL, big_sigma=100)]  # ~3 km
     print("  stable layer (air goes round and down the valleys)")
-    stable = [a * s for a in solve_basis(dem, ones, LID_STABLE, big_sigma=35)]  # ~1 km
+    stable = [a * s_mean for a in solve_basis(dem, ones, LID_STABLE, big_sigma=35)]  # ~1 km
     print(f"  solved · {time.time() - t0:.0f}s")
     # the momentum solve, where build_windcfd.py has run and collected it:
     # WindNinja's flow for a unit wind from each of 16 directions, the lee
@@ -432,7 +459,12 @@ def main() -> None:
     turb_ref = None
     if cfd_path.exists():
         z = np.load(cfd_path)
-        cfd = [(float(d), z[f"u{d:05.1f}"] * s, z[f"v{d:05.1f}"] * s) for d in z["directions"]]
+
+        def s_from(d: float) -> np.ndarray:
+            # the fetch upwind of a wind from d: the nearest of the eight
+            return with_fetch(fetch_m[compass8[int(round(d / 45)) % 8]]) if fetch_m is not None else s
+
+        cfd = [(float(d), z[f"u{d:05.1f}"] * s_from(float(d)), z[f"v{d:05.1f}"] * s_from(float(d))) for d in z["directions"]]
         sp = np.hypot(cfd[0][1], cfd[0][2])
         print(f"  momentum solve: {len(cfd)} directions · speed {np.percentile(sp, 5):.2f}–{np.percentile(sp, 95):.2f} of the regional wind")
         if all(f"s{d:05.1f}" in z for d in z["directions"]):
@@ -583,6 +615,7 @@ def main() -> None:
             f"head-height (2 m) fraction of the local 10 m wind with the leaves down: the hardwood and larch share of the closure thinned to bare crowns ({BARE:g} of it); the browser blends canopy toward it after leaf drop",
         ),
         ("treeH", np.clip(np.round(h), 0, 255).astype(np.uint8), 1, "stand height m (0 open)"),
+        ("water", water.astype(np.uint8), 1, "open water (1): the shoreline rules in the browser tell water from open ground by it"),
     ]
     for d, u, v in cfd or []:
         bands += [
@@ -605,7 +638,7 @@ def main() -> None:
         "coverNames": header["coverNames"],
         "landformNames": header["landformNames"],
         "lakes": [],
-        "model": {"z0Ref": Z0_REF, "zBlend": Z_BLEND, "lidNeutral": LID_NEUTRAL, "lidStable": LID_STABLE, "bare": BARE, "larchLed": LARCH_LED, **({"momentum": {"directions": [d for d, _, _ in cfd], "solver": "WindNinja 4.0.0 momentum (OpenFOAM, RNG k-epsilon), trees, 10 m", **({"spreadRef": round(turb_ref, 2)} if turb else {})}} if cfd else {})},
+        "model": {"z0Ref": Z0_REF, "zBlend": Z_BLEND, "lidNeutral": LID_NEUTRAL, "lidStable": LID_STABLE, "bare": BARE, "larchLed": LARCH_LED, **({"fetchRamp": {"shore": FETCH_SHORE, "fullM": FETCH_FULL_M}} if fetch_m is not None else {}), **({"momentum": {"directions": [d for d, _, _ in cfd], "solver": "WindNinja 4.0.0 momentum (OpenFOAM, RNG k-epsilon), trees, 10 m", **({"spreadRef": round(turb_ref, 2)} if turb else {})}} if cfd else {})},
         "bands": [],
     }
     # the momentum bands go last: the app reads the base bands first, then

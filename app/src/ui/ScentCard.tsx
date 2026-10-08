@@ -105,6 +105,9 @@ export default function ScentCard(): JSX.Element | null {
           </div>
         )}
         {offDrop && <div className="scent-line dim">{offDrop}</div>}
+        {plume && plume.over >= 0.15 && (
+          <div className="scent-line dim">About {Math.round(plume.over * 100)}% of it went up over the trees at an edge, out of reach of noses on the ground</div>
+        )}
         {many && (
           <div className="sc-people">
             <div className="seg" role="radiogroup" aria-label="Whose sit">

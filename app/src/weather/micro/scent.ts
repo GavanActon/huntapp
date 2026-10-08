@@ -93,6 +93,14 @@ export interface Plume {
    * Scent warm water mixed down does not count: it came down over the water.
    */
   touchdown: boolean
+  /**
+   * Share of the scent that went up over the trees: where the head-height
+   * wind drops along the path (a tree line, a sheltered pocket), only that
+   * share of the air got in at head height, and the rest went over with
+   * its scent. Each step counts for what it would have laid down at its
+   * release height.
+   */
+  over: number
 }
 
 /** Each particle's path, metres east/north of the source, for the particle view. */
@@ -226,6 +234,31 @@ function keepOfDrop(stable: number): number {
 }
 /** a particle never rises more than this above the ground, m */
 const MAX_AGL = 60
+/**
+ * An edge: the mean head-height wind falls to this share of the fastest
+ * the particle has had since it last lost scent. The air that does not
+ * get in at head height goes over, and the scent with it. Moved in 2D,
+ * the particle would only slow, and a 20× slowdown at a tree line stacked
+ * the scent 20× deeper there (the cone "went far", 2026-10-04). A stand's
+ * own patchiness (10–30% from cell to cell) never counts, and a slowdown
+ * spread over several cells (a sheltered pocket, a windward edge) does
+ * once it adds up.
+ */
+const EDGE_DROP = 0.6
+/** only air that was really moving loses its scent over an edge, m/s: a stand's floor wind never does */
+const EDGE_MIN = 1.0
+/**
+ * In slow air the scent keeps mixing upward at a rate the air above sets,
+ * not the floor's: the mixing path grows at least this share of the
+ * fastest mean wind the particle has met.
+ */
+const MIX_FROM_ABOVE = 0.5
+/** The edge rule can be held off for a before/after on the same air
+ *  (scripts/scent_test.py); the app never turns it off. */
+let edgeRule = true
+export function setScentEdgeRule(on: boolean): void {
+  edgeRule = on
+}
 /** noticeable 10 m cells of scent come back down past a hollow before the card says so: a patch, not a speck */
 const TOUCH_CELLS = 4
 /**
@@ -320,6 +353,7 @@ export function simulatePlume(
   // the weight the steps would lay down at their release height: all of it,
   // and the part held up off a drop
   let lifted = 0
+  let over = 0
   let wTotal = 0
   // the particles walked the relief; one came back down after being held up
   let walked = false
@@ -393,9 +427,20 @@ export function simulatePlume(
       let zAgl = height
       let g0 = gSrc
       let aloft = false
+      // the share of its scent still at head height (EDGE_DROP), the mean
+      // wind it is measured against, and the fastest met (MIX_FROM_ABOVE)
+      let kept = 1
+      let spdRef = srcSpeed
+      let spdMax = srcSpeed
       for (let t = t0; t < TOTAL_S; t += DT) {
         const k = Math.round(t / DT)
         if (!sample(lon + x / kx, lat + y / ky, out)) break
+        const mean = Math.hypot(out[0], out[1])
+        if (edgeRule && spdRef >= EDGE_MIN && mean < spdRef * EDGE_DROP) {
+          kept *= mean / spdRef
+          spdRef = mean
+        } else if (mean > spdRef) spdRef = mean
+        if (mean > spdMax) spdMax = mean
         const c = Math.cos(phi[k])
         const s = Math.sin(phi[k])
         const gm = burst[k] ? gust : gusty ? lullMul : 1
@@ -408,8 +453,11 @@ export function simulatePlume(
         vp = vp * (1 - DT / TL) + sigT * Math.sqrt((2 * DT) / TL) * gauss(rnd)
         x += (u + up) * DT
         y += (v + vp) * DT
-        // even in a calm the air stirs a little, so mixing never quite stops
-        path += Math.max(0.2, spd) * DT
+        // even in a calm the air stirs a little, so mixing never quite stops;
+        // and in the slow air past an edge the air it came from keeps
+        // stirring it from above (only there: in the open the lulls between
+        // gusts mix as slowly as they always did)
+        path += Math.max(0.2, spd, kept < 1 ? MIX_FROM_ABOVE * spdMax : 0) * DT
         const cx = Math.floor((x + EXTENT_M) / CELL_M)
         const cy = Math.floor((EXTENT_M - y) / CELL_M)
         if (cx < 0 || cy < 0 || cx >= N || cy >= N) break
@@ -464,23 +512,24 @@ export function simulatePlume(
           // a ground sit's first step held up: until now it laid down just what its reference would
           if (rawGround === raw) rawGround = raw.slice()
         }
-        raw[cy * N + cx] += w
-        if (rawGround !== raw) rawGround[cy * N + cx] += noseGround[pm]
+        raw[cy * N + cx] += w * kept
+        if (rawGround !== raw) rawGround[cy * N + cx] += noseGround[pm] * kept
         // weighed by what the step would lay down at its release height, not
         // by w (the spec's way): held well up, a step lays down next to
         // nothing, so by w a 10 m bank straight onto a lake read as 15% held
         // up while the whole cone had gone (Lac Bailey, a stand)
         wTotal += noseAt[pm]
+        over += noseAt[pm] * (1 - kept)
         if (zAgl > height + 2) {
           lifted += noseAt[pm]
           aloft = true
         } else if (aloft && rawDown) {
-          rawDown[cy * N + cx] += w
+          rawDown[cy * N + cx] += w * kept
           landed = true
         }
         if (x * x + y * y > 625) {
           const brg = ((Math.atan2(x, y) * 180) / Math.PI + 360) % 360
-          sectors[Math.round(brg / 45) % 8] += w
+          sectors[Math.round(brg / 45) % 8] += w * kept
         }
       }
     }
@@ -539,6 +588,7 @@ export function simulatePlume(
       stable: stable > 0.5,
       height,
       lifted: wTotal > 0 ? lifted / wTotal : 0,
+      over: wTotal > 0 ? over / wTotal : 0,
       touchdown: down >= TOUCH_CELLS,
     },
     grid,

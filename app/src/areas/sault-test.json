@@ -56,7 +56,7 @@
     "nts": ["041K08", "041K09", "041K10"]
   },
   "coverage": {
-    "checked": "2026-10-04",
+    "checked": "2026-10-07",
     "pmtiles": {
       "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
       "topo": {
@@ -171,10 +171,10 @@
       },
       "micro": {
         "file": "micro-sault-test.hab",
-        "bytes": 1203400,
+        "bytes": 3691538,
         "source": "derived: the habitat grid and the MRDEM",
         "licence": "derived from the layers above",
-        "vintage": "generated 2026-10-04"
+        "vintage": "generated 2026-10-07"
       },
       "going": {
         "file": "going-sault-test.hab",
