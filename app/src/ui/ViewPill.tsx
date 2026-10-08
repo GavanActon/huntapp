@@ -17,9 +17,8 @@ import './views.css'
  */
 
 export default function ViewPill() {
-  // the five reads currentView() depends on, so the name follows every change
+  // the four reads currentView() depends on, so the name follows every change
   const layers = useAppStore((s) => s.layers)
-  const detail = useAppStore((s) => s.detail)
   const mode = useViews((s) => s.mode)
   const saved = useViews((s) => s.saved)
   const lastViewId = useViews((s) => s.lastViewId)
@@ -34,7 +33,7 @@ export default function ViewPill() {
   const [more, setMore] = useState(false)
   const box = useRef<HTMLDivElement>(null)
 
-  const on = useMemo(() => currentView(), [layers, detail, mode, saved, lastViewId])
+  const on = useMemo(() => currentView(), [layers, mode, saved, lastViewId])
   const { top: first, rest } = useMemo(() => splitViews(mode, saved, pinned), [mode, saved, pinned])
 
   // the pill leaves the screen with the menu up (a sheet opens): the hot

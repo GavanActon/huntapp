@@ -119,7 +119,7 @@ export const lidarShadeBrightness = (layers: LayerVisibility) => (layers.satelli
  *  reads of the area's biggest archive on every zoom in. So over the imagery
  *  it waits until the Hillshade slider is past half, where it shows (30% of
  *  the pixels at full strength) (2026-10-08). It is the heaviest layer to
- *  stream, too, 1.1 MB of Topo's 1.9 MB on a zoom in: the light map
+ *  stream, too, 1.1 MB of the 1.9 MB Topo streamed on a zoom in: the light map
  *  (`hd` false) goes without it. */
 const LIDAR_OVER_IMAGERY_FROM = 0.5
 export const lidarShadeShown = (layers: LayerVisibility, opacity: LayerOpacity, hd: boolean) =>
@@ -170,8 +170,8 @@ let liveShadeUnderImagery = false
  *  the moment the view reaches it; under the baked imagery nothing changes
  *  inside the box when they do. The light map (`hd` false) takes the
  *  elevation colours (at 0.9) for ground enough too: the base map and the
- *  live shade under them are off in the box, the Topo view's 384 KB of a
- *  zoom in. A hidden layer is neither fetched nor read ahead (prefetch.ts).
+ *  live shade under them are off in the box, 384 KB of a zoom in on the Topo
+ *  view as it was. A hidden layer is neither fetched nor read ahead (prefetch.ts).
  *  Run on every move and after every switch (applyLayerState puts them back
  *  with their switches). */
 export function syncUnderlays(map: MlMap, layers: LayerVisibility, opacity: LayerOpacity, hd: boolean) {

@@ -46,8 +46,9 @@ const L = (on: (keyof LayerVisibility)[]): LayerVisibility =>
 
 export const BUILT_IN: MapView[] = [
   // the wind: the Topo view's ground under the streaks in the Contrast look, white over a wash coloured by
-  // speed (Gavan, 2026-10-07: "a default view, call it Wind, the Windy version plus topo")
-  { id: 'hunt-wind', name: 'Wind', mode: 'hunt', builtIn: true, heat: false, opacity: { ...DEFAULT_OPACITY, hillshade: 0.7 }, layers: L(['relief', 'hillshade', 'contours', 'roads', 'windFlow']), wind: 'contrast' },
+  // speed (Gavan, 2026-10-07: "a default view, call it Wind, the Windy version plus topo");
+  // the light Topo's ground, as Topo is (2026-10-08: "wind on light topo")
+  { id: 'hunt-wind', name: 'Wind', mode: 'hunt', builtIn: true, heat: false, detail: 'light', opacity: { ...DEFAULT_OPACITY, hillshade: 0.7 }, layers: L(['relief', 'hillshade', 'contours', 'roads', 'windFlow']), wind: 'contrast' },
   { id: 'hunt-scout', name: 'Scout', mode: 'hunt', builtIn: true, heat: true, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'contours', 'forest', 'fire', 'roads']) },
   { id: 'hunt-bush', name: 'Bush', mode: 'hunt', builtIn: true, heat: false, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'understory', 'contours', 'roads']) },
   // out hunting with a bow: the imagery at full strength, open lanes left clear and
@@ -58,15 +59,15 @@ export const BUILT_IN: MapView[] = [
   // A hunting view: all its detail once the area's maps are saved, light until then (the
   // lanes only from the phone's copy too: apply)
   { id: 'hunt-bow', name: 'Bow', mode: 'hunt', builtIn: true, heat: false, detail: 'auto', opacity: { ...DEFAULT_OPACITY, hillshade: 0.35, satellite: 1 }, layers: L(['satellite', 'hillshade', 'lanes', 'contours', 'roads']) },
-  // the light ones, for streaming (Gavan, 2026-10-08: two low-weight views, their hunting
-  // versions Bow and Topo): the photo whole with the contours and roads, about half of
-  // Bow's bytes on a zoom in; and the elevation colours with their own shade, a fifth of Topo's
+  // light, for streaming (Gavan, 2026-10-08: a low-weight view, Bow its hunting version):
+  // the photo whole with the contours and roads, about half of Bow's bytes on a zoom in
   { id: 'hunt-photo', name: 'Photo', mode: 'hunt', builtIn: true, heat: false, detail: 'light', opacity: { ...DEFAULT_OPACITY, satellite: 1 }, layers: L(['satellite', 'contours', 'roads']) },
-  { id: 'hunt-topo-lite', name: 'Topo Lite', mode: 'hunt', builtIn: true, heat: false, detail: 'light', opacity: { ...DEFAULT_OPACITY, hillshade: 0.7 }, layers: L(['relief', 'hillshade', 'contours', 'roads']) },
   { id: 'hunt-terrain', name: 'Terrain', mode: 'hunt', builtIn: true, heat: false, opacity: { ...DEFAULT_OPACITY, hillshade: 0.9 }, layers: L(['hillshade', 'contours', 'roads']) },
   { id: 'hunt-sit', name: 'Sit', mode: 'hunt', builtIn: true, heat: false, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'contours', 'roads']) },
-  // a hunting view, like Bow: the 1 m LiDAR shade once the area's maps are saved
-  { id: 'hunt-relief', name: 'Topo', mode: 'hunt', builtIn: true, heat: false, detail: 'auto', opacity: { ...DEFAULT_OPACITY, hillshade: 0.7 }, layers: L(['relief', 'hillshade', 'contours', 'roads']) },
+  // light, saved maps or not: the elevation colours with their own shade, without the 1 m
+  // LiDAR veil, a fifth of the bytes it had on a zoom in (Gavan, 2026-10-08: "topo light
+  // looks great, make that topo")
+  { id: 'hunt-relief', name: 'Topo', mode: 'hunt', builtIn: true, heat: false, detail: 'light', opacity: { ...DEFAULT_OPACITY, hillshade: 0.7 }, layers: L(['relief', 'hillshade', 'contours', 'roads']) },
   { id: 'hunt-land', name: 'Land', mode: 'hunt', builtIn: true, heat: false, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'crown', 'wmu', 'camps', 'parks', 'roads']) },
   { id: 'fish-lake', name: 'Lake', mode: 'fish', builtIn: true, heat: true, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'bathy']) },
   { id: 'fish-chart', name: 'Chart', mode: 'fish', builtIn: true, heat: true, opacity: DEFAULT_OPACITY, layers: L(['bathy', 'topo']) },
@@ -74,9 +75,9 @@ export const BUILT_IN: MapView[] = [
 
 /** The views pinned at the top of the pill menu on a fresh phone (Gavan's, 2026-10-03: Scout too;
  *  2026-10-07: "base load should be Bow with range on", so Bow first and the phone opens on it;
- *  2026-10-08: the light views each after its hunting one). */
+ *  2026-10-08: Photo after Bow, its hunting version). */
 export const DEFAULT_PINNED: Record<Mode, string[]> = {
-  hunt: ['hunt-bow', 'hunt-photo', 'hunt-wind', 'hunt-relief', 'hunt-topo-lite', 'hunt-bush', 'hunt-terrain', 'hunt-scout'],
+  hunt: ['hunt-bow', 'hunt-photo', 'hunt-wind', 'hunt-relief', 'hunt-bush', 'hunt-terrain', 'hunt-scout'],
   fish: ['fish-lake', 'fish-chart'],
 }
 
@@ -196,23 +197,25 @@ export const useViews = create<ViewsState>()(
       // 2: the hunting default is Topo, Bow, Bush, Terrain; a v1 list never touched follows it
       // 3: the Wind view, pinned first
       // 4: Bow first again, the Wind view second (a v3 list never touched follows it)
-      // 5: the light views, Photo after Bow and Topo Lite after Topo (else at the end)
-      version: 5,
+      // 5: the light Photo view after Bow (else at the end)
+      // 6: Topo Lite became Topo (it was out for an hour): off the pins, a phone on it on Topo
+      version: 6,
       migrate: (persisted, from) => {
         const p = (persisted ?? {}) as Partial<ViewsState>
         if (!p.pinned) p.pinned = { hunt: [...DEFAULT_PINNED.hunt], fish: [...DEFAULT_PINNED.fish] }
         else if (from < 2 && p.pinned.hunt.join() === 'hunt-scout,hunt-bush,hunt-bow,hunt-terrain') p.pinned = { ...p.pinned, hunt: [...DEFAULT_PINNED.hunt] }
         if (from < 3 && !p.pinned.hunt.includes('hunt-wind')) p.pinned = { ...p.pinned, hunt: ['hunt-wind', ...p.pinned.hunt] }
         if (from < 4 && p.pinned.hunt.join() === 'hunt-wind,hunt-relief,hunt-bow,hunt-bush,hunt-terrain,hunt-scout') p.pinned = { ...p.pinned, hunt: [...DEFAULT_PINNED.hunt] }
-        if (from < 5) {
+        if (from < 5 && !p.pinned.hunt.includes('hunt-photo')) {
           const hunt = [...p.pinned.hunt]
-          for (const [id, after] of [['hunt-photo', 'hunt-bow'], ['hunt-topo-lite', 'hunt-relief']]) {
-            if (hunt.includes(id)) continue
-            const at = hunt.indexOf(after)
-            if (at >= 0) hunt.splice(at + 1, 0, id)
-            else hunt.push(id)
-          }
+          const at = hunt.indexOf('hunt-bow')
+          if (at >= 0) hunt.splice(at + 1, 0, 'hunt-photo')
+          else hunt.push('hunt-photo')
           p.pinned = { ...p.pinned, hunt }
+        }
+        if (from < 6) {
+          p.pinned = { ...p.pinned, hunt: p.pinned.hunt.filter((id) => id !== 'hunt-topo-lite') }
+          if (p.lastViewId === 'hunt-topo-lite') p.lastViewId = 'hunt-relief'
         }
         return p as ViewsState
       },
@@ -226,6 +229,14 @@ export const useViews = create<ViewsState>()(
 if (freshPhone) {
   const bow = BUILT_IN.find((v) => v.id === 'hunt-bow')
   if (bow) useViews.getState().apply(bow)
+}
+
+// the detail follows the view last picked while the map still shows it: a phone
+// from before views had one (all 'full') takes its view's, and a view whose detail
+// changed (Topo, light since 2026-10-08) brings the new one
+{
+  const base = baseView()
+  if (base && activeView([base], useAppStore.getState().layers)) useAppStore.setState({ detail: base.detail ?? 'full' })
 }
 
 /** The views on offer in a mode: built in first, then the user's. */
@@ -243,11 +254,10 @@ export function splitViews(mode: Mode, saved = useViews.getState().saved, pinned
 }
 
 /** The view the map is showing now, if any: the layers match, leaving out
- *  the ones with their own buttons (VIEW_LOOSE_KEYS) and the heat map, and
- *  so does the detail (Topo Lite and Topo have the same layers). */
-export function activeView(views: MapView[], layers: LayerVisibility, detail: MapDetail): MapView | null {
+ *  the ones with their own buttons (VIEW_LOOSE_KEYS) and the heat map. */
+export function activeView(views: MapView[], layers: LayerVisibility, _heat?: boolean): MapView | null {
   const keys = (Object.keys(DEFAULT_LAYERS) as (keyof LayerVisibility)[]).filter((k) => !VIEW_LOOSE_KEYS.includes(k))
-  return views.find((v) => (v.detail ?? 'full') === detail && keys.every((k) => !!v.layers[k] === !!layers[k])) ?? null
+  return views.find((v) => keys.every((k) => !!v.layers[k] === !!layers[k])) ?? null
 }
 
 /** The view the map was last set to: `lastViewId` among the mode's views,
@@ -263,10 +273,10 @@ export function baseView(): MapView | null {
  *  (custom). The pill's name. */
 export function currentView(): MapView | null {
   const { mode, saved } = useViews.getState()
-  const { layers, detail } = useAppStore.getState()
+  const layers = useAppStore.getState().layers
   const base = baseView()
-  if (base && activeView([base], layers, detail)) return base
-  return activeView(viewsFor(mode, saved), layers, detail)
+  if (base && activeView([base], layers)) return base
+  return activeView(viewsFor(mode, saved), layers)
 }
 
 /** The quarry chip: a fish while hunting (or the reverse) switches the mode

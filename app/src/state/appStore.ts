@@ -180,9 +180,9 @@ export const FLOW_TUNING_DEFAULTS: FlowTuning = { windDensity: 2500, windSpeed: 
 /** How much of the area's detail the map draws. 'full': all of it, every
  *  view as it was. 'light': none of the high-res layers (the 1 m LiDAR
  *  shade) and nothing live in the area under the baked layers, light to
- *  stream (the Photo and Topo Lite views). 'auto': all of it once the area's
- *  maps are saved on the phone, light until then (the hunting views, Bow and
- *  Topo). Gavan, 2026-10-08: "if downloaded show high res, otherwise light".
+ *  stream (the Photo and Topo views). 'auto': all of it once the area's maps
+ *  are saved on the phone, light until then (Bow, Photo's hunting version).
+ *  Gavan, 2026-10-08: "if downloaded show high res, otherwise light".
  *  Set by the view last picked, so a switch flipped after keeps it. */
 export type MapDetail = 'full' | 'auto' | 'light'
 
