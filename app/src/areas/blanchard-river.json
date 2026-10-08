@@ -41,7 +41,7 @@
     ]
   },
   "coverage": {
-    "checked": "2026-10-07",
+    "checked": "2026-10-08",
     "pmtiles": {
       "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
       "topo": {
@@ -95,10 +95,10 @@
       },
       "understory": {
         "file": "understory-blanchard-river.pmtiles",
-        "bytes": 7990744,
-        "source": "Bush model (docs/BUSH-MODEL.md): the eye-level understory predicted at 30 m from Sentinel-2 seasons, PALSAR, SCANFI, CanLaD and the MRDEM, trained on 320 plots of Ontario leaf-on LiDAR; faded where the model is unsure. Modelled, not measured",
+        "bytes": 6686518,
+        "source": "Bush model (docs/BUSH-MODEL.md): the eye-level understory predicted at 30 m from Sentinel-2 seasons, PALSAR, SCANFI, CanLaD and the MRDEM, trained on 435 plots of Ontario leaf-on LiDAR; faded where the model is unsure. Modelled, not measured",
         "licence": "Copernicus Sentinel data; JAXA ALOS PALSAR mosaic (free, attribution); OGL-Canada; CanLaD CC BY 4.0",
-        "vintage": "imagery 2023-2025, model trained 2026-10-07"
+        "vintage": "imagery 2023-2025, model trained 2026-10-08"
       },
       "lanes": { "missing": "no point-cloud adapter for BC yet (LidarBC where it has flown); the bush layer (understory) is the bush model's" },
       "bathy": { "missing": "Ontario only: lake depths need the ARA lake facts and the MNR sheets" },
@@ -163,24 +163,24 @@
     "grids": {
       "habitat": {
         "file": "habitat-blanchard-river.hab",
-        "bytes": 2537850,
+        "bytes": 2523144,
         "source": "derived: MRDEM, NRCan 2020 land cover, forest stands, water, wetlands, roads and burns",
         "licence": "derived from the layers above",
-        "vintage": "generated 2026-10-07"
+        "vintage": "generated 2026-10-08"
       },
       "micro": {
         "file": "micro-blanchard-river.hab",
         "bytes": 3287353,
         "source": "derived: the habitat grid and the MRDEM",
         "licence": "derived from the layers above",
-        "vintage": "generated 2026-10-07"
+        "vintage": "generated 2026-10-08"
       },
       "going": {
         "file": "going-blanchard-river.hab",
-        "bytes": 3215834,
+        "bytes": 3210984,
         "source": "derived: HRDEM LiDAR, point-cloud bush or the forest-map estimate, water, wetlands and roads",
         "licence": "derived from the layers above",
-        "vintage": "generated 2026-10-07"
+        "vintage": "generated 2026-10-08"
       }
     }
   }

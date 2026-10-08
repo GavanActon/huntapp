@@ -279,14 +279,14 @@ def modelled_bush(est: np.ndarray, cover: np.ndarray, map_says: np.ndarray | Non
     np.savez_compressed(cached(f"bushmodel-{REGION['id']}.npz"), nrd=out["nrd"], q20=out["q20"], q80=out["q80"], transform=np.array(TRANSFORM)[:6], crs=np.array("EPSG:4326"), cover=cover.astype(np.uint8), notes=np.array(json.dumps(out["notes"]["bushModel"])))
     ok = np.isfinite(out["nrd"]) & ~np.isin(cover, (WATER, ROAD))
     if map_says is not None and map_says.any():
-        print(f"  the {INVENTORY} names the ground on {100 * map_says[cover != WATER].mean():.0f}% of the land (open herb, lichen, rock, fen, tall shrub): its word, not the model's, there")
+        print(f"  the {INVENTORY} names the ground on {100 * map_says[cover != WATER].mean():.0f}% of the land (open herb, lichen, rock, fen): its word, not the model's, there")
         ok &= ~map_says
     thick = np.where(ok, P.to_estimate(np.nan_to_num(out["nrd"])), est).astype(np.float32)
     spread = np.where(ok, P.to_estimate(np.nan_to_num(out["q80"])) - P.to_estimate(np.nan_to_num(out["q20"])), 0).astype(np.float32)
     src = np.where(cover == WATER, 0, np.where(ok, 3, 2)).astype(np.uint8)
     print(f"  bush from the model on {100 * ok.sum() / max(1, (cover != WATER).sum()):.0f}% of the land: thick (0.7) on {100 * (thick[ok] >= 0.7).mean():.0f}% of it, the estimate said {100 * (est[ok] >= 0.7).mean():.0f}%")
     header = {
-        "thickFrom": "the bush model's NRD (satellite imagery, radar, SCANFI, CanLaD, terrain; docs/BUSH-MODEL.md) on the estimate's scale where thickSrc is 3; the forest-map estimate on water, roads, cells no leaf-on imagery saw, and ground the map names outright (open herb, lichen, rock, fen, tall shrub) (thickSrc 2)",
+        "thickFrom": "the bush model's NRD (satellite imagery, radar, SCANFI, CanLaD, terrain; docs/BUSH-MODEL.md) on the estimate's scale where thickSrc is 3; the forest-map estimate on water, roads, cells no leaf-on imagery saw, and ground the map names outright (open herb, lichen, rock, fen) (thickSrc 2)",
         "bushCalib": P.calib_header(thick),
         "bushModel": out["notes"]["bushModel"],
     }
@@ -346,8 +346,16 @@ def bush_thickness(cover, stand_age, dist_age, f_cc, f_lead, f_poly, f_ht=None) 
     T[young] = yt[young]
     # the classes with no stand
     T[cover == SHRUB] = 0.85  # alder runs
-    if f_ht is not None:  # a map that gives the shrub layer a height (BC's VRI: tall shrub 2 m+, low shrub under): knee-high scrub is not a wall
-        T[(cover == SHRUB) & (f_ht > 0) & (f_ht < 2)] = 0.4
+    if f_ht is not None:
+        # a map that gives the shrub layer a height (BC's VRI: tall shrub 2 m
+        # and up, low shrub under). Neither is the alder run's 0.85 by the
+        # LiDAR: on 115 northern BC plots (pipeline/bush/north.py, 2026-10-08)
+        # the VRI's tall shrub measured an understory NRD of 0.18-0.29 (thick
+        # on 1-11 % of cells) and its low shrub 0.12-0.30, which is 0.25-0.45
+        # on this scale. Willow and dwarf birch let the returns through where
+        # alder does not.
+        T[(cover == SHRUB) & (f_ht >= 2)] = 0.42
+        T[(cover == SHRUB) & (f_ht > 0) & (f_ht < 2)] = 0.35
     T[cover == OPEN_WET] = 0.15  # sedge and leatherleaf, knee high
     T[cover == BARREN] = 0.1
     T[cover == ROAD] = 0.05
@@ -737,9 +745,13 @@ def main() -> None:
     # dense spruce), not only tall dense conifer. Patches of half a hectare up
     thick = bush_thickness(map_cover, stand_age, dist_age, f_cc, f_lead, f_poly, f_ht)
     thick_src, thick_header, thick_spread = None, {}, None
-    # where a map that knows every polygon names open or non-vegetated ground,
-    # or a tall-shrub thicket, its word stands over the model's guess
-    map_says = FOREST_UPDATED & (np.isin(f_poly, (2, 6, 8)) | f_rock | ((f_poly == 4) & (f_ht >= 2)))
+    # where a map that knows every polygon names open or non-vegetated ground
+    # (herb, lichen, rock, ice, open fen) its word stands over the model's
+    # guess: the northern LiDAR plots measured the VRI's herb at NRD 0.01-0.17,
+    # bryoid 0.08-0.13 and bare ground 0.03. Its shrub classes are the
+    # model's to read (they measured 0.12-0.30, and the model has northern
+    # shrub in its training now)
+    map_says = FOREST_UPDATED & (np.isin(f_poly, (2, 6, 8)) | f_rock)
     if BUSH_FROM_POINTCLOUD:
         thick, thick_src, thick_header = measured_bush(thick, cover)
     elif BUSH_FROM_MODEL:

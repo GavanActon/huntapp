@@ -54,7 +54,7 @@
     "arcticdem": ["https://pgc-opendata-dems.s3.us-west-2.amazonaws.com/arcticdem/mosaics/v4.1/2m/40_11/40_11_2_2_2m_v4.1_dem.tif"]
   },
   "coverage": {
-    "checked": "2026-10-07",
+    "checked": "2026-10-08",
     "pmtiles": {
       "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
       "topo": {
@@ -108,10 +108,10 @@
       },
       "understory": {
         "file": "understory-highland-lake.pmtiles",
-        "bytes": 3739007,
-        "source": "Bush model (docs/BUSH-MODEL.md): the eye-level understory predicted at 30 m from Sentinel-2 seasons, PALSAR, SCANFI, CanLaD and the MRDEM, trained on 320 plots of Ontario leaf-on LiDAR; faded where the model is unsure. Modelled, not measured",
+        "bytes": 3188934,
+        "source": "Bush model (docs/BUSH-MODEL.md): the eye-level understory predicted at 30 m from Sentinel-2 seasons, PALSAR, SCANFI, CanLaD and the MRDEM, trained on 435 plots of Ontario leaf-on LiDAR; faded where the model is unsure. Modelled, not measured",
         "licence": "Copernicus Sentinel data; JAXA ALOS PALSAR mosaic (free, attribution); OGL-Canada; CanLaD CC BY 4.0",
-        "vintage": "imagery 2023-2025, model trained 2026-10-07"
+        "vintage": "imagery 2023-2025, model trained 2026-10-08"
       },
       "lanes": { "missing": "no LiDAR point cloud here" },
       "bathy": { "missing": "Ontario only: lake depths need the ARA lake facts and the MNR sheets" },
@@ -166,24 +166,24 @@
     "grids": {
       "habitat": {
         "file": "habitat-highland-lake.hab",
-        "bytes": 2700432,
+        "bytes": 2642093,
         "source": "derived: MRDEM, NRCan 2020 land cover, forest stands, water, wetlands, roads and burns",
         "licence": "derived from the layers above",
-        "vintage": "generated 2026-10-07"
+        "vintage": "generated 2026-10-08"
       },
       "micro": {
         "file": "micro-highland-lake.hab",
-        "bytes": 8956680,
+        "bytes": 9007541,
         "source": "derived: the habitat grid and the MRDEM",
         "licence": "derived from the layers above",
-        "vintage": "generated 2026-10-07"
+        "vintage": "generated 2026-10-08"
       },
       "going": {
         "file": "going-highland-lake.hab",
-        "bytes": 1059293,
+        "bytes": 1054579,
         "source": "derived: HRDEM LiDAR, point-cloud bush or the forest-map estimate, water, wetlands and roads",
         "licence": "derived from the layers above",
-        "vintage": "generated 2026-10-07"
+        "vintage": "generated 2026-10-08"
       }
     }
   }

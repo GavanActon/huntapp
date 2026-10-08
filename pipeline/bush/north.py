@@ -128,13 +128,26 @@ def plot_name(r: dict, fx: float, fy: float) -> str:
     return f"bc_{r['maptile']}_{int(fx * 1000):03d}_{int(fy * 1000):03d}"
 
 
-def sample(n: int, seed: int, candidates: int, per_tile: int) -> None:
+def sample(n: int, seed: int, candidates: int, per_tile: int, box=NORTH_BOX, append: bool = False, undated_ok: bool = False) -> None:
+    """`box` narrows the draw (Atlin's 2021 tiles: --box -134 58.5 -133.3 58.9,
+    the spruce-willow-birch nearest Blanchard River); `append` adds the
+    batch to plots-north.json instead of replacing it; `undated_ok` keeps
+    tiles whose names carry no flight dates (the 2021 programme, whose
+    report gives 2021-06-26 to 2021-09-10 for the whole of it: leaf-on)."""
     import plots as P
 
     rng = np.random.default_rng(seed)
-    tiles = [t for t in index() if t["date"] and t["url"]]
-    # leaf-on flights only: June to mid-September
-    tiles = [t for t in tiles if "0601" <= t["date"][4:] <= "0915"]
+    tiles = [t for t in index(tuple(box)) if t["url"] and (t["date"] or (undated_ok and t["year"]))]
+    # leaf-on flights only: a window (start_end in the name) that starts in
+    # June or later and ends by mid-September, before the aspen and willow drop
+    def leaf_on(t: dict) -> bool:
+        m = DATE_RE.search(t["filename"] or "")
+        if not m:
+            return not t["date"]  # undated: let through only when undated_ok did above
+        start, end = m.group(1), m.group(2)
+        return "0601" <= start[4:] and end[4:] <= "0915"
+
+    tiles = [t for t in tiles if leaf_on(t)]
     print(f"{len(tiles)} leaf-on tiles in the box")
     # the candidates come in clusters: PER_TILE squares in each of a few
     # hundred tiles, in map order, so the national rasters (read over HTTP,
@@ -228,13 +241,17 @@ def sample(n: int, seed: int, candidates: int, per_tile: int) -> None:
             }
         )
     BUSH.mkdir(parents=True, exist_ok=True)
+    if append and PLOTS.exists():
+        old = json.loads(PLOTS.read_text(encoding="utf-8"))
+        have = {r["plot"] for r in old}
+        rows = old + [r for r in rows if r["plot"] not in have]
     PLOTS.write_text(json.dumps(rows, indent=1), encoding="utf-8")
     print(f"{len(rows)} plots in {len(used)} tiles -> {PLOTS}")
     for k, c in sorted(Counter(r["stratum"] for r in rows).items()):
         print(f"  {c:4d}  {k}")
     for k, c in sorted(Counter(r["latband"] for r in rows).items()):
         print(f"  lat band {k}: {c}")
-    print(f"  tiles to fetch: {len(used)} × ~235 MB ≈ {len(used) * 0.235:.0f} GB")
+    print(f"  tiles to fetch: {len(used)} x ~235 MB, about {len(used) * 0.235:.0f} GB")
 
 
 # ---- fetch -------------------------------------------------------------------------
@@ -407,6 +424,9 @@ def main(argv=None) -> None:
     s.add_argument("--seed", type=int, default=11)
     s.add_argument("--candidates", type=int, default=1500)
     s.add_argument("--per-tile", type=int, default=2)
+    s.add_argument("--box", type=float, nargs=4, metavar=("W", "S", "E", "N"), default=list(NORTH_BOX))
+    s.add_argument("--append", action="store_true")
+    s.add_argument("--undated-ok", action="store_true")
     f = sub.add_parser("fetch")
     f.add_argument("--max-gb", type=float, default=30.0)
     f.add_argument("--workers", type=int, default=3)
@@ -417,7 +437,7 @@ def main(argv=None) -> None:
     sub.add_parser("status")
     a = ap.parse_args(argv)
     if a.cmd == "sample":
-        sample(a.n, a.seed, a.candidates, a.per_tile)
+        sample(a.n, a.seed, a.candidates, a.per_tile, a.box, a.append, a.undated_ok)
     elif a.cmd == "fetch":
         fetch(a.max_gb, a.workers, a.limit, a.list)
     elif a.cmd == "measure":
