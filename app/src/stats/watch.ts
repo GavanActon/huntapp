@@ -190,7 +190,7 @@ function watchRecords() {
     const before = new Map(p.checks.map((c) => [c.id, c]))
     const fresh = s.checks.filter((c) => !before.has(c.id))
     const mine = fresh.filter((c) => c.source === 'hand' && own(c.by) && Date.now() - c.ts < 10 * 60_000)
-    for (const c of mine) track('wind_check', { strength: c.strength, calm: c.dirFrom == null, swing: !!c.swingDeg, aloft: c.aloft ?? null, held: c.held ?? null, note: !!c.note })
+    for (const c of mine) track('wind_check', { strength: c.strength, calm: c.dirFrom == null, swing: !!c.swingDeg, aloft: c.aloft ?? null, held: c.held ?? null, note: !!c.note, seen: c.seen ?? null })
     if (fresh.length > mine.length) track('checks_merged', { n: fresh.length - mine.length })
     // another puff folded into a check just made
     for (const c of s.checks) {

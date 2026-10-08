@@ -1,5 +1,5 @@
 import { clockShort } from '../time'
-import { steadiness, towardWords, type WindCheck } from '../weather/micro/windChecks'
+import { checkFelt, steadiness, type WindCheck } from '../weather/micro/windChecks'
 import { compass } from '../weather/openMeteo'
 import type { LogEntry } from './huntLog'
 
@@ -18,8 +18,8 @@ export function entryDetail(e: LogEntry, withTime = true): string {
     .join(' · ')
 }
 
-/** What a wind check felt: 'toward NE, light, steady · 3 puffs' | 'calm'. */
+/** What a wind check felt: 'toward NE, light, steady · 3 puffs' | 'calm' | 'treetops toward NE, branches moving'. */
 export function checkWords(c: WindCheck): string {
   const steady = steadiness(c)
-  return `${c.dirFrom == null ? 'calm' : `toward ${towardWords((c.dirFrom + 180) % 360, c.swingDeg)}, ${c.strength}`}${steady ? `, ${steady}` : ''}${(c.puffs ?? 1) > 1 ? ` · ${c.puffs} puffs` : ''}`
+  return `${checkFelt(c)}${steady ? `, ${steady}` : ''}${(c.puffs ?? 1) > 1 ? ` · ${c.puffs} puffs` : ''}`
 }

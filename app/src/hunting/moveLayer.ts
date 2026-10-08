@@ -169,7 +169,7 @@ export function readMoves(): MoveRead | null {
 /** Who it was, in a word: the sound's animal, else what was logged. */
 const WHO: Record<MooseSound, string> = { cow: 'Cow', bull: 'Bull', thrash: 'Thrashing', walk: 'Walking', splash: 'Splash', seen: 'Seen' }
 function who(e: LogEntry): string {
-  if (e.sound) return WHO[e.sound]
+  if (e.sound) return WHO[e.sound as MooseSound] ?? SOUND_NAMES[e.sound] ?? 'Heard'
   if (e.kind === 'bull' || e.kind === 'cow') return e.kind === 'bull' ? 'Bull' : 'Cow'
   return e.what === 'seen' ? 'Seen' : 'Moose'
 }

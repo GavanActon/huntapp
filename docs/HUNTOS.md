@@ -203,7 +203,7 @@ morning counts. Lay it out rather than wander.
   with long listening between, more often in the last hour of light. Over-calling educates him. A bull that has answered once can be left in
   silence for ten minutes; he will come looking. [H]
 - **He answers.** A grunt, a thrash, a branch breaking, a splash: put it on
-  the map at once (the Heard button, tap where it was). The app joins his
+  the map at once (the Game button, tap where it was). The app joins his
   sounds up in order and draws the way he is moving, and his likeliest way
   round to wind you. Then:
   1. **Stop and read.** Which way is he moving? Where is your scent going

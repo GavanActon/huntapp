@@ -82,14 +82,14 @@ export default function ScentCard(): JSX.Element | null {
           <div className="scent-line">
             <span className="dim">Wind at head height</span> {g.kmh < 0.5 ? 'calm' : `${compass(g.dirFrom)} ${kmh(g.kmh)}`}{' '}
             <span className="dim">
-              · forecast {kmh(g.regionalKmh)}
+              · forecast {kmh(g.forecastKmh)}
               {slowed}
             </span>
           </div>
         )}
         {check && (
           <div className="scent-line">
-            <span className="dim">Wind sharpened {clockShort(check.check.ts)}</span> pulls it {Math.round(check.pull * 100)}% toward what you felt{' '}
+            <span className="dim">Wind sharpened {clockShort(check.check.ts)}</span> pulls it {Math.round(check.pull * 100)}% toward what you {check.check.seen ? 'saw' : 'felt'}{' '}
             <span className="dim">· fades by ~{clockShort(checkSpentAt(check.check))}</span>
           </div>
         )}

@@ -10,7 +10,7 @@ import { layeringAt, onProfile, type Layering } from '../boundaryLayer'
 import { cachedPointForecast, compass, hourAt } from '../openMeteo'
 import { sunPosition } from '../sun'
 import { onWeatherGrid, windGridCovers, windGridInfo, windSampler } from '../windGrid'
-import { checkWeight, metresBetween, STRENGTH_KMH, useWindChecks } from './windChecks'
+import { angleDiff, checkWeight, metresBetween, SEEN_KMH, seenWeight, STRENGTH_KMH, useWindChecks, type WindCheck } from './windChecks'
 import { biasFor, biasMatters, biasWords, learnBiases, type Bias, type Lesson } from './bias'
 import { leavesDown, leavesNote } from './leaves'
 
@@ -30,7 +30,8 @@ import { leavesDown, leavesNote } from './leaves'
  *              leaf or bare by the season (leaves.ts), the shelter and
  *              eddies downwind of a tree line, and the channelling along a
  *              slot between two of them
- *   checks     the hunter's own wind checks nearby, blended in
+ *   checks     the hunter's own wind checks nearby, blended in; treetops
+ *              seen moving far off turn the forecast wind itself (seen)
  *
  * and a direction spread (sigma) from the ground speed, the stability, the
  * canopy, edge eddies, how gusty the hour is and the ensemble's
@@ -85,8 +86,11 @@ export interface GroundWind {
   gusty: boolean
   /** what a gust reaches at head height, km/h */
   gustKmh: number
+  /** the 10 m wind it starts from: the forecast's, sharpened by any treetops seen */
   regionalKmh: number
   regionalDir: number
+  /** the forecast's own 10 m speed, before the treetops seen */
+  forecastKmh: number
   /** local wind at 10 m over the surface (terrain and roughness only) */
   local10Kmh: number
   parts: Part[]
@@ -458,10 +462,47 @@ interface Ctx {
   /** gust over mean at 10 m this hour, 1–3; 1 when the forecast says nothing */
   gf: number
   checks: ReturnType<typeof useWindChecks.getState>['checks']
+  /** the treetops seen moving that still count at this minute, as what each does to the forecast wind */
+  seen: SeenShift[]
   /** what the season's checks have taught, by lesson (bias.ts) */
   biases: Map<Lesson, Bias>
   /** how far the hardwoods' leaves are down, 0 in leaf to 1 bare (leaves.ts) */
   leaves: number
+}
+
+/**
+ * A look at the treetops far off, as what it does to the forecast wind: a
+ * turn in degrees and a speed ratio (as a log), taken against the forecast
+ * where and when it was seen, so the forecast's own change over the hour
+ * and across the area carries on under it. A look at a near calm forecast
+ * (under 3 km/h, its direction is noise) or one with no forecast saved
+ * holds its wind as it was seen instead: `abs`.
+ */
+interface SeenShift {
+  c: WindCheck
+  turn: number
+  lnRatio: number
+  abs: { kmh: number; dirFrom: number | null } | null
+}
+
+const SEEN_RATIO_LO = 0.2
+const SEEN_RATIO_HI = 3
+
+function seenShifts(ms: number, checks: WindCheck[]): SeenShift[] {
+  const out: SeenShift[] = []
+  for (const c of checks) {
+    if (!c.seen || seenWeight(c, c.lon, c.lat, ms) <= 0) continue
+    const kmh = SEEN_KMH[c.seen]
+    const dir = c.strength === 'calm' ? null : c.dirFrom
+    const f = c.forecast
+    if (!f || f.kmh < 3) {
+      out.push({ c, turn: 0, lnRatio: 0, abs: { kmh, dirFrom: dir } })
+      continue
+    }
+    const turn = dir == null ? 0 : ((((dir - f.dirFrom) % 360) + 540) % 360) - 180
+    out.push({ c, turn, lnRatio: Math.log(clamp(kmh / f.kmh, SEEN_RATIO_LO, SEEN_RATIO_HI)), abs: null })
+  }
+  return out
 }
 
 function makeCtx(ms: number): Ctx {
@@ -485,6 +526,7 @@ function makeCtx(ms: number): Ctx {
     waterC,
     gf: h && Number.isFinite(h.gustKmh) ? clamp(h.gustKmh / Math.max(1, h.windKmh), 1, 3) : 1,
     checks: useWindChecks.getState().checks,
+    seen: seenShifts(ms, useWindChecks.getState().checks),
     biases: learnBiases(useWindChecks.getState().checks, ms),
     leaves: leavesDown(ms),
   }
@@ -585,8 +627,11 @@ interface Eval {
   parts: Part[]
   reasons: string[] | null
   local10: number
+  /** the 10 m wind the cell starts from: the forecast's, sharpened by any treetops seen */
   U: number
   dirFrom: number
+  /** the forecast's own 10 m speed, before the treetops seen */
+  forecastU: number
   inGrid: boolean
   slot: boolean
   /** the cell is in a stand: the head-height wind came down through a canopy */
@@ -725,6 +770,40 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     U = ctx.fallback.kmh
     dirFrom = ctx.fallback.dir
   } else return null
+  // ---- the treetops seen moving ----
+  // A look at the wind above the trees (windChecks.ts, seen) turns and
+  // scales the forecast wind here by its weight, before the land and the
+  // trees bring it down: so a stand's shelter, a slot and a lee all swing
+  // with it, not just the air round the spot it was seen.
+  let seenW = 0
+  let seenNear: { m: number; min: number; ago: boolean } | null = null
+  const forecastU = U
+  const forecastDir = dirFrom
+  if (ctx.seen.length) {
+    let t = 0
+    let l = 0
+    for (const sh of ctx.seen) {
+      const w = seenWeight(sh.c, lon, lat, ctx.ms)
+      if (w < 0.02) continue
+      let turn = sh.turn
+      let lnRatio = sh.lnRatio
+      if (sh.abs) {
+        turn = sh.abs.dirFrom == null ? 0 : ((((sh.abs.dirFrom - forecastDir) % 360) + 540) % 360) - 180
+        lnRatio = Math.log(clamp(sh.abs.kmh / Math.max(forecastU, 2), SEEN_RATIO_LO, SEEN_RATIO_HI))
+      }
+      seenW += w
+      t += w * turn
+      l += w * lnRatio
+      if (withReasons) {
+        const min = Math.round(Math.abs(ctx.ms - sh.c.ts) / 60_000)
+        if (!seenNear || min < seenNear.min) seenNear = { m: Math.round(metresBetween(lon, lat, sh.c.lon, sh.c.lat)), min, ago: sh.c.ts <= ctx.ms }
+      }
+    }
+    if (seenW > 0) {
+      dirFrom = (((dirFrom + t / (1 + seenW)) % 360) + 360) % 360
+      U *= Math.exp(l / (1 + seenW))
+    }
+  }
   const lay = ctx.lay
   const reasons: string[] | null = withReasons ? [] : null
   const [Ue, Un] = vec(U, dirFrom + 180)
@@ -735,7 +814,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     // off the grid: an open-ground profile, nothing local
     const f = 0.7 * (1 - 0.6 * lay.stable)
     const sp = U * f
-    return { e: Ue * f, n: Un * f, sigma: 15 + 60 * Math.exp(-sp / 3.6 / 0.6), regime: sp < 0.8 ? 'calm' : 'wind', swirl: false, gusty: ctx.gf >= 1.8 && U >= 8, parts: [{ key: 'terrain', kmh: sp, toward: (dirFrom + 180) % 360 }], reasons, local10: U, U, dirFrom, inGrid: false, slot: false, woods: false, bias: null }
+    return { e: Ue * f, n: Un * f, sigma: 15 + 60 * Math.exp(-sp / 3.6 / 0.6), regime: sp < 0.8 ? 'calm' : 'wind', swirl: false, gusty: ctx.gf >= 1.8 && U >= 8, parts: [{ key: 'terrain', kmh: sp, toward: (dirFrom + 180) % 360 }], reasons, local10: U, U, dirFrom, forecastU, inGrid: false, slot: false, woods: false, bias: null }
   }
 
   // ---- terrain and roughness: the two lids, blended by stability ----
@@ -1137,10 +1216,16 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
           : `Blended with ${nChecks} wind checks nearby${people}, agreeing within about ±${Math.round(Math.max(checkSpread, 5))}°; the nearest ${nearest.m < 20 ? 'here' : `${nearest.m} m away`}, ${nearest.min} min ${nearest.ago ? 'before' : 'after'} this time`,
       )
     }
+    if (seenNear && seenW >= 0.1) {
+      const k = Math.round((U / Math.max(0.1, forecastU) - 1) * 100)
+      const where = seenNear.m < 100 ? 'here' : seenNear.m < 1000 ? `${Math.round(seenNear.m / 10) * 10} m away` : `${(seenNear.m / 1000).toFixed(1)} km away`
+      const turned = angleDiff(dirFrom, forecastDir) >= 10 ? `from the ${compass(dirFrom)} (the forecast had ${compass(forecastDir)})` : 'from where the forecast had it'
+      reasons.push(`Treetops seen ${where}, ${seenNear.min} min ${seenNear.ago ? 'before' : 'after'} this time: the wind above is ${turned}${Math.abs(k) >= 10 ? `, ${Math.abs(k)}% ${k > 0 ? 'stronger' : 'lighter'}` : ''}`)
+    }
     if (lay.source === 'estimate') reasons.push('No layering forecast cached: stability estimated from the sky and the wind')
   }
 
-  return { e: E, n: N, sigma, regime, swirl: swirl || tumble >= TUMBLE_SWIRL, gusty, parts, reasons, local10, U, dirFrom, inGrid: true, slot: !!slot, woods: th > 0, bias: applied ? lessonBias : null, gustMul }
+  return { e: E, n: N, sigma, regime, swirl: swirl || tumble >= TUMBLE_SWIRL, gusty, parts, reasons, local10, U, dirFrom, forecastU, inGrid: true, slot: !!slot, woods: th > 0, bias: applied ? lessonBias : null, gustMul }
 }
 
 function headlineOf(ev: Eval, kmh: number, dirFrom: number, gustKmh: number): string {
@@ -1183,6 +1268,7 @@ export function groundWind(lon: number, lat: number, ms: number): GroundWind | n
     gustKmh,
     regionalKmh: ev.U,
     regionalDir: ev.dirFrom,
+    forecastKmh: ev.forecastU,
     local10Kmh: ev.local10,
     parts: ev.parts,
     headline: headlineOf(ev, kmh, dirFrom, gustKmh),

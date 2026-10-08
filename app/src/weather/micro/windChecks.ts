@@ -37,6 +37,17 @@ import { compass } from '../openMeteo'
  * asked after the first check, so the model learns from everyone's
  * (checkShare.ts): without initials or notes, never to another hunter.
  *
+ * A check can also be seen rather than felt: out glassing, the treetops
+ * across a bog or the water of a lake far off show which way the wind
+ * goes and how hard (Beaufort's own signs). That is the wind above the
+ * trees, about the forecast's 10 m wind, not the head-height air the
+ * powder shows, so it is kept apart (`seen`): it never blends in as the
+ * floor's air, it turns and scales the forecast wind the ground model
+ * starts from, over kilometres (seenWeight), and the model brings that
+ * down through the land and the trees as ever. Its verdict is the
+ * forecast's, never the model's, and it teaches the season's lessons
+ * nothing (bias.ts learns from the model's call, which it does not keep).
+ *
  * A party's checks combine: each phone shares its checks as a file (the
  * Weather tab), the others take it in, and every check counts the same in
  * the blend, so where two people disagree the one with more checks nearby
@@ -64,6 +75,23 @@ export const STRENGTH_LABEL: Record<Strength, string> = {
   breezy: 'Breezy: leaves and twigs moving',
   windy: 'Windy: small branches swaying',
 }
+
+/** What the treetops (or the water) far off showed: Beaufort's land and lake signs, read at a distance. */
+export type Seen = 'still' | 'leaves' | 'branches' | 'sway' | 'bend'
+
+/** Each sign as the 10 m wind it means, km/h (the middle of its Beaufort band; 'bend' is 6 and up). */
+export const SEEN_KMH: Record<Seen, number> = { still: 3, leaves: 12, branches: 24, sway: 33, bend: 45 }
+/** What to look for, in the trees and on the water. */
+export const SEEN_CUE: Record<Seen, string> = {
+  still: 'treetops still · water flat',
+  leaves: 'leaves and twigs moving · ripples',
+  branches: 'small branches moving · the first whitecaps',
+  sway: 'small trees swaying · whitecaps all over',
+  bend: 'big branches, whole trees moving',
+}
+export const SEEN_WORD: Record<Seen, string> = { still: 'still', leaves: 'leaves moving', branches: 'branches moving', sway: 'trees swaying', bend: 'trees bending' }
+/** The felt word a seen check also carries, for a reader that knows no `seen` (an older phone in the party, the Worker's check). */
+export const SEEN_STRENGTH: Record<Seen, Strength> = { still: 'calm', leaves: 'light', branches: 'breezy', sway: 'windy', bend: 'windy' }
 
 export interface ModelCall {
   dirFrom: number
@@ -98,6 +126,11 @@ export interface WindCheck {
   aloft?: boolean
   /** optional: the wind here has been the same for a while */
   held?: boolean
+  /** seen from afar, not felt: what the treetops (or the water) there showed.
+   *  The wind above the trees; `strength` then holds SEEN_STRENGTH's word. */
+  seen?: Seen
+  /** where it was seen from, when the phone had a fix */
+  seenFrom?: { lon: number; lat: number }
   note?: string
   /** who made it: the initials in Settings; a partner's checks keep theirs */
   by?: string
@@ -118,6 +151,8 @@ export interface WindCheck {
 
 /** A newer check this close replaces an older one. */
 export const SUPERSEDE_M = 100
+/** A newer look at the treetops this close replaces an older one: a tap on a far stand is good to a few hundred metres. */
+export const SEEN_SUPERSEDE_M = 500
 /** A puff this close and this soon after the last one folds into it. */
 export const SERIES_M = 40
 export const SERIES_MS = 6 * 60_000
@@ -200,15 +235,18 @@ export const useWindChecks = create<ChecksState>()(
       checks: [],
       add: (c) => {
         // another puff of the check just made here: the same check, watched longer
-        const prev = c.source === 'hand' ? get().checks.find((o) => o.until == null && !o.taken && o.source === 'hand' && (o.by ?? '') === (c.by ?? '') && c.ts - o.ts >= 0 && c.ts - o.ts <= SERIES_MS && metresBetween(o.lon, o.lat, c.lon, c.lat) <= SERIES_M) : undefined
+        // (a look at the treetops far off is one look: it never folds)
+        const prev = c.source === 'hand' && !c.seen ? get().checks.find((o) => o.until == null && !o.taken && o.source === 'hand' && !o.seen && (o.by ?? '') === (c.by ?? '') && c.ts - o.ts >= 0 && c.ts - o.ts <= SERIES_MS && metresBetween(o.lon, o.lat, c.lon, c.lat) <= SERIES_M) : undefined
         if (prev) {
           const folded = fold(prev, c)
           set((s) => ({ checks: s.checks.map((o) => (o.id === prev.id ? folded : o)) }))
           return folded
         }
         const check = { ...c, id: `wc${c.ts.toString(36)}${Math.random().toString(36).slice(2, 6)}` }
-        // your earlier checks here stop counting now (a partner's stop on their own phone)
-        const replaced = (o: WindCheck) => o.until == null && !o.taken && o.ts <= c.ts && o.source === c.source && metresBetween(o.lon, o.lat, c.lon, c.lat) <= SUPERSEDE_M
+        // your earlier checks here stop counting now (a partner's stop on their own phone);
+        // felt and seen are different air, so each only replaces its own kind
+        const reach = c.seen ? SEEN_SUPERSEDE_M : SUPERSEDE_M
+        const replaced = (o: WindCheck) => o.until == null && !o.taken && o.ts <= c.ts && o.source === c.source && !o.seen === !c.seen && metresBetween(o.lon, o.lat, c.lon, c.lat) <= reach
         set((s) => ({ checks: capped([...s.checks.map((o) => (replaced(o) ? { ...o, until: c.ts } : o)), check]) }))
         return check
       },
@@ -243,6 +281,14 @@ export function towardWords(toward: number, swingDeg?: number): string {
   return `${compass(toward - swingDeg / 2)}–${compass(toward + swingDeg / 2)}`
 }
 
+/** What a check found, in words: 'toward NE, light' | 'calm'; seen, in the
+ *  treetops' words: 'treetops toward NE, branches moving' | 'treetops still'. */
+export function checkFelt(c: WindCheck): string {
+  const toward = c.dirFrom == null ? null : towardWords((c.dirFrom + 180) % 360, c.swingDeg)
+  if (c.seen) return toward == null || c.seen === 'still' ? `treetops ${SEEN_WORD[c.seen]}` : `treetops toward ${toward}, ${SEEN_WORD[c.seen]}`
+  return toward == null ? 'calm' : `toward ${toward}, ${c.strength}`
+}
+
 export function angleDiff(a: number, b: number): number {
   return Math.abs((((a - b) % 360) + 540) % 360 - 180)
 }
@@ -265,23 +311,44 @@ function maxOf(c: WindCheck): number {
   return c.held ? 1.5 * MAX_MS : MAX_MS
 }
 
+/** A seen check's reach: the wind above the trees is one air over kilometres
+ *  (the forecast's own grid is 2.5 km), so 2.5 km e-folding and nothing past
+ *  8 km, on the same clock as a felt check. Where and when it was made it
+ *  weighs SEEN_W0: two thirds of the turn, the forecast the other third. */
+const SEEN_LEN_M = 2500
+const SEEN_MAX_M = 8000
+const SEEN_W0 = 2
+
 /** How far a check reaches: 40 min and 300 m e-folding, nothing past 2 h
  *  or 800 m (80 min and 3 h for a wind that had held). Returns the weight
- *  (0 = out of reach). */
+ *  (0 = out of reach). A seen check never blends in as head-height air: 0
+ *  here, its weight is seenWeight's. */
 export function checkWeight(c: WindCheck, lon: number, lat: number, ms: number): number {
+  if (c.seen) return 0
+  return reachWeight(c, lon, lat, ms, LEN_M, MAX_M)
+}
+
+/** A seen check's weight on the forecast wind at a spot and moment (0 = out of reach, or a felt check). */
+export function seenWeight(c: WindCheck, lon: number, lat: number, ms: number): number {
+  if (!c.seen) return 0
+  return SEEN_W0 * reachWeight(c, lon, lat, ms, SEEN_LEN_M, SEEN_MAX_M)
+}
+
+function reachWeight(c: WindCheck, lon: number, lat: number, ms: number, len: number, max: number): number {
   if (c.until != null && ms >= c.until) return 0
   const dt = Math.abs(ms - c.ts)
   if (dt > maxOf(c)) return 0
   const d = metresBetween(lon, lat, c.lon, c.lat)
-  if (d > MAX_M) return 0
-  return Math.exp(-dt / tauOf(c)) * Math.exp(-d / LEN_M)
+  if (d > max) return 0
+  return Math.exp(-dt / tauOf(c)) * Math.exp(-d / len)
 }
 
 /** A check's share of the ground wind at a spot and moment: model.ts
  *  averages the model's wind with each check at its weight w, so a check
- *  alone makes up w / (1 + w) of the answer (half, where and when it was made). */
+ *  alone makes up w / (1 + w) of the answer (half, where and when it was made).
+ *  A seen check's share is of the wind above the trees there, the same way. */
 export function checkPull(c: WindCheck, lon: number, lat: number, ms: number): number {
-  const w = checkWeight(c, lon, lat, ms)
+  const w = c.seen ? seenWeight(c, lon, lat, ms) : checkWeight(c, lon, lat, ms)
   return w / (1 + w)
 }
 
@@ -294,12 +361,14 @@ export function checkReachM(c: WindCheck, ms: number): number {
   if (c.until != null && ms >= c.until) return 0
   const dt = Math.abs(ms - c.ts)
   if (dt > maxOf(c)) return 0
-  return Math.max(0, Math.min(MAX_M, LEN_M * (Math.log(1 / W_SHOWN) - dt / tauOf(c))))
+  const [len, max, w0] = c.seen ? [SEEN_LEN_M, SEEN_MAX_M, SEEN_W0] : [LEN_M, MAX_M, 1]
+  return Math.max(0, Math.min(max, len * (Math.log(w0 / W_SHOWN) - dt / tauOf(c))))
 }
 
 /** When a check stops making up PULL_SHOWN of the wind even where it was made. */
 export function checkSpentAt(c: WindCheck): number {
-  return Math.min(c.until ?? Infinity, c.ts + Math.min(maxOf(c), tauOf(c) * Math.log(1 / W_SHOWN)))
+  const w0 = c.seen ? SEEN_W0 : 1
+  return Math.min(c.until ?? Infinity, c.ts + Math.min(maxOf(c), tauOf(c) * Math.log(w0 / W_SHOWN)))
 }
 
 /** Did the model call the layering? Only for a check that said what the
@@ -324,7 +393,8 @@ export function forecastVerdict(c: WindCheck): 'agree' | 'close' | 'miss' | null
 function judge(c: WindCheck, m: { dirFrom: number; kmh: number } | undefined): 'agree' | 'close' | 'miss' | null {
   if (!m) return null
   const obsCalm = c.dirFrom == null || c.strength === 'calm'
-  const callCalm = m.kmh < 1
+  // treetops look still up to Beaufort 1 (5 km/h at 10 m); powder moves at 1
+  const callCalm = m.kmh < (c.seen ? 6 : 1)
   if (obsCalm || callCalm) return obsCalm === callCalm ? 'agree' : m.kmh < 2.5 && c.strength !== 'breezy' && c.strength !== 'windy' ? 'close' : 'miss'
   const d = angleDiff(c.dirFrom!, m.dirFrom)
   if (c.swingDeg) {

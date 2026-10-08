@@ -1,6 +1,6 @@
 import { gpxDoc, trackToGpx, trkXml, useTrackStore, type Track, type TrackPoint } from '../tracking/trackStore'
 import { compass } from '../weather/openMeteo'
-import { forecastVerdict, steadiness, towardWords, useWindChecks, verdict, type WindCheck } from '../weather/micro/windChecks'
+import { checkFelt, forecastVerdict, steadiness, useWindChecks, verdict, type WindCheck } from '../weather/micro/windChecks'
 import { clockShort } from '../time'
 import { SOUND_NAMES, SPECIES_NAMES, useHuntLog, WHAT_NAMES, type LogEntry } from './huntLog'
 import { outingChecks, outingEntries, outingTitle, type Outing } from './outings'
@@ -45,6 +45,8 @@ const CSV_COLS = [
   'model_score', 'model_percentile', 'day_activity', 'model_headline',
   // a wind check: what was felt, then the ground model's call and the forecast's, each scored
   'source', 'felt_from', 'felt_strength', 'swing_deg', 'puffs', 'puff_dirs', 'steadiness', 'treetops_moving', 'held', 'replaced_at',
+  // seen from afar: the treetops there (felt_from is then the way they went), and where from
+  'seen', 'seen_from_lat', 'seen_from_lon',
   'model_wind_from', 'model_wind_kmh', 'model_regime', 'model_sigma_deg', 'model_decoupled', 'model_slot', 'model_bias_deg', 'model_bias_ratio', 'model_verdict',
   'forecast_from', 'forecast_kmh', 'forecast_verdict',
 ] as const
@@ -104,6 +106,9 @@ function checkRow(c: WindCheck): CsvRow {
     treetops_moving: c.aloft,
     held: c.held,
     replaced_at: c.until != null ? iso(c.until) : undefined,
+    seen: c.seen,
+    seen_from_lat: c.seenFrom?.lat.toFixed(6),
+    seen_from_lon: c.seenFrom?.lon.toFixed(6),
     model_wind_from: m?.dirFrom.toFixed(0),
     model_wind_kmh: m?.kmh.toFixed(1),
     model_regime: m?.regime,
@@ -156,7 +161,7 @@ function entryWpt(e: LogEntry): string {
 
 function checkWpt(c: WindCheck): string {
   const steady = steadiness(c)
-  const felt = `${c.dirFrom == null ? 'calm' : `toward ${towardWords((c.dirFrom + 180) % 360, c.swingDeg)}, ${c.strength}`}${steady ? `, ${steady}` : ''}`
+  const felt = `${checkFelt(c)}${steady ? `, ${steady}` : ''}`
   const v = verdict(c)
   const desc = [
     (c.puffs ?? 1) > 1 ? `${c.puffs} puffs` : '',

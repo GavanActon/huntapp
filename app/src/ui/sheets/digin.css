@@ -7,6 +7,25 @@
 
 /* ---------- the tap popup's score ---------- */
 
+/* the score row is a button: Dig in at its end */
+button.pp-game {
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.pp-game > i {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-accent);
+  white-space: nowrap;
+}
+
 .pp-game .pp-score {
   flex: none;
   width: 30px;
@@ -39,12 +58,6 @@
 .pp-game > span {
   font-size: calc(14px * var(--ui-scale));
   font-weight: 700;
-}
-
-.pp-acts .pp-digin {
-  background: var(--c-accent);
-  border: 1px solid var(--c-accent);
-  color: var(--c-on-accent);
 }
 
 /* ---------- Dig in ---------- */

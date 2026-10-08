@@ -314,11 +314,12 @@ export const IconScent = (p: IconProps) => (
   </svg>
 )
 
-/** An ear: a moose heard. */
-export const IconEar = (p: IconProps) => (
+/** A cloven track, two toes and the dewclaws: game, heard or seen (the Game button). */
+export const IconHoof = (p: IconProps) => (
   <svg width={S(p)} height={S(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M6.5 9a5.5 5.5 0 0 1 11 0c0 3-2.2 4.2-3.2 5.6-.9 1.3-.8 3-2.1 4.3a3 3 0 0 1-4.7-1.4" />
-    <path d="M9.5 9.3a2.5 2.5 0 0 1 5 0c0 1.3-1.2 1.8-1.7 2.7" />
+    <path d="M9.2 3.5c-2 1.6-3 4.8-2.7 8 .2 2.1 1.3 3.6 2.8 3.6 1.4 0 2.1-1.6 2-3.7-.2-3.1-.6-6.3-2.1-7.9z" />
+    <path d="M14.8 3.5c2 1.6 3 4.8 2.7 8-.2 2.1-1.3 3.6-2.8 3.6-1.4 0-2.1-1.6-2-3.7.2-3.1.6-6.3 2.1-7.9z" />
+    <path d="M8 18.6l.9 1.6M16 18.6l-.9 1.6" />
   </svg>
 )
 

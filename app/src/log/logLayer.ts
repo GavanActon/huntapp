@@ -6,6 +6,7 @@ import { startOfDayMs } from '../time'
 import { closeOnTapOff } from '../map/tapPopup'
 import { fmtCoord } from '../map/MapView'
 import { agoLabel, hourMinShort } from '../time'
+import { useHeardForm } from '../ui/HeardCard'
 import { SOUND_NAMES, SPECIES_NAMES, useHuntLog, WHAT_NAMES, type LogEntry } from './huntLog'
 
 /**
@@ -87,18 +88,27 @@ function esc(t: string): string {
 export function entryTitle(e: LogEntry): string {
   if (e.what === 'nothing') return `Blank sit · ${SPECIES_NAMES[e.species].toLowerCase()}`
   const who = `${SPECIES_NAMES[e.species]}${e.count && e.count > 1 ? ` ×${e.count}` : ''}`
-  if (e.sound) return `${SOUND_NAMES[e.sound]}${e.kind && e.sound !== 'bull' && e.sound !== 'cow' ? ` · ${e.kind}` : ''}`
+  // seen out glassing: 'Moose seen'; another animal's sound says which animal: 'Deer · snort'
+  if (e.sound === 'seen') return `${who} seen${e.kind ? ` · ${e.kind}` : ''}`
+  if (e.sound && e.species !== 'moose') return `${who} · ${(SOUND_NAMES[e.sound] ?? 'heard').toLowerCase()}`
+  if (e.sound) return `${SOUND_NAMES[e.sound] ?? 'Heard'}${e.kind && e.sound !== 'bull' && e.sound !== 'cow' ? ` · ${e.kind}` : ''}`
   return `${who} ${WHAT_NAMES[e.what].toLowerCase()}`
 }
 
-/** A tapped entry: what and when, its coordinates (a tap copies them), Delete. No ×: tap off. */
+/** An entry the Game card can change: one of yours, heard or seen (a blank sit or sign is the log's own card). */
+function editable(e: LogEntry): boolean {
+  return !e.taken && (e.sound != null || e.what === 'seen' || e.what === 'heard')
+}
+
+/** A tapped entry: what and when, its coordinates (a tap copies them), Edit (what and which animal,
+ *  in the Game card) and Delete. No ×: tap off; press and hold the dot to move it. */
 export function showLogPopup(map: MlMap, e: LogEntry): void {
   const el = document.createElement('div')
   const ago = agoLabel(Date.now() - e.ts)
   el.innerHTML =
     `<div class="lp-title">${esc(entryTitle(e))}</div>` +
     `<div class="lp-when">${esc(hourMinShort(e.ts))} · ${esc(ago)}${e.note ? ` · ${esc(e.note)}` : ''}</div>` +
-    `<div class="pp-acts"><button class="lp-coord">${esc(fmtCoord(e.lon, e.lat))}</button><button class="lp-del">Delete</button></div>`
+    `<div class="pp-acts"><button class="lp-coord">${esc(fmtCoord(e.lon, e.lat))}</button>${editable(e) ? '<button class="lp-edit mp-plain">Edit</button>' : ''}<button class="lp-del">Delete</button></div>`
   const popup = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, closeOnClick: false, offset: 10, maxWidth: '260px' })
     .setLngLat([e.lon, e.lat])
     .setDOMContent(el)
@@ -109,6 +119,10 @@ export function showLogPopup(map: MlMap, e: LogEntry): void {
     const b = ev.currentTarget as HTMLButtonElement
     b.textContent = 'Copied'
     window.setTimeout(() => popup.remove(), 600)
+  })
+  el.querySelector('.lp-edit')?.addEventListener('click', () => {
+    popup.remove()
+    useHeardForm.getState().editEntry(e.id)
   })
   el.querySelector('.lp-del')?.addEventListener('click', () => {
     useHuntLog.getState().remove(e.id)

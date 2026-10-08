@@ -130,12 +130,12 @@ export default function LiveCard(): JSX.Element | null {
     setTopCard({ kind: 'scent' })
   }
 
-  // ---- Heard pressed: the next map tap is where it was (said, or the
+  // ---- Game pressed: the next map tap is where it was (said, or the
   // button just looks lit and the map does nothing anyone expects)
   if (heardWaiting)
     return (
       <div className="livecard lc-party" ref={ref}>
-        <span className="lc-party-n">Tap the map where you heard it</span>
+        <span className="lc-party-n">Tap the map where it was</span>
         <button className="lc-act lc-act-on" onClick={() => useHeardForm.getState().arm()}>
           cancel
         </button>

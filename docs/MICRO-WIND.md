@@ -653,6 +653,37 @@ nothing that matters: at that cell the mechanical part stays under
   when to check next; the live card asks for a check when the last one has
   faded below a quarter, when it missed and 20 min have passed, or when a
   sit has none. How we hunt here (§3) says the same for the hunter.
+- **Seen from afar** (2026-10-08, Gavan: "I'm ranging, I see trees moving
+  out in the distance"): the map popup's Wind on a spot away from you
+  (over 60 m from a good fix) opens the check as `seen`. The rose faces
+  the spot (the line from your fix to it, so the arrow to tap is the way
+  the treetops lean as you see them; north up with no fix, and then the
+  card asks "seen from afar" or "felt there"), and how hard is Beaufort's
+  signs read at a distance: still (3 km/h at 10 m), leaves and ripples
+  (12), small branches and the first whitecaps (24), small trees swaying
+  (33), big branches and whole trees (45). That is the wind above the
+  trees, about the forecast's 10 m wind, not the head-height air, so it
+  never blends in as the floor's air (that would call the wind under the
+  canopy 5–20× too hard). Instead it turns and scales the forecast wind
+  the cell starts from, before layer 2: the turn and the speed ratio
+  (0.2–3) against the forecast where and when it was seen, kept so the
+  forecast's own change over the hour carries on under it (against a
+  forecast under 3 km/h, or none saved, its own wind is held instead).
+  Weight `2·exp(−Δt/40 min)·exp(−d/2.5 km)`, nothing past 2 h or 8 km:
+  two thirds of the turn where and when it was seen, the forecast the
+  rest. Because it enters before the momentum field, the slots, the lees
+  and the shelter all swing with it, and the reasons say "Treetops seen
+  660 m away, 0 min before this time: the wind above is from the SW (the
+  forecast had W), 31% stronger". It keeps no model call, so `verdict` and
+  the lessons skip it; it is scored against the forecast (calm under
+  6 km/h), carries `strength` as the nearest felt word for older readers
+  (the Worker's check, an older phone in the party, which would read it
+  as felt), `seenFrom` the fix, and it neither folds puffs nor replaces a
+  felt check (a newer seen check within 500 m replaces an older one). On
+  the map its arrow has a ring and its reach a dashed edge over a 4%
+  wash. Not field-checked: how well treetop lean reads at 300–800 m, and
+  whether two thirds is the right trust against HRDPS, want a season of
+  seen checks beside powder ones.
 - A camp station can later post checks with `source: 'station'`.
 - The phone's barometer is not available to a web app.
 

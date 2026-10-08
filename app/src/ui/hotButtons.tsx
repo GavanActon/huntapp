@@ -11,7 +11,7 @@ import { useGpsStore } from '../tracking/gpsStore'
 import { useScent } from '../weather/micro/scent'
 import { useHeardForm } from './HeardCard'
 import { useCheckForm } from './WindCheckCard'
-import { IconBush, IconContour, IconDepth, IconEar, IconLanes, IconPin, IconPowder, IconRadar, IconRoute, IconRuler, IconScent, IconWind } from './icons'
+import { IconBush, IconContour, IconDepth, IconHoof, IconLanes, IconPin, IconPowder, IconRadar, IconRoute, IconRuler, IconScent, IconWind } from './icons'
 import { logWindHere } from './logWindHere'
 
 /**
@@ -112,9 +112,9 @@ export const HOT_DEFS: Record<HotId, HotDef> = {
   },
   heard: {
     id: 'heard',
-    name: 'Heard',
-    short: 'Heard',
-    Icon: IconEar,
+    name: 'Game',
+    short: 'Game',
+    Icon: IconHoof,
     useActive: () => useHeardForm((s) => s.placing || s.open),
     // tap, then tap the map where it was, then say what it was
     onTap: () => useHeardForm.getState().arm(),

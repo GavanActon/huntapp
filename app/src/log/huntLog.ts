@@ -37,14 +37,46 @@ export const WHAT_DESC: Record<LogWhat, string> = {
 
 /** What was heard (or seen) of a moose out hunting, from where you stood (HeardCard). */
 export type MooseSound = 'cow' | 'bull' | 'thrash' | 'walk' | 'splash' | 'seen'
-export const SOUND_NAMES: Record<MooseSound, string> = { cow: 'Cow call', bull: 'Bull grunt', thrash: 'Thrashing', walk: 'Walking', splash: 'Splash', seen: 'Saw it' }
-export const SOUND_DESC: Record<MooseSound, string> = {
+/** The same for any game: a moose's sounds, then the others' (the Game card). */
+export type GameSound = MooseSound | 'grunt' | 'snort' | 'rattle' | 'drum' | 'flush' | 'howl' | 'heard'
+export const SOUND_NAMES: Record<GameSound, string> = {
+  cow: 'Cow call',
+  bull: 'Bull grunt',
+  thrash: 'Thrashing',
+  walk: 'Walking',
+  splash: 'Splash',
+  seen: 'Saw it',
+  grunt: 'Buck grunt',
+  snort: 'Snort',
+  rattle: 'Rattling',
+  drum: 'Drumming',
+  flush: 'Flush',
+  howl: 'Howling',
+  heard: 'Heard it',
+}
+export const SOUND_DESC: Record<GameSound, string> = {
   cow: 'A cow calling',
   bull: 'A bull grunting',
   thrash: 'Antlers on brush, a tree being raked',
   walk: 'Snaps and footfalls, something big coming through',
   splash: 'In the water',
-  seen: 'Saw him',
+  seen: 'Saw it, out glassing or close',
+  grunt: 'A buck grunting',
+  snort: 'A deer blowing at you',
+  rattle: 'Antlers clashing',
+  drum: 'A ruffed grouse drumming',
+  flush: 'Birds going up',
+  howl: 'Wolves howling',
+  heard: 'Heard it',
+}
+/** What each animal is heard (or seen) doing, in the Game card's order. */
+export const SPECIES_SOUNDS: Record<LogSpecies, GameSound[]> = {
+  moose: ['cow', 'bull', 'thrash', 'walk', 'splash', 'seen'],
+  deer: ['grunt', 'snort', 'rattle', 'walk', 'seen'],
+  bear: ['walk', 'heard', 'seen'],
+  grouse: ['drum', 'flush', 'seen'],
+  wolf: ['howl', 'seen'],
+  other: ['heard', 'seen'],
 }
 
 /** The weather when it was logged. */
@@ -78,8 +110,8 @@ export interface LogEntry {
   what: LogWhat
   count?: number
   kind?: MooseKind
-  /** out hunting: which sound it was */
-  sound?: MooseSound
+  /** out hunting: which sound it was (or 'seen') */
+  sound?: GameSound
   /** placed from where you stood: your spot, the bearing to it (true) and the rough distance, m */
   from?: { lon: number; lat: number; bearing: number; distM: number }
   note?: string

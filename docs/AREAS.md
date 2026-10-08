@@ -226,7 +226,7 @@ down (`app/src/share/share.ts`).
   it is still called Pin.
 - Any tapped point, or a preset: Dig in's ⋯ › Share. A place tapped on
   itself goes with its name and its own point; "650 m NE of Camp" goes
-  unnamed. The tap popup stays weather, score, Scent, Heard, Pin and Dig in.
+  unnamed. The tap popup stays weather, score (Dig in on its row), then Scent, Game, Wind and Pin as they fit (app/src/map/infoPopup.ts).
 - An area: ⋯ › Locations lists every area (the one the app is in first,
   each with its home place and whether its maps are saved); a tap goes
   there, and each row's Share sends that area's link. This is how an app
