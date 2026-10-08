@@ -16,6 +16,14 @@ edge so no seam or cliff shows where one ends:
     wins wherever it exists, at every zoom, so the heights and colours in
     the core do not jump as you zoom in past REGION_MAXZOOM.
 
+Lakes and ponds the LiDAR covers are laid flat, each at the median of its
+own LiDAR heights (the area's waterbody GeoJSON): the survey's returns off
+water are a rough surface, and the hillshade drew it over the imagery's
+lakes as texture (Gavan, 2026-10-08: "bow now has the lake as lidar"). One
+level per lake, so tiles agree at their seams. Rivers fall along their
+length and are left as surveyed, and so is water outside the LiDAR (the
+30 m MRDEM is smooth there).
+
 The region is baked from MINZOOM to REGION_MAXZOOM and the core on to
 CORE.maxzoom, as the other rasters are. Every tile is a full 256 px square:
 core tiles reach past the LiDAR, and MRDEM fills that part. Downsampling is
@@ -41,17 +49,23 @@ raster-dem source. Its header zooms are MINZOOM..maxzoom.
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import os
+import shutil
 import time
 from pathlib import Path
 
 import numpy as np
 import rasterio
 from pyproj import Transformer
+from rasterio.features import rasterize
 from rasterio.transform import from_bounds
 from rasterio.warp import Resampling, reproject, transform_bounds
 from rasterio.windows import from_bounds as window_from_bounds
+from shapely import STRtree, box
+from shapely.geometry import shape
+from shapely.ops import transform as reproject_geom
 
 from build_hillshade import fetch_core
 from build_tiles import in_core
@@ -225,7 +239,64 @@ def load_layers() -> list[Layer]:
     return layers
 
 
-def make_render(layers: list[Layer]):
+FLAT_WATER = {"Lake", "Pond"}  # standing water; a river falls along its length
+LAKE_MIN_CELLS = 3  # 4 m LiDAR cells a lake needs to be given a level
+
+
+class Lakes:
+    """The standing water the LiDAR covers, each with one level, in web
+    mercator for burning into tiles."""
+
+    def __init__(self, lidar: Layer):
+        self.geoms, self.levels = [], []
+        path = OUT_DIR / f"waterbody-{REGION['id']}.geojson"
+        if not path.exists():
+            print(f"no {path.name}: lakes left as surveyed")
+            self.tree = None
+            return
+        to_lidar = Transformer.from_crs("EPSG:4326", lidar.crs, always_xy=True).transform
+        to_3857 = Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True).transform
+        res, arr, tr = next(lv for lv in lidar.levels if lv[0] >= 4) if len(lidar.levels) > 1 else lidar.levels[0]
+        inv = ~tr
+        n = skipped = 0
+        for f in json.loads(path.read_text(encoding="utf-8"))["features"]:
+            p = f.get("properties") or {}
+            if p.get("WATERBODY_TYPE") not in FLAT_WATER or p.get("PERMANENCY") == "Intermittent" or not f.get("geometry"):
+                continue
+            n += 1
+            g = shape(f["geometry"])
+            gl = reproject_geom(to_lidar, g)
+            minx, miny, maxx, maxy = gl.bounds
+            c0, r0 = inv * (minx, maxy)
+            c1, r1 = inv * (maxx, miny)
+            c0, r0 = max(int(math.floor(c0)), 0), max(int(math.floor(r0)), 0)
+            c1, r1 = min(int(math.ceil(c1)) + 1, arr.shape[1]), min(int(math.ceil(r1)) + 1, arr.shape[0])
+            if c1 <= c0 or r1 <= r0:
+                skipped += 1
+                continue
+            win = arr[r0:r1, c0:c1]
+            inside = rasterize([(gl, 1)], out_shape=win.shape, transform=tr * rasterio.Affine.translation(c0, r0), fill=0, dtype="uint8").astype(bool)
+            v = win[inside & (win > NODATA + 1)]
+            if v.size < LAKE_MIN_CELLS:
+                skipped += 1
+                continue
+            self.geoms.append(reproject_geom(to_3857, g))
+            self.levels.append(float(np.median(v)))
+        self.tree = STRtree(self.geoms) if self.geoms else None
+        print(f"lakes: {len(self.geoms)} of {n} laid flat ({skipped} outside the LiDAR)")
+
+    def burn(self, b, h: np.ndarray) -> np.ndarray:
+        """Each lake in tile bounds b (EPSG:3857) at its level."""
+        if self.tree is None:
+            return h
+        hits = self.tree.query(box(*b))
+        if not len(hits):
+            return h
+        flat = rasterize(((self.geoms[i], self.levels[i]) for i in hits), out_shape=h.shape, transform=from_bounds(*b, TILE, TILE), fill=np.nan, dtype="float32")
+        return np.where(np.isnan(flat), h, flat).astype(np.float32)
+
+
+def make_render(layers: list[Layer], lakes: Lakes | None = None):
     to_src = Transformer.from_crs("EPSG:3857", layers[0].crs, always_xy=True)
     centres = (np.arange(TILE) + 0.5) / TILE
 
@@ -242,7 +313,8 @@ def make_render(layers: list[Layer]):
                 continue
             w = np.where(np.isnan(v), 0.0, layer.edge_weight(X, Y))
             out = np.where(np.isnan(out), v, out + (np.nan_to_num(v) - out) * w).astype(np.float32)
-        return fill_nan(out)
+        out = fill_nan(out)
+        return lakes.burn(b, out) if lakes else out
 
     def render(z: int, x: int, y: int):
         if z > REGION_MAXZOOM and not in_core(z, x, y):
@@ -261,7 +333,8 @@ def main():
     args = ap.parse_args()
 
     t = time.time()
-    render, _ = make_render(load_layers())
+    layers = load_layers()
+    render, _ = make_render(layers, Lakes(next(l for l in layers if l.name == "lidar")))
     out = Path(args.out).resolve()
     tmp = out.with_name(out.name + ".part")  # the old archive stays usable until the new one is whole
     stats = write_raster_pmtiles(
@@ -288,7 +361,16 @@ def main():
             ),
         },
     )
-    os.replace(tmp, out)
+    try:
+        os.replace(tmp, out)
+    except PermissionError:
+        # Windows refuses the rename while another process has the old one
+        # open (a status loop, a server): written over in place instead
+        with open(tmp, "rb") as a, open(out, "r+b") as b:
+            shutil.copyfileobj(a, b, 1 << 20)
+            b.truncate()
+        tmp.unlink()
+        print(f"{out.name} was open elsewhere: written over in place")
     for z, (n, nb) in stats.items():
         print(f"  z{z}: {n} tiles, {nb / 1e6:.1f} MB ({nb / max(n, 1) / 1e3:.0f} kB/tile)")
     print(f"done in {time.time() - t:.0f} s")
