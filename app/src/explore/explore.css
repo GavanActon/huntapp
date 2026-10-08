@@ -1,6 +1,8 @@
 /* The Explore tile card, in the bottom bar like the other cards. */
 .tilecard {
-  margin: 0 8px 8px;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
   padding: 10px 12px 12px;
   border-radius: 14px;
   font-size: 14px;
@@ -67,7 +69,9 @@
 
 /* Where to: a lake or a town by name, or coordinates, while no cell is picked. */
 .whereto {
-  margin: 0 8px 8px;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
   padding: 8px 10px;
   border-radius: 14px;
   font-size: 14px;

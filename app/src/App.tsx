@@ -181,6 +181,9 @@ export default function App() {
         <TopBar />
         <WeatherStrip />
         {!EXPLORE && (topCard ? <TopCardHost /> : <LiveCard />)}
+        {/* Explore: Where to and the cell card sit up here under the strip, so the pill and My location keep the foot (Gavan, 2026-10-08) */}
+        {EXPLORE && <WhereTo />}
+        {EXPLORE && <TileCard />}
       </div>
       {!sheetOpen && !formUp && (
         <div className="leftstack">
@@ -199,8 +202,6 @@ export default function App() {
         {!measuring && !routing && logging && <LogCard />}
         {!measuring && !routing && !logging && hearing && <HeardCard />}
         {!measuring && !routing && !logging && !hearing && checking && <WindCheckCard />}
-        {!measuring && !routing && !logging && !hearing && !checking && EXPLORE && <TileCard />}
-        {!measuring && !routing && !logging && !hearing && !checking && EXPLORE && <WhereTo />}
       </div>
       <SheetHost />
     </div>
