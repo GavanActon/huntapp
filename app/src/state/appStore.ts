@@ -108,6 +108,8 @@ export interface LayerVisibility {
   weather: boolean
   /** Wind made visible: particles advected by the HRDPS field at the planning time. */
   windFlow: boolean
+  /** The wind's speed as colours (windy.com's scale), the Wind view's ground: they stay with the streaks off. */
+  windColours: boolean
 }
 
 export interface LayerOpacity {
@@ -144,6 +146,7 @@ export const DEFAULT_LAYERS: LayerVisibility = {
   roads: true,
   weather: false,
   windFlow: true,
+  windColours: false,
 }
 
 /** What the layers were before v3, for the migration: a phone still holding

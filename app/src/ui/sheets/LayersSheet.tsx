@@ -17,7 +17,7 @@ import './layers.css'
  * folded away in four groups, and at the foot a way to keep the result as a
  * view of its own, put it back on a saved one, or reset to the view the
  * map was set to. The wind flow is not here: it has its own button on the
- * map.
+ * map. Its colours are (the Wind view's ground), so they stay with it off.
  */
 
 interface LayerDef {
@@ -27,6 +27,8 @@ interface LayerDef {
   /** the pmtiles key this layer is baked into, for the status word */
   data?: string
   live?: keyof typeof LIVE_RASTER | keyof typeof LIVE_VECTOR
+  /** drawn from the forecast on the phone, nothing baked or streamed (the wind's colours) */
+  forecast?: boolean
 }
 
 const GROUPS: { title: string; defs: LayerDef[] }[] = [
@@ -62,10 +64,11 @@ const GROUPS: { title: string; defs: LayerDef[] }[] = [
     ],
   },
   {
-    title: 'Old maps & radar',
+    title: 'Wind, radar & old maps',
     defs: [
-      { key: 'historical', name: 'Historical topo', opacity: 'historical', data: 'historical', live: 'historical' },
+      { key: 'windColours', name: 'Wind colours', forecast: true },
       { key: 'weather', name: 'Radar', live: 'radar' },
+      { key: 'historical', name: 'Historical topo', opacity: 'historical', data: 'historical', live: 'historical' },
     ],
   },
 ]
@@ -77,6 +80,7 @@ const DEFS: Record<string, LayerDef> = Object.fromEntries(GROUPS.flatMap((g) => 
 const ON_ORDER: (keyof LayerVisibility | 'heat')[] = [
   'satellite',
   'topo',
+  'windColours',
   'hillshade',
   'relief',
   'forest',
@@ -96,6 +100,7 @@ const ON_ORDER: (keyof LayerVisibility | 'heat')[] = [
 ]
 
 function status(d: LayerDef): string {
+  if (d.forecast) return 'forecast'
   // the places archive holds only the themes the area has (files.geo; Lac
   // Bailey has no camps or private land, LIO's): its being there says
   // nothing of the rest

@@ -154,6 +154,12 @@ export function reliefShadePaint(layers: LayerVisibility, opacity: LayerOpacity)
   }
 }
 
+/** The wind's colours as the ground (the Wind view): nothing under them
+ *  that shows, the imagery, the elevation colours and the topo sheet off,
+ *  so they are drawn whole under the shade, which draws the hills over them
+ *  (windFlow.ts paintWash). */
+export const windGround = (layers: LayerVisibility) => layers.windColours && !layers.satellite && !layers.relief && !layers.topo
+
 /** Whether the live MRDEM shade was put under the baked imagery (buildMapStyle). */
 let liveShadeUnderImagery = false
 
@@ -171,7 +177,7 @@ let liveShadeUnderImagery = false
  *  inside the box when they do. The light map (`hd` false) takes the
  *  elevation colours (at 0.9) for ground enough too: the base map and the
  *  live shade under them are off in the box, 384 KB of a zoom in on the Topo
- *  view as it was. A hidden layer is neither fetched nor read ahead (prefetch.ts).
+ *  view as it was; the wind's colours as the ground (windGround) the same. A hidden layer is neither fetched nor read ahead (prefetch.ts).
  *  Run on every move and after every switch (applyLayerState puts them back
  *  with their switches). */
 export function syncUnderlays(map: MlMap, layers: LayerVisibility, opacity: LayerOpacity, hd: boolean) {
@@ -181,13 +187,15 @@ export function syncUnderlays(map: MlMap, layers: LayerVisibility, opacity: Laye
   const inside = b.getWest() >= REGION.west && b.getEast() <= REGION.east && b.getSouth() >= REGION.south && b.getNorth() <= REGION.north
   const imagery = imageryWhole(layers, opacity) && !!map.getLayer('satellite')
   const relief = !hd && layers.relief && !!map.getLayer('relief-colour')
+  // the wind's colours cover the ground whole, and the DEM's own shade is over them in the box
+  const wind = windGround(layers) && !!map.getLayer('relief-shade')
   // the base map is only drawn in and around the box, and the live imagery covers the province round it
   const liveImagery = !!map.getLayer('satellite-live')
   const show: Record<string, boolean> = {
     toposheet: !inside,
-    base: !((imagery && (inside || liveImagery)) || (relief && inside)),
+    base: !((imagery && (inside || liveImagery)) || ((relief || wind) && inside)),
     'satellite-live': layers.satellite && !(imagery && inside),
-    'hillshade-live': layers.hillshade && !(inside && ((imagery && liveShadeUnderImagery) || relief)),
+    'hillshade-live': layers.hillshade && !(inside && ((imagery && liveShadeUnderImagery) || relief || wind)),
   }
   for (const [id, on] of Object.entries(show)) {
     const want = on ? 'visible' : 'none'

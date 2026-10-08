@@ -45,10 +45,11 @@ const L = (on: (keyof LayerVisibility)[]): LayerVisibility =>
   Object.fromEntries(Object.keys(DEFAULT_LAYERS).map((k) => [k, on.includes(k as keyof LayerVisibility)])) as unknown as LayerVisibility
 
 export const BUILT_IN: MapView[] = [
-  // the wind: the Topo view's ground under the streaks in the Contrast look, white over a wash coloured by
-  // speed (Gavan, 2026-10-07: "a default view, call it Wind, the Windy version plus topo");
-  // the light Topo's ground, as Topo is (2026-10-08: "wind on light topo")
-  { id: 'hunt-wind', name: 'Wind', mode: 'hunt', builtIn: true, heat: false, detail: 'light', opacity: { ...DEFAULT_OPACITY, hillshade: 0.7 }, layers: L(['relief', 'hillshade', 'contours', 'roads', 'windFlow']), wind: 'contrast' },
+  // the wind: its speed's colours for the ground with the hills' shade over them, and the streaks in
+  // the Contrast look, white (Gavan, 2026-10-07: "a default view, call it Wind, the Windy version";
+  // 2026-10-08: "just terrain + colours", and with the streaks off the shade and colours stay, so
+  // the colours are a layer of their own); light, as Topo is, the shade the DEM's
+  { id: 'hunt-wind', name: 'Wind', mode: 'hunt', builtIn: true, heat: false, detail: 'light', opacity: { ...DEFAULT_OPACITY, hillshade: 0.7 }, layers: L(['hillshade', 'windColours', 'windFlow']), wind: 'contrast' },
   { id: 'hunt-scout', name: 'Scout', mode: 'hunt', builtIn: true, heat: true, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'contours', 'forest', 'fire', 'roads']) },
   { id: 'hunt-bush', name: 'Bush', mode: 'hunt', builtIn: true, heat: false, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'understory', 'contours', 'roads']) },
   // out hunting with a bow: the imagery at full strength, open lanes left clear and
@@ -120,6 +121,10 @@ const freshPhone = (() => {
     return false
   }
 })()
+
+/** A phone on the Wind view as it was (Topo's ground under the streaks): set
+ *  by the v7 migration, the new one is put on once the store is made. */
+let windViewRedone = false
 
 export const useViews = create<ViewsState>()(
   persist(
@@ -199,7 +204,8 @@ export const useViews = create<ViewsState>()(
       // 4: Bow first again, the Wind view second (a v3 list never touched follows it)
       // 5: the light Photo view after Bow (else at the end)
       // 6: Topo Lite became Topo (it was out for an hour): off the pins, a phone on it on Topo
-      version: 6,
+      // 7: the Wind view became the shade and the wind's colours: a phone on it takes the new one
+      version: 7,
       migrate: (persisted, from) => {
         const p = (persisted ?? {}) as Partial<ViewsState>
         if (!p.pinned) p.pinned = { hunt: [...DEFAULT_PINNED.hunt], fish: [...DEFAULT_PINNED.fish] }
@@ -217,6 +223,7 @@ export const useViews = create<ViewsState>()(
           p.pinned = { ...p.pinned, hunt: p.pinned.hunt.filter((id) => id !== 'hunt-topo-lite') }
           if (p.lastViewId === 'hunt-topo-lite') p.lastViewId = 'hunt-relief'
         }
+        if (from < 7 && p.lastViewId === 'hunt-wind') windViewRedone = true
         return p as ViewsState
       },
       partialize: (s) => ({ mode: s.mode, saved: s.saved, lastTarget: s.lastTarget, lastViewId: s.lastViewId, pinned: s.pinned, lookBefore: s.lookBefore }),
@@ -229,6 +236,10 @@ export const useViews = create<ViewsState>()(
 if (freshPhone) {
   const bow = BUILT_IN.find((v) => v.id === 'hunt-bow')
   if (bow) useViews.getState().apply(bow)
+}
+if (windViewRedone) {
+  const wind = BUILT_IN.find((v) => v.id === 'hunt-wind')
+  if (wind && activeView([wind], useAppStore.getState().layers) == null) useViews.getState().apply(wind)
 }
 
 // the detail follows the view last picked while the map still shows it: a phone
