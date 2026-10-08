@@ -49,6 +49,7 @@ import AreaOffer from './ui/AreaOffer'
 import { initStatsWatch } from './stats/watch'
 import { EXPLORE, applyExploreView } from './explore'
 import TileCard from './explore/TileCard'
+import WhereTo from './explore/WhereTo'
 
 /** What has gone wrong (offline with maps missing, no location), and with
  *  the map turned the way you face, the heading: the way that is up. */
@@ -199,6 +200,7 @@ export default function App() {
         {!measuring && !routing && !logging && hearing && <HeardCard />}
         {!measuring && !routing && !logging && !hearing && checking && <WindCheckCard />}
         {!measuring && !routing && !logging && !hearing && !checking && EXPLORE && <TileCard />}
+        {!measuring && !routing && !logging && !hearing && !checking && EXPLORE && <WhereTo />}
       </div>
       <SheetHost />
     </div>

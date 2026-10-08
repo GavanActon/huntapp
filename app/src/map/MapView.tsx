@@ -203,7 +203,7 @@ export default function MapView() {
       devlog('map', `sources · ${[...sourceModes].map(([k, m]) => `${k}:${m}`).join(' ')} · geo ${[...geo.keys()].join(',') || 'none'}`)
 
       const { layers, opacity, contourInterval } = useAppStore.getState()
-      const style = buildMapStyle({ base: import.meta.env.BASE_URL, layers, opacity, contourInterval, available, geo })
+      const style = buildMapStyle({ base: import.meta.env.BASE_URL, layers, opacity, contourInterval, available, geo, explore: EXPLORE })
       // the last view in this area (a switch saves the one to open on)
       const saved = loadView()
 

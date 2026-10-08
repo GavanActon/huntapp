@@ -84,11 +84,19 @@ const SATELLITE: Record<'lio' | 'qc', LiveRaster> = {
   },
 }
 
-export const LIVE_RASTER: Partial<Record<'base' | 'satellite' | 'topo' | 'hillshade' | 'historical' | 'forest' | 'radar', LiveRaster>> = {
+export const LIVE_RASTER: Partial<Record<'base' | 'labels' | 'satellite' | 'topo' | 'hillshade' | 'historical' | 'forest' | 'radar', LiveRaster>> = {
   // Base map when no basemap PMTiles is on hand: NRCan's Canada Base Map
   // (transportation), a cached Web Mercator tile service.
   base: {
     tiles: ['https://maps-cartes.services.geo.ca/server2_serveur2/rest/services/BaseMaps/CBMT_CBCT_GEOM_3857/MapServer/tile/{z}/{y}/{x}'],
+    tileSize: 256,
+    attribution: 'Canada Base Map © Natural Resources Canada',
+    maxzoom: 17,
+  },
+  // the names on the Canada Base Map, a layer of their own: lakes, rivers
+  // and towns over Explore's grid, where the base alone is a green screen
+  labels: {
+    tiles: ['https://maps-cartes.services.geo.ca/server2_serveur2/rest/services/BaseMaps/CBMT_TXT_3857/MapServer/tile/{z}/{y}/{x}'],
     tileSize: 256,
     attribution: 'Canada Base Map © Natural Resources Canada',
     maxzoom: 17,
