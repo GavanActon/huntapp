@@ -2545,3 +2545,31 @@ button.hotedit-empty {
   z-index: 5;
   animation: popup-in 0.16s var(--ease-out) both;
 }
+
+/* The word with the hairline while the grids stream in for the first time
+   here (offline/mapsNudge.ts): a status in the strip's voice, and past
+   eight seconds the offer to save the maps. A tap opens Maps on this phone. */
+.wxstrip-stream {
+  display: block;
+  width: 100%;
+  padding: 1px 10px 7px;
+  border: 0;
+  background: none;
+  text-align: left;
+  font: inherit;
+  font-size: calc(11px * var(--ui-scale));
+  line-height: 1.3;
+  color: var(--c-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation: rise-in 0.25s ease;
+  transition: opacity 0.4s ease;
+}
+.wxstrip-stream b {
+  font-weight: 600;
+  color: var(--c-accent);
+}
+.wxstrip-stream-done {
+  opacity: 0;
+}

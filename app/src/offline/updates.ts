@@ -185,6 +185,14 @@ export function manifestHashFor(name: string): string | undefined {
   return manifests.get(ACTIVE_AREA.id)?.files[name]?.hash
 }
 
+/** The bytes these files add up to on the server, from the area's manifest
+ *  seen this run; 0 before one has been (the menu's Save maps row). */
+export function bytesOf(files: string[], areaId: string = ACTIVE_AREA.id): number {
+  const m = manifests.get(areaId)
+  if (!m) return 0
+  return files.reduce((sum, f) => sum + (m.files[f]?.size ?? 0), 0)
+}
+
 /** The bundle files that differ from the server's, for a phone that keeps any of them. */
 export function pendingFrom(m: DataManifest, b: BundleDef): PendingFile[] {
   const out: PendingFile[] = []

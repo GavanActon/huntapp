@@ -3,7 +3,7 @@ import { ACTIVE_AREA, AREA_LIST, areaById, type AreaDef, type CoverageLayer } fr
 import { dataFiles, layerLabel } from '../../config'
 import { downloadFiles, fmtBytes, mapsStatus, removeFiles, useDownloads } from '../../offline/downloads'
 import { listStored, storageEstimate, type StoredFileInfo } from '../../offline/fileStore'
-import { bundleOf, bundleOnServer, checkAreaListing, useMapUpdates } from '../../offline/updates'
+import { bundleOf, bundleOnServer, bytesOf, checkAreaListing, useMapUpdates } from '../../offline/updates'
 import { useAppStore } from '../../state/appStore'
 import { IconCheck, IconDownload, IconTrash } from '../icons'
 import './settings.css'
@@ -92,6 +92,17 @@ function AreaMaps({ area, stored }: { area: AreaDef; stored: Map<string, StoredF
         {area.name}
         {here ? ' · this area' : ''}
       </div>
+      {/* the area the app is in, not all saved: what works without signal already, and what a save brings */}
+      {here && have.length < wanted.length && !(ours && dl.active) && (
+        <div className="st-files-foot">
+          <span>
+            {stored.has(`micro-${area.id}.hab`) && stored.has(`habitat-${area.id}.hab`)
+              ? 'The wind and spots grids came down for the view and stay on the phone. The map itself streams as you look at it; saved, it works with no signal'
+              : 'The map streams as you look at it; saved, it works with no signal'}
+            {bytesOf(maps.files, area.id) ? ` (${fmtBytes(bytesOf(maps.files, area.id))}, best on wifi).` : '.'}
+          </span>
+        </div>
+      )}
       {ours && dl.active && (
         <div className="st-dl">
           <div className="st-dlhead">

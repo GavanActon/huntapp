@@ -21,6 +21,7 @@ import { agoLabel, clockShort, dayLabel, dayShort, floorHourMs, hourAmPm, hourMi
 import { IconCheck, IconChevronDown, IconChevronUp, IconDots, IconGrid, IconGridOff, IconHeat, IconPin, IconSun } from './icons'
 import AppMenu from './AppMenu'
 import { useMapUpdates } from '../offline/updates'
+import { markNudgeSeen, useMapsNudge } from '../offline/mapsNudge'
 import { useLookTick } from './useLookTick'
 import { useTapOff } from './tapOff'
 import { useLoadProgress } from '../offline/loadProgress'
@@ -265,6 +266,19 @@ function useHold(onHold: () => void) {
 export default function WeatherStrip() {
   // the wind and habitat grids coming in from the network: the hairline at the strip's foot
   const load = useLoadProgress()
+  // and a word with it: it is the first time here, and the phone keeps what
+  // comes; past eight seconds of it, the offer to save the maps (mapsNudge.ts)
+  const [streamSlow, setStreamSlow] = useState(false)
+  useEffect(() => {
+    if (!load.visible) {
+      setStreamSlow(false)
+      return
+    }
+    const t = window.setTimeout(() => setStreamSlow(true), 8000)
+    return () => window.clearTimeout(t)
+  }, [load.visible])
+  const nudge = useMapsNudge()
+  const openSheetFor = useAppStore((s) => s.openSheet)
   const stripOpen = useAppStore((s) => s.stripOpen)
   const setStripOpen = useAppStore((s) => s.setStripOpen)
   const planTimeMs = useAppStore((s) => s.planTimeMs)
@@ -318,6 +332,10 @@ export default function WeatherStrip() {
   const [stale, setStale] = useState(false)
   const [subject, setSubject] = useState<Subject | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  // the menu opened with the Save maps row in it: the dot has done its job for a week
+  useEffect(() => {
+    if (menuOpen && nudge.show) markNudgeSeen()
+  }, [menuOpen, nudge.show])
   const [quarryOpen, setQuarryOpen] = useState(false)
   const [detailMs, setDetailMs] = useState<number | null>(null)
   const [refreshing, setRefreshing] = useState(false)
@@ -675,7 +693,7 @@ export default function WeatherStrip() {
           <IconChevronDown size={18} />
         </button>
       )}
-      <button className={`wxfold-dots${newMaps ? ' has-new' : ''}`} {...dots} aria-label="More">
+      <button className={`wxfold-dots${newMaps || nudge.dot ? ' has-new' : ''}`} {...dots} aria-label="More">
         <IconDots />
       </button>
       <AppMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
@@ -774,6 +792,17 @@ export default function WeatherStrip() {
             </div>
           )}
         </>
+      )}
+      {load.visible && (
+        <button className={`wxstrip-stream${load.done ? ' wxstrip-stream-done' : ''}`} onClick={() => openSheetFor({ kind: 'offline' })}>
+          {streamSlow ? (
+            <>
+              First time here: streaming the wind · <b>save the maps for camp ›</b>
+            </>
+          ) : (
+            'First time here: streaming the wind · it stays on the phone'
+          )}
+        </button>
       )}
       {stripOpen && (
         <button className="wxfold-handle" onClick={() => setStripOpen(false)} aria-label="Fold the strip">

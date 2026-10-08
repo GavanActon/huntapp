@@ -1,9 +1,11 @@
 import { useRef, type JSX } from 'react'
 import { openHuntLog } from '../log/logView'
+import { fmtBytes } from '../offline/downloads'
+import { useMapsNudge } from '../offline/mapsNudge'
 import { useMapUpdates } from '../offline/updates'
 import { useAppStore, type Sheet } from '../state/appStore'
 import { usePartyStore } from '../party/party'
-import { IconBook, IconClock, IconCrew, IconGear, IconPin, IconPlaces, IconSatellite } from './icons'
+import { IconBook, IconClock, IconCrew, IconDownload, IconGear, IconPin, IconPlaces, IconSatellite } from './icons'
 import { useTapOff } from './tapOff'
 
 /**
@@ -24,6 +26,8 @@ export default function AppMenu({ open, onClose }: { open: boolean; onClose: () 
   const newMaps = useMapUpdates((s) => s.pending.length)
   const party = usePartyStore((s) => s.party)
   const partyN = usePartyStore((s) => Object.keys(s.members).length)
+  // the area's maps are not on the phone, and there is signal to fetch them (mapsNudge.ts)
+  const nudge = useMapsNudge()
   useTapOff(ref, open, onClose)
   if (!open) return null
   const go = (s: Sheet) => {
@@ -32,6 +36,13 @@ export default function AppMenu({ open, onClose }: { open: boolean; onClose: () 
   }
   return (
     <div className="wx-menu" ref={ref} role="menu" aria-label="More">
+      {nudge.show && (
+        <button className="wx-menu-row" role="menuitem" onClick={() => go({ kind: 'offline' })}>
+          <IconDownload />
+          {nudge.gridsKept ? 'Save the maps for camp' : 'Maps not on this phone'}
+          <span className="dim">{nudge.bytes ? `${fmtBytes(nudge.bytes)} ›` : '›'}</span>
+        </button>
+      )}
       <button
         className="wx-menu-row"
         role="menuitem"
