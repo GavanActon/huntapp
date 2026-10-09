@@ -70,9 +70,36 @@ const lookOf = (): Look => LOOKS[useAppStore.getState().flowTuning.windStyle] ??
  *  does not run off it before the streaks' field is redrawn, which redraws
  *  it, or with no streaks the pan's end. */
 const WASH_SRC = 'wind-wash'
-/** css px between the wash's samples (the map blends between them) */
+/** css px between the wash's cells at a whole zoom (the map blends between them) */
 const WASH_STEP = 32
 const WASH_PAD = 0.5
+/**
+ * The wash's cells sit on a lattice fixed to the ground: WASH_STEP css px at
+ * the nearest whole zoom, in mercator, so a pan samples the same ground
+ * again. On a lattice fixed to the screen every pan moved the samples, and
+ * the ground model's 30 m cells (a lake's edge, a tree line) put the colours
+ * somewhere new each time (Gavan, 2026-10-08: "panning around the map seems
+ * to change the location of the wind strength"; the same ground came out
+ * 11.6 levels apart on average after a pan). Each cell is the mean speed of
+ * WASH_SUB² points across it, the wind over the cell rather than at a point
+ * of it. The cells' speeds are kept for the air they were worked out in
+ * (washAir), so a pan works out only the cells it brings in.
+ */
+const WASH_SUB = 2
+/** a cell's key: its row times this plus its column (zoom 22 at most) */
+const WASH_ROW = 2 ** 26
+/** the most cells a side, past which a cell spans more than WASH_STEP */
+const WASH_MAX = 256
+const WASH_KEEP_MAX = 60_000
+const washCells = new Map<number, number>()
+let washKey = ''
+/** bumped whenever the air changes (initWindFlow's fresh): the kept cells go */
+let washAir = 0
+
+const mercX = (lng: number) => (lng + 180) / 360
+const mercY = (lat: number) => (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2
+const lngOf = (x: number) => x * 360 - 180
+const latOf = (y: number) => (Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180) / Math.PI
 /** its opacity over a ground, at full strength (the Strength slider scales it) */
 const WASH_ALPHA = 0.6
 /** the shade layers, any of which the wash goes under as the ground (mapStyle.ts) */
@@ -129,17 +156,94 @@ function washBefore(map: MlMap): string | undefined {
   return (windGround(useAppStore.getState().layers) ? ids.find((id) => SHADE_IDS.includes(id)) : undefined) ?? ids.find(over)
 }
 
+/** A paint's work goes in slices of this, ms: a new zoom level or new air
+ *  is every cell again, 75-145 ms on a phone, and the old wash shows till
+ *  the new one is done. */
+const WASH_SLICE_MS = 8
+/** the paint under way: a newer one, or the wash going, drops it */
+let washJob = 0
+
 /** Paint the wash for the view as it is now, at the air of `atMs`: the
  *  ground model's head-height wind, or the forecast's, as the streaks are. */
 function paintWash(map: MlMap, atMs: number) {
-  const el = map.getContainer()
-  const x0 = -el.clientWidth * WASH_PAD
-  const y0 = -el.clientHeight * WASH_PAD
-  const cols = Math.ceil((el.clientWidth * (1 + 2 * WASH_PAD)) / WASH_STEP)
-  const rows = Math.ceil((el.clientHeight * (1 + 2 * WASH_PAD)) / WASH_STEP)
   const ground = useAppStore.getState().windLevel === 'ground' && microGrid() ? groundSampler(atMs) : null
   const wind = ground ? null : windSampler(atMs)
   if (!ground && !wind) return removeWash(map)
+  const job = ++washJob
+  // the lattice at the nearest whole zoom, a cell's side in mercator
+  const level = Math.round(map.getZoom())
+  const side = WASH_STEP / (512 * 2 ** level)
+  const key = `${washAir}|${ground ? 'ground' : 'forecast'}|${level}`
+  if (key !== washKey || washCells.size > WASH_KEEP_MAX) {
+    washCells.clear()
+    washKey = key
+  }
+  // the cells under the view and half a screen round it (its corners' box, the map turned or not)
+  const el = map.getContainer()
+  const w = el.clientWidth
+  const h = el.clientHeight
+  let minX = Infinity
+  let maxX = -Infinity
+  let minY = Infinity
+  let maxY = -Infinity
+  for (const [x, y] of [
+    [-w * WASH_PAD, -h * WASH_PAD],
+    [w * (1 + WASH_PAD), -h * WASH_PAD],
+    [w * (1 + WASH_PAD), h * (1 + WASH_PAD)],
+    [-w * WASH_PAD, h * (1 + WASH_PAD)],
+  ]) {
+    const ll = map.unproject([x, y])
+    const mx = mercX(ll.lng)
+    const my = mercY(ll.lat)
+    minX = Math.min(minX, mx)
+    maxX = Math.max(maxX, mx)
+    minY = Math.min(minY, my)
+    maxY = Math.max(maxY, my)
+  }
+  const i0 = Math.floor(minX / side)
+  const j0 = Math.floor(minY / side)
+  const cols = Math.min(WASH_MAX, Math.ceil(maxX / side) - i0)
+  const rows = Math.min(WASH_MAX, Math.ceil(maxY / side) - j0)
+  const out = new Float32Array(5)
+  /** a cell's mean speed, km/h: NaN with no wind there */
+  const cell = (i: number, j: number): number => {
+    let sum = 0
+    let n = 0
+    for (let b = 0; b < WASH_SUB; b++) {
+      const lat = latOf((j + (b + 0.5) / WASH_SUB) * side)
+      for (let a = 0; a < WASH_SUB; a++) {
+        const lng = lngOf((i + (a + 0.5) / WASH_SUB) * side)
+        if (ground ? !ground(lng, lat, out) : !wind?.(lng, lat, out)) continue
+        sum += ground ? Math.hypot(out[0], out[1]) * 3.6 : out[0]
+        n++
+      }
+    }
+    return n ? sum / n : NaN
+  }
+  let k = 0
+  const run = () => {
+    if (job !== washJob) return
+    const end = performance.now() + WASH_SLICE_MS
+    for (; k < cols * rows; k++) {
+      const i = i0 + (k % cols)
+      const j = j0 + Math.floor(k / cols)
+      const id = j * WASH_ROW + i
+      if (washCells.has(id)) continue
+      if (performance.now() > end) {
+        setTimeout(run, 0)
+        return
+      }
+      washCells.set(id, cell(i, j))
+    }
+    drawWash(map, i0, j0, cols, rows, side)
+  }
+  run()
+}
+
+/** The wash's cells from the kept speeds into the map. */
+function drawWash(map: MlMap, i0: number, j0: number, cols: number, rows: number, side: number) {
+  if (getMap() !== map) return
+  // sized only now: a canvas resized shows blank in the map till it is drawn
   const c = (washCanvas ??= document.createElement('canvas'))
   if (c.width !== cols || c.height !== rows) {
     c.width = cols
@@ -148,25 +252,23 @@ function paintWash(map: MlMap, atMs: number) {
   const g = c.getContext('2d', { willReadFrequently: true })
   if (!g) return
   const img = g.createImageData(cols, rows)
-  const out = new Float32Array(4)
   for (let r = 0; r < rows; r++) {
     for (let k = 0; k < cols; k++) {
-      const ll = map.unproject([x0 + (k + 0.5) * WASH_STEP, y0 + (r + 0.5) * WASH_STEP])
-      let kmh = NaN
-      if (ground) {
-        if (ground(ll.lng, ll.lat, out)) kmh = Math.hypot(out[0], out[1]) * 3.6
-      } else if (wind?.(ll.lng, ll.lat, out)) kmh = out[0]
-      if (Number.isFinite(kmh)) washRgb(kmh, img.data, (r * cols + k) * 4)
+      const kmh = washCells.get((j0 + r) * WASH_ROW + i0 + k)
+      if (kmh !== undefined && Number.isFinite(kmh)) washRgb(kmh, img.data, (r * cols + k) * 4)
     }
   }
   g.putImageData(img, 0, 0)
-  const corner = (x: number, y: number): [number, number] => {
-    const p = map.unproject([x, y])
-    return [p.lng, p.lat]
-  }
-  const x1 = x0 + cols * WASH_STEP
-  const y1 = y0 + rows * WASH_STEP
-  const coordinates: [[number, number], [number, number], [number, number], [number, number]] = [corner(x0, y0), corner(x1, y0), corner(x1, y1), corner(x0, y1)]
+  const x0 = lngOf(i0 * side)
+  const x1 = lngOf((i0 + cols) * side)
+  const y0 = latOf(j0 * side)
+  const y1 = latOf((j0 + rows) * side)
+  const coordinates: [[number, number], [number, number], [number, number], [number, number]] = [
+    [x0, y0],
+    [x1, y0],
+    [x1, y1],
+    [x0, y1],
+  ]
   const src = map.getSource(WASH_SRC) as (CanvasSource & { play?: () => void; pause?: () => void }) | undefined
   if (!src) {
     map.addSource(WASH_SRC, { type: 'canvas', canvas: c, animate: false, coordinates })
@@ -185,6 +287,8 @@ function paintWash(map: MlMap, atMs: number) {
 }
 
 function removeWash(map: MlMap) {
+  // a paint under way would put it back
+  washJob++
   try {
     if (map.getLayer(WASH_SRC)) map.removeLayer(WASH_SRC)
     if (map.getSource(WASH_SRC)) map.removeSource(WASH_SRC)
@@ -1115,6 +1219,7 @@ export function initWindFlow() {
     }
     document.addEventListener('visibilitychange', cur)
     const fresh = () => {
+      washAir++
       const m = getMap()
       if (m) refreshAmbient(m)
     }
