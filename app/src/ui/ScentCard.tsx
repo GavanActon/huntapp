@@ -105,6 +105,12 @@ export default function ScentCard(): JSX.Element | null {
           </div>
         )}
         {offDrop && <div className="scent-line dim">{offDrop}</div>}
+        {plume?.checks && (
+          <div className="scent-line dim">
+            Your {plume.checks.n} check{plume.checks.n === 1 ? '' : 's'} here drive {Math.round(plume.checks.share * 100)}% of this cone: {plume.checks.puffs} puff{plume.checks.puffs === 1 ? '' : 's'}
+            {plume.checks.lulls >= 0.05 ? `, ${Math.round(plume.checks.lulls * 100)}% of them hung` : ''} · the drift, its wander and its lulls are theirs
+          </div>
+        )}
         {plume && plume.over >= 0.15 && (
           <div className="scent-line dim">About {Math.round(plume.over * 100)}% of it rose up over the canopy, out of reach of noses on the ground</div>
         )}

@@ -16,7 +16,7 @@ import { ensureRelief, onRelief, reliefCell, reliefNear, WATER } from './relief'
 import { habitat } from '../../spots/habitatGrid'
 import { leavesDown } from './leaves'
 import { tuneValues, useScentTune, type TuneValues } from './scentTune'
-import { useWindChecks } from './windChecks'
+import { metresBetween, useWindChecks } from './windChecks'
 import '../../ui/minipop.css'
 
 /**
@@ -46,6 +46,14 @@ import '../../ui/minipop.css'
  *     DTM), so scent passes over a hollow above the deer's noses and comes
  *     back down where the ground rises to meet it, or over open water
  *     warmer than the air, which mixes it down from below;
+ *   - the sit's own checks (2026-10-09, Gavan: "each check should sharpen
+ *     the scent cone, that's the intent"): the puffs made near the sit in
+ *     the last hours are the measurement of what the cone has to guess
+ *     at its source. Each realisation draws its drift from the puffs
+ *     themselves (seven of ten toward NE, two toward E: so goes the
+ *     plume), wanders only as much as they did, and stalls as often as
+ *     they hung; the model's spread and gust chain fill in only the share
+ *     the checks do not carry (sitAir);
  *   - the column (2026-10-08, steps 1–5 of the realism pass): each puff
  *     has a centre height and a vertical spread, and moves at the wind of
  *     the layers it spans: the head-height wind below 2 m, thinned by the
@@ -111,6 +119,8 @@ export interface Plume {
    * Scent warm water mixed down does not count: it came down over the water.
    */
   touchdown: boolean
+  /** the sit's checks that drove this cone: how many, their puffs, the share that hung, and how much of the cone is theirs (0 = the model's) */
+  checks: { n: number; puffs: number; lulls: number; share: number } | null
   /**
    * Share of the scent that went up over the canopy: in the column model
    * the part of each puff above the stand's top where it is under trees
@@ -525,6 +535,88 @@ export function setScentColumn(on: boolean): void {
   columnModel = on
 }
 
+// ---------------------------------------------------------------- the sit's own checks
+
+/** A check's say in the cone fades with this e-folding, twice for one that said the wind had held, and none past SIT_MAX_MS. */
+const SIT_TAU_MS = 2 * 3600_000
+const SIT_MAX_MS = 4 * 3600_000
+/** and with distance from the sit: e-folding and the cut-off, m */
+const SIT_LEN_M = 300
+const SIT_MAX_M = 600
+/** in a lull the air stalls to this share of its speed */
+const LULL_MUL = 0.15
+/** a lull's typical length, s, for the chain that stalls the plume as often as the puffs hung */
+const LULL_S = 60
+
+interface SitAir {
+  n: number
+  puffs: number
+  /** the share of the puffs that hung */
+  lullShare: number
+  /** how much of the cone the checks carry, 0–1: one fresh check at the sit is half, ten nine tenths */
+  share: number
+  /** the wander round a puff's way, radians: 15° and half of any swing seen */
+  sm: number
+  /** a puff's way drawn by weight, as the turn from the field's way at the sit, radians clockwise */
+  pick: (rnd: () => number) => number
+}
+
+const wrapRad = (r: number) => ((((r + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)) - Math.PI
+
+/**
+ * The checks made near the sit in the last hours, as the air the cone
+ * should run on: every puff of every felt check (a series keeps each
+ * puff; a check without one is a single puff its way, a calm one a lull),
+ * weighted by age and distance. Null with none in reach.
+ */
+function sitAir(lon: number, lat: number, ms: number, fieldToward: number): SitAir | null {
+  const tows: number[] = []
+  const ws: number[] = []
+  let lullW = 0
+  let total = 0
+  let n = 0
+  let puffs = 0
+  let swingSum = 0
+  let swingW = 0
+  for (const c of useWindChecks.getState().checks) {
+    if (c.seen) continue
+    const dt = Math.abs(ms - c.ts)
+    if (dt > SIT_MAX_MS) continue
+    const d = metresBetween(lon, lat, c.lon, c.lat)
+    if (d > SIT_MAX_M) continue
+    const w = Math.exp(-dt / (c.held ? 2 * SIT_TAU_MS : SIT_TAU_MS)) * Math.exp(-d / SIT_LEN_M)
+    if (w < 0.02) continue
+    n++
+    const dirs = c.dirs ?? [c.strength === 'calm' ? null : c.dirFrom]
+    for (const dir of dirs) {
+      puffs++
+      total += w
+      if (dir == null) lullW += w
+      else {
+        tows.push((dir + 180) % 360)
+        ws.push(w)
+      }
+    }
+    if (c.swingDeg) {
+      swingSum += w * c.swingDeg
+      swingW += w
+    }
+  }
+  if (!n || total <= 0) return null
+  const movingW = ws.reduce((a, b) => a + b, 0)
+  const sm = ((15 + (swingW > 0 ? swingSum / swingW / 2 : 0)) * Math.PI) / 180
+  const pick = (rnd: () => number): number => {
+    if (!movingW) return 0
+    let u = rnd() * movingW
+    for (let i = 0; i < ws.length; i++) {
+      u -= ws[i]
+      if (u <= 0) return wrapRad(((tows[i] - fieldToward) * Math.PI) / 180)
+    }
+    return wrapRad(((tows[tows.length - 1] - fieldToward) * Math.PI) / 180)
+  }
+  return { n, puffs, lullShare: lullW / total, share: total / (1 + total), sm, pick }
+}
+
 /**
  * Run the plume; the nose-height grid (N×N, row 0 north) and its summary.
  * The grid is scaled to the core 20–40 m out of the same sit ON THE GROUND,
@@ -574,6 +666,8 @@ export function simulatePlume(
   if (!sample(lon, lat, out)) return null
   const srcSigma = out[2] * SPREAD
   const srcSpeed = Math.hypot(out[0], out[1])
+  // the sit's own checks: the drift, its wander and its lulls from the puffs
+  const sit = sitAir(lon, lat, ms, ((Math.atan2(out[0], out[1]) * 180) / Math.PI + 360) % 360)
   // in cold calm air the body's own warmth lifts the scent a few metres
   // before it spreads: a ground sit on a frosty dawn starts above the noses
   const rise = column && height === GROUND_H ? T.bodyRise * Math.min(1, Math.max(0, (0.6 - srcSpeed) / 0.6)) * Math.min(1, Math.max(0, (15 - t2) / 15)) : 0
@@ -632,15 +726,31 @@ export function simulatePlume(
   for (let r = 0; r < REALISATIONS; r++) {
     const steps = STEPS
     const phi = new Float32Array(steps)
-    const sm = ((srcSigma * T.meander) * Math.PI) / 180
-    phi[0] = gauss(rnd) * sm
-    for (let k = 1; k < steps; k++) phi[k] = phi[k - 1] * (1 - DT / TM) + sm * Math.sqrt((2 * DT) / TM) * gauss(rnd)
+    // the meander: round the model's way with the model's wander, or, by
+    // the checks' share, round a puff's way with the puffs' own wander
+    const byPuff = !!sit && rnd() < sit.share
+    const r0 = byPuff ? sit!.pick(rnd) : 0
+    const smModel = ((srcSigma * T.meander) * Math.PI) / 180
+    const sm = sit ? smModel * (1 - sit.share) + sit.sm * sit.share : smModel
+    phi[0] = r0 + gauss(rnd) * sm
+    for (let k = 1; k < steps; k++) phi[k] = r0 + (phi[k - 1] - r0) * (1 - DT / TM) + sm * Math.sqrt((2 * DT) / TM) * gauss(rnd)
     const burst = new Uint8Array(steps)
     if (gusty) {
       let on = rnd() < GFRAC
       for (let k = 0; k < steps; k++) {
         on = on ? rnd() >= pEnd : rnd() < pStart
         burst[k] = on ? 1 : 0
+      }
+    }
+    // the lulls: the air stalls as often as the puffs hung, in lulls about LULL_S long
+    const lull = new Uint8Array(steps)
+    if (sit && sit.lullShare > 0.05 && byPuff) {
+      const pLullEnd = DT / LULL_S
+      const pLullStart = (pLullEnd * sit.lullShare) / (1 - sit.lullShare)
+      let on = rnd() < sit.lullShare
+      for (let k = 0; k < steps; k++) {
+        on = on ? rnd() >= pLullEnd : rnd() < pLullStart
+        lull[k] = on ? 1 : 0
       }
     }
     for (let p = 0; p < PER_REAL; p++) {
@@ -732,7 +842,7 @@ export function simulatePlume(
         if (mean > spdMax) spdMax = mean
         const c = Math.cos(phi[k])
         const sn = Math.sin(phi[k])
-        const gm = burst[k] ? gust : gusty ? lullMul : 1
+        const gm = (burst[k] ? gust : gusty ? lullMul : 1) * (lull[k] ? LULL_MUL : 1)
         const u = (ue * c + un * sn) * gm
         const v = (-ue * sn + un * c) * gm
         const spd = Math.sqrt(u * u + v * v)
@@ -866,6 +976,7 @@ export function simulatePlume(
       lifted: wTotal > 0 ? lifted / wTotal : 0,
       over: wTotal > 0 ? over / wTotal : 0,
       touchdown: down >= TOUCH_CELLS,
+      checks: sit ? { n: sit.n, puffs: sit.puffs, lulls: sit.lullShare, share: sit.share } : null,
     },
     grid,
     tracks,

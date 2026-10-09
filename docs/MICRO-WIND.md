@@ -518,6 +518,26 @@ nothing that matters: at that cell the mechanical part stays under
       longer: faster at mid-canopy, but it mixes down and deposits
       sooner. 30–180 ms a plume on a desktop. None of it is checked
       against a puff watched in the field.
+  - **The sit's own checks** (2026-10-09, Gavan: "each check should
+    sharpen the scent cone, that's the intent"; `scent.ts` sitAir). The
+    felt checks within 600 m of the sit and 4 h of the minute, weighted
+    `exp(−Δt/2 h)·exp(−d/300 m)` (4 h for one that said the wind had
+    held), are the measurement of what the cone has to guess at its
+    source. Every puff counts (a series keeps each; a calm one is a lull).
+    Their weight W gives the checks' share of the cone, W/(1 + W): one
+    fresh check at the sit is half, ten nine tenths. Each of the six
+    realisations, by that share, draws its drift from a puff's way (seven
+    of ten toward NE, two toward E: so goes the plume) and wanders round
+    it only 15° plus half of any swing seen, instead of the model's
+    meander; and the air stalls to 0.15 of its speed as often as the
+    puffs hung, in lulls about a minute long. The model's spread and gust
+    chain carry only the rest. Ten puffs at camp (seven toward NE, two
+    toward E, one hung) took the cone from a blob with its main sector
+    south at 22% to NE 33% and E 27%. The card says "Your N checks here
+    drive X% of this cone". The checks already set the speed and the
+    way at the spot through the ground model's blend; this is the wander
+    and the lulls, which the blend threw away. Not yet: the spread per
+    regime learned for later sits from the puffs' steadiness.
   - **Scent tuning** (2026-10-09, Settings → Scent tuning; `scentTune.ts`,
     `ScentTuneSheet.tsx`): every constant above on a slider with its
     modelled value marked, 24 knobs in five groups (release, spread,
