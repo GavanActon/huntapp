@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { DEFAULT_LAYERS, DEFAULT_OPACITY, fineDetail, useAppStore, type LayerOpacity, type LayerVisibility, type MapDetail, type WindStyle } from './appStore'
+import { DEFAULT_LAYERS, DEFAULT_OPACITY, useAppStore, type LayerOpacity, type LayerVisibility, type MapDetail, type WindStyle } from './appStore'
 import { useSpotsStore } from './spotsStore'
 import { isFish, type Target } from '../spots/types'
 
@@ -45,40 +45,40 @@ const L = (on: (keyof LayerVisibility)[]): LayerVisibility =>
   Object.fromEntries(Object.keys(DEFAULT_LAYERS).map((k) => [k, on.includes(k as keyof LayerVisibility)])) as unknown as LayerVisibility
 
 export const BUILT_IN: MapView[] = [
+  // in the pill menu's order (Gavan, 2026-10-09: Topo, Sat, Hunt, Bush, Wind, Scout, Terrain;
+  // Sit and Land went, they did not add)
+  // light, saved maps or not: the elevation colours with their own shade, without the 1 m
+  // LiDAR veil, a fifth of the bytes it had on a zoom in (Gavan, 2026-10-08: "topo light
+  // looks great, make that topo")
+  { id: 'hunt-relief', name: 'Topo', mode: 'hunt', builtIn: true, heat: false, detail: 'light', opacity: { ...DEFAULT_OPACITY, hillshade: 0.7 }, layers: L(['relief', 'hillshade', 'contours', 'roads']) },
+  // the photo whole with the roads and nothing else, light to stream, and what a fresh phone
+  // opens on (Gavan, 2026-10-09: "Photo (Call is Sat) - contour off, range off ... Default to Sat")
+  { id: 'hunt-photo', name: 'Sat', mode: 'hunt', builtIn: true, heat: false, detail: 'light', opacity: { ...DEFAULT_OPACITY, satellite: 1 }, layers: L(['satellite', 'roads']) },
+  // out hunting with a bow, once called Bow (Gavan, 2026-10-09: "Call bow hunt - default range
+  // on, contour on"): the imagery at full strength, the shooting lanes on, open ground left
+  // clear and thick bush shaded dark (the lanes layer, not the colour scale, which washes it
+  // out), the contours, and the shade at 0.35: in the box that is the DEM-drawn one, drawn
+  // hard over the imagery (reliefShadePaint), which carries the hills and the old skid
+  // trails; the 1 m LiDAR one showed next to nothing at this strength over the imagery, so it
+  // stays off (lidarShadeShown). That shade comes in once the area's maps are saved
+  { id: 'hunt-bow', name: 'Hunt', mode: 'hunt', builtIn: true, heat: false, detail: 'auto', opacity: { ...DEFAULT_OPACITY, hillshade: 0.35, satellite: 1 }, layers: L(['satellite', 'hillshade', 'lanes', 'contours', 'roads']) },
+  { id: 'hunt-bush', name: 'Bush', mode: 'hunt', builtIn: true, heat: false, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'understory', 'contours', 'roads']) },
   // the wind: its speed's colours for the ground with the hills' shade over them, and the streaks in
   // the Contrast look, white (Gavan, 2026-10-07: "a default view, call it Wind, the Windy version";
   // 2026-10-08: "just terrain + colours", and with the streaks off the shade and colours stay, so
   // the colours are a layer of their own); light, as Topo is, the shade the DEM's
   { id: 'hunt-wind', name: 'Wind', mode: 'hunt', builtIn: true, heat: false, detail: 'light', opacity: { ...DEFAULT_OPACITY, hillshade: 0.7 }, layers: L(['hillshade', 'windColours', 'windFlow']), wind: 'contrast' },
   { id: 'hunt-scout', name: 'Scout', mode: 'hunt', builtIn: true, heat: true, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'contours', 'forest', 'fire', 'roads']) },
-  { id: 'hunt-bush', name: 'Bush', mode: 'hunt', builtIn: true, heat: false, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'understory', 'contours', 'roads']) },
-  // out hunting with a bow: the imagery at full strength, open lanes left clear and
-  // thick bush shaded dark (the lanes layer, not the colour scale, which washes it out),
-  // and the shade at 0.35: in the box that is the DEM-drawn one, drawn hard over the imagery
-  // (reliefShadePaint), which carries the hills and the old skid trails; the 1 m LiDAR one
-  // showed next to nothing at this strength over the imagery, so it stays off (lidarShadeShown).
-  // A hunting view: all its detail once the area's maps are saved, light until then (the
-  // lanes only from the phone's copy too: apply)
-  { id: 'hunt-bow', name: 'Bow', mode: 'hunt', builtIn: true, heat: false, detail: 'auto', opacity: { ...DEFAULT_OPACITY, hillshade: 0.35, satellite: 1 }, layers: L(['satellite', 'hillshade', 'lanes', 'contours', 'roads']) },
-  // light, for streaming (Gavan, 2026-10-08: a low-weight view, Bow its hunting version):
-  // the photo whole with the contours and roads, about half of Bow's bytes on a zoom in
-  { id: 'hunt-photo', name: 'Photo', mode: 'hunt', builtIn: true, heat: false, detail: 'light', opacity: { ...DEFAULT_OPACITY, satellite: 1 }, layers: L(['satellite', 'contours', 'roads']) },
+  // the shade alone, its contour lines black on the white (CONTOUR_INK.shade)
   { id: 'hunt-terrain', name: 'Terrain', mode: 'hunt', builtIn: true, heat: false, opacity: { ...DEFAULT_OPACITY, hillshade: 0.9 }, layers: L(['hillshade', 'contours', 'roads']) },
-  { id: 'hunt-sit', name: 'Sit', mode: 'hunt', builtIn: true, heat: false, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'contours', 'roads']) },
-  // light, saved maps or not: the elevation colours with their own shade, without the 1 m
-  // LiDAR veil, a fifth of the bytes it had on a zoom in (Gavan, 2026-10-08: "topo light
-  // looks great, make that topo")
-  { id: 'hunt-relief', name: 'Topo', mode: 'hunt', builtIn: true, heat: false, detail: 'light', opacity: { ...DEFAULT_OPACITY, hillshade: 0.7 }, layers: L(['relief', 'hillshade', 'contours', 'roads']) },
-  { id: 'hunt-land', name: 'Land', mode: 'hunt', builtIn: true, heat: false, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'crown', 'wmu', 'camps', 'parks', 'roads']) },
   { id: 'fish-lake', name: 'Lake', mode: 'fish', builtIn: true, heat: true, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'bathy']) },
   { id: 'fish-chart', name: 'Chart', mode: 'fish', builtIn: true, heat: true, opacity: DEFAULT_OPACITY, layers: L(['bathy', 'topo']) },
 ]
 
-/** The views pinned at the top of the pill menu on a fresh phone (Gavan's, 2026-10-03: Scout too;
- *  2026-10-07: "base load should be Bow with range on", so Bow first and the phone opens on it;
- *  2026-10-08: Photo after Bow, its hunting version). */
+/** The views pinned at the top of the pill menu on a fresh phone, in Gavan's order
+ *  (2026-10-09: "Topo, Sat, Hunt, Bush, Wind, Scout, Terrain"). */
 export const DEFAULT_PINNED: Record<Mode, string[]> = {
-  hunt: ['hunt-bow', 'hunt-photo', 'hunt-wind', 'hunt-relief', 'hunt-bush', 'hunt-terrain', 'hunt-scout'],
+  hunt: ['hunt-relief', 'hunt-photo', 'hunt-bow', 'hunt-bush', 'hunt-wind', 'hunt-scout', 'hunt-terrain'],
   fish: ['fish-lake', 'fish-chart'],
 }
 
@@ -125,15 +125,18 @@ const freshPhone = (() => {
 /** A phone on the Wind view as it was (Topo's ground under the streaks): set
  *  by the v7 migration, the new one is put on once the store is made. */
 let windViewRedone = false
+/** A phone on the Photo view as it was (with the contours), Sit or Land: set by
+ *  the v8 migration, Sat is put on once the store is made. */
+let satViewRedone = false
 
 export const useViews = create<ViewsState>()(
   persist(
     (set, get) => ({
       mode: 'hunt',
       saved: [],
-      // a fresh phone starts in the Bow view (appStore DEFAULT_LAYERS), lake trout for the fishing side: Gavan's
+      // a fresh phone starts in the Sat view (appStore DEFAULT_LAYERS), lake trout for the fishing side: Gavan's
       lastTarget: { hunt: 'moose', fish: 'laketrout' },
-      lastViewId: 'hunt-bow',
+      lastViewId: 'hunt-photo',
       pinned: { hunt: [...DEFAULT_PINNED.hunt], fish: [...DEFAULT_PINNED.fish] },
       lookBefore: null,
       keepLook: () => set({ lookBefore: null }),
@@ -153,11 +156,10 @@ export const useViews = create<ViewsState>()(
         const a = useAppStore.getState()
         // the wind keeps its own button, unless the view is about the wind
         const windFlow = v.wind ? true : a.layers.windFlow
-        // a hunting view's shooting lanes come from the phone's copy: streaming, they wait,
-        // and their button says so (a tap still brings them)
+        // the shooting lanes come on with the Hunt view, saved maps or not (Gavan, 2026-10-09:
+        // "default range on"); they keep their own button after
         const detail = v.detail ?? 'full'
-        const lanes = !!v.layers.lanes && fineDetail({ detail, offlineReady: a.offlineReady })
-        useAppStore.setState({ layers: { ...DEFAULT_LAYERS, ...v.layers, windFlow, lanes }, opacity: { ...DEFAULT_OPACITY, ...v.opacity }, detail })
+        useAppStore.setState({ layers: { ...DEFAULT_LAYERS, ...v.layers, windFlow }, opacity: { ...DEFAULT_OPACITY, ...v.opacity }, detail })
         useSpotsStore.getState().setHeat(v.heat)
         const before = get().lookBefore
         if (v.wind) {
@@ -205,7 +207,9 @@ export const useViews = create<ViewsState>()(
       // 5: the light Photo view after Bow (else at the end)
       // 6: Topo Lite became Topo (it was out for an hour): off the pins, a phone on it on Topo
       // 7: the Wind view became the shade and the wind's colours: a phone on it takes the new one
-      version: 7,
+      // 8: Gavan's order (Topo, Sat, Hunt, Bush, Wind, Scout, Terrain), the phone's own views
+      //    after; Sit and Land gone; a phone on them or on the Photo view as it was takes Sat
+      version: 8,
       migrate: (persisted, from) => {
         const p = (persisted ?? {}) as Partial<ViewsState>
         if (!p.pinned) p.pinned = { hunt: [...DEFAULT_PINNED.hunt], fish: [...DEFAULT_PINNED.fish] }
@@ -224,6 +228,14 @@ export const useViews = create<ViewsState>()(
           if (p.lastViewId === 'hunt-topo-lite') p.lastViewId = 'hunt-relief'
         }
         if (from < 7 && p.lastViewId === 'hunt-wind') windViewRedone = true
+        if (from < 8) {
+          const builtIn = new Set(BUILT_IN.map((v) => v.id).concat('hunt-sit', 'hunt-land'))
+          p.pinned = { ...p.pinned, hunt: [...DEFAULT_PINNED.hunt, ...p.pinned.hunt.filter((id) => !builtIn.has(id))] }
+          if (p.lastViewId === 'hunt-sit' || p.lastViewId === 'hunt-land' || p.lastViewId === 'hunt-photo') {
+            p.lastViewId = 'hunt-photo'
+            satViewRedone = true
+          }
+        }
         return p as ViewsState
       },
       partialize: (s) => ({ mode: s.mode, saved: s.saved, lastTarget: s.lastTarget, lastViewId: s.lastViewId, pinned: s.pinned, lookBefore: s.lookBefore }),
@@ -231,11 +243,10 @@ export const useViews = create<ViewsState>()(
   ),
 )
 
-// a fresh phone opens on the Bow view (Gavan, 2026-10-07: "base load should be
-// Bow with range on"), the shooting lanes waiting for the saved maps; the wind keeps flowing
-if (freshPhone) {
-  const bow = BUILT_IN.find((v) => v.id === 'hunt-bow')
-  if (bow) useViews.getState().apply(bow)
+// a fresh phone opens on the Sat view (Gavan, 2026-10-09: "Default to Sat"); the wind keeps flowing
+if (freshPhone || satViewRedone) {
+  const sat = BUILT_IN.find((v) => v.id === 'hunt-photo')
+  if (sat && (freshPhone || activeView([sat], useAppStore.getState().layers) == null)) useViews.getState().apply(sat)
 }
 if (windViewRedone) {
   const wind = BUILT_IN.find((v) => v.id === 'hunt-wind')

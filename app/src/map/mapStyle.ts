@@ -246,7 +246,9 @@ export interface ContourInk {
  *  halo swapped to dark on cream. */
 export const CONTOUR_INK: Record<BaseTone, ContourInk> = {
   imagery: { line: 'rgba(214,170,110,0.55)', index: 'rgba(228,186,124,0.85)', text: 'rgba(240,206,150,0.95)', halo: 'rgba(10,20,12,0.9)' },
-  shade: { line: 'rgba(188,98,28,0.72)', index: 'rgba(200,102,24,0.95)', text: 'rgba(255,236,200,1)', halo: 'rgba(70,32,8,0.9)' },
+  // the shade alone (Terrain) is white and grey: the lines black on it (Gavan, 2026-10-09:
+  // "make the elevation black to contrast with the white")
+  shade: { line: 'rgba(0,0,0,0.6)', index: 'rgba(0,0,0,0.9)', text: 'rgba(0,0,0,1)', halo: 'rgba(255,255,255,0.85)' },
   topo: { line: 'rgba(188,98,28,0.72)', index: 'rgba(200,102,24,0.95)', text: 'rgba(255,236,200,1)', halo: 'rgba(70,32,8,0.9)' },
   relief: { line: 'rgba(72,42,18,0.6)', index: 'rgba(60,32,12,0.9)', text: 'rgba(46,26,10,1)', halo: 'rgba(244,236,214,0.9)' },
 }

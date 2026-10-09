@@ -123,18 +123,16 @@ export interface LayerOpacity {
   satellite: number
 }
 
-/** A fresh phone starts as Gavan's was set up (2026-10-03, his settings sent
- *  from the phone, Settings › My settings; 2026-10-07: "Bow with range on"):
- *  the Bow view with its shooting lanes, so the imagery, the grey LiDAR shade,
- *  the lanes, contours and roads, with the wind flowing. Opacities: START_OPACITY. */
+/** A fresh phone starts in the Sat view (Gavan, 2026-10-09: "Default to Sat"):
+ *  the imagery whole and the roads, with the wind flowing. Opacities: START_OPACITY. */
 export const DEFAULT_LAYERS: LayerVisibility = {
   topo: false,
-  hillshade: true,
+  hillshade: false,
   relief: false,
-  contours: true,
+  contours: false,
   forest: false,
   understory: false,
-  lanes: true,
+  lanes: false,
   bathy: false,
   historical: false,
   satellite: true,
@@ -164,7 +162,7 @@ export const DEFAULT_OPACITY: LayerOpacity = {
   satellite: 0.8,
 }
 
-/** A fresh phone's opacities: the Bow view's (the imagery whole, the shade light). DEFAULT_OPACITY stays the views' base. */
+/** A fresh phone's opacities: the imagery whole, as the Sat view has it (the shade light, as Hunt has it). DEFAULT_OPACITY stays the views' base. */
 const START_OPACITY: LayerOpacity = { ...DEFAULT_OPACITY, hillshade: 0.35, satellite: 1 }
 
 /** The wind layer's knobs (the boat app's, minus the sea). Persisted. */
