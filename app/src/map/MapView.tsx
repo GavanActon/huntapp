@@ -242,7 +242,7 @@ export default function MapView() {
       // set before the first frame asks for tiles, then as the view moves
       const underlays = () => {
         const s = useAppStore.getState()
-        syncUnderlays(m, s.layers, s.opacity, fineDetail(s), s.exploreMode)
+        syncUnderlays(m, s.layers, s.opacity, fineDetail(s))
       }
       m.on('style.load', underlays)
       m.on('move', underlays)
@@ -259,10 +259,7 @@ export default function MapView() {
       useExplore.subscribe(sync)
       // Explore on: the grid shows; off: it goes, and the fence follows the signal
       useAppStore.subscribe((s, prev) => {
-        if (s.exploreMode !== prev.exploreMode) {
-          for (const id of EXPLORE_LAYERS) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', s.exploreMode ? 'visible' : 'none')
-          underlays()
-        }
+        if (s.exploreMode !== prev.exploreMode) for (const id of EXPLORE_LAYERS) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', s.exploreMode ? 'visible' : 'none')
         if (s.online !== prev.online) {
           m.setMaxBounds(s.online ? null : MAX_BOUNDS)
           m.setMinZoom(s.online ? 4 : 7)
@@ -372,7 +369,7 @@ export default function MapView() {
     // the sheet's switches: visibility by metadata.group, opacity by key
     const unsubLayers = useAppStore.subscribe((s, prev) => {
       if (!map || (s.layers === prev.layers && s.opacity === prev.opacity && s.saturation === prev.saturation && fineDetail(s) === fineDetail(prev))) return
-      applyLayerState(map, s.layers, s.opacity, s.saturation, fineDetail(s), s.exploreMode)
+      applyLayerState(map, s.layers, s.opacity, s.saturation, fineDetail(s))
     })
     const unsubPins = useAppStore.subscribe((s, prev) => {
       if (markShown(s, 'pins') === markShown(prev, 'pins') && markShown(s, 'places') === markShown(prev, 'places')) return
@@ -411,7 +408,7 @@ export default function MapView() {
 /** The saturation a raster is shot at, before the slider: the imagery and the old sheets are toned down. */
 const BASE_SATURATION: Partial<Record<keyof LayerOpacity, number>> = { satellite: -0.3, historical: -0.2 }
 
-export function applyLayerState(map: maplibregl.Map, layers: LayerVisibility, opacity: LayerOpacity, saturation: Partial<Record<keyof LayerOpacity, number>> = {}, hd = true, explore = false) {
+export function applyLayerState(map: maplibregl.Map, layers: LayerVisibility, opacity: LayerOpacity, saturation: Partial<Record<keyof LayerOpacity, number>> = {}, hd = true) {
   if (!map.isStyleLoaded() && !map.getStyle()) return
   ;({ layers, opacity } = standIn(layers, opacity)) // no imagery here: the Topo look stands in for it
   for (const l of map.getStyle().layers) {
@@ -435,7 +432,7 @@ export function applyLayerState(map: maplibregl.Map, layers: LayerVisibility, op
   // a switch gone on: its source gets its file now
   flushDeferredGeo(map, layers)
   // the Imagery and Hillshade switches just put the live layers back on: off again where the baked cover them
-  syncUnderlays(map, layers, opacity, hd, explore)
+  syncUnderlays(map, layers, opacity, hd)
   // the contour ink follows the base the view puts under it: the 1 m LiDAR
   // lines and the region's 10 m ones alike (only the LiDAR ones followed, so
   // zoomed out the Bow kept the Topo view's umber, near black on the bush:
