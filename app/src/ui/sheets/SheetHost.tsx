@@ -7,6 +7,7 @@ const ScoringSheet = lazy(() => import('./ScoringSheet'))
 const PinsSheet = lazy(() => import('./PinsSheet'))
 const HuntLogSheet = lazy(() => import('./HuntLogSheet'))
 const SettingsSheet = lazy(() => import('./SettingsSheet'))
+const ScentTuneSheet = lazy(() => import('./ScentTuneSheet'))
 const GuideSheet = lazy(() => import('./GuideSheet'))
 const ButtonsSheet = lazy(() => import('./ButtonsSheet'))
 const ViewsSheet = lazy(() => import('./ViewsSheet'))
@@ -24,6 +25,7 @@ const TITLES: Record<SheetKind, string> = {
   pins: 'Pins',
   huntlog: 'Hunt log',
   settings: 'Settings',
+  scentTune: 'Scent tuning',
   guide: 'How we hunt here',
   buttons: '',
   views: '',
@@ -47,6 +49,8 @@ function panel(s: Sheet): ReactNode {
       return <HuntLogSheet />
     case 'settings':
       return <SettingsSheet />
+    case 'scentTune':
+      return <ScentTuneSheet />
     case 'guide':
       return <GuideSheet />
     case 'buttons':

@@ -10,6 +10,7 @@ export type Sheet =
   | { kind: 'pins' }
   | { kind: 'huntlog' }
   | { kind: 'settings' }
+  | { kind: 'scentTune' }
   | { kind: 'guide' }
   | { kind: 'buttons' }
   | { kind: 'views' }
@@ -31,6 +32,8 @@ export const SHEET_HALF_PCT: Record<SheetKind, number> = {
   pins: 46,
   huntlog: 44,
   settings: 72,
+  // the scent model's knobs: tall, the cone still in view above
+  scentTune: 80,
   guide: 72,
   buttons: 66,
   views: 66,

@@ -518,6 +518,16 @@ nothing that matters: at that cell the mechanical part stays under
       longer: faster at mid-canopy, but it mixes down and deposits
       sooner. 30–180 ms a plume on a desktop. None of it is checked
       against a puff watched in the field.
+  - **Scent tuning** (2026-10-09, Settings → Scent tuning; `scentTune.ts`,
+    `ScentTuneSheet.tsx`): every constant above on a slider with its
+    modelled value marked, 24 knobs in five groups (release, spread,
+    mixing upward, vegetation, terrain and edges), kept on the phone and
+    read once per plume, so a change redraws the cone at once. The
+    spread's knobs (near-calm, swirl, under trees, how far a fresh puff
+    tightens it) are the ground model's, read per context. For tuning in
+    the field against what the moose do: Gavan's father closes to 30 ft
+    downwind of bulls in tight cover in all winds, which the near-calm
+    blob contradicts.
   - **Tree stand**: release at 4 or 6 m instead of 1.5 m, through the same
     reflected Gaussian; with the column, at the mid-canopy wind. The grid is scaled to the same sit on the ground,
     so a stand reads as thinner near the tree, touching down farther out.

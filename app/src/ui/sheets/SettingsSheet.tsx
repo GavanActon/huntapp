@@ -478,6 +478,13 @@ export default function SettingsSheet(): JSX.Element {
       <div className="st-sec">Something wrong?</div>
       <DevlogRows />
       <SendSettingsRow online={online} />
+      <button className="st-row" onClick={() => useAppStore.getState().openSheet({ kind: 'scentTune' })}>
+        <span>
+          Scent tuning
+          <small>dev: the cone's knobs on sliders, kept on this phone</small>
+        </span>
+        <span className="dim">›</span>
+      </button>
       <details className="st-credits">
         <summary className="st-row">
           <span>Map credits</span>

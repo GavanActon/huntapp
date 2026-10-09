@@ -14,6 +14,7 @@ import { onWeatherGrid, windGridCovers, windGridInfo, windSampler } from '../win
 import { angleDiff, checkWeight, metresBetween, SEEN_KMH, seenWeight, STRENGTH_KMH, useWindChecks, type Strength, type WindCheck } from './windChecks'
 import { biasFor, biasMatters, biasWords, learnBiases, type Bias, type Lesson } from './bias'
 import { fitAmbient, fitHoldsUntil, fitMatters, fitWeightAt, fitWords, sessionAt, sessionsOf, sitScore as scoreSit, type AmbientFit, type MapProbeFn, type ProbeFn, type SitScore } from './ambientFit'
+import { tuneValues, useScentTune, type TuneValues } from './scentTune'
 import { leavesDown, leavesNote } from './leaves'
 
 /**
@@ -494,6 +495,8 @@ interface Ctx {
   ambient: Applied | null
   /** a probe while a momentum direction is still on its way: the lids for every candidate alike */
   lidsOnly?: boolean
+  /** the spread's knobs (scentTune.ts): near-calm, swirl, trees, and how far a fresh puff tightens it */
+  tune: TuneValues
 }
 
 interface Applied {
@@ -563,6 +566,7 @@ function makeCtx(ms: number, withAmbient = true): Ctx {
     biases: learnBiases(useWindChecks.getState().checks, ms),
     leaves: leavesDown(ms),
     ambient: withAmbient ? ambientFor(ms) : null,
+    tune: tuneValues(),
   }
 }
 
@@ -1351,7 +1355,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   const Ug = sp / 3.6
 
   // ---- spread ----
-  let sigma = 12 + tumble + 70 * Math.exp(-Ug / 0.6) + 20 * s * Math.exp(-Ug / 1.0) + 15 * lay.convective + (inTrees ? 8 : 0) + (swirl ? 40 : 0) + (slotSwirl ? 25 : 0)
+  let sigma = 12 + tumble + ctx.tune.calmSpread * Math.exp(-Ug / 0.6) + 20 * s * Math.exp(-Ug / 1.0) + 15 * lay.convective + (inTrees ? ctx.tune.treesSpread : 0) + (swirl ? ctx.tune.swirlSpread : 0) + (slotSwirl ? 25 : 0)
   const thermal = kat + ana + brz
   const fracMech = mechG / (mechG + thermal + 1e-6)
   // gusty air swings more: a gust factor of 2.5 means the along-wind
@@ -1359,7 +1363,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   sigma += 12 * clamp(ctx.gf - 1.5, 0, 1) * fracMech
   if (lay.ensDirSd != null) sigma = Math.hypot(sigma, fracMech * lay.ensDirSd * 0.7)
   // nearby checks that agree tighten the spread; a swing, or checks that disagree, hold it open
-  if (wsum > 0.3 && !swingFloor && checkSpread < 25) sigma *= 0.75
+  if (wsum > 0.3 && !swingFloor && checkSpread < 25) sigma *= ctx.tune.checkTighten
   sigma = clamp(Math.max(sigma, swingFloor, checkFloor), 8, 110)
 
   const parts: Part[] = []
@@ -1496,6 +1500,7 @@ listeners.add(bump)
 onProfile(bump)
 onWeatherGrid(bump)
 useWindChecks.subscribe(bump)
+useScentTune.subscribe(bump)
 // the leaves knob moves the head-height wind under every hardwood: to all
 // that reads the ground wind (the cones, the heat map, the flow, the cards)
 // it is as good as a new grid
