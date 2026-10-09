@@ -43,7 +43,7 @@ interface Job {
   url: string
 }
 
-type Range = { z: number; x0: number; x1: number; y0: number; y1: number }
+export type Range = { z: number; x0: number; x1: number; y0: number; y1: number }
 
 const RAD = Math.PI / 180
 function tileX(lon: number, z: number): number {
@@ -55,13 +55,13 @@ function tileY(lat: number, z: number): number {
 }
 
 /** The tiles at z under a box, clamped to the world. */
-function rangeOf(z: number, west: number, south: number, east: number, north: number): Range {
+export function rangeOf(z: number, west: number, south: number, east: number, north: number): Range {
   const n = 2 ** z
   const clamp = (v: number) => Math.min(n - 1, Math.max(0, v))
   return { z, x0: clamp(tileX(west, z)), x1: clamp(tileX(east, z)), y0: clamp(tileY(north, z)), y1: clamp(tileY(south, z)) }
 }
 
-function* tilesIn(r: Range, except?: Range): Generator<[number, number, number]> {
+export function* tilesIn(r: Range, except?: Range): Generator<[number, number, number]> {
   for (let y = r.y0; y <= r.y1; y++)
     for (let x = r.x0; x <= r.x1; x++) {
       if (except && except.z === r.z && x >= except.x0 && x <= except.x1 && y >= except.y0 && y <= except.y1) continue

@@ -5,6 +5,7 @@ import { flushTrackSave } from '../tracking/trackStore'
 import { carryPlaced } from '../weather/micro/scent'
 import { fetchAreaWeather } from '../weather/refresh'
 import { deleteStoredFile, downloadToStore, listStored, requestPersistence } from './fileStore'
+import { canKeepSharp, removeSharp, saveSharp, sharpBytes, sharpOf, sharpSaved } from './sharpImagery'
 import { bundleOf, bundleOnServer, refreshPending, serverManifest, useMapUpdates } from './updates'
 
 /**
@@ -69,7 +70,11 @@ function afterChange(areaId: string) {
   window.location.reload()
 }
 
-/** Download the area's files not on the phone, or with `replace` these files whether or not they are. */
+/** The download's last step's name, an area's sharp imagery fetched across it (sharpImagery.ts). */
+export const SHARP_STEP = 'Sharp imagery'
+
+/** Download the area's files not on the phone, or with `replace` these files whether or not they are;
+ *  then its sharp imagery across it, if it has some not fetched yet. */
 export async function downloadFiles(files: string[], replace = false, areaId: string = ACTIVE_AREA.id): Promise<void> {
   const set = useDownloads.setState
   if (useDownloads.getState().active) return
@@ -83,8 +88,10 @@ export async function downloadFiles(files: string[], replace = false, areaId: st
   await requestPersistence()
   const storedNames = new Set(listStored().map((s) => s.name))
   const todo = replace ? files : files.filter((f) => !storedNames.has(f))
-  if (!todo.length) return
-  set({ active: true, file: todo[0], fileIdx: 1, fileCount: todo.length, loaded: 0, total: 0 })
+  const sharp = !!sharpOf(areaId) && !sharpSaved(areaId) && canKeepSharp()
+  if (!todo.length && !sharp) return
+  const steps = todo.length + (sharp ? 1 : 0)
+  set({ active: true, file: todo[0] ?? SHARP_STEP, fileIdx: 1, fileCount: steps, loaded: 0, total: 0 })
   const manifest = await serverManifest(areaId)
   const missing: string[] = []
   try {
@@ -106,10 +113,18 @@ export async function downloadFiles(files: string[], replace = false, areaId: st
       await downloadToStore(
         url,
         file,
-        (loaded, total) => set({ active: true, file, loaded, total, fileIdx: i + 1, fileCount: todo.length }),
+        (loaded, total) => set({ active: true, file, loaded, total, fileIdx: i + 1, fileCount: steps }),
         undefined,
         manifest?.files[file]?.hash,
       )
+      set({ storedAt: Date.now() })
+    }
+    // the sharp imagery, the tiles a pan round the area at each zoom would bring, into the worker's
+    // cache (the bar in bytes, the whole guessed from the tiles so far); before the reload below
+    if (sharp) {
+      set({ file: SHARP_STEP, fileIdx: steps, loaded: 0, total: sharpBytes(areaId) })
+      const got = await saveSharp(areaId, (done, n, bytes) => set({ loaded: bytes, total: Math.round((bytes / Math.max(1, done)) * n) }))
+      if (got && !sharpSaved(areaId)) set({ error: `${got.total - got.ok} of ${got.total} sharp imagery tiles did not come. Download again for the rest.` })
       set({ storedAt: Date.now() })
     }
     set({ active: false, skipped: missing })
@@ -130,6 +145,7 @@ export async function downloadFiles(files: string[], replace = false, areaId: st
 /** Take these files of the area off the phone; the area the app is in goes back to the live services on the reload. */
 export async function removeFiles(files: string[], areaId: string = ACTIVE_AREA.id): Promise<void> {
   for (const f of files) await deleteStoredFile(f)
+  await removeSharp(areaId)
   useDownloads.setState({ storedAt: Date.now(), error: null, skipped: [], areaId })
   afterChange(areaId)
 }
@@ -158,5 +174,7 @@ export function mapsStatus(areaId: string = ACTIVE_AREA.id): { text: string; act
   if (have.length > 0 && pending.length > 0) return offer(`${pending.length} new · Download`, pending.map((p) => p.name), true)
   if (have.length === 0) return offer('Download', wanted, false)
   if (have.length < wanted.length) return offer(`${wanted.length - have.length} not saved · Download`, wanted, false)
+  // the files all here, the sharp imagery not fetched across the area yet (a phone that saved before it had any)
+  if (!sharpSaved(areaId) && canKeepSharp()) return offer(`${SHARP_STEP} not saved · Download`, [], false)
   return { text: 'All saved', action: 'none', files: [], replace: false, disabled: false }
 }

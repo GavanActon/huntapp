@@ -3,7 +3,7 @@ import type { FeatureCollection } from 'geojson'
 import type { ExpressionSpecification, FilterSpecification, GeoJSONSource, LayerSpecification, Map as MlMap, SourceSpecification, StyleSpecification } from 'maplibre-gl'
 import { ACTIVE_AREA, AREA_LIST } from '../areas'
 import { ATTRIBUTION, CONTOUR_FINE_FROM, CORE, DATA_FILES, FINE_RELIEF, LIVE, REGION, REGION_MAXZOOM, RELIEF, ZONE } from '../config'
-import { LIVE_RASTER, LIVE_VECTOR } from '../sources'
+import { LIVE_RASTER, LIVE_VECTOR, SHARP_IMAGERY } from '../sources'
 import type { ContourInterval, LayerOpacity, LayerVisibility } from '../state/appStore'
 import { COVERAGE_KEY, COVERAGE_SOURCE, coverageLayers, coverageSource } from '../explore/coverage'
 
@@ -462,6 +462,27 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
     )
   }
   addRaster('satellite', { 'raster-saturation': -0.3 })
+  // sharper imagery than the baked, over it on the same switch and slider
+  // (sources.ts SHARP): streamed, kept by the worker, and with no signal a
+  // tile never fetched leaves the baked showing. Online or not, so the kept
+  // tiles draw in the field
+  if (SHARP_IMAGERY) {
+    const s = SHARP_IMAGERY
+    sources['satellite-sharp'] = { type: 'raster', tiles: s.tiles, tileSize: s.tileSize, attribution: s.attribution, ...(s.maxzoom != null ? { maxzoom: s.maxzoom } : {}) }
+    rasters.push(
+      tag(
+        {
+          id: 'satellite-sharp',
+          type: 'raster',
+          source: 'satellite-sharp',
+          layout: vis(o.layers.satellite),
+          paint: { 'raster-opacity': o.opacity.satellite, 'raster-resampling': 'linear', 'raster-saturation': -0.3 },
+        },
+        'satellite',
+        'satellite',
+      ),
+    )
+  }
   // Two switches over the elevation tiles. Elevation colours: the heights
   // coloured, lakes as water. Hillshade: the shade drawn from the heights,
   // which carries the hillsides at every zoom, and over it from z13.5 the

@@ -337,6 +337,29 @@ not. Any area whose province has no imagery service can take it
 (`bake.imagery: "ca.s2summer"`). No point cloud adapter yet (LidarBC has
 flown parts of the province; this spot has none, and no HRDEM).
 
+**Sharper imagery over it (2026-10-09).** At zoom 15-16 the 10 m composite
+is mush ("super unclear", Gavan). Surveyed over both spots:
+
+| Source | Detail | Here |
+|---|---|---|
+| Esri World Imagery | Vantor (Maxar) Vivid 0.5 m, 4 Sept 2018 | Single spruce, meadow edges, trails. Real to zoom 17; its 18 is a stand-in tile |
+| BC orthophotos | — | None (`AIMG_ORTHOPHOTO_*` empty over the region) |
+| BC air photos | 1974 1:30,000; 1979, 1987 | Film, not orthorectified |
+| Yukon SPOT 1.5 m | — | Stops at 60° N, north of both spots |
+| MapTiler self-hosted | 10 m in Canada | No better |
+| Bought archive (LandInfo list, Jan 2026) | Pléiades 50 cm $25/km², min 25; WorldView 50 cm $28/km²; SPOT 6/7 1.5 m $4.38/km², min 100 | Not checked for a clear scene |
+
+Gavan chose "stream and cache Esri, what we have as the fallback".
+The area file's `live.sharp: "esri"` (sources.ts `SHARP`) draws Esri over
+the baked composite on the Imagery switch (`satellite-sharp`, maxzoom 17),
+online or not. The app's worker keeps every tile in its own
+`imagery-tiles` cache. Save maps then fetches the area's box to zoom 16
+and its core to 17 from Esri, phone to Esri with nothing through our
+servers (`offline/sharpImagery.ts`; about 10,300 tiles, 140 MB). Where a
+tile never came, the Sentinel-2 shows through. Esri's terms want the
+credit (Settings › Map credits). Their offline export is meant for ArcGIS
+apps, so keeping tiles on the phone like this rests on Gavan's call.
+
 The area's core was widened 2.2 km west the next day (core west −136.85,
 region west −136.931) for a second spot, 59.971, −136.76054, so that the
 walk in from the highway is in full detail. To grow a core: edit the

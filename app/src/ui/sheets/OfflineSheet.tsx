@@ -3,6 +3,7 @@ import { ACTIVE_AREA, AREA_LIST, areaById, type AreaDef, type CoverageLayer } fr
 import { dataFiles, layerLabel } from '../../config'
 import { downloadFiles, fmtBytes, mapsStatus, removeFiles, useDownloads } from '../../offline/downloads'
 import { listStored, storageEstimate, type StoredFileInfo } from '../../offline/fileStore'
+import { sharpBytes, sharpOf, sharpSaved } from '../../offline/sharpImagery'
 import { bundleOf, bundleOnServer, bytesOf, checkAreaListing, useMapUpdates } from '../../offline/updates'
 import { useAppStore } from '../../state/appStore'
 import { IconCheck, IconDownload, IconTrash } from '../icons'
@@ -99,7 +100,7 @@ function AreaMaps({ area, stored }: { area: AreaDef; stored: Map<string, StoredF
             {stored.has(`micro-${area.id}.hab`) && stored.has(`habitat-${area.id}.hab`)
               ? 'The wind and spots grids came down for the view and stay on the phone. The map itself streams as you look at it; saved, it works with no signal'
               : 'The map streams as you look at it; saved, it works with no signal'}
-            {bytesOf(maps.files, area.id) ? ` (${fmtBytes(bytesOf(maps.files, area.id))}, best on wifi).` : '.'}
+            {bytesOf(maps.files, area.id) + sharpBytes(area.id) ? ` (${fmtBytes(bytesOf(maps.files, area.id) + sharpBytes(area.id))}, best on wifi).` : '.'}
           </span>
         </div>
       )}
@@ -141,6 +142,13 @@ function AreaMaps({ area, stored }: { area: AreaDef; stored: Map<string, StoredF
             </div>
           )
         })}
+      {/* the sharp imagery fetched across the area by the phone (sharpImagery.ts): a size until it is */}
+      {open && sharpOf(area.id) && (
+        <div className={`st-file${sharpSaved(area.id) ? '' : ' missing'}`}>
+          <span>Sharp imagery</span>
+          {sharpSaved(area.id) ? <IconCheck size={16} /> : <span className="numeral">{fmtBytes(sharpBytes(area.id))}</span>}
+        </div>
+      )}
 
       <div className="st-files-foot">
         <button className="st-files-count" aria-expanded={open} onClick={() => setOpen((v) => !v)}>

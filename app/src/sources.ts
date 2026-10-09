@@ -84,6 +84,28 @@ const SATELLITE: Record<'lio' | 'qc', LiveRaster> = {
   },
 }
 
+/**
+ * Imagery sharper than the area's baked, streamed over it and kept on the
+ * phone (LIVE.sharp; the worker's imagery-tiles cache, and Save maps fetches
+ * it across the area: offline/sharpImagery.ts). Where a tile never came the
+ * baked shows through.
+ *
+ * - esri: Esri World Imagery. At Blanchard River, where no province flies
+ *   and the baked is Sentinel-2's 10 m, it is Vantor's (Maxar's) Vivid
+ *   0.5 m of 4 September 2018: single spruce, the meadows' edges, the trails
+ *   (Gavan, 2026-10-09: "way way better"; "stream and cache"). Real to zoom
+ *   17 there (0.6 m a pixel at 60° N); its 18 is a near-empty stand-in.
+ */
+export const SHARP: Record<'esri', LiveRaster> = {
+  esri: {
+    tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+    tileSize: 256,
+    attribution: 'Imagery: Powered by Esri · Esri, Vantor (Maxar), Earthstar Geographics',
+    maxzoom: 17,
+  },
+}
+export const SHARP_IMAGERY: LiveRaster | undefined = LIVE.sharp ? SHARP[LIVE.sharp] : undefined
+
 export const LIVE_RASTER: Partial<Record<'base' | 'labels' | 'toposheet' | 'satellite' | 'topo' | 'hillshade' | 'historical' | 'forest' | 'radar', LiveRaster>> = {
   // Base map when no basemap PMTiles is on hand: NRCan's Canada Base Map
   // (transportation), a cached Web Mercator tile service.

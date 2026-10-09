@@ -131,8 +131,9 @@ export interface AreaDef {
   base: string
   /** lakes drawn from their survey sheets, lower case (map/depthLayer.ts) */
   surveyedLakes: string[]
-  /** which live services may stand in for a layer that is not baked */
-  live: { lio: boolean; satellite: 'lio' | 'qc' | null }
+  /** which live services may stand in for a layer that is not baked; `sharp`, imagery
+   *  sharper than the baked, streamed over it and kept on the phone (sources.ts SHARP) */
+  live: { lio: boolean; satellite: 'lio' | 'qc' | null; sharp?: 'esri' }
   attribution: { vectors: string; lakes: string; bush: string }
   presets: AreaPreset[]
   bundle: { description: string }

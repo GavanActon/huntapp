@@ -77,6 +77,7 @@ export function badAreaField(v: unknown): string | null {
     ['zone', isStr(zone?.label) && isStr(zone?.name)],
     ['relief', isNum(relief[0]) && isNum(relief[1])],
     ['live.lio', typeof obj(a.live)?.lio === 'boolean'],
+    ['live.sharp', obj(a.live)?.sharp == null || obj(a.live)?.sharp === 'esri'],
     ['attribution', isStr(attribution?.vectors) && isStr(attribution?.lakes) && isStr(attribution?.bush)],
     [
       'presets',

@@ -14,7 +14,7 @@
   "fineRelief": { "name": "ArcticDEM 2 m", "attribution": "ArcticDEM © Polar Geospatial Center, University of Minnesota" },
   "base": "areas/blanchard-river/",
   "surveyedLakes": [],
-  "live": { "lio": false, "satellite": null },
+  "live": { "lio": false, "satellite": null, "sharp": "esri" },
   "attribution": { "vectors": "© Province of British Columbia", "lakes": "Freshwater Atlas © Province of British Columbia", "bush": "" },
   "presets": [
     { "name": "Requested spot", "lon": -136.7204444, "lat": 59.9673583, "kind": "stand", "note": "Area requested 2026-10-07" },
