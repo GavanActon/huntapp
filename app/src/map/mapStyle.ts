@@ -189,15 +189,15 @@ export function syncUnderlays(map: MlMap, layers: LayerVisibility, opacity: Laye
   const relief = !hd && layers.relief && !!map.getLayer('relief-colour')
   // the wind's colours cover the ground whole, and the DEM's own shade is over them in the box
   const wind = windGround(layers) && !!map.getLayer('relief-shade')
-  // the base map is only drawn in and around the box, and the live imagery covers the province round it
-  const liveImagery = !!map.getLayer('satellite-live')
   const show: Record<string, boolean> = {
-    // under the whole imagery (the baked in the box, the province's round it) the Toporama
-    // sheet only ever showed while the photo was on its way: a topo map first on a slow
-    // phone's opening (Gavan, 2026-10-08, a dry run on Bow). Explore keeps it, for where
-    // the province's imagery stops
-    toposheet: !inside && !(imagery && liveImagery && !explore),
-    base: !((imagery && (inside || liveImagery)) || ((relief || wind) && inside)),
+    // with the whole imagery on, the photo is the map: the Toporama sheet only ever showed
+    // while the photo was on its way (a topo map first on a slow phone's opening, Gavan,
+    // 2026-10-08, a dry run on Bow), and where no province publishes imagery (Blanchard
+    // River) it was a topo map all round the photo, with the base map's edge tiles a black
+    // band between (Gavan: "a base topo map with then photo overtop"). Past the photo is
+    // the dark ground now. Explore keeps the sheet, for looking round the country
+    toposheet: !inside && !(imagery && !explore),
+    base: !(imagery || ((relief || wind) && inside)),
     'satellite-live': layers.satellite && !(imagery && inside),
     'hillshade-live': layers.hillshade && !(inside && ((imagery && liveShadeUnderImagery) || relief || wind)),
   }
