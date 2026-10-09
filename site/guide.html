@@ -112,17 +112,19 @@
   <figure class="loop">
     <div class="phone screen-map">
       <img src="media/screen.jpg" width="390" height="844" alt="The app's one screen: the forecast strip along the top, buttons down both sides, the view pill at the bottom left">
-      <div class="spots" aria-hidden="true">
-        <span class="spot" data-spot="1" style="left: 13.3%; top: 5.3%">1</span>
-        <span class="spot" data-spot="2" style="left: 30.3%; top: 5.3%">2</span>
-        <span class="spot" data-spot="3" style="left: 50%; top: 15.2%">3</span>
-        <span class="spot" data-spot="4" style="left: 91.5%; top: 5.3%">4</span>
-        <span class="spot" data-spot="5" style="left: 79.5%; top: 76.9%">5</span>
-        <span class="spot" data-spot="6" style="left: 79.5%; top: 95.1%">6</span>
-        <span class="spot" data-spot="7" style="left: 20.5%; top: 76.9%">7</span>
-        <span class="spot" data-spot="8" style="left: 32.8%; top: 95.6%">8</span>
+      <div class="spots">
+        <button class="spot" type="button" data-spot="1" style="left: 13.3%; top: 5.3%">1</button>
+        <button class="spot" type="button" data-spot="2" style="left: 30.3%; top: 5.3%">2</button>
+        <button class="spot" type="button" data-spot="3" style="left: 50%; top: 15.2%">3</button>
+        <button class="spot" type="button" data-spot="4" style="left: 91.5%; top: 5.3%">4</button>
+        <button class="spot" type="button" data-spot="5" style="left: 79.5%; top: 76.9%">5</button>
+        <button class="spot" type="button" data-spot="6" style="left: 79.5%; top: 95.1%">6</button>
+        <button class="spot" type="button" data-spot="7" style="left: 20.5%; top: 76.9%">7</button>
+        <button class="spot" type="button" data-spot="8" style="left: 32.8%; top: 95.6%">8</button>
+        <div class="spot-tip" id="spot-tip" aria-live="polite" hidden><b></b><span></span></div>
       </div>
     </div>
+    <figcaption class="spot-hint">Tap a number to see what it does.</figcaption>
   </figure>
 </section>
 
@@ -425,21 +427,87 @@
 <script src="/visit.js"></script>
 <script src="site.js"></script>
 <script>
-// the screen map: a legend row and its number light up together
+// the screen map: a legend row and its number light up together, and a tap on
+// a number (or its row) opens its description on the phone, beside the number
 ;(() => {
   const rows = document.querySelectorAll('.legend [data-spot]')
   const spots = document.querySelectorAll('.spots [data-spot]')
+  const tip = document.getElementById('spot-tip')
+  if (!tip) return
+  const row = (n) => [...rows].find((r) => r.dataset.spot === n)
+  let open = null
   const light = (n) => {
     rows.forEach((r) => r.classList.toggle('on', r.dataset.spot === n))
     spots.forEach((s) => s.classList.toggle('on', s.dataset.spot === n))
   }
+  // under a number in the top half, over one in the bottom half, kept on the
+  // screen, and slid off any other number so the next one is a tap away
+  const place = () => {
+    const s = [...spots].find((x) => x.dataset.spot === open)
+    if (!s) return
+    const box = tip.parentElement
+    const W = box.clientWidth
+    const H = box.clientHeight
+    const tw = tip.offsetWidth
+    const th = tip.offsetHeight
+    const x = s.offsetLeft // the spot's centre: it is drawn at translate(-50%, -50%)
+    const y = s.offsetTop
+    const pad = 10
+    const gap = 24
+    const R = 12 // a number's radius; it may graze the edge, never the words
+    const left = Math.min(Math.max(x - tw / 2, pad), W - pad - tw)
+    const below = y < H / 2
+    const others = [...spots].filter((o) => o !== s).map((o) => [o.offsetLeft, o.offsetTop])
+    const covers = (top) => others.some(([ox, oy]) => ox + R > left + 4 && ox - R < left + tw - 4 && oy + R > top + 4 && oy - R < top + th - 4)
+    let top = below ? y + gap : y - gap - th
+    while (covers(top) && top > pad && top + th < H - pad) top += below ? 2 : -2
+    tip.style.left = `${left}px`
+    tip.style.top = `${top}px`
+    tip.style.setProperty('--ax', `${Math.min(Math.max(x - left, 16), tw - 16)}px`)
+    tip.classList.toggle('below', below)
+  }
+  const show = (n) => {
+    const r = row(n)
+    open = n
+    tip.querySelector('b').textContent = r.querySelector('b').textContent
+    tip.querySelector('b').dataset.n = n
+    tip.querySelector('span').textContent = r.querySelector('span').textContent
+    tip.hidden = false
+    spots.forEach((s) => s.setAttribute('aria-expanded', String(s.dataset.spot === n)))
+    place()
+    light(n)
+  }
+  const hide = () => {
+    open = null
+    tip.hidden = true
+    spots.forEach((s) => s.setAttribute('aria-expanded', 'false'))
+    light(null)
+  }
+  spots.forEach((s) => {
+    const r = row(s.dataset.spot)
+    s.setAttribute('aria-label', `${s.dataset.spot}: ${r.querySelector('b').textContent}`)
+    s.setAttribute('aria-controls', 'spot-tip')
+    s.setAttribute('aria-expanded', 'false')
+    s.addEventListener('click', () => (open === s.dataset.spot ? hide() : show(s.dataset.spot)))
+  })
   rows.forEach((r) => {
     r.tabIndex = 0
     r.addEventListener('pointerenter', () => light(r.dataset.spot))
     r.addEventListener('focus', () => light(r.dataset.spot))
-    r.addEventListener('click', () => light(r.dataset.spot))
+    r.addEventListener('click', () => show(r.dataset.spot))
   })
-  document.querySelector('.legend')?.addEventListener('pointerleave', () => light(null))
+  document.querySelector('.legend')?.addEventListener('pointerleave', () => light(open))
+  // a tap anywhere else, or on the description itself, puts it away
+  document.addEventListener('click', (e) => {
+    if (open && !e.target.closest('.spots [data-spot], .legend [data-spot]')) hide()
+  })
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || !open) return
+    const s = [...spots].find((x) => x.dataset.spot === open)
+    hide()
+    if (document.activeElement?.closest('.spots')) s?.focus()
+  })
+  addEventListener('resize', place)
 })()
 </script>
 </body>
