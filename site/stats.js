@@ -73,9 +73,11 @@ export function authorized(request, env, url) {
 }
 
 /** What every query shares: the window, the time zone the days are cut in,
- *  and the phones left out (yours, by the 8-hex id Settings shows). */
+ *  and the phones left out (yours, by the 8-hex id Settings shows). days=0
+ *  is today: from midnight in the dashboard's time zone, hour by hour. */
 export function params(url) {
-  const days = Math.min(400, Math.max(1, Number(url.searchParams.get('days')) || 30))
+  const today = url.searchParams.get('days') === '0'
+  const days = today ? 0 : Math.min(400, Math.max(1, Number(url.searchParams.get('days')) || 30))
   // minutes east of UTC, as the dashboard's browser has it (Toronto in summer: -240)
   const tzMin = Math.max(-840, Math.min(840, Math.round(Number(url.searchParams.get('tz')) || 0)))
   const tz = `${tzMin >= 0 ? '+' : ''}${tzMin} minutes`
@@ -84,7 +86,11 @@ export function params(url) {
     .map((s) => s.trim().toLowerCase().slice(0, 8))
     .filter((s) => /^[a-f0-9]{8}$/.test(s))
   const now = Date.now()
-  return { days, tz, since: now - days * DAY, now, x: JSON.stringify(exclude) }
+  const local = now + tzMin * 60_000
+  const since = today ? local - (local % DAY) - tzMin * 60_000 : now - days * DAY
+  // the per-day charts' column: the date, or today the hour (both in the dashboard's zone, ?3)
+  const bucket = today ? `strftime('%H', ts / 1000, 'unixepoch', ?3)` : `date(ts / 1000, 'unixepoch', ?3)`
+  return { days, tz, since, now, x: JSON.stringify(exclude), bucket }
 }
 
 // the dashboard's breakdowns: each event by the prop that says which
@@ -119,7 +125,7 @@ const KEY_PROP = {
 export async function statsQuery(request, env) {
   const url = new URL(request.url)
   if (!authorized(request, env, url)) return json({ error: 'key' }, 401)
-  const { days, tz, since, now, x } = params(url)
+  const { days, tz, since, now, x, bucket } = params(url)
   const NOT_X = `substr(install, 1, 8) NOT IN (SELECT value FROM json_each(?2))`
   const W = `ts >= ?1 AND ${NOT_X}`
   const keyCase = `CASE name ${Object.entries(KEY_PROP)
@@ -133,7 +139,7 @@ export async function statsQuery(request, env) {
               COUNT(DISTINCT CASE WHEN ts >= ?5 THEN install END) AS mau, COUNT(DISTINCT CASE WHEN ts >= ?1 THEN install END) AS users,
               COUNT(DISTINCT CASE WHEN ts >= ?1 THEN session END) AS sessions, SUM(ts >= ?1) AS events
        FROM events WHERE ts >= min(?1, ?5) AND ${NOT_X}`, now - DAY, now - 7 * DAY, now - 30 * DAY),
-    q(`SELECT date(ts / 1000, 'unixepoch', ?3) AS day, COUNT(DISTINCT install) AS users, COUNT(DISTINCT session) AS sessions, COUNT(*) AS events,
+    q(`SELECT ${bucket} AS day, COUNT(DISTINCT install) AS users, COUNT(DISTINCT session) AS sessions, COUNT(*) AS events,
               SUM(name = 'first_open' AND IFNULL(json_extract(props, '$.known'), 0) = 0) AS new_users,
               ROUND(SUM(CASE WHEN name = 'hide' THEN json_extract(props, '$.fg_s') ELSE 0 END) / 60.0, 1) AS fg_min
        FROM events WHERE ${W} GROUP BY day ORDER BY day`, tz),
@@ -219,7 +225,7 @@ export async function eventsExport(request, env) {
   const cell = (v) => (v == null ? '' : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v))
   const csv = [cols.join(','), ...results.map((r) => cols.map((c) => cell(r[c])).join(','))].join('\n') + '\n'
   return new Response(csv, {
-    headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="groundwind-events-${days}d.csv"`, 'cache-control': 'no-store' },
+    headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="groundwind-events-${days === 0 ? 'today' : `${days}d`}.csv"`, 'cache-control': 'no-store' },
   })
 }
 

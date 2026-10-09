@@ -131,7 +131,8 @@ it to the tables here, and to `KEY_PROP` in `site/stats.js` if it has a
 of search (robots.txt). It asks once for the stats key and keeps it in
 that browser.
 
-- Window: 7, 30, 90 days or a year. Days are cut in the browser's time
+- Window: today (from midnight, the charts hour by hour), 7, 30, 90 days
+  or a year. Days are cut in the browser's time
   zone.
 - **Leave out phones**: your own (and testers'), by the 8-hex id that
   Settings → Usage stats shows. It applies to everything, the CSV too.

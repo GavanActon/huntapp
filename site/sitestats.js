@@ -64,7 +64,7 @@ export async function visitsIngest(request, env) {
 export async function siteStatsQuery(request, env) {
   const url = new URL(request.url)
   if (!authorized(request, env, url)) return json({ error: 'key' }, 401)
-  const { days, tz, since, now, x } = params(url)
+  const { days, tz, since, now, x, bucket } = params(url)
   const NOT_X = `substr(visitor, 1, 8) NOT IN (SELECT value FROM json_each(?2))`
   const W = `ts >= ?1 AND ${NOT_X}`
   const P = (k) => `json_extract(props, '$.${k}')`
@@ -78,7 +78,7 @@ export async function siteStatsQuery(request, env) {
               COUNT(DISTINCT CASE WHEN ${TO_APP} THEN visitor END) AS app_visitors,
               SUM(name = 'request' AND ${P('result')} = 'sent') AS requests, COUNT(*) AS events
        FROM site_events WHERE ${W}`),
-    q(`SELECT date(ts / 1000, 'unixepoch', ?3) AS day, COUNT(DISTINCT visitor) AS visitors, COUNT(DISTINCT session) AS sessions, COUNT(DISTINCT view) AS views,
+    q(`SELECT ${bucket} AS day, COUNT(DISTINCT visitor) AS visitors, COUNT(DISTINCT session) AS sessions, COUNT(DISTINCT view) AS views,
               COUNT(DISTINCT CASE WHEN name = 'view' AND ${P('new')} = 1 THEN visitor END) AS new_visitors,
               COUNT(DISTINCT CASE WHEN ${TO_APP} THEN visitor END) AS to_app,
               ROUND(SUM(CASE WHEN name = 'hide' THEN ${P('fg_s')} ELSE 0 END) / 60.0, 1) AS fg_min
@@ -196,7 +196,7 @@ export async function visitsExport(request, env) {
   const cell = (v) => (v == null ? '' : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v))
   const csv = [cols.join(','), ...results.map((r) => cols.map((c) => cell(r[c])).join(','))].join('\n') + '\n'
   return new Response(csv, {
-    headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="groundwind-site-${days}d.csv"`, 'cache-control': 'no-store' },
+    headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="groundwind-site-${days === 0 ? 'today' : `${days}d`}.csv"`, 'cache-control': 'no-store' },
   })
 }
 
