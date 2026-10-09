@@ -44,6 +44,11 @@ FADE_FLOOR = 0.3
 
 
 def model_grid():
+    # an area's own model (bush/local.py), at 10 m, before the general one on the habitat lattice
+    loc = cached(f"bushlocal-{REGION['id']}.npz")
+    if loc.exists():
+        z = np.load(loc, allow_pickle=True)
+        return {"nrd": z["nrd"], "spread": z["spread"], "transform": z["transform"], "crs": z["crs"], "notes": z["notes"]}
     p = cached(f"bushmodel-{REGION['id']}.npz")
     if not p.exists():
         print(f"no {p.name} yet: running the bush model on the habitat lattice ...")
@@ -72,7 +77,7 @@ def main(argv=None) -> None:
     t0 = time.time()
     z = model_grid()
     nrd = z["nrd"].astype(np.float32)
-    spread = (z["q80"] - z["q20"]).astype(np.float32)
+    spread = (z["spread"] if "spread" in z else z["q80"] - z["q20"]).astype(np.float32)
     tr = rasterio.Affine(*z["transform"])
     crs = str(z["crs"])
     notes = json.loads(str(z["notes"])) if "notes" in z else {}
@@ -104,14 +109,24 @@ def main(argv=None) -> None:
         rgba[..., 3] = np.clip(rgba[..., 3] * alpha, 0, 255).astype(np.uint8)
         return rgba if rgba[..., 3].any() else None
 
-    attribution = "Bush modelled from satellite imagery (Copernicus Sentinel-2, JAXA ALOS PALSAR) and NRCan's SCANFI, CanLaD and MRDEM; trained on Ontario FRI leaf-on LiDAR"
+    local = bool(notes.get("local"))
+    attribution = (
+        "Bush mapped from satellite imagery (Copernicus Sentinel-2, JAXA ALOS PALSAR) and NRCan's SCANFI, CanLaD and MRDEM by a model of the area's own, trained on labels tapped on the photo"
+        if local
+        else "Bush modelled from satellite imagery (Copernicus Sentinel-2, JAXA ALOS PALSAR) and NRCan's SCANFI, CanLaD and MRDEM; trained on Ontario FRI leaf-on LiDAR"
+    )
     path = OUT_DIR / f"understory-{REGION['id']}.pmtiles"
     stats = write_raster_pmtiles(path, f"understory-{REGION['id']}", attribution, MINZOOM, CORE["maxzoom"], tile, metadata={"bushModel": notes})
     size = path.stat().st_size
     print(f"wrote {path.name}: {size / 1e6:.1f} MB, " + ", ".join(f"z{k} {v[0]}" for k, v in sorted(stats.items())) + f" · {time.time() - t0:.0f} s")
+    sc = notes.get("scores", {})
     note_source(
         path.name,
-        source=f"Bush model (docs/BUSH-MODEL.md): the eye-level understory predicted at 30 m from Sentinel-2 seasons, PALSAR, SCANFI, CanLaD and the MRDEM, trained on {notes.get('plots', '?')} plots of Ontario leaf-on LiDAR; faded where the model is unsure. Modelled, not measured",
+        source=(
+            f"The area's own bush model (bush/local.py, docs/BUSH-MODEL.md): open, low shrub, tall bush or dense trees at 10 m from Sentinel-2 seasons, PALSAR, SCANFI, CanLaD and the MRDEM, learned from {notes.get('labels', '?')} labels tapped on the photo; held out a patch at a time, {round(100 * sc.get('accuracy', 0))}% right and thick-or-not {round(100 * sc.get('thickRight', 0))}%; faded where it is unsure. Modelled, not measured"
+            if local
+            else f"Bush model (docs/BUSH-MODEL.md): the eye-level understory predicted at 30 m from Sentinel-2 seasons, PALSAR, SCANFI, CanLaD and the MRDEM, trained on {notes.get('plots', '?')} plots of Ontario leaf-on LiDAR; faded where the model is unsure. Modelled, not measured"
+        ),
         licence="Copernicus Sentinel data; JAXA ALOS PALSAR mosaic (free, attribution); OGL-Canada; CanLaD CC BY 4.0",
         vintage=f"imagery 2023-2025, model trained {notes.get('trained', '?')}",
     )

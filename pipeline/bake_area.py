@@ -181,6 +181,15 @@ def plan(a: dict) -> list[Step]:
         Step("contours-wide", "3.14", [["build_contours_wide.py"]], needs=("dem",)),
         adapter_step("pointcloud", "pointcloud", a),
         Step("vegstructure", "3.14", [["build_vegstructure.py"]], skip=None if bake.get("pointcloud") else "no point cloud for this area", needs=("pointcloud",)),
+        # an area's own bush model, where labels were tapped for it on the photo (the app's ?label=bush):
+        # its 10 m map stands in for the general bush model in the habitat bake and the bush layer
+        Step(
+            "bush-local",
+            "3.14",
+            [["bush/local.py"]],
+            skip=None if (HERE / "bush" / "labels" / f"{a['id']}.json").exists() else "no bush labels for this area (pipeline/bush/labels; the app's ?label=bush)",
+            needs=("rasters",),
+        ),
         Step("habitat", "3.14", [["build_habitat.py"]], needs=("rasters", "vectors", "forest"), check=inputs("forest", "wetland", "watercourse")),
         # the area's habitat profile (treeline, ecoregion, what the stand map is good for) into its file
         Step("profile", "3.14", [["build_profile.py"]], needs=("habitat",)),

@@ -314,6 +314,61 @@ whole against a model trained on Ontario alone (what the north gets
 today), then in the spatial folds. Alaska and NEON after that, if BC's
 boreal and subalpine do not carry to the Yukon's.
 
+### Two more rounds for Blanchard River, and what they showed (2026-10-09)
+
+The live model called Blanchard open to light throughout: no cell thick,
+the dense spruce belts along the creeks no thicker than the parkland
+round them. On Esri's 0.5 m photo the difference between open ground,
+tall bush and the belts is plain (Gavan: "clearly open space vs tall
+bush").
+
+- **Atlin, 88 more plots (102 in all, map sheet 104K).** Held out whole,
+  Atlin scored r 0.70, but Blanchard did not move. The 2021 Atlin
+  programme flew the Taku valley: its plots sit at a median 56 m, coastal
+  lowland cottonwood and alder, not high country. Blanchard's spots are at
+  1,055 m, SCANFI calls them closure 0, and their snow season is far
+  brighter than any plot's: their nearest training cells were 2.3 standard
+  deviations away (0.6 between plots).
+- **High, open ground, 59 plots.** These came from the Peace–Liard tiles
+  at 850 m or more with SCANFI closure at most 25%
+  (`north.py sample --tiles --min-elev --max-closure`). Their LiDAR
+  measured open (NRD 0.21, 6 % thick). With them in, Blanchard's nearest
+  cells were 1.5 sd away, its level stayed open, and the shape still did
+  not follow the photo.
+- **Neither retrain went live.** The committed model follows the photo's
+  dark canopy best of the three (rho 0.38, against 0.16 and 0.24). Haines'
+  LiDAR is all leaf-off (December 2020, November 2018, October), so not
+  usable as labels.
+
+## An area's own model (`bush/local.py`)
+
+Where the general model has never seen the ground, labels tapped on the
+sharp photo teach it the area. The app's hidden bush-label tool
+(`?label=bush`) drops 20 m patches of four kinds: open, low shrub, tall
+bush and dense trees. Send uploads them for a code. They go into
+`pipeline/bush/labels/<id>.json`, and `local.py` learns the kinds from this
+document's features on a 10 m grid in the area's UTM zone, then maps the
+whole area. Each label stands for the cells in its patch, and position is
+left out.
+
+The kinds go onto the NRD scale by their probabilities: open 0.08, low
+shrub 0.28, tall bush 0.55, dense trees 0.65. The spread is how far those
+scatter under a cell (1.68 sd). `build_habitat` averages the 10 m map into
+its lattice in place of the general model, and `render.py` draws the bush
+layer from it at 10 m. The bake step `bush-local` runs it before the
+habitat whenever an area has labels. Esri's photo is only what the labels
+were tapped on: none of its pixels go into the model.
+
+**Blanchard River, 536 labels** (Gavan, 2026-10-09). The open labels in the
+box north of the West spot were made low shrub at his word. Scored a whole
+patch at a time (17 patches): 75 % of labels right (44 % by chance), thick
+or not 87 % (AUC 0.84), open against the rest AUC 0.94. Dense trees were
+103 of 109 right. Tall bush is the weak kind: chest-high willow and
+knee-high shrub look alike from space, and 45 of 72 were taken for low
+shrub. More tall-bush labels, and field notes, are what it needs. The
+spruce belts, their tall-bush edges, the low-shrub parkland and the open
+alpine all show at 10 m.
+
 ## Running it
 
 ```

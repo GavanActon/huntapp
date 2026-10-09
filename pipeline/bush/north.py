@@ -128,7 +128,7 @@ def plot_name(r: dict, fx: float, fy: float) -> str:
     return f"bc_{r['maptile']}_{int(fx * 1000):03d}_{int(fy * 1000):03d}"
 
 
-def sample(n: int, seed: int, candidates: int, per_tile: int, box=NORTH_BOX, append: bool = False, undated_ok: bool = False) -> None:
+def sample(n: int, seed: int, candidates: int, per_tile: int, box=NORTH_BOX, append: bool = False, undated_ok: bool = False, tiles_file: str | None = None, min_elev: float | None = None, max_closure: float | None = None) -> None:
     """`box` narrows the draw (Atlin's 2021 tiles: --box -134 58.5 -133.3 58.9,
     the spruce-willow-birch nearest Blanchard River); `append` adds the
     batch to plots-north.json instead of replacing it; `undated_ok` keeps
@@ -148,6 +148,10 @@ def sample(n: int, seed: int, candidates: int, per_tile: int, box=NORTH_BOX, app
         return "0601" <= start[4:] and end[4:] <= "0915"
 
     tiles = [t for t in tiles if leaf_on(t)]
+    # a list of tiles to draw from (look-alike ground found beforehand: high-open-tiles.json)
+    if tiles_file:
+        names = {r["filename"] for r in json.loads(Path(tiles_file).read_text(encoding="utf-8"))}
+        tiles = [t for t in tiles if t["filename"] in names]
     print(f"{len(tiles)} leaf-on tiles in the box")
     # the candidates come in clusters: PER_TILE squares in each of a few
     # hundred tiles, in map order, so the national rasters (read over HTTP,
@@ -182,6 +186,25 @@ def sample(n: int, seed: int, candidates: int, per_tile: int, box=NORTH_BOX, app
     # bands by latitude: 56-57 (the Peace), 57-58, 58-59 (Atlin, the Liard), 59+
     latband = np.digitize(lat, [57.0, 58.0, 59.0])
     keep = (since != 6) & (cover != 8) & (cover != 0)
+    # look-alike ground: each square's own height (MRDEM) and SCANFI closure, so a
+    # plot is as high and as open as the area it is drawn for (Blanchard River:
+    # 1,055 m and SCANFI closure 0, out past every plot the model had, 2026-10-09)
+    if min_elev is not None or max_closure is not None:
+        import rasterio
+        from rasterio.warp import transform as wtf
+
+        import stage
+
+        if min_elev is not None:
+            with rasterio.open(stage.sources()["mrdem"]) as ds:
+                xs, ys = wtf("EPSG:4326", ds.crs, lon.tolist(), lat.tolist())
+                elev = np.array([v[0] for v in ds.sample(zip(xs, ys))], float)
+                if ds.nodata is not None:
+                    elev[elev == ds.nodata] = np.nan
+            keep &= np.nan_to_num(elev, nan=-1) >= min_elev
+        if max_closure is not None:
+            keep &= np.nan_to_num(s["closure"], nan=0) <= max_closure
+        print(f"  {keep.sum()} look-alike candidates (>= {min_elev} m, closure <= {max_closure})")
     key = np.where(treed, np.where(since < 5, 10 + since, 20 + np.where(hard, 7, lead)), 30 + cover)
     print(f"  {keep.sum()} usable candidates")
     # the same quotas as Ontario's, with the open classes (shrub, herb, bryoid,
@@ -427,6 +450,9 @@ def main(argv=None) -> None:
     s.add_argument("--box", type=float, nargs=4, metavar=("W", "S", "E", "N"), default=list(NORTH_BOX))
     s.add_argument("--append", action="store_true")
     s.add_argument("--undated-ok", action="store_true")
+    s.add_argument("--tiles", help="a JSON list of index rows to draw from only (filename keys)")
+    s.add_argument("--min-elev", type=float, help="keep squares at least this high (MRDEM, m)")
+    s.add_argument("--max-closure", type=float, help="keep squares at most this open by SCANFI closure (%%)")
     f = sub.add_parser("fetch")
     f.add_argument("--max-gb", type=float, default=30.0)
     f.add_argument("--workers", type=int, default=3)
@@ -437,7 +463,7 @@ def main(argv=None) -> None:
     sub.add_parser("status")
     a = ap.parse_args(argv)
     if a.cmd == "sample":
-        sample(a.n, a.seed, a.candidates, a.per_tile, a.box, a.append, a.undated_ok)
+        sample(a.n, a.seed, a.candidates, a.per_tile, a.box, a.append, a.undated_ok, a.tiles, a.min_elev, a.max_closure)
     elif a.cmd == "fetch":
         fetch(a.max_gb, a.workers, a.limit, a.list)
     elif a.cmd == "measure":

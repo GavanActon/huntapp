@@ -306,6 +306,24 @@ def species_keys(summary: str | None) -> list[str]:
 LEAD_SB, LEAD_PJ, LEAD_SW, LEAD_BF, LEAD_CW, LEAD_LA, LEAD_PT, LEAD_BW = range(1, 9)
 
 
+def local_bush(path: Path) -> dict:
+    """An area's own bush model's 10 m map (bush/local.py) on this lattice, as
+    predict.modelled hands its own: the NRD averaged into each cell, and the
+    spread as a q20-q80 pair about it."""
+    from rasterio.warp import Resampling, reproject
+
+    z = np.load(path, allow_pickle=True)
+    src_tr = rasterio.Affine(*z["transform"][:6])
+    out = {}
+    for k in ("nrd", "spread"):
+        dst = np.full((ROWS, COLS), np.nan, np.float32)
+        reproject(z[k].astype(np.float32), dst, src_transform=src_tr, src_crs=str(z["crs"]), src_nodata=np.nan, dst_transform=TRANSFORM, dst_crs="EPSG:4326", dst_nodata=np.nan, resampling=Resampling.average)
+        out[k] = dst
+    half = np.nan_to_num(out["spread"]) / 2
+    notes = json.loads(str(z["notes"]))
+    return {"nrd": out["nrd"], "q20": np.clip(out["nrd"] - half, 0, 1), "q80": np.clip(out["nrd"] + half, 0, 1), "notes": {"bushModel": {k: v for k, v in notes.items() if k != "features"}}}
+
+
 def modelled_bush(est: np.ndarray, cover: np.ndarray, map_says: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray | None, np.ndarray | None, dict]:
     """The bush band from the bush-thickness model (pipeline/bush/predict.py)
     for an area with no point cloud: the understory NRD predicted from
@@ -328,11 +346,17 @@ def modelled_bush(est: np.ndarray, cover: np.ndarray, map_says: np.ndarray | Non
     import features as F
     import predict as P
 
-    if not P.available():
+    # an area's own model, from labels tapped on the sharp photo (bush/local.py), stands in for the general one
+    loc = cached(f"bushlocal-{REGION['id']}.npz")
+    if loc.exists():
+        print(f"  bush from the area's own model ({loc.name}: labels tapped on the photo, bush/local.py) ...")
+        out = local_bush(loc)
+    elif not P.available():
         print("  no bush model trained yet (pipeline/bush/train.py): bush from the forest-map estimate alone")
         return est, None, None, {"thickFrom": "the forest-map estimate: no bush model trained yet"}
-    print("  bush from the bush model (satellite imagery, radar, national rasters) ...")
-    out = P.modelled(F.Grid("EPSG:4326", TRANSFORM, COLS, ROWS))
+    else:
+        print("  bush from the bush model (satellite imagery, radar, national rasters) ...")
+        out = P.modelled(F.Grid("EPSG:4326", TRANSFORM, COLS, ROWS))
     # kept for the map layer (pipeline/bush/render.py), so it need not pull the imagery again
     np.savez_compressed(cached(f"bushmodel-{REGION['id']}.npz"), nrd=out["nrd"], q20=out["q20"], q80=out["q80"], transform=np.array(TRANSFORM)[:6], crs=np.array("EPSG:4326"), cover=cover.astype(np.uint8), notes=np.array(json.dumps(out["notes"]["bushModel"])))
     ok = np.isfinite(out["nrd"]) & ~np.isin(cover, (WATER, ROAD))
@@ -343,8 +367,9 @@ def modelled_bush(est: np.ndarray, cover: np.ndarray, map_says: np.ndarray | Non
     spread = np.where(ok, P.to_estimate(np.nan_to_num(out["q80"])) - P.to_estimate(np.nan_to_num(out["q20"])), 0).astype(np.float32)
     src = np.where(cover == WATER, 0, np.where(ok, 3, 2)).astype(np.uint8)
     print(f"  bush from the model on {100 * ok.sum() / max(1, (cover != WATER).sum()):.0f}% of the land: thick (0.7) on {100 * (thick[ok] >= 0.7).mean():.0f}% of it, the estimate said {100 * (est[ok] >= 0.7).mean():.0f}%")
+    model = "the area's own bush model (labels tapped on the photo, bush/local.py; the 10 m map averaged into each cell)" if loc.exists() else "the bush model's NRD (satellite imagery, radar, SCANFI, CanLaD, terrain; docs/BUSH-MODEL.md)"
     header = {
-        "thickFrom": "the bush model's NRD (satellite imagery, radar, SCANFI, CanLaD, terrain; docs/BUSH-MODEL.md) on the estimate's scale where thickSrc is 3; the forest-map estimate on water, roads, cells no leaf-on imagery saw, and ground the map names outright (open herb, lichen, rock, fen) (thickSrc 2)",
+        "thickFrom": f"{model} on the estimate's scale where thickSrc is 3; the forest-map estimate on water, roads, cells no leaf-on imagery saw, and ground the map names outright (open herb, lichen, rock, fen) (thickSrc 2)",
         "bushCalib": P.calib_header(thick),
         "bushModel": out["notes"]["bushModel"],
     }

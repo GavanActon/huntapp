@@ -819,9 +819,9 @@
   }
  ],
  "thick": {
-  "from": "the bush model's NRD (satellite imagery, radar, SCANFI, CanLaD, terrain; docs/BUSH-MODEL.md) on the estimate's scale where thickSrc is 3; the forest-map estimate on water, roads, cells no leaf-on imagery saw, and ground the map names outright (open herb, lichen, rock, fen) (thickSrc 2)",
+  "from": "the area's own bush model (labels tapped on the photo, bush/local.py; the 10 m map averaged into each cell) on the estimate's scale where thickSrc is 3; the forest-map estimate on water, roads, cells no leaf-on imagery saw, and ground the map names outright (open herb, lichen, rock, fen) (thickSrc 2)",
   "lidarCells": 0,
-  "thickShareOfLand": 0.081,
+  "thickShareOfLand": 0.14,
   "thickShareWhereLidar": null,
   "estimateToLidar": [
    {
@@ -860,22 +860,49 @@
     "cells": 70658
    }
   ],
-  "trained": "2026-10-08",
-  "plots": 435,
-  "areas": [
-   "area-lac-bailey",
-   "area-pickle-lake",
-   "area-sault-test"
-  ],
-  "cvR": 0.538,
-  "cvR90m": 0.591,
-  "cvAucThick": 0.788,
-  "s2Scenes": {
-   "leafon": 6,
-   "autumn": 1,
-   "spring": 0,
-   "snow": 4
+  "local": true,
+  "labels": 534,
+  "labelSource": "Gavan, tapped on Esri's 0.5 m photo in the app's bush-label tool (?label=bush), sent 2026-10-09 as code QANB4ZKQ6YX4: 536 labels",
+  "trained": "2026-10-09",
+  "scores": {
+   "labels": 534,
+   "accuracy": 0.775,
+   "chance": 0.434,
+   "thickAuc": 0.825,
+   "thickRight": 0.865,
+   "openAuc": 0.948,
+   "confusion": {
+    "open": {
+     "open": 109,
+     "low": 11,
+     "tall": 1,
+     "dense": 0
+    },
+    "low": {
+     "open": 17,
+     "low": 187,
+     "tall": 28,
+     "dense": 0
+    },
+    "tall": {
+     "open": 0,
+     "low": 46,
+     "tall": 16,
+     "dense": 10
+    },
+    "dense": {
+     "open": 0,
+     "low": 1,
+     "tall": 6,
+     "dense": 102
+    }
+   }
   },
-  "seconds": 328
+  "kinds": {
+   "open": 0.431,
+   "low": 0.461,
+   "tall": 0.06,
+   "dense": 0.048
+  }
  }
 }

@@ -255,6 +255,21 @@ def main(argv=None) -> None:
         sc2 = scores(d["y"][north], predict(m_on, idx_on, d["X"][north]), d["block90"][north])
         print(f"  Ontario's plots alone:     r {sc2['r']:.3f} (90 m {sc2['r90']:.3f})  RMSE {sc2['rmse']:.3f}  bias {sc2['bias']:+.3f}  AUC thick {sc2['auc_thick']:.3f} open {sc2['auc_open']:.3f}")
         report["north"] = {"in_folds": sc, "ontario_alone": sc2, "plots": len(set(d["src"][north]))}
+    # Atlin's (map sheet 104K, LidarBC's 2021 programme): the coast-to-interior
+    # spruce-willow-birch nearest Blanchard River, held out whole. 14 plots
+    # there measured thick (NRD 0.48) where the model called Blanchard open
+    # (0.15), outvoted by the Peace-Liard's open ground; 88 more were drawn
+    # 2026-10-09 (Gavan: "LiDAR training plots from similar high country").
+    # Its score held out says whether the rest carry there
+    atlin = plots & np.array([s.startswith("bc_104k") for s in d["src"]])
+    if atlin.any():
+        print(f"Atlin's plots ({len(set(d['src'][atlin]))} plots, {atlin.sum()} cells; NRD mean {d['y'][atlin].mean():.3f}, thick {(d['y'][atlin] >= THICK).mean():.2f}, open {(d['y'][atlin] <= OPEN).mean():.2f})")
+        m_x, idx_x = fit(d["X"][plots & ~atlin], d["y"][plots & ~atlin], names, cols, a.quick)
+        sc3 = scores(d["y"][atlin], predict(m_x, idx_x, d["X"][atlin]), d["block90"][atlin])
+        print(f"  held out whole:            r {sc3['r']:.3f} (90 m {sc3['r90']:.3f})  RMSE {sc3['rmse']:.3f}  bias {sc3['bias']:+.3f}  AUC thick {sc3['auc_thick']:.3f} open {sc3['auc_open']:.3f}")
+        sc4 = scores(d["y"][atlin], oof_all[atlin], d["block90"][atlin])
+        print(f"  in the spatial folds:      r {sc4['r']:.3f} (90 m {sc4['r90']:.3f})  RMSE {sc4['rmse']:.3f}  bias {sc4['bias']:+.3f}  AUC thick {sc4['auc_thick']:.3f} open {sc4['auc_open']:.3f}")
+        report["atlin"] = {"held_out": sc3, "in_folds": sc4, "plots": len(set(d["src"][atlin]))}
 
     print("the HD areas, held out whole (trained on the plots alone)")
     m_plots, idx = fit(d["X"][plots], d["y"][plots], names, cols, a.quick)

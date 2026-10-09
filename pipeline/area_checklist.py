@@ -143,7 +143,9 @@ def check_tier(ar: Area) -> None:
     else:
         ar.add("Data", "Terrain", "warn", "30 m national model (MRDEM) only: " + lidar.get("missing", "no 1 m LiDAR"))
     under = cov.get("understory", {})
-    if "file" in under and not b.get("pointcloud"):
+    if "file" in under and not b.get("pointcloud") and "own bush model" in str(under.get("source", "")):
+        ar.add("Data", "Bush and lanes", "warn", "bush from the area's own model (labels tapped on the photo, bush/local.py), no lanes: no point cloud here; field notes would check it")
+    elif "file" in under and not b.get("pointcloud"):
         ar.add("Data", "Bush and lanes", "warn", "bush from the satellite bush model (trained on Ontario and northern BC LiDAR plots), no lanes: no point cloud here")
     elif "file" in under:
         ar.add("Data", "Bush and lanes", "ok", "measured from the LiDAR point cloud")
