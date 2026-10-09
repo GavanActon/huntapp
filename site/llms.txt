@@ -30,6 +30,7 @@ Most hunters already carry onX Hunt or iHunter for the land and zones, and Windy
 - [Hunting thermals](https://groundwind.app/hunting-thermals): where your scent goes at dawn and dusk, and where to sit
 - [Calling moose with the wind](https://groundwind.app/moose-calling-wind): why the bull circles for your wind, and where the caller and the shooter go
 - [When moose move](https://groundwind.app/moose-weather): temperature, rain, wind and the rut, from the research
+- [Compared with other apps](https://groundwind.app/compare): what onX Hunt, HuntStand, HuntWise, iHunter and Windy each do with the wind, checked October 2026, and where Groundwind fits beside them
 
 ## Data
 

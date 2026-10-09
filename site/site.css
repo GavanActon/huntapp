@@ -877,3 +877,54 @@ footer .links a:hover { color: var(--ink); text-decoration: underline; }
   .strip img { height: 220px; }
   .page main > .beat.row { padding-bottom: 24px; }
 }
+
+/* ---- compare: the jobs down the side, the apps across, Groundwind first;
+   on a phone the jobs hold still and the apps scroll under them */
+.cmp-wrap { position: relative; overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; margin-block: 4px; -webkit-overflow-scrolling: touch; }
+.cmp { min-width: 600px; font-size: 0.9rem; }
+.cmp th, .cmp td { padding: 10px 8px; vertical-align: middle; }
+.cmp thead th { text-align: center; line-height: 1.25; padding-block: 12px; }
+.cmp thead th:first-child { text-align: left; }
+.cmp tbody th { white-space: normal; font-weight: 500; color: var(--ink); width: 34%; line-height: 1.3; }
+.cmp tbody th small { display: block; color: var(--faint); font-size: 0.8rem; font-weight: 400; margin-top: 2px; }
+.cmp td { text-align: center; }
+/* the first column stays put while the apps scroll */
+.cmp tr > :first-child { position: sticky; left: 0; z-index: 1; background: var(--bg); box-shadow: 1px 0 0 var(--line); }
+.cmp thead tr > :first-child { background: var(--raised); }
+.cmp .gw { background: color-mix(in srgb, var(--accent) 9%, var(--bg)); }
+.cmp thead .gw { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--raised)); }
+.cmp tbody tr.group th { font: 500 0.68rem/1.2 var(--f-mono); text-transform: uppercase; letter-spacing: 0.09em; color: var(--faint); padding-block: 16px 6px; }
+.cmp tbody tr.group td { padding: 0; }
+/* a mark per cell: a dot it does, a ring it does in part, a dash it doesn't */
+.m { display: inline-grid; place-items: center; width: 1.1rem; height: 1.1rem; vertical-align: middle; }
+.m::before { content: ''; display: block; }
+.m.y::before { width: 12px; height: 12px; border-radius: 50%; background: var(--good); }
+.gw .m.y::before { background: var(--accent); }
+.m.p::before { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--good); opacity: 0.85; }
+.gw .m.p::before { border-color: var(--accent); }
+.m.n::before { width: 10px; height: 2px; background: var(--faint); opacity: 0.6; }
+.m-note { display: block; font: 500 0.66rem/1.25 var(--f-mono); color: var(--faint); letter-spacing: 0.03em; margin-top: 4px; }
+.cmp-key { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.86rem; color: var(--faint); }
+.cmp-key span { display: inline-flex; align-items: center; gap: 6px; }
+.cmp-hint { font-size: 0.84rem; color: var(--faint); }
+@media (min-width: 700px) { .cmp-hint { display: none; } }
+/* one app: what to keep it for, what Groundwind adds */
+.app { display: grid; gap: 14px; padding-top: 22px; border-top: 1px solid var(--line); margin-top: 14px; scroll-margin-top: 12px; }
+.app h2 { margin-top: 0; }
+.app .sub { font: 500 0.74rem/1.4 var(--f-mono); text-transform: uppercase; letter-spacing: 0.07em; color: var(--faint); }
+.app .uses li { grid-template-columns: 8.6rem 1fr; }
+.app .uses li:first-child b { color: var(--dim); }
+.app .uses li:last-child b { color: var(--accent); }
+.app details { padding-top: 10px; }
+.app details p, .app details li { font-size: 0.95rem; }
+.app details ul { margin: 10px 0 0; padding-left: 1.2em; display: grid; gap: 8px; color: var(--dim); max-width: 38em; }
+.ahead { margin: 0; padding-left: 1.2em; display: grid; gap: 10px; }
+@media (max-width: 699px) {
+  .cmp { min-width: 540px; font-size: 0.86rem; }
+  .cmp th, .cmp td { padding: 9px 5px; }
+  .cmp tbody th { width: 8.6rem; min-width: 8.6rem; padding-left: 10px; }
+  .cmp tbody th small { font-size: 0.76rem; }
+  .cmp thead th { font-size: 0.62rem; }
+}
+.cmp thead a { text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+@media (max-width: 420px) { .app .uses li { grid-template-columns: 1fr; gap: 4px; } }
