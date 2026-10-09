@@ -454,19 +454,31 @@ nothing that matters: at that cell the mechanical part stays under
     layers it spans, their shares from the reflected Gaussian: below 2 m
     the head-height wind, thinned by the bush at nose height (the going
     grid's 10 m LiDAR understory, else the habitat's `thick`; nothing to
-    0.2, 0.4× at a wall); from 2 m to the stand top the canopy's own
-    profile, the bake's curve read back from the head-height fraction and
-    the stand height (so mid-canopy runs 2–3× the floor, never past the
-    10 m wind), or, where air drains or pools, the cold layer to its depth
-    (2–15 m, growing with the drainage accumulation: a few per cent of the
-    drop, Manins & Sawford); above that the local 10 m wind. Over open
-    ground the layer to 10 m runs the head wind's way (the shore and
-    tree-wall rules) at 0.85 of the 10 m speed. So scent released under a
+    0.2, 0.4× at a wall); from 2 m to the slow layer's top, the wind at
+    the puff's own mean height (its centre, or 0.8 σz once that is more):
+    in a stand the canopy's own profile, the bake's curve read back from
+    the head-height fraction and the stand height (never past the 10 m
+    wind); where air drains or pools the cold layer moving as one, to its
+    depth (2–15 m, growing with the drainage accumulation: a few per cent
+    of the drop, Manins & Sawford); over open ground a log-like ramp from
+    the head wind at 2 m to 0.85 of the 10 m wind at the top, along the
+    head wind's way (the shore and tree-wall rules). On a stable night the
+    slow layer is the settled air's depth, 5 m as it begins to settle to
+    30 m fully decoupled, whatever the cover: the first column put a bog's
+    cold pool at 2.6 m under a 4 km/h 10 m wind and the cone ran 221 m
+    where the flat one sat at 135 (Gavan, 2026-10-09, "feels like a lot";
+    the bog south of camp, 48.9197, −85.5877). Above the slow layer the
+    local 10 m wind. So scent released under a
     canopy mixes up to the top within tens of metres and goes on at the
     wind there; a ground sit at dusk rides the drainage while a stand
     above the cold layer does not; and at a tree line the puff keeps its
-    pace instead of stacking up, which retires the edge rule (kept for the
-    flat model). The sampler hands the plume the 10 m vector, the stand
+    pace instead of stacking up. At a windward edge the air that does not
+    get in at head height rides up over the canopy and the puff's centre
+    with it, toward the stand's displacement height (0.67 h) by the share
+    of the flow lost, settling again in faster air: the flat model's edge
+    rule threw that share away, here it goes over and comes back down as
+    the canopy's turbulence mixes it (Dupont & Brunet 2008). That retires
+    the edge rule (kept for the flat model). The sampler hands the plume the 10 m vector, the stand
     height, the head-height fraction, the drainage accumulation and the
     cell (`SAMPLE_N`); the habitat grid shares the lattice, so closure,
     make-up and bush come by the same index.
@@ -489,21 +501,23 @@ nothing that matters: at that cell the mechanical part stays under
       layers run back toward the bank at a quarter of the wind, until it
       has mixed up over it.
     - **The body's lift**: in cold calm air (under 0.6 m/s, under 15 °C,
-      both ramped) a ground sit's scent starts up to 3 m higher, the
+      both ramped) a ground sit's scent starts up to 2 m higher, the
       body's thermal plume, so a frosty dawn's cone is thinner near the
       noses.
-    - **Checked on the archived air** (scratchpad scent_more.py; flat with
-      the edge rule against the column): camp in the open at 3 km/h, 93 →
-      99 m; the bog's 11 m stand, 163 → 101 m with 3% over the top; the
-      lake strip at dusk at 6 km/h into the trees, 105 → 191 m (the edge
-      rule had cut 67% of the scent; the column keeps it and lets it mix
-      up and deposit, 3.4× the noticeable cells); a 6 m stand in 28 m
-      hardwood, 178 → 99 m with 16% over the canopy (faster at mid-canopy,
-      but it mixes down and deposits sooner: the stand's cone is shorter
-      at nose height, not longer); a calm 11 °C dawn at the bog, 65 →
-      67 m (the lift is 0.5 m there). 25–127 ms a plume on a desktop
-      against 34–84 flat. None of it is checked against a puff watched in
-      the field.
+    - **Checked on the archived air** (scripts/scent_test.py and the
+      scratchpad's scent_spot.py; flat with the edge rule against the
+      column, as shipped 2026-10-09): the 2 October dusk, camp 142 →
+      105 m, the bog's 11 m stand 139 → 107, the lake strip at 6 km/h
+      into the trees 105 → 96 (12% over the canopy), the hardwood 165 →
+      127; the bog south of camp on the live air, a cold pool at 1 km/h
+      187 → 185 (the strong band a third of the cells), by day at 6 km/h
+      96 → 116, a 5 km/h night 203 → 225. Before the edge lift and the
+      stable depth the column ran 1.5–2× the flat cones at the open
+      spots (Gavan: "overall it feels like the plume is too much"). A
+      6 m stand in 28 m hardwood came out shorter than the flat's, not
+      longer: faster at mid-canopy, but it mixes down and deposits
+      sooner. 30–180 ms a plume on a desktop. None of it is checked
+      against a puff watched in the field.
   - **Tree stand**: release at 4 or 6 m instead of 1.5 m, through the same
     reflected Gaussian; with the column, at the mid-canopy wind. The grid is scaled to the same sit on the ground,
     so a stand reads as thinner near the tree, touching down farther out.

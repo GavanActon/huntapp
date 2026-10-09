@@ -343,15 +343,22 @@ export function cellSampler(ms: number): GroundSampler | null {
  * closed and half conifer, and the bush as moderate.
  */
 interface Column {
-  /** the top of the slow layer, m above ground: the canopy top in a stand, the cold layer's depth where air drains or pools, 10 m in the open */
+  /** the top of the slow layer, m above ground: the canopy top in a stand, the cold layer's depth where air drains or pools, 10 m in the open, deeper on a stable night */
   zb: number
-  /** the layers' wind, m/s east and north: below 2 m (the head wind; the bush at nose height thins it per step), 2 m to zb, above zb */
+  /** the layers' wind, m/s east and north: below 2 m (the head wind; the bush at nose height thins it per step), above zb; between them the step reads the profile at the puff's own height (midWind) */
   v0e: number
   v0n: number
-  v1e: number
-  v1n: number
   v2e: number
   v2n: number
+  /** the way the head wind runs, unit, and its speed and the 10 m wind's, m/s */
+  dirE: number
+  dirN: number
+  hs: number
+  as: number
+  /** stand: the canopy's decay coefficient (the bake's curve) and height; hug: the cold layer moves as one; open: a log-like ramp from the head wind at 2 m to 0.85 of the 10 m wind at zb */
+  kind: 'stand' | 'hug' | 'open'
+  a: number
+  th: number
   /** how much faster a puff mixes upward than over open ground: canopy sweeps, bush, sun on open ground */
   mixF: number
   /** deposition velocity onto the vegetation, m/s */
@@ -389,8 +396,20 @@ const CAVITY_MIN_M = 3
 const CAVITY_BACK = 0.25
 /** Deposition onto vegetation, as a share of the literature's dry deposition velocities for odorant VOCs (0.2–1 cm/s): a knob, not a number. */
 const DEPOSITION = 1
+/**
+ * At a windward edge the air that does not get in at head height rides up
+ * over the canopy, and the puff's centre with it: toward the stand's
+ * displacement height (EDGE_LIFT of the stand height) by the share of
+ * the flow that was lost, when the head wind drops to EDGE_DROP of the
+ * puff's reference. Back in faster air the lift decays by EDGE_SETTLE a
+ * step. The flat model's edge rule threw that share away; here it goes
+ * over and comes back down as the canopy's turbulence mixes it, which is
+ * the edge flow of Dupont & Brunet (2008).
+ */
+const EDGE_LIFT = 0.67
+const EDGE_SETTLE = 0.6
 /** In cold calm air the body's warmth lifts the scent this far, m, before it spreads (a human thermal plume rises at about 0.2 m/s). */
-const BODY_RISE_M = 3
+const BODY_RISE_M = 2
 
 /** The standard normal's cumulative, Abramowitz & Stegun 7.1.26. */
 function Phi(z: number): number {
@@ -413,7 +432,19 @@ function reflCdf(z: number, zc: number, s: number): number {
  * drainage layer's depth grows with the ground draining through the cell
  * (Manins & Sawford: a few per cent of the drop; 2–15 m here).
  */
-function columnOf(out: Float32Array, hab: HabBands | null, conv: number, leafOn: number): Column {
+/**
+ * How deep the slow air is on a stable night, m: the decoupled layer over
+ * the ground, 5 m as the air begins to settle (stable 0.3) to 30 m fully
+ * decoupled. A cold pool on a flat bog is this deep, not the few metres
+ * its drainage accumulation would say (the first column at the bog south
+ * of camp put the layer's top at 2.6 m under a 4 km/h 10 m wind, and the
+ * cone ran 221 m where the flat one sat at 135: Gavan, "feels like a lot").
+ */
+function stableDepth(stable: number): number {
+  return stable > 0.3 ? 5 + 25 * Math.min(1, (stable - 0.3) / 0.7) : 0
+}
+
+function columnOf(out: Float32Array, hab: HabBands | null, conv: number, leafOn: number, stable: number): Column {
   const he = out[0]
   const hn = out[1]
   const ae = out[5]
@@ -438,43 +469,51 @@ function columnOf(out: Float32Array, hab: HabBands | null, conv: number, leafOn:
     const t = hab.thick[i]
     if (t !== 255) trap = t * hab.thickS
   }
+  const deep = stableDepth(stable)
+  // the way the head wind runs (it carries the shore and tree-wall rules the
+  // solve does not); near calm at head height, the solve's way
+  const dirE = hs >= 0.3 ? he / hs : as > 0 ? ae / as : 0
+  const dirN = hs >= 0.3 ? hn / hs : as > 0 ? an / as : 0
   let zb: number
-  let v1e: number
-  let v1n: number
-  if (stand) {
-    zb = th
-    if (hug) {
-      // the cold layer fills the trunk space: the drainage is the mid layer too
-      v1e = he
-      v1n = hn
-    } else {
-      const zc0 = Math.max(0.1 * th, 0.3)
-      const fTop = Math.log(Math.max(0.33 * th, 0.5) / zc0) / Math.log(10 / zc0)
-      const a = fTop > 0 && cf > 0 ? Math.min(4, Math.max(0.5, -Math.log(Math.min(1, cf / fTop)) / Math.max(0.1, 1 - 2 / th))) : 2
-      // mid-canopy against head height, never past the 10 m wind
-      const uMid = Math.min(Math.exp((a * (0.5 * th - 2)) / th), (as + 0.01) / (hs + 0.01))
-      v1e = he * uMid
-      v1n = hn * uMid
-    }
+  let kind: Column['kind']
+  let a = 2
+  if (stand && !hug) {
+    zb = Math.max(th, deep)
+    kind = 'stand'
+    const zc0 = Math.max(0.1 * th, 0.3)
+    const fTop = Math.log(Math.max(0.33 * th, 0.5) / zc0) / Math.log(10 / zc0)
+    a = fTop > 0 && cf > 0 ? Math.min(4, Math.max(0.5, -Math.log(Math.min(1, cf / fTop)) / Math.max(0.1, 1 - 2 / th))) : 2
   } else if (hug) {
-    zb = Math.min(15, Math.max(2, 2 + 0.015 * Math.sqrt(acc * 900)))
-    v1e = he
-    v1n = hn
+    // the cold layer moves as one: the drainage current's depth on a slope,
+    // the settled layer's on a still night, the trunk space in a stand,
+    // whichever is deepest
+    zb = Math.max(deep, stand ? th : 0, Math.min(15, Math.max(2, 2 + 0.015 * Math.sqrt(acc * 900))))
+    kind = 'hug'
   } else {
-    // open ground: the layer to 10 m runs the way the head wind does (it
-    // carries the shore and tree-wall rules the solve does not) at most of
-    // the 10 m speed; near calm at head height it takes the solve's way
-    zb = 10
-    const dirE = hs >= 0.3 ? he / hs : as > 0 ? ae / as : 0
-    const dirN = hs >= 0.3 ? hn / hs : as > 0 ? an / as : 0
-    v1e = dirE * 0.85 * as
-    v1n = dirN * 0.85 * as
+    zb = Math.max(10, deep)
+    kind = 'open'
   }
   // sun on open ground lifts the mixing; under a canopy the floor stays cool and keeps scent low
   const convCover = conv > 0 ? (stand ? 1 - 0.5 * conv * closure : 1 + 0.5 * conv) : 1
   const mixF = (1 + 0.8 * closure) * (1 + 0.3 * trap) * convCover
   const vd = DEPOSITION * (0.002 + closure * (0.006 * conifer + (1 - conifer) * (0.001 + 0.003 * leafOn)) + 0.003 * trap)
-  return { zb, v0e: he, v0n: hn, v1e, v1n, v2e: ae, v2n: an, mixF, vd, stand, trap }
+  return { zb, v0e: he, v0n: hn, v2e: ae, v2n: an, dirE, dirN, hs, as, kind, a, th, mixF, vd, stand, trap }
+}
+
+/**
+ * The wind of the layer between 2 m and the slow layer's top at a puff's
+ * own mean height, m/s along the head wind's way: in a stand the canopy's
+ * curve up from head height, never past the 10 m wind; in the cold layer
+ * the head wind, the layer moving as one; over open ground a log-like
+ * ramp from the head wind at 2 m to 0.85 of the 10 m wind at the top (a
+ * stable night's shear: a puff at 3 m sees little more than the floor).
+ */
+function midWind(col: Column, z: number): number {
+  if (col.kind === 'hug') return col.hs
+  const zz = Math.min(col.zb, Math.max(2, z))
+  if (col.kind === 'stand') return col.hs * Math.min(Math.exp((col.a * (zz - 2)) / col.th), (col.as + 0.01) / (col.hs + 0.01))
+  const f = Math.log(zz / 2) / Math.log(col.zb / 2)
+  return col.hs + (0.85 * col.as - col.hs) * f
 }
 
 /** The column model can be held off for a before/after on the same air (scripts/scent_test.py: the flat plume with the edge rule); the app never does. */
@@ -578,7 +617,7 @@ export function simulatePlume(
     const key = out[10]
     let c = cols.get(key)
     if (!c) {
-      c = columnOf(out, hab, convective, leafOn)
+      c = columnOf(out, hab, convective, leafOn, stable)
       cols.set(key, c)
     }
     return c
@@ -611,6 +650,8 @@ export function simulatePlume(
       // the puff's centre: its release height (the body's lift in) plus
       // what the relief holds it up by
       let zRel = 0
+      // the lift over a canopy at a windward edge
+      let liftZ = 0
       let g0 = gSrc
       let aloft = false
       // the share of its scent still in the air at the noses' level: lost
@@ -625,13 +666,29 @@ export function simulatePlume(
         const pm = Math.min(TABLE_M, Math.round(path))
         let sig = sz[pm]
         if (sig === 0) sig = sz[pm] = sigmaZ(pm, stable, convective)
-        const zc = zc0 + zRel
         let ue: number
         let un: number
         let mixF = 1
         let col: Column | null = null
         if (column) {
           col = colOf()
+          // a windward edge: the head wind drops hard, and the share of the air
+          // that did not get in lifts the puff toward the canopy's displacement
+          // height; faster air again lets it settle
+          if (spdRef >= EDGE_MIN && mean < spdRef * EDGE_DROP) {
+            if (col.stand) {
+              const target = EDGE_LIFT * col.th
+              const zNow = zc0 + zRel + liftZ
+              if (target > zNow) liftZ += (target - zNow) * (1 - mean / spdRef)
+            }
+            spdRef = mean
+          } else if (mean > spdRef) {
+            if (mean > 1.5 * spdRef) liftZ *= EDGE_SETTLE
+            spdRef = mean
+          }
+        }
+        const zc = zc0 + zRel + liftZ
+        if (column && col) {
           // the puff's share in each layer, from its centre and spread
           const F2 = reflCdf(2, zc, sig)
           const Fb = reflCdf(col.zb, zc, sig)
@@ -649,10 +706,12 @@ export function simulatePlume(
             }
           }
           const tf = trapFactor(trap)
+          // the mid layer's wind at the puff's mean height (the reflected Gaussian's: its centre, or 0.8 σz once that is more)
+          const vm = midWind(col, Math.max(zc, 0.8 * sig))
           // under a bank the low air runs back toward it until the puff is up over it
           const back = cavityH > 0 && zc < cavityH && x * x + y * y < 9 * cavityH * cavityH ? -CAVITY_BACK : 1
-          ue = back * (P0 * col.v0e * tf + P1 * col.v1e) + P2 * col.v2e
-          un = back * (P0 * col.v0n * tf + P1 * col.v1n) + P2 * col.v2n
+          ue = back * (P0 * col.v0e * tf + P1 * vm * col.dirE) + P2 * col.v2e
+          un = back * (P0 * col.v0n * tf + P1 * vm * col.dirN) + P2 * col.v2n
           mixF = col.mixF
           if (col.stand) over += noseAt[pm] * P2
         } else {
@@ -727,7 +786,7 @@ export function simulatePlume(
         }
         // the nose-height weight: the table at the release height, or the
         // reflected Gaussian at the height the puff has now
-        const zNow = zc0 + zRel
+        const zNow = zc0 + zRel + liftZ
         const w = zNow === height ? noseAt[pm] : heldUp(sig, zNow)
         if (rawGround === raw && zNow !== height) rawGround = raw.slice()
         raw[cy * N + cx] += w * kept
