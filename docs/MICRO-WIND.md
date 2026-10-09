@@ -907,7 +907,10 @@ nothing that matters: at that cell the mechanical part stays under
   most of the gain so far is the blend's; the fit's is direction in real
   wind. Its reach (2.5 km) and hold (3 h) are first guesses at the
   forecast's own scales, and one sit of one check moving the air cost a
-  hit, hence the two-check rule.
+  hit, hence the two-check rule. With the local reach cut to 100 m and
+  400 m (2026-10-09) the same replay gives 38% → 40% → 42% on direction
+  and 40% → 51% → 53% on speed: a point or two given up for checks that
+  stay where they were made.
 - The slot rule too is one evening at one cell (2026-09-29), and it is the
   biggest single change to a head-height direction the model makes. About a
   fifth of the open ground in the core reads as a slot, so it wants checks
