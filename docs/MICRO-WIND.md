@@ -785,6 +785,11 @@ nothing that matters: at that cell the mechanical part stays under
   evidence of a steady wind.
 - **Puffs in a series** (2026-10-02): a second puff within 40 m and
   6 min of the last check folds into it instead of replacing it. The
+  folded check weighs more for it, by the square root of its puffs up to
+  four, in the local blend and the sit's fit alike (2026-10-09, Gavan:
+  checks at one spot "don't seem to be additive"; until then a series
+  weighed as one), the cone counts every puff, and the arrow on the map
+  carries the count, "×3". The
   folded check keeps every puff's direction (`dirs`, null for a puff that
   hung), and from those the arc (the spread about the mean, at least 45°
   once it is 20° or more) and how steady the air was: `steady`,

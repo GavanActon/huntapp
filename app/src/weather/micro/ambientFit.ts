@@ -1,4 +1,4 @@
-import { angleDiff, judgeCall, STRENGTH_RANGE, type Strength, type WindCheck } from './windChecks'
+import { angleDiff, judgeCall, puffBoost, STRENGTH_RANGE, type Strength, type WindCheck } from './windChecks'
 
 /**
  * The air above the trees, fitted to the checks of a sit.
@@ -126,7 +126,7 @@ export function fitMatters(f: AmbientFit | null): f is AmbientFit {
 /** A check's say in a sit's fit against the sit's newest check: by age, half again for a swing. */
 export function fitWeight(c: WindCheck, refTs: number): number {
   const tau = c.held ? 2 * FIT_TAU_MS : FIT_TAU_MS
-  return Math.exp(-Math.abs(refTs - c.ts) / tau) * (c.swingDeg ? 0.7 : 1)
+  return Math.exp(-Math.abs(refTs - c.ts) / tau) * (c.swingDeg ? 0.7 : 1) * puffBoost(c)
 }
 
 /** The fit's weight at a spot and moment: full among the checks, a Gaussian off them, fading after the last. */

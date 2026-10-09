@@ -363,7 +363,14 @@ const SEEN_W0 = 2
  *  here, its weight is seenWeight's. */
 export function checkWeight(c: WindCheck, lon: number, lat: number, ms: number): number {
   if (c.seen) return 0
-  return W0 * reachWeight(c, lon, lat, ms, LEN_M, MAX_M)
+  return W0 * puffBoost(c) * reachWeight(c, lon, lat, ms, LEN_M, MAX_M)
+}
+
+/** A series of puffs is more evidence than one: a check's weight grows
+ *  with the square root of its puffs, to four (2026-10-09, Gavan: puffs
+ *  folded into one check "don't seem to be additive"). */
+export function puffBoost(c: WindCheck): number {
+  return Math.sqrt(Math.min(4, c.puffs ?? 1))
 }
 
 /** A seen check's weight on the forecast wind at a spot and moment (0 = out of reach, or a felt check). */

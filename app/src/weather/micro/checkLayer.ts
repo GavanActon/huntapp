@@ -101,7 +101,7 @@ function features(at: number): FeatureCollection {
     out.push({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [c.lon, c.lat] },
-      properties: { id: c.id, pull, calm: c.dirFrom == null, seen: !!c.seen, toward: c.dirFrom == null ? 0 : (c.dirFrom + 180) % 360 },
+      properties: { id: c.id, pull, calm: c.dirFrom == null, seen: !!c.seen, toward: c.dirFrom == null ? 0 : (c.dirFrom + 180) % 360, puffs: c.puffs ?? 1 },
     })
   }
   return { type: 'FeatureCollection', features: out }
@@ -213,8 +213,15 @@ function ensure(map: MlMap) {
       'icon-allow-overlap': true,
       'icon-ignore-placement': true,
       'icon-size': ['interpolate', ['linear'], ['zoom'], 12, 0.7, 16, 1.1],
+      // a series of puffs folded into the check: its count beside the arrow
+      'text-field': ['case', ['>', ['coalesce', ['get', 'puffs'], 1], 1], ['concat', '×', ['to-string', ['get', 'puffs']]], ''],
+      'text-size': 11,
+      'text-offset': [1.1, -0.9],
+      'text-anchor': 'left',
+      'text-allow-overlap': true,
+      'text-ignore-placement': true,
     },
-    paint: { 'icon-opacity': ['interpolate', ['linear'], ['get', 'pull'], 0.1, 0.55, 0.5, 1] },
+    paint: { 'icon-opacity': ['interpolate', ['linear'], ['get', 'pull'], 0.1, 0.55, 0.5, 1], 'text-color': '#bfe6ff', 'text-halo-color': 'rgba(8, 20, 34, 0.9)', 'text-halo-width': 1.2 },
   })
   // a finger-sized target over the arrow
   map.addLayer({ id: 'windchecks-hit', type: 'circle', source: SRC, filter: pt, paint: { 'circle-radius': 20, 'circle-opacity': 0.01, 'circle-color': '#000' } })
