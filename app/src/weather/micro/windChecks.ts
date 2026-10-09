@@ -231,6 +231,8 @@ interface ChecksState {
   /** a party member's checks as they stand now (party/party.ts): new ones in, changed ones replaced, never one of yours */
   takeIn: (cs: WindCheck[]) => void
   remove: (id: string) => void
+  /** a check saved as seen from afar that was a puff where it was made: felt from now on (the strength word stays) */
+  setFelt: (id: string) => void
   clear: () => void
 }
 
@@ -281,6 +283,14 @@ export const useWindChecks = create<ChecksState>()(
         set({ checks: capped([...byId.values()].sort((a, b) => a.ts - b.ts)) })
       },
       remove: (id) => set((s) => ({ checks: s.checks.filter((c) => c.id !== id) })),
+      setFelt: (id) =>
+        set((s) => ({
+          checks: s.checks.map((c) => {
+            if (c.id !== id || !c.seen) return c
+            const { seen: _seen, seenFrom: _from, ...rest } = c
+            return rest
+          }),
+        })),
       clear: () => set({ checks: [] }),
     }),
     { name: 'huntapp-windchecks' },

@@ -56,13 +56,13 @@ import './ground.css'
  * is honest and climbs as the checks teach; and the puff that would teach
  * the most next.
  *
- * Opened on a spot away from you (the map popup's Wind), it is a check
- * seen, not felt: the treetops (or the water) over there, out glassing.
- * The rose then faces the way you look, from your fix to the spot, so the
- * arrow to tap is the way they lean as you see them, "ahead" is that way,
- * how hard is read in Beaufort's signs, and it is saved as `seen`, the
- * wind above the trees (windChecks.ts). With no fix the card cannot tell
- * where you are, so it asks: seen from afar, or felt there.
+ * Opened on a spot away from you (the map popup's Wind), it is a puff
+ * there unless you say "treetops seen from afar": then it is the treetops
+ * (or the water) over there, out glassing. The rose then faces the way
+ * you look, from your fix to the spot, so the arrow to tap is the way
+ * they lean as you see them, "ahead" is that way, how hard is read in
+ * Beaufort's signs, and it is saved as `seen`, the wind above the trees
+ * (windChecks.ts), with a reach of kilometres and no say in the cone.
  */
 
 interface CheckAt {
@@ -141,8 +141,13 @@ export default function WindCheckCard() {
   const [strength, setStrength] = useState<Strength | null>(null)
   /** seen from afar: what the treetops did */
   const [seenAs, setSeenAs] = useState<Seen | null>(null)
-  /** seen, not felt: opened on a spot away from you; with no fix, the hunter says */
-  const [seen, setSeen] = useState(!!at.seen)
+  /** seen, not felt: only when the hunter says so. Opened on a spot away
+   *  from you it used to be seen by default, and with a fix without even
+   *  asking (any tap more than 60 m from the fix), so a day's puffs went
+   *  in as looks at the treetops, with a reach of kilometres and no say in
+   *  the cone (Gavan, 2026-10-09: "still looks like 1.75 km from the wind
+   *  check to the edge of the ring") */
+  const [seen, setSeen] = useState(false)
   /** optional: treetops moving while it is calm here (the air decoupled) */
   const [aloft, setAloft] = useState(false)
   /** optional: the wind here has been the same for a while */
@@ -406,13 +411,14 @@ export default function WindCheckCard() {
       <div className="tb-head">
         <span className="tb-title">Sharpen the wind{seen ? ` · ${at.label}` : ''}</span>
       </div>
-      {at.seen && !at.from && (
+      {at.seen && (
+        // a spot away from you: a puff there, or the treetops seen from here
         <div className="gc-strength">
-          <button className={`chip-pick${seen ? ' chip-on' : ''}`} onClick={() => setSeen(true)} aria-pressed={seen}>
-            seen from afar
-          </button>
           <button className={`chip-pick${!seen ? ' chip-on' : ''}`} onClick={() => setSeen(false)} aria-pressed={!seen}>
             felt there
+          </button>
+          <button className={`chip-pick${seen ? ' chip-on' : ''}`} onClick={() => setSeen(true)} aria-pressed={seen}>
+            treetops seen from afar
           </button>
         </div>
       )}

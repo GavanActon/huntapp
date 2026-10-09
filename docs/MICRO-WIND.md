@@ -851,6 +851,14 @@ nothing that matters: at that cell the mechanical part stays under
   when to check next; the live card asks for a check when the last one has
   faded below a quarter, when it missed and 20 min have passed, or when a
   sit has none. How we hunt here (§3) says the same for the hunter.
+- **Felt by default** (2026-10-09): a check opened on a spot away from
+  you is a puff there unless "treetops seen from afar" is tapped. Until
+  then any tap more than 60 m from the fix made a seen check without
+  asking, so a day's puffs went in as looks at the treetops, with a reach
+  of kilometres and no say in the sit's fit, the local blend or the cone
+  (Gavan: "still looks like 1.75 km from the wind check to the edge of
+  the ring"). A seen check's popup can make it felt after the fact, and
+  its ring is drawn at the half like a felt one's.
 - **Seen from afar** (2026-10-08, Gavan: "I'm ranging, I see trees moving
   out in the distance"): the map popup's Wind on a spot away from you
   (over 60 m from a good fix) opens the check as `seen`. The rose faces

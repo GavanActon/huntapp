@@ -90,10 +90,9 @@ function features(at: number): FeatureCollection {
   for (const c of checksInEffect(at)) {
     const pull = checkPull(c, c.lon, c.lat, at)
     if (c.seen) {
-      // seen: where it makes up half the wind above, washed, then its far edge
+      // seen: the ring where it makes up half the wind above (its far edge, a tenth at up to 8 km, is not drawn)
       const half = checkRadiusM(c, at, 0.5)
       if (half > 0) out.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring(c, half)] }, properties: { id: c.id, pull, seen: true, fill: false, faint: false } })
-      out.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring(c, checkReachM(c, at))] }, properties: { id: c.id, pull, seen: true, fill: false, faint: true } })
     } else {
       const half = checkRadiusM(c, at, 0.5)
       // the ring alone, no wash over the map (Gavan, 2026-10-09: "just draw the ring, don't draw the layer overtop")
@@ -254,7 +253,7 @@ function popupHtml(c: WindCheck, at: number): string {
       ? `<li>In effect ${when}: ${pull}% of the wind above the trees here${half > 0 ? `, half or more to about ${dist(half)} (the inner ring)` : ''}, a tenth to about ${reach} (the outer)</li>`
       : `<li>In effect ${when}: ${pull}% of the ground wind here, half or more to about ${dist(checkRadiusM(c, at, 0.5))} (the ring), a tenth to about ${reach}</li>`) +
     `<li>${spent > at ? `Fades out by ${esc(timeLabel(spent))}` : 'About spent'}</li></ul>` +
-    `<div class="pg-acts"><button class="linklike ck-remove" type="button">remove this check</button></div>`
+    `<div class="pg-acts">${c.seen ? '<button class="linklike ck-felt" type="button">it was a puff here, not the treetops</button>' : ''}<button class="linklike ck-remove" type="button">remove this check</button></div>`
   )
 }
 
@@ -272,6 +271,10 @@ export function showCheckPopup(map: MlMap, id: string): void {
   closeOnTapOff(map, p)
   el.querySelector('.ck-remove')?.addEventListener('click', () => {
     useWindChecks.getState().remove(c.id)
+    p.remove()
+  })
+  el.querySelector('.ck-felt')?.addEventListener('click', () => {
+    useWindChecks.getState().setFelt(c.id)
     p.remove()
   })
   p.on('close', () => {
