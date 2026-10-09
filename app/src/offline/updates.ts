@@ -22,7 +22,8 @@ import { manifestGet, manifestSet } from './fileStore'
  */
 
 export interface DataManifest {
-  files: Record<string, { size: number; hash: string }>
+  /** an archive's zoom range and bounds too, from its header (vite.config.ts archiveRange) */
+  files: Record<string, { size: number; hash: string; z?: [number, number]; bounds?: [number, number, number, number] }>
 }
 
 export interface PendingFile {

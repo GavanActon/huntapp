@@ -1,6 +1,6 @@
 import { DARK, layers as basemapLayers } from '@protomaps/basemaps'
 import type { FeatureCollection } from 'geojson'
-import type { ExpressionSpecification, FilterSpecification, GeoJSONSource, LayerSpecification, Map as MlMap, StyleSpecification } from 'maplibre-gl'
+import type { ExpressionSpecification, FilterSpecification, GeoJSONSource, LayerSpecification, Map as MlMap, SourceSpecification, StyleSpecification } from 'maplibre-gl'
 import { ACTIVE_AREA, AREA_LIST } from '../areas'
 import { ATTRIBUTION, CONTOUR_FINE_FROM, CORE, DATA_FILES, FINE_RELIEF, LIVE, REGION, REGION_MAXZOOM, RELIEF, ZONE } from '../config'
 import { LIVE_RASTER, LIVE_VECTOR } from '../sources'
@@ -23,6 +23,9 @@ const BUSH = {
   glacier: '#223040',
 }
 
+/** A streamed archive's zoom range and bounds (offline/updates.ts DataManifest) */
+export type ArchiveRange = { z: [number, number]; bounds: [number, number, number, number] }
+
 export interface StyleOpts {
   base: string
   layers: LayerVisibility
@@ -35,6 +38,8 @@ export interface StyleOpts {
   explore?: boolean
   /** the high-res layers drawn (appStore fineDetail): false is the light map */
   hd: boolean
+  /** the streamed archives' zoom ranges and bounds, from the server's file list (archive) */
+  ranges?: Map<string, ArchiveRange>
   /** which pmtiles keys are reachable (from registerAllDataFiles) */
   available: Set<string>
   /** baked GeoJSON per theme: a URL (local blob or server file) when found */
@@ -346,6 +351,16 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   o = { ...o, ...standIn(o.layers, o.opacity) }
   const sources: StyleSpecification['sources'] = {}
   const has = (k: string) => o.available.has(k)
+  // An archive's source. Streamed, with its range in the server's file list,
+  // it is named by its tiles: the map reads it only once a layer of it draws,
+  // its header with the first tile. Named by its TileJSON, the map reads the
+  // header the moment the source is added, drawn or not: a cold open in Photo
+  // read nine archives it never drew (2026-10-08). Explicit options win over
+  // the header's, as they do over a TileJSON's.
+  const archive = (key: string, spec: Record<string, unknown>): SourceSpecification => {
+    const r = o.ranges?.get(key)
+    return (r ? { minzoom: r.z[0], maxzoom: r.z[1], bounds: r.bounds, ...spec, tiles: [`pmtiles://${key}/{z}/{x}/{y}`] } : { ...spec, url: `pmtiles://${key}` }) as SourceSpecification
+  }
   deferredGeo.clear()
   // a GeoJSON source's data: the file when a layer of its group is on, else empty for now
   const geoData = (id: string, url: string, group: keyof LayerVisibility) => {
@@ -357,7 +372,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   // ---- base ----
   let base: LayerSpecification[]
   if (has('basemap')) {
-    sources.basemap = { type: 'vector', url: 'pmtiles://basemap', attribution: '© OpenStreetMap' }
+    sources.basemap = archive('basemap', { type: 'vector', attribution: '© OpenStreetMap' })
     base = basemapLayers('basemap', BUSH, { lang: 'en' })
   } else {
     const b = LIVE_RASTER.base!
@@ -397,7 +412,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   const rasters: LayerSpecification[] = []
   const addRaster = (key: 'satellite' | 'hillshade' | 'topo' | 'historical', extraPaint: Record<string, unknown> = {}) => {
     if (has(key)) {
-      sources[key] = { type: 'raster', url: `pmtiles://${key}`, tileSize: 256 }
+      sources[key] = archive(key, { type: 'raster', tileSize: 256 })
       // with signal the live service under the baked archive: the archive
       // stops at the box, the service shows through beyond it, same switch
       const live = o.online ? LIVE_RASTER[key] : undefined
@@ -459,7 +474,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   // to take over at all.
   const dem = has('dem')
   if (dem) {
-    sources.dem = { type: 'raster-dem', url: 'pmtiles://dem', encoding: 'mapbox', tileSize: 256, attribution: `MRDEM © Natural Resources Canada, ${FINE_RELIEF.attribution}` }
+    sources.dem = archive('dem', { type: 'raster-dem', encoding: 'mapbox', tileSize: 256, attribution: `MRDEM © Natural Resources Canada, ${FINE_RELIEF.attribution}` })
     const lakes = o.geo.get('waterbody')
     if (lakes) sources.lakes = { type: 'geojson', data: geoData('lakes', lakes, 'relief'), attribution: ATTRIBUTION.lakes }
     // with signal the live MRDEM shade under the DEM's: the DEM stops at the
@@ -528,7 +543,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
     // and the roads; with the relief's switch. National stands (the Sault,
     // the Yukon) carry no wetland class, so none show there.
     if (has('forest')) {
-      sources.forest = { type: 'vector', url: 'pmtiles://forest' }
+      sources.forest = archive('forest', { type: 'vector' })
       const wet: FilterSpecification = ['==', ['get', 'group'], 'wetland']
       const open = ['==', ['get', 'poly'], 'OMS'] as unknown as ExpressionSpecification
       rasters.push(
@@ -563,7 +578,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   // the 1 m LiDAR shade rides above the DEM-drawn one where it is baked (the
   // core, z14+); both answer to the one Hillshade switch and slider
   if (has('hillshadeLidar')) {
-    sources.hillshadeLidar = { type: 'raster', url: 'pmtiles://hillshadeLidar', tileSize: 256, minzoom: CORE_MINZOOM, attribution: FINE_RELIEF.attribution }
+    sources.hillshadeLidar = archive('hillshadeLidar', { type: 'raster', tileSize: 256, minzoom: CORE_MINZOOM, attribution: FINE_RELIEF.attribution })
     rasters.push(
       tag(
         {
@@ -581,7 +596,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   }
   // bush thickness from the point cloud, near camp (z10–16 baked, overzoomed above)
   if (has('understory')) {
-    sources.understory = { type: 'raster', url: 'pmtiles://understory', tileSize: 256, minzoom: BUSH_MINZOOM, maxzoom: CORE.maxzoom, attribution: ATTRIBUTION.bush }
+    sources.understory = archive('understory', { type: 'raster', tileSize: 256, minzoom: BUSH_MINZOOM, maxzoom: CORE.maxzoom, attribution: ATTRIBUTION.bush })
     rasters.push(
       tag(
         {
@@ -599,7 +614,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   }
   // the same bush drawn for a bow: open ground left clear, thicker bush darker
   if (has('lanes')) {
-    sources.lanes = { type: 'raster', url: 'pmtiles://lanes', tileSize: 256, minzoom: BUSH_MINZOOM, maxzoom: CORE.maxzoom, attribution: ATTRIBUTION.bush }
+    sources.lanes = archive('lanes', { type: 'raster', tileSize: 256, minzoom: BUSH_MINZOOM, maxzoom: CORE.maxzoom, attribution: ATTRIBUTION.bush })
     rasters.push(
       tag(
         {
@@ -652,7 +667,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   // fitted to the shoreline and baked as ink on transparency: the true
   // surveyed contours and soundings. They answer to the Lake depths switch.
   if (has('bathySheets')) {
-    sources.bathySheets = { type: 'raster', url: 'pmtiles://bathySheets', tileSize: 256, minzoom: 12, maxzoom: 17 }
+    sources.bathySheets = archive('bathySheets', { type: 'raster', tileSize: 256, minzoom: 12, maxzoom: 17 })
     rasters.push(
       tag(
         { id: 'bathy-sheets', type: 'raster', source: 'bathySheets', minzoom: 12, layout: vis(o.layers.bathy), paint: { 'raster-opacity': 0.95, 'raster-resampling': 'linear' } },
@@ -670,7 +685,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   // the 1 m LiDAR lines take over (the core, z13.5+) the parts tagged
   // `core` drop out so the two bakes never double up.
   if (has('contoursWide')) {
-    sources.contoursWide = { type: 'vector', url: 'pmtiles://contoursWide', minzoom: 8, maxzoom: 14 }
+    sources.contoursWide = archive('contoursWide', { type: 'vector', minzoom: 8, maxzoom: 14 })
     const outsideLidar = (f: FilterSpecification): FilterSpecification =>
       has('contours') ? (['step', ['zoom'], f, CORE_HANDOFF, ['all', f, ['==', ['get', 'core'], 0]]] as unknown as FilterSpecification) : f
     const index: FilterSpecification = ['>=', ['get', 'step'], 50]
@@ -734,7 +749,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   // Settings knob switches instantly and offline. Every fifth line is an
   // index line: heavier, labelled.
   if (has('contours')) {
-    sources.contours = { type: 'vector', url: 'pmtiles://contours', minzoom: CORE_MINZOOM, maxzoom: CORE.maxzoom }
+    sources.contours = archive('contours', { type: 'vector', minzoom: CORE_MINZOOM, maxzoom: CORE.maxzoom })
     const [keep, index, labelled] = contourFilters(o.contourInterval)
     const line = { source: 'contours', 'source-layer': 'contours', minzoom: CORE_HANDOFF } as const
     rasters.push(
@@ -796,15 +811,15 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   type Theme = 'forest' | 'bathy' | 'wmu' | 'camps' | 'crown' | 'parks' | 'fire' | 'roads'
   const themeSource = (t: Theme): { source: string; 'source-layer'?: string } | null => {
     if (t === 'forest' && has('forest')) {
-      sources.forest = { type: 'vector', url: 'pmtiles://forest' }
+      sources.forest = archive('forest', { type: 'vector' })
       return { source: 'forest', 'source-layer': 'forest' }
     }
     if (t === 'bathy' && has('bathy')) {
-      sources.bathy = { type: 'vector', url: 'pmtiles://bathy' }
+      sources.bathy = archive('bathy', { type: 'vector' })
       return { source: 'bathy', 'source-layer': 'bathy' }
     }
     if (has('places') && t !== 'forest' && t !== 'bathy') {
-      if (!sources.places) sources.places = { type: 'vector', url: 'pmtiles://places' }
+      if (!sources.places) sources.places = archive('places', { type: 'vector' })
       return { source: 'places', 'source-layer': t }
     }
     const live = t in LIVE_VECTOR ? LIVE_VECTOR[t as keyof typeof LIVE_VECTOR] : undefined

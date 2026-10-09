@@ -19,7 +19,24 @@ interface AreaFile {
   files: { pmtiles: string[]; geo: string[]; baseGeo: string[]; grids: string[] }
 }
 
-type Listing = Record<string, { size: number; hash: string }>
+/** An archive's zoom range and bounds, from its PMTiles v3 header: the map
+ *  names a streamed archive's tiles with them instead of reading the header
+ *  the moment the source is added (map/mapStyle.ts archive) */
+type ArchiveRange = { z: [number, number]; bounds: [number, number, number, number] }
+type Listing = Record<string, { size: number; hash: string } & Partial<ArchiveRange>>
+
+function archiveRange(path: string): Partial<ArchiveRange> {
+  if (!path.endsWith('.pmtiles')) return {}
+  const fd = openSync(path, 'r')
+  try {
+    const b = Buffer.alloc(127)
+    if (readSync(fd, b, 0, 127, 0) < 127 || b.toString('ascii', 0, 7) !== 'PMTiles' || b[7] !== 3) return {}
+    const deg = (at: number) => b.readInt32LE(at) / 1e7
+    return { z: [b[100], b[101]], bounds: [deg(102), deg(106), deg(110), deg(114)] }
+  } finally {
+    closeSync(fd)
+  }
+}
 
 const sha16 = (data: string | Buffer) => createHash('sha1').update(data).digest('hex').slice(0, 16)
 
@@ -74,7 +91,7 @@ function dataManifest(): Plugin {
       if (name === 'manifest.json') continue
       const st = statSync(dir + name)
       if (!st.isFile()) continue
-      files[name] = { size: st.size, hash: hashOf(name, st.size, st.mtimeMs) }
+      files[name] = { size: st.size, hash: hashOf(name, st.size, st.mtimeMs), ...archiveRange(dir + name) }
     }
     return JSON.stringify({ files })
   }
@@ -93,7 +110,7 @@ function dataManifest(): Plugin {
         if (rel === 'manifest.json') continue
         const st = statSync(dir + base + rel)
         if (st.isDirectory()) walk(`${rel}/`)
-        else if (st.isFile() && st.size > 0 && !/\.(part|tmp)$/.test(name)) files[rel] = { size: st.size, hash: hashOf(base + rel, st.size, st.mtimeMs) }
+        else if (st.isFile() && st.size > 0 && !/\.(part|tmp)$/.test(name)) files[rel] = { size: st.size, hash: hashOf(base + rel, st.size, st.mtimeMs), ...archiveRange(dir + base + rel) }
       }
     }
     walk('')

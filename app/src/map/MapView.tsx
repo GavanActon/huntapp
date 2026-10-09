@@ -11,7 +11,7 @@ import { placeColour } from '../state/pinColours'
 import { usePlacesStore } from '../state/placesStore'
 import { geoUrls, holdOpening, setMap, withMap } from './mapController'
 import { useMeasureStore } from '../measure/measureStore'
-import { baseTone, BOG_TUFT, bogTuftImage, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour, lidarShadeShown, reliefShadePaint, standIn, syncUnderlays } from './mapStyle'
+import { baseTone, BOG_TUFT, bogTuftImage, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour, lidarShadeShown, type ArchiveRange, reliefShadePaint, standIn, syncUnderlays } from './mapStyle'
 import { offlineComplete, registerAllDataFiles, registerDataFile, sourceModes } from './pmtilesRegistry'
 import { showInfoPopup } from './infoPopup'
 import { showPlacePopup } from './placePopup'
@@ -202,8 +202,16 @@ export default function MapView() {
       useAppStore.getState().setOfflineReady(offlineComplete())
       devlog('map', `sources · ${[...sourceModes].map(([k, m]) => `${k}:${m}`).join(' ')} · geo ${[...geo.keys()].join(',') || 'none'}`)
 
+      // the streamed archives' ranges, so the style names their tiles and an
+      // archive no layer draws is never read (mapStyle archive); one on the
+      // phone reads its header from the phone, and keeps it
+      const ranges = new Map<string, ArchiveRange>()
+      for (const d of DATA_FILES) {
+        const f = listing?.files[d.file]
+        if (sourceModes.get(d.key) === 'network' && f?.z && f.bounds) ranges.set(d.key, { z: f.z, bounds: f.bounds })
+      }
       const { layers, opacity, contourInterval } = useAppStore.getState()
-      const style = buildMapStyle({ base: import.meta.env.BASE_URL, layers, opacity, contourInterval, available, geo, online, explore: useAppStore.getState().exploreMode, hd: fineDetail(useAppStore.getState()) })
+      const style = buildMapStyle({ base: import.meta.env.BASE_URL, layers, opacity, contourInterval, available, geo, online, explore: useAppStore.getState().exploreMode, hd: fineDetail(useAppStore.getState()), ranges })
       // the last view in this area (a switch saves the one to open on)
       const saved = loadView()
 
