@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Tile } from './lattice'
+import type { Box } from './box'
 
 /** What the coverage index says a tile can have (pipeline/coverage.py). */
 export interface CoverageProps {
@@ -17,12 +17,11 @@ export interface CoverageProps {
   baked?: string
 }
 
+/** The box drawn (explore/box.ts) and the tap that made it. */
 export interface Selected {
-  tile: Tile
-  /** the tap, inside the tile */
+  box: Box
   lon: number
   lat: number
-  props: CoverageProps | null
 }
 
 export interface Requested {
@@ -32,11 +31,17 @@ export interface Requested {
 
 interface ExploreState {
   selected: Selected | null
-  /** tiles asked for from this phone, by id (kept) */
+  /** what the coverage index says of the tiles under the box, by tile id, as far as read */
+  cover: Record<string, CoverageProps>
+  /** asked for from this phone (kept): boxes by box id (b-…), and tiles
+   *  (t-…) from before there were boxes */
   requested: Record<string, Requested>
   /** the address last used (kept) */
   email: string
   select: (s: Selected | null) => void
+  /** the box resized or moved; the tap stays */
+  setBox: (box: Box) => void
+  setCover: (cover: Record<string, CoverageProps>) => void
   markRequested: (id: string, r: Requested) => void
   /** the ask taken back: the mark goes, whatever the queue says */
   unrequest: (id: string) => void
@@ -68,8 +73,14 @@ function keep(s: ExploreState): void {
 
 export const useExplore = create<ExploreState>()((set, get) => ({
   selected: null,
+  cover: {},
   ...readKept(),
   select: (selected) => set({ selected }),
+  setBox: (box) => {
+    const cur = get().selected
+    if (cur) set({ selected: { ...cur, box } })
+  },
+  setCover: (cover) => set({ cover }),
   markRequested: (id, r) => {
     set({ requested: { ...get().requested, [id]: r } })
     keep(get())

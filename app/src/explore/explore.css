@@ -1,5 +1,5 @@
-/* The Explore tile card, in the bottom bar like the other cards. */
-.tilecard {
+/* The Explore box card, up under the strip (explore/BoxCard.tsx). */
+.boxcard {
   width: 100%;
   box-sizing: border-box;
   margin: 0;
@@ -8,33 +8,45 @@
   font-size: 14px;
   line-height: 1.35;
 }
-.tilecard-head {
+.boxcard-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 6px;
 }
-.tilecard-lines > div {
+.boxcard-lines > div {
   margin: 2px 0;
 }
-.tilecard-grade {
+.boxcard-grade {
   font-weight: 600;
 }
-.tilecard-grade.hd {
+.boxcard-grade.hd {
   color: #b7f06a;
 }
-.tilecard-grade.sd {
+.boxcard-grade.sd {
   color: #c9d1c6;
 }
-.tilecard-req {
+/* the size at the most one ask may be */
+.boxcard-cap {
+  color: #f0b27a;
+}
+.boxcard-hint {
+  font-size: 12.5px;
+  margin-bottom: 4px;
+}
+.boxcard-note {
+  margin-top: 6px;
+  font-size: 12.5px;
+}
+.boxcard-req {
   margin-top: 6px;
   color: #f0b27a;
 }
-.tilecard-ask {
+.boxcard-ask {
   margin-top: 8px;
 }
-.tilecard-ask input {
+.boxcard-ask input {
   width: 100%;
   box-sizing: border-box;
   padding: 8px 10px;
@@ -45,20 +57,20 @@
   font-size: 15px;
   margin-bottom: 8px;
 }
-.tilecard-btns {
+.boxcard-btns {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   margin-top: 6px;
 }
-.tilecard-btns .btn {
+.boxcard-btns .btn {
   flex: 1 1 auto;
 }
-.tilecard-err {
+.boxcard-err {
   margin-top: 6px;
   color: #ffb3a0;
 }
-.tilecard .link {
+.boxcard .link {
   background: none;
   border: none;
   padding: 0;
@@ -114,4 +126,42 @@
 }
 .whereto-note {
   padding: 6px 4px;
+}
+
+/* The box's handles (explore/boxLayer.ts): a corner sizes it, the middle moves it. */
+.box-handle {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #eef5ea;
+  box-shadow: 0 0 0 2px rgba(10, 20, 12, 0.9);
+  touch-action: none;
+}
+/* a thumb's worth to take hold of */
+.box-handle::before {
+  content: '';
+  position: absolute;
+  inset: -14px;
+  border-radius: 50%;
+}
+.box-handle-nw,
+.box-handle-se {
+  cursor: nwse-resize;
+}
+.box-handle-ne,
+.box-handle-sw {
+  cursor: nesw-resize;
+}
+.box-handle-mid::before {
+  inset: 0;
+}
+.box-handle-mid {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 20, 12, 0.78);
+  color: #eef5ea;
+  box-shadow: 0 0 0 2px #eef5ea;
+  cursor: move;
 }

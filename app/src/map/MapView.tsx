@@ -26,6 +26,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 // the tap popup's score circle (the rest of the popup is in ui.css)
 import '../ui/sheets/digin.css'
 import { EXPLORE_LAYERS, exploreTap, viewMoved } from '../explore'
+import { initBoxLayer } from '../explore/boxLayer'
 import { COVERAGE_FILE, COVERAGE_KEY, syncCoverageState } from '../explore/coverage'
 import { useExplore } from '../explore/store'
 
@@ -246,12 +247,13 @@ export default function MapView() {
       }
       m.on('style.load', underlays)
       m.on('move', underlays)
-      // the cell picked and the ones asked for, as feature state on the grid
-      let was = { picked: null as string | null, requested: [] as string[] }
+      // the cells asked for before there were boxes, as feature state on the
+      // grid; the box drawn and the boxes asked for are explore/boxLayer.ts's
+      let was: string[] = []
       const sync = () => {
-        const st = useExplore.getState()
-        was = syncCoverageState(m, st.selected?.tile.id ?? null, st.requested, was)
+        was = syncCoverageState(m, useExplore.getState().requested, was)
       }
+      initBoxLayer()
       m.on('load', () => {
         if (useAppStore.getState().online) viewMoved(m)
         sync()

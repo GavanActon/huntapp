@@ -117,11 +117,11 @@ async function takeRequest(request, env, cors) {
   // a bot fills every field, the hidden one too: thank it and keep nothing
   if (body?.website) return json({ ok: true }, 200, cors)
   // Explore: an ask taken back (docs/EXPLORE.md): the phone's own email and
-  // cell, only an ask still waiting; one being baked just is not sent
+  // box (or cell), only an ask still waiting; one being baked just is not sent
   if (body?.cancel) {
     const email = String(body.email ?? '').trim().slice(0, 200)
-    const tile = String(body.tile ?? '')
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^t-\d{1,4}-\d{1,4}$/.test(tile)) return json({ error: 'cancel' }, 400, cors)
+    const tile = askedGround(body.tile)
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !tile) return json({ error: 'cancel' }, 400, cors)
     const r = await env.DB.prepare("UPDATE requests SET status = 'cancelled' WHERE email = ? AND tile = ? AND status = 'new'").bind(email, tile).run()
     return json({ ok: true, cancelled: r.meta?.changes ?? 0 }, 200, cors)
   }
@@ -133,8 +133,8 @@ async function takeRequest(request, env, cors) {
   const game = (Array.isArray(body.game) ? body.game : []).map(String).filter((g) => GAME.has(g)).join(',')
   const [lat, lon] = pointOf(body, place)
   const source = body.source === 'app' ? 'app' : 'site'
-  // Explore's tile card: the cell of the SD lattice asked for, and SD or HD (docs/EXPLORE.md)
-  const tile = /^t-\d{1,4}-\d{1,4}$/.test(String(body.tile ?? '')) ? String(body.tile) : null
+  // Explore: the box drawn (or, before boxes, the cell) asked for, and SD or HD (docs/EXPLORE.md)
+  const tile = askedGround(body.tile)
   const kind = body.kind === 'hd' ? 'hd' : body.kind === 'sd' ? 'sd' : null
 
   // a hash of the sender's address, kept only to slow a flood
@@ -146,6 +146,19 @@ async function takeRequest(request, env, cors) {
     .bind(email, place, lat, lon, game, source, request.cf?.country ?? null, who, tile, kind)
     .run()
   return json({ ok: true }, 200, cors)
+}
+
+/** What Explore asks for: a box (b-<x0>-<y0>-<x1>-<y1>, habitat-cell
+ *  indices of the SD lattice, app/src/explore/box.ts) no bigger than one
+ *  ask may be, or a lattice cell (t-<i>-<j>) from before there were boxes. */
+function askedGround(v) {
+  const s = String(v ?? '')
+  if (/^t-\d{1,4}-\d{1,4}$/.test(s)) return s
+  const m = /^b-(\d{1,7})-(\d{1,7})-(\d{1,7})-(\d{1,7})$/.exec(s)
+  if (!m) return null
+  const [x0, y0, x1, y1] = m.slice(1).map(Number)
+  // 20 km a side is ~1320 cells east at 70° N and ~670 north anywhere
+  return x1 > x0 && y1 > y0 && x1 - x0 <= 1400 && y1 - y0 <= 700 ? s : null
 }
 
 /** The point asked for: the app sends lat/lon; on the site it is whatever

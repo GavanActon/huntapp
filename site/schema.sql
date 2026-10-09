@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS requests (
   country TEXT,          -- Cloudflare's guess from the connection
   who TEXT,              -- a hash of the sender's address, only to slow a flood
   status TEXT NOT NULL DEFAULT 'new',
-  tile TEXT,             -- Explore: the SD lattice cell asked for (t-<i>-<j>, docs/EXPLORE.md)
+  tile TEXT,             -- Explore: the box drawn (b-<x0>-<y0>-<x1>-<y1>, habitat-cell indices, app/src/explore/box.ts), or the SD lattice cell (t-<i>-<j>) before 2026-10-09
   kind TEXT              -- sd or hd
 );
 -- a table made before 2026-10-08 needs the two columns added:

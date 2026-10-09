@@ -114,7 +114,9 @@ Canada Base Map, the MRDEM shade and Toporama. What is there:
   cell, the cells asked for, the email, kept on the phone), `coverage.ts`
   (the PMTiles source and three layers, feature state for picked and
   requested), `TileCard.tsx` and `index.ts` (enter, leave, the tap, the
-  wind box following the view, Explore's own layers on arrival).
+  wind box following the view, Explore's own layers on arrival). Since
+  2026-10-09 the box replaces the picked cell: `box.ts`, `boxLayer.ts`,
+  `BoxCard.tsx` (below).
 - The view pill: an Explore view that switches the app there, a Back row
   in Explore; `virtual` areas are left out of every list and bundle; the
   home (the forecast profile) is the area Explore was entered from.
@@ -161,37 +163,68 @@ on the phone; a memory-only box elsewhere), so the streaks run everywhere:
 the forecast's outside the box, the ground wind's inside it, the
 difference visible at the edge. Explore is a toggle in the view pill
 (`appStore.exploreMode`): the coverage grid, the Where-to box and the
-quieter chrome; a tap outside every box opens the cell card in any mode.
+quieter chrome; a tap outside every box puts down a box to ask for, in
+any mode (below).
 The explore pseudo-area, its view and the switch are gone.
 
 Not yet: a national imagery service (provinces only), contours beyond
 the box in views that use the LiDAR contours, the fence lifting when
 signal comes back without a reload.
 
-### Next: the box you draw, not the cell
+### The box you draw, not the cell (built 2026-10-09)
 
 Gavan, 2026-10-08: "I might just want to draw a grid and download that
 area. Tiles are pretty massive. Sucks when your lake is in the middle of
-a line." He is right, and the shot shows it: Pickle Lake sits on the edge
-of cell 629-411. So the lattice stays the catalogue and the pipeline's
-unit, and the thing a hunter asks for becomes a box they draw:
+a line." Pickle Lake sits on the edge of cell 629-411. So the lattice
+stays the catalogue and the pipeline's unit, and what a hunter asks for
+is a box they draw (Gavan, 2026-10-09: "let's try that"):
 
-- A square from the tap, 10 × 10 km by default, dragged to move and
-  pulled at the corners to resize, its size in km and the pack's size in
-  MB shown as it changes.
-- Its coverage is read off the tiles under it: HD possible where every
-  tile has 1 m LiDAR, the newest year flown, the stands' source.
-- SD for a box: the tiles under it are baked or already there (shared,
-  stitching cell for cell), and the pack is cut to the box: the grids
-  cropped, the display layers baked for the box.
-- HD for a box: the box is the core and the region its margin, exactly
-  as Lac Bailey's 10 × 10 km was baked; no lattice line can cut a lake.
-- The request carries the box, not a cell id; the Worker stores it and
-  the agent bakes it.
+- **Putting it down.** A tap outside every baked box puts down a box
+  10 × 10 km round it; with one down, a tap outside it moves it there at
+  its size, and a tap inside leaves it be. The card, once up, eases the
+  map to show the box whole below it with room to pull a corner out
+  (only when it is off the screen or under 120 px).
+- **Sizing and moving.** A handle on each corner sizes it (the opposite
+  corner held), the one in the middle moves it. The handles hold the
+  pointer from press to lift (pointer capture), so a drag over the card
+  still ends and the map never pans under a handle; anywhere else one
+  finger pans as ever. MapLibre's own marker drag lost the lift over the
+  card and stuck, so it is not used.
+- **On the cells.** Its edges sit on the habitat cells of the lattice
+  (0.0004° × 0.00027°, about 30 m), held as cell indices
+  (`explore/box.ts`), so an SD pack is a straight cut of the tiles under
+  it and two hunters drawing round the same lake ask for the same box.
+  Its id is `b-<x0>-<y0>-<x1>-<y1>` (x east from 180° W, y south from
+  90° N, the far edges exclusive).
+- **The limits.** A side 2 km at the least (smaller is mostly margin) and
+  20 km at the most for SD (the tiles are shared; the cap is the
+  download): the corner stops there and the size reads copper, "the most
+  for one ask". HD up to 125 km² and 15 km a side, which every HD area
+  shipped fits (Blanchard River's core is 12 × 10 km); past it the card
+  says so in place of the HD button.
+- **The card** (`BoxCard.tsx`): the size in km and km², then the coverage
+  summed over the tiles under it, read off the grid's loaded tiles
+  (`boxLayer.ts`): "HD possible" only where every tile has 1 m LiDAR,
+  else "HD possible on 2 of its 4 cells"; the LiDAR's years as a range;
+  each stands source and water source once; the provinces. The buttons
+  carry the pack's size, about: SD at Highland Lake's 0.15 MB a km² of
+  box, HD at 0.4 MB a km² of box and its ~5 km margin (the LiDAR areas
+  run 0.2–0.6). A guide until the cropped packs exist. Baked areas the box
+  reaches into get "covers part of it · Open it ›".
+- **The ask** posts the box id in `tile` (the D1 column; no new one) and
+  the corners and size in words in `place`; the Worker takes `b-…` ids
+  no bigger than one ask may be, and `t-…` cells as before; Cancel the
+  same. Boxes asked for from this phone stay drawn, copper and dashed,
+  while Explore is on; cells asked for before boxes keep their copper
+  fill.
+- Checked headless on 2026-10-09 (mouse and touch): put down, pulled to
+  the 20 km stop, squeezed to 2 km and pulled out again over the middle
+  handle, moved, a tap inside ignored, the ask's body, the asked box drawn
+  after closing; a touch drag on a corner leaves the map still.
 
-Effort: the box on the map about a day, the request and the cropped pack
-with the bake agent of SD-HD-PLAN.md. The cell card stays until the box
-is in, then goes.
+Left for the bake agent (SD-HD-PLAN.md): reading a `b-…` id back into a
+core and a region, the SD crop of the stitched tiles, the HD bake with the
+box as the core.
 
 Not yet: the request state from D1 (only this phone's asks show), the
 declination in Explore (0), the weather time zone (Toronto's), the US,
@@ -210,13 +243,14 @@ and `MapView.tsx`: the hunks are small.
   SD only, green HD possible, blue baked SD, gold baked HD, hatched
   requested or baking. The cell under the map's centre or a tap is
   outlined.
-- **The tile card** on a tap: the id as a place ("11 km cell near Pickle
-  Lake"), the coverage lines above, what is baked, and the actions: Get
-  this tile (SD, free) · Get HD here (paid, where `grade` ≥ 2) · Pin a
-  spot. A long press drops a pin and opens the same card for its tile.
-- **Requested tiles** show hatched with their stage, polled while
-  online, and in Locations as "Requested · t-629-411 · in the queue";
-  the email link from the loop lands in the tile once it is baked.
+- **The box card** on a tap (since 2026-10-09; the tile card before it):
+  the box's size, the coverage lines above summed over its tiles, what is
+  baked, and the actions: Get SD (free) · Get HD (paid, where every tile
+  has `grade` ≥ 2 and the box is within the HD limits) · Pin the middle.
+- **Requested boxes** show copper and dashed; their stage, polled while
+  online, and a Locations row ("Requested · in the queue") are still to
+  come, and the email link from the loop lands in the box once it is
+  baked.
 - **Coverage inside an area** stays what the Offline sheet's "What's in
   it" already shows, from the bake's coverage report.
 

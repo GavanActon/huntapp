@@ -47,7 +47,7 @@ import { initSpotsLayer } from './spots/spotsLayer'
 import { initAreaArrival } from './areas/arrive'
 import AreaOffer from './ui/AreaOffer'
 import { initStatsWatch } from './stats/watch'
-import TileCard from './explore/TileCard'
+import BoxCard from './explore/BoxCard'
 import WhereTo from './explore/WhereTo'
 
 /** What has gone wrong (offline with maps missing, no location), and with
@@ -183,7 +183,7 @@ export default function App() {
         {!EXPLORE && !checking && (topCard ? <TopCardHost /> : <LiveCard />)}
         {/* Explore: Where to and the cell card sit up here under the strip, so the pill and My location keep the foot (Gavan, 2026-10-08) */}
         {EXPLORE && <WhereTo />}
-        <TileCard />
+        <BoxCard />
       </div>
       {!sheetOpen && !formUp && (
         <div className="leftstack">

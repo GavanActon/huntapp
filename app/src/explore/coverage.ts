@@ -4,8 +4,8 @@ import type { Requested } from './store'
 /**
  * The coverage index on the map (pipeline/coverage.py → coverage-ca.pmtiles
  * under data/explore/): 1° blocks zoomed out, the 11 km tiles from z6,
- * coloured by what each can have, and the tile picked or asked for by
- * feature state.
+ * coloured by what each can have, and the tiles asked for before there
+ * were boxes by feature state (the box itself: explore/boxLayer.ts).
  */
 export const COVERAGE_KEY = 'coverage'
 export const COVERAGE_FILE = 'coverage-ca.pmtiles'
@@ -25,7 +25,6 @@ const COPPER = 'rgba(214,122,60,0.45)'
 const LINE = 'rgba(40,60,40,0.35)'
 const BLOCK_GREY = 'rgba(154,163,154,0.22)'
 const BLOCK_SAGE = 'rgba(120,160,80,0.42)'
-const PICK = '#1f3b1f'
 
 export function coverageSource(): SourceSpecification {
   return { type: 'vector', url: `pmtiles://${COVERAGE_KEY}`, promoteId: { tiles: 'id' } }
@@ -75,22 +74,18 @@ export function coverageLayers(): LayerSpecification[] {
       source: COVERAGE_SOURCE,
       'source-layer': 'tiles',
       minzoom: 8.5,
-      paint: {
-        'line-color': ['case', ['boolean', ['feature-state', 'picked'], false], PICK, LINE],
-        'line-width': ['case', ['boolean', ['feature-state', 'picked'], false], 2.5, 0.8],
-      },
+      paint: { 'line-color': LINE, 'line-width': 0.8 },
     },
   ]
 }
 
-/** The picked and the asked-for tiles, as feature state on the tiles layer. */
-export function syncCoverageState(m: MlMap, pickedId: string | null, requested: Record<string, Requested>, was: { picked: string | null; requested: string[] }): { picked: string | null; requested: string[] } {
+/** The tiles asked for (t-…, from before there were boxes), as feature
+ *  state on the tiles layer; a box's own ask is drawn by boxLayer.ts. */
+export function syncCoverageState(m: MlMap, requested: Record<string, Requested>, was: string[]): string[] {
   if (!m.getSource(COVERAGE_SOURCE)) return was
   const set = (id: string, state: Record<string, boolean>) => m.setFeatureState({ source: COVERAGE_SOURCE, sourceLayer: 'tiles', id }, state)
-  if (was.picked && was.picked !== pickedId) set(was.picked, { picked: false })
-  if (pickedId) set(pickedId, { picked: true })
-  const ids = Object.keys(requested)
-  for (const id of was.requested) if (!(id in requested)) set(id, { requested: false })
+  const ids = Object.keys(requested).filter((id) => id.startsWith('t-'))
+  for (const id of was) if (!ids.includes(id)) set(id, { requested: false })
   for (const id of ids) set(id, { requested: true })
-  return { picked: pickedId, requested: ids }
+  return ids
 }

@@ -4,9 +4,9 @@ import { REGION } from '../config'
 import { devlog } from '../devlog'
 import { useAppStore } from '../state/appStore'
 import { setWindBox } from '../weather/windGrid'
+import { boxAround, boxId, holds, moveTo, sizeKm } from './box'
 import { COVERAGE_TILES_LAYER } from './coverage'
-import { tileAt } from './lattice'
-import { useExplore, type CoverageProps } from './store'
+import { useExplore } from './store'
 
 /**
  * Explore (docs/EXPLORE.md) is a mode of the one map, not an area of its
@@ -16,7 +16,8 @@ import { useExplore, type CoverageProps } from './store'
  * the box is outlined, and the wind lattice follows the view, so the
  * streaks are the forecast's outside the box and the ground wind's inside
  * it. Explore on adds the coverage grid, the Where-to box and a quieter
- * chrome; a tap outside every box opens the cell card in any mode.
+ * chrome; a tap outside every baked box puts down a box to ask for, in any
+ * mode (explore/box.ts).
  */
 
 /** the coverage grid's layers, shown while Explore is on */
@@ -47,24 +48,20 @@ export function viewMoved(m: MlMap): void {
   setWindBox({ west: c.lng - dLon, east: c.lng + dLon, south: c.lat - dLat, north: c.lat + dLat })
 }
 
-/** A tap outside every baked box picks the cell under it for the card;
- *  false for a tap inside one, which keeps its own popup. */
+/** A tap outside every baked box puts the box down round it (10 km a
+ *  side), or, with one down, moves it there at its size; a tap inside it
+ *  leaves it be. False for a tap inside a baked box, which keeps its own
+ *  popup. */
 export function exploreTap(m: MlMap, e: MapMouseEvent): boolean {
   const { lng, lat } = e.lngLat
   if (areaAt(lng, lat)) return false
-  const tile = tileAt(lng, lat)
-  let props: CoverageProps | null = null
-  if (m.getLayer(COVERAGE_TILES_LAYER)) {
-    const hit = m.queryRenderedFeatures(e.point, { layers: [COVERAGE_TILES_LAYER] })
-    const p = hit[0]?.properties as CoverageProps | undefined
-    if (p) props = p
-  }
   const cur = useExplore.getState().selected
-  if (cur && cur.tile.id === tile.id) {
-    useExplore.getState().select(null)
-    return true
-  }
-  devlog('explore', `tile ${tile.id} · ${lat.toFixed(4)},${lng.toFixed(4)} · ${props ? `grade ${props.grade}, lidar ${props.lidar}, ${props.stands}` : 'no coverage read'}`)
-  useExplore.getState().select({ tile, lon: lng, lat, props })
+  if (cur && holds(cur.box, lng, lat)) return true
+  const box = cur ? moveTo(cur.box, lng, lat) : boxAround(lng, lat)
+  const s = sizeKm(box)
+  const grid = m.getLayer(COVERAGE_TILES_LAYER) ? '' : ' · no grid'
+  devlog('explore', `box ${cur ? 'moved' : 'put down'} · ${boxId(box)} · ${s.w.toFixed(1)}×${s.h.toFixed(1)} km · ${lat.toFixed(4)},${lng.toFixed(4)}${grid}`)
+  // the card, once up, shows the box under it (BoxCard)
+  useExplore.getState().select({ box, lon: lng, lat })
   return true
 }
