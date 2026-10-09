@@ -1,0 +1,10 @@
+/* The bush-label tool's card (BushLabelCard.tsx): the four kinds as chips, each with its map colour and count. */
+.bushlabel-card .tb-head { gap: 8px; }
+.bushlabel-card .tb-head .icon-btn { margin-left: auto; }
+.bushlabel-card .tb-head .icon-btn:disabled { opacity: 0.35; }
+.bl-kinds { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 0 4px; }
+.bl-kinds .chip-pick { min-height: 38px; padding: 6px 11px; touch-action: manipulation; }
+.bl-swatch { flex: none; width: 11px; height: 11px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(var(--c-ink-rgb), 0.35); }
+.bl-n { color: var(--c-text-dim); font-variant-numeric: tabular-nums; }
+.bl-send { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.bl-send .chip-pick:disabled { opacity: 0.4; }

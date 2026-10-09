@@ -307,6 +307,13 @@ export async function uploadSettings(): Promise<string> {
   return r.code
 }
 
+/** Any other text by hand to the same API (the bush labels, bushLabels/labelStore.ts); the answer is a code. */
+export async function uploadNote(text: string): Promise<string> {
+  const r = await post(text)
+  devlog('log', `note sent · ${r.code}`)
+  return r.code
+}
+
 /** Hand the log to the share sheet as a file, or copy it where there is none. */
 export async function shareDevlog(): Promise<'shared' | 'copied' | 'failed'> {
   const text = devlogText(await snapshot())

@@ -30,6 +30,9 @@ import { initMoveLayer } from './hunting/moveLayer'
 import HeardCard, { useHeardForm } from './ui/HeardCard'
 import WindCheckCard, { useCheckForm } from './ui/WindCheckCard'
 import { initMeasureLayer } from './measure/measureLayer'
+import { initBushLabels } from './bushLabels/labelLayer'
+import { useBushLabels } from './bushLabels/labelStore'
+import BushLabelCard from './ui/BushLabelCard'
 import { useMeasureStore } from './measure/measureStore'
 import { initWindFlow } from './weather/windFlow'
 import { initWeatherRefresh } from './weather/refresh'
@@ -103,6 +106,8 @@ export default function App() {
   const topCard = useAppStore((s) => s.topCard != null)
   const viewMenuOpen = useAppStore((s) => s.viewMenuOpen)
   const measuring = useMeasureStore((s) => s.active)
+  // the bush-label tool (a link with ?label=bush): its card in the bar, the map's tap its own
+  const labelling = useBushLabels((s) => s.active)
   const routing = useRoutes((s) => s.open)
   const logging = useLogForm((s) => s.at != null)
   const hearing = useHeardForm((s) => s.open)
@@ -133,6 +138,7 @@ export default function App() {
     initTheme()
     initTextScale()
     initMeasureLayer()
+    initBushLabels()
     initWindFlow()
     initScentLayer()
     initWeatherRefresh()
@@ -197,11 +203,12 @@ export default function App() {
       )}
       {!sheetOpen && !formUp && <ToolColumn />}
       <div className="bottombar" ref={barRef}>
-        {measuring && <MeasureCard />}
-        {!measuring && routing && <RouteCard />}
-        {!measuring && !routing && logging && <LogCard />}
-        {!measuring && !routing && !logging && hearing && <HeardCard />}
-        {!measuring && !routing && !logging && !hearing && checking && <WindCheckCard />}
+        {labelling && <BushLabelCard />}
+        {!labelling && measuring && <MeasureCard />}
+        {!labelling && !measuring && routing && <RouteCard />}
+        {!labelling && !measuring && !routing && logging && <LogCard />}
+        {!labelling && !measuring && !routing && !logging && hearing && <HeardCard />}
+        {!labelling && !measuring && !routing && !logging && !hearing && checking && <WindCheckCard />}
       </div>
       <SheetHost />
     </div>

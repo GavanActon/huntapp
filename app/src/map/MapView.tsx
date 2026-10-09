@@ -11,6 +11,7 @@ import { placeColour } from '../state/pinColours'
 import { usePlacesStore } from '../state/placesStore'
 import { geoUrls, holdOpening, setMap, withMap } from './mapController'
 import { useMeasureStore } from '../measure/measureStore'
+import { useBushLabels } from '../bushLabels/labelStore'
 import { baseTone, BOG_TUFT, bogTuftImage, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour, lidarShadeShown, type ArchiveRange, reliefShadePaint, standIn, syncUnderlays } from './mapStyle'
 import { offlineComplete, registerAllDataFiles, registerDataFile, sourceModes } from './pmtilesRegistry'
 import { showInfoPopup } from './infoPopup'
@@ -330,8 +331,8 @@ export default function MapView() {
       // a wait for a double tap and filters for brushes of the screen were
       // tried on 2026-10-02 and made the popup unreliable in the hand.
       m.on('click', 'pins-pt', (e) => {
-        // the ruler, a person being placed and the route card each own the tap
-        if (useMeasureStore.getState().active || useScent.getState().adding || useRoutes.getState().open) return
+        // the ruler, a person being placed, the route card and the bush labels each own the tap
+        if (useMeasureStore.getState().active || useScent.getState().adding || useRoutes.getState().open || useBushLabels.getState().active) return
         const id = e.features?.[0]?.properties?.id as string | undefined
         const p = id ? usePlacesStore.getState().places.find((q) => q.id === id) : undefined
         if (!p) return
@@ -341,6 +342,7 @@ export default function MapView() {
       })
       m.on('click', (e) => {
         if (useMeasureStore.getState().active) return // the ruler owns the tap
+        if (useBushLabels.getState().active) return // so does the bush-label tool (bushLabels/labelLayer)
         if (useRoutes.getState().open) return // so does the route card (routes/routeLayer)
         const scent = useScent.getState()
         // placing another person: the tap is where they sit
@@ -357,7 +359,7 @@ export default function MapView() {
       })
       // a log entry (a moose heard, a sighting): what and when, Delete, and press-and-hold to move it
       m.on('click', 'huntlog-dot', (e) => {
-        if (useMeasureStore.getState().active || useScent.getState().adding || useRoutes.getState().open) return
+        if (useMeasureStore.getState().active || useScent.getState().adding || useRoutes.getState().open || useBushLabels.getState().active) return
         const id = e.features?.[0]?.properties?.id as string | undefined
         const entry = id ? useHuntLog.getState().entries.find((x) => x.id === id) : undefined
         if (entry) showLogPopup(m, entry)
