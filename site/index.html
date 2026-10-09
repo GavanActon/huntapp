@@ -47,6 +47,36 @@
       "logo": "https://groundwind.app/apple-touch-icon.png",
       "email": "hello@groundwind.app",
       "description": "A hunting app for moose, elk, deer and bear: head-height wind and scent from a 2.5 km HD forecast over LiDAR terrain, sharpened by the hunter's own wind checks."
+    },
+    {
+      "@type": "WebApplication",
+      "@id": "https://groundwind.app/#app",
+      "name": "Groundwind",
+      "url": "https://groundwind.app/",
+      "installUrl": "https://groundwind.app/app",
+      "description": "A hunting app that shows the wind at head height and where your scent goes, for moose, elk, deer and bear. It solves the 2.5 km HD forecast (HRDPS) over 1 m LiDAR terrain and the forest, adds the thermals, and the hunter's own wind checks correct it. Works with no signal.",
+      "applicationCategory": "SportsApplication",
+      "applicationSubCategory": "Hunting",
+      "operatingSystem": "iOS, Android",
+      "browserRequirements": "Runs in Safari on an iPhone or Chrome on Android and goes on the home screen. No app store and no account.",
+      "inLanguage": "en-CA",
+      "countriesSupported": "CA",
+      "isAccessibleForFree": true,
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "CAD", "description": "Free during the beta" },
+      "screenshot": ["https://groundwind.app/media/groundwind.jpg", "https://groundwind.app/media/species.jpg"],
+      "featureList": [
+        "Wind at head height: the 2.5 km HD forecast (HRDPS) solved over the 1 m LiDAR ground and every stand of trees, with WindNinja's 3D flow solve in 16 directions",
+        "Scent cone from where you sit, on the ground or in a 4 or 6 m stand, carried on the ground wind",
+        "Thermals: cold air draining downhill at dusk, warm air rising upslope by day, lake and land breezes",
+        "Wind checks: puff powder, tap where it went, and the wind calibrates to what you felt",
+        "The whole party's scent cones at once, to place the caller and the shooter",
+        "Bush thickness at eye level and sight lines from the LiDAR point cloud",
+        "Walking routes over the LiDAR ground that keep your scent off the best ground",
+        "Moose, deer, grouse and bear scored hour by hour for the week ahead",
+        "Works with no signal once an area is saved; the newest HD forecast by satellite text from an inReach or iPhone",
+        "Hunt log of your track, the calls you heard and your wind checks"
+      ],
+      "publisher": { "@id": "https://groundwind.app/#org" }
     }
   ]
 }
@@ -439,8 +469,12 @@
   <h2 id="faq-title">Questions</h2>
   <div class="faq-list">
     <details>
+      <summary>What is Groundwind?</summary>
+      <p>Groundwind is a hunting app that shows the wind at head height and where your scent goes, for moose, elk, deer and bear. It takes the 2.5&nbsp;km HD forecast (HRDPS), solves it over the 1&nbsp;m LiDAR ground and every stand of trees, adds the thermals, and draws your scent cone from where you sit. Your own wind checks correct it, and it all works on your phone with no signal.</p>
+    </details>
+    <details>
       <summary>What does it cost?</summary>
-      <p>Nothing during the beta.</p>
+      <p>Nothing. Groundwind is free during the beta.</p>
     </details>
     <details>
       <summary>iPhone or Android?</summary>
@@ -457,6 +491,14 @@
     <details>
       <summary>Why not everywhere?</summary>
       <p>Because the wind at your head depends on your ridge, your stands and your shoreline, and getting it right takes 1&nbsp;m LiDAR, the forest inventory and a wind solve over that exact ground. High quality means being deliberate, so you request a spot and we build it.</p>
+    </details>
+    <details>
+      <summary>How is it different from onX, HuntWise or Windy?</summary>
+      <p>Use it beside them. Most of us already carry onX or iHunter for the land and Windy for the weather, and they cover the whole map. Groundwind is your active hunt partner on the spot you're hunting, there to help you make better decisions when it counts. HuntWise, HuntStand and Windy show a forecast wind, worked out for 10&nbsp;m up over open ground. Groundwind takes it down to head height over your ridge, your stands of trees and your shoreline, draws your scent on that, and lets a puff of powder correct it. It doesn't show who owns the land. <a href="/compare">What each app does, side by side.</a></p>
+    </details>
+    <details>
+      <summary>What's a scent cone?</summary>
+      <p>A scent cone is the patch downwind of you where an animal can smell you. Drawn from the forecast, it points straight downwind. Groundwind draws it on the wind at head height, so it bends round the ridge, drains downhill at dusk and widens in the gusts and in the lee of a tree line. Hold your dot to say whether you sit on the ground or in a 4 or 6&nbsp;m stand, and the cone comes down where your scent would.</p>
     </details>
     <details>
       <summary>What happens to my data?</summary>
