@@ -7,9 +7,11 @@
 // /api/checks takes the wind checks hunters share and /api/checks/export
 // reads them back (checks.js), /api/party is a hunting party's sealed
 // mailbox (party.js), and everything else is the static site in this folder
-// (wrangler.toml).
+// (wrangler.toml). Once an hour the pages that changed go to IndexNow, and
+// /<key>.txt proves the key is ours (indexnow.js).
 
 import { checksExport, checksIngest } from './checks.js'
+import { INDEXNOW_KEY, indexNowKey, indexNowSweep } from './indexnow.js'
 import { partyApi } from './party.js'
 import { smsWebhook, wxQuery } from './satbot.js'
 import { siteStatsQuery, visitsExport, visitsIngest } from './sitestats.js'
@@ -42,9 +44,13 @@ export default {
     if (url.pathname === '/api/checks') return checksIngest(request, env)
     if (url.pathname === '/api/checks/export') return checksExport(request, env)
     if (url.pathname === '/api/party') return partyApi(request, env)
+    if (url.pathname === `/${INDEXNOW_KEY}.txt`) return indexNowKey()
     let res = await env.ASSETS.fetch(request)
     if (url.pathname.endsWith('.mp4')) res = await byteRange(request, res)
     return withHeaders(res, url.pathname)
+  },
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(indexNowSweep(env))
   },
 }
 

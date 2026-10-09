@@ -17,6 +17,10 @@ not_found_handling = "404-page"
 # the worker sees every request first, for www, /app and /api
 run_worker_first = true
 
+# hourly: the pages that changed since the last send go to IndexNow (indexnow.js)
+[triggers]
+crons = ["17 * * * *"]
+
 # area requests (schema.sql); the id comes from `npx wrangler d1 create groundwind`
 [[d1_databases]]
 binding = "DB"

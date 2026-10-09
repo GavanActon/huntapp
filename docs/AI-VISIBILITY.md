@@ -15,7 +15,7 @@
 ## Dashboards (Gavan's)
 
 1. **Bing Webmaster Tools.** ChatGPT search and Copilot lean largely on Bing. Sign in, choose import from Google Search Console, and the site and sitemap come over.
-2. **Cloudflare, Caching, Crawler Hints: on.** It sends IndexNow pings to Bing when pages change. If Bing still lags after a few weeks, we can ping IndexNow ourselves on each deploy.
+2. **Cloudflare, Caching, Crawler Hints:** on since 2026-10-09. It may not fire for pages a Worker serves, so the Worker also pings IndexNow itself: once an hour it hashes the sitemap's pages and sends the ones that changed or left (site/indexnow.js, the `indexnow` table in schema.sql, the key at /9ce481267d778256561352784d78cd1f.txt).
 3. **Cloudflare, AI Crawl Control.** Check nothing is set to block the search and assistant bots. It also shows which AI bots come and how often.
 
 ## Where the answers come from

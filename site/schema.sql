@@ -110,3 +110,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS party_items_seq ON party_items (party, member,
 CREATE INDEX IF NOT EXISTS party_items_read ON party_items (party, id);
 CREATE INDEX IF NOT EXISTS party_items_slot ON party_items (party, member, slot);
 CREATE INDEX IF NOT EXISTS party_items_received ON party_items (received);
+
+-- What IndexNow was last told about each page of the sitemap (indexnow.js):
+-- the hourly sweep sends a page whose hash changed, and one that left the
+-- sitemap, then marks it here.
+CREATE TABLE IF NOT EXISTS indexnow (
+  url TEXT PRIMARY KEY,       -- as in sitemap.xml
+  hash TEXT NOT NULL,         -- 24 hex of the page's SHA-256 when it was sent
+  sent INTEGER NOT NULL       -- ms
+);
