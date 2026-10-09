@@ -72,8 +72,10 @@ function spotPopup(map: MlMap, s: Spot, own: maplibregl.Marker | null): void {
   popup = p
 }
 
-/** The ring and its name: a tap on it puts the spot's popup back up. */
-function markAt(map: MlMap, s: Spot): maplibregl.Marker {
+/** The ring and its name: a tap on it puts the spot's popup back up. In no
+ *  area (Explore) it has no popup: the tap goes through to the map, where
+ *  it picks the cell for the card as any tap there does. */
+function markAt(map: MlMap, s: Spot, own = true): maplibregl.Marker {
   const el = document.createElement('div')
   el.className = 'spot-mark'
   el.setAttribute('aria-label', s.name ?? coordWords(s))
@@ -86,6 +88,7 @@ function markAt(map: MlMap, s: Spot): maplibregl.Marker {
   }
   // a marker must know where it is before it goes on the map
   const ring = new maplibregl.Marker({ element: el }).setLngLat([s.lon, s.lat])
+  if (!own) return ring.addTo(map)
   el.addEventListener('click', (e) => {
     // a tap on the ring is not a tap on the map (its popup is wanted, not another)
     e.stopPropagation()
@@ -104,10 +107,27 @@ function markAt(map: MlMap, s: Spot): maplibregl.Marker {
 export function markSpot(map: MlMap, s: Spot): void {
   popup?.remove()
   clearMark()
+  if (!areaAt(s.lon, s.lat)) {
+    mark = markAt(map, s, false)
+    return
+  }
   const same = samePlace(s)
   if (same && same.savedAt > 0) return showPlacePopup(map, same)
   if (!same) mark = markAt(map, s)
   spotPopup(map, s, mark)
+}
+
+/** Explore with signal: the map is not fenced (explore/index.ts), so a spot
+ *  in no area is gone to as one here is, not held in Go to coordinates
+ *  with only Copy (Gavan, 2026-10-09). */
+export function unfenced(): boolean {
+  const s = useAppStore.getState()
+  return s.exploreMode && s.online
+}
+
+/** A spot the map can be taken to: in an area, or anywhere while unfenced. */
+export function canGoTo(s: LonLat): boolean {
+  return areaAt(s.lon, s.lat) != null || unfenced()
 }
 
 /** Go to coordinates holding a point the map cannot show (in no area): its own link, so the name goes with it. */
@@ -119,16 +139,17 @@ export function spotSheet(s: Spot, text?: string): void {
  * Go to a spot. In this area the sheet closes, follow goes off, the map
  * eases there (SPOT_ZOOM or closer) and shows it. In another area the app
  * switches there, asking first as any switch does, and shows it on arrival
- * (areas/arrive.ts). In none, Go to coordinates holds it with `text` (the
- * spot's own link when not given). Each goes into Recent.
+ * (areas/arrive.ts). In none, Explore with signal eases there as here;
+ * else Go to coordinates holds it with `text` (the spot's own link when not
+ * given). Each goes into Recent.
  */
 export function goToSpot(s: Spot, text?: string): void {
   const area = areaAt(s.lon, s.lat)
-  if (!area) {
+  if (!area && !unfenced()) {
     addRecent(s)
     return spotSheet(s, text)
   }
-  if (area.id !== ACTIVE_AREA.id) {
+  if (area && area.id !== ACTIVE_AREA.id) {
     // Recent and the ring come with the arrival
     const zoom = s.z ?? Math.max(getMap()?.getZoom() ?? SPOT_ZOOM, SPOT_ZOOM)
     switchArea(area.id, { center: [s.lon, s.lat], zoom }, { kind: 'spot', lon: s.lon, lat: s.lat, name: s.name })

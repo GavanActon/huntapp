@@ -2,7 +2,7 @@ import { useMemo, useState, type JSX, type KeyboardEvent } from 'react'
 import { ACTIVE_AREA, AREA_LIST, areaAt, areaById, type AreaDef } from '../../areas'
 import { switchArea } from '../../areas/switch'
 import { isLink, parsePlace, placeWords, type Place } from '../../map/coords'
-import { addRecent, goToSpot, recentPlaces } from '../../map/goto'
+import { addRecent, canGoTo, goToSpot, recentPlaces } from '../../map/goto'
 import { withMap } from '../../map/mapController'
 import { DROPPED_NAME } from '../../map/placePopup'
 import { coordWords, mapsLink } from '../../share/link'
@@ -23,7 +23,8 @@ import '../areas.css'
  *
  * Going there is map/goto.ts's: in this area the map eases to the spot and
  * shows it; in another the app switches there first (asking, as any switch
- * does); in none, "No detail here yet", with Copy, Maps and Pin. `text` is
+ * does); in none, "No detail here yet", with Copy, Maps and Pin, but for
+ * Explore with signal, where the map eases there as here. `text` is
  * what it opens holding: a paste that could not go straight there, or a
  * point a link sent, in no area.
  */
@@ -63,6 +64,8 @@ export default function CoordsSheet({ text: given }: { text?: string }): JSX.Ele
   const rough = got != null && got.lon != null && !got.complete
   const area = pt ? areaAt(pt.lon, pt.lat) : null
   const here = area != null && area.id === ACTIVE_AREA.id
+  // Explore with signal: a point in no area is gone to too (map/goto.ts)
+  const canGo = pt != null && canGoTo(pt)
   // the app's link to an area, with no spot in it
   const linked = got && got.lon == null ? areaById(got.area) : null
   const canPaste = typeof navigator.clipboard?.readText === 'function'
@@ -80,7 +83,8 @@ export default function CoordsSheet({ text: given }: { text?: string }): JSX.Ele
   /** The spot shown where it is (map/goto.ts): eased to here, switched to in another area. */
   const go = (p: Place) => {
     // gone to here: the box starts empty next time (the spot is in Recent)
-    if (areaAt(p.lon, p.lat)?.id === ACTIVE_AREA.id) draft = ''
+    const a = areaAt(p.lon, p.lat)
+    if (a ? a.id === ACTIVE_AREA.id : canGoTo(p)) draft = ''
     goToSpot({ lon: p.lon, lat: p.lat, name: p.name })
   }
 
@@ -89,7 +93,7 @@ export default function CoordsSheet({ text: given }: { text?: string }): JSX.Ele
     edit(t, false)
     const p = parsePlace(t)
     if (!p || p.lon == null || !p.complete) return
-    if (areaAt(p.lon, p.lat)) return go(p)
+    if (canGoTo(p)) return go(p)
     // in no area there is nowhere to go: the read-out says so, and it goes into Recent
     addRecent({ lon: p.lon, lat: p.lat, name: p.name })
   }
@@ -135,7 +139,7 @@ export default function CoordsSheet({ text: given }: { text?: string }): JSX.Ele
 
   const onKey = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== 'Enter') return
-    if (pt && area) return go(pt)
+    if (pt && canGo) return go(pt)
     if (linked) return goLinked(linked)
     // a point in no area: nowhere to go, so the keyboard goes away. Half a
     // position: the key waits for the rest
@@ -191,14 +195,14 @@ export default function CoordsSheet({ text: given }: { text?: string }): JSX.Ele
           <small>{[pt.name, here ? area.name : area ? `${area.name} · the app opens there, on the spot` : 'No detail here yet'].filter(Boolean).join(' · ')}</small>
         </div>
       )}
-      {pt && area && (
+      {pt && canGo && (
         <div className="coords-acts">
           <button className="btn-primary" onClick={() => go(pt)}>
-            {here ? 'Go' : `Go to ${area.name}`}
+            {here || !area ? 'Go' : `Go to ${area.name}`}
           </button>
         </div>
       )}
-      {pt && !area && (
+      {pt && !canGo && (
         <div className="coords-acts">
           <button className="btn-secondary" onClick={() => copy(pt)}>
             Copy
