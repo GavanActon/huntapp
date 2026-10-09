@@ -14,7 +14,7 @@
   "fineRelief": { "name": "ArcticDEM 2 m", "attribution": "ArcticDEM © Polar Geospatial Center, University of Minnesota" },
   "base": "areas/highland-lake/",
   "surveyedLakes": [],
-  "live": { "lio": false, "satellite": null },
+  "live": { "lio": false, "satellite": null, "sharp": "esri" },
   "attribution": { "vectors": "© Government of Yukon", "lakes": "CanVec © Natural Resources Canada", "bush": "" },
   "presets": [{ "name": "Highland Lake spot", "lon": -134.760001, "lat": 63.360577, "kind": "stand", "note": "From a plus code, 4 Oct 2026" }],
   "bundle": {
@@ -31,6 +31,7 @@
       "contoursWide",
       "forest",
       "understory",
+      "lanes",
       "historical",
       "places"
     ],
@@ -54,7 +55,7 @@
     "arcticdem": ["https://pgc-opendata-dems.s3.us-west-2.amazonaws.com/arcticdem/mosaics/v4.1/2m/40_11/40_11_2_2_2m_v4.1_dem.tif"]
   },
   "coverage": {
-    "checked": "2026-10-08",
+    "checked": "2026-10-09",
     "pmtiles": {
       "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
       "topo": {
@@ -86,7 +87,7 @@
       },
       "dem": {
         "file": "dem-highland-lake.pmtiles",
-        "bytes": 4721869,
+        "bytes": 4709557,
         "source": "MRDEM 30 m, NRCan, with ArcticDEM 2 m mosaic v4.1 (a satellite-stereo surface model, voids filled from the MRDEM), Polar Geospatial Center over the core",
         "licence": "OGL-Canada",
         "vintage": "2 m, 2007-2022 imagery"
@@ -108,12 +109,18 @@
       },
       "understory": {
         "file": "understory-highland-lake.pmtiles",
-        "bytes": 3188934,
-        "source": "Bush model (docs/BUSH-MODEL.md): the eye-level understory predicted at 30 m from Sentinel-2 seasons, PALSAR, SCANFI, CanLaD and the MRDEM, trained on 435 plots of Ontario leaf-on LiDAR; faded where the model is unsure. Modelled, not measured",
+        "bytes": 5793115,
+        "source": "The area's own bush model (bush/local.py, docs/BUSH-MODEL.md): open, low shrub, tall bush or dense trees at 10 m from Sentinel-2 seasons, PALSAR, SCANFI, CanLaD and the MRDEM, learned from 164 labels tapped on the photo; held out a patch at a time, 71% right and thick-or-not 85%; faded where it is unsure. Modelled, not measured",
         "licence": "Copernicus Sentinel data; JAXA ALOS PALSAR mosaic (free, attribution); OGL-Canada; CanLaD CC BY 4.0",
-        "vintage": "imagery 2023-2025, model trained 2026-10-08"
+        "vintage": "imagery 2023-2025, model trained 2026-10-09"
       },
-      "lanes": { "missing": "no LiDAR point cloud here" },
+      "lanes": {
+        "file": "lanes-highland-lake.pmtiles",
+        "bytes": 4583664,
+        "source": "The shooting lanes from the area's own bush model at 10 m (bush/local.py): open and light ground clear, thicker bush shaded darker; learned from 164 labels tapped on the photo. Modelled, not measured",
+        "licence": "Copernicus Sentinel data; JAXA ALOS PALSAR mosaic (free, attribution); OGL-Canada; CanLaD CC BY 4.0",
+        "vintage": "imagery 2023-2025, model trained 2026-10-09"
+      },
       "bathy": { "missing": "Ontario only: lake depths need the ARA lake facts and the MNR sheets" },
       "historical": {
         "file": "historical-highland-lake.pmtiles",
@@ -166,10 +173,10 @@
     "grids": {
       "habitat": {
         "file": "habitat-highland-lake.hab",
-        "bytes": 2642093,
+        "bytes": 2677827,
         "source": "derived: MRDEM, NRCan 2020 land cover, forest stands, water, wetlands, roads and burns",
         "licence": "derived from the layers above",
-        "vintage": "generated 2026-10-08"
+        "vintage": "generated 2026-10-09"
       },
       "micro": {
         "file": "micro-highland-lake.hab",
@@ -180,10 +187,10 @@
       },
       "going": {
         "file": "going-highland-lake.hab",
-        "bytes": 1054579,
+        "bytes": 1042942,
         "source": "derived: HRDEM LiDAR, point-cloud bush or the forest-map estimate, water, wetlands and roads",
         "licence": "derived from the layers above",
-        "vintage": "generated 2026-10-08"
+        "vintage": "generated 2026-10-09"
       }
     }
   },

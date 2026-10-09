@@ -830,9 +830,9 @@
   }
  ],
  "thick": {
-  "from": "the bush model's NRD (satellite imagery, radar, SCANFI, CanLaD, terrain; docs/BUSH-MODEL.md) on the estimate's scale where thickSrc is 3; the forest-map estimate on water, roads, cells no leaf-on imagery saw, and ground the map names outright (open herb, lichen, rock, fen) (thickSrc 2)",
+  "from": "the area's own bush model (labels tapped on the photo, bush/local.py; the 10 m map averaged into each cell) on the estimate's scale where thickSrc is 3; the forest-map estimate on water, roads, cells no leaf-on imagery saw, and ground the map names outright (open herb, lichen, rock, fen) (thickSrc 2)",
   "lidarCells": 0,
-  "thickShareOfLand": 0.008,
+  "thickShareOfLand": 0.69,
   "thickShareWhereLidar": null,
   "estimateToLidar": [
    {
@@ -871,22 +871,49 @@
     "cells": 70435
    }
   ],
-  "trained": "2026-10-08",
-  "plots": 435,
-  "areas": [
-   "area-lac-bailey",
-   "area-pickle-lake",
-   "area-sault-test"
-  ],
-  "cvR": 0.538,
-  "cvR90m": 0.591,
-  "cvAucThick": 0.788,
-  "s2Scenes": {
-   "leafon": 6,
-   "autumn": 2,
-   "spring": 4,
-   "snow": 4
+  "local": true,
+  "labels": 164,
+  "labelSource": "Claude, from paired chips 2026-10-09: Esri's 0.46 m photo (21 May 2015, leaf-off) beside the area's Yukon 1.5 m summer composite, with the MRDEM's elevation, slope and lie; Gavan's conventions from Blanchard River (knee-high shrub high up is low shrub, spruce-dotted flats are tall bush, dense trees is closed spruce). 144 drawn (96 in the core, 48 round it), cloud, haze, deep shadow and mixed rings skipped; then, from Gavan's field photos (2026-10-09: the 1994-2004 burns are grey snags with chest-high willow and birch, 'lots of pine near the shore far end'), the low labels in the burns below 1,400 m made tall bush and 31 more along the lake's far half; then re-checked against Gavan's GPS-tagged photos of 15-17 Sept 2021 (field-data/highland-photos): the pale lichen ground is dwarf birch knee to thigh high (low shrub, not open), sparse spruce over it low shrub, spruce clumps over 40 % of a patch tall bush; and five labels at the photos themselves",
+  "trained": "2026-10-09",
+  "scores": {
+   "labels": 164,
+   "accuracy": 0.707,
+   "chance": 0.506,
+   "thickAuc": 0.878,
+   "thickRight": 0.848,
+   "openAuc": 0.93,
+   "confusion": {
+    "open": {
+     "open": 8,
+     "low": 2,
+     "tall": 2,
+     "dense": 0
+    },
+    "low": {
+     "open": 3,
+     "low": 9,
+     "tall": 10,
+     "dense": 4
+    },
+    "tall": {
+     "open": 1,
+     "low": 8,
+     "tall": 65,
+     "dense": 9
+    },
+    "dense": {
+     "open": 0,
+     "low": 0,
+     "tall": 9,
+     "dense": 34
+    }
+   }
   },
-  "seconds": 420
+  "kinds": {
+   "open": 0.128,
+   "low": 0.16,
+   "tall": 0.436,
+   "dense": 0.276
+  }
  }
 }
