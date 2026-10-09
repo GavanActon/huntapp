@@ -493,13 +493,26 @@ nothing that matters: at that cell the mechanical part stays under
       deposition velocities for odorant VOCs over vegetation; `DEPOSITION`
       scales it (1), a knob, not a number.
     - **Separation by day**: past a slope of 0.3 (17°, Wood 1995) a lee
-      face separates the flow in neutral air too, so the puff keeps the
-      drop as it does on a still night and the hollow is passed over.
-    - **A bank upwind of the sit**: ground rising 3 m or more past that
-      slope within 150 m up the 10 m wind makes a cavity; while the puff is
-      within three heights of the sit and below the bank's top, its low
-      layers run back toward the bank at a quarter of the wind, until it
-      has mixed up over it.
+      face in the open separates the flow in neutral air too, so the puff
+      keeps the drop as it does on a still night and the hollow is passed
+      over. The slope is the drop over the ground grid's own 10 m cell,
+      never over the particle's step: measured over a step of a metre or
+      two, every 1 m step down between cells read as a lee face. Under a
+      canopy the trunk space follows its floor: no separation there.
+    - **A bank upwind of the sit**, in the open: ground rising 5 m or more
+      past that slope, within four rises of the sit up the 10 m wind,
+      makes a cavity; while the puff is within three rises of the sit and
+      below the bank's top, its low layers run back toward the bank at a
+      quarter of the wind, until it has mixed up over it. Any 3 m hummock
+      within 150 m counted at first, and at Lac Bailey (rough LiDAR
+      ground, 2026-10-09) the near field ran backward at some source
+      cells and not others: cones five metres apart "totally different".
+    - **Draws**: 24 realisations of 30 particles in antithetic pairs, each
+      odd one the even one's wander mirrored, seeded by the micro cell and
+      the minute. Six of 120 seeded to 11 m left the cone's shape to six
+      draws of the meander and re-rolled it with a few metres' move; the
+      pairs make the wander average to nothing by construction, and the
+      cone is the same anywhere in a cell.
     - **The body's lift**: in cold calm air (under 0.6 m/s, under 15 °C,
       both ramped) a ground sit's scent starts up to 2 m higher, the
       body's thermal plume, so a frosty dawn's cone is thinner near the

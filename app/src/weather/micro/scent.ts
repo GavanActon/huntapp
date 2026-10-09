@@ -149,8 +149,17 @@ const N = (2 * EXTENT_M) / CELL_M
 // RELEASE_S: a knob now, its modelled value in scentTune.ts
 const TOTAL_S = 900
 const DT = 5
-const REALISATIONS = 6
-const PER_REAL = 120
+/**
+ * Twenty-four realisations of thirty particles, in antithetic pairs
+ * (2026-10-09): six of 120 left the cone's shape to six draws of the
+ * meander, and five metres' move, a new seed, could turn a cone toward E
+ * into a blob every way (Lac Bailey, Gavan: "totally different outcomes
+ * for the scent cone"). The same 720 particles, four times the draws of
+ * the meander, and each odd realisation mirrors the one before it, so the
+ * wander averages to nothing by construction.
+ */
+const REALISATIONS = 24
+const PER_REAL = 30
 /** mean length of a gust burst, s */
 // BURST_S: a knob now, its modelled value in scentTune.ts
 /** a hunter on the ground gives off scent at about chest height; a deer's nose is near 1 m */
@@ -404,7 +413,9 @@ function trapFactor(trap: number, hold = 0.6): number {
 // SEP_SLOPE: a knob now, its modelled value in scentTune.ts
 /** How far upwind of a sit a bank is looked for, m, and the rise it must have to make a cavity. */
 const CAVITY_SCAN_M = 150
-const CAVITY_MIN_M = 3
+/** the rise it must have, m, and how far downwind of it the cavity reaches, in rises (Lac Bailey, 2026-10-09: any 3 m hummock within 150 m made the near field run backward, and cones five metres apart differed wholesale) */
+const CAVITY_MIN_M = 5
+const CAVITY_REACH = 4
 /** In the cavity under a bank the ground-level flow runs back toward it at this share of the wind. */
 // CAVITY_BACK: a knob now, its modelled value in scentTune.ts
 /** Deposition onto vegetation, as a share of the literature's dry deposition velocities for odorant VOCs (0.2–1 cm/s): a knob, not a number. */
@@ -676,7 +687,8 @@ export function simulatePlume(
   // ground rising CAVITY_MIN_M or more past SEP_SLOPE makes a cavity the
   // sit lies in, where the low air runs back toward the bank
   let cavityH = 0
-  if (column && dtm && iSrc >= 0) {
+  if (column && dtm && iSrc >= 0 && out[7] < 3) {
+    // in the open only: under a canopy the trunk space has no terrain cavity of its own
     const as = Math.hypot(out[5], out[6])
     if (as >= 0.5) {
       const ux = -out[5] / as
@@ -688,13 +700,18 @@ export function simulatePlume(
         if (j < 0) break
         const g = dtm.elev[j]
         if ((g - gPrev) / 10 >= T.sepSlope) steep = true
-        if (steep && g - gSrc > cavityH) cavityH = g - gSrc
+        // a bank: steep, risen CAVITY_MIN_M or more, and the sit within CAVITY_REACH rises of it
+        const rise = g - gSrc
+        if (steep && rise >= CAVITY_MIN_M && d <= CAVITY_REACH * rise && rise > cavityH) cavityH = rise
         gPrev = g
       }
-      if (cavityH < CAVITY_MIN_M) cavityH = 0
     }
   }
-  const rnd = mulberry32(Math.round(lon * 1e4) * 73856093 ^ Math.round(lat * 1e4) * 19349663 ^ Math.round(ms / 60_000))
+  // seeded by the micro cell and the minute (the place to 11 m until
+  // 2026-10-09, so a few metres' move re-rolled the cone): the same cone
+  // anywhere in the cell, and with the pairs below a near one in the next
+  const cellKey = out[10] >= 0 ? Math.round(out[10]) * 2654435761 : (Math.round(lon * 1e4) * 73856093) ^ (Math.round(lat * 1e4) * 19349663)
+  const rnd = mulberry32(cellKey ^ Math.round(ms / 60_000))
   const raw = new Float32Array(N * N)
   // The same sit on the ground, for the scale, always at its release
   // height over flat ground: what a ground sit lays down with nothing in
@@ -714,6 +731,8 @@ export function simulatePlume(
   const lullMul = Math.max(0.3, (1 - GFRAC * gust) / (1 - GFRAC))
   const pEnd = DT / T.burstS
   const pStart = (DT * GFRAC) / (T.burstS * (1 - GFRAC))
+  // the meander's draws, shared by each pair of realisations
+  const noise = new Float32Array(STEPS)
   const colOf = (): Column => {
     const key = out[10]
     let c = cols.get(key)
@@ -727,13 +746,16 @@ export function simulatePlume(
     const steps = STEPS
     const phi = new Float32Array(steps)
     // the meander: round the model's way with the model's wander, or, by
-    // the checks' share, round a puff's way with the puffs' own wander
+    // the checks' share, round a puff's way with the puffs' own wander;
+    // the odd realisation of each pair takes the even one's wander mirrored
     const byPuff = !!sit && rnd() < sit.share
     const r0 = byPuff ? sit!.pick(rnd) : 0
     const smModel = ((srcSigma * T.meander) * Math.PI) / 180
     const sm = sit ? smModel * (1 - sit.share) + sit.sm * sit.share : smModel
-    phi[0] = r0 + gauss(rnd) * sm
-    for (let k = 1; k < steps; k++) phi[k] = r0 + (phi[k - 1] - r0) * (1 - DT / TM) + sm * Math.sqrt((2 * DT) / TM) * gauss(rnd)
+    if (r % 2 === 0) for (let k = 0; k < steps; k++) noise[k] = gauss(rnd)
+    const sign = r % 2 === 0 ? 1 : -1
+    phi[0] = r0 + sign * noise[0] * sm
+    for (let k = 1; k < steps; k++) phi[k] = r0 + (phi[k - 1] - r0) * (1 - DT / TM) + sm * Math.sqrt((2 * DT) / TM) * sign * noise[k]
     const burst = new Uint8Array(steps)
     if (gusty) {
       let on = rnd() < GFRAC
@@ -882,10 +904,15 @@ export function simulatePlume(
               const dz = g0 - g1
               if (dz > 0) {
                 // falling ground: in still air the puff keeps its level; by day too
-                // past a steep lee face, where the flow separates; cold air that
-                // drains, pools or runs off the shore follows the ground down
-                const ds = Math.hypot(dx, dy)
-                const k2 = column && ds > 0 && dz / ds >= T.sepSlope ? 1 : keep
+                // past a steep lee face in the open, where the flow separates; cold
+                // air that drains, pools or runs off the shore follows the ground
+                // down. The slope is the drop over the ground grid's own cell, never
+                // over the particle's step (a metre or two, which made every 1 m
+                // step down between cells a lee face: Lac Bailey, 2026-10-09, cones
+                // five metres apart "totally different"); under a canopy the trunk
+                // space follows its floor, so no separation there
+                const ds = Math.max(Math.hypot(dx, dy), 10)
+                const k2 = column && col && !col.stand && dz / ds >= T.sepSlope ? 1 : keep
                 if (out[4] <= 0.5 && k2 > 0) zRel = Math.min(MAX_AGL - zc0, zRel + dz * k2)
               } else if (dz < 0) {
                 // rising ground takes back what was gained, never below the release height
