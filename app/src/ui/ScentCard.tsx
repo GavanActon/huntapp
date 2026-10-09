@@ -13,7 +13,8 @@ import './live.css'
  * "Your scent": the live card's Scent › opened, a top card in its slot with
  * the map (and both columns) still there. What the cone rests on, in
  * three lines: the wind at head height against the forecast, the wind
- * check pulling it while one does, and how wide and how far it goes; on a
+ * check pulling it while one does, and how wide and how far it goes, with
+ * a dim line under it for what the shading means (how often); on a
  * still night off a drop, a fourth for why the cone skips the low ground
  * (a reason, so here and not on the live card's brief line). Then
  * the knobs: where you sit (the ground, or a stand), the cone's size from
@@ -104,6 +105,7 @@ export default function ScentCard(): JSX.Element | null {
             {plume && (plume.height > GROUND_H && plume.landing >= 30 ? `noticeable from ${Math.round(plume.landing / 10) * 10} m out to ${reachLabel(plume)}` : `noticeable to ${reachLabel(plume)}`)}
           </div>
         )}
+        {plume && <div className="scent-line dim">Shaded by how often a nose there catches it: darkest most minutes, palest now and then</div>}
         {offDrop && <div className="scent-line dim">{offDrop}</div>}
         {plume?.checks && (
           <div className="scent-line dim">

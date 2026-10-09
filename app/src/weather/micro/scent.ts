@@ -64,23 +64,29 @@ import '../../ui/minipop.css'
  *     at 6 m sends it farther from the start, a ground sit at dusk rides
  *     the drainage while a stand above the cold layer does not, and at a
  *     tree line the puff keeps its pace instead of stacking up. Canopy,
- *     bush and sun on open ground set how fast it mixes; needles, leaves
- *     and bush take some of it out of the air; a steep lee bank separates
- *     the flow by day as a drop does by night, and a sit under such a bank
- *     drifts back toward it before going over; in cold calm air the
- *     body's own warmth lifts the scent a few metres first.
+ *     bush and sun on open ground set how fast it mixes (in a stand by
+ *     the puff's height in it: little in the trunk space, most at the
+ *     top, none on the floor on a still night); needles, leaves and bush
+ *     take some of it out of the air; a steep lee bank separates the flow
+ *     by day as a drop does by night, and a sit under such a bank drifts
+ *     back toward it before going over; in cold calm air the body's own
+ *     warmth lifts the scent a few metres first.
  *
- * The map shades nose-height scent against the plume core 20–40 m out:
- * strong, noticeable, and a faint trace wash below that.
+ * The map shades how often a nose there would notice it (2026-10-09): the
+ * share of the sit's minutes in which nose-height scent reaches NOSE of a
+ * steady minute 20–40 m out. Most minutes, some, and now and then; the
+ * edge drawn and the reach are at "some". Until then it shaded the sit's
+ * average, which put a plume that wanders over a place at full strength a
+ * tenth of the time below one that is always there, faint.
  *
  * Seeded by place and minute: tapping the same spot twice draws the same
  * cone.
  *
  * Several people sitting: each runs their own plume, and the map shows
- * what they give off together. Scent is a passive tracer, so exposures
- * add: each person's grid, scaled to their own sit on the ground, is laid
- * into one frame and summed. A cone on its own looks just as it would
- * alone; where cones overlap, two traces can add up to noticeable.
+ * what they give off together: each person's grid, scaled to their own
+ * sit on the ground, is laid into one frame, and a minute counts where
+ * anyone's scent reaches. A cone on its own looks just as it would alone;
+ * where cones overlap, two "now and then"s can make a "some".
  */
 
 export interface Plume {
@@ -89,7 +95,7 @@ export interface Plume {
   ms: number
   /** share of nose-height scent by sector, N, NE … NW (beyond 25 m) */
   sectors: number[]
-  /** farthest distance scent is still noticeable (≥ NOTICE of the 30 m core), m */
+  /** farthest distance scent is still noticeable in some of the minutes (NOTICE of them or more), m */
   reach: number
   /** nearest distance scent is noticeable at nose height, m (0 on the ground; farther out from a stand) */
   landing: number
@@ -166,29 +172,54 @@ const PER_REAL = 30
 export const GROUND_H = 1.5
 const NOSE_H = 1
 /**
- * Concentration bands, as a share of the plume core 20–40 m out, as
- * modelled: strong, noticeable, a faint trace. The card's slider slides
- * them (riskBands): conservative counts scent sooner and the cone grows,
- * aggressive only what is strong, and the cone shrinks.
+ * How often, not how much (2026-10-09). Animals answer a plume's peaks,
+ * not its average: caged gypsy moths 20–80 m downwind in a forest fanned
+ * their wings where averaged plume models put the pheromone orders of
+ * magnitude under what sets them off (Elkinton, Cardé & Mason 1984), and
+ * 10–20 m from a source a tracer was there a fifth of the time, in bursts
+ * (Murlis, Willis & Cardé 2000). An average over the whole sit counts
+ * "here a tenth of the time at full strength" the same as "here all the
+ * time, faint", and a moose in the first busts the sit while the second
+ * may never reach him. So the cone is judged a minute at a time: in each
+ * minute of each realisation, does a nose there get NOSE or more of what
+ * a steady minute gives 20–40 m out? The grid is the share of the minutes
+ * it does (oftenGrid). Within a minute the peaks run some four times the
+ * minute's level (CSIRO's peak-to-mean, (60 s / 1 s)^0.35), here and at
+ * the core alike, so a share of the core's minute is a share of its peaks.
  */
-const BANDS = { strong: 0.2, notice: 0.04, trace: 0.01 }
-let STRONG = BANDS.strong
-let NOTICE = BANDS.notice
-let TRACE = BANDS.trace
+const WIN_S = 60
+/**
+ * What a nose notices, as a share of a steady minute's scent 20–40 m out,
+ * as modelled; the card's slider slides it. No one has measured it for a
+ * moose. 0.04 on the old average, raised so that in the steadiest air on
+ * the archive (the bog south of camp at 10–16 km/h, 45% of the scent one
+ * way) the cone stays within a tenth of the length it was tuned to, and
+ * only wandering air takes it farther: over 25 spot-hours at Pickle the
+ * reach came out a median 1.25× and the ground 1.37× (2026-10-09).
+ */
+const NOSE = 0.055
+/**
+ * The share of the minutes scent is noticeable: most of them, some, now
+ * and then. The edge and the reach are at "some": a moose that stands
+ * there five minutes more likely than not gets at least one (1 − 0.85⁵).
+ */
+const STRONG = 0.5
+const NOTICE = 0.15
+const TRACE = 0.03
+let nose = NOSE
 /** the direction spread the plume meanders with, as a multiple of the ground model's */
 let SPREAD = 1
 
 /**
  * The slider, 0 (conservative) … 1 (aggressive), 0.5 as modelled. One
- * step either way is a third or three times on the bands (the nose works
- * on ratios), and the meander is 30% wider at the conservative end, 30%
- * tighter at the aggressive one: the cone drawn for a hunter who takes
+ * step either way is a third or three times on what a nose notices (it
+ * works on ratios), and the meander is 30% wider at the conservative end,
+ * 30% tighter at the aggressive one: the cone drawn for a hunter who takes
  * no chances, or one who plays the wind as the model has it.
  */
-export function riskBands(risk: number): { strong: number; notice: number; trace: number; spread: number } {
+export function riskBands(risk: number): { nose: number; spread: number } {
   const r = Math.min(1, Math.max(0, risk))
-  const f = Math.pow(3, 2 * r - 1)
-  return { strong: BANDS.strong * f, notice: BANDS.notice * f, trace: BANDS.trace * f, spread: 1 + 0.3 * (1 - 2 * r) }
+  return { nose: NOSE * Math.pow(3, 2 * r - 1), spread: 1 + 0.3 * (1 - 2 * r) }
 }
 
 /**
@@ -202,9 +233,7 @@ export function coneSizeWord(risk: number): string {
 
 function applyRisk(risk: number): void {
   const b = riskBands(risk)
-  STRONG = b.strong
-  NOTICE = b.notice
-  TRACE = b.trace
+  nose = b.nose
   SPREAD = b.spread
 }
 
@@ -381,8 +410,11 @@ interface Column {
   th: number
   /** open ground: the share of the 10 m wind at the top of the layer (a knob) */
   openShare: number
-  /** how much faster a puff mixes upward than over open ground: canopy sweeps, bush, sun on open ground */
+  /** how much faster a puff mixes upward than over open ground, before the canopy: bush, sun on open ground (and shade under trees) */
   mixF: number
+  /** the canopy's extra mixing at its top and in the trunk space (canopyMixAt): 0 off a stand */
+  canTop: number
+  canFloor: number
   /** deposition velocity onto the vegetation, m/s */
   vd: number
   stand: boolean
@@ -519,9 +551,33 @@ function columnOf(out: Float32Array, hab: HabBands | null, conv: number, leafOn:
   }
   // sun on open ground lifts the mixing; under a canopy the floor stays cool and keeps scent low
   const convCover = conv > 0 ? (stand ? 1 - T.sunMix * conv * closure : 1 + T.sunMix * conv) : 1
-  const mixF = (1 + T.canopyMix * closure) * (1 + T.bushMix * trap) * convCover
+  const mixF = (1 + T.bushMix * trap) * convCover
+  // the canopy's sweeps are at its top; a still night quiets them and leaves the trunk space with none
+  const st = Math.min(1, Math.max(0, stable))
+  const canTop = T.canopyMix * closure * (1 - 0.5 * st)
+  const canFloor = T.canopyMix * closure * T.trunkMix * (1 - st)
   const vd = DEPOSITION * T.deposition * (0.002 + closure * (0.006 * conifer + (1 - conifer) * (0.001 + 0.003 * leafOn)) + 0.003 * trap)
-  return { zb, v0e: he, v0n: hn, v2e: ae, v2n: an, dirE, dirN, hs, as, kind, a, th, openShare: T.openShare, mixF, vd, stand, trap }
+  return { zb, v0e: he, v0n: hn, v2e: ae, v2n: an, dirE, dirN, hs, as, kind, a, th, openShare: T.openShare, mixF, canTop, canFloor, vd, stand, trap }
+}
+
+/**
+ * The canopy's extra mixing for a puff whose mean height is zr of the
+ * stand's: the trunk space's below a third of the height, the top's above
+ * nine tenths, a smooth step between. Inside a canopy the vertical
+ * turbulence falls from about 1.1 u* at the top to 0.3-0.5 u* near the
+ * floor of a dense stand (Raupach, Finnigan & Brunet 1996; Kaimal &
+ * Finnigan 1994), and the sweeps that carry scent out of it come down
+ * from the top: in the Forest Service's prescribed burns under New Jersey
+ * pitch pine, smoke mixed harder near the canopy top than near the ground,
+ * and that set how much left the canopy (Heilman, Bian et al.), tracer at 1 m
+ * under pine went in threads a metre wide (Strand, Lamb & Thistle), and at
+ * night drainage under a subalpine canopy hardly spread upward at all
+ * (Yi et al. 2005). Until 2026-10-09 the whole stand mixed at one rate,
+ * the floor as fast as the top.
+ */
+function canopyMixAt(col: Column, zr: number): number {
+  const t = Math.min(1, Math.max(0, (zr - 0.33) / 0.57))
+  return col.canFloor + (col.canTop - col.canFloor) * t * t * (3 - 2 * t)
 }
 
 /**
@@ -629,12 +685,15 @@ function sitAir(lon: number, lat: number, ms: number, fieldToward: number): SitA
 }
 
 /**
- * Run the plume; the nose-height grid (N×N, row 0 north) and its summary.
- * The grid is scaled to the core 20–40 m out of the same sit ON THE GROUND,
- * so a stand's scent reads against what the ground would have given: it
- * starts over the deer's heads and touches down farther out, thinner.
- * `relief` says whether the particles walked the going grid's ground (still
- * air over the core), the part of the cost phase 1 of MICRO-WIND-LIDAR.md adds.
+ * Run the plume; the nose-height grid (N×N, row 0 north: the share of the
+ * minutes scent is noticeable there) and its summary. What a nose notices
+ * is set against the core 20–40 m out of the same sit ON THE GROUND, so a
+ * stand's scent reads against what the ground would have given: it starts
+ * over the deer's heads and touches down farther out, thinner. `mean` is
+ * the old reading, for the test scripts: nose-height scent averaged over
+ * the sit, as a share of that core. `relief` says whether the particles
+ * walked the going grid's ground (still air over the core), the part of
+ * the cost phase 1 of MICRO-WIND-LIDAR.md adds.
  */
 export function simulatePlume(
   lon: number,
@@ -643,7 +702,7 @@ export function simulatePlume(
   height = GROUND_H,
   sample: GroundSampler | null = cellSampler(ms),
   gust = groundGust(ms),
-): { plume: Plume; grid: Float32Array; tracks: PlumeTracks; relief: boolean } | null {
+): { plume: Plume; grid: Float32Array; mean: Float32Array; tracks: PlumeTracks; relief: boolean } | null {
   if (!sample) return null
   // the knobs (scentTune.ts), read once per plume
   const T = tuneValues()
@@ -724,6 +783,10 @@ export function simulatePlume(
   const STEPS = Math.ceil(TOTAL / DT) + 1
   const NP = REALISATIONS * PER_REAL
   const tracks: PlumeTracks = { steps: STEPS, x: new Float32Array(NP * STEPS), y: new Float32Array(NP * STEPS), k0: new Int16Array(NP), k1: new Int16Array(NP) }
+  // what each step laid down at the noses, for the cone a minute at a
+  // time, and the scent's age where it lands, weighted the same
+  const laid = new Float32Array(NP * STEPS)
+  const aged = new Float32Array(N * N)
   const TL = 20
   const TM = T.meanderS
   const gusty = gust > 1.1
@@ -851,7 +914,8 @@ export function simulatePlume(
           const back = cavityH > 0 && zc < cavityH && x * x + y * y < 9 * cavityH * cavityH ? -T.cavityBack : 1
           ue = back * (P0 * col.v0e * tf + P1 * vm * col.dirE) + P2 * col.v2e
           un = back * (P0 * col.v0n * tf + P1 * vm * col.dirN) + P2 * col.v2n
-          mixF = col.mixF
+          // in a stand, the canopy's mixing at the puff's own mean height
+          mixF = col.stand ? col.mixF * (1 + canopyMixAt(col, Math.max(zc, 0.8 * sig) / col.th)) : col.mixF
           if (col.stand) over += noseAt[pm] * P2
         } else {
           if (edgeRule && spdRef >= EDGE_MIN && mean < spdRef * T.edgeDrop) {
@@ -934,6 +998,8 @@ export function simulatePlume(
         const w = zNow === height ? noseAt[pm] : heldUp(sig, zNow)
         if (rawGround === raw && zNow !== height) rawGround = raw.slice()
         raw[cy * N + cx] += w * kept
+        laid[base + k] = w * kept
+        aged[cy * N + cx] += w * kept * (t + DT - t0)
         if (rawGround !== raw) rawGround[cy * N + cx] += noseGround[pm] * kept
         wTotal += noseAt[pm]
         if (!column) over += noseAt[pm] * (1 - kept)
@@ -951,8 +1017,8 @@ export function simulatePlume(
       }
     }
   }
-  const grid = blur(raw)
-  const ground = rawGround === raw ? grid : blur(rawGround)
+  const mean = blur(raw)
+  const ground = rawGround === raw ? mean : blur(rawGround)
   const mid = (N - 1) / 2
   let ring = 0
   let max = 0
@@ -964,12 +1030,15 @@ export function simulatePlume(
       if (d >= 20 && d <= 40 && v > ring) ring = v
     }
   const ref = ring > 0 ? ring : max
+  for (let i = 0; i < N * N; i++) mean[i] = ref > 0 ? mean[i] / ref : 0
+  // the cone: how often a nose notices it, a minute at a time, against a
+  // steady minute at the core (the sit's total there spread over its release)
+  const grid = ref > 0 ? oftenGrid(tracks, laid, raw, aged, (ref * WIN_S) / (REALISATIONS * RELEASE), RELEASE) : new Float32Array(N * N)
   let reach = 0
   let landing = Infinity
   for (let y = 0; y < N; y++)
     for (let x = 0; x < N; x++) {
       const i = y * N + x
-      grid[i] = ref > 0 ? grid[i] / ref : 0
       if (grid[i] >= NOTICE) {
         const d = Math.hypot(x - mid, y - mid) * CELL_M
         reach = Math.max(reach, d)
@@ -980,7 +1049,7 @@ export function simulatePlume(
   if (rawDown && landed && ref > 0) {
     const d = blur(rawDown)
     for (let y = 0; y < N && down < TOUCH_CELLS; y++)
-      for (let x = 0; x < N; x++) if (d[y * N + x] / ref >= NOTICE && Math.hypot(x - mid, y - mid) * CELL_M >= TOUCH_FROM_M) down++
+      for (let x = 0; x < N; x++) if (d[y * N + x] / ref >= nose && Math.hypot(x - mid, y - mid) * CELL_M >= TOUCH_FROM_M) down++
   }
   const tot = sectors.reduce((a, b) => a + b, 0) || 1
   const share = Array.from(sectors, (v) => v / tot)
@@ -1006,9 +1075,152 @@ export function simulatePlume(
       checks: sit ? { n: sit.n, puffs: sit.puffs, lulls: sit.lullShare, share: sit.share } : null,
     },
     grid,
+    mean,
     tracks,
     relief: walked,
   }
+}
+
+/** The average's 3×3 blur as a Gaussian's σ, m: a puff's footprint is never smaller. */
+const BLUR_SIGMA_M = 7.7
+/**
+ * A puff's own width grows by this share of the distance it has come: its
+ * relative spread, the plume a moment wide, put at about half the width of
+ * a 10-minute plume near the ground (Pasquill–Gifford D, ~0.08 x close in),
+ * the rest being the meander the realisations carry themselves.
+ */
+const PUFF_GROW = 0.05
+
+/** footprints by σ to half a metre, up to 40 m (wider ones are cut to 7×7 cells anyway) */
+const stencils: ({ r: number; w: Float32Array } | undefined)[] = []
+
+/**
+ * A puff's footprint on the 10 m cells, normalised, for a σ in metres (to
+ * half a metre): out to a σ and a half, the nearest cell, 1 to 3 cells
+ * either way, its tails beyond folded in. 3×3 for a puff under 10 m, which
+ * is most of them and as wide as the average's own blur; 5×5 from the
+ * start doubled the minute grid's time.
+ */
+function stencil(sigma: number): { r: number; w: Float32Array } {
+  const key = Math.min(80, Math.round(sigma * 2))
+  let s = stencils[key]
+  if (!s) {
+    const q = key / 2
+    const r = Math.min(3, Math.max(1, Math.round((1.5 * q) / CELL_M)))
+    const w = new Float32Array((2 * r + 1) * (2 * r + 1))
+    let sum = 0
+    for (let dy = -r; dy <= r; dy++)
+      for (let dx = -r; dx <= r; dx++) {
+        const v = Math.exp((-(dx * dx + dy * dy) * CELL_M * CELL_M) / (2 * q * q))
+        w[(dy + r) * (2 * r + 1) + dx + r] = v
+        sum += v
+      }
+    for (let i = 0; i < w.length; i++) w[i] /= sum
+    s = { r, w }
+    stencils[key] = s
+  }
+  return s
+}
+
+/**
+ * The cone a minute at a time: the share of the minutes in which a nose
+ * at each cell gets `nose` or more of a steady minute 20–40 m out (`unit`,
+ * in what the particles lay down). Each realisation's particles go down a
+ * minute at a time, each step as a puff (the particle–puff hybrid HYSPLIT
+ * uses, across the wind here as well as up) laid along the way it came, so
+ * a fast step does not skip cells and thirty particles a realisation read
+ * as a plume, not as thirty threads; the meander, the gusts and the lulls
+ * are what tell the minutes apart. A cell counts only the minutes a sit
+ * going on for hours would give it scent in: from the typical age of the
+ * scent that lands there to that age past the end of the release. Without
+ * that the far field would lose the minutes before its scent first
+ * arrived, and the near field those after the release stops, which a
+ * plume run for a quarter of an hour has and a real sit does not.
+ */
+function oftenGrid(tr: PlumeTracks, laid: Float32Array, raw: Float32Array, aged: Float32Array, unit: number, release: number): Float32Array {
+  const SPW = Math.round(WIN_S / DT)
+  const NW = Math.floor((tr.steps - 1) / SPW)
+  const bRaw = blur(raw)
+  const bAge = blur(aged)
+  // the distance each particle has come by each step, m, and the step's own length
+  // (sqrt, not Math.hypot, which is several times slower and runs here 130 000 times)
+  const travel = new Float32Array(laid.length)
+  const stepM = new Float32Array(laid.length)
+  for (let p = 0; p < tr.k0.length; p++) {
+    let s = 0
+    for (let k = tr.k0[p]; k <= tr.k1[p]; k++) {
+      const i = p * tr.steps + k
+      const dx = k === tr.k0[p] ? tr.x[i] : tr.x[i] - tr.x[i - 1]
+      const dy = k === tr.k0[p] ? tr.y[i] : tr.y[i] - tr.y[i - 1]
+      const d = Math.sqrt(dx * dx + dy * dy)
+      s += d
+      travel[i] = s
+      stepM[i] = d
+    }
+  }
+  // each cell's minutes, lo to hi; none where no scent fell
+  const lo = new Int16Array(N * N).fill(1)
+  const hi = new Int16Array(N * N)
+  for (let i = 0; i < N * N; i++) {
+    if (!(bRaw[i] > 0)) continue
+    const age = bAge[i] / bRaw[i]
+    let a = Math.ceil(age / WIN_S)
+    let b = Math.min(NW - 1, Math.floor((age + release) / WIN_S) - 1)
+    // reached only near the end (or a release under two minutes): the minute it arrives in
+    if (a > b) a = b = Math.min(NW - 1, Math.floor(age / WIN_S))
+    lo[i] = a
+    hi[i] = b
+  }
+  const hits = new Uint16Array(N * N)
+  const win = new Float32Array(N * N)
+  const list = new Int32Array(N * N)
+  const thr = nose * unit
+  for (let r = 0; r < REALISATIONS; r++)
+    for (let w = 0; w < NW; w++) {
+      let n = 0
+      for (let p = r * PER_REAL; p < (r + 1) * PER_REAL; p++) {
+        const kb = Math.min(tr.k1[p], (w + 1) * SPW - 1)
+        for (let k = Math.max(tr.k0[p], w * SPW); k <= kb; k++) {
+          const i = p * tr.steps + k
+          const v = laid[i]
+          // nothing, or so little no footprint cell of it could read as more than 0
+          if (!(v > 1e-12)) continue
+          const g = PUFF_GROW * travel[i]
+          const sigma = Math.sqrt(BLUR_SIGMA_M * BLUR_SIGMA_M + g * g)
+          const { r: R, w: sw } = stencil(sigma)
+          const side = 2 * R + 1
+          // laid along the step, from where it was (the sit, on its first)
+          const x0 = k > tr.k0[p] ? tr.x[i - 1] : 0
+          const y0 = k > tr.k0[p] ? tr.y[i - 1] : 0
+          const parts = Math.min(4, Math.max(1, Math.ceil(stepM[i] / (1.5 * sigma))))
+          const vp = v / parts
+          for (let q = 1; q <= parts; q++) {
+            const cx = Math.floor((x0 + ((tr.x[i] - x0) * q) / parts + EXTENT_M) / CELL_M)
+            const cy = Math.floor((EXTENT_M - y0 - ((tr.y[i] - y0) * q) / parts) / CELL_M)
+            for (let dy = -R; dy <= R; dy++) {
+              const yy = cy + dy
+              if (yy < 1 || yy > N - 2) continue
+              for (let dx = -R; dx <= R; dx++) {
+                const xx = cx + dx
+                if (xx < 1 || xx > N - 2) continue
+                const j = yy * N + xx
+                // a cell still at 0 this minute is not on the list yet
+                if (win[j] === 0) list[n++] = j
+                win[j] += vp * sw[(dy + R) * side + dx + R]
+              }
+            }
+          }
+        }
+      }
+      for (let m = 0; m < n; m++) {
+        const j = list[m]
+        if (win[j] >= thr && w >= lo[j] && w <= hi[j]) hits[j]++
+        win[j] = 0
+      }
+    }
+  const f = new Float32Array(N * N)
+  for (let i = 0; i < N * N; i++) if (hi[i] >= lo[i]) f[i] = hits[i] / (REALISATIONS * (hi[i] - lo[i] + 1))
+  return f
 }
 
 /** Light blur so single particle tracks read as a cloud (w×h, one person's N×N by default). */
@@ -1163,13 +1375,13 @@ function renderPng(grid: Float32Array, w: number, h: number): string {
     const g = grid[i]
     if (g < TRACE) continue
     const lg = Math.log(g)
-    // log steps from a trace to the core, since the nose works on ratios
+    // log steps from now and then to every minute
     const v = Math.min(1, (lg - lt) / -lt)
-    // pale amber at a trace, deep orange-red where scent is strong
+    // pale amber now and then, deep orange-red most minutes
     img.data[i * 4] = 255
     img.data[i * 4 + 1] = Math.round(200 - 150 * v)
     img.data[i * 4 + 2] = Math.round(90 - 70 * v)
-    // a trace is a faint wash; noticeable and up reads clearly
+    // now and then is a faint wash; some minutes and up reads clearly
     const a = g >= STRONG ? 0.85 : g >= NOTICE ? 0.4 + (0.45 * (lg - ln)) / (ls - ln) : 0.1 + (0.2 * (lg - lt)) / (ln - lt)
     img.data[i * 4 + 3] = Math.round(255 * a)
   }
@@ -1184,7 +1396,9 @@ type PlumeRun = NonNullable<ReturnType<typeof simulatePlume>>
 /**
  * Everyone's grids laid into one: 10 m cells, row 0 north, in metres east
  * and north of the first person. Each person's grid goes in at the nearest
- * cell, within 5 m of where they sit, and is added to the rest.
+ * cell, within 5 m of where they sit. A cell's minutes with someone's
+ * scent are those with anyone's: one less the chance that no one's
+ * reaches it, the cones taken as wandering apart.
  */
 interface Frame {
   lon: number
@@ -1221,7 +1435,7 @@ function combine(people: { lon: number; lat: number }[], runs: (PlumeRun | null)
     const [dx, dy] = place[p]
     for (let y = 0; y < N; y++) {
       const row = (y + dy) * w + dx
-      for (let x = 0; x < N; x++) grid[row + x] += r.grid[y * N + x]
+      for (let x = 0; x < N; x++) grid[row + x] = 1 - (1 - grid[row + x]) * (1 - r.grid[y * N + x])
     }
   })
   return { lon, lat, kx, ky, west: c0 * CELL_M - EXTENT_M, north: r0 * CELL_M + EXTENT_M, w, h, grid, off, place }
@@ -1822,8 +2036,8 @@ function runsFor(people: Sitter[], ms: number): (PlumeRun | null)[] {
 /** Everyone's scent as last drawn, for what else needs to know where it goes (the moose's swing). */
 let drawn: Frame | null = null
 
-/** Scent at a nose at a point as last drawn, everyone together, as a share of the plume core
- *  (noticeable from scentNotice()); null off the drawn ground or with no cone. */
+/** Scent at a nose at a point as last drawn, everyone together, as the share of the minutes it is
+ *  noticeable there (the edge at scentNotice()); null off the drawn ground or with no cone. */
 export function scentAt(lon: number, lat: number): number | null {
   const f = drawn
   if (!f) return null

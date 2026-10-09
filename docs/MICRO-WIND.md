@@ -423,12 +423,60 @@ nothing that matters: at that cell the mechanical part stays under
     of its puff left at a deer's nose (1 m, released at 1.5 m,
     reflected at the ground). Without this, a flat 2D plume never
     dilutes upward and the far tail runs 5–10× too strong.
-  - The picture is time-integrated nose-height exposure, scaled to the
-    plume core 20–40 m out (not the spike on the source cell), in three
-    bands: strong ≥ 20%, noticeable ≥ 4%, a faint trace wash ≥ 1%. The
-    card gives the share by sector and how far it stays noticeable, or
-    "past 700 m" when it runs off the grid, and says so on a stable
-    night when scent hugs the ground.
+  - **How often, not how much** (2026-10-09; `scent.ts` oftenGrid). The
+    picture is the share of the sit's minutes in which a nose there gets
+    noticeable scent, in three bands: most minutes (≥ 50%), some (≥ 15%,
+    the edge and the reach), now and then (≥ 3%, a faint wash). A minute
+    is noticeable at a cell when its nose-height scent is at least
+    `NOSE` (5.5%) of what a steady minute gives the plume core 20–40 m
+    out (not the spike on the source cell). The card gives the share by
+    sector and how far it stays noticeable, or "past 700 m" when it runs
+    off the grid, says so on a stable night when scent hugs the ground,
+    and has a dim line on what the shading means.
+    - **Why**: animals answer a plume's peaks, not its average. Caged
+      gypsy moths 20–80 m downwind in a deciduous forest fanned their
+      wings where time-averaged Gaussian models put the pheromone orders
+      of magnitude below their threshold, and the predicted dose did not
+      relate to the response at all (Elkinton, Cardé & Mason 1984, J Chem
+      Ecol 10: 1081). An ion tracer 10–20 m from its source, in a field and
+      in a forest, was there about a fifth of the time, in bursts (Murlis,
+      Willis & Cardé 2000). SF6 at 1 m under pine went in filaments a
+      metre or so wide and, in slow canopy air, round all 360° within a
+      release (Strand, Lamb & Thistle). Until then the cone was the sit's
+      average exposure, which ranks "here a tenth of the time at full
+      strength" below "here all the time, faint"; a moose in the first
+      busts the sit. Within a minute the peaks run some four times the
+      minute's level (CSIRO's peak-to-mean, (60 s / 1 s)^0.35 for a point
+      source), at the core as much as anywhere, so a share of the core's
+      minute is a share of its peaks.
+    - **How**: each step a particle takes is kept with what it laid down
+      at the noses and its age. After the run, each realisation's
+      particles go down a minute at a time, each step as a puff laid along
+      the way it came (a Gaussian footprint of σ = √(7.7² + (0.05 ×
+      distance come)²) m: the average's own 3×3 blur, widening by about
+      half a 10-minute plume's near-ground width, Pasquill–Gifford D, the
+      rest being the meander the realisations carry), so a fast step does
+      not skip cells and 30 particles a realisation read as a plume rather
+      than 30 threads. The meander, the gusts and the lulls are what tell
+      the minutes apart. A cell counts only the minutes a sit going on for
+      hours would give it scent in, from the typical age of the scent that
+      lands there to that age past the end of the release; without it the
+      far field lost the minutes before its scent first arrived (the old
+      average under-counted it too) and the near field those after the
+      release stopped.
+    - **Calibrated**: `NOSE` was 0.04 on the average; 0.055 keeps the
+      steadiest air on the archive (the bog south of camp at 10–16 km/h,
+      45% of the scent one way) within a tenth of the length it was tuned
+      to, so only wandering air reaches farther. Over 25 spot-hours at
+      Pickle (five spots, five archived hours, both changes of 2026-10-09
+      against the cones before them) the reach came out a median 1.25×
+      (1.09–1.67×) and the ground noticeable 1.37× (1.07–2.41×); an hour
+      whose scent smeared every way (the lake strip, 18% one way) got
+      shorter, 135 → 125 m. The reach is the farthest noticeable cell and
+      jumps run to run on a thin tail; the ground is the steadier measure.
+      The minute grid costs about 20 ms of a 55–65 ms plume on a desktop.
+      None of it is checked against a moose; the bands are how often, the
+      threshold is a guess.
   - **Edges** (2026-10-07, [SHORE-WIND.md](SHORE-WIND.md) rule 4): a
     particle moves in 2D, so where the head-height wind drops 20× at a
     tree line it would slow and stack up 20× deeper, and the cone read
@@ -482,11 +530,28 @@ nothing that matters: at that cell the mechanical part stays under
     height, the head-height fraction, the drainage accumulation and the
     cell (`SAMPLE_N`); the habitat grid shares the lattice, so closure,
     make-up and bush come by the same index.
-    - **Mixing by cover**: σz grows (1 + 0.8·closure)(1 + 0.3·bush) times
-      faster than the open rural curve, canopy sweeps and bush stirring,
-      and by day 1 + 0.5·convective over open ground, 1 − 0.5·convective·
-      closure under trees (the floor stays cool). The Langevin gusts scale
-      with it too.
+    - **Mixing by cover**: σz grows (1 + c(z)·closure)(1 + 0.3·bush) times
+      faster than the open rural curve, and by day 1 + 0.5·convective over
+      open ground, 1 − 0.5·convective·closure under trees (the floor stays
+      cool). The Langevin gusts scale with it too. The canopy's share c
+      goes by the puff's mean height in the stand (2026-10-09,
+      `canopyMixAt`): 1.4 at the canopy top (`canopyMix`), a quarter of
+      that in the trunk space (`trunkMix`), a smooth step between a third
+      and nine tenths of the stand height; a still night halves the top's
+      and takes the trunk space's to nothing. Until then the stand mixed at
+      0.8 everywhere, the floor as fast as the top. Vertical turbulence in
+      a canopy falls from about 1.1 u* at the top to 0.3–0.5 u* near the
+      floor of a dense stand (Raupach, Finnigan & Brunet 1996; Kaimal &
+      Finnigan 1994); in the Forest Service's prescribed burns under New
+      Jersey pitch pine smoke mixed harder near the canopy top than near
+      the ground, and that set how much left the canopy (Heilman, Bian et
+      al.); tracer at 1 m under pine went in threads a metre wide (Strand,
+      Lamb & Thistle); night drainage under a subalpine canopy hardly
+      spread upward (Yi et al. 2005). Scent released low under a closed
+      canopy now stays lower and more concentrated, and deposits more on
+      the way, since a shallow puff loses more to the needles: the stands'
+      average reach on the archive went up 0–15% (the hardwood's 28 m
+      stand 107 → 121 m by day, 119 → 137 m at night).
     - **Deposition**: each step keeps exp(−v_d·Δt / max(2 m, 2.5 σz)) of
       its scent, v_d = 0.002 + closure·(0.006·conifer + (1 − conifer)·
       (0.001 + 0.003·leaf-on)) + 0.003·bush m/s, the range of dry
@@ -553,7 +618,7 @@ nothing that matters: at that cell the mechanical part stays under
     regime learned for later sits from the puffs' steadiness.
   - **Scent tuning** (2026-10-09, Settings → Scent tuning; `scentTune.ts`,
     `ScentTuneSheet.tsx`): every constant above on a slider with its
-    modelled value marked, 24 knobs in five groups (release, spread,
+    modelled value marked, 25 knobs in five groups (release, spread,
     mixing upward, vegetation, terrain and edges), kept on the phone and
     read once per plume, so a change redraws the cone at once. The
     spread's knobs (near-calm, swirl, under trees, how far a fresh puff
@@ -632,20 +697,23 @@ nothing that matters: at that cell the mechanical part stays under
     blurred once more, specks dropped, corners cut twice) with the reach
     at its far tip, so a stand's plume shows where it touches down rather
     than a ring round the tree. It is a still frame with reduced motion.
-  - The bands are relative strength, not a deer detection threshold:
-    no published data maps these ratios to detection.
+  - What a nose notices (`NOSE`) is relative strength, not a deer or
+    moose detection threshold: no published data maps these ratios to
+    detection. The bands on top of it are how often.
   - **Cone size, smaller … bigger** (2026-10-01, named conservative …
     aggressive until 2026-10-03, which read either way): a slider on the
     scent card and in the Scent button's hold menu, kept across sits.
-    Bigger is the conservative end below, smaller the aggressive one. The middle is the model as above. Toward
-    conservative the three bands slide down together, to a third at the
-    end (noticeable from 1.3% of the core), and the meander is 30% wider:
-    the cone of a hunter who assumes scent counts sooner and the wind
-    wanders more than modelled. Toward aggressive they slide up to three
-    times (noticeable from 12%) and the meander is 30% tighter. The
-    cone's reach, its edge, the party's overlap and where a moose has
-    your wind (the swing) all follow the slider; the regional and ground
-    wind do not.
+    Bigger is the conservative end below, smaller the aggressive one. The
+    middle is the model as above. Toward conservative what a nose notices
+    slides down, to a third at the end (1.8% of the core's minute), and
+    the meander is 30% wider: the cone of a hunter who assumes scent
+    counts sooner and the wind wanders more than modelled. Toward
+    aggressive it slides up to three times (16.5%) and the meander is 30%
+    tighter. The bands (most minutes, some, now and then) stay; the
+    plume is run again, since the threshold is applied a minute at a
+    time. The cone's reach, its edge, the party's overlap and where a
+    moose has your wind (the swing) all follow the slider; the regional
+    and ground wind do not.
   - 2026-09-26 check at camp, 4.4 km/h daytime breeze: the old picture
     ran to the 700 m grid edge; now it's noticeable to 150 m, with a
     trace to 350 m.
@@ -656,11 +724,12 @@ nothing that matters: at that cell the mechanical part stays under
     0.2%), 40–60 ms a plume on a desktop instead of 150–220.
   - **Several people** (2026-09-27; sitting only, numbered 1, 2, 3 …):
     each person's plume is run as above, at their own height, and laid
-    into one frame (each placed to the nearest 10 m cell). Exposure from
-    a passive tracer adds, so the frame is the sum of each person's grid
-    as scaled to their own ground sit: a cone alone looks as it would by
-    itself, and where two overlap a pair of traces can add up to
-    noticeable. The card gives the ground noticeable at nose height
+    into one frame (each placed to the nearest 10 m cell). A cell's
+    minutes with someone's scent are those with anyone's, 1 − Π(1 − share)
+    with the cones taken as wandering apart (until 2026-10-09 the average
+    exposures were added): a cone alone looks as it would by itself, and
+    where two overlap two "now and then"s can make a "some". The card
+    gives the ground noticeable at nose height
     everyone together (ha, or acres in imperial), how much of it only the
     overlap makes, and whose scent is noticeable where another person
     sits ("1's scent drifts over 3"). Views: the combined cloud; the

@@ -1,8 +1,10 @@
 """The scent cone at a few spots on a past hour, for before/after checks of
 scent.ts: opens the app headless on the archived forecast (as replay.py
 does), runs simulatePlume at each spot and prints the summary and the
-plume's profile down its main sector, the strongest nose-height cell in
-each 50 m band as a share of the core.
+plume's profile down its main sector, the strongest cell in each 50 m
+band: the share of the minutes it is noticeable (the cone as drawn since
+2026-10-09) and, under it, the sit's average as a share of the core (the
+reading before).
 
     python scripts/scent_test.py <local time, e.g. "2026-09-29 18:00"> [--url http://localhost:5195/] [--spots camp,bog,strip,-85.59;48.933]
 """
@@ -40,26 +42,29 @@ async ({ lon, lat, ms, edge }) => {
   s.setScentColumn(true)
   s.setScentEdgeRule(true)
   if (!r) return null
-  const { plume, grid } = r
+  const { plume, grid, mean } = r
   const N = Math.round(Math.sqrt(grid.length))
   const mid = (N - 1) / 2
   const cell = 10
   // the strongest cell by 50 m band inside ±30° of the main sector
-  const bands = new Array(14).fill(0)
-  const main = plume.mainToward
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-    const dx = (x - mid) * cell, dy = (mid - y) * cell
-    const d = Math.hypot(dx, dy)
-    if (d < 20) continue
-    const brg = ((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360
-    const off = Math.abs(((brg - main + 540) % 360) - 180)
-    if (off > 30) continue
-    const k = Math.min(13, Math.floor(d / 50))
-    bands[k] = Math.max(bands[k], grid[y * N + x])
+  const profile = (gr) => {
+    const bands = new Array(14).fill(0)
+    const main = plume.mainToward
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const dx = (x - mid) * cell, dy = (mid - y) * cell
+      const d = Math.hypot(dx, dy)
+      if (d < 20) continue
+      const brg = ((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360
+      const off = Math.abs(((brg - main + 540) % 360) - 180)
+      if (off > 30) continue
+      const k = Math.min(13, Math.floor(d / 50))
+      bands[k] = Math.max(bands[k], gr[y * N + x])
+    }
+    return bands
   }
   const g = m.groundWind(lon, lat, ms)
   const c = m.microCell(lon, lat, ms) || {}
-  return { plume, bands, cell: { treeH: c.treeH, canopy: c.canopy }, ground: g && { kmh: g.kmh, dirFrom: g.dirFrom, regime: g.regime, headline: g.headline } }
+  return { plume, bands: profile(grid), meanBands: profile(mean), cell: { treeH: c.treeH, canopy: c.canopy }, ground: g && { kmh: g.kmh, dirFrom: g.dirFrom, regime: g.regime, headline: g.headline } }
 }
 """
 
@@ -104,7 +109,8 @@ def main() -> int:
                 tag = f"{name}{'' if args.edge != 'both' else ' column' if edge else ' flat'}"
                 print(f"{tag:16} trees {r['cell']['treeH']} canopy {r['cell']['canopy']:.2f} · {g['kmh']:.1f} km/h from {g['dirFrom']:.0f} ({g['regime']}) · reach {pl['reach']:.0f} m, landing {pl['landing']:.0f}, toward {pl['mainToward']} ({100 * pl['mainShare']:.0f}%), lifted {100 * pl['lifted']:.0f}%, over {100 * pl.get('over', 0):.0f}% · {time.time() - t0:.1f} s")
                 print("          " + " ".join(f"{50 * k:>4}" for k in range(14)))
-                print("          " + " ".join(f"{100 * v:4.0f}" for v in r["bands"]) + "   (% of the core, strongest cell per 50 m band)")
+                print("          " + " ".join(f"{100 * v:4.0f}" for v in r["bands"]) + "   (% of the minutes noticeable, strongest cell per 50 m band)")
+                print("          " + " ".join(f"{100 * v:4.0f}" for v in r["meanBands"]) + "   (the sit's average, % of the core)")
         page.unroute_all(behavior="ignoreErrors")
         ctx.close()
     return 0

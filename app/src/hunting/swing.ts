@@ -31,8 +31,8 @@ import { GROUND } from '../routes/walkModel'
 import { Heap, MOVES, sf, type GoingGridData } from '../routes/router'
 
 export const SWING = {
-  /** scent a moose notices when the request gives none: the scent model's NOTICE as modelled, a share of the plume core 20-40 m out */
-  notice: 0.04,
+  /** scent a moose notices when the request gives none: the scent model's NOTICE, the share of the minutes it is noticeable at his nose */
+  notice: 0.15,
   /** scent nearer you than this is not a swing: he would be on top of you */
   minM: 40,
   /** how far out open ground counts as in your sight, m */
@@ -64,7 +64,7 @@ export interface SwingRequest {
   c0: number
   rows: number
   cols: number
-  /** scent at a moose's nose over that window, row-major, as a share of the plume core */
+  /** scent at a moose's nose over that window, row-major, as the share of the minutes he would notice it */
   scent: Float32Array
   /** the share he notices, as the scent card's slider has it; SWING.notice when left out */
   notice?: number

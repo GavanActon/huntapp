@@ -38,6 +38,7 @@ export interface TuneValues {
   // mixing
   vertMix: number
   canopyMix: number
+  trunkMix: number
   bushMix: number
   sunMix: number
   stableDepth: number
@@ -79,7 +80,8 @@ export const GROUPS: { name: string; knobs: Knob[] }[] = [
     name: 'Mixing upward',
     knobs: [
       { key: 'vertMix', label: 'Vertical mixing', hint: 'how fast a puff thins upward; more is a shorter cone at nose height', value: 1, min: 0.3, max: 3, step: 0.1, unit: '×' },
-      { key: 'canopyMix', label: 'Canopy mixing', hint: 'extra mixing per unit of closure (sweeps from the canopy top)', value: 0.8, min: 0, max: 2, step: 0.1 },
+      { key: 'canopyMix', label: 'Canopy mixing', hint: 'extra mixing per unit of closure up at the canopy top, where its sweeps are', value: 1.4, min: 0, max: 3, step: 0.1 },
+      { key: 'trunkMix', label: 'Trunk space', hint: "the share of the canopy's mixing that reaches the floor by day; none on a still night", value: 0.25, min: 0, max: 1, step: 0.05, unit: '×' },
       { key: 'bushMix', label: 'Bush mixing', hint: 'extra mixing per unit of bush thickness', value: 0.3, min: 0, max: 1, step: 0.05 },
       { key: 'sunMix', label: 'Sun on open ground', hint: 'extra mixing by day over open ground (and less under trees)', value: 0.5, min: 0, max: 1, step: 0.05 },
       { key: 'stableDepth', label: 'Stable layer depth', hint: 'the settled air on a still night, 5–30 m as modelled; the scent stays in it', value: 1, min: 0.3, max: 2, step: 0.1, unit: '×' },
@@ -128,7 +130,16 @@ export const useScentTune = create<TuneState>()(
         }),
       reset: () => set({ values: {} }),
     }),
-    { name: 'huntapp-scent-tune' },
+    {
+      name: 'huntapp-scent-tune',
+      // v1 (2026-10-09): canopy mixing is the canopy top's now, the floor's its own knob, so an old setting is dropped
+      version: 1,
+      migrate: (p, from) => {
+        const s = (p ?? { values: {} }) as { values: Partial<TuneValues> }
+        if (from < 1 && s.values) delete s.values.canopyMix
+        return s as never
+      },
+    },
   ),
 )
 
