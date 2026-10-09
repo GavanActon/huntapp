@@ -323,9 +323,10 @@ export function metresBetween(aLon: number, aLat: number, bLon: number, bLat: nu
  * trees corrects the trees first, a check in a slot the slots.
  */
 const TAU_MS = 60 * 60_000
-const LEN_M = 150
+/** 100 m e-folding and nothing past 400 m (2026-10-09, Gavan: "the wind checks need to be more localized, right now it's a huge circle"): a puff speaks for the air round it, the sit's fit carries the rest */
+const LEN_M = 100
 const MAX_MS = 3 * 3600_000
-const MAX_M = 800
+const MAX_M = 400
 /** a felt check's weight where and when it was made: nine, so it leads the ground wind there 90% */
 const W0 = 9
 
@@ -346,8 +347,8 @@ const SEEN_MAX_M = 8000
 const SEEN_W0 = 2
 
 /** How far a felt check reaches as the place's own correction: W0 where
- *  and when it was made, an hour and 150 m e-folding, nothing past 3 h or
- *  800 m (2 h and 4.5 h for a wind that had held). Returns the weight
+ *  and when it was made, an hour and 100 m e-folding, nothing past 3 h or
+ *  400 m (2 h and 4.5 h for a wind that had held). Returns the weight
  *  (0 = out of reach). A seen check never blends in as head-height air: 0
  *  here, its weight is seenWeight's. */
 export function checkWeight(c: WindCheck, lon: number, lat: number, ms: number): number {

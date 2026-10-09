@@ -731,14 +731,19 @@ nothing that matters: at that cell the mechanical part stays under
     1.5 km halo round the sit while the fit is in effect.
 - **The place's own, blended in** (`checkWeight`): what the fit did not
   account for at a check is that place's. Each felt check is averaged into
-  the model vector at weight `9·exp(−Δt/60 min)·exp(−d/150 m)`, nothing
-  past 3 h or 800 m (2 h and 4.5 h for a wind that had held), **scaled by
+  the model vector at weight `9·exp(−Δt/60 min)·exp(−d/100 m)`, nothing
+  past 3 h or 400 m (2 h and 4.5 h for a wind that had held; 150 m and
+  800 m until 2026-10-09, when Gavan found the checks "a huge circle": a
+  puff speaks for the air round it, the sit's fit carries the rest), **scaled by
   likeness**: a check made under the trees corrects cells under the trees
   in full and open ground at a third, a check in a slot the slots, one with
   no call saved sits between (0.6). So a check leads the ground wind 90%
   where and when it was made (it used to be half, which left a model that
-  missed by 90° still a quarter in charge), 55% at 300 m on like ground,
-  and a place effect lasts as long as the regime does. Every check counts
+  missed by 90° still a quarter in charge), 55% at 200 m on like ground,
+  and a place effect lasts as long as the regime does. On the map each
+  check is its arrow and a dashed ring, no wash, out to where it has half
+  the say (220 m fresh), and the sit's fit draws nothing of its own: its
+  1.5 km halo read as the checks claiming the whole map. Every check counts
   the same otherwise, so where two people's checks disagree the side with
   more of them nearby carries the direction, and the reasons say so.
   Checks add up (Gavan, 2026-10-08: "multiple data points are additive"):

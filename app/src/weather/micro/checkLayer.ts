@@ -7,23 +7,24 @@ import { markShown, useAppStore } from '../../state/appStore'
 import { timeLabel } from '../../time'
 import { compass } from '../openMeteo'
 import { aloftVerdict, checkFelt, checkPull, checkRadiusM, checkReachM, checkSpentAt, forecastVerdict, steadiness, useWindChecks, verdict, type WindCheck } from './windChecks'
-import { ambientFitFor } from './model'
 
 /**
  * The wind checks still in effect, on the map. Each is an arrow where it
- * was made (the way the powder went; a ring for calm) and a dashed ring as
- * far as it still makes up a tenth of the ground wind. The ring shrinks
- * as the check ages and goes when it is spent, so what is on the map is
- * what is correcting the wind. Tap the arrow for how much it pulls there,
+ * was made (the way the powder went; a ring for calm) and a dashed ring,
+ * no wash inside it, as far as it still makes up half the ground wind (a
+ * tenth, washed, until 2026-10-09, which drew ten checks as one huge
+ * circle over the map: Gavan). The ring shrinks as
+ * the check ages and goes when it is spent, so what is on the map is
+ * where the check is in charge. Tap the arrow for how much it pulls there,
  * when it runs out, and to take it away. A check seen from afar (the
  * treetops over there) has a ring round its arrow and two rings of reach,
  * the wind above the trees being one air for kilometres: the inner, washed,
  * as far as it makes up half the wind there (while it still does), and
  * the outer, a faint dashed edge, as far as a tenth.
  *
- * Where a sit's checks have fitted the air above the trees (ambientFit.ts)
- * a wide faint halo sits round them, HALO_M across, fading as the fit
- * does: the ground that is the checks' now rather than the forecast's.
+ * The sit's fit of the air above the trees (ambientFit.ts) works under
+ * all of it without a mark of its own: its 1.5 km halo (2026-10-08) read
+ * as the checks claiming the whole map.
  *
  * "In effect" is at the planning time, not the clock: plan an hour back
  * and the checks from then are the ones drawn. An outing from the hunt
@@ -36,8 +37,6 @@ const ARROW = 'windcheck-arrow'
 const CALM = 'windcheck-calm'
 const SEEN = 'windcheck-seen'
 const KY = 110_574
-/** the halo of a sit's fit: the forecast's own grid is 2.5 km, so one air, drawn to its half-weight edge */
-const HALO_M = 1500
 
 function ms(): number {
   return useAppStore.getState().planTimeMs ?? Date.now()
@@ -93,18 +92,19 @@ function features(at: number): FeatureCollection {
     if (c.seen) {
       // seen: where it makes up half the wind above, washed, then its far edge
       const half = checkRadiusM(c, at, 0.5)
-      if (half > 0) out.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring(c, half)] }, properties: { id: c.id, pull, seen: true, fill: true, faint: false } })
+      if (half > 0) out.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring(c, half)] }, properties: { id: c.id, pull, seen: true, fill: false, faint: false } })
       out.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring(c, checkReachM(c, at))] }, properties: { id: c.id, pull, seen: true, fill: false, faint: true } })
-    } else out.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring(c, checkReachM(c, at))] }, properties: { id: c.id, pull, seen: false, fill: true, faint: false } })
+    } else {
+      const half = checkRadiusM(c, at, 0.5)
+      // the ring alone, no wash over the map (Gavan, 2026-10-09: "just draw the ring, don't draw the layer overtop")
+      if (half > 0) out.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring(c, half)] }, properties: { id: c.id, pull, seen: false, fill: false, faint: false } })
+    }
     out.push({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [c.lon, c.lat] },
       properties: { id: c.id, pull, calm: c.dirFrom == null, seen: !!c.seen, toward: c.dirFrom == null ? 0 : (c.dirFrom + 180) % 360 },
     })
   }
-  // the sit's fit of the air above, under the rings: faint, wide, fading with it
-  const fit = ambientFitFor(at)
-  if (fit && fit.weight >= 0.1) out.unshift({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring(fit.fit, HALO_M)] }, properties: { id: 'ambient', pull: 0.35 * fit.weight, seen: false, fill: true, faint: true } })
   return { type: 'FeatureCollection', features: out }
 }
 
@@ -252,7 +252,7 @@ function popupHtml(c: WindCheck, at: number): string {
     `<ul class="pp-reasons"><li>You ${c.seen ? 'saw' : 'felt'}: ${esc(felt)}</li>${model}${forecast}` +
     (c.seen
       ? `<li>In effect ${when}: ${pull}% of the wind above the trees here${half > 0 ? `, half or more to about ${dist(half)} (the inner ring)` : ''}, a tenth to about ${reach} (the outer)</li>`
-      : `<li>In effect ${when}: ${pull}% of the ground wind here, less farther out, to about ${reach} (the ring)</li>`) +
+      : `<li>In effect ${when}: ${pull}% of the ground wind here, half or more to about ${dist(checkRadiusM(c, at, 0.5))} (the ring), a tenth to about ${reach}</li>`) +
     `<li>${spent > at ? `Fades out by ${esc(timeLabel(spent))}` : 'About spent'}</li></ul>` +
     `<div class="pg-acts"><button class="linklike ck-remove" type="button">remove this check</button></div>`
   )
