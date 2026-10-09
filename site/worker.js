@@ -97,6 +97,17 @@ async function areaRequest(request, env) {
     })
   }
   if (request.method !== 'POST') return json({ error: 'post' }, 405, cors)
+  try {
+    return await takeRequest(request, env, cors)
+  } catch (e) {
+    // Cloudflare's own 500 carries no CORS header, so the page sees only
+    // "Failed to fetch" (a D1 column missing did that, 2026-10-09): answer here
+    console.error('api/request', e)
+    return json({ error: 'server' }, 500, cors)
+  }
+}
+
+async function takeRequest(request, env, cors) {
   let body
   try {
     body = await request.json()
