@@ -494,8 +494,11 @@ footer .first { color: var(--dim); font-size: 0.95rem; }
 }
 .spot-tip.below::before { bottom: auto; top: -6px; }
 @keyframes tip-in { from { opacity: 0; } }
-.spot-hint { color: var(--faint); font-size: 0.85rem; }
 @media (prefers-reduced-motion: reduce) { .spot-tip { animation: none; } }
+/* on a phone the phone is the legend: the list stays for screen readers and the callouts' words */
+@media (max-width: 859px) {
+  .legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
 
 /* tap and hold */
 .holds { display: grid; gap: 36px; padding-block: 0 64px; align-items: start; }

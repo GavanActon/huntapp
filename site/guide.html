@@ -97,6 +97,7 @@
   <div class="row-text">
     <p class="step-n"><b>02</b> The screen</p>
     <h2 id="s2">Everything is on one screen.</h2>
+    <p>Tap a number to see what it does.</p>
     <ol class="legend" aria-label="What's on the screen">
       <li data-spot="1"><b>Moose ▾</b><span>What you're hunting.</span></li>
       <li data-spot="2"><b>Heat map</b><span>The best ground for the hour you're looking at.</span></li>
@@ -107,7 +108,7 @@
       <li data-spot="7"><b>The other side</b><span>Routes, Measure, Lanes, Contours.</span></li>
       <li data-spot="8"><b>The view pill</b><span>Bow, Bush, Topo, Terrain, Scout and your own.</span></li>
     </ol>
-    <p class="note">Hold any button and a drawer opens with the things it does less often.</p>
+    <p class="note">In the app, hold any button and a drawer opens with the things it does less often.</p>
   </div>
   <figure class="loop">
     <div class="phone screen-map">
@@ -124,7 +125,6 @@
         <div class="spot-tip" id="spot-tip" aria-live="polite" hidden><b></b><span></span></div>
       </div>
     </div>
-    <figcaption class="spot-hint">Tap a number to see what it does.</figcaption>
   </figure>
 </section>
 
@@ -490,8 +490,12 @@
     s.setAttribute('aria-expanded', 'false')
     s.addEventListener('click', () => (open === s.dataset.spot ? hide() : show(s.dataset.spot)))
   })
+  // on a phone the list is hidden (the phone is the legend), so its rows leave the tab order
+  const wide = matchMedia('(min-width: 860px)')
+  const tabs = () => rows.forEach((r) => (r.tabIndex = wide.matches ? 0 : -1))
+  tabs()
+  wide.addEventListener('change', tabs)
   rows.forEach((r) => {
-    r.tabIndex = 0
     r.addEventListener('pointerenter', () => light(r.dataset.spot))
     r.addEventListener('focus', () => light(r.dataset.spot))
     r.addEventListener('click', () => show(r.dataset.spot))
@@ -508,6 +512,16 @@
     if (document.activeElement?.closest('.spots')) s?.focus()
   })
   addEventListener('resize', place)
+  // the first time the phone comes into view, 1 is open: it shows the numbers open
+  const io = new IntersectionObserver(
+    (es) => {
+      if (!es.some((e) => e.isIntersecting)) return
+      io.disconnect()
+      if (!open) show('1')
+    },
+    { threshold: 0.6 },
+  )
+  io.observe(tip.closest('.phone'))
 })()
 </script>
 </body>
