@@ -74,8 +74,9 @@ function afterChange(areaId: string) {
 export const SHARP_STEP = 'Sharp imagery'
 
 /** Download the area's files not on the phone, or with `replace` these files whether or not they are;
- *  then its sharp imagery across it, if it has some not fetched yet. */
-export async function downloadFiles(files: string[], replace = false, areaId: string = ACTIVE_AREA.id): Promise<void> {
+ *  then, with `sharp`, its sharp imagery across it, if it has some not fetched yet. The imagery
+ *  alone (no files) makes no reload: the worker serves each tile as it lands. */
+export async function downloadFiles(files: string[], replace = false, areaId: string = ACTIVE_AREA.id, withSharp = false): Promise<void> {
   const set = useDownloads.setState
   if (useDownloads.getState().active) return
   set({ error: null, skipped: [], areaId })
@@ -88,7 +89,7 @@ export async function downloadFiles(files: string[], replace = false, areaId: st
   await requestPersistence()
   const storedNames = new Set(listStored().map((s) => s.name))
   const todo = replace ? files : files.filter((f) => !storedNames.has(f))
-  const sharp = !!sharpOf(areaId) && !sharpSaved(areaId) && canKeepSharp()
+  const sharp = withSharp && !!sharpOf(areaId) && !sharpSaved(areaId) && canKeepSharp()
   if (!todo.length && !sharp) return
   const steps = todo.length + (sharp ? 1 : 0)
   set({ active: true, file: todo[0] ?? SHARP_STEP, fileIdx: 1, fileCount: steps, loaded: 0, total: 0 })
@@ -150,18 +151,35 @@ export async function removeFiles(files: string[], areaId: string = ACTIVE_AREA.
   afterChange(areaId)
 }
 
+export interface MapsStatus {
+  text: string
+  action: 'download' | 'none'
+  files: string[]
+  replace: boolean
+  /** the sharp imagery comes too (downloadFiles' `withSharp`) */
+  sharp: boolean
+  disabled: boolean
+}
+
 /**
  * What an area's Maps row says, and what its button does (the area the
  * app is in unless another is named). Reads listStored(), the bundle, the
  * server's pending files and the download in progress, so a component
  * showing it should subscribe to useDownloads, useMapUpdates (pending)
  * and useAppStore (online).
+ *
+ * The sharp imagery comes with a save (Gavan, 2026-10-09: Download also
+ * fires off a pan round the area) but not with new maps from the server,
+ * which are the changed files alone, in seconds, not the changed files and
+ * minutes of imagery (Gavan, 2026-10-09: "fetching is really slow"); then
+ * it is its own step.
  */
-export function mapsStatus(areaId: string = ACTIVE_AREA.id): { text: string; action: 'download' | 'none'; files: string[]; replace: boolean; disabled: boolean } {
+export function mapsStatus(areaId: string = ACTIVE_AREA.id): MapsStatus {
   const dl = useDownloads.getState()
-  if (dl.active && dl.areaId === areaId) return { text: `Downloading ${dl.fileIdx}/${dl.fileCount}`, action: 'none', files: [], replace: false, disabled: true }
+  const none = { action: 'none' as const, files: [], replace: false, sharp: false }
+  if (dl.active && dl.areaId === areaId) return { ...none, text: `Downloading ${dl.fileIdx}/${dl.fileCount}`, disabled: true }
   const bundle = bundleOf(areaId)
-  if (!bundle) return { text: '', action: 'none', files: [], replace: false, disabled: true }
+  if (!bundle) return { ...none, text: '', disabled: true }
   // only files the server has: one it never built cannot be missing
   const wanted = bundleOnServer(bundle.files, areaId)
   const stored = new Set(listStored().map((s) => s.name))
@@ -169,12 +187,19 @@ export function mapsStatus(areaId: string = ACTIVE_AREA.id): { text: string; act
   const pending = useMapUpdates.getState().pending.filter((p) => p.area === areaId)
   const online = useAppStore.getState().online
   // another area's download running: this one waits its turn
-  const offer = (text: string, files: string[], replace: boolean) =>
-    online ? { text, action: 'download' as const, files, replace, disabled: dl.active } : { text: 'Connect to download', action: 'download' as const, files, replace, disabled: true }
+  const offer = (text: string, files: string[], replace: boolean, sharp = false) =>
+    online ? { text, action: 'download' as const, files, replace, sharp, disabled: dl.active } : { text: 'Connect to download', action: 'download' as const, files, replace, sharp, disabled: true }
   if (have.length > 0 && pending.length > 0) return offer(`${pending.length} new · Download`, pending.map((p) => p.name), true)
-  if (have.length === 0) return offer('Download', wanted, false)
-  if (have.length < wanted.length) return offer(`${wanted.length - have.length} not saved · Download`, wanted, false)
-  // the files all here, the sharp imagery not fetched across the area yet (a phone that saved before it had any)
-  if (!sharpSaved(areaId) && canKeepSharp()) return offer(`${SHARP_STEP} not saved · Download`, [], false)
-  return { text: 'All saved', action: 'none', files: [], replace: false, disabled: false }
+  if (have.length === 0) return offer('Download', wanted, false, true)
+  // a phone that opened the area keeps its grids already (staged grids): its first save is this one
+  if (have.length < wanted.length) return offer(`${wanted.length - have.length} not saved · Download`, wanted, false, true)
+  // the files all here, the sharp imagery not fetched across the area yet (a phone that saved
+  // before it had any, an update, or a sweep cut off): its own step
+  if (!sharpSaved(areaId) && canKeepSharp()) return offer(`${SHARP_STEP} · Download`, [], false, true)
+  return { ...none, text: 'All saved', disabled: false }
+}
+
+/** The Maps row's button: its files (and the imagery, when the row says so), or the imagery alone. */
+export function runMaps(m: MapsStatus, areaId: string = ACTIVE_AREA.id): Promise<void> {
+  return downloadFiles(m.files, m.replace, areaId, m.sharp)
 }

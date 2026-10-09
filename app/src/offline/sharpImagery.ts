@@ -11,13 +11,24 @@ import { SHARP, type LiveRaster } from '../sources'
  * the imagery's last zoom, is fetched by the phone from the imagery's own
  * server, and the app's worker keeps them (vite.config.ts imagery-tiles):
  * the same tiles a pan at each zoom would ask for, without drawing them.
- * Over Blanchard River that is about 10,300 tiles, 140 MB.
+ * Over Blanchard River that is about 10,300 tiles, 130 MB.
+ *
+ * Esri answers a tile in about 150 ms however fast the line, and speaks only
+ * HTTP/1.1, so a browser holds six connections to it: six tiles at a time
+ * whatever the count asked for (5.3 min for Blanchard River, measured cold
+ * 2026-10-09). Its second name serves the same bytes to any page, so every
+ * other tile is asked of it, six more at a time, and kept under the name
+ * the map asks for (2.9 min).
  */
 
 /** the zooms fetched: the area's box from FROM to BOX_TO, its core on to the imagery's last */
 const FROM = 8
 const BOX_TO = 16
-const CONCURRENCY = 8
+/** six connections to each of Esri's two names */
+const CONCURRENCY = 12
+/** Esri's own two names for the one imagery service */
+const HOST = 'https://server.arcgisonline.com/'
+const ALT_HOST = 'https://services.arcgisonline.com/'
 /** a tile's bytes, for the size before it is fetched (Esri over Blanchard River: 12-16 KB) */
 const TILE_BYTES = 14_000
 /** the worker's cache (vite.config.ts) */
@@ -82,18 +93,34 @@ export async function saveSharp(areaId: string, progress: (done: number, total: 
     return null
   }
   const urls = tileUrls(area, src)
+  const cache = 'caches' in window ? await caches.open(CACHE) : null
   const t0 = performance.now()
   let next = 0
   let done = 0
   let ok = 0
   let bytes = 0
-  const worker = async () => {
+  /** One tile: through the worker, which keeps it (its first name); or asked of
+   *  the second name, which the worker does not watch, and kept here under the first */
+  const one = async (url: string, alt: boolean): Promise<number> => {
+    if (!alt || !cache || !url.startsWith(HOST)) {
+      const r = await fetch(url, { priority: 'low' })
+      return r.ok ? (await r.arrayBuffer()).byteLength : -1
+    }
+    const kept = await cache.match(url)
+    if (kept) return Number(kept.headers.get('content-length')) || TILE_BYTES
+    const r = await fetch(ALT_HOST + url.slice(HOST.length), { priority: 'low' })
+    if (!r.ok) return -1
+    const body = await r.arrayBuffer()
+    await cache.put(url, new Response(body, { status: r.status, statusText: r.statusText, headers: r.headers }))
+    return body.byteLength
+  }
+  const worker = async (k: number) => {
     while (next < urls.length) {
       const url = urls[next++]
       try {
-        const r = await fetch(url, { priority: 'low' })
-        if (r.ok) {
-          bytes += (await r.arrayBuffer()).byteLength
+        const n = await one(url, k % 2 === 1)
+        if (n >= 0) {
+          bytes += n
           ok++
         }
       } catch {
@@ -103,7 +130,7 @@ export async function saveSharp(areaId: string, progress: (done: number, total: 
       if (done % 25 === 0 || done === urls.length) progress(done, urls.length, bytes)
     }
   }
-  await Promise.all(Array.from({ length: CONCURRENCY }, worker))
+  await Promise.all(Array.from({ length: CONCURRENCY }, (_, k) => worker(k)))
   if (ok >= urls.length * (1 - MAY_MISS)) {
     try {
       localStorage.setItem(savedKey(areaId), JSON.stringify({ url: src.tiles[0], tiles: urls.length, at: new Date().toISOString() }))

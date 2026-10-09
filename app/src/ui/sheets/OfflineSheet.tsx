@@ -1,7 +1,7 @@
 import { useEffect, useState, type JSX } from 'react'
 import { ACTIVE_AREA, AREA_LIST, areaById, type AreaDef, type CoverageLayer } from '../../areas'
 import { dataFiles, layerLabel } from '../../config'
-import { downloadFiles, fmtBytes, mapsStatus, removeFiles, useDownloads } from '../../offline/downloads'
+import { fmtBytes, mapsStatus, removeFiles, runMaps, useDownloads } from '../../offline/downloads'
 import { listStored, storageEstimate, type StoredFileInfo } from '../../offline/fileStore'
 import { sharpBytes, sharpOf, sharpSaved } from '../../offline/sharpImagery'
 import { bundleOf, bundleOnServer, bytesOf, checkAreaListing, useMapUpdates } from '../../offline/updates'
@@ -100,7 +100,7 @@ function AreaMaps({ area, stored }: { area: AreaDef; stored: Map<string, StoredF
             {stored.has(`micro-${area.id}.hab`) && stored.has(`habitat-${area.id}.hab`)
               ? 'The wind and spots grids came down for the view and stay on the phone. The map itself streams as you look at it; saved, it works with no signal'
               : 'The map streams as you look at it; saved, it works with no signal'}
-            {bytesOf(maps.files, area.id) + sharpBytes(area.id) ? ` (${fmtBytes(bytesOf(maps.files, area.id) + sharpBytes(area.id))}, best on wifi).` : '.'}
+            {bytesOf(maps.files, area.id) + (maps.sharp ? sharpBytes(area.id) : 0) ? ` (${fmtBytes(bytesOf(maps.files, area.id) + (maps.sharp ? sharpBytes(area.id) : 0))}, best on wifi).` : '.'}
           </span>
         </div>
       )}
@@ -121,7 +121,7 @@ function AreaMaps({ area, stored }: { area: AreaDef; stored: Map<string, StoredF
         </div>
       )}
       {maps.action === 'download' && (
-        <button className="btn-primary st-download" disabled={maps.disabled} onClick={() => void downloadFiles(maps.files, maps.replace, area.id)}>
+        <button className="btn-primary st-download" disabled={maps.disabled} onClick={() => void runMaps(maps, area.id)}>
           <IconDownload size={18} />
           {maps.text}
         </button>

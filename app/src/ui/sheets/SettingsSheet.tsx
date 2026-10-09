@@ -5,7 +5,7 @@ import { getMap } from '../../map/mapController'
 import { clearDevlog, devlogCount, devlogOn, lastUpload, onDevlog, setDevlog, shareDevlog, uploadDevlog, uploadSettings } from '../../devlog'
 import { BUILD } from '../../diagnostics'
 import { checkAppUpdate, reloadApp, useAppUpdate } from '../../offline/appUpdate'
-import { downloadFiles, mapsStatus, useDownloads } from '../../offline/downloads'
+import { mapsStatus, runMaps, useDownloads } from '../../offline/downloads'
 import { checkMapUpdates, useMapUpdates } from '../../offline/updates'
 import { CONTOUR_INTERVALS, useAppStore } from '../../state/appStore'
 import { agoLabel, dayTimeLabel } from '../../time'
@@ -331,7 +331,7 @@ export default function SettingsSheet(): JSX.Element {
           <small>{ACTIVE_AREA.name}</small>
         </button>
         {maps.action === 'download' ? (
-          <button className="st-more" disabled={maps.disabled} onClick={() => void downloadFiles(maps.files, maps.replace)}>
+          <button className="st-more" disabled={maps.disabled} onClick={() => void runMaps(maps)}>
             {maps.text}
           </button>
         ) : (

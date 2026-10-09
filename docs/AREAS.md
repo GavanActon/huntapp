@@ -352,11 +352,20 @@ is mush ("super unclear", Gavan). Surveyed over both spots:
 Gavan chose "stream and cache Esri, what we have as the fallback".
 The area file's `live.sharp: "esri"` (sources.ts `SHARP`) draws Esri over
 the baked composite on the Imagery switch (`satellite-sharp`, maxzoom 17),
-online or not. The app's worker keeps every tile in its own
-`imagery-tiles` cache. Save maps then fetches the area's box to zoom 16
-and its core to 17 from Esri, phone to Esri with nothing through our
-servers (`offline/sharpImagery.ts`; about 10,300 tiles, 140 MB). Where a
-tile never came, the Sentinel-2 shows through. Esri's terms want the
+online or not, over the area's box only. The app's worker keeps every tile
+in its own `imagery-tiles` cache, with no cap (Workbox's expiry walked its
+record of every entry after each tile stored); the box bounds it, and
+Remove maps takes the area's out. Save maps then fetches the area's box to
+zoom 16 and its core to 17 from Esri, phone to Esri with nothing through
+our servers (`offline/sharpImagery.ts`; about 10,300 tiles, 130 MB). Esri
+answers in about 150 ms a tile and speaks only HTTP/1.1, six connections a
+name, so every other tile is asked of its second name
+(services.arcgisonline.com, the same bytes) and kept under the first: 2.5
+minutes for Blanchard River in the browser, from 5.3 on the one name
+(2026-10-09). New maps from the server leave the imagery out (the changed
+files alone, in seconds); a save brings it, and until it is in, the Maps
+row offers it on its own. Where a tile never came, the Sentinel-2 shows
+through. Esri's terms want the
 credit (Settings › Map credits). Their offline export is meant for ArcGIS
 apps, so keeping tiles on the phone like this rests on Gavan's call.
 

@@ -423,12 +423,15 @@ export default defineConfig({
           { urlPattern: /\/sprites\//, handler: 'CacheFirst', options: { cacheName: 'sprites', expiration: { maxEntries: 40 } } },
           // the sharp imagery over an area's baked one (sources.ts SHARP): kept on the
           // phone, what has been looked at and what Save maps fetched across the area
-          // (offline/sharpImagery.ts, about 10,300 tiles and 140 MB for Blanchard River).
-          // Its own cache, ahead of live-tiles: that one's 6,000 would push it out
+          // (offline/sharpImagery.ts, about 10,300 tiles and 130 MB for Blanchard River).
+          // Its own cache, ahead of live-tiles: that one's 6,000 would push it out. No
+          // expiry: Workbox's walks its record of every cached entry after each tile
+          // stored, over 10,000 a save; the map asks only inside an area's box
+          // (mapStyle.ts satellite-sharp bounds), and Remove maps takes the area's out
           {
             urlPattern: /^https:\/\/server\.arcgisonline\.com\/ArcGIS\/rest\/services\/World_Imagery\/MapServer\/tile\//,
             handler: 'CacheFirst',
-            options: { cacheName: 'imagery-tiles', expiration: { maxEntries: 30000, maxAgeSeconds: 60 * 60 * 24 * 365 }, cacheableResponse: { statuses: [0, 200] } },
+            options: { cacheName: 'imagery-tiles', cacheableResponse: { statuses: [0, 200] } },
           },
           // live map services: cache what has been looked at, for the drive out
           // (Quebec's imagery too, for an area there)

@@ -469,10 +469,19 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   // sharper imagery than the baked, over it on the same switch and slider
   // (sources.ts SHARP): streamed, kept by the worker, and with no signal a
   // tile never fetched leaves the baked showing. Online or not, so the kept
-  // tiles draw in the field
+  // tiles draw in the field. Over the area's box only, as the baked is: past
+  // it is the province's photo or the dark ground, and the worker's cache of
+  // it, kept with no cap (vite.config.ts imagery-tiles), stays the box's size
   if (SHARP_IMAGERY) {
     const s = SHARP_IMAGERY
-    sources['satellite-sharp'] = { type: 'raster', tiles: s.tiles, tileSize: s.tileSize, attribution: s.attribution, ...(s.maxzoom != null ? { maxzoom: s.maxzoom } : {}) }
+    sources['satellite-sharp'] = {
+      type: 'raster',
+      tiles: s.tiles,
+      tileSize: s.tileSize,
+      attribution: s.attribution,
+      bounds: [REGION.west, REGION.south, REGION.east, REGION.north],
+      ...(s.maxzoom != null ? { maxzoom: s.maxzoom } : {}),
+    }
     rasters.push(
       tag(
         {
