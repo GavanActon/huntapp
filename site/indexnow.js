@@ -9,6 +9,7 @@
 
 export const INDEXNOW_KEY = '9ce481267d778256561352784d78cd1f'
 const HOST = 'groundwind.app'
+const ENDPOINTS = ['https://www.bing.com/indexnow', 'https://api.indexnow.org/indexnow']
 
 export function indexNowKey() {
   return new Response(INDEXNOW_KEY, { headers: { 'content-type': 'text/plain; charset=utf-8' } })
@@ -30,14 +31,22 @@ export async function indexNowSweep(env) {
   const gone = [...sent.keys()].filter((u) => !urls.includes(u))
   if (!changed.length && !gone.length) return
 
-  const res = await fetch('https://api.indexnow.org/indexnow', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json; charset=utf-8' },
-    body: JSON.stringify({ host: HOST, key: INDEXNOW_KEY, keyLocation: `https://${HOST}/${INDEXNOW_KEY}.txt`, urlList: [...changed, ...gone] }),
-  })
-  // 200 taken, 202 taken while the key is checked; anything else is tried
-  // again next hour, since nothing is marked sent
-  if (res.status !== 200 && res.status !== 202) return console.log('indexnow:', res.status, await res.text())
+  // api.indexnow.org turned the Worker away with a 429 (2026-10-09) while the
+  // same ping from a desktop was taken: it throttles Cloudflare's shared way
+  // out. Bing's own door first, then the shared one; any engine passes it on.
+  const body = JSON.stringify({ host: HOST, key: INDEXNOW_KEY, keyLocation: `https://${HOST}/${INDEXNOW_KEY}.txt`, urlList: [...changed, ...gone] })
+  let ok = false
+  for (const door of ENDPOINTS) {
+    const res = await fetch(door, { method: 'POST', headers: { 'content-type': 'application/json; charset=utf-8' }, body })
+    // 200 taken, 202 taken while the key is checked
+    if (res.status === 200 || res.status === 202) {
+      ok = true
+      break
+    }
+    console.log('indexnow:', door, res.status, (await res.text()).slice(0, 200))
+  }
+  // turned away everywhere: nothing is marked sent, so next hour tries again
+  if (!ok) return
   const at = Date.now()
   await env.DB.batch([
     ...changed.map((u) =>
