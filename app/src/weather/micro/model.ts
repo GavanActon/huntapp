@@ -154,6 +154,8 @@ const K_BREEZEMAX = 16
 const K_REL = 17
 const K_CANOPY = 18
 const K_TREEH = 19
+/** drainage accumulation, cells (read by microCell and the scent column's drainage depth) */
+const K_DRAINACC = 11
 // the canopy with the hardwoods bare (leaves.ts). A grid baked before it
 // has none, and then the canopy stays in leaf all year, as it always did
 const K_CANOPY_BARE = 20
@@ -781,6 +783,14 @@ interface Eval {
   gustMul?: number
   /** how much of the sit's fit of the air above reached this cell, 0–1 */
   fitW: number
+  /** the local 10 m wind, east and north km/h: what the air above the trees (or the drainage layer) does, for the scent column */
+  e10: number
+  n10: number
+  /** the micro cell, −1 off the grid (the habitat grid shares the lattice) */
+  cell: number
+  /** stand height, m, and the head-height fraction now */
+  th: number
+  cf: number
 }
 
 /** How much a felt check's vector can say, by how hard it blew: at drift
@@ -978,7 +988,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     // off the grid: an open-ground profile, nothing local
     const f = 0.7 * (1 - 0.6 * lay.stable)
     const sp = U * f
-    return { e: Ue * f, n: Un * f, sigma: 15 + 60 * Math.exp(-sp / 3.6 / 0.6), regime: sp < 0.8 ? 'calm' : 'wind', swirl: false, gusty: ctx.gf >= 1.8 && U >= 8, parts: [{ key: 'terrain', kmh: sp, toward: (dirFrom + 180) % 360 }], reasons, local10: U, U, dirFrom, forecastU, inGrid: false, slot: false, woods: false, bias: null, fitW }
+    return { e: Ue * f, n: Un * f, sigma: 15 + 60 * Math.exp(-sp / 3.6 / 0.6), regime: sp < 0.8 ? 'calm' : 'wind', swirl: false, gusty: ctx.gf >= 1.8 && U >= 8, parts: [{ key: 'terrain', kmh: sp, toward: (dirFrom + 180) % 360 }], reasons, local10: U, U, dirFrom, forecastU, inGrid: false, slot: false, woods: false, bias: null, fitW, e10: Ue, n10: Un, cell: -1, th: 0, cf: f }
   }
 
   // ---- terrain and roughness: the two lids, blended by stability ----
@@ -1405,7 +1415,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     if (lay.source === 'estimate') reasons.push('No layering forecast cached: stability estimated from the sky and the wind')
   }
 
-  return { e: E, n: N, sigma, regime, swirl: swirl || tumble >= TUMBLE_SWIRL, gusty, parts, reasons, local10, U, dirFrom, forecastU, inGrid: true, slot: !!slot, woods: th > 0, bias: applied ? lessonBias : null, gustMul, fitW }
+  return { e: E, n: N, sigma, regime, swirl: swirl || tumble >= TUMBLE_SWIRL, gusty, parts, reasons, local10, U, dirFrom, forecastU, inGrid: true, slot: !!slot, woods: th > 0, bias: applied ? lessonBias : null, gustMul, fitW, e10, n10, cell: i, th, cf }
 }
 
 function headlineOf(ev: Eval, kmh: number, dirFrom: number, gustKmh: number): string {
@@ -1531,8 +1541,14 @@ export function groundForScoring(ms: number, lon: number, lat: number, full = fa
  *  wind, the tumbling lee of a hill), 0.5 where it has settled or gone calm, else 0; out[4]: 1 where
  *  cold air drains, pools or flows off the shore (it hugs the ground: a
  *  land breeze is the land's cold air running out over the water), else 0.
- *  Null when there is no wind at all to start from. */
+ *  With room for SAMPLE_N (the scent column, 2026-10-08): out[5], out[6]
+ *  the local 10 m wind east and north m/s (the air above the trees, or
+ *  above the cold layer); out[7] the stand height m; out[8] the
+ *  head-height fraction now; out[9] the drainage accumulation, cells;
+ *  out[10] the micro cell (−1 off the grid). Null when there is no wind
+ *  at all to start from. */
 export type GroundSampler = (lon: number, lat: number, out: Float32Array) => boolean
+export const SAMPLE_N = 11
 export function groundSampler(ms: number): GroundSampler | null {
   const ctx = makeCtx(ms)
   if (!ctx.regional && !ctx.fallback) return null
@@ -1544,6 +1560,14 @@ export function groundSampler(ms: number): GroundSampler | null {
     out[2] = ev.sigma
     out[3] = ev.swirl ? 1 : ev.regime === 'calm' || ev.regime === 'pooled' ? 0.5 : 0
     out[4] = ev.regime === 'drainage' || ev.regime === 'pooled' || ev.regime === 'landBreeze' ? 1 : 0
+    if (out.length >= SAMPLE_N) {
+      out[5] = ev.e10 / 3.6
+      out[6] = ev.n10 / 3.6
+      out[7] = ev.th
+      out[8] = ev.cf
+      out[9] = ev.cell >= 0 ? b(K_DRAINACC, ev.cell) : 0
+      out[10] = ev.cell
+    }
     return true
   }
 }
@@ -1553,10 +1577,10 @@ export function groundSampler(ms: number): GroundSampler | null {
  *  (by more than 1°, the land breeze's test in evaluate). Then the water
  *  heats the air over it from below and mixes it down to the surface,
  *  however still the night is over the land. */
-export function groundStability(ms: number): { stable: number; convective: number; warmWater: boolean } {
+export function groundStability(ms: number): { stable: number; convective: number; warmWater: boolean; t2: number } {
   const ctx = makeCtx(ms)
   const l = ctx.lay
-  return { stable: l.stable, convective: l.convective, warmWater: l.t2 - ctx.waterC < -1 }
+  return { stable: l.stable, convective: l.convective, warmWater: l.t2 - ctx.waterC < -1, t2: l.t2 }
 }
 
 export interface Window {

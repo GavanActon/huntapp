@@ -33,8 +33,11 @@ async ({ lon, lat, ms, edge }) => {
   const m = await import('/src/weather/micro/model.ts')
   const s = await import('/src/weather/micro/scent.ts')
   await m.microReadyFor(ms, 20000)
-  s.setScentEdgeRule(edge)
+  // edge=false: the flat plume with the edge rule off; edge=true: the column model (the app's)
+  s.setScentColumn(edge)
+  s.setScentEdgeRule(!edge)
   const r = s.simulatePlume(lon, lat, ms)
+  s.setScentColumn(true)
   s.setScentEdgeRule(true)
   if (!r) return null
   const { plume, grid } = r
@@ -66,7 +69,7 @@ def main() -> int:
     ap.add_argument("when")
     ap.add_argument("--url", default="http://localhost:5195/")
     ap.add_argument("--spots", default="camp,bog,strip,hardwood")
-    ap.add_argument("--edge", default="both", choices=["on", "off", "both"], help="the edge rule in scent.ts: on, off, or both for a before/after")
+    ap.add_argument("--edge", default="both", choices=["on", "off", "both"], help="on: the column model (the app's); off: the flat plume with the edge rule off; both for a before/after")
     args = ap.parse_args()
     when = datetime.strptime(args.when, "%Y-%m-%d %H:%M").replace(tzinfo=TZ)
     ms = int(when.timestamp() * 1000)
@@ -98,7 +101,7 @@ def main() -> int:
                     print(f"{name}: no plume")
                     continue
                 pl, g = r["plume"], r["ground"]
-                tag = f"{name}{'' if args.edge != 'both' else ' +edge' if edge else ' -edge'}"
+                tag = f"{name}{'' if args.edge != 'both' else ' column' if edge else ' flat'}"
                 print(f"{tag:16} trees {r['cell']['treeH']} canopy {r['cell']['canopy']:.2f} · {g['kmh']:.1f} km/h from {g['dirFrom']:.0f} ({g['regime']}) · reach {pl['reach']:.0f} m, landing {pl['landing']:.0f}, toward {pl['mainToward']} ({100 * pl['mainShare']:.0f}%), lifted {100 * pl['lifted']:.0f}%, over {100 * pl.get('over', 0):.0f}% · {time.time() - t0:.1f} s")
                 print("          " + " ".join(f"{50 * k:>4}" for k in range(14)))
                 print("          " + " ".join(f"{100 * v:4.0f}" for v in r["bands"]) + "   (% of the core, strongest cell per 50 m band)")

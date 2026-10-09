@@ -448,8 +448,64 @@ nothing that matters: at that cell the mechanical part stays under
     did not change (scripts/scent_test.py, before and after on the same
     air). Not yet checked against a puff watched over the water. The card
     says how much went over when it is 15% or more.
+  - **The column** (2026-10-08, "use bush type, terrain, 2D to 3D": steps
+    1–5 of that pass; `scent.ts` Column, `setScentColumn` for the harness).
+    Each puff has a centre height and its σz, and moves at the wind of the
+    layers it spans, their shares from the reflected Gaussian: below 2 m
+    the head-height wind, thinned by the bush at nose height (the going
+    grid's 10 m LiDAR understory, else the habitat's `thick`; nothing to
+    0.2, 0.4× at a wall); from 2 m to the stand top the canopy's own
+    profile, the bake's curve read back from the head-height fraction and
+    the stand height (so mid-canopy runs 2–3× the floor, never past the
+    10 m wind), or, where air drains or pools, the cold layer to its depth
+    (2–15 m, growing with the drainage accumulation: a few per cent of the
+    drop, Manins & Sawford); above that the local 10 m wind. Over open
+    ground the layer to 10 m runs the head wind's way (the shore and
+    tree-wall rules) at 0.85 of the 10 m speed. So scent released under a
+    canopy mixes up to the top within tens of metres and goes on at the
+    wind there; a ground sit at dusk rides the drainage while a stand
+    above the cold layer does not; and at a tree line the puff keeps its
+    pace instead of stacking up, which retires the edge rule (kept for the
+    flat model). The sampler hands the plume the 10 m vector, the stand
+    height, the head-height fraction, the drainage accumulation and the
+    cell (`SAMPLE_N`); the habitat grid shares the lattice, so closure,
+    make-up and bush come by the same index.
+    - **Mixing by cover**: σz grows (1 + 0.8·closure)(1 + 0.3·bush) times
+      faster than the open rural curve, canopy sweeps and bush stirring,
+      and by day 1 + 0.5·convective over open ground, 1 − 0.5·convective·
+      closure under trees (the floor stays cool). The Langevin gusts scale
+      with it too.
+    - **Deposition**: each step keeps exp(−v_d·Δt / max(2 m, 2.5 σz)) of
+      its scent, v_d = 0.002 + closure·(0.006·conifer + (1 − conifer)·
+      (0.001 + 0.003·leaf-on)) + 0.003·bush m/s, the range of dry
+      deposition velocities for odorant VOCs over vegetation; `DEPOSITION`
+      scales it (1), a knob, not a number.
+    - **Separation by day**: past a slope of 0.3 (17°, Wood 1995) a lee
+      face separates the flow in neutral air too, so the puff keeps the
+      drop as it does on a still night and the hollow is passed over.
+    - **A bank upwind of the sit**: ground rising 3 m or more past that
+      slope within 150 m up the 10 m wind makes a cavity; while the puff is
+      within three heights of the sit and below the bank's top, its low
+      layers run back toward the bank at a quarter of the wind, until it
+      has mixed up over it.
+    - **The body's lift**: in cold calm air (under 0.6 m/s, under 15 °C,
+      both ramped) a ground sit's scent starts up to 3 m higher, the
+      body's thermal plume, so a frosty dawn's cone is thinner near the
+      noses.
+    - **Checked on the archived air** (scratchpad scent_more.py; flat with
+      the edge rule against the column): camp in the open at 3 km/h, 93 →
+      99 m; the bog's 11 m stand, 163 → 101 m with 3% over the top; the
+      lake strip at dusk at 6 km/h into the trees, 105 → 191 m (the edge
+      rule had cut 67% of the scent; the column keeps it and lets it mix
+      up and deposit, 3.4× the noticeable cells); a 6 m stand in 28 m
+      hardwood, 178 → 99 m with 16% over the canopy (faster at mid-canopy,
+      but it mixes down and deposits sooner: the stand's cone is shorter
+      at nose height, not longer); a calm 11 °C dawn at the bog, 65 →
+      67 m (the lift is 0.5 m there). 25–127 ms a plume on a desktop
+      against 34–84 flat. None of it is checked against a puff watched in
+      the field.
   - **Tree stand**: release at 4 or 6 m instead of 1.5 m, through the same
-    reflected Gaussian. The grid is scaled to the same sit on the ground,
+    reflected Gaussian; with the column, at the mid-canopy wind. The grid is scaled to the same sit on the ground,
     so a stand reads as thinner near the tree, touching down farther out.
     The card gives "reaches noses from X m". It still uses the head-height
     wind: the wind at stand height is stronger, not yet modelled.

@@ -11,8 +11,10 @@ import { useAppStore } from '../../state/appStore'
 import { compass } from '../openMeteo'
 import { onProfile } from '../boundaryLayer'
 import { onWeatherGrid } from '../windGrid'
-import { groundGust, groundSampler, groundStability, loadMicro, microGrid, onMicro, type GroundSampler } from './model'
+import { groundGust, groundSampler, groundStability, loadMicro, microGrid, onMicro, SAMPLE_N, type GroundSampler } from './model'
 import { ensureRelief, onRelief, reliefCell, reliefNear, WATER } from './relief'
+import { habitat } from '../../spots/habitatGrid'
+import { leavesDown } from './leaves'
 import { useWindChecks } from './windChecks'
 import '../../ui/minipop.css'
 
@@ -42,7 +44,22 @@ import '../../ui/minipop.css'
  *     altitude off a drop (the ground from the going grid's 10 m LiDAR
  *     DTM), so scent passes over a hollow above the deer's noses and comes
  *     back down where the ground rises to meet it, or over open water
- *     warmer than the air, which mixes it down from below.
+ *     warmer than the air, which mixes it down from below;
+ *   - the column (2026-10-08, steps 1–5 of the realism pass): each puff
+ *     has a centre height and a vertical spread, and moves at the wind of
+ *     the layers it spans: the head-height wind below 2 m, thinned by the
+ *     bush at nose height; the canopy's own profile from 2 m to the stand
+ *     top, or the cold layer's depth where air drains or pools; the 10 m
+ *     wind above. So scent released under a canopy mixes up to the top
+ *     within tens of metres and goes on at the faster wind there, a stand
+ *     at 6 m sends it farther from the start, a ground sit at dusk rides
+ *     the drainage while a stand above the cold layer does not, and at a
+ *     tree line the puff keeps its pace instead of stacking up. Canopy,
+ *     bush and sun on open ground set how fast it mixes; needles, leaves
+ *     and bush take some of it out of the air; a steep lee bank separates
+ *     the flow by day as a drop does by night, and a sit under such a bank
+ *     drifts back toward it before going over; in cold calm air the
+ *     body's own warmth lifts the scent a few metres first.
  *
  * The map shades nose-height scent against the plume core 20–40 m out:
  * strong, noticeable, and a faint trace wash below that.
@@ -94,11 +111,12 @@ export interface Plume {
    */
   touchdown: boolean
   /**
-   * Share of the scent that went up over the trees: where the head-height
-   * wind drops along the path (a tree line, a sheltered pocket), only that
-   * share of the air got in at head height, and the rest went over with
-   * its scent. Each step counts for what it would have laid down at its
-   * release height.
+   * Share of the scent that went up over the canopy: in the column model
+   * the part of each puff above the stand's top where it is under trees
+   * (mixed up there, it goes on at the wind above); in the flat model,
+   * where the head-height wind drops along the path (a tree line, a
+   * sheltered pocket), the share of the air that did not get in. Each
+   * step counts for what it would have laid down at its release height.
    */
   over: number
 }
@@ -297,23 +315,172 @@ export function cellSampler(ms: number): GroundSampler | null {
   const g = microGrid()
   if (!sample || !g) return sample
   const memo = new Map<number, Float32Array | null>()
+  const tmp = new Float32Array(SAMPLE_N)
   return (lon, lat, out) => {
     const i = g.index(lon, lat)
     if (i < 0) return sample(lon, lat, out)
     let v = memo.get(i)
     if (v === undefined) {
       const [clon, clat] = g.center(i)
-      v = sample(clon, clat, out) ? Float32Array.of(out[0], out[1], out[2], out[3], out[4]) : null
+      v = sample(clon, clat, tmp) ? tmp.slice() : null
       memo.set(i, v)
     }
     if (!v) return false
-    out[0] = v[0]
-    out[1] = v[1]
-    out[2] = v[2]
-    out[3] = v[3]
-    out[4] = v[4]
+    const n = Math.min(out.length, v.length)
+    for (let k = 0; k < n; k++) out[k] = v[k]
     return true
   }
+}
+
+// ---------------------------------------------------------------- the column
+
+/**
+ * What the ground does to a puff over it, per micro cell: the layers of
+ * air it may span and what each moves at, how fast it mixes upward, and
+ * what the vegetation takes out of it. The habitat grid shares the micro
+ * lattice, so a cell's closure, make-up and bush are read by the same
+ * index; without it (not loaded, off the grid) a stand is taken as 60%
+ * closed and half conifer, and the bush as moderate.
+ */
+interface Column {
+  /** the top of the slow layer, m above ground: the canopy top in a stand, the cold layer's depth where air drains or pools, 10 m in the open */
+  zb: number
+  /** the layers' wind, m/s east and north: below 2 m (the head wind; the bush at nose height thins it per step), 2 m to zb, above zb */
+  v0e: number
+  v0n: number
+  v1e: number
+  v1n: number
+  v2e: number
+  v2n: number
+  /** how much faster a puff mixes upward than over open ground: canopy sweeps, bush, sun on open ground */
+  mixF: number
+  /** deposition velocity onto the vegetation, m/s */
+  vd: number
+  stand: boolean
+  /** eye-level bush thickness from the habitat grid, 0–1 (the going grid's 10 m measure overrides it per step) */
+  trap: number
+}
+
+interface HabBands {
+  crown: ArrayLike<number>
+  conifer: ArrayLike<number>
+  hardwood: ArrayLike<number>
+  thick: ArrayLike<number>
+  thickS: number
+}
+
+function habBands(): HabBands | null {
+  const h = habitat()
+  if (!h || !h.has('crown') || !h.has('thick')) return null
+  return { crown: h.raw('crown'), conifer: h.raw('conifer'), hardwood: h.raw('hardwood'), thick: h.raw('thick'), thickS: h.scale('thick') }
+}
+
+/** The bush's hold on the air at nose height: nothing to 0.2, down to 0.4 of the head wind at a wall. */
+function trapFactor(trap: number): number {
+  return 1 - 0.6 * Math.min(1, Math.max(0, (trap - 0.2) / 0.8))
+}
+
+/** Past this slope (17°) the flow separates from a lee face in neutral air too (Wood 1995), and the hollow under it is passed over. */
+const SEP_SLOPE = 0.3
+/** How far upwind of a sit a bank is looked for, m, and the rise it must have to make a cavity. */
+const CAVITY_SCAN_M = 150
+const CAVITY_MIN_M = 3
+/** In the cavity under a bank the ground-level flow runs back toward it at this share of the wind. */
+const CAVITY_BACK = 0.25
+/** Deposition onto vegetation, as a share of the literature's dry deposition velocities for odorant VOCs (0.2–1 cm/s): a knob, not a number. */
+const DEPOSITION = 1
+/** In cold calm air the body's warmth lifts the scent this far, m, before it spreads (a human thermal plume rises at about 0.2 m/s). */
+const BODY_RISE_M = 3
+
+/** The standard normal's cumulative, Abramowitz & Stegun 7.1.26. */
+function Phi(z: number): number {
+  const t = 1 / (1 + 0.3275911 * Math.abs(z))
+  const poly = t * (0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))))
+  const erf = 1 - poly * Math.exp(-z * z)
+  return 0.5 * (1 + (z < 0 ? -erf : erf))
+}
+
+/** The share of a puff centred zc m up with spread s that lies below z, reflected at the ground. */
+function reflCdf(z: number, zc: number, s: number): number {
+  return Phi((z - zc) / s) + Phi((z + zc) / s) - 1
+}
+
+/**
+ * The column for a sample (the fuller sample of SAMPLE_N values): the
+ * canopy's profile is the bake's own curve read back from the head-height
+ * fraction and the stand height (the log law to the top, the exponential
+ * decay inside), so the mid-canopy wind is what the bake implies; the
+ * drainage layer's depth grows with the ground draining through the cell
+ * (Manins & Sawford: a few per cent of the drop; 2–15 m here).
+ */
+function columnOf(out: Float32Array, hab: HabBands | null, conv: number, leafOn: number): Column {
+  const he = out[0]
+  const hn = out[1]
+  const ae = out[5]
+  const an = out[6]
+  const th = out[7]
+  const cf = out[8]
+  const acc = out[9]
+  const i = out[10]
+  const hug = out[4] >= 0.5
+  const hs = Math.hypot(he, hn)
+  const as = Math.hypot(ae, an)
+  const stand = th >= 3
+  let closure = stand ? 0.6 : 0
+  let conifer = 0.5
+  let trap = 0.3
+  if (hab && i >= 0) {
+    const cr = hab.crown[i]
+    if (stand && cr > 0) closure = Math.min(1, cr / 100)
+    const cn = hab.conifer[i]
+    const hw = hab.hardwood[i]
+    if (cn + hw > 0) conifer = cn / (cn + hw)
+    const t = hab.thick[i]
+    if (t !== 255) trap = t * hab.thickS
+  }
+  let zb: number
+  let v1e: number
+  let v1n: number
+  if (stand) {
+    zb = th
+    if (hug) {
+      // the cold layer fills the trunk space: the drainage is the mid layer too
+      v1e = he
+      v1n = hn
+    } else {
+      const zc0 = Math.max(0.1 * th, 0.3)
+      const fTop = Math.log(Math.max(0.33 * th, 0.5) / zc0) / Math.log(10 / zc0)
+      const a = fTop > 0 && cf > 0 ? Math.min(4, Math.max(0.5, -Math.log(Math.min(1, cf / fTop)) / Math.max(0.1, 1 - 2 / th))) : 2
+      // mid-canopy against head height, never past the 10 m wind
+      const uMid = Math.min(Math.exp((a * (0.5 * th - 2)) / th), (as + 0.01) / (hs + 0.01))
+      v1e = he * uMid
+      v1n = hn * uMid
+    }
+  } else if (hug) {
+    zb = Math.min(15, Math.max(2, 2 + 0.015 * Math.sqrt(acc * 900)))
+    v1e = he
+    v1n = hn
+  } else {
+    // open ground: the layer to 10 m runs the way the head wind does (it
+    // carries the shore and tree-wall rules the solve does not) at most of
+    // the 10 m speed; near calm at head height it takes the solve's way
+    zb = 10
+    const dirE = hs >= 0.3 ? he / hs : as > 0 ? ae / as : 0
+    const dirN = hs >= 0.3 ? hn / hs : as > 0 ? an / as : 0
+    v1e = dirE * 0.85 * as
+    v1n = dirN * 0.85 * as
+  }
+  // sun on open ground lifts the mixing; under a canopy the floor stays cool and keeps scent low
+  const convCover = conv > 0 ? (stand ? 1 - 0.5 * conv * closure : 1 + 0.5 * conv) : 1
+  const mixF = (1 + 0.8 * closure) * (1 + 0.3 * trap) * convCover
+  const vd = DEPOSITION * (0.002 + closure * (0.006 * conifer + (1 - conifer) * (0.001 + 0.003 * leafOn)) + 0.003 * trap)
+  return { zb, v0e: he, v0n: hn, v1e, v1n, v2e: ae, v2n: an, mixF, vd, stand, trap }
+}
+
+/** The column model can be held off for a before/after on the same air (scripts/scent_test.py: the flat plume with the edge rule); the app never does. */
+let columnModel = true
+export function setScentColumn(on: boolean): void {
+  columnModel = on
 }
 
 /**
@@ -333,50 +500,68 @@ export function simulatePlume(
   gust = groundGust(ms),
 ): { plume: Plume; grid: Float32Array; tracks: PlumeTracks; relief: boolean } | null {
   if (!sample) return null
-  const { stable, convective, warmWater } = groundStability(ms)
+  const { stable, convective, warmWater, t2 } = groundStability(ms)
   const noseAt = noseTable(height, stable, convective)
   const noseGround = height === GROUND_H ? noseAt : noseTable(GROUND_H, stable, convective)
   const kx = 111_320 * Math.cos((lat * Math.PI) / 180)
   const ky = 110_574
-  // off a drop in still air a particle keeps its altitude (keep > 0); the
-  // ground under it is the going grid's 10 m LiDAR DTM, nothing off it.
-  // With keep 0, or before the grid lands, none of this runs and the cone
-  // is the old one, bit for bit.
+  const column = columnModel
+  // the ground under the particles: the going grid's 10 m LiDAR DTM (the
+  // core only), for a drop kept in still air, a steep lee face by day, a
+  // bank upwind of the sit, and the bush at nose height
   const keep = keepOfDrop(stable)
-  const dtm = keep > 0 ? reliefNear(lon, lat, kx, ky) : null
-  // σz by distance travelled in 1 m steps for the steps held up off a drop,
-  // worked out as they need it (0 until then: σz is never under 1 m), so a
-  // plume that is not held up, or only near the sit, pays next to nothing
-  const sz = dtm ? new Float64Array(TABLE_M + 1) : null
+  const dtm = column || keep > 0 ? reliefNear(lon, lat, kx, ky) : null
+  // σz by distance travelled in 1 m steps, for every step the column model
+  // takes (its layer shares) and for the steps held up off a drop
+  const sz = new Float64Array(TABLE_M + 1)
   const iSrc = dtm ? reliefCell(dtm, 0, 0) : -1
   const gSrc = dtm && iSrc >= 0 ? dtm.elev[iSrc] : NaN
-  // the weight the steps would lay down at their release height: all of it,
-  // and the part held up off a drop
+  const hab = column ? habBands() : null
+  const leafOn = column ? 1 - leavesDown(ms) : 1
+  const cols = new Map<number, Column>()
   let lifted = 0
   let over = 0
   let wTotal = 0
-  // the particles walked the relief; one came back down after being held up
   let walked = false
   let landed = false
-  // out[4] is the sampler's flag for cold air that hugs the ground:
-  // drainage, a pool, a land breeze (model.ts groundSampler)
-  const out = new Float32Array(5)
+  const out = new Float32Array(SAMPLE_N)
   if (!sample(lon, lat, out)) return null
   const srcSigma = out[2] * SPREAD
   const srcSpeed = Math.hypot(out[0], out[1])
+  // in cold calm air the body's own warmth lifts the scent a few metres
+  // before it spreads: a ground sit on a frosty dawn starts above the noses
+  const rise = column && height === GROUND_H ? BODY_RISE_M * Math.min(1, Math.max(0, (0.6 - srcSpeed) / 0.6)) * Math.min(1, Math.max(0, (15 - t2) / 15)) : 0
+  const zc0 = height + rise
+  // a bank upwind of the sit: within CAVITY_SCAN_M along the 10 m wind,
+  // ground rising CAVITY_MIN_M or more past SEP_SLOPE makes a cavity the
+  // sit lies in, where the low air runs back toward the bank
+  let cavityH = 0
+  if (column && dtm && iSrc >= 0) {
+    const as = Math.hypot(out[5], out[6])
+    if (as >= 0.5) {
+      const ux = -out[5] / as
+      const uy = -out[6] / as
+      let gPrev = gSrc
+      let steep = false
+      for (let d = 10; d <= CAVITY_SCAN_M; d += 10) {
+        const j = reliefCell(dtm, ux * d, uy * d)
+        if (j < 0) break
+        const g = dtm.elev[j]
+        if ((g - gPrev) / 10 >= SEP_SLOPE) steep = true
+        if (steep && g - gSrc > cavityH) cavityH = g - gSrc
+        gPrev = g
+      }
+      if (cavityH < CAVITY_MIN_M) cavityH = 0
+    }
+  }
   const rnd = mulberry32(Math.round(lon * 1e4) * 73856093 ^ Math.round(lat * 1e4) * 19349663 ^ Math.round(ms / 60_000))
   const raw = new Float32Array(N * N)
   // The same sit on the ground, for the scale, always at its release
-  // height: the scale is what a ground sit lays down over flat ground.
-  // The spec (MICRO-WIND-LIDAR.md) lifts this reference sit off a drop too
-  // (its zAglG); on a lip its 20–40 m core is then held up with the rest,
-  // the scale collapses and every cell reads stronger, which ran the cone
-  // at a Pickle bank out to the grid's edge. Held at its release height,
-  // a cone off a drop can only thin, never strengthen. A ground sit is its
-  // own reference until a particle is first held up (it gets its own copy
-  // then), so a plume that never leaves the ground pays nothing for it.
-  let rawGround = height === GROUND_H ? raw : new Float32Array(N * N)
-  // scent back at the noses after being held up: the far side of a hollow
+  // height over flat ground: what a ground sit lays down with nothing in
+  // the way. Held at that, a cone can only thin for the relief, never
+  // strengthen. A ground sit is its own reference until it first differs
+  // (it gets its own copy then).
+  let rawGround = height === GROUND_H && rise === 0 ? raw : new Float32Array(N * N)
   const rawDown = dtm ? new Float32Array(N * N) : null
   const sectors = new Float64Array(8)
   const STEPS = Math.ceil(TOTAL_S / DT) + 1
@@ -384,24 +569,26 @@ export function simulatePlume(
   const tracks: PlumeTracks = { steps: STEPS, x: new Float32Array(NP * STEPS), y: new Float32Array(NP * STEPS), k0: new Int16Array(NP), k1: new Int16Array(NP) }
   const TL = 20
   const TM = 150
-  // gusts: the sit is spent in bursts and lulls, a share GFRAC of it in a
-  // burst of about BURST_S, where the wind runs at the hour's gust factor
-  // and stirs harder. The lulls are slower by as much, so the sit's mean
-  // speed is about what it was.
   const gusty = gust > 1.1
   const GFRAC = Math.min(0.35, Math.max(0, (gust - 1) / 3))
   const lullMul = Math.max(0.3, (1 - GFRAC * gust) / (1 - GFRAC))
   const pEnd = DT / BURST_S
   const pStart = (DT * GFRAC) / (BURST_S * (1 - GFRAC))
+  const colOf = (): Column => {
+    const key = out[10]
+    let c = cols.get(key)
+    if (!c) {
+      c = columnOf(out, hab, convective, leafOn)
+      cols.set(key, c)
+    }
+    return c
+  }
   for (let r = 0; r < REALISATIONS; r++) {
-    // the meander angle through the sit (radians), an OU process
     const steps = Math.ceil(TOTAL_S / DT) + 1
     const phi = new Float32Array(steps)
     const sm = ((srcSigma * 0.8) * Math.PI) / 180
     phi[0] = gauss(rnd) * sm
     for (let k = 1; k < steps; k++) phi[k] = phi[k - 1] * (1 - DT / TM) + sm * Math.sqrt((2 * DT) / TM) * gauss(rnd)
-    // whether the air is gusting at each step: a two-state chain everyone in
-    // this realisation shares, since a gust comes through the whole plume
     const burst = new Uint8Array(steps)
     if (gusty) {
       let on = rnd() < GFRAC
@@ -420,15 +607,14 @@ export function simulatePlume(
       let y = 0
       let up = 0
       let vp = 0
-      // distance travelled, which sets how far the puff has mixed upward
       let path = 0
-      // height above the ground, the ground under it a step ago (NaN off the
-      // going grid), and whether it has been held up off a drop
-      let zAgl = height
+      // the puff's centre: its release height (the body's lift in) plus
+      // what the relief holds it up by
+      let zRel = 0
       let g0 = gSrc
       let aloft = false
-      // the share of its scent still at head height (EDGE_DROP), the mean
-      // wind it is measured against, and the fastest met (MIX_FROM_ABOVE)
+      // the share of its scent still in the air at the noses' level: lost
+      // over an edge (the flat model) or onto the vegetation (the column)
       let kept = 1
       let spdRef = srcSpeed
       let spdMax = srcSpeed
@@ -436,60 +622,98 @@ export function simulatePlume(
         const k = Math.round(t / DT)
         if (!sample(lon + x / kx, lat + y / ky, out)) break
         const mean = Math.hypot(out[0], out[1])
-        if (edgeRule && spdRef >= EDGE_MIN && mean < spdRef * EDGE_DROP) {
-          kept *= mean / spdRef
-          spdRef = mean
-        } else if (mean > spdRef) spdRef = mean
+        const pm = Math.min(TABLE_M, Math.round(path))
+        let sig = sz[pm]
+        if (sig === 0) sig = sz[pm] = sigmaZ(pm, stable, convective)
+        const zc = zc0 + zRel
+        let ue: number
+        let un: number
+        let mixF = 1
+        let col: Column | null = null
+        if (column) {
+          col = colOf()
+          // the puff's share in each layer, from its centre and spread
+          const F2 = reflCdf(2, zc, sig)
+          const Fb = reflCdf(col.zb, zc, sig)
+          const P0 = Math.max(0, F2)
+          const P1 = Math.max(0, Fb - F2)
+          const P2 = Math.max(0, 1 - Fb)
+          // the bush at nose height: the going grid's 10 m measure under the particle, else the habitat's
+          let trap = col.trap
+          if (dtm) {
+            const gc = Math.floor(dtm.c0 + x * dtm.sx)
+            const gr = Math.floor(dtm.r0 - y * dtm.sy)
+            if (gc >= 0 && gr >= 0 && gc < dtm.cols && gr < dtm.rows) {
+              const bz = dtm.bush[gr * dtm.cols + gc]
+              if (Number.isFinite(bz)) trap = bz
+            }
+          }
+          const tf = trapFactor(trap)
+          // under a bank the low air runs back toward it until the puff is up over it
+          const back = cavityH > 0 && zc < cavityH && x * x + y * y < 9 * cavityH * cavityH ? -CAVITY_BACK : 1
+          ue = back * (P0 * col.v0e * tf + P1 * col.v1e) + P2 * col.v2e
+          un = back * (P0 * col.v0n * tf + P1 * col.v1n) + P2 * col.v2n
+          mixF = col.mixF
+          if (col.stand) over += noseAt[pm] * P2
+        } else {
+          if (edgeRule && spdRef >= EDGE_MIN && mean < spdRef * EDGE_DROP) {
+            kept *= mean / spdRef
+            spdRef = mean
+          } else if (mean > spdRef) spdRef = mean
+          ue = out[0]
+          un = out[1]
+        }
         if (mean > spdMax) spdMax = mean
         const c = Math.cos(phi[k])
-        const s = Math.sin(phi[k])
+        const sn = Math.sin(phi[k])
         const gm = burst[k] ? gust : gusty ? lullMul : 1
-        // rotate the mean wind by the meander (east/north frame, clockwise positive)
-        const u = (out[0] * c + out[1] * s) * gm
-        const v = (-out[0] * s + out[1] * c) * gm
+        const u = (ue * c + un * sn) * gm
+        const v = (-ue * sn + un * c) * gm
         const spd = Math.sqrt(u * u + v * v)
-        const sigT = (0.1 + 0.35 * spd + 0.25 * spd * Math.sin(Math.min(80, out[2] * SPREAD) * (Math.PI / 180))) * (burst[k] ? 1.5 : 1)
+        // the gusts' size with the wind and the spread; a canopy's sweeps and the bush stir harder
+        const sigT = (0.1 + 0.35 * spd + 0.25 * spd * Math.sin(Math.min(80, out[2] * SPREAD) * (Math.PI / 180))) * (burst[k] ? 1.5 : 1) * (1 + 0.5 * (mixF - 1))
         up = up * (1 - DT / TL) + sigT * Math.sqrt((2 * DT) / TL) * gauss(rnd)
         vp = vp * (1 - DT / TL) + sigT * Math.sqrt((2 * DT) / TL) * gauss(rnd)
-        x += (u + up) * DT
-        y += (v + vp) * DT
-        // even in a calm the air stirs a little, so mixing never quite stops;
-        // and in the slow air past an edge the air it came from keeps
-        // stirring it from above (only there: in the open the lulls between
-        // gusts mix as slowly as they always did)
-        path += Math.max(0.2, spd, kept < 1 ? MIX_FROM_ABOVE * spdMax : 0) * DT
+        const dx = (u + up) * DT
+        const dy = (v + vp) * DT
+        x += dx
+        y += dy
+        // the puff mixes upward with the distance travelled: faster under a
+        // canopy, in bush and in sun over open ground (the column), and in the
+        // flat model in the slow air past an edge at the rate the air above sets
+        path += Math.max(0.2, spd, !column && kept < 1 ? MIX_FROM_ABOVE * spdMax : 0) * DT * mixF
         const cx = Math.floor((x + EXTENT_M) / CELL_M)
         const cy = Math.floor((EXTENT_M - y) / CELL_M)
         if (cx < 0 || cy < 0 || cx >= N || cy >= N) break
+        if (col) {
+          // what the vegetation takes out of the air: the deposition velocity
+          // over the puff's depth
+          kept *= Math.exp((-col.vd * DT) / Math.max(2, 2.5 * sig))
+        }
         if (dtm) {
-          // the going cell under it: reliefCell written out, since a call a
-          // step cost a relief plume about 0.8 ms (5%)
           const gc = Math.floor(dtm.c0 + x * dtm.sx)
           const gr = Math.floor(dtm.r0 - y * dtm.sy)
           const i = gc < 0 || gr < 0 || gc >= dtm.cols || gr >= dtm.rows ? -1 : gr * dtm.cols + gc
           if (i < 0) {
-            // off the going grid the step follows the ground, as before. Back
-            // on, the particle starts afresh: it followed the ground off the
-            // grid, so the fall since it left is not a drop it kept
             g0 = NaN
           } else {
             const g1 = dtm.elev[i]
             if (warmWater && dtm.ground[i] === WATER) {
-              // open water warmer than the air heats it from below and mixes
-              // the scent down to the surface, however still the night over
-              // the land. That is not scent coming down where the ground
-              // rises (touchdown), so it no longer counts as held up
-              zAgl = height
+              // open water warmer than the air mixes the scent down to the surface
+              zRel = 0
               aloft = false
             } else {
-              // NaN (no change) until the particle has had a step on the grid
               const dz = g0 - g1
               if (dz > 0) {
-                // falling ground: where cold air drains, pools or runs off the shore it follows it down
-                if (out[4] <= 0.5) zAgl = Math.min(MAX_AGL, zAgl + dz * keep)
+                // falling ground: in still air the puff keeps its level; by day too
+                // past a steep lee face, where the flow separates; cold air that
+                // drains, pools or runs off the shore follows the ground down
+                const ds = Math.hypot(dx, dy)
+                const k2 = column && ds > 0 && dz / ds >= SEP_SLOPE ? 1 : keep
+                if (out[4] <= 0.5 && k2 > 0) zRel = Math.min(MAX_AGL - zc0, zRel + dz * k2)
               } else if (dz < 0) {
                 // rising ground takes back what was gained, never below the release height
-                zAgl = Math.max(height, zAgl + dz)
+                zRel = Math.max(0, zRel + dz)
               }
             }
             g0 = g1
@@ -501,26 +725,16 @@ export function simulatePlume(
           tracks.y[base + k] = y
           tracks.k1[id] = k
         }
-        const pm = Math.min(TABLE_M, Math.round(path))
-        // at its release height the table; held up off a drop, the
-        // reflected Gaussian at the height it has now
-        let w = noseAt[pm]
-        if (sz && zAgl > height) {
-          let sig = sz[pm]
-          if (sig === 0) sig = sz[pm] = sigmaZ(pm, stable, convective)
-          w = heldUp(sig, zAgl)
-          // a ground sit's first step held up: until now it laid down just what its reference would
-          if (rawGround === raw) rawGround = raw.slice()
-        }
+        // the nose-height weight: the table at the release height, or the
+        // reflected Gaussian at the height the puff has now
+        const zNow = zc0 + zRel
+        const w = zNow === height ? noseAt[pm] : heldUp(sig, zNow)
+        if (rawGround === raw && zNow !== height) rawGround = raw.slice()
         raw[cy * N + cx] += w * kept
         if (rawGround !== raw) rawGround[cy * N + cx] += noseGround[pm] * kept
-        // weighed by what the step would lay down at its release height, not
-        // by w (the spec's way): held well up, a step lays down next to
-        // nothing, so by w a 10 m bank straight onto a lake read as 15% held
-        // up while the whole cone had gone (Lac Bailey, a stand)
         wTotal += noseAt[pm]
-        over += noseAt[pm] * (1 - kept)
-        if (zAgl > height + 2) {
+        if (!column) over += noseAt[pm] * (1 - kept)
+        if (zRel > 2) {
           lifted += noseAt[pm]
           aloft = true
         } else if (aloft && rawDown) {
@@ -536,7 +750,6 @@ export function simulatePlume(
   }
   const grid = blur(raw)
   const ground = rawGround === raw ? grid : blur(rawGround)
-  // scale to the ground sit's plume core 20–40 m out, not the spike on the source itself
   const mid = (N - 1) / 2
   let ring = 0
   let max = 0
@@ -560,9 +773,6 @@ export function simulatePlume(
         landing = Math.min(landing, d)
       }
     }
-  // held-up scent the rising ground brings back to the noses, noticeable on
-  // its own over a patch out in the cone, so the card can say it comes
-  // down, and only then
   let down = 0
   if (rawDown && landed && ref > 0) {
     const d = blur(rawDown)

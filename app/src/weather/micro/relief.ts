@@ -45,6 +45,8 @@ export interface Relief {
   elev: Float32Array
   /** ground class by cell (build_going.py): WATER is open water */
   ground: Uint8Array
+  /** eye-level bush thickness by cell, 0–1 (the LiDAR's understory where measured, the bush model's elsewhere); NaN where none */
+  bush: Float32Array
 }
 
 /** The going grid's ground class for open water. */
@@ -59,7 +61,7 @@ export function reliefNear(lon: number, lat: number, kx: number, ky: number): Re
   const g = going()
   if (!g) return null
   const { cols, rows, west, north, dLon, dLat } = g.grid
-  return { c0: (lon - west) / dLon, r0: (north - lat) / dLat, sx: 1 / (kx * dLon), sy: 1 / (ky * dLat), cols, rows, elev: g.data.elev, ground: g.data.ground }
+  return { c0: (lon - west) / dLon, r0: (north - lat) / dLat, sx: 1 / (kx * dLon), sy: 1 / (ky * dLat), cols, rows, elev: g.data.elev, ground: g.data.ground, bush: g.data.bush }
 }
 
 /**
