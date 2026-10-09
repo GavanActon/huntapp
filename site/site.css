@@ -928,3 +928,9 @@ footer .links a:hover { color: var(--ink); text-decoration: underline; }
 }
 .cmp thead a { text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
 @media (max-width: 420px) { .app .uses li { grid-template-columns: 1fr; gap: 4px; } }
+
+/* ---- the homepage points at /compare: a quiet line under the hero's buttons, a fourth field-notes card */
+.hero-also { margin-top: 18px; font-size: 0.95rem; color: var(--dim); }
+.hero-also a { color: var(--ink); text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+.hero-also a:hover { text-decoration-color: currentColor; }
+@media (min-width: 860px) { .also-grid.notes-grid { grid-template-columns: repeat(4, 1fr); gap: 32px; } }
