@@ -91,7 +91,7 @@ const PMTILES: (Omit<DataFileDef, 'file'> & { stem: string })[] = [
   { key: 'contoursWide', stem: 'contours-wide', kind: 'vector', label: 'Contours (10 m, whole region)' },
   { key: 'forest', stem: 'forest', kind: 'vector', label: 'Forest cover' },
   { key: 'understory', stem: 'understory', kind: 'raster', label: 'Bush thickness (LiDAR)' },
-  { key: 'lanes', stem: 'lanes', kind: 'raster', label: 'Shooting lanes (LiDAR)' },
+  { key: 'lanes', stem: 'lanes', kind: 'raster', label: 'Shooting lanes' },
   { key: 'bathy', stem: 'bathy', kind: 'vector', label: 'Lake depths' },
   { key: 'historical', stem: 'historical', kind: 'raster', label: 'Historical topo' },
   { key: 'bathySheets', stem: 'bathysheets', kind: 'raster', label: 'Lake survey sheets (1978–79)' },

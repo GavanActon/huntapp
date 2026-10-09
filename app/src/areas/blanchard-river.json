@@ -34,6 +34,7 @@
       "contoursWide",
       "forest",
       "understory",
+      "lanes",
       "historical",
       "places"
     ],
@@ -114,12 +115,18 @@
       },
       "understory": {
         "file": "understory-blanchard-river.pmtiles",
-        "bytes": 12236430,
-        "source": "The area's own bush model (bush/local.py, docs/BUSH-MODEL.md): open, low shrub, tall bush or dense trees at 10 m from Sentinel-2 seasons, PALSAR, SCANFI, CanLaD and the MRDEM, learned from 534 labels tapped on the photo; held out a patch at a time, 78% right and thick-or-not 86%; faded where it is unsure. Modelled, not measured",
+        "bytes": 13113044,
+        "source": "The area's own bush model (bush/local.py, docs/BUSH-MODEL.md): open, low shrub, tall bush or dense trees at 10 m from Sentinel-2 seasons, PALSAR, SCANFI, CanLaD and the MRDEM, learned from 719 labels tapped on the photo; held out a patch at a time, 78% right and thick-or-not 90%; faded where it is unsure. Modelled, not measured",
         "licence": "Copernicus Sentinel data; JAXA ALOS PALSAR mosaic (free, attribution); OGL-Canada; CanLaD CC BY 4.0",
         "vintage": "imagery 2023-2025, model trained 2026-10-09"
       },
-      "lanes": { "missing": "no point-cloud adapter for BC yet (LidarBC where it has flown); the bush layer (understory) is the bush model's" },
+      "lanes": {
+        "file": "lanes-blanchard-river.pmtiles",
+        "bytes": 6466340,
+        "source": "The shooting lanes from the area's own bush model at 10 m (bush/local.py): open and light ground clear, thicker bush shaded darker; learned from 719 labels tapped on the photo. Modelled, not measured",
+        "licence": "Copernicus Sentinel data; JAXA ALOS PALSAR mosaic (free, attribution); OGL-Canada; CanLaD CC BY 4.0",
+        "vintage": "imagery 2023-2025, model trained 2026-10-09"
+      },
       "bathy": { "missing": "Ontario only: lake depths need the ARA lake facts and the MNR sheets" },
       "historical": {
         "file": "historical-blanchard-river.pmtiles",
@@ -182,7 +189,7 @@
     "grids": {
       "habitat": {
         "file": "habitat-blanchard-river.hab",
-        "bytes": 2972920,
+        "bytes": 3000493,
         "source": "derived: MRDEM, NRCan 2020 land cover, forest stands, water, wetlands, roads and burns",
         "licence": "derived from the layers above",
         "vintage": "generated 2026-10-09"
@@ -196,7 +203,7 @@
       },
       "going": {
         "file": "going-blanchard-river.hab",
-        "bytes": 3877639,
+        "bytes": 3891099,
         "source": "derived: HRDEM LiDAR, point-cloud bush or the forest-map estimate, water, wetlands and roads",
         "licence": "derived from the layers above",
         "vintage": "generated 2026-10-09"

@@ -90,7 +90,7 @@ def main(argv=None) -> None:
     def in_core(zz, x, y):
         return lon_to_tile(CORE["west"], zz) <= x <= lon_to_tile(CORE["east"] - 1e-9, zz) and lat_to_tile(CORE["north"], zz) <= y <= lat_to_tile(CORE["south"] + 1e-9, zz)
 
-    def tile(zz, x, y):
+    def tile(zz, x, y, ramp=None):
         if not in_core(zz, x, y):
             return None
         b = tile_bounds_3857(zz, x, y)
@@ -102,7 +102,7 @@ def main(argv=None) -> None:
         if not np.isfinite(value).any():
             return None
         reproject(fade, alpha, src_transform=tr, src_crs=crs, dst_transform=dst_tr, dst_crs="EPSG:3857", resampling=rs)
-        rgba = bv.colourise(value, bv.RAMP)
+        rgba = bv.colourise(value, ramp or bv.RAMP)
         if water:
             lake = rasterize(water, out_shape=(256, 256), transform=dst_tr, fill=0, default_value=1, dtype=np.uint8)
             alpha = alpha * (1 - lake)
@@ -130,6 +130,23 @@ def main(argv=None) -> None:
         licence="Copernicus Sentinel data; JAXA ALOS PALSAR mosaic (free, attribution); OGL-Canada; CanLaD CC BY 4.0",
         vintage=f"imagery 2023-2025, model trained {notes.get('trained', '?')}",
     )
+
+    # The shooting lanes (the Bow view's Lanes, Gavan's "range"): the same 10 m
+    # map drawn for a bow, open and light ground left clear, thicker bush
+    # shaded darker (build_vegstructure.LANES_RAMP), faded where the model is
+    # unsure. Only from an area's own model: its 10 m map can draw a lane; the
+    # general model's 30 m cells cannot (Gavan, 2026-10-09, Blanchard River:
+    # "make sure the range system works in this location")
+    if local:
+        lp = OUT_DIR / f"lanes-{REGION['id']}.pmtiles"
+        ls = write_raster_pmtiles(lp, f"lanes-{REGION['id']}", attribution, MINZOOM, CORE["maxzoom"], lambda zz, x, y: tile(zz, x, y, bv.LANES_RAMP), metadata={"bushModel": notes})
+        print(f"wrote {lp.name}: {lp.stat().st_size / 1e6:.1f} MB, " + ", ".join(f"z{k} {v[0]}" for k, v in sorted(ls.items())))
+        note_source(
+            lp.name,
+            source=f"The shooting lanes from the area's own bush model at 10 m (bush/local.py): open and light ground clear, thicker bush shaded darker; learned from {notes.get('labels', '?')} labels tapped on the photo. Modelled, not measured",
+            licence="Copernicus Sentinel data; JAXA ALOS PALSAR mosaic (free, attribution); OGL-Canada; CanLaD CC BY 4.0",
+            vintage=f"imagery 2023-2025, model trained {notes.get('trained', '?')}",
+        )
 
 
 if __name__ == "__main__":

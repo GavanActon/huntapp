@@ -821,7 +821,7 @@
  "thick": {
   "from": "the area's own bush model (labels tapped on the photo, bush/local.py; the 10 m map averaged into each cell) on the estimate's scale where thickSrc is 3; the forest-map estimate on water, roads, cells no leaf-on imagery saw, and ground the map names outright (open herb, lichen, rock, fen) (thickSrc 2)",
   "lidarCells": 0,
-  "thickShareOfLand": 0.14,
+  "thickShareOfLand": 0.18,
   "thickShareWhereLidar": null,
   "estimateToLidar": [
    {
@@ -861,48 +861,48 @@
    }
   ],
   "local": true,
-  "labels": 534,
-  "labelSource": "Gavan, tapped on Esri's 0.5 m photo in the app's bush-label tool (?label=bush), sent 2026-10-09 as code QANB4ZKQ6YX4: 536 labels",
+  "labels": 719,
+  "labelSource": "Gavan, tapped on Esri's 0.5 m photo in the app's bush-label tool (?label=bush): 536 labels sent 2026-10-09 as QANB4ZKQ6YX4, then 721 (185 more, across more of the area) as 25GGB2WQSYN9",
   "trained": "2026-10-09",
   "scores": {
-   "labels": 534,
+   "labels": 719,
    "accuracy": 0.775,
-   "chance": 0.434,
-   "thickAuc": 0.825,
-   "thickRight": 0.865,
-   "openAuc": 0.948,
+   "chance": 0.428,
+   "thickAuc": 0.977,
+   "thickRight": 0.901,
+   "openAuc": 0.88,
    "confusion": {
     "open": {
-     "open": 109,
-     "low": 11,
-     "tall": 1,
-     "dense": 0
+     "open": 112,
+     "low": 48,
+     "tall": 0,
+     "dense": 1
     },
     "low": {
-     "open": 17,
-     "low": 187,
-     "tall": 28,
+     "open": 12,
+     "low": 265,
+     "tall": 31,
      "dense": 0
     },
     "tall": {
-     "open": 0,
-     "low": 46,
-     "tall": 16,
-     "dense": 10
+     "open": 3,
+     "low": 42,
+     "tall": 43,
+     "dense": 20
     },
     "dense": {
      "open": 0,
-     "low": 1,
-     "tall": 6,
-     "dense": 102
+     "low": 0,
+     "tall": 5,
+     "dense": 137
     }
    }
   },
   "kinds": {
-   "open": 0.431,
-   "low": 0.461,
-   "tall": 0.06,
-   "dense": 0.048
+   "open": 0.458,
+   "low": 0.393,
+   "tall": 0.084,
+   "dense": 0.065
   }
  }
 }
