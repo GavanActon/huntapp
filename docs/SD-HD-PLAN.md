@@ -86,6 +86,14 @@ them, 10–20 s each).
 
 ## Hosting
 
+Status 2026-10-10: R2 is on, the bucket `groundwind-data` exists (location
+hint enam) with CORS set for hunt.groundwind.app, groundwind.app and the
+dev ports (GET, HEAD, range headers exposed), and an account API token
+scoped to it (Object Read & Write) is in XEVO's user environment as
+`R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` (tested: list, put, get, delete).
+The custom domain `data.groundwind.app` is attached and live (zone
+c22ad859df4f4831b2b935792ada8ce4). Nothing is in the bucket yet.
+
 - R2 bucket `groundwind-data`, custom domain `data.groundwind.app`
   (Cloudflare's own edge: Range and CORS work; the "never proxy" rule was
   for GitHub Pages behind the proxy). Check PMTiles range reads with the

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type JSX } from 'react'
 import { ACTIVE_AREA } from '../../areas'
+import { hasSdWind } from '../../config'
 import { setStatsOn, statsId, statsOn } from '../../analytics'
 import { getMap } from '../../map/mapController'
 import { clearDevlog, devlogCount, devlogOn, lastUpload, onDevlog, setDevlog, shareDevlog, uploadDevlog, uploadSettings } from '../../devlog'
@@ -8,10 +9,28 @@ import { checkAppUpdate, reloadApp, useAppUpdate } from '../../offline/appUpdate
 import { mapsStatus, runMaps, useDownloads } from '../../offline/downloads'
 import { checkMapUpdates, useMapUpdates } from '../../offline/updates'
 import { CONTOUR_INTERVALS, useAppStore } from '../../state/appStore'
+import { setTerrainWind, terrainWind, type TerrainWind } from '../../state/terrainWind'
+import { flushTrackSave } from '../../tracking/trackStore'
 import { agoLabel, dayTimeLabel } from '../../time'
 import { campForecast, hrdpsRunLabel, nextWeatherUpdateMs, onWeatherRefreshed, refreshWeather, useWeatherStatus } from '../../weather/refresh'
 import { onShareChange, setShare, shareCounts, shareState, wasAsked } from '../../weather/micro/checkShare'
+import { carryPlaced } from '../../weather/micro/scent'
 import './settings.css'
+
+/**
+ * The terrain wind, HD or SD (state/terrainWind.ts): the ground model reads
+ * one file a run, so a switch reloads the app. The people placed for the
+ * scent are carried over it, as for new maps (offline/downloads.ts), and
+ * the walk being recorded is written first: placing a setup and flipping
+ * between the two is the point of having both.
+ */
+function pickTerrainWind(v: TerrainWind): void {
+  if (v === terrainWind()) return
+  carryPlaced()
+  flushTrackSave()
+  setTerrainWind(v)
+  window.location.reload()
+}
 
 const TEXT_SIZES = [
   ['auto', 'Auto'],
@@ -305,6 +324,8 @@ export default function SettingsSheet(): JSX.Element {
   const setFlowTuning = useAppStore((s) => s.setFlowTuning)
   const windLevel = useAppStore((s) => s.windLevel)
   const setWindLevel = useAppStore((s) => s.setWindLevel)
+  // the one in use this run: a switch reloads the app
+  const terrain = terrainWind()
   const who = useAppStore((s) => s.who)
   const setWho = useAppStore((s) => s.setWho)
   const pushSheet = useAppStore((s) => s.pushSheet)
@@ -412,6 +433,21 @@ export default function SettingsSheet(): JSX.Element {
           ))}
         </div>
       </div>
+      {hasSdWind() && (
+        <div className="st-row st-two">
+          <span>
+            Terrain wind
+            <small className="dim">HD is WindNinja's solve baked for this area. SD is the net that stands in for it where no solve has run.</small>
+          </span>
+          <div className="seg" role="radiogroup" aria-label="Terrain wind">
+            {(['hd', 'sd'] as const).map((v) => (
+              <button key={v} className={terrain === v ? 'seg-on' : ''} role="radio" aria-checked={terrain === v} onClick={() => pickTerrainWind(v)}>
+                {v === 'hd' ? 'HD' : 'SD'}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="st-sec">Display</div>
       <div className="st-row">

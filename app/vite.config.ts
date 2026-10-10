@@ -280,7 +280,7 @@ function areaLinks(): Plugin {
     name: string
     region: AreaFile['region']
     base: string
-    /** the grids the first view reads (the wind grid first), and how much of each */
+    /** the grids the first view reads (the wind grid first, HD then SD), and how much of each */
     grids: { file: string; first: number }[]
   }
   // the area files the app would load (a bad one stops the build: dataManifest)
@@ -294,7 +294,7 @@ function areaLinks(): Plugin {
         // the region's four numbers alone (areas/check.ts has them all numbers)
         const { west, south, east, north } = a.region
         const grids: AreaSlot['grids'] = []
-        for (const g of ['micro', 'habitat']) {
+        for (const g of ['micro', 'micro-sd', 'habitat']) {
           if (!a.files.grids.includes(g)) continue
           const file = `${g}-${a.id}.hab`
           const first = firstBytes(dataDir + a.base + file)

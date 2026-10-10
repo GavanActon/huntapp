@@ -1,6 +1,6 @@
 import { useEffect, useState, type JSX } from 'react'
 import { ACTIVE_AREA, AREA_LIST, areaById, type AreaDef, type CoverageLayer } from '../../areas'
-import { dataFiles, layerLabel } from '../../config'
+import { dataFiles, habitatFile, layerLabel, microFile } from '../../config'
 import { fmtBytes, mapsStatus, removeFiles, runMaps, useDownloads } from '../../offline/downloads'
 import { listStored, storageEstimate, type StoredFileInfo } from '../../offline/fileStore'
 import { sharpBytes, sharpOf, sharpSaved } from '../../offline/sharpImagery'
@@ -97,7 +97,8 @@ function AreaMaps({ area, stored }: { area: AreaDef; stored: Map<string, StoredF
       {here && have.length < wanted.length && !(ours && dl.active) && (
         <div className="st-files-foot">
           <span>
-            {stored.has(`micro-${area.id}.hab`) && stored.has(`habitat-${area.id}.hab`)
+            {/* here: the area the app is in, so its wind grid in use (HD or SD) */}
+            {stored.has(microFile()) && stored.has(habitatFile())
               ? 'The wind and spots grids came down for the view and stay on the phone. The map itself streams as you look at it; saved, it works with no signal'
               : 'The map streams as you look at it; saved, it works with no signal'}
             {bytesOf(maps.files, area.id) + (maps.sharp ? sharpBytes(area.id) : 0) ? ` (${fmtBytes(bytesOf(maps.files, area.id) + (maps.sharp ? sharpBytes(area.id) : 0))}, best on wifi).` : '.'}

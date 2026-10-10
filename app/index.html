@@ -70,7 +70,16 @@
           // they have the line to themselves. No-store: the browser's cache cannot serve a range
           // of a file it holds gzip-encoded
           try {
-            var g = area && area.grids && area.grids[0]
+            // the wind grid: SD's when the phone is set to it and it is baked (state/terrainWind.ts), else the first
+            var gs = (area && area.grids) || []
+            var sd = false
+            try { sd = localStorage.getItem('huntapp-terrain-wind') === 'sd' } catch (e) {}
+            var g = null
+            for (var i = 0; i < gs.length; i++) {
+              var isSd = /^micro-sd-/.test(gs[i].file)
+              if (isSd && sd) { g = gs[i]; break }
+              if (!isSd && !g) g = gs[i]
+            }
             var kept = null
             try { if (g) kept = localStorage.getItem('chartfile:' + g.file) } catch (e) {}
             if (g && !kept && window.fetch && navigator.onLine !== false) {

@@ -5,6 +5,7 @@
     py -3.14 pipeline/bake_area.py --area lac-bailey --only satellite --only historical
     py -3.14 pipeline/bake_area.py --area lac-bailey --list             # the plan, nothing run
     py -3.14 pipeline/bake_area.py --area pickle-lake --only coverage   # just the coverage report
+    py -3.14 pipeline/bake_area.py --area lac-bailey --only wind-sd --only micro-sd   # the SD terrain wind
 
 Each step runs as its own process, under the interpreter it needs (py -3.13
 has pyogrio for the file geodatabases, py -3.14 has rasterio, scipy and
@@ -26,7 +27,15 @@ vintage, or why it is missing.
 
 Pickle Lake is published and in use in the field, so its files are not
 rebaked unless HUNTAPP_OUT points the bake at a scratch folder, or
---overwrite-published says so.
+--overwrite-published says so. The coverage, wind-sd and micro-sd steps run
+without it: coverage only reads, and the SD steps write new files beside
+the published ones (windsd-<id>.npz, micro-sd-<id>.hab), never over them.
+
+The last two steps are the SD terrain wind (docs/SURROGATE.md): wind-sd runs
+the surrogate net that stands in for WindNinja's momentum solve
+(build_windsd.py), micro-sd bakes a second micro grid with it. Both are
+skipped with the reason where py 3.14 has no torch or the area has no
+finished net (raw/surrogate/runs/hold-<id> or all).
 
 A new area from a point:
 
@@ -85,6 +94,7 @@ ADAPTERS: dict[str, dict[str, tuple[str, list[str]]]] = {
     },
 }
 POINTCLOUD_DEFAULTS = {"radiusKm": 2, "maxGb": 15}
+SURROGATE_RUNS = HERE / "raw" / "surrogate" / "runs"
 MNR_SHEETS = "Lake survey sheets © Ontario Ministry of Natural Resources"
 
 # summaries some scripts still write straight into pipeline/ (Pickle Lake's,
@@ -117,6 +127,23 @@ def adapter_step(name: str, kind: str, a: dict) -> Step:
     return Step(name, py, [[c.format(**fill) for c in cmd]])
 
 
+def surrogate_missing(area_id: str) -> str | None:
+    """Why build_windsd.py cannot make this area's SD wind here, or None. It
+    needs a finished net, hold-<id> else all (one counts once train.py has
+    written its config.json: the checkpoint is saved every 1000 steps while
+    it trains, as build_windsd.run_state says), and torch under py 3.14,
+    looked for without importing it, which takes seconds."""
+    runs = [SURROGATE_RUNS / n for n in (f"hold-{area_id}", "all")]
+    if not any((r / "ckpt.pt").exists() and (r / "config.json").exists() for r in runs):
+        return "no finished surrogate net for this area (" + " or ".join(r.relative_to(ROOT).as_posix() for r in runs) + ")"
+    probe = "import importlib.util, sys; sys.exit(importlib.util.find_spec('torch') is None)"
+    try:
+        rc = subprocess.run([*interpreter("3.14"), "-c", probe], capture_output=True).returncode
+    except (SystemExit, OSError) as e:
+        return f"no py 3.14 to run the surrogate net ({e})"
+    return None if rc == 0 else "torch is not installed for py 3.14 (the surrogate net needs it)"
+
+
 def plan(a: dict) -> list[Step]:
     """The area's steps in an order that respects every dependency. The
     point cloud comes before the habitat, which reads its bush from it
@@ -140,6 +167,16 @@ def plan(a: dict) -> list[Step]:
         if unfit:
             return "fit each sheet to its lake by hand first (georef_lake_sheet.py raw/bathy/<id>.jpg \"<lake>\"): " + ", ".join(unfit)
         return None
+
+    sd_why = surrogate_missing(a["id"])
+    # a windsd npz made on another machine can still be baked into a grid here
+    sd_have = (HERE / "raw" / f"windsd-{a['id']}.npz").exists()
+
+    def wide_dem() -> str | None:
+        import area
+
+        p = area.cached(f"mrdem-wide-{a['id']}.npz")
+        return None if p.exists() else f"{p.name} not in {p.parent}: run the dem step first"
 
     def inputs(*themes: str) -> Callable[[], str | None]:
         """A check that the adapters' GeoJSON a grid is made from is on disk.
@@ -214,6 +251,17 @@ def plan(a: dict) -> list[Step]:
         ),
         Step("depth-bands", "3.14", [["build_depth_bands.py"]], skip=None if ontario else "lake depths are Ontario only (ARA and the MNR sheets)", needs=("habitat",)),
         Step("micro", "3.14", [["build_microclimate.py"]], needs=("habitat",)),
+        # the SD terrain wind: the surrogate net in WindNinja's place, on the wide MRDEM the dem step
+        # caches, the eight-way average because this is what gets served (SURROGATE.md §5), then a
+        # second micro grid with it, micro-sd-<id>.hab, beside the HD one
+        Step("wind-sd", "3.14", [["build_windsd.py", "--tta"]], skip=sd_why, needs=("dem",), check=wide_dem),
+        Step(
+            "micro-sd",
+            "3.14",
+            [["build_microclimate.py", "--wind", "sd"]],
+            skip=f"no SD wind for this area: {sd_why}" if sd_why and not sd_have else None,
+            needs=("habitat", "wind-sd"),
+        ),
         Step("going", "3.14", [["build_going.py"]], needs=("hillshade", "habitat", "vectors"), check=inputs("wetland", "watercourse")),
         Step("vector-tiles", "3.14", [["build_vector_tiles.py"]]),
     ]
@@ -319,10 +367,18 @@ def bake(args) -> int:
         return 0
 
     published = a["id"] == area.DEFAULT_AREA and not area.SCRATCH
-    if published and not args.overwrite_published and chosen - {"coverage"}:
+    # coverage only reads the files; wind-sd and micro-sd write new ones
+    # (windsd-<id>.npz in pipeline/raw, micro-sd-<id>.hab beside the
+    # published grids), so they pass until the SD grid is itself published:
+    # once micro-sd-<id>.hab exists, rerunning them replaces a file phones
+    # already have, and the flag is needed like any other step's
+    sd_new = not (area.OUT_DIR / f"micro-sd-{a['id']}.hab").exists()
+    unguarded = {"coverage"} | ({"wind-sd", "micro-sd"} if sd_new else set())
+    if published and not args.overwrite_published and chosen - unguarded:
         raise SystemExit(
             "Pickle Lake is published and in use in the field: bake it into a scratch folder (HUNTAPP_OUT=<dir>) "
-            "to compare, or pass --overwrite-published to replace its files"
+            "to compare, or pass --overwrite-published to replace its files (coverage runs without it, and so do "
+            "wind-sd and micro-sd until their SD grid is itself published)"
         )
 
     log = Log(HERE / f"bake-{a['id']}.log")
@@ -416,7 +472,7 @@ PMTILES = {
 }
 GEO = {"wmu": "vectors", "camps": "vectors", "crown": "vectors", "parks": "vectors", "bathy": "vectors", "fire": "vectors", "roads": "vectors", "forest": "forest", "depth": "depth-bands"}
 BASE_GEO = {"waterbody": "vectors"}
-GRIDS = {"habitat": "habitat", "micro": "micro", "going": "going"}
+GRIDS = {"habitat": "habitat", "micro": "micro", "going": "going", "micro-sd": "micro-sd"}
 NEVER_BAKED = {
     ("pmtiles", "basemap"): "not baked: the map draws the live NRCan base map",
     ("pmtiles", "bathy"): "not baked: lake depths are drawn from GeoJSON (depth)",
@@ -488,6 +544,7 @@ def known_sources(a: dict, lidar: list[str], pc_years: str | None) -> dict[tuple
             "licence": DERIVED,
         },
         ("grids", "micro"): {"source": "derived: the habitat grid and the MRDEM", "licence": DERIVED},
+        ("grids", "micro-sd"): {"source": "derived: the habitat grid and the MRDEM, with the surrogate net's terrain wind in WindNinja's place (build_windsd.py)", "licence": DERIVED},
         ("grids", "going"): {"source": "derived: HRDEM LiDAR, point-cloud bush or the forest-map estimate, water, wetlands and roads", "licence": DERIVED},
     }
     if a["jurisdiction"] == "ON":

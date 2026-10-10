@@ -41,7 +41,7 @@
     "pmtiles": ["topo", "satellite", "hillshadeLidar", "dem", "contours", "contoursWide", "forest", "understory", "lanes", "historical", "places"],
     "geo": ["parks", "fire", "roads"],
     "baseGeo": ["waterbody"],
-    "grids": ["habitat", "micro", "going"]
+    "grids": ["habitat", "micro", "micro-sd", "going"]
   },
   "bake": {
     "outDir": "app/public/data/areas/lac-bailey",

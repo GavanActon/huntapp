@@ -50,10 +50,20 @@ Output: app/public/data/micro-<region>.hab, the habitat file's format
 (gzip of u32 header length · JSON header · bands), same lattice.
 
     python pipeline/build_microclimate.py
+
+The momentum bands come two ways. HD (the default) is WindNinja's own solve,
+collected by build_windcfd.py into raw/windcfd-<region>.npz. SD is the
+surrogate net standing in for it (docs/SURROGATE.md), from build_windsd.py's
+raw/windsd-<region>.npz; --wind sd bakes the same grid with those bands in
+place of WindNinja's, as micro-sd-<region>.hab beside the HD one, so the app
+can load either. Everything else in the two grids is the same.
+
+    python pipeline/build_microclimate.py --wind sd
 """
 
 from __future__ import annotations
 
+import argparse
 import gzip
 import heapq
 import json
@@ -386,6 +396,20 @@ def leaves_down_report(canopy: np.ndarray, bare: np.ndarray, crown: np.ndarray, 
 
 
 def main() -> None:
+    # area.py has already taken --area off the command line
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("--wind", choices=["hd", "sd"], default="hd",
+                    help="momentum bands from WindNinja's solve (hd, windcfd-<id>.npz) or the surrogate net's (sd, windsd-<id>.npz)")
+    args = ap.parse_args()
+    sd = args.wind == "sd"
+    # the SD grid is a second file beside the HD one, never in its place
+    tag = "sd-" if sd else ""
+    sd_meta: dict = {}
+    if sd:
+        sd_path = CACHE_DIR / f"windsd-{REGION['id']}.npz"
+        if not sd_path.exists():
+            raise SystemExit(f"{sd_path.name} is not in {sd_path.parent}: run py -3.14 pipeline/build_windsd.py --area {REGION['id']} --tta first")
+        sd_meta = json.loads(str(np.load(sd_path)["meta"]))
     t0 = time.time()
     print(f"microclimate on the habitat lattice {COLS}×{ROWS} ({DX:.0f}×{DY:.0f} m)")
     header, hab = read_hab(OUT_DIR / f"habitat-{REGION['id']}.hab")
@@ -449,7 +473,8 @@ def main() -> None:
     # It takes the neutral layer's place in the browser; the stable layer
     # and everything below stay as they are. The roughness ratio goes on
     # the same way
-    cfd_path = CACHE_DIR / f"windcfd-{REGION['id']}.npz"
+    # (or, with --wind sd, the surrogate's stand-in for it, in the same layout)
+    cfd_path = CACHE_DIR / (f"windsd-{REGION['id']}.npz" if sd else f"windcfd-{REGION['id']}.npz")
     cfd = None
     # the solve's turbulence as a direction spread: the velocity fluctuation
     # (the most in the lowest 10 m) against the local wind, both WindNinja's
@@ -466,7 +491,8 @@ def main() -> None:
 
         cfd = [(float(d), z[f"u{d:05.1f}"] * s_from(float(d)), z[f"v{d:05.1f}"] * s_from(float(d))) for d in z["directions"]]
         sp = np.hypot(cfd[0][1], cfd[0][2])
-        print(f"  momentum solve: {len(cfd)} directions · speed {np.percentile(sp, 5):.2f}–{np.percentile(sp, 95):.2f} of the regional wind")
+        what = f"surrogate momentum (run {sd_meta.get('run')})" if sd else "momentum solve"
+        print(f"  {what}: {len(cfd)} directions · speed {np.percentile(sp, 5):.2f}–{np.percentile(sp, 95):.2f} of the regional wind")
         if all(f"s{d:05.1f}" in z for d in z["directions"]):
             turb = [np.degrees(np.arctan2(z[f"s{d:05.1f}"], np.hypot(z[f"u{d:05.1f}"], z[f"v{d:05.1f}"]))).astype(np.float32) for d in z["directions"]]
             # the ordinary spread here, the level the browser's own 12° stands for
@@ -625,6 +651,9 @@ def main() -> None:
     for (d, _, _), t in zip(cfd or [], turb or []):
         bands.append((f"mT{d:05.1f}", np.clip(np.round(t / TURB_SCALE), 0, 255).astype(np.uint8), TURB_SCALE,
                       f"momentum solve: direction spread, degrees, for a wind from {d:g}° (turbulence against the local wind)"))
+    solver = "WindNinja 4.0.0 momentum (OpenFOAM, RNG k-epsilon), trees, 10 m"
+    if sd:
+        solver = f"surrogate of WindNinja momentum (U-Net, run {sd_meta.get('run')}{', in-sample' if sd_meta.get('in_sample') else ''}), 10 m"
     out_header = {
         "region": REGION["id"],
         "generated": date.today().isoformat(),
@@ -638,19 +667,19 @@ def main() -> None:
         "coverNames": header["coverNames"],
         "landformNames": header["landformNames"],
         "lakes": [],
-        "model": {"z0Ref": Z0_REF, "zBlend": Z_BLEND, "lidNeutral": LID_NEUTRAL, "lidStable": LID_STABLE, "bare": BARE, "larchLed": LARCH_LED, **({"fetchRamp": {"shore": FETCH_SHORE, "fullM": FETCH_FULL_M}} if fetch_m is not None else {}), **({"momentum": {"directions": [d for d, _, _ in cfd], "solver": "WindNinja 4.0.0 momentum (OpenFOAM, RNG k-epsilon), trees, 10 m", **({"spreadRef": round(turb_ref, 2)} if turb else {})}} if cfd else {})},
+        "model": {"z0Ref": Z0_REF, "zBlend": Z_BLEND, "lidNeutral": LID_NEUTRAL, "lidStable": LID_STABLE, "bare": BARE, "larchLed": LARCH_LED, **({"fetchRamp": {"shore": FETCH_SHORE, "fullM": FETCH_FULL_M}} if fetch_m is not None else {}), **({"momentum": {"directions": [d for d, _, _ in cfd], "solver": solver, "source": "sd" if sd else "cfd", **({"spreadRef": round(turb_ref, 2)} if turb else {}), **({"surrogate": {"run": sd_meta.get("run"), "sha256": sd_meta.get("sha256"), "tta": sd_meta.get("tta")}} if sd else {})}} if cfd else {})},
         "bands": [],
     }
     # the momentum bands go last: the app reads the base bands first, then
     # the two directions the hour's wind sits between, the rest when it is up
-    out = OUT_DIR / f"micro-{REGION['id']}.hab"
+    out = OUT_DIR / f"micro-{tag}{REGION['id']}.hab"
     late = [b[0] for b in bands if b[0][:2] in ("mU", "mV", "mT")]
     # and a coarse copy of the base bands first, for the first seconds of a cold open
     out_header, bands, early = habfile.with_preview(out_header, bands, skip=late)
     w = write_hab(out, out_header, bands, late=late, early=early)
     print(f"wrote {out.name}: {w['raw'] / 1e6:.1f} MB raw, {w['size'] / 1e6:.2f} MB packed, {w['bands']} bands · {time.time() - t0:.0f}s")
     # the solve's raw fields, for looking into it; a scratch run keeps its own
-    np.savez_compressed((OUT_DIR if SCRATCH else CACHE_DIR) / f"micro-debug-{REGION['id']}.npz", dem=dem.astype(np.float32), pool=pool, kat=kat.astype(np.float32), rel=rel.astype(np.float32), breeze=breeze_max.astype(np.float32), canopy=canopy.astype(np.float32), canopyBare=canopy_bare.astype(np.float32), s=s.astype(np.float32), **{f"n{i}": a.astype(np.float32) for i, a in enumerate(neutral)}, **{f"s{i}": a.astype(np.float32) for i, a in enumerate(stable)})
+    np.savez_compressed((OUT_DIR if SCRATCH else CACHE_DIR) / f"micro-debug-{tag}{REGION['id']}.npz", dem=dem.astype(np.float32), pool=pool, kat=kat.astype(np.float32), rel=rel.astype(np.float32), breeze=breeze_max.astype(np.float32), canopy=canopy.astype(np.float32), canopyBare=canopy_bare.astype(np.float32), s=s.astype(np.float32), **{f"n{i}": a.astype(np.float32) for i, a in enumerate(neutral)}, **{f"s{i}": a.astype(np.float32) for i, a in enumerate(stable)})
 
 
 if __name__ == "__main__":

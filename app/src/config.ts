@@ -2,6 +2,7 @@
 // area's (areas/index.ts). A new hunting area = a new app/src/areas/<id>.json
 // plus a pipeline run (docs/AREAS.md).
 import { ACTIVE_AREA, AREA_LIST, DEFAULT_AREA, type AreaDef } from './areas'
+import { terrainWind } from './state/terrainWind'
 
 const AREA = ACTIVE_AREA
 /** What the core's fine relief was made from: NRCan's 1 m LiDAR unless the
@@ -144,6 +145,7 @@ const OTHER_LABELS: Record<string, string> = {
   'baseGeo:waterbody': 'Lake outlines',
   'grids:habitat': 'Habitat grid',
   'grids:micro': 'Ground wind grid',
+  'grids:micro-sd': 'Ground wind grid (SD)',
   'grids:going': 'Walking grid',
 }
 
@@ -173,17 +175,32 @@ export const geoFile = (t: GeoTheme) => `${t}-${REGION.id}.geojson`
  *  file of 30 m bands, kept with the bundle so the scoring works offline. */
 export const habitatFile = () => `habitat-${REGION.id}.hab`
 
-/** The microclimate grid (build_microclimate.py) on the same lattice: what
- *  terrain, lakes and trees do to the wind, for the ground-wind model. */
-export const microFile = () => `micro-${REGION.id}.hab`
+/** The area has an SD terrain wind baked (micro-sd): the net that stands in
+ *  for the momentum solve, in the same bands. */
+export const hasSdWind = (a: AreaDef = AREA) => a.files.grids.includes('micro-sd')
+
+/** The SD terrain wind is the one in use: chosen on this phone (Settings,
+ *  state/terrainWind.ts) and baked for the area. Switching reloads the app,
+ *  so a run reads one file. */
+export const sdWindOn = () => terrainWind() === 'sd' && hasSdWind()
+
+/** The microclimate grid with WindNinja's momentum solve (HD): what terrain,
+ *  lakes and trees do to the wind, for the ground-wind model. */
+export const microHdFile = () => `micro-${REGION.id}.hab`
+
+/** The microclimate grid (build_microclimate.py) on the same lattice, the
+ *  one in use: the HD file, or the SD one (micro-sd-<area>.hab) when that
+ *  is set. Everything that asks for the wind grid by name asks here. */
+export const microFile = () => (sdWindOn() ? `micro-sd-${REGION.id}.hab` : microHdFile())
 
 /** The going grid (build_going.py): 10 m bands over the core of what the
  *  ground is like to walk on (grade, bush, roughness, wet, roads, creeks),
  *  for the route finder. */
 export const goingFile = () => `going-${REGION.id}.hab`
 
-/** The band grids, in the bundle's order. */
-const GRIDS = ['habitat', 'micro', 'going'] as const
+/** The band grids, in the bundle's order. An area with an SD terrain wind
+ *  saves both wind grids, so the setting works with no signal either way. */
+const GRIDS = ['habitat', 'micro', 'micro-sd', 'going'] as const
 
 /** Baked GeoJSON with no live fallback, drawn under the data layers: the
  *  lake outlines that sit over the elevation colours so water reads as water. */

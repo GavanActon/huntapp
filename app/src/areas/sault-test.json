@@ -36,7 +36,7 @@
     ],
     "geo": ["wmu", "camps", "crown", "parks", "bathy", "fire", "roads", "depth"],
     "baseGeo": ["waterbody"],
-    "grids": ["habitat", "micro", "going"]
+    "grids": ["habitat", "micro", "micro-sd", "going"]
   },
   "bake": {
     "outDir": "app/public/data/areas/sault-test",

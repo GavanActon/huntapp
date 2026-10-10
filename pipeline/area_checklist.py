@@ -106,6 +106,15 @@ def rel(p: Path) -> str:
     return str(p.relative_to(ROOT)).replace("\\", "/")
 
 
+# the grids every area has, then any the area file adds (micro-sd, the
+# surrogate's terrain wind beside WindNinja's)
+GRID_LABELS = {"micro-sd": "Micro SD"}
+
+
+def grid_names(ar: Area) -> list[str]:
+    return list(dict.fromkeys(("habitat", "going", "micro", *((ar.a.get("files") or {}).get("grids") or []))))
+
+
 # ---------------------------------------------------------------- checks
 
 def check_files(ar: Area) -> None:
@@ -178,6 +187,9 @@ def check_wind(ar: Area, online: bool) -> None:
         ar.add("Wind", "Momentum solve (WindNinja)", "warn", f"only {len(dirs)}/16 directions: the app needs all 16, so it uses the older solve")
     else:
         ar.add("Wind", "Momentum solve (WindNinja)", "fail", "no momentum bands: the day wind uses the older 2D solve, which is weakest in steep ground")
+    if (sd := ar.out / f"micro-sd-{ar.id}.hab").exists():
+        m = (habfile.read_header(sd).get("model") or {}).get("momentum") or {}
+        ar.add("Wind", "Surrogate wind (SD)", "ok" if m.get("source") == "sd" else "warn", m.get("solver") or "the SD grid has no momentum bands")
     # the solve's turbulence (MICRO-WIND.md §2): the lee of hills and ridges
     # tumbles, swirls on the map and widens the scent. Without it only trees do
     turb = [b["name"] for b in h["bands"] if b["name"].startswith("mT")]
@@ -226,10 +238,11 @@ def check_wind(ar: Area, online: bool) -> None:
 
 def check_grids(ar: Area) -> None:
     gen = {}
-    for g in ("habitat", "going", "micro"):
+    for g in grid_names(ar):
         p = ar.out / f"{g}-{ar.id}.hab"
+        label = GRID_LABELS.get(g, g.capitalize())
         if not p.exists():
-            ar.add("Grids", g.capitalize(), "fail", "missing")
+            ar.add("Grids", label, "fail", "missing" + (": bake_area.py --only wind-sd --only micro-sd" if g == "micro-sd" else ""))
             continue
         h, _ = read_hab(p)
         gen[g] = h.get("generated", "")
@@ -239,9 +252,10 @@ def check_grids(ar: Area) -> None:
             extra = "; canopy from the LiDAR" if "canopySrc" in names else "; canopy from the stand estimate"
         if g == "going" and h.get("bushFrom"):
             extra = f"; bush from {h['bushFrom']}"
-        ar.add("Grids", g.capitalize(), "ok", f"baked {gen[g][:16] or '?'}{extra}")
-    if gen.get("micro") and gen.get("habitat") and gen["micro"] < gen["habitat"]:
-        ar.add("Grids", "Order", "warn", "the micro grid is older than the habitat grid it's made from: rebake micro")
+        ar.add("Grids", label, "ok", f"baked {gen[g][:16] or '?'}, {p.stat().st_size / 1e6:.1f} MB{extra}")
+    for g in ("micro", "micro-sd"):
+        if gen.get(g) and gen.get("habitat") and gen[g] < gen["habitat"]:
+            ar.add("Grids", "Order", "warn", f"the {g} grid is older than the habitat grid it's made from: rebake {g}")
 
 
 def check_model(ar: Area) -> None:
@@ -276,17 +290,21 @@ def check_deploy(ar: Area) -> None:
     ar.add("Deploy", "On the live app", "ok" if code == 0 else "info", "on origin/main" if code == 0 else "not on origin/main yet")
     if code:
         return
-    stale = []
-    for g in ("habitat", "going", "micro"):
+    stale, new = [], []
+    for g in grid_names(ar):
         p = ar.out / f"{g}-{ar.id}.hab"
         if not p.exists():
             continue
         c1, live = git("rev-parse", f"origin/main:{rel(p)}")
         _, here = git("hash-object", rel(p))
-        if c1 or live != here:
+        if c1:
+            new.append(g)
+        elif live != here:
             stale.append(g)
-    if stale:
-        ar.add("Deploy", "Live grids", "warn", "the live app has older " + ", ".join(stale) + " grids than this machine")
+    if stale or new:
+        ar.add("Deploy", "Live grids", "warn", "; ".join(
+            ([f"the live app has older {', '.join(stale)} grids than this machine"] if stale else [])
+            + ([f"no {', '.join(new)} grid on the live app yet"] if new else [])))
     else:
         ar.add("Deploy", "Live grids", "ok", "the live grids match this machine's")
 

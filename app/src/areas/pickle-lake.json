@@ -35,7 +35,7 @@
     "pmtiles": ["basemap", "topo", "satellite", "hillshade", "hillshadeLidar", "dem", "contours", "contoursWide", "forest", "understory", "lanes", "bathy", "historical", "bathySheets", "places"],
     "geo": ["wmu", "camps", "crown", "parks", "bathy", "fire", "roads", "forest", "depth"],
     "baseGeo": ["waterbody"],
-    "grids": ["habitat", "micro", "going"]
+    "grids": ["habitat", "micro", "micro-sd", "going"]
   },
   "bake": {
     "outDir": "app/public/data",

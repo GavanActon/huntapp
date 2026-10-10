@@ -1,4 +1,4 @@
-import { microFile } from '../../config'
+import { microFile, microHdFile, sdWindOn } from '../../config'
 import { devlog } from '../../devlog'
 import { openBandFile, PREVIEW, type Band, type BandFile, type Habitat } from '../../spots/habitatGrid'
 import { useAppStore } from '../../state/appStore'
@@ -236,9 +236,18 @@ function adopt(g: Habitat, prefix: string): void {
 export function loadMicro(): Promise<Habitat | null> {
   if (grid) return Promise.resolve(grid)
   if (inflight) return inflight
+  const sd = sdWindOn()
   inflight = openBandFile(microFile(), 'wind', { priority: 'high' })
+    .then((f) => {
+      if (f || !sd) return f
+      // SD set but its file neither on the server nor the phone: HD rather than no terrain wind
+      devlog('wind', 'SD terrain wind not found: HD instead')
+      return openBandFile(microHdFile(), 'wind', { priority: 'high' })
+    })
     .then(async (f) => {
       if (!f) return null
+      const solver = (f.header.model as { momentum?: { solver?: string } } | undefined)?.momentum?.solver
+      devlog('wind', `terrain wind: ${f.file === microHdFile() ? 'HD momentum solve' : 'SD surrogate'}${solver ? ` · ${solver}` : ''}`)
       const names = f.names
       const baseNames = names.filter((n) => !MOM_RE.test(n) && !n.startsWith(PREVIEW))
       const previewNames = f.previewNames

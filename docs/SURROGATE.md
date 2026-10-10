@@ -113,10 +113,11 @@ cloud box) is the way to SD wind at scale.
 
 ## 4. If it passes
 
-1. **Serve it as SD.** A `predict` step writes the 16 fields in the shape
-   `build_windcfd.py collect` writes, so `build_microclimate.py` takes
-   them exactly as it takes a momentum run. SD areas and SD tiles get a
-   terrain layer in seconds. The app changes nothing.
+1. **Serve it as SD.** Built 2026-10-10, see §7: `build_windsd.py` writes
+   the 16 fields in the shape `build_windcfd.py collect` writes, and
+   `build_microclimate.py --wind sd` takes them exactly as it takes a
+   momentum run, into a second grid, `micro-sd-<id>.hab`. The app has a
+   Terrain wind setting, HD or SD, where an area has both.
 2. **Seed set.** Chosen and kitted on 2026-10-09 (`pipeline/surrogate/seed.py`,
    kits in `pipeline/raw/windcfd-seed/seed-*/`, `sites.json`): 30 sites
    across Canada and the US picked by ecoregion and landform, relief
@@ -257,6 +258,75 @@ Highland (bias −0.10, its winds run faster than any training area's)
 should close once the training set holds faster terrain; a US site held
 out for the 3DEP shift; and Big Southern Butte and Salmon River to score
 the teacher itself against measured wind.
+
+## 7. The SD wind as a bake step, and the HD/SD switch in the app
+
+Built 2026-10-10 (Gavan: "give me an SD/HD wind option in the app. Build
+out the SD versions of the existing maps we have and ensure this is a
+reproducible process").
+
+**One command per area**, after the habitat and dem steps:
+
+    py -3.14 pipeline/bake_area.py --area <id> --only wind-sd --only micro-sd
+
+- `wind-sd` (`pipeline/build_windsd.py --tta`): the same 30 m UTM DEM the
+  WindNinja kit uses (the region plus 2.5 km, built in memory, checked
+  against the kit's `meta.json` where one exists), the net from
+  `pipeline/raw/surrogate/runs/hold-<id>/` when that area was held out of
+  its training, else `runs/all/`, the eight-way average, the vectors
+  turned from the UTM grid's axes to true north by the meridian
+  convergence, resampled onto the habitat lattice, written as
+  `pipeline/raw/windsd-<id>.npz` in `collect()`'s layout with a `meta`
+  (run, checkpoint hash, train areas, in-sample or not). When the area has
+  a WindNinja grid it prints the comparison against it. About a minute.
+- `micro-sd` (`build_microclimate.py --wind sd`): the micro grid baked
+  again with the surrogate's bands in the momentum bands' place, written
+  as `micro-sd-<id>.hab` beside the HD grid; `model.momentum.source` is
+  `sd` (the HD grid now says `cfd`), `model.momentum.solver` names the net
+  and run. Everything but the 48 momentum bands is bit-identical to the
+  HD grid. About 35 s.
+- Skipped with the reason where Python 3.14 has no torch or no net has
+  finished for the area. A machine with the `windsd` npz but no torch can
+  still run `micro-sd`. Pickle Lake's published-area guard lets both run
+  until `micro-sd-pickle-lake.hab` is itself published; after that they
+  need `--overwrite-published` like any other step.
+- The area file lists `micro-sd` under `files.grids`; the checklist
+  reports it like the other grids, with a Wind line naming the source.
+
+**Which net.** For the five areas that trained the net, the SD grid comes
+from the fold that held that area out (`hold-<id>`, trained with
+`train.py --holdout <id>`), so the SD wind on an existing map is what a
+stranger's area would get, not an in-sample fit. New areas use `all`.
+
+**In the app** (`app/src/state/terrainWind.ts`, `config.ts`,
+`ui/sheets/SettingsSheet.tsx`): Settings, Wind flow, a Terrain wind row,
+HD or SD, shown only where the area has both grids. The choice is kept on
+the phone and read once at start; switching saves the placed scent people
+and the walk being recorded, then reloads, so one run reads one file.
+With SD set and no SD grid to be had, the app opens HD and says so in the
+devlog. The Offline sheet saves both wind grids where an area has them,
+so the switch works with no signal. The devlog line at start says which
+is in use and which solver made it.
+
+**The five SD grids, 2026-10-10**, each from the net that held that area
+out, scored against the area's WindNinja grid over the whole region
+lattice (the core-only fold numbers in §5 are stricter and smaller):
+
+| area | turn median | turn r | speed r | SD grid | HD grid |
+|---|---|---|---|---|---|
+| Pickle Lake | 0.4° | 0.94 | 0.93 | 6.1 MB | 6.5 MB |
+| Sault test | 0.3° | 0.86 | 0.81 | 3.2 MB | 3.5 MB |
+| Lac Bailey | 2.0° | 0.65 | 0.94 | 11.0 MB | 12.1 MB |
+| Highland Lake | 2.7° | 0.53 | 0.90 | 7.5 MB | 8.6 MB |
+| Blanchard River | 7.2° | 0.41 | 0.79 | 10.2 MB | 11.9 MB |
+
+The shield is easy for it; the mountains are where the HD/SD switch
+shows a difference worth looking at. The SD grids pack smaller because
+the net's fields are smoother than the solver's.
+
+**Checked 2026-10-10** on the dev server, headless: with the setting on
+SD the app fetches only `micro-sd-blanchard-river.hab` and logs the
+surrogate as the solver; on HD only the WindNinja grid.
 
 ## 6. Machines
 

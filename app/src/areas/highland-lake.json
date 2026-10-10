@@ -37,7 +37,7 @@
     ],
     "geo": ["wmu", "crown", "fire", "roads"],
     "baseGeo": ["waterbody"],
-    "grids": ["habitat", "micro", "going"]
+    "grids": ["habitat", "micro", "micro-sd", "going"]
   },
   "bake": {
     "outDir": "app/public/data/areas/highland-lake",
