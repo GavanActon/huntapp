@@ -282,7 +282,11 @@ By ground, turn MAE / speed r:
 | slack and lee | 31.4° / 0.54 | 27.8° / 0.56 |
 | exposed | 8.0° / 0.58 | 7.6° / 0.60 |
 
-The seed set helps where it was meant to: the steep ground and the lee. The mass-consistent and interpolation yardsticks are unchanged (same truth). Batch 2's 18 sites are due the evening of 2026-10-10; the next retrain takes all 35, with a US site held out for the 3DEP check and Big Southern Butte and Salmon River scored against the measured Idaho wind.
+The seed set helps where it was meant to: the steep ground and the lee. The mass-consistent and interpolation yardsticks are unchanged (same truth).
+
+The Highland fold retrained the same way (`runs/seed1-hold-highland-lake`) did not move: turn MAE 3.3° → 3.3°, turn r 0.54 → 0.55, speed r 0.80 → 0.80, and the speed under-call stays at −0.10. Highland was already near the floor for this net; its winds run faster than any training area's, which batch 2's Dempster, Kootenay and RMNP may answer.
+
+That fold was the first training job on xonix through the GPU kit (§6): 12,000 steps in 11.7 min against 25.4 on the laptop, with ten WindNinja runners pinning its CPU, so the loader is not starving the 5090 badly at this net's size. Batch 2's 18 sites are due the evening of 2026-10-10; the next retrain takes all 35, with a US site held out for the 3DEP check and Big Southern Butte and Salmon River scored against the measured Idaho wind.
 
 ## 7. The SD wind as a bake step, and the HD/SD switch in the app
 
