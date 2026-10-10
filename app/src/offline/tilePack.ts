@@ -17,7 +17,25 @@ import { deleteStoredFile, getStoredFile, listStored, putStoredFile } from './fi
  * header and an index (spec v3: uncompressed directories, leaves when the
  * root would not fit the first 16 KB) and stored as one file: the Blob is
  * the pieces' own slices, so nothing is copied into memory on the way.
+ *
+ * While a save is under way the map reads it too (openPack, get): the tiles
+ * fetched so far show at once, as they did when the worker kept each one,
+ * and the map does not have to ask the server again for what the save has
+ * (Gavan, 2026-10-10: "make sure you can see it just like with streaming").
  */
+
+/** Packs being written, by name: the map reads their tiles before they are packed. */
+const opened = new Map<string, TilePack>()
+let version = 0
+/** The pack being written under this name, if one is. */
+export function openPack(name: string): TilePack | null {
+  return opened.get(name) ?? null
+}
+/** Moves when a pack is finished or given up: a reader holding the finished
+ *  archive (or none) looks again. */
+export function packVersion(): number {
+  return version
+}
 
 /** tiles in a piece: about 5 MB of 14 KB imagery tiles */
 const PIECE_TILES = 400
@@ -62,6 +80,11 @@ export class TilePack {
   private pieces: { n: number; index: PieceIndex; dataBytes: number }[] = []
   private ids = new Set<number>()
   private pending: { id: number; data: Uint8Array }[] = []
+  /** tiles not yet in a stored piece (gathered, or in a piece being written) */
+  private mem = new Map<number, Uint8Array>()
+  /** where each stored tile is: its piece and its bytes there */
+  private loc = new Map<number, { n: number; offset: number; length: number }>()
+  private blobs = new Map<number, Blob>()
   private chain: Promise<void> = Promise.resolve()
   private next = 0
   private bytes = 0
@@ -87,28 +110,59 @@ export class TilePack {
       }
       const dataBytes = index.lens.reduce((a, b) => a + b, 0)
       pack.pieces.push({ n, index, dataBytes })
-      for (const id of index.ids) pack.ids.add(id)
+      pack.locate(n, index)
       pack.bytes += dataBytes
       pack.next = n + 1
     }
+    opened.set(name, pack)
     return pack
+  }
+
+  private locate(n: number, index: PieceIndex): void {
+    let at = 0
+    index.ids.forEach((id, i) => {
+      this.ids.add(id)
+      this.loc.set(id, { n, offset: at, length: index.lens[i] })
+      this.mem.delete(id)
+      at += index.lens[i]
+    })
+  }
+
+  /** A tile the save has, for the map: a copy (MapLibre hands it to a worker, which takes the buffer). */
+  async get(z: number, x: number, y: number): Promise<ArrayBuffer | null> {
+    const id = zxyToTileId(z, x, y)
+    const m = this.mem.get(id)
+    if (m) return m.slice().buffer
+    const l = this.loc.get(id)
+    if (!l) return null
+    let blob = this.blobs.get(l.n)
+    if (!blob) {
+      const b = await getStoredFile(pieceName(this.name, l.n))
+      if (!b) return null
+      blob = b
+      this.blobs.set(l.n, b)
+    }
+    return blob.slice(l.offset, l.offset + l.length).arrayBuffer()
   }
 
   /** tiles kept so far, and their bytes */
   get done(): PackDone {
-    return { tiles: this.ids.size + this.pending.length, bytes: this.bytes }
+    return { tiles: this.ids.size + this.mem.size, bytes: this.bytes }
   }
 
   has(z: number, x: number, y: number): boolean {
-    return this.ids.has(zxyToTileId(z, x, y))
+    const id = zxyToTileId(z, x, y)
+    return this.ids.has(id) || this.mem.has(id)
   }
 
   /** Keep one tile; every PIECE_TILES a piece is written (the callers wait on it, so the
    *  fetching never runs far ahead of the writing). */
   async add(z: number, x: number, y: number, data: ArrayBuffer): Promise<void> {
     const id = zxyToTileId(z, x, y)
-    if (this.ids.has(id) || this.pending.some((p) => p.id === id)) return
-    this.pending.push({ id, data: new Uint8Array(data) })
+    if (this.ids.has(id) || this.mem.has(id)) return
+    const bytes = new Uint8Array(data)
+    this.pending.push({ id, data: bytes })
+    this.mem.set(id, bytes)
     this.bytes += data.byteLength
     if (this.pending.length >= PIECE_TILES) await this.flush()
   }
@@ -133,7 +187,7 @@ export class TilePack {
     if (!ok) throw new Error('no room to keep the tiles')
     const dataBytes = index.lens.reduce((a, b) => a + b, 0)
     this.pieces.push({ n, index, dataBytes })
-    for (const id of index.ids) this.ids.add(id)
+    this.locate(n, index)
   }
 
   /** Lay the pieces end to end as one archive, stored as the pack's name, and
@@ -184,24 +238,39 @@ export class TilePack {
     })
     const archive = new Blob([header as Uint8Array<ArrayBuffer>, root as Uint8Array<ArrayBuffer>, ...blobs, ...(leaves as Uint8Array<ArrayBuffer>[]), meta])
     if (!(await putStoredFile(this.name, archive))) throw new Error('no room to keep the pack')
+    // the map reads the archive from here on, before the pieces go
+    this.close()
     await this.discard()
     return archive.size
   }
 
+  /** No longer read by the map as a save under way. */
+  private close(): void {
+    if (opened.get(this.name) === this) opened.delete(this.name)
+    version++
+  }
+
   /** Take the pieces away (a finished pack, or one given up on). */
   async discard(): Promise<void> {
+    this.close()
     await this.chain.catch(() => {})
     for (const s of listStored()) if (pieceNumber(this.name, s.name) != null) await deleteStoredFile(s.name)
     this.pieces = []
     this.ids.clear()
+    this.mem.clear()
+    this.loc.clear()
+    this.blobs.clear()
     this.pending = []
     this.bytes = 0
   }
 }
 
-/** Every stored piece of packs under way whose names start so (Remove takes them with the pack). */
+/** The pieces of a pack under way, gone (Remove takes them with the pack). */
 export async function discardPieces(name: string): Promise<void> {
+  const open = opened.get(name)
+  if (open) return open.discard()
   for (const s of listStored()) if (pieceNumber(name, s.name) != null) await deleteStoredFile(s.name)
+  version++
 }
 
 async function readIndex(blob: Blob): Promise<PieceIndex | null> {

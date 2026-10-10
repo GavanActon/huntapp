@@ -5,6 +5,7 @@ import { devlog } from '../devlog'
 import { ACTIVE_AREA, fileUrl } from '../areas'
 import { DATA_FILES } from '../config'
 import { getStoredFile } from '../offline/fileStore'
+import { openPack, packVersion } from '../offline/tilePack'
 import { noteAbsent, offlineReady } from '../offline/updates'
 import { SHARP } from '../sources'
 
@@ -123,25 +124,35 @@ maplibregl.addProtocol('pmtiles', async (params, abortController) => {
 export const sharpPackFile = (areaId: string): string => `sharp-${areaId}.pmtiles`
 
 let sharpPack: Promise<PMTiles | null> | null = null
+/** the packs' version the archive was looked for at (tilePack.ts packVersion) */
+let sharpPackAt = -1
 /** After a save or a Remove: the next tile looks for the pack again. */
 export function forgetSharpPack(): void {
   sharpPack = null
 }
 
 /**
- * The sharp imagery's tiles: from the area's pack when it holds the tile,
- * else from the imagery's own server, as the map asked before there were
- * packs (the worker keeps a few of those: vite.config.ts imagery-tiles).
- * With no signal a tile the pack lacks is not found, and MapLibre stretches
- * its parent, as at an archive's edge.
+ * The sharp imagery's tiles: from a save under way, which has them as soon
+ * as it fetched them (tilePack.ts), then from the area's pack, else from the
+ * imagery's own server, as the map asked before there were packs (the worker
+ * keeps a few of those: vite.config.ts imagery-tiles). Those go ahead of a
+ * save's own, which are low: during a save the map still streams. With no
+ * signal a tile none of them has is not found, and MapLibre stretches its
+ * parent, as at an archive's edge.
  */
 maplibregl.addProtocol('sharp', async (params, abortController) => {
   const m = /^sharp:\/\/(\w+)\/(\d+)\/(\d+)\/(\d+)/.exec(params.url)
   const src = m ? SHARP[m[1] as keyof typeof SHARP] : undefined
   if (!m || !src?.remote) throw new Error(`no such tile address ${params.url}`)
   const [z, x, y] = [Number(m[2]), Number(m[3]), Number(m[4])]
-  if (!sharpPack) {
-    const file = sharpPackFile(ACTIVE_AREA.id)
+  const file = sharpPackFile(ACTIVE_AREA.id)
+  const saving = openPack(file)
+  if (saving) {
+    const data = await saving.get(z, x, y).catch(() => null)
+    if (data) return { data }
+  }
+  if (!sharpPack || sharpPackAt !== packVersion()) {
+    sharpPackAt = packVersion()
     sharpPack = getStoredFile(file)
       .then((blob) => (blob ? new PMTiles(new BlobSource(blob, file)) : null))
       .catch(() => null)
@@ -159,7 +170,7 @@ maplibregl.addProtocol('sharp', async (params, abortController) => {
   const url = src.remote.replace('{z}', String(z)).replace('{x}', String(x)).replace('{y}', String(y))
   let r: Response
   try {
-    r = await fetch(url, { signal: abortController.signal })
+    r = await fetch(url, { signal: abortController.signal, priority: 'high' })
   } catch (e) {
     if ((e as Error)?.name === 'AbortError') throw e
     throw notFound()

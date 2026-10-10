@@ -376,8 +376,11 @@ app's own files. Removing the imagery brought it to 4 s, the rest being the
 the phone, `sharp-<area>.pmtiles` (`offline/tilePack.ts`): gathered into
 pieces of 400 as they come, so a save cut short goes on from there, then
 laid end to end behind a header and an index and stored like any baked
-archive. The map asks `sharp://` (`map/pmtilesRegistry.ts`): the pack when
-it holds the tile, else Esri, whose tiles the worker keeps 1,500 of;
+archive. The map asks `sharp://` (`map/pmtilesRegistry.ts`): a save under
+way first, which has each tile the moment it came, so the imagery shows
+during a save as it did when the worker kept each tile (Gavan: "make sure
+you can see it just like with streaming"); then the pack; else Esri, ahead
+of the save's own asks, whose tiles the worker keeps 1,500 of;
 offline, a tile the pack lacks is not found and MapLibre stretches its
 parent. Tiles asked for a pack carry `gwpack=1` so the worker leaves them
 alone. A phone still holding tiles kept the old way packs them on its next
