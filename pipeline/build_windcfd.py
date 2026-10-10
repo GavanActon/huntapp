@@ -204,6 +204,15 @@ def collect() -> None:
             ty = np.clip(kr - 0.5 - kr0, 0, 1)
             ks_ = ((k[kr0, kc0] * (1 - tx) + k[kr0, kc0 + 1] * tx) * (1 - ty)
                    + (k[kr0 + 1, kc0] * (1 - tx) + k[kr0 + 1, kc0 + 1] * tx) * ty)
+            # a grid cut short reads as a run done: WindNinja's turbulence
+            # scratch file has one name in the run's folder, and two runs
+            # sharing a folder truncated each other's (Whitefish 67.5° came
+            # back with its top 98 of 517 rows, 2026-10-09); the median fill
+            # would have shipped it flat, so it counts as not run
+            cover = float(np.isfinite(ks_).mean())
+            if cover < 0.99:
+                print(f"  {d:05.1f}°: turbulence covers only {cover:.0%} of the area: rerun it (move t{d:05.1f} aside so a runner takes it again)")
+                continue
             ks_ = np.where(np.isfinite(ks_), ks_, np.nanmedian(k))
             bands[f"s{d:05.1f}"] = (ks_ / meta["speedKph"]).astype(np.float32)
             turb.append(d)

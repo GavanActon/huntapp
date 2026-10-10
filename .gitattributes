@@ -1,0 +1,4 @@
+# LightGBM can't read its text model files with Windows line endings (habitat
+# failed on a checkout's CRLF copies, 2026-10-09)
+pipeline/bush/model/*.txt eol=lf
+pipeline/bush/local/*.txt eol=lf

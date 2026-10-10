@@ -164,7 +164,13 @@ foreach ($j in $jobs) {
   Write-Host ("{0:HH:mm} {1} {2}° starting" -f $t0, $j.Area, [string]::Format($inv, '{0:0.0}', $j.Dir))
   $env:CPL_DEBUG = 'NINJAFOAM'
   $env:COLMAX_HEIGHT_AGL = '10'
-  Push-Location $cliDir
+  # from the job's own folder: WindNinja writes the turbulence's scratch
+  # grid (colMax_10mColHeightAGL_raw_proj.tif) under one fixed name in the
+  # current folder, so runners started from WindNinja's folder crashed each
+  # other when two finished together ("Deleting ... failed: Permission
+  # denied", xonix 2026-10-08 and -09). WindNinja finds its OpenFOAM beside
+  # its own exe, not in the current folder (checked 2026-10-09)
+  Push-Location $outDir
   try {
     $p = Start-Process -FilePath $cliPath -ArgumentList "`"$cfg`"" -NoNewWindow -Wait -PassThru -RedirectStandardOutput $log -RedirectStandardError "$log.err"
     $code = $p.ExitCode
@@ -186,7 +192,17 @@ foreach ($j in $jobs) {
     Set-Content -Path (Join-Path $dir 'done.txt') -Value ([string]::Format($inv, '{0} {1:0.0} min', $me, $mins)) -Encoding ascii
     Write-Host ([string]::Format($inv, '{0:HH:mm} {1} {2:0.0}° done in {3:0.0} min', (Get-Date), $j.Area, $j.Dir, $mins))
   } else {
-    Rename-Item (Join-Path $dir "claim-$me.txt") "failed-$me.txt" -Force
+    # stamped, so a second failure on this runner neither collides with the
+    # first (the rename threw and left the claim stuck, 2026-10-08) nor
+    # writes over its log; the half-written local copy goes, so a retry
+    # here starts clean
+    $stamp = Get-Date -Format 'yyyyMMdd-HHmm'
+    Rename-Item (Join-Path $dir "claim-$me.txt") "failed-$me-$stamp.txt" -Force
+    foreach ($f in @($log, "$log.err")) {
+      if (Test-Path $f) { Rename-Item $f ((Split-Path $f -Leaf) -replace "^run-$me", "run-$me-$stamp") -Force }
+    }
+    $log = Join-Path $dir "run-$me-$stamp.log"
+    if ($remote) { Remove-Item $outDir -Recurse -Force -ErrorAction SilentlyContinue }
     Write-Host ([string]::Format($inv, '{0:HH:mm} {1} {2:0.0}° FAILED (exit {3}); see {4}', (Get-Date), $j.Area, $j.Dir, $code, $log))
   }
 }
