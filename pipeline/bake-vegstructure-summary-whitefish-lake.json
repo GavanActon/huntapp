@@ -1,0 +1,244 @@
+{
+ "brush / alder (BSH)": {
+  "cells": 863,
+  "stands": 7,
+  "canopy_height": {
+   "p25": 5.532,
+   "median": 7.367,
+   "p75": 9.721
+  },
+  "canopy_cover": {
+   "p25": 0.584,
+   "median": 0.793,
+   "p75": 0.848
+  },
+  "understory": {
+   "p25": 0.653,
+   "median": 0.752,
+   "p75": 0.822
+  },
+  "understory_pad": {
+   "p25": 0.847,
+   "median": 1.115,
+   "p75": 1.383
+  },
+  "density": {
+   "p25": 51.62,
+   "median": 77.85,
+   "p75": 156.59
+  }
+ },
+ "mature closed conifer (origin <=1945, cc>=70)": {
+  "cells": 24889,
+  "stands": 27,
+  "canopy_height": {
+   "p25": 14.011,
+   "median": 16.882,
+   "p75": 19.648
+  },
+  "canopy_cover": {
+   "p25": 0.694,
+   "median": 0.779,
+   "p75": 0.847
+  },
+  "understory": {
+   "p25": 0.253,
+   "median": 0.409,
+   "p75": 0.605
+  },
+  "understory_pad": {
+   "p25": 0.234,
+   "median": 0.42,
+   "p75": 0.743
+  },
+  "density": {
+   "p25": 51.21,
+   "median": 63.01,
+   "p75": 89.76
+  }
+ },
+ "mature hardwood-leading (origin <=1960)": {
+  "cells": 18690,
+  "stands": 15,
+  "canopy_height": {
+   "p25": 17.018,
+   "median": 19.446,
+   "p75": 21.89
+  },
+  "canopy_cover": {
+   "p25": 0.772,
+   "median": 0.857,
+   "p75": 0.906
+  },
+  "understory": {
+   "p25": 0.469,
+   "median": 0.629,
+   "p75": 0.759
+  },
+  "understory_pad": {
+   "p25": 0.506,
+   "median": 0.793,
+   "p75": 1.139
+  },
+  "density": {
+   "p25": 49.22,
+   "median": 56.02,
+   "p75": 81.087
+  }
+ },
+ "mature open conifer (origin <=1945, cc<60)": {
+  "cells": 4799,
+  "stands": 5,
+  "canopy_height": {
+   "p25": 13.243,
+   "median": 16.578,
+   "p75": 20.245
+  },
+  "canopy_cover": {
+   "p25": 0.737,
+   "median": 0.829,
+   "p75": 0.888
+  },
+  "understory": {
+   "p25": 0.243,
+   "median": 0.461,
+   "p75": 0.666
+  },
+  "understory_pad": {
+   "p25": 0.223,
+   "median": 0.495,
+   "p75": 0.876
+  },
+  "density": {
+   "p25": 46.06,
+   "median": 51.52,
+   "p75": 110.875
+  }
+ },
+ "open muskeg (OMS)": {
+  "cells": 1316,
+  "stands": 13,
+  "canopy_height": {
+   "p25": 0.0,
+   "median": 0.0,
+   "p75": 5.979
+  },
+  "canopy_cover": {
+   "p25": 0.0,
+   "median": 0.001,
+   "p75": 0.222
+  },
+  "understory": {
+   "p25": 0.061,
+   "median": 0.217,
+   "p75": 0.544
+  },
+  "understory_pad": {
+   "p25": 0.051,
+   "median": 0.195,
+   "p75": 0.628
+  },
+  "density": {
+   "p25": 39.318,
+   "median": 42.83,
+   "p75": 57.597
+  }
+ },
+ "treed muskeg (TMS)": {
+  "cells": 767,
+  "stands": 6,
+  "canopy_height": {
+   "p25": 5.539,
+   "median": 8.508,
+   "p75": 10.794
+  },
+  "canopy_cover": {
+   "p25": 0.489,
+   "median": 0.661,
+   "p75": 0.761
+  },
+  "understory": {
+   "p25": 0.663,
+   "median": 0.76,
+   "p75": 0.829
+  },
+  "understory_pad": {
+   "p25": 0.871,
+   "median": 1.142,
+   "p75": 1.415
+  },
+  "density": {
+   "p25": 49.805,
+   "median": 57.34,
+   "p75": 79.235
+  }
+ },
+ "water (FRI WAT)": {
+  "cells": 60,
+  "stands": 5,
+  "canopy_height": {
+   "p25": 0.0,
+   "median": 0.0,
+   "p75": 0.0
+  },
+  "canopy_cover": {
+   "p25": 0.0,
+   "median": 0.0,
+   "p75": 0.0
+  },
+  "understory": {
+   "p25": 0.17,
+   "median": 0.221,
+   "p75": 0.276
+  },
+  "understory_pad": {
+   "p25": 0.149,
+   "median": 0.199,
+   "p75": 0.259
+  },
+  "density": {
+   "p25": 26.184,
+   "median": 29.453,
+   "p75": 35.407
+  }
+ },
+ "young forest, origin 1985+ or cut/burn": {
+  "cells": 69375,
+  "stands": 60,
+  "canopy_height": {
+   "p25": 10.703,
+   "median": 15.681,
+   "p75": 18.577
+  },
+  "canopy_cover": {
+   "p25": 0.456,
+   "median": 0.752,
+   "p75": 0.867
+  },
+  "understory": {
+   "p25": 0.262,
+   "median": 0.417,
+   "p75": 0.581
+  },
+  "understory_pad": {
+   "p25": 0.243,
+   "median": 0.431,
+   "p75": 0.696
+  },
+  "density": {
+   "p25": 51.585,
+   "median": 69.33,
+   "p75": 86.87
+  }
+ },
+ "water (DEM-flattened)": {
+  "cells": 24596,
+  "share_with_any_value": 0.0278
+ },
+ "_fri_vs_lidar": {
+  "stands": 104,
+  "height_r": 0.723,
+  "height_median_diff_m (lidar2021 - fri2010)": 0.89,
+  "closure_vs_cover_r": 0.146
+ }
+}
