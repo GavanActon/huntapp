@@ -44,7 +44,20 @@ from scipy.ndimage import uniform_filter
 
 HERE = Path(__file__).resolve().parent
 DATA = HERE.parent / "raw" / "surrogate"
-AREAS = ["blanchard-river", "highland-lake", "lac-bailey", "pickle-lake", "sault-test"]
+# The areas with a built dataset: every <name>.npz in DATA that is not a
+# baseline, a prediction or the report, so the seed set joins the training
+# list as dataset.py finishes it; the five first areas when nothing is built
+# yet (synthetic runs, a fresh checkout)
+FIRST_AREAS = ["blanchard-river", "highland-lake", "lac-bailey", "pickle-lake", "sault-test"]
+
+
+def built_areas(data: Path = DATA) -> list[str]:
+    names = sorted(f.stem for f in Path(data).glob("*.npz")
+                   if not f.stem.startswith(("baseline-", "pred-", "report")))
+    return names or list(FIRST_AREAS)
+
+
+AREAS = built_areas()
 CELL_M = 30.0
 # The elevation channel is the height above the mean of the 193 x 193 cells
 # (5.8 km) round each cell, in hundreds of metres. A local mean, not the

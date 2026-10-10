@@ -259,6 +259,31 @@ should close once the training set holds faster terrain; a US site held
 out for the 3DEP shift; and Big Southern Butte and Salmon River to score
 the teacher itself against measured wind.
 
+### Seed batch 1, 2026-10-10 morning: 12 more sites, Blanchard held out
+
+Seed batch 1 finished on xonix at 07:33 (12 sites, 192 directions, no failures); the dataset built in minutes; the Blanchard fold retrained on the other 17 areas (`runs/seed1-hold-blanchard-river`, 25 min on XEVO). Blanchard core, eight-way average, against the 4-area net of pass 2:
+
+| | 4 training areas | 17 training areas |
+|---|---|---|
+| turn MAE | 15.7° | 14.1° |
+| turn median | 6.6° | 6.0° |
+| within 10° | 62% | 65% |
+| turn r | 0.41 | 0.47 |
+| speed MAE | 0.173 | 0.166 |
+| speed r | 0.80 | 0.82 |
+| speed bias | -0.033 | -0.036 |
+| turb r | 0.65 | 0.69 |
+
+By ground, turn MAE / speed r:
+
+| | 4 areas | 17 areas |
+|---|---|---|
+| slopes over 10° | 19.1° / 0.86 | 16.8° / 0.87 |
+| slack and lee | 31.4° / 0.54 | 27.8° / 0.56 |
+| exposed | 8.0° / 0.58 | 7.6° / 0.60 |
+
+The seed set helps where it was meant to: the steep ground and the lee. The mass-consistent and interpolation yardsticks are unchanged (same truth). Batch 2's 18 sites are due the evening of 2026-10-10; the next retrain takes all 35, with a US site held out for the 3DEP check and Big Southern Butte and Salmon River scored against the measured Idaho wind.
+
 ## 7. The SD wind as a bake step, and the HD/SD switch in the app
 
 Built 2026-10-10 (Gavan: "give me an SD/HD wind option in the app. Build
