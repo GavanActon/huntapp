@@ -1,4 +1,4 @@
-import { areaById, type AreaDef } from '../areas'
+import { AREA_LIST, areaById, type AreaDef } from '../areas'
 import { devlog } from '../devlog'
 import { rangeOf, tilesIn } from '../map/prefetch'
 import { SHARP, type LiveRaster } from '../sources'
@@ -142,7 +142,22 @@ export async function saveSharp(areaId: string, progress: (done: number, total: 
   return { ok, total: urls.length }
 }
 
-/** Take the area's sharp imagery off the phone, with its maps. */
+/** About what the area's saved sharp imagery takes on the phone, bytes: 0 when not saved. */
+export function sharpKeptBytes(areaId: string): number {
+  if (!sharpOf(areaId) || !sharpSaved(areaId)) return 0
+  try {
+    const j = JSON.parse(localStorage.getItem(savedKey(areaId)) ?? 'null') as { tiles?: number } | null
+    return (j?.tiles ?? 0) * TILE_BYTES
+  } catch {
+    return 0
+  }
+}
+
+/** Take the area's sharp imagery off the phone, alone or with its maps.
+ *  The worker's cache holds the sharp imagery alone: with no other area's
+ *  saved it goes whole, at once. Otherwise the area's tiles go twelve at a
+ *  time, less any another saved area's needs too (one by one, Blanchard
+ *  River's 10,300 would take minutes). */
 export async function removeSharp(areaId: string): Promise<void> {
   const area = areaById(areaId)
   const src = sharpOf(areaId)
@@ -153,6 +168,21 @@ export async function removeSharp(areaId: string): Promise<void> {
     /* ignore */
   }
   if (!('caches' in window)) return
+  const t0 = performance.now()
+  const others = AREA_LIST.filter((a) => a.id !== areaId && sharpOf(a.id) && sharpSaved(a.id))
+  if (!others.length) {
+    await caches.delete(CACHE)
+    devlog('data', `sharp imagery · ${area.id} removed · the whole cache · ${Math.round(performance.now() - t0)} ms`)
+    return
+  }
+  const keep = new Set(others.flatMap((a) => tileUrls(a, sharpOf(a.id)!)))
+  const urls = tileUrls(area, src).filter((u) => !keep.has(u))
   const cache = await caches.open(CACHE)
-  for (const url of tileUrls(area, src)) await cache.delete(url)
+  let next = 0
+  await Promise.all(
+    Array.from({ length: CONCURRENCY }, async () => {
+      while (next < urls.length) await cache.delete(urls[next++])
+    }),
+  )
+  devlog('data', `sharp imagery · ${area.id} removed · ${urls.length} tiles · ${((performance.now() - t0) / 1000).toFixed(1)} s`)
 }

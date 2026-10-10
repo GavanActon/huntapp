@@ -151,6 +151,13 @@ export async function removeFiles(files: string[], areaId: string = ACTIVE_AREA.
   afterChange(areaId)
 }
 
+/** Take the area's sharp imagery off the phone and keep its maps: with signal
+ *  the map streams it again, with none it shows the area's own satellite. */
+export async function removeSharpOnly(areaId: string): Promise<void> {
+  await removeSharp(areaId)
+  useDownloads.setState({ storedAt: Date.now(), error: null, areaId })
+}
+
 export interface MapsStatus {
   text: string
   action: 'download' | 'none'

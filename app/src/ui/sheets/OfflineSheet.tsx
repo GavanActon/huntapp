@@ -1,9 +1,9 @@
 import { useEffect, useState, type JSX } from 'react'
 import { ACTIVE_AREA, AREA_LIST, areaById, type AreaDef, type CoverageLayer } from '../../areas'
 import { dataFiles, habitatFile, layerLabel, microFile } from '../../config'
-import { fmtBytes, mapsStatus, removeFiles, runMaps, useDownloads } from '../../offline/downloads'
+import { fmtBytes, mapsStatus, removeFiles, removeSharpOnly, runMaps, useDownloads } from '../../offline/downloads'
 import { listStored, storageEstimate, type StoredFileInfo } from '../../offline/fileStore'
-import { sharpBytes, sharpOf, sharpSaved } from '../../offline/sharpImagery'
+import { sharpBytes, sharpKeptBytes, sharpOf, sharpSaved } from '../../offline/sharpImagery'
 import { bundleOf, bundleOnServer, bytesOf, checkAreaListing, useMapUpdates } from '../../offline/updates'
 import { useAppStore } from '../../state/appStore'
 import { IconCheck, IconDownload, IconTrash } from '../icons'
@@ -24,7 +24,9 @@ const labelOf = (name: string, areaId: string) =>
  * Maps on this phone, an area at a time, the one the app is in first:
  * each with its download (or its new maps) at the top, its files with a
  * size and a check when saved (another area's folded under its count),
- * its Remove, and what is in it, folded; the storage line at the foot.
+ * the sharp imagery with its own Remove (the bulk of it, and thousands of
+ * tiles in the worker's cache), the area's Remove, and what is in it,
+ * folded; the storage line at the foot.
  * Reached from the Settings row; ‹ Back is the host's.
  */
 export default function OfflineSheet(): JSX.Element {
@@ -70,6 +72,17 @@ function AreaMaps({ area, stored }: { area: AreaDef; stored: Map<string, StoredF
   const here = area.id === ACTIVE_AREA.id
   // the area the app is in shows its files; another folds them under the count
   const [open, setOpen] = useState(here)
+  // a Remove under way: thousands of imagery tiles can take a moment
+  const [removing, setRemoving] = useState<'maps' | 'sharp' | null>(null)
+  const remove = async (what: 'maps' | 'sharp', ask: string, run: () => Promise<void>) => {
+    if (!confirm(ask)) return
+    setRemoving(what)
+    try {
+      await run()
+    } finally {
+      setRemoving(null)
+    }
+  }
   const bundle = bundleOf(area.id)
   if (!bundle) return null
   // the files the server has baked; the rest are listed as not built yet
@@ -147,7 +160,24 @@ function AreaMaps({ area, stored }: { area: AreaDef; stored: Map<string, StoredF
       {open && sharpOf(area.id) && (
         <div className={`st-file${sharpSaved(area.id) ? '' : ' missing'}`}>
           <span>Sharp imagery</span>
-          {sharpSaved(area.id) ? <IconCheck size={16} /> : <span className="numeral">{fmtBytes(sharpBytes(area.id))}</span>}
+          {sharpSaved(area.id) ? (
+            <>
+              {sharpKeptBytes(area.id) > 0 && <span className="numeral">{fmtBytes(sharpKeptBytes(area.id))}</span>}
+              <IconCheck size={16} />
+              <button
+                className="st-remove"
+                disabled={dl.active || !!removing}
+                onClick={() =>
+                  void remove('sharp', `Remove ${area.name}'s sharp imagery from this phone? Its other maps stay. With signal it streams again.`, () => removeSharpOnly(area.id))
+                }
+                aria-label={`Remove ${area.name}'s sharp imagery`}
+              >
+                {removing === 'sharp' ? 'Removing…' : 'Remove'}
+              </button>
+            </>
+          ) : (
+            <span className="numeral">{fmtBytes(sharpBytes(area.id))}</span>
+          )}
         </div>
       )}
 
@@ -160,14 +190,15 @@ function AreaMaps({ area, stored }: { area: AreaDef; stored: Map<string, StoredF
         </button>
         {have.length > 0 && (
           <button
-            className="icon-btn danger"
-            disabled={dl.active}
-            onClick={() => {
-              if (confirm(`Remove ${area.name}'s maps from this phone?`)) void removeFiles(bundle.files, area.id)
-            }}
+            className="st-remove"
+            disabled={dl.active || !!removing}
+            onClick={() =>
+              void remove('maps', `Remove ${area.name}'s maps from this phone${sharpOf(area.id) ? ', its sharp imagery too' : ''}?`, () => removeFiles(bundle.files, area.id))
+            }
             aria-label={`Remove ${area.name}'s saved maps`}
           >
-            <IconTrash size={18} />
+            <IconTrash size={15} />
+            {removing === 'maps' ? 'Removing…' : 'Remove'}
           </button>
         )}
       </div>

@@ -187,6 +187,28 @@
   color: var(--c-good);
 }
 
+/* an area's Remove, and its sharp imagery's: a word, not a bare bin (Gavan, 2026-10-10: "We don't have a maps on this phone remove") */
+.st-remove {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 0 6px 8px;
+  color: var(--c-danger);
+  font-size: calc(13px * var(--ui-scale));
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.st-remove svg,
+.st-file .st-remove svg {
+  color: inherit;
+}
+
+.st-remove:disabled {
+  color: var(--c-text-dim);
+}
+
 .st-file .st-new {
   flex: none;
   font-size: calc(11px * var(--ui-scale));
