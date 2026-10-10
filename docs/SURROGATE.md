@@ -328,34 +328,64 @@ the net's fields are smoother than the solver's.
 SD the app fetches only `micro-sd-blanchard-river.hab` and logs the
 surrogate as the solver; on HD only the WindNinja grid.
 
-## 6. Machines
+## 6. Machines: the GPU job kit
 
 The first folds ran on XEVO (RTX 5060, 8 GB): the 4.7 M parameter net on
-192-cell windows peaked at 4.6 GB and trained a fold in 25–27 min.
+192-cell windows peaked at 4.6 GB and trained a fold in 25–27 min. A new
+area's SD wind takes 25 s here, so the laptop keeps the bakes; xonix
+(hostname XONIC: RTX 5090 with 32 GB, Intel Core Ultra 9 290HX, 64 GB RAM,
+its CPU pinned by ten WindNinja runners) takes the retrains and any bulk
+inference. Decided 2026-10-10 ("job kit it is"); built the same night.
 
-**Next time, xonix does the inference** (Gavan, 2026-10-09), and the seed
-set's training. xonix (hostname XONIC: RTX 5090 with 32 GB, Intel Core Ultra 9
-290HX, 64 GB RAM) has only PowerShell and the WindNinja kit today, so it
-needs, once:
+**How it works.** xonix has PowerShell and the WindNinja kit, nothing
+else, so the surrogate goes to it the way WindNinja jobs do: a folder on
+the share that xonix claims by file. The kit is
+`pipeline/raw/windcfd/surrogate/` (on xonix `\XEVO\windcfd2\surrogate`;
+the WindNinja runners ignore it, it has no meta.json):
 
-1. The repo, or just `pipeline/surrogate/` and `pipeline/raw/surrogate/`
-   (the npz files and `runs/<name>/ckpt.pt`; about 420 MB for the five
-   areas plus baselines). Training reads only numpy; `dataset.py` also
-   wants rasterio and pyproj if the kit's runs are to be rebuilt there.
-2. Python 3.14 and `pip install numpy scipy pyproj rasterio matplotlib`,
-   then `pip install torch --index-url https://download.pytorch.org/whl/cu128`
-   (2.11.0+cu128 has a cp314 wheel; the 5090 is Blackwell like the 5060
-   here, so it needs this CUDA 12.8 build and a driver of 570 or later,
-   nothing older).
-3. Check: `py -3.14 -c "import torch; print(torch.cuda.get_device_name(0))"`
-   and `py -3.14 pipeline/surrogate/test_fields.py`.
-4. Inference: `py -3.14 pipeline/surrogate/predict.py --area <id>
-   --checkpoint runs/<name>/ckpt.pt` writes the 16 fields; a whole area
-   takes about 2 s on the laptop, so on xonix the cost is the data, not
-   the GPU. Training on 32 GB allows batch 64 or 256-cell windows, or a
-   wider net; a fold that takes 25 min here should take well under 10.
+- `python/`: Python 3.14.0 embeddable with torch 2.11+cu128, numpy,
+  scipy, matplotlib and the VC++ runtime DLLs beside it, 4.4 GB,
+  relocatable, nothing to install. `python/VERSION` is its stamp.
+- `code/`: `pipeline/surrogate/*.py`, synced from this checkout, with a
+  hash in `code/VERSION`.
+- `data/`: the area npz files, baselines, the dataset report, and the
+  `runs/<name>/` checkpoints a job needs.
+- `jobs/<id>/job.json`: script, argv, needs, when, from where. The runner
+  leaves `claim-<host>-<pid>.txt`, the run log, `out/` (every file the
+  run wrote or changed under its data folder, paths kept) and `done.txt`,
+  or a `failed-<host>-<stamp>.txt` with the log.
+- `run-surrogate.ps1` and `README.txt`: the runner, source of truth in
+  `pipeline/windcfd/surrogate/`, copied to the kit by every sync.
 
-The hand-off that exists is the kit share the other way (`\\XEVO\windcfd`),
-so either xonix pulls from a checkout or the npz files and checkpoints go
-on that share. Nothing of this is set up yet; XONIC did not answer a ping
-on 2026-10-09.
+**On xonix, once:**
+
+    powershell -ExecutionPolicy Bypass -File \XEVO\windcfd2\surrogateun-surrogate.ps1 -Watch -AtLogon
+
+It copies `python/`, `code/` and `data/` under `%LOCALAPPDATA%\groundwind-surrogate`
+(the 4.4 GB once, then only what changed), claims the oldest job, runs
+it at above-normal priority so the trainer's data loader gets a core on a
+pinned CPU, copies the results back, and watches for the next. A
+`drain-XONIC.txt` in the kit stops it after the job in hand; `-Restart`
+stops it where it is and gives its claim back. Logs under
+`%LOCALAPPDATA%\groundwind-surrogate\logs`.
+
+**From here** (`pipeline/surrogate/remote.py`):
+
+    py -3.14 pipeline/surrogate/train.py --remote --holdout <area> --name <run> --steps 12000
+    py -3.14 pipeline/surrogate/predict.py --remote --run <run> --area <area> --tta
+    py -3.14 pipeline/surrogate/remote.py run eval.py -- --run <run> --area <area>
+    py -3.14 pipeline/surrogate/remote.py status
+
+`--remote` syncs code and data, writes the job, waits (the log's step
+line every two minutes), and brings `out/` back into
+`pipeline/raw/surrogate/` as if the run had happened here; a job that
+fails prints its log and exits 1. `SURROGATE_KIT` points at another kit.
+
+**Checked 2026-10-10** with XEVO standing in for xonix: a predict job
+through the kit came back bit-identical to the same predict run locally;
+a 300-step training job sent with `train.py --remote` trained on the
+watching runner and its checkpoint, config and log came back; bad argv
+leaves a failed- file and no done.txt; a second runner skips claimed and
+finished jobs; drain and restart behave. Not yet seen: the first 4.4 GB
+copy over the share, and the 5090's numbers (a different GPU need not be
+bit-identical; the fold scoreboard is the test).

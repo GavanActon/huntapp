@@ -41,6 +41,11 @@ import numpy as np
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
+if __name__ == "__main__" and "--remote" in sys.argv[1:]:
+    # to xonix through the kit (remote.py), before torch takes its seconds to load here
+    import remote
+    sys.exit(remote.run("train.py", [a for a in sys.argv[1:] if a != "--remote"]))
+
 import torch  # noqa: E402
 
 from fields import (AREAS, DATA, N_IN, REL_SCALE_M, REL_WINDOW, Area, bearing, d4,  # noqa: E402
@@ -168,6 +173,8 @@ def main() -> None:
     ap.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--data", type=Path, default=DATA)
+    ap.add_argument("--remote", action="store_true",
+                    help="train on xonix through the kit (remote.py; SURROGATE_KIT names it)")
     args = ap.parse_args()
 
     torch.manual_seed(args.seed)

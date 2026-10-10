@@ -24,6 +24,11 @@ from fields import DATA, load_area, predict_domain  # noqa: E402
 
 
 def main() -> None:
+    if "--remote" in sys.argv[1:]:
+        # to xonix through the kit (remote.py), which sends runs/<run> along
+        import remote
+        sys.exit(remote.run("predict.py", [a for a in sys.argv[1:] if a != "--remote"]))
+
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--run", required=True)
     ap.add_argument("--area", required=True)
@@ -31,6 +36,8 @@ def main() -> None:
     ap.add_argument("--tta", action="store_true", help="average the eight D4 turns of the scene")
     ap.add_argument("--device", default=None)
     ap.add_argument("--data", type=Path, default=DATA)
+    ap.add_argument("--remote", action="store_true",
+                    help="predict on xonix through the kit (remote.py; SURROGATE_KIT names it)")
     args = ap.parse_args()
 
     import torch
