@@ -13,8 +13,9 @@ Input:  the area's FRI geodatabase and its CRS (bake.forest gdb and crs in
         An area across a forest unit's line gives gdb as a list, one package
         per unit (Whitefish Lake: Abitibi River and Timiskaming); each
         package's stand layer and CRS are read from the file where not given
-        (the layer is named Polygon_Forest, Polygon_Forest_2D or
-        Polygon_Forest_Updated<date>).
+        (the layer is named Polygon_Forest, Polygon_Forest_2D,
+        Polygon_Forest_Updated<date>, or after the forest, as Algoma's
+        Algoma_Forest_2D).
         Ontario only: Quebec's stands come from qc_forest.py.
 Output: app/public/data/forest-<region>.geojson with the fields the map
         style and the habitat bake read: group, species, year, ht, cc, sc,
@@ -81,6 +82,8 @@ def stand_layer(gdb: Path) -> str:
     if "Polygon_Forest" in names:
         return "Polygon_Forest"
     found = sorted(n for n in names if n.lower().startswith("polygon_forest"))
+    # some packages name it after the forest: Algoma_Forest_2D
+    found = found or sorted(n for n in names if n.lower().endswith("_forest_2d"))
     if not found:
         raise SystemExit(f"{gdb.name} has no Polygon_Forest layer: {', '.join(names)}")
     return found[-1]

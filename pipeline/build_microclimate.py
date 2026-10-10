@@ -56,7 +56,10 @@ collected by build_windcfd.py into raw/windcfd-<region>.npz. SD is the
 surrogate net standing in for it (docs/SURROGATE.md), from build_windsd.py's
 raw/windsd-<region>.npz; --wind sd bakes the same grid with those bands in
 place of WindNinja's, as micro-sd-<region>.hab beside the HD one, so the app
-can load either. Everything else in the two grids is the same.
+can load either. Everything else in the two grids is the same. An SD area
+(bake.wind "sd": no WindNinja run, by design) has the one grid,
+micro-<region>.hab, with the surrogate's bands, so the app reads it as it
+reads any area's.
 
     python pipeline/build_microclimate.py --wind sd
 """
@@ -79,7 +82,7 @@ from scipy.sparse.linalg import splu
 import build_habitat as hb
 import habfile
 from habfile import write_hab
-from area import SCRATCH
+from area import BAKE, SCRATCH
 from common import CACHE_DIR, OUT_DIR, REGION
 
 ROWS, COLS = hb.ROWS, hb.COLS
@@ -401,9 +404,11 @@ def main() -> None:
     ap.add_argument("--wind", choices=["hd", "sd"], default="hd",
                     help="momentum bands from WindNinja's solve (hd, windcfd-<id>.npz) or the surrogate net's (sd, windsd-<id>.npz)")
     args = ap.parse_args()
-    sd = args.wind == "sd"
-    # the SD grid is a second file beside the HD one, never in its place
-    tag = "sd-" if sd else ""
+    # an SD area has no WindNinja run: its one grid takes the surrogate's bands
+    sd_area = BAKE.get("wind") == "sd"
+    sd = args.wind == "sd" or sd_area
+    # elsewhere the SD grid is a second file beside the HD one, never in its place
+    tag = "sd-" if sd and not sd_area else ""
     sd_meta: dict = {}
     if sd:
         sd_path = CACHE_DIR / f"windsd-{REGION['id']}.npz"

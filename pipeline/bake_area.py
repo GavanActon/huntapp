@@ -35,11 +35,14 @@ The last two steps are the SD terrain wind (docs/SURROGATE.md): wind-sd runs
 the surrogate net that stands in for WindNinja's momentum solve
 (build_windsd.py), micro-sd bakes a second micro grid with it. Both are
 skipped with the reason where py 3.14 has no torch or the area has no
-finished net (raw/surrogate/runs/hold-<id> or all).
+finished net (raw/surrogate/runs/<bake.sdRun>, else hold-<id> or all). An
+SD area (bake.wind "sd", made by --new --sd: no LiDAR, point cloud or
+WindNinja) has no second grid: its micro step bakes the surrogate's wind
+into micro-<id>.hab, after wind-sd.
 
 A new area from a point:
 
-    py -3.14 pipeline/bake_area.py --new --lat 49.40955 --lon -69.55349 --name "Lac Bailey" --jurisdiction QC [--bake]
+    py -3.14 pipeline/bake_area.py --new --lat 49.40955 --lon -69.55349 --name "Lac Bailey" --jurisdiction QC [--sd] [--bake]
 
 writes app/src/areas/<id>.json: Pickle Lake's region and core sizes centred
 on the point (--core-km / --region-km for half-widths of your own), the
@@ -127,13 +130,14 @@ def adapter_step(name: str, kind: str, a: dict) -> Step:
     return Step(name, py, [[c.format(**fill) for c in cmd]])
 
 
-def surrogate_missing(area_id: str) -> str | None:
+def surrogate_missing(area_id: str, pinned: str | None = None) -> str | None:
     """Why build_windsd.py cannot make this area's SD wind here, or None. It
-    needs a finished net, hold-<id> else all (one counts once train.py has
+    needs a finished net, the area's bake.sdRun where it names one, else
+    hold-<id> else all (one counts once train.py has
     written its config.json: the checkpoint is saved every 1000 steps while
     it trains, as build_windsd.run_state says), and torch under py 3.14,
     looked for without importing it, which takes seconds."""
-    runs = [SURROGATE_RUNS / n for n in (f"hold-{area_id}", "all")]
+    runs = [SURROGATE_RUNS / n for n in ((pinned,) if pinned else (f"hold-{area_id}", "all"))]
     if not any((r / "ckpt.pt").exists() and (r / "config.json").exists() for r in runs):
         return "no finished surrogate net for this area (" + " or ".join(r.relative_to(ROOT).as_posix() for r in runs) + ")"
     probe = "import importlib.util, sys; sys.exit(importlib.util.find_spec('torch') is None)"
@@ -168,7 +172,9 @@ def plan(a: dict) -> list[Step]:
             return "fit each sheet to its lake by hand first (georef_lake_sheet.py raw/bathy/<id>.jpg \"<lake>\"): " + ", ".join(unfit)
         return None
 
-    sd_why = surrogate_missing(a["id"])
+    sd_why = surrogate_missing(a["id"], bake.get("sdRun"))
+    # an SD area: no WindNinja by design, so its one micro grid has the surrogate's wind
+    sd_area = bake.get("wind") == "sd"
     # a windsd npz made on another machine can still be baked into a grid here
     sd_have = (HERE / "raw" / f"windsd-{a['id']}.npz").exists()
 
@@ -250,16 +256,23 @@ def plan(a: dict) -> list[Step]:
             check=sheets_fitted,
         ),
         Step("depth-bands", "3.14", [["build_depth_bands.py"]], skip=None if ontario else "lake depths are Ontario only (ARA and the MNR sheets)", needs=("habitat",)),
-        Step("micro", "3.14", [["build_microclimate.py"]], needs=("habitat",)),
         # the SD terrain wind: the surrogate net in WindNinja's place, on the wide MRDEM the dem step
-        # caches, the eight-way average because this is what gets served (SURROGATE.md §5), then a
-        # second micro grid with it, micro-sd-<id>.hab, beside the HD one
+        # caches, the eight-way average because this is what gets served (SURROGATE.md §5)
         Step("wind-sd", "3.14", [["build_windsd.py", "--tta"]], skip=sd_why, needs=("dem",), check=wide_dem),
+        # an SD area's micro grid takes it (build_microclimate.py reads bake.wind)
+        Step(
+            "micro",
+            "3.14",
+            [["build_microclimate.py"]],
+            skip=f"no SD wind for this SD area: {sd_why}" if sd_area and sd_why and not sd_have else None,
+            needs=("habitat", "wind-sd") if sd_area else ("habitat",),
+        ),
+        # elsewhere a second micro grid with it, micro-sd-<id>.hab, beside the HD one
         Step(
             "micro-sd",
             "3.14",
             [["build_microclimate.py", "--wind", "sd"]],
-            skip=f"no SD wind for this area: {sd_why}" if sd_why and not sd_have else None,
+            skip="an SD area's own micro grid has the surrogate's wind" if sd_area else f"no SD wind for this area: {sd_why}" if sd_why and not sd_have else None,
             needs=("habitat", "wind-sd"),
         ),
         Step("going", "3.14", [["build_going.py"]], needs=("hillshade", "habitat", "vectors"), check=inputs("wetland", "watercourse")),
@@ -392,7 +405,8 @@ def bake(args) -> int:
             results[s.name] = f"skipped: {s.skip}"
             log(f"-- {s.name}: skipped, {s.skip}")
             continue
-        failed = [n for n in s.needs if results.get(n, "").startswith("failed")]
+        # a step skipped because one it needed failed counts as failed for the ones after it
+        failed = [n for n in s.needs if results.get(n, "").startswith("failed") or results.get(n, "").endswith(" failed")]
         if failed:
             results[s.name] = f"skipped: {', '.join(failed)} failed"
             log(f"-- {s.name}: skipped, {', '.join(failed)} failed")
@@ -543,7 +557,11 @@ def known_sources(a: dict, lidar: list[str], pc_years: str | None) -> dict[tuple
             + ("; bush from the LiDAR point cloud where it was measured" if bake.get("habitatBush") == "pointcloud" else ""),
             "licence": DERIVED,
         },
-        ("grids", "micro"): {"source": "derived: the habitat grid and the MRDEM", "licence": DERIVED},
+        ("grids", "micro"): {
+            "source": "derived: the habitat grid and the MRDEM"
+            + (", with the surrogate net's terrain wind (build_windsd.py; no WindNinja run in an SD area)" if bake.get("wind") == "sd" else ""),
+            "licence": DERIVED,
+        },
         ("grids", "micro-sd"): {"source": "derived: the habitat grid and the MRDEM, with the surrogate net's terrain wind in WindNinja's place (build_windsd.py)", "licence": DERIVED},
         ("grids", "going"): {"source": "derived: HRDEM LiDAR, point-cloud bush or the forest-map estimate, water, wetlands and roads", "licence": DERIVED},
     }
@@ -787,18 +805,22 @@ def new_area(args) -> str:
     region = box_around(lon, lat, rw, rh)
     core = {**box_around(lon, lat, cw, ch), "maxzoom": pickle["core"]["maxzoom"]}
     no_lidar = False
-    try:
-        from build_hillshade import stac_search
+    hrdem: list[str] = []
+    if args.sd:  # SD: the national 30 m relief, and the surrogate's wind in WindNinja's place
+        print("SD: no 1 m LiDAR, point cloud or WindNinja; the MRDEM's relief and the surrogate's terrain wind")
+        no_lidar = True
+    else:
+        try:
+            from build_hillshade import stac_search
 
-        hrdem = stac_search(core)
-    except (SystemExit, Exception) as e:  # noqa: BLE001  (offline: the bake searches again)
-        # the catalogue answered and has no survey there: the core goes without
-        no_lidar = str(e).startswith("no HRDEM LiDAR project")
-        print(f"no 1 m LiDAR over the core ({e})" if no_lidar else f"no HRDEM list yet ({e}); the bake will search for it")
-        hrdem = []
+            hrdem = stac_search(core)
+        except (SystemExit, Exception) as e:  # noqa: BLE001  (offline: the bake searches again)
+            # the catalogue answered and has no survey there: the core goes without
+            no_lidar = str(e).startswith("no HRDEM LiDAR project")
+            print(f"no 1 m LiDAR over the core ({e})" if no_lidar else f"no HRDEM list yet ({e}); the bake will search for it")
 
     arctic: list[str] = []
-    if no_lidar:
+    if no_lidar and not args.sd:
         try:
             from build_hillshade import arcticdem_search
 
@@ -833,6 +855,9 @@ def new_area(args) -> str:
         }
     if no_lidar:  # the MRDEM's relief alone: its hillshade and its contours
         files["pmtiles"] = [k for k in files["pmtiles"] if k not in ("hillshadeLidar", "contours", "understory", "lanes")]
+    if args.sd:  # the bush model's understory stands in for the point cloud's; one wind grid
+        files["pmtiles"] = [k for k in files["pmtiles"] if k != "contoursWide"] + ["understory", "contoursWide"]
+        files["grids"] = [g for g in files.get("grids", []) if g != "micro-sd"]
     bake_by = {
         "ON": {"vectors": "on.lio", "forest": {"adapter": "on.fri", "gdb": None, "crs": None, "vintage": None}, "imagery": "on.oiwms", "pointcloud": "on.fri_leafon"},
         "YT": {
@@ -885,8 +910,8 @@ def new_area(args) -> str:
         "presets": [{"name": "Requested spot", "lon": lon, "lat": lat, "kind": "stand", "note": f"Area requested {date.today().isoformat()}"}],
         "bundle": {
             "description": (
-                f"Topo, imagery, LiDAR relief and contours, forest stands, water, roads, and the habitat, wind and going grids "
-                f"around {args.name}; full detail within {min(cw, ch) / 2:.0f} km of the spot."
+                f"Topo, imagery, {'30 m' if args.sd else 'LiDAR'} relief and contours, forest stands, water, roads, and the habitat, "
+                f"{'surrogate ' if args.sd else ''}wind and going grids around {args.name}; full detail within {min(cw, ch) / 2:.0f} km of the spot."
             )
         },
         "files": files,
@@ -895,6 +920,7 @@ def new_area(args) -> str:
             "hrdem": hrdem,
             **({"lidar": "arcticdem", "arcticdem": arctic} if arctic else {"lidar": "none"} if no_lidar else {}),
             **bake_by.get(j, {"vectors": None, "forest": None, "imagery": None, "pointcloud": None}),
+            **({"pointcloud": None, "wind": "sd"} if args.sd else {}),
             "nts": nts_50k_sheets(region["west"], region["south"], region["east"], region["north"]),
         },
     }
@@ -926,6 +952,7 @@ def main() -> int:
     ap.add_argument("--out", help="--new: write the file here instead of app/src/areas/<id>.json")
     ap.add_argument("--force", action="store_true", help="--new: replace an existing file")
     ap.add_argument("--bake", action="store_true", help="--new: bake the area straight after")
+    ap.add_argument("--sd", action="store_true", help="--new: an SD area (no LiDAR, point cloud or WindNinja; the surrogate's wind)")
     args = ap.parse_args()
 
     if args.new:

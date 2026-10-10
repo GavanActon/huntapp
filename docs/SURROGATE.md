@@ -325,7 +325,20 @@ reproducible process").
 **Which net.** For the five areas that trained the net, the SD grid comes
 from the fold that held that area out (`hold-<id>`, trained with
 `train.py --holdout <id>`), so the SD wind on an existing map is what a
-stranger's area would get, not an in-sample fit. New areas use `all`.
+stranger's area would get, not an in-sample fit. New areas use `all`,
+unless the area file names a net of its own (`bake.sdRun`, which
+`build_windsd.py --run` overrides).
+
+**An SD area** (`bake.wind: "sd"`, written by `bake_area.py --new --sd`):
+no 1 m LiDAR, point cloud or WindNinja, by design. It has one wind grid,
+`micro-<id>.hab`, with the surrogate's bands in it
+(`model.momentum.source` `sd`), so the app reads it as it reads any
+area's and shows no HD/SD switch; the plan runs `wind-sd` before `micro`
+and skips `micro-sd`. Upgrading it to HD later is the LiDAR steps, the
+WindNinja kit, then `micro` again with `bake.wind` taken out. The first
+was Searchmont (2026-10-10, D1 request 9, the drawn box as the core),
+on `seed1-hold-blanchard-river`: trained on 17 areas, it beat the
+five-area nets on the one fold both were scored on (§5).
 
 **In the app** (`app/src/state/terrainWind.ts`, `config.ts`,
 `ui/sheets/SettingsSheet.tsx`): Settings, Wind flow, a Terrain wind row,

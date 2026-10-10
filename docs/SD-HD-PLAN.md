@@ -60,7 +60,7 @@ them, 10–20 s each).
 3. **Bake** (XEVO, `pipeline/agent.py --watch`). Claims a request, bakes
    under `HUNTAPP_AREAS_DIR` and `HUNTAPP_OUT` in pipeline/raw/requests so
    the repo is untouched:
-   - SD: `bake_area.py --new … --bake` with the SD steps (no LiDAR, point
+   - SD: `bake_area.py --new --sd … --bake` with the SD steps (no LiDAR, point
      cloud or WindNinja). Where the tiles under the box exist, `tiles.py
      stitch` for the grids and only the display layers are baked.
    - HD: the full bake, then `build_windcfd.py prepare`; the watching

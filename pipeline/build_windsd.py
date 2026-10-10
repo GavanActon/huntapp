@@ -23,7 +23,8 @@ corner values as centres (SURROGATE.md §5).
 
 The net is pipeline/raw/surrogate/runs/<run>/ckpt.pt. By default the one
 trained with this area held out (hold-<id>), so the SD wind is the honest
-out-of-sample one, else the one trained on every area (all). A run counts
+out-of-sample one, else the one trained on every area (all). An area can
+name its own in the area file (bake.sdRun), which --run overrides. A run counts
 once train.py has finished it (its config.json is written at the end; the
 checkpoint is saved every 1000 steps while it trains). --tta averages the
 eight turns and mirrors of the scene: about 0.4 degrees of turn error for
@@ -41,7 +42,7 @@ the built-in check that the SD grid is the wind it says it is.
 from __future__ import annotations
 
 # area first: it takes --area off sys.argv before argparse sees it
-import area  # noqa: F401
+import area
 from area import ROOT, cached
 from common import CACHE_DIR, REGION
 
@@ -97,6 +98,7 @@ def run_state(name: str) -> str | None:
 
 
 def pick_run(area_id: str, asked: str | None) -> str:
+    asked = asked or area.BAKE.get("sdRun")
     if asked:
         why = run_state(asked)
         if why:
@@ -277,7 +279,7 @@ def compare(bands: dict[str, np.ndarray], dirs: list[float], gamma: float) -> No
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--run", default=None, help="the net, runs/<run>/ckpt.pt (default: hold-<id>, else all)")
+    ap.add_argument("--run", default=None, help="the net, runs/<run>/ckpt.pt (default: the area's bake.sdRun, else hold-<id>, else all)")
     ap.add_argument("--tta", action="store_true", help="average the eight D4 turns of the scene")
     ap.add_argument("--device", default=None, choices=["cuda", "cpu"])
     args = ap.parse_args()

@@ -181,10 +181,12 @@ def check_wind(ar: Area, online: bool) -> None:
     h, _ = read_hab(micro)
     mom = (h.get("model") or {}).get("momentum")
     dirs = [b["name"] for b in h["bands"] if b["name"].startswith("mU")]
+    # an SD area's one grid carries the surrogate net's bands, not WindNinja's
+    by = "surrogate, SD" if (mom or {}).get("source") == "sd" else "WindNinja"
     if mom and len(dirs) >= 16:
-        ar.add("Wind", "Momentum solve (WindNinja)", "ok", f"{len(dirs)}/16 directions in the grid")
+        ar.add("Wind", f"Momentum solve ({by})", "ok", f"{len(dirs)}/16 directions in the grid" + (f": {mom['solver']}" if by != "WindNinja" and mom.get("solver") else ""))
     elif dirs:
-        ar.add("Wind", "Momentum solve (WindNinja)", "warn", f"only {len(dirs)}/16 directions: the app needs all 16, so it uses the older solve")
+        ar.add("Wind", f"Momentum solve ({by})", "warn", f"only {len(dirs)}/16 directions: the app needs all 16, so it uses the older solve")
     else:
         ar.add("Wind", "Momentum solve (WindNinja)", "fail", "no momentum bands: the day wind uses the older 2D solve, which is weakest in steep ground")
     if (sd := ar.out / f"micro-sd-{ar.id}.hab").exists():
@@ -198,7 +200,7 @@ def check_wind(ar: Area, online: bool) -> None:
     # t<dir>: the runs with the turbulence (run.ps1, 2026-10-05 on)
     tdone = len(list(kit.glob("t*/done.txt"))) if kit.exists() else 0
     if len(turb) >= 16 and ref is not None:
-        ar.add("Wind", "Turbulence (WindNinja)", "ok", f"{len(turb)}/16 directions, ordinary spread ±{ref:.0f}°: the lee of hills and ridges swirls and widens the scent")
+        ar.add("Wind", f"Turbulence ({by})", "ok", f"{len(turb)}/16 directions, ordinary spread ±{ref:.0f}°: the lee of hills and ridges swirls and widens the scent")
     elif tdone >= 16:
         ar.add("Wind", "Turbulence (WindNinja)", "warn", "solved for all 16 directions but not in the grid yet: build_windcfd.py collect, then rebake micro")
     elif mom or dirs:

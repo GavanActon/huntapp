@@ -475,7 +475,9 @@ routes offer "Get this area" instead.
 3. **Bake.** A bake agent on the pipeline PC polls the Worker, the way the
    WindNinja runners poll the kit (`run.ps1 -Watch`), so nothing has to
    reach in. For each request:
-   - `bake_area.py --new --lat … --lon … --name …`;
+   - `bake_area.py --new --lat … --lon … --name …`, with `--sd` for an SD
+     area (no LiDAR, point cloud or WindNinja; the surrogate's wind in its
+     one micro grid, SURROGATE.md §7);
    - for HD, `build_windcfd.py prepare`, which puts the 16 jobs where the
      watching runners pick them up; once they are in, `collect`, then the
      micro and coverage steps again;

@@ -1,0 +1,1833 @@
+{
+ "cover": {
+  "nodata": 6405,
+  "water": 14036,
+  "open wetland": 7682,
+  "treed wetland": 8,
+  "dense conifer": 18252,
+  "open conifer": 4857,
+  "mixedwood": 36171,
+  "hardwood": 188505,
+  "shrub / alder": 375,
+  "young regen": 36751,
+  "rock / barren": 81,
+  "road": 5507
+ },
+ "landform": {
+  "flat": 63344,
+  "ridge": 94246,
+  "valley": 106314,
+  "saddle": 563,
+  "bench": 1239,
+  "peak": 531,
+  "slope": 52393
+ },
+ "disturbed": 104396,
+ "inferredCuts": 768,
+ "lakes": [
+  {
+   "id": 1,
+   "name": null,
+   "areaHa": 1.8,
+   "fetchMaxM": 152,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 5,
+   "name": null,
+   "areaHa": 3.4,
+   "fetchMaxM": 213,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 12,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 121,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 13,
+   "name": null,
+   "areaHa": 1.8,
+   "fetchMaxM": 152,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 14,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 60,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 15,
+   "name": null,
+   "areaHa": 9.2,
+   "fetchMaxM": 457,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 17,
+   "name": null,
+   "areaHa": 2.5,
+   "fetchMaxM": 213,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 18,
+   "name": null,
+   "areaHa": 4.4,
+   "fetchMaxM": 335,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 19,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 91,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 22,
+   "name": null,
+   "areaHa": 1.0,
+   "fetchMaxM": 121,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 25,
+   "name": null,
+   "areaHa": 1.5,
+   "fetchMaxM": 182,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 27,
+   "name": null,
+   "areaHa": 2.6,
+   "fetchMaxM": 182,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 28,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 91,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 29,
+   "name": null,
+   "areaHa": 13.6,
+   "fetchMaxM": 487,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 30,
+   "name": null,
+   "areaHa": 1.8,
+   "fetchMaxM": 152,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 33,
+   "name": "Leonard Lake",
+   "areaHa": 46.0,
+   "fetchMaxM": 1036,
+   "maxDepth": 17.5,
+   "meanDepth": 11.3,
+   "secchi": 4.5,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": {
+    "k": 0.4,
+    "shoreMaxM": 274
+   }
+  },
+  {
+   "id": 34,
+   "name": null,
+   "areaHa": 4.3,
+   "fetchMaxM": 335,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 35,
+   "name": null,
+   "areaHa": 2.2,
+   "fetchMaxM": 182,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 36,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 91,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 38,
+   "name": null,
+   "areaHa": 3.8,
+   "fetchMaxM": 243,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 41,
+   "name": null,
+   "areaHa": 9.0,
+   "fetchMaxM": 762,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 43,
+   "name": null,
+   "areaHa": 1.3,
+   "fetchMaxM": 274,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 44,
+   "name": null,
+   "areaHa": 3.6,
+   "fetchMaxM": 213,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 45,
+   "name": null,
+   "areaHa": 1.3,
+   "fetchMaxM": 152,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 48,
+   "name": null,
+   "areaHa": 1.2,
+   "fetchMaxM": 182,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 49,
+   "name": null,
+   "areaHa": 0.9,
+   "fetchMaxM": 121,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 51,
+   "name": "Cuncic Lake",
+   "areaHa": 7.4,
+   "fetchMaxM": 335,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": 2.4,
+   "species": [],
+   "depthModel": null
+  },
+  {
+   "id": 52,
+   "name": null,
+   "areaHa": 3.8,
+   "fetchMaxM": 243,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 56,
+   "name": null,
+   "areaHa": 3.2,
+   "fetchMaxM": 274,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 57,
+   "name": null,
+   "areaHa": 0.8,
+   "fetchMaxM": 121,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 58,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 60,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 59,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 91,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 61,
+   "name": null,
+   "areaHa": 1.3,
+   "fetchMaxM": 121,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 62,
+   "name": null,
+   "areaHa": 2.7,
+   "fetchMaxM": 243,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 63,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 91,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 65,
+   "name": null,
+   "areaHa": 1.0,
+   "fetchMaxM": 91,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 66,
+   "name": null,
+   "areaHa": 0.7,
+   "fetchMaxM": 91,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 68,
+   "name": null,
+   "areaHa": 3.4,
+   "fetchMaxM": 243,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 69,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 60,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 70,
+   "name": null,
+   "areaHa": 2.4,
+   "fetchMaxM": 182,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 74,
+   "name": null,
+   "areaHa": 0.9,
+   "fetchMaxM": 152,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 76,
+   "name": null,
+   "areaHa": 1.2,
+   "fetchMaxM": 121,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 77,
+   "name": null,
+   "areaHa": 1.6,
+   "fetchMaxM": 182,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 80,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 91,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 82,
+   "name": null,
+   "areaHa": 1.0,
+   "fetchMaxM": 121,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 83,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 91,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 84,
+   "name": null,
+   "areaHa": 2.3,
+   "fetchMaxM": 243,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 85,
+   "name": null,
+   "areaHa": 3.3,
+   "fetchMaxM": 213,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 87,
+   "name": null,
+   "areaHa": 4.9,
+   "fetchMaxM": 274,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 88,
+   "name": null,
+   "areaHa": 11.9,
+   "fetchMaxM": 487,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 89,
+   "name": null,
+   "areaHa": 0.6,
+   "fetchMaxM": 121,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 91,
+   "name": null,
+   "areaHa": 0.7,
+   "fetchMaxM": 152,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 92,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 91,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 100,
+   "name": null,
+   "areaHa": 1.8,
+   "fetchMaxM": 243,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 103,
+   "name": null,
+   "areaHa": 3.0,
+   "fetchMaxM": 213,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 106,
+   "name": null,
+   "areaHa": 1.9,
+   "fetchMaxM": 182,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 108,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 121,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 113,
+   "name": null,
+   "areaHa": 0.9,
+   "fetchMaxM": 121,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 114,
+   "name": "Midge Lake",
+   "areaHa": 11.5,
+   "fetchMaxM": 487,
+   "maxDepth": 17.5,
+   "meanDepth": null,
+   "secchi": 3.5,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": {
+    "k": 1.0,
+    "shoreMaxM": 151
+   }
+  },
+  {
+   "id": 115,
+   "name": null,
+   "areaHa": 2.1,
+   "fetchMaxM": 182,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 117,
+   "name": "Hargraft Lake",
+   "areaHa": 39.8,
+   "fetchMaxM": 884,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "pike"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 119,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 91,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 120,
+   "name": null,
+   "areaHa": 2.7,
+   "fetchMaxM": 213,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 121,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 91,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 122,
+   "name": null,
+   "areaHa": 1.9,
+   "fetchMaxM": 182,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 125,
+   "name": null,
+   "areaHa": 4.2,
+   "fetchMaxM": 335,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 128,
+   "name": null,
+   "areaHa": 5.3,
+   "fetchMaxM": 243,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 129,
+   "name": null,
+   "areaHa": 6.8,
+   "fetchMaxM": 304,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 135,
+   "name": null,
+   "areaHa": 17.5,
+   "fetchMaxM": 457,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 136,
+   "name": null,
+   "areaHa": 1.6,
+   "fetchMaxM": 152,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 137,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 60,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 138,
+   "name": null,
+   "areaHa": 5.0,
+   "fetchMaxM": 396,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 139,
+   "name": null,
+   "areaHa": 0.8,
+   "fetchMaxM": 152,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 140,
+   "name": null,
+   "areaHa": 2.1,
+   "fetchMaxM": 213,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 141,
+   "name": "Mine Lake",
+   "areaHa": 6.6,
+   "fetchMaxM": 487,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 142,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 91,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 143,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 91,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 144,
+   "name": null,
+   "areaHa": 2.2,
+   "fetchMaxM": 152,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 149,
+   "name": "Northland Lake",
+   "areaHa": 85.5,
+   "fetchMaxM": 1402,
+   "maxDepth": 26.0,
+   "meanDepth": 11.6,
+   "secchi": 4.2,
+   "species": [
+    "brooktrout",
+    "burbot",
+    "laketrout"
+   ],
+   "depthModel": {
+    "k": 0.79,
+    "shoreMaxM": 281
+   }
+  },
+  {
+   "id": 151,
+   "name": null,
+   "areaHa": 6.6,
+   "fetchMaxM": 457,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 153,
+   "name": null,
+   "areaHa": 2.4,
+   "fetchMaxM": 243,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 154,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 60,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 160,
+   "name": null,
+   "areaHa": 0.8,
+   "fetchMaxM": 91,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 163,
+   "name": null,
+   "areaHa": 1.6,
+   "fetchMaxM": 213,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 165,
+   "name": null,
+   "areaHa": 2.3,
+   "fetchMaxM": 213,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 166,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 121,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 167,
+   "name": null,
+   "areaHa": 2.7,
+   "fetchMaxM": 274,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 168,
+   "name": null,
+   "areaHa": 4.7,
+   "fetchMaxM": 243,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 169,
+   "name": null,
+   "areaHa": 1.0,
+   "fetchMaxM": 121,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 170,
+   "name": null,
+   "areaHa": 1.8,
+   "fetchMaxM": 213,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 172,
+   "name": null,
+   "areaHa": 1.1,
+   "fetchMaxM": 152,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 173,
+   "name": "Leishman Lake",
+   "areaHa": 35.0,
+   "fetchMaxM": 792,
+   "maxDepth": 23.2,
+   "meanDepth": 7.5,
+   "secchi": 5.5,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": {
+    "k": 1.37,
+    "shoreMaxM": 171
+   }
+  },
+  {
+   "id": 174,
+   "name": "Metivier Lake",
+   "areaHa": 23.5,
+   "fetchMaxM": 731,
+   "maxDepth": 20.0,
+   "meanDepth": 7.4,
+   "secchi": 3.5,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": {
+    "k": 1.2,
+    "shoreMaxM": 151
+   }
+  },
+  {
+   "id": 175,
+   "name": "Roussain Lake",
+   "areaHa": 15.8,
+   "fetchMaxM": 670,
+   "maxDepth": 19.2,
+   "meanDepth": 5.5,
+   "secchi": 5.5,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": {
+    "k": 1.48,
+    "shoreMaxM": 177
+   }
+  },
+  {
+   "id": 176,
+   "name": "Devil's Lake",
+   "areaHa": 198.8,
+   "fetchMaxM": 1799,
+   "maxDepth": 42.1,
+   "meanDepth": 11.4,
+   "secchi": 5.9,
+   "species": [
+    "brooktrout",
+    "cisco",
+    "laketrout",
+    "pike"
+   ],
+   "depthModel": {
+    "k": 1.49,
+    "shoreMaxM": 518
+   }
+  },
+  {
+   "id": 178,
+   "name": null,
+   "areaHa": 1.7,
+   "fetchMaxM": 152,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 179,
+   "name": null,
+   "areaHa": 0.6,
+   "fetchMaxM": 121,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 180,
+   "name": null,
+   "areaHa": 2.0,
+   "fetchMaxM": 182,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 181,
+   "name": null,
+   "areaHa": 1.5,
+   "fetchMaxM": 152,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 182,
+   "name": null,
+   "areaHa": 2.1,
+   "fetchMaxM": 152,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 184,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 91,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 186,
+   "name": null,
+   "areaHa": 1.3,
+   "fetchMaxM": 152,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 189,
+   "name": null,
+   "areaHa": 0.7,
+   "fetchMaxM": 121,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 190,
+   "name": null,
+   "areaHa": 8.4,
+   "fetchMaxM": 365,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 191,
+   "name": null,
+   "areaHa": 0.7,
+   "fetchMaxM": 91,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 195,
+   "name": null,
+   "areaHa": 0.6,
+   "fetchMaxM": 91,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 196,
+   "name": null,
+   "areaHa": 0.6,
+   "fetchMaxM": 121,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 199,
+   "name": null,
+   "areaHa": 3.5,
+   "fetchMaxM": 243,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 200,
+   "name": null,
+   "areaHa": 9.3,
+   "fetchMaxM": 426,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 201,
+   "name": "Rainbow Lake",
+   "areaHa": 6.4,
+   "fetchMaxM": 365,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 203,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 60,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 205,
+   "name": null,
+   "areaHa": 1.2,
+   "fetchMaxM": 152,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 206,
+   "name": null,
+   "areaHa": 1.5,
+   "fetchMaxM": 152,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 207,
+   "name": null,
+   "areaHa": 0.7,
+   "fetchMaxM": 91,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 210,
+   "name": null,
+   "areaHa": 2.8,
+   "fetchMaxM": 274,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 212,
+   "name": "Weckstrom Lake",
+   "areaHa": 18.2,
+   "fetchMaxM": 792,
+   "maxDepth": 22.0,
+   "meanDepth": null,
+   "secchi": 6.0,
+   "species": [
+    "brooktrout",
+    "laketrout"
+   ],
+   "depthModel": {
+    "k": 1.0,
+    "shoreMaxM": 177
+   }
+  },
+  {
+   "id": 213,
+   "name": null,
+   "areaHa": 2.2,
+   "fetchMaxM": 213,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 214,
+   "name": null,
+   "areaHa": 0.8,
+   "fetchMaxM": 121,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 215,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 60,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 218,
+   "name": null,
+   "areaHa": 2.9,
+   "fetchMaxM": 243,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 219,
+   "name": null,
+   "areaHa": 0.9,
+   "fetchMaxM": 121,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 220,
+   "name": null,
+   "areaHa": 0.5,
+   "fetchMaxM": 121,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 223,
+   "name": null,
+   "areaHa": 1.7,
+   "fetchMaxM": 243,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 226,
+   "name": null,
+   "areaHa": 2.8,
+   "fetchMaxM": 274,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 229,
+   "name": null,
+   "areaHa": 1.0,
+   "fetchMaxM": 152,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 230,
+   "name": null,
+   "areaHa": 0.4,
+   "fetchMaxM": 121,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 232,
+   "name": null,
+   "areaHa": 1.4,
+   "fetchMaxM": 152,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 234,
+   "name": null,
+   "areaHa": 6.7,
+   "fetchMaxM": 304,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 235,
+   "name": null,
+   "areaHa": 0.8,
+   "fetchMaxM": 121,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 238,
+   "name": null,
+   "areaHa": 5.5,
+   "fetchMaxM": 304,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 244,
+   "name": null,
+   "areaHa": 1.2,
+   "fetchMaxM": 152,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  },
+  {
+   "id": 245,
+   "name": null,
+   "areaHa": 1.4,
+   "fetchMaxM": 213,
+   "maxDepth": null,
+   "meanDepth": null,
+   "secchi": null,
+   "species": [
+    "brooktrout"
+   ],
+   "depthModel": null
+  }
+ ],
+ "thick": {
+  "from": "the bush model's NRD (satellite imagery, radar, SCANFI, CanLaD, terrain; docs/BUSH-MODEL.md) on the estimate's scale where thickSrc is 3; the forest-map estimate on water, roads, cells no leaf-on imagery saw, and ground the map names outright (open herb, lichen, rock, fen) (thickSrc 2)",
+  "lidarCells": 0,
+  "thickShareOfLand": 0.464,
+  "thickShareWhereLidar": null,
+  "estimateToLidar": [
+   {
+    "estimate": 0.0,
+    "lidar_median": 0.0,
+    "cells": 45518
+   },
+   {
+    "estimate": 0.2,
+    "lidar_median": 0.15,
+    "cells": 45518
+   },
+   {
+    "estimate": 0.45,
+    "lidar_median": 0.3,
+    "cells": 45518
+   },
+   {
+    "estimate": 0.7,
+    "lidar_median": 0.45,
+    "cells": 45518
+   },
+   {
+    "estimate": 0.85,
+    "lidar_median": 0.6,
+    "cells": 45518
+   },
+   {
+    "estimate": 0.95,
+    "lidar_median": 0.75,
+    "cells": 45518
+   },
+   {
+    "estimate": 1.0,
+    "lidar_median": 1.0,
+    "cells": 45518
+   }
+  ],
+  "trained": "2026-10-08",
+  "plots": 435,
+  "areas": [
+   "area-lac-bailey",
+   "area-pickle-lake",
+   "area-sault-test"
+  ],
+  "cvR": 0.538,
+  "cvR90m": 0.591,
+  "cvAucThick": 0.788,
+  "s2Scenes": {
+   "leafon": 6,
+   "autumn": 6,
+   "spring": 6,
+   "snow": 6
+  },
+  "seconds": 240
+ }
+}

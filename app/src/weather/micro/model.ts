@@ -246,8 +246,10 @@ export function loadMicro(): Promise<Habitat | null> {
     })
     .then(async (f) => {
       if (!f) return null
-      const solver = (f.header.model as { momentum?: { solver?: string } } | undefined)?.momentum?.solver
-      devlog('wind', `terrain wind: ${f.file === microHdFile() ? 'HD momentum solve' : 'SD surrogate'}${solver ? ` · ${solver}` : ''}`)
+      const mom = (f.header.model as { momentum?: { solver?: string; source?: string; spreadRef?: number } } | undefined)?.momentum
+      const solver = mom?.solver
+      // an SD area's one grid (micro-<area>.hab) carries the surrogate's bands too
+      devlog('wind', `terrain wind: ${f.file === microHdFile() && mom?.source !== 'sd' ? 'HD momentum solve' : 'SD surrogate'}${solver ? ` · ${solver}` : ''}`)
       const names = f.names
       const baseNames = names.filter((n) => !MOM_RE.test(n) && !n.startsWith(PREVIEW))
       const previewNames = f.previewNames
@@ -261,7 +263,6 @@ export function loadMicro(): Promise<Habitat | null> {
         momU = momV = []
         devlog('wind', 'micro grid has no momentum solve: the day wind is the neutral lid')
       }
-      const mom = (f.header.model as { momentum?: { spreadRef?: number } } | undefined)?.momentum
       hasTurb = hasMom && mom?.spreadRef != null && dirs.every((d) => names.includes(`mT${d}`))
       if (hasTurb) {
         momT = Array.from({ length: MOM_N }, (): Band | null => null)
