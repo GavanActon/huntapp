@@ -340,7 +340,7 @@ inference. Decided 2026-10-10 ("job kit it is"); built the same night.
 **How it works.** xonix has PowerShell and the WindNinja kit, nothing
 else, so the surrogate goes to it the way WindNinja jobs do: a folder on
 the share that xonix claims by file. The kit is
-`pipeline/raw/windcfd/surrogate/` (on xonix `\XEVO\windcfd2\surrogate`;
+`pipeline/raw/windcfd/surrogate/` (on xonix `\\XEVO\windcfd2\surrogate`;
 the WindNinja runners ignore it, it has no meta.json):
 
 - `python/`: Python 3.14.0 embeddable with torch 2.11+cu128, numpy,
@@ -359,7 +359,7 @@ the WindNinja runners ignore it, it has no meta.json):
 
 **On xonix, once:**
 
-    powershell -ExecutionPolicy Bypass -File \XEVO\windcfd2\surrogateun-surrogate.ps1 -Watch -AtLogon
+    powershell -ExecutionPolicy Bypass -File \\XEVO\windcfd2\surrogate\run-surrogate.ps1 -Watch -AtLogon
 
 It copies `python/`, `code/` and `data/` under `%LOCALAPPDATA%\groundwind-surrogate`
 (the 4.4 GB once, then only what changed), claims the oldest job, runs
