@@ -795,6 +795,8 @@ interface Eval {
   /** stand height, m, and the head-height fraction now */
   th: number
   cf: number
+  /** degrees of the spread that are the air tumbling (a lee's, a swirl's) with a wind behind it in unsettled air: the part that mixes scent upward too, for the scent column */
+  tumbleMix: number
 }
 
 /** How much a felt check's vector can say, by how hard it blew: at drift
@@ -992,7 +994,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     // off the grid: an open-ground profile, nothing local
     const f = 0.7 * (1 - 0.6 * lay.stable)
     const sp = U * f
-    return { e: Ue * f, n: Un * f, sigma: 15 + 60 * Math.exp(-sp / 3.6 / 0.6), regime: sp < 0.8 ? 'calm' : 'wind', swirl: false, gusty: ctx.gf >= 1.8 && U >= 8, parts: [{ key: 'terrain', kmh: sp, toward: (dirFrom + 180) % 360 }], reasons, local10: U, U, dirFrom, forecastU, inGrid: false, slot: false, woods: false, bias: null, fitW, e10: Ue, n10: Un, cell: -1, th: 0, cf: f }
+    return { e: Ue * f, n: Un * f, sigma: 15 + 60 * Math.exp(-sp / 3.6 / 0.6), regime: sp < 0.8 ? 'calm' : 'wind', swirl: false, gusty: ctx.gf >= 1.8 && U >= 8, parts: [{ key: 'terrain', kmh: sp, toward: (dirFrom + 180) % 360 }], reasons, local10: U, U, dirFrom, forecastU, inGrid: false, slot: false, woods: false, bias: null, fitW, e10: Ue, n10: Un, cell: -1, th: 0, cf: f, tumbleMix: 0 }
   }
 
   // ---- terrain and roughness: the two lids, blended by stability ----
@@ -1355,7 +1357,15 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   const Ug = sp / 3.6
 
   // ---- spread ----
-  let sigma = 12 + tumble + ctx.tune.calmSpread * Math.exp(-Ug / 0.6) + 20 * s * Math.exp(-Ug / 1.0) + 15 * lay.convective + (inTrees ? ctx.tune.treesSpread : 0) + (swirl ? ctx.tune.swirlSpread : 0) + (slotSwirl ? 25 : 0)
+  const swirlDeg = (swirl ? ctx.tune.swirlSpread : 0) + (slotSwirl ? 25 : 0)
+  let sigma = 12 + tumble + ctx.tune.calmSpread * Math.exp(-Ug / 0.6) + 20 * s * Math.exp(-Ug / 1.0) + 15 * lay.convective + (inTrees ? ctx.tune.treesSpread : 0) + swirlDeg
+  // the part of it that stirs the air up and down as well: the lee's tumble
+  // (already neutral air with a wind behind it) and a swirl's, once the local
+  // wind has some push and the air is not settled (a still night's swirl is
+  // the direction wandering, not eddies; stable air damps the up and down).
+  // The near-calm wander, the trees' own (the canopy's mixing has it) and
+  // the hour's gusts and sun (the stability's) are left out
+  const tumbleMix = tumble + swirlDeg * (1 - s) * clamp((mech10 - 3) / 6, 0, 1)
   const thermal = kat + ana + brz
   const fracMech = mechG / (mechG + thermal + 1e-6)
   // gusty air swings more: a gust factor of 2.5 means the along-wind
@@ -1419,7 +1429,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     if (lay.source === 'estimate') reasons.push('No layering forecast cached: stability estimated from the sky and the wind')
   }
 
-  return { e: E, n: N, sigma, regime, swirl: swirl || tumble >= TUMBLE_SWIRL, gusty, parts, reasons, local10, U, dirFrom, forecastU, inGrid: true, slot: !!slot, woods: th > 0, bias: applied ? lessonBias : null, gustMul, fitW, e10, n10, cell: i, th, cf }
+  return { e: E, n: N, sigma, regime, swirl: swirl || tumble >= TUMBLE_SWIRL, gusty, parts, reasons, local10, U, dirFrom, forecastU, inGrid: true, slot: !!slot, woods: th > 0, bias: applied ? lessonBias : null, gustMul, fitW, e10, n10, cell: i, th, cf, tumbleMix }
 }
 
 function headlineOf(ev: Eval, kmh: number, dirFrom: number, gustKmh: number): string {
@@ -1550,10 +1560,11 @@ export function groundForScoring(ms: number, lon: number, lat: number, full = fa
  *  the local 10 m wind east and north m/s (the air above the trees, or
  *  above the cold layer); out[7] the stand height m; out[8] the
  *  head-height fraction now; out[9] the drainage accumulation, cells;
- *  out[10] the micro cell (−1 off the grid). Null when there is no wind
- *  at all to start from. */
+ *  out[10] the micro cell (−1 off the grid); out[11] the degrees of the
+ *  spread that are the air tumbling, which mix upward too (Eval.tumbleMix,
+ *  2026-10-09). Null when there is no wind at all to start from. */
 export type GroundSampler = (lon: number, lat: number, out: Float32Array) => boolean
-export const SAMPLE_N = 11
+export const SAMPLE_N = 12
 export function groundSampler(ms: number): GroundSampler | null {
   const ctx = makeCtx(ms)
   if (!ctx.regional && !ctx.fallback) return null
@@ -1572,6 +1583,7 @@ export function groundSampler(ms: number): GroundSampler | null {
       out[8] = ev.cf
       out[9] = ev.cell >= 0 ? b(K_DRAINACC, ev.cell) : 0
       out[10] = ev.cell
+      out[11] = ev.tumbleMix
     }
     return true
   }

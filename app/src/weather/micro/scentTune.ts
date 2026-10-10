@@ -42,6 +42,7 @@ export interface TuneValues {
   bushMix: number
   sunMix: number
   stableDepth: number
+  tumbleMix: number
   // vegetation
   deposition: number
   bushTrap: number
@@ -85,6 +86,7 @@ export const GROUPS: { name: string; knobs: Knob[] }[] = [
       { key: 'bushMix', label: 'Bush mixing', hint: 'extra mixing per unit of bush thickness', value: 0.3, min: 0, max: 1, step: 0.05 },
       { key: 'sunMix', label: 'Sun on open ground', hint: 'extra mixing by day over open ground (and less under trees)', value: 0.5, min: 0, max: 1, step: 0.05 },
       { key: 'stableDepth', label: 'Stable layer depth', hint: 'the settled air on a still night, 5–30 m as modelled; the scent stays in it', value: 1, min: 0.3, max: 2, step: 0.1, unit: '×' },
+      { key: 'tumbleMix', label: 'Tumble mixes it up', hint: 'in a lee eddy or a swirl behind trees the scent thins upward faster too; 0 spreads it sideways only', value: 1, min: 0, max: 2, step: 0.1, unit: '×' },
     ],
   },
   {

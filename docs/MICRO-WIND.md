@@ -552,6 +552,33 @@ nothing that matters: at that cell the mechanical part stays under
       the way, since a shallow puff loses more to the needles: the stands'
       average reach on the archive went up 0–15% (the hardwood's 28 m
       stand 107 → 121 m by day, 119 → 137 m at night).
+    - **Mixing where the air tumbles** (2026-10-09): the mechanical part
+      of a cell's spread mixes upward as well as sideways. The sampler's
+      `out[11]` (`tumbleMix`) is the lee's tumble from the momentum solve's
+      turbulence plus a swirl's spread (behind a tree line, in a small
+      opening, a slot across the wind), the swirl's only with some wind
+      behind it and in air that is not settled: (1 − stable)·clamp((U10 −
+      3)/6) on the local 10 m wind in km/h, the tumble's own gate. The
+      near-calm wander is left out (horizontal only, Mahrt's submeso
+      motions), as are the trees' spread (the canopy's mixing has it) and
+      the hour's gusts and sun (the stability's). σz's growth per metre
+      is σw/U as σθ is σv/U: one Pasquill class a step of 5° in σθ (EPA's
+      table, D 7.5–12.5°, C to 17.5°, B to 22.5°, A beyond); σw ≈ 2/3 σv
+      near the ground (Panofsky & Dutton); a bit over half the extra is
+      eddies the size of the place, swinging the puff whole. So the step's
+      path grows 1 + (extra − 5°)/30, at most 2.5×, the first 5° being the
+      solve's ordinary scatter around the area median it is measured from
+      (Highland Lake: 40% of the ground near the core has under 5°). The
+      Langevin kicks are not scaled by it (their spread already has the
+      tumble), and the cone's scale, the sit's own scent at 20–40 m, is
+      laid at the untumbled path, otherwise tumble at the sit thins the
+      scale with the cone and cancels. Knob "Tumble mixes it up"
+      (`tumbleMix`, 1). On the archive: Highland Lake's bowl (14–22°)
+      177 → 163 m, noticeable area −18%; Pickle camp's clearing (swirl 40°)
+      105 → 76 m at 6 pm (106 → 79 at 1 pm, 107 → 79 on a windy night),
+      the lake strip 135 → 101 m, the bog sit 216 → 167 m (6 pm, 2026-09-29);
+      flat ground and settled nights unchanged;
+      no cost to time (66 vs 68 ms a plume).
     - **Deposition**: each step keeps exp(−v_d·Δt / max(2 m, 2.5 σz)) of
       its scent, v_d = 0.002 + closure·(0.006·conifer + (1 − conifer)·
       (0.001 + 0.003·leaf-on)) + 0.003·bush m/s, the range of dry

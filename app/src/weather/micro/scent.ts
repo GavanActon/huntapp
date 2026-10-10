@@ -420,6 +420,8 @@ interface Column {
   stand: boolean
   /** eye-level bush thickness from the habitat grid, 0–1 (the going grid's 10 m measure overrides it per step) */
   trap: number
+  /** how much faster the air tumbling here (a lee eddy, a swirl behind trees) mixes a puff upward: 1 where it does not */
+  turbF: number
 }
 
 interface HabBands {
@@ -464,6 +466,29 @@ const DEPOSITION = 1
  */
 // EDGE_LIFT: a knob now, its modelled value in scentTune.ts
 const EDGE_SETTLE = 0.6
+/**
+ * The air tumbling in a cell mixes scent upward, not only sideways. The
+ * ground model's spread has a mechanical part past the 12° every cell
+ * starts from: the lee's tumble from the momentum solve's turbulence, the
+ * swirl behind a tree line, in a small opening or a slot across the wind
+ * (model.ts tumbleMix; the near-calm wander is left out, it is horizontal
+ * only, Mahrt's submeso motions). A plume's upward spread grows with the
+ * vertical gusts against the wind, σw/U, as its sideways spread grows with
+ * σv/U = σθ: one Pasquill class a step of 5° in σθ (EPA's σθ table, D
+ * 7.5–12.5°, C to 17.5°, B to 22.5°, A beyond). Near the ground σw is about
+ * two thirds of σv (Panofsky & Dutton: σu:σv:σw ≈ 2.4:1.9:1.25 u*), and a
+ * bit over half the extra spread is eddies as big as the place, swinging
+ * the puff whole rather than thinning it; so against the 12° the mixing
+ * grows by 1 + extra/30, at most TUMBLE_MIX_MAX. The tumble is the solve's
+ * spread past the area's median, so half of any area has a few degrees of
+ * it: the first TUMBLE_MIX_FLOOR are the solve's ordinary scatter and mix
+ * as they always did (at Highland Lake 40% of the ground near the core
+ * has under 5°, 6% more). Until 2026-10-09 a tumbling cell drew a wider
+ * cone at the same strength.
+ */
+const TUMBLE_MIX_DEG = 30
+const TUMBLE_MIX_FLOOR = 5
+const TUMBLE_MIX_MAX = 2.5
 /** In cold calm air the body's warmth lifts the scent this far, m, before it spreads (a human thermal plume rises at about 0.2 m/s). */
 // BODY_RISE_M: a knob now, its modelled value in scentTune.ts
 
@@ -557,7 +582,8 @@ function columnOf(out: Float32Array, hab: HabBands | null, conv: number, leafOn:
   const canTop = T.canopyMix * closure * (1 - 0.5 * st)
   const canFloor = T.canopyMix * closure * T.trunkMix * (1 - st)
   const vd = DEPOSITION * T.deposition * (0.002 + closure * (0.006 * conifer + (1 - conifer) * (0.001 + 0.003 * leafOn)) + 0.003 * trap)
-  return { zb, v0e: he, v0n: hn, v2e: ae, v2n: an, dirE, dirN, hs, as, kind, a, th, openShare: T.openShare, mixF, canTop, canFloor, vd, stand, trap }
+  const turbF = Math.min(TUMBLE_MIX_MAX, 1 + (T.tumbleMix * Math.max(0, out[11] - TUMBLE_MIX_FLOOR)) / TUMBLE_MIX_DEG)
+  return { zb, v0e: he, v0n: hn, v2e: ae, v2n: an, dirE, dirN, hs, as, kind, a, th, openShare: T.openShare, mixF, canTop, canFloor, vd, stand, trap, turbF }
 }
 
 /**
@@ -774,9 +800,9 @@ export function simulatePlume(
   const raw = new Float32Array(N * N)
   // The same sit on the ground, for the scale, always at its release
   // height over flat ground: what a ground sit lays down with nothing in
-  // the way. Held at that, a cone can only thin for the relief, never
-  // strengthen. A ground sit is its own reference until it first differs
-  // (it gets its own copy then).
+  // the way, in air that does not tumble. Held at that, a cone can only
+  // thin for the relief and its eddies, never strengthen. A ground sit is
+  // its own reference until it first differs (it gets its own copy then).
   let rawGround = height === GROUND_H && rise === 0 ? raw : new Float32Array(N * N)
   const rawDown = dtm ? new Float32Array(N * N) : null
   const sectors = new Float64Array(8)
@@ -849,6 +875,9 @@ export function simulatePlume(
       let up = 0
       let vp = 0
       let path = 0
+      // the path without the air's tumbling, for the scale: the sit's own
+      // scent at 20–40 m would thin with it too, and cancel it
+      let pathRef = 0
       // the puff's centre: its release height (the body's lift in) plus
       // what the relief holds it up by
       let zRel = 0
@@ -866,6 +895,7 @@ export function simulatePlume(
         if (!sample(lon + x / kx, lat + y / ky, out)) break
         const mean = Math.hypot(out[0], out[1])
         const pm = Math.min(TABLE_M, Math.round(path))
+        const pmRef = Math.min(TABLE_M, Math.round(pathRef))
         let sig = sz[pm]
         if (sig === 0) sig = sz[pm] = sigmaZ(pm, stable, convective) * T.vertMix
         let ue: number
@@ -941,9 +971,12 @@ export function simulatePlume(
         x += dx
         y += dy
         // the puff mixes upward with the distance travelled: faster under a
-        // canopy, in bush and in sun over open ground (the column), and in the
-        // flat model in the slow air past an edge at the rate the air above sets
-        path += Math.max(0.2, spd, !column && kept < 1 ? MIX_FROM_ABOVE * spdMax : 0) * DT * mixF
+        // canopy, in bush, in sun over open ground and where the air tumbles
+        // (the column; the tumble's sideways part is in the kicks already), and
+        // in the flat model in the slow air past an edge at the rate the air above sets
+        const mixStep = Math.max(0.2, spd, !column && kept < 1 ? MIX_FROM_ABOVE * spdMax : 0) * DT * mixF
+        path += col ? mixStep * col.turbF : mixStep
+        pathRef += mixStep
         const cx = Math.floor((x + EXTENT_M) / CELL_M)
         const cy = Math.floor((EXTENT_M - y) / CELL_M)
         if (cx < 0 || cy < 0 || cx >= N || cy >= N) break
@@ -996,11 +1029,11 @@ export function simulatePlume(
         // reflected Gaussian at the height the puff has now
         const zNow = zc0 + zRel + liftZ
         const w = zNow === height ? noseAt[pm] : heldUp(sig, zNow)
-        if (rawGround === raw && zNow !== height) rawGround = raw.slice()
+        if (rawGround === raw && (zNow !== height || pmRef !== pm)) rawGround = raw.slice()
         raw[cy * N + cx] += w * kept
         laid[base + k] = w * kept
         aged[cy * N + cx] += w * kept * (t + DT - t0)
-        if (rawGround !== raw) rawGround[cy * N + cx] += noseGround[pm] * kept
+        if (rawGround !== raw) rawGround[cy * N + cx] += noseGround[pmRef] * kept
         wTotal += noseAt[pm]
         if (!column) over += noseAt[pm] * (1 - kept)
         if (zRel > 2) {
