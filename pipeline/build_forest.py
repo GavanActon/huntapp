@@ -10,6 +10,11 @@ Input:  the area's FRI geodatabase and its CRS (bake.forest gdb and crs in
         the area file; Pickle Lake's is
         pipeline/raw/fri/pp_FRI_FIMv2_WhiteRiverForest_2010_2D.gdb in UTM 16N,
         downloaded with pipeline/fetch_resume.py, see docs/DATA-SOURCES.md).
+        An area across a forest unit's line gives gdb as a list, one package
+        per unit (Whitefish Lake: Abitibi River and Timiskaming); each
+        package's stand layer and CRS are read from the file where not given
+        (the layer is named Polygon_Forest, Polygon_Forest_2D or
+        Polygon_Forest_Updated<date>).
         Ontario only: Quebec's stands come from qc_forest.py.
 Output: app/public/data/forest-<region>.geojson with the fields the map
         style and the habitat bake read: group, species, year, ht, cc, sc,
@@ -40,8 +45,9 @@ from area import BAKE, JURISDICTION, options  # noqa: E402
 from common import OUT_DIR, REGION  # noqa: E402
 
 FRI = options(BAKE, "forest")
-GDB = Path(__file__).resolve().parent / (FRI.get("gdb") or "raw/fri/pp_FRI_FIMv2_WhiteRiverForest_2010_2D.gdb")
-CRS = FRI.get("crs") or "EPSG:26916"
+_gdb = FRI.get("gdb") or "raw/fri/pp_FRI_FIMv2_WhiteRiverForest_2010_2D.gdb"
+GDBS = [Path(__file__).resolve().parent / g for g in ([_gdb] if isinstance(_gdb, str) else _gdb)]
+CRS = FRI.get("crs")  # else each package's own
 CONIFER = {"Sb", "Sw", "Bf", "Pj", "Pw", "Pr", "Cw", "La", "Ce", "He", "Sx", "Pl", "Ps"}
 COLUMNS = ["POLYTYPE", "DEVSTAGE", "YRDEP", "DEPTYPE", "OYRORG", "OSPCOMP", "OLEADSPC", "OAGE", "OHT", "OCCLO", "OSC", "PRI_ECO"]
 SPC_RE = re.compile(r"([A-Z][a-z]?)\s*(\d+)")
@@ -54,15 +60,43 @@ def parse_comp(s: str) -> list[tuple[str, int]]:
 def main() -> None:
     if JURISDICTION != "ON":
         raise SystemExit(f"{REGION['name']} is in {JURISDICTION}: the FRI is Ontario's, use the area's own forest adapter (bake_area.py)")
-    if not GDB.exists():
-        raise SystemExit(f"missing {GDB}; download the FRI package first (see docs/DATA-SOURCES.md)")
-    to_utm = Transformer.from_crs("EPSG:4326", CRS, always_xy=True)
-    to_wgs = Transformer.from_crs(CRS, "EPSG:4326", always_xy=True)
+    missing = [g for g in GDBS if not g.exists()]
+    if missing:
+        raise SystemExit(f"missing {', '.join(map(str, missing))}; download the FRI package first (see docs/DATA-SOURCES.md)")
+    feats = []
+    for gdb in GDBS:
+        feats += stands(gdb)
+    out = OUT_DIR / f"forest-{REGION['id']}.geojson"
+    fc = {"type": "FeatureCollection", "name": "FRI FIMv2 " + ", ".join(g.stem.removeprefix("pp_FRI_FIMv2_").removesuffix("_2D") for g in GDBS), "features": feats}
+    out.write_text(json.dumps(fc, separators=(",", ":")), encoding="utf-8")
+    groups = {}
+    for f in feats:
+        groups[f["properties"]["group"]] = groups.get(f["properties"]["group"], 0) + 1
+    print(f"wrote {out.name} ({out.stat().st_size / 1e6:.2f} MB, {len(feats)} stands) {groups}")
+    _ = np  # keep the import honest for type checkers that flag unused numpy
+
+
+def stand_layer(gdb: Path) -> str:
+    names = [n for n, _ in pyogrio.list_layers(str(gdb))]
+    if "Polygon_Forest" in names:
+        return "Polygon_Forest"
+    found = sorted(n for n in names if n.lower().startswith("polygon_forest"))
+    if not found:
+        raise SystemExit(f"{gdb.name} has no Polygon_Forest layer: {', '.join(names)}")
+    return found[-1]
+
+
+def stands(gdb: Path) -> list[dict]:
+    """One package's stands in the region, in the normal form."""
+    layer = FRI.get("layer") or stand_layer(gdb)
+    crs = CRS or pyogrio.read_info(str(gdb), layer=layer)["crs"]
+    to_utm = Transformer.from_crs("EPSG:4326", crs, always_xy=True)
+    to_wgs = Transformer.from_crs(crs, "EPSG:4326", always_xy=True)
     x0, y0 = to_utm.transform(REGION["west"], REGION["south"])
     x1, y1 = to_utm.transform(REGION["east"], REGION["north"])
-    meta, _, wkbs, fields = pyogrio.raw.read(str(GDB), layer="Polygon_Forest", bbox=(x0, y0, x1, y1), columns=COLUMNS)
+    meta, _, wkbs, fields = pyogrio.raw.read(str(gdb), layer=layer, bbox=(x0, y0, x1, y1), columns=COLUMNS)
     col = {n: f for n, f in zip(meta["fields"], fields)}
-    print(f"{len(wkbs)} stands in the region")
+    print(f"{len(wkbs)} stands in the region from {gdb.name} ({layer})")
 
     feats = []
     for i, wkb in enumerate(wkbs):
@@ -115,14 +149,7 @@ def main() -> None:
                 },
             }
         )
-    out = OUT_DIR / f"forest-{REGION['id']}.geojson"
-    fc = {"type": "FeatureCollection", "name": "FRI FIMv2 White River Forest 2010", "features": feats}
-    out.write_text(json.dumps(fc, separators=(",", ":")), encoding="utf-8")
-    groups = {}
-    for f in feats:
-        groups[f["properties"]["group"]] = groups.get(f["properties"]["group"], 0) + 1
-    print(f"wrote {out.name} ({out.stat().st_size / 1e6:.2f} MB, {len(feats)} stands) {groups}")
-    _ = np  # keep the import honest for type checkers that flag unused numpy
+    return feats
 
 
 if __name__ == "__main__":

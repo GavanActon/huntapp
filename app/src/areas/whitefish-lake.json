@@ -1,0 +1,207 @@
+{
+  "id": "whitefish-lake",
+  "name": "Whitefish Lake",
+  "jurisdiction": "ON",
+  "centre": [-80.8168, 48.15378],
+  "home": { "center": [-80.8168, 48.15378], "zoom": 13 },
+  "region": { "west": -80.914, "south": 48.088, "east": -80.719, "north": 48.219 },
+  "core": { "west": -80.8468, "south": 48.13407, "east": -80.7868, "north": 48.17349, "maxzoom": 16 },
+  "regionMaxzoom": 13,
+  "declination": -10.2,
+  "timezone": "America/Toronto",
+  "zone": { "label": "WMU", "name": "29" },
+  "relief": [305, 371],
+  "base": "areas/whitefish-lake/",
+  "surveyedLakes": [],
+  "live": { "lio": true, "satellite": "lio" },
+  "attribution": { "vectors": "© Ontario MNRF", "lakes": "© Ontario MNRF", "bush": "FRI LiDAR © Ontario MNR" },
+  "presets": [{ "name": "Whitefish Lake", "lon": -80.8197, "lat": 48.1539, "kind": "lake", "note": "HD box requested 2026-10-09 (b-247883-154913-248033-155059)" }],
+  "bundle": {
+    "description": "Topo, imagery, LiDAR relief and contours, forest stands, water, roads, and the habitat, wind and going grids around Whitefish Lake; full detail within 2 km of the spot."
+  },
+  "files": {
+    "pmtiles": [
+      "topo",
+      "satellite",
+      "hillshade",
+      "hillshadeLidar",
+      "dem",
+      "contours",
+      "contoursWide",
+      "forest",
+      "understory",
+      "lanes",
+      "historical",
+      "places"
+    ],
+    "geo": ["wmu", "camps", "crown", "parks", "bathy", "fire", "roads", "forest", "depth"],
+    "baseGeo": ["waterbody"],
+    "grids": ["habitat", "micro", "going"]
+  },
+  "bake": {
+    "outDir": "app/public/data/areas/whitefish-lake",
+    "hrdem": [
+      "https://canelevation-dem.s3.ca-central-1.amazonaws.com/hrdem-lidar/ON-SPL_ON_Kirkland_Lake_UTM17_2024-1m-dtm.tif",
+      "https://canelevation-dem.s3.ca-central-1.amazonaws.com/hrdem-lidar/ON-SPL_ON_Timmins_UTM17_2023-1m-dtm.tif"
+    ],
+    "vectors": "on.lio",
+    "forest": {
+      "adapter": "on.fri",
+      "gdb": ["raw/fri/pp_FRI_FIMv2_AbitibiRiver_2011_2D.gdb", "raw/fri/pp_FRI_FIMv2_TimiskamingForest_2014_2D.gdb"],
+      "crs": "EPSG:26917",
+      "vintage": "2011 (Abitibi River Forest), 2014 (Timiskaming Forest)"
+    },
+    "imagery": "on.oiwms",
+    "pointcloud": { "adapter": "on.fri_leafon", "radiusKm": 3.5, "maxGb": 20 },
+    "nts": ["042A02"]
+  },
+  "coverage": {
+    "checked": "2026-10-10",
+    "pmtiles": {
+      "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
+      "topo": {
+        "file": "topo-whitefish-lake.pmtiles",
+        "bytes": 2029470,
+        "source": "Toporama hypsography (contours and spot heights), NRCan WMS",
+        "licence": "OGL-Canada"
+      },
+      "satellite": {
+        "file": "satellite-whitefish-lake.pmtiles",
+        "bytes": 4639348,
+        "source": "Ontario Imagery, LIO web map service",
+        "licence": "OGL-Ontario"
+      },
+      "hillshade": {
+        "file": "hillshade-whitefish-lake.pmtiles",
+        "bytes": 4674981,
+        "source": "MRDEM 30 m hillshade, NRCan WMS",
+        "licence": "OGL-Canada"
+      },
+      "hillshadeLidar": {
+        "file": "hillshade-lidar-whitefish-lake.pmtiles",
+        "bytes": 10979388,
+        "source": "HRDEM 1 m LiDAR DTM, NRCan: ON-SPL_ON_Kirkland_Lake_UTM17_2024-1m, gaps filled from ON-SPL_ON_Timmins_UTM17_2023-1m",
+        "licence": "OGL-Canada",
+        "vintage": "2024, gaps 2023",
+        "note": "LiDAR over 100% of the core"
+      },
+      "dem": {
+        "file": "dem-whitefish-lake.pmtiles",
+        "bytes": 4338904,
+        "source": "MRDEM 30 m, with HRDEM 1 m LiDAR over the core (ON-SPL_ON_Kirkland_Lake_UTM17_2024-1m, gaps filled from ON-SPL_ON_Timmins_UTM17_2023-1m), NRCan",
+        "licence": "OGL-Canada",
+        "vintage": "2024, gaps 2023"
+      },
+      "contours": {
+        "file": "contours-whitefish-lake.pmtiles",
+        "bytes": 1011777,
+        "source": "HRDEM 1 m LiDAR DTM, NRCan: ON-SPL_ON_Kirkland_Lake_UTM17_2024-1m, gaps filled from ON-SPL_ON_Timmins_UTM17_2023-1m",
+        "licence": "OGL-Canada",
+        "vintage": "2024, gaps 2023"
+      },
+      "contoursWide": { "file": "contours-wide-whitefish-lake.pmtiles", "bytes": 269744, "source": "MRDEM 30 m DTM, NRCan", "licence": "OGL-Canada" },
+      "forest": {
+        "file": "forest-whitefish-lake.pmtiles",
+        "bytes": 1202735,
+        "source": "Forest Resources Inventory (FRI FIMv2) stands, OMNRF",
+        "licence": "OGL-Ontario",
+        "vintage": "2011 (Abitibi River Forest), 2014 (Timiskaming Forest)"
+      },
+      "understory": {
+        "file": "understory-whitefish-lake.pmtiles",
+        "bytes": 2648951,
+        "source": "FRI leaf-on single-photon LiDAR point clouds, OMNRF",
+        "licence": "OGL-Ontario",
+        "vintage": "2023, 2024"
+      },
+      "lanes": {
+        "file": "lanes-whitefish-lake.pmtiles",
+        "bytes": 2278492,
+        "source": "FRI leaf-on single-photon LiDAR point clouds, OMNRF",
+        "licence": "OGL-Ontario",
+        "vintage": "2023, 2024"
+      },
+      "bathy": { "missing": "not baked: lake depths are drawn from GeoJSON (depth)" },
+      "historical": {
+        "file": "historical-whitefish-lake.pmtiles",
+        "bytes": 4130264,
+        "source": "CanMatrix2 1:50 000 NTS scans, NRCan: 042A02",
+        "licence": "OGL-Canada"
+      },
+      "bathySheets": { "missing": "not in this area's maps" },
+      "places": {
+        "file": "places-whitefish-lake.pmtiles",
+        "bytes": 82752,
+        "source": "LIO: WMUs, Crown land camps, Crown land, parks, burns and roads",
+        "licence": "OGL-Ontario"
+      }
+    },
+    "geo": {
+      "wmu": { "file": "wmu-whitefish-lake.geojson", "bytes": 443027, "source": "Wildlife Management Units, LIO", "licence": "OGL-Ontario" },
+      "camps": {
+        "file": "camps-whitefish-lake.geojson",
+        "bytes": 1491,
+        "source": "Crown land dispositions: camps, cottages and lodges, LIO",
+        "licence": "OGL-Ontario"
+      },
+      "crown": { "file": "crown-whitefish-lake.geojson", "bytes": 2633, "source": "Crown land, LIO", "licence": "OGL-Ontario" },
+      "parks": { "file": "parks-whitefish-lake.geojson", "bytes": 77, "source": "Provincial parks, LIO", "licence": "OGL-Ontario" },
+      "bathy": { "file": "bathy-whitefish-lake.geojson", "bytes": 934519, "source": "Lake bathymetry lines, LIO", "licence": "OGL-Ontario" },
+      "fire": { "file": "fire-whitefish-lake.geojson", "bytes": 73, "source": "Fire disturbance areas, LIO", "licence": "OGL-Ontario" },
+      "roads": { "file": "roads-whitefish-lake.geojson", "bytes": 286727, "source": "MNRF roads, LIO", "licence": "OGL-Ontario" },
+      "forest": {
+        "file": "forest-whitefish-lake.geojson",
+        "bytes": 4405820,
+        "source": "Forest Resources Inventory (FRI FIMv2) stands, OMNRF",
+        "licence": "OGL-Ontario",
+        "vintage": "2011 (Abitibi River Forest), 2014 (Timiskaming Forest)"
+      },
+      "depth": {
+        "file": "depth-whitefish-lake.geojson",
+        "bytes": 340580,
+        "source": "depth bands: the MNR survey sheets where a lake was surveyed, else a shore-distance model",
+        "licence": "OGL-Ontario"
+      }
+    },
+    "baseGeo": {
+      "waterbody": {
+        "file": "waterbody-whitefish-lake.geojson",
+        "bytes": 1373858,
+        "source": "Ontario Hydro Network waterbodies, LIO",
+        "licence": "OGL-Ontario"
+      }
+    },
+    "grids": {
+      "habitat": {
+        "file": "habitat-whitefish-lake.hab",
+        "bytes": 1705062,
+        "source": "derived: MRDEM, NRCan 2020 land cover, forest stands, water, wetlands, roads and burns",
+        "licence": "derived from the layers above",
+        "note": "stand height and closure from the LiDAR point cloud over 100% of the core",
+        "vintage": "generated 2026-10-09"
+      },
+      "micro": {
+        "file": "micro-whitefish-lake.hab",
+        "bytes": 4467347,
+        "source": "derived: the habitat grid and the MRDEM",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-10"
+      },
+      "going": {
+        "file": "going-whitefish-lake.hab",
+        "bytes": 511943,
+        "source": "derived: HRDEM LiDAR, point-cloud bush or the forest-map estimate, water, wetlands and roads",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-09"
+      },
+      "micro-sd": { "missing": "not in this area's maps" }
+    }
+  },
+  "profile": {
+    "checked": "2026-10-09",
+    "treeline": null,
+    "ecoregion": { "cec1": "5", "cec2": "5.2", "cec3": "5.2.3", "name": "Algonquin/Southern Laurentians", "family": "Mixed Wood Shield" },
+    "north": false,
+    "stands": { "shrubHeight": false, "leadSpecies": true }
+  }
+}
