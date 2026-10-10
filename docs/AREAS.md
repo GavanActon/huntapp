@@ -352,11 +352,8 @@ is mush ("super unclear", Gavan). Surveyed over both spots:
 Gavan chose "stream and cache Esri, what we have as the fallback".
 The area file's `live.sharp: "esri"` (sources.ts `SHARP`) draws Esri over
 the baked composite on the Imagery switch (`satellite-sharp`, maxzoom 17),
-online or not, over the area's box only. The app's worker keeps every tile
-in its own `imagery-tiles` cache, with no cap (Workbox's expiry walked its
-record of every entry after each tile stored); the box bounds it, and
-Remove maps takes the area's out. Save maps then fetches the area's box to
-zoom 16 and its core to 17 from Esri, phone to Esri with nothing through
+online or not, over the area's box only. Save maps fetches the area's box
+to zoom 16 and its core to 17 from Esri, phone to Esri with nothing through
 our servers (`offline/sharpImagery.ts`; about 10,300 tiles, 130 MB). Esri
 answers in about 150 ms a tile and speaks only HTTP/1.1, six connections a
 name, so every other tile is asked of its second name
@@ -368,6 +365,28 @@ row offers it on its own. Where a tile never came, the Sentinel-2 shows
 through. Esri's terms want the
 credit (Settings › Map credits). Their offline export is meant for ArcGIS
 apps, so keeping tiles on the phone like this rests on Gavan's call.
+
+**Kept as one pack (2026-10-10).** At first the worker kept every tile on
+its own in an `imagery-tiles` cache with no cap. With Blanchard River's and
+Highland Lake's saved, about 18,000 entries, a cold start on Gavan's iPhone
+waited 10 to 16 s before the app's first line, from 0.5 s the day before:
+Safari opens the whole cache store before the worker can hand over the
+app's own files. Removing the imagery brought it to 4 s, the rest being the
+6,000 live tiles. So a save now writes the tiles into one PMTiles archive on
+the phone, `sharp-<area>.pmtiles` (`offline/tilePack.ts`): gathered into
+pieces of 400 as they come, so a save cut short goes on from there, then
+laid end to end behind a header and an index and stored like any baked
+archive. The map asks `sharp://` (`map/pmtilesRegistry.ts`): the pack when
+it holds the tile, else Esri, whose tiles the worker keeps 1,500 of;
+offline, a tile the pack lacks is not found and MapLibre stretches its
+parent. Tiles asked for a pack carry `gwpack=1` so the worker leaves them
+alone. A phone still holding tiles kept the old way packs them on its next
+save without the network, and they go. The live-tiles cache went from
+6,000 to 1,000 (an area's own layers are its archives), both caches trim
+themselves when the phone is full, and neither keeps opaque answers. Every
+launch now reports a `perf` `boot` (the page opening to the app's first
+line, with the worker's start and the first byte), and the dev log's
+snapshot counts each cache's entries.
 
 The area's core was widened 2.2 km west the next day (core west −136.85,
 region west −136.931) for a second spot, 59.971, −136.76054, so that the

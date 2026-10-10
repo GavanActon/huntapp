@@ -19,6 +19,8 @@ export interface LiveRaster {
   minzoom?: number
   maxzoom?: number
   scheme?: 'xyz' | 'tms'
+  /** the server's own tile address, when the map reads the tiles through a protocol of ours (sharp://) */
+  remote?: string
 }
 
 export interface LiveVector {
@@ -86,9 +88,11 @@ const SATELLITE: Record<'lio' | 'qc', LiveRaster> = {
 
 /**
  * Imagery sharper than the area's baked, streamed over it and kept on the
- * phone (LIVE.sharp; the worker's imagery-tiles cache, and Save maps fetches
- * it across the area: offline/sharpImagery.ts). Where a tile never came the
- * baked shows through.
+ * phone (LIVE.sharp). The map asks sharp:// (map/pmtilesRegistry.ts): the
+ * area's pack, one archive Save maps fetches across the area
+ * (offline/sharpImagery.ts), else the imagery's own server, `remote`, whose
+ * tiles the worker keeps a few of (vite.config.ts imagery-tiles). Where a
+ * tile never came the baked shows through.
  *
  * - esri: Esri World Imagery. At Blanchard River, where no province flies
  *   and the baked is Sentinel-2's 10 m, it is Vantor's (Maxar's) Vivid
@@ -98,7 +102,8 @@ const SATELLITE: Record<'lio' | 'qc', LiveRaster> = {
  */
 export const SHARP: Record<'esri', LiveRaster> = {
   esri: {
-    tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+    tiles: ['sharp://esri/{z}/{x}/{y}'],
+    remote: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     tileSize: 256,
     attribution: 'Imagery: Powered by Esri · Esri, Vantor (Maxar), Earthstar Geographics',
     maxzoom: 17,

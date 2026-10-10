@@ -87,6 +87,18 @@ function standalone(): boolean {
   return nav.standalone === true || matchMedia('(display-mode: standalone)').matches
 }
 
+/** Entries in each of the worker's caches: a cold start waits on all of them (vite.config.ts). */
+async function cacheCounts(): Promise<string | null> {
+  try {
+    if (typeof caches === 'undefined') return null
+    const names = await caches.keys()
+    const counts = await Promise.all(names.map(async (n) => `${n} ${(await (await caches.open(n)).keys()).length}`))
+    return counts.length ? counts.join(' · ') : 'empty'
+  } catch {
+    return null
+  }
+}
+
 export async function buildSnapshot(): Promise<string> {
   const app = useAppStore.getState()
   const gps = useGpsStore.getState()
@@ -95,6 +107,7 @@ export async function buildSnapshot(): Promise<string> {
   const wx = weatherStatus()
   const now = Date.now()
   const quota = await storageEstimate().catch(() => null)
+  const caches_ = await cacheCounts()
 
   const fix = gps.fix
   const gpsLine = fix
@@ -129,6 +142,7 @@ export async function buildSnapshot(): Promise<string> {
     ``,
     `Maps on the phone: ${stored.length ? stored.map((s) => s.name).join(', ') : 'none'} · offline ready ${yn(app.offlineReady)} · missing ${app.missingData.length ? app.missingData.join(', ') : 'none'}`,
     `Storage: ${quota ? `${fmtBytes(quota.usage)} of ${fmtBytes(quota.quota)}` : 'unknown'}`,
+    `Cache store: ${caches_ ?? 'unknown'}`,
     `Weather: ${camp ? `camp forecast ${agoLabel(now - camp.fetchedAt)}${camp.hrdpsHours ? ` · HRDPS ${camp.hrdpsHours} h` : ''}` : 'no camp forecast'}${wx.lastError ? ` · last error ${wx.lastFailAt ? agoLabel(now - wx.lastFailAt) : ''}: ${wx.lastError}` : ''}`,
     `Dev log: ${devlogOn() ? `${devlogCount()} lines` : 'off'}${last ? ` · uploaded ${last.url}` : ''}`,
     ``,

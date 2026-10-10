@@ -120,8 +120,8 @@ export async function downloadFiles(files: string[], replace = false, areaId: st
       )
       set({ storedAt: Date.now() })
     }
-    // the sharp imagery, the tiles a pan round the area at each zoom would bring, into the worker's
-    // cache (the bar in bytes, the whole guessed from the tiles so far); before the reload below
+    // the sharp imagery, the tiles a pan round the area at each zoom would bring, into the area's
+    // pack (the bar in bytes, the whole guessed from the tiles so far); before the reload below
     if (sharp) {
       set({ file: SHARP_STEP, fileIdx: steps, loaded: 0, total: sharpBytes(areaId) })
       const got = await saveSharp(areaId, (done, n, bytes) => set({ loaded: bytes, total: Math.round((bytes / Math.max(1, done)) * n) }))

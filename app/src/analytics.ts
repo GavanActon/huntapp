@@ -448,6 +448,18 @@ function start() {
     // and a phone that had the app already shows only here
     site: siteVisit,
   })
+  // how long from the page opening to this line, before any of the app ran,
+  // and where it went: the worker starting, the page's first byte (the
+  // worker's answer from its cache), the page parsed. An iPhone waited 10 to
+  // 16 s here with 18,000 tiles in the cache store (vite.config.ts, 2026-10-10)
+  const load = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
+  track('perf', {
+    what: 'boot',
+    ms: Math.round(performance.now()),
+    sw: load?.workerStart ? Math.round(load.workerStart) : null,
+    ttfb: load ? Math.round(load.responseStart) : null,
+    dom: load ? Math.round(load.domInteractive) : null,
+  })
   if (document.visibilityState === 'visible') onShow()
 
   document.addEventListener('click', onClick, { capture: true, passive: true })

@@ -2,10 +2,11 @@ import maplibregl from 'maplibre-gl'
 import { FetchSource, PMTiles, Protocol } from 'pmtiles'
 import type { RangeResponse, Source } from 'pmtiles'
 import { devlog } from '../devlog'
-import { fileUrl } from '../areas'
+import { ACTIVE_AREA, fileUrl } from '../areas'
 import { DATA_FILES } from '../config'
 import { getStoredFile } from '../offline/fileStore'
 import { noteAbsent, offlineReady } from '../offline/updates'
+import { SHARP } from '../sources'
 
 /**
  * All chart data is PMTiles referenced in the style as `pmtiles://<key>`.
@@ -114,6 +115,57 @@ maplibregl.addProtocol('pmtiles', async (params, abortController) => {
   const r = await protocol.tilev4(params, abortController)
   if (r.data == null) throw Object.assign(new Error(`no tile ${params.url}`), { status: 404 })
   return r
+})
+
+// ---- the sharp imagery (sources.ts SHARP): sharp://<key>/<z>/<x>/<y> ----
+
+/** The area's sharp imagery as one archive on the phone (offline/sharpImagery.ts saveSharp). */
+export const sharpPackFile = (areaId: string): string => `sharp-${areaId}.pmtiles`
+
+let sharpPack: Promise<PMTiles | null> | null = null
+/** After a save or a Remove: the next tile looks for the pack again. */
+export function forgetSharpPack(): void {
+  sharpPack = null
+}
+
+/**
+ * The sharp imagery's tiles: from the area's pack when it holds the tile,
+ * else from the imagery's own server, as the map asked before there were
+ * packs (the worker keeps a few of those: vite.config.ts imagery-tiles).
+ * With no signal a tile the pack lacks is not found, and MapLibre stretches
+ * its parent, as at an archive's edge.
+ */
+maplibregl.addProtocol('sharp', async (params, abortController) => {
+  const m = /^sharp:\/\/(\w+)\/(\d+)\/(\d+)\/(\d+)/.exec(params.url)
+  const src = m ? SHARP[m[1] as keyof typeof SHARP] : undefined
+  if (!m || !src?.remote) throw new Error(`no such tile address ${params.url}`)
+  const [z, x, y] = [Number(m[2]), Number(m[3]), Number(m[4])]
+  if (!sharpPack) {
+    const file = sharpPackFile(ACTIVE_AREA.id)
+    sharpPack = getStoredFile(file)
+      .then((blob) => (blob ? new PMTiles(new BlobSource(blob, file)) : null))
+      .catch(() => null)
+  }
+  const pack = await sharpPack
+  if (pack) {
+    const t = await pack.getZxy(z, x, y, abortController.signal).catch((e: unknown) => {
+      if ((e as Error)?.name === 'AbortError') throw e
+      return undefined
+    })
+    if (t?.data) return { data: t.data }
+  }
+  const notFound = () => Object.assign(new Error(`no tile ${params.url}`), { status: 404 })
+  if (!navigator.onLine) throw notFound()
+  const url = src.remote.replace('{z}', String(z)).replace('{x}', String(x)).replace('{y}', String(y))
+  let r: Response
+  try {
+    r = await fetch(url, { signal: abortController.signal })
+  } catch (e) {
+    if ((e as Error)?.name === 'AbortError') throw e
+    throw notFound()
+  }
+  if (!r.ok) throw Object.assign(new Error(`${r.status} ${params.url}`), { status: r.status })
+  return { data: await r.arrayBuffer(), cacheControl: r.headers.get('Cache-Control') ?? undefined, expires: r.headers.get('Expires') ?? undefined }
 })
 
 // ---- tiles read ahead (prefetch.ts): a small memory cache in front of the protocol ----

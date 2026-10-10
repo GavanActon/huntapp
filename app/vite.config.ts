@@ -421,25 +421,34 @@ export default defineConfig({
         runtimeCaching: [
           { urlPattern: /\/fonts\/.+\.pbf$/, handler: 'CacheFirst', options: { cacheName: 'glyphs', expiration: { maxEntries: 600 } } },
           { urlPattern: /\/sprites\//, handler: 'CacheFirst', options: { cacheName: 'sprites', expiration: { maxEntries: 40 } } },
-          // the sharp imagery over an area's baked one (sources.ts SHARP): kept on the
-          // phone, what has been looked at and what Save maps fetched across the area
-          // (offline/sharpImagery.ts, about 10,300 tiles and 130 MB for Blanchard River).
-          // Its own cache, ahead of live-tiles: that one's 6,000 would push it out. No
-          // expiry: Workbox's walks its record of every cached entry after each tile
-          // stored, over 10,000 a save; the map asks only inside an area's box
-          // (mapStyle.ts satellite-sharp bounds), and Remove maps takes the area's out
+          // A cold start waits on every entry in the cache store: Safari opens it
+          // whole before the worker can hand the app its own files, and 18,000
+          // tiles kept one by one made an iPhone wait 10 to 16 s (2026-10-10). So
+          // the caches below are kept small, trim themselves when the phone is
+          // full (purgeOnQuotaError), and keep only real answers (200: an opaque
+          // one counts as megabytes against the quota). What is kept for the
+          // field in bulk is kept as packs, one file each (offline/tilePack.ts).
+          //
+          // the sharp imagery over an area's baked one (sources.ts SHARP), as looked
+          // at where the area's pack lacks it (map/pmtilesRegistry.ts sharp://). A
+          // save fetches into the pack, marked gwpack, and the worker leaves those
           {
-            urlPattern: /^https:\/\/server\.arcgisonline\.com\/ArcGIS\/rest\/services\/World_Imagery\/MapServer\/tile\//,
+            urlPattern: /^https:\/\/server\.arcgisonline\.com\/ArcGIS\/rest\/services\/World_Imagery\/MapServer\/tile\/[^?]*$/,
             handler: 'CacheFirst',
-            options: { cacheName: 'imagery-tiles', cacheableResponse: { statuses: [0, 200] } },
+            options: { cacheName: 'imagery-tiles', expiration: { maxEntries: 1500, purgeOnQuotaError: true }, cacheableResponse: { statuses: [200] } },
           },
           // live map services: cache what has been looked at, for the drive out
-          // (Quebec's imagery too, for an area there)
+          // (Quebec's imagery too, for an area there); an area's own layers are its
+          // saved archives, so a thousand is the drive's worth
           {
             // the live base map (NRCan CBMT) among them: it came off the network on every pan, downloaded area or not (2026-10-07)
-            urlPattern: /^https:\/\/(maps-cartes\.services\.geo\.ca|maps\.geogratis\.gc\.ca|datacube\.services\.geo\.ca|ws\.lioservices\.lrc\.gov\.on\.ca|ws\.gisdynamic\.lrc\.gov\.on\.ca|server\.arcgisonline\.com|tiles\.arcgis\.com|servicesmatriciels\.mern\.gouv\.qc\.ca)\//,
+            urlPattern: /^(?!.*[?&]gwpack=)https:\/\/(maps-cartes\.services\.geo\.ca|maps\.geogratis\.gc\.ca|datacube\.services\.geo\.ca|ws\.lioservices\.lrc\.gov\.on\.ca|ws\.gisdynamic\.lrc\.gov\.on\.ca|server\.arcgisonline\.com|tiles\.arcgis\.com|servicesmatriciels\.mern\.gouv\.qc\.ca)\//,
             handler: 'CacheFirst',
-            options: { cacheName: 'live-tiles', expiration: { maxEntries: 6000, maxAgeSeconds: 60 * 60 * 24 * 120 }, cacheableResponse: { statuses: [0, 200] } },
+            options: {
+              cacheName: 'live-tiles',
+              expiration: { maxEntries: 1000, maxAgeSeconds: 60 * 60 * 24 * 120, purgeOnQuotaError: true },
+              cacheableResponse: { statuses: [200] },
+            },
           },
         ],
       },
