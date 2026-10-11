@@ -296,9 +296,9 @@ By ground, turn MAE / speed r:
 
 The seed set helps where it was meant to: the steep ground and the lee. The mass-consistent and interpolation yardsticks are unchanged (same truth).
 
-The Highland fold retrained the same way (`runs/seed1-hold-highland-lake`) did not move: turn MAE 3.3° → 3.3°, turn r 0.54 → 0.55, speed r 0.80 → 0.80, and the speed under-call stays at −0.10. Highland was already near the floor for this net; its winds run faster than any training area's, which batch 2's Dempster, Kootenay and RMNP may answer.
+The Highland fold retrained the same way (`runs/seed1-hold-highland-lake`, on xonix, 17 areas) moves a little the same way: turn MAE 3.3° → 3.2°, turn r 0.54 → 0.57, speed MAE 0.119 → 0.105, speed r 0.80 → 0.82, and the speed under-call eases from −0.10 to −0.08. Highland was already near the floor for this net; the faster winds of batch 2's Dempster, Kootenay and RMNP may close the rest. (A first run of this fold on 2026-10-10 trained on four areas, not seventeen: inside the kit the trainer's area list fell back to the five first areas, since it was read from the checkout's path. Caught by the wind-learning thread, fixed in train.py the next morning, and the fold rerun.)
 
-That fold was the first training job on xonix through the GPU kit (§6): 12,000 steps in 11.7 min against 25.4 on the laptop, with ten WindNinja runners pinning its CPU, so the loader is not starving the 5090 badly at this net's size. Batch 2's 18 sites are due the evening of 2026-10-10; the next retrain takes all 35, with a US site held out for the 3DEP check and Big Southern Butte and Salmon River scored against the measured Idaho wind.
+That fold was the first training job on xonix through the GPU kit (§6): 12,000 steps in 11.7 min (the four-area run) and 12.1 min (the seventeen-area rerun) against 25.4 on the laptop, with ten WindNinja runners pinning its CPU, so the loader is not starving the 5090 badly at this net's size. Batch 2's 18 sites are due the evening of 2026-10-10; the next retrain takes all 35, with a US site held out for the 3DEP check and Big Southern Butte and Salmon River scored against the measured Idaho wind.
 
 ## 7. The SD wind as a bake step, and the HD/SD switch in the app
 
