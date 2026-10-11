@@ -84,7 +84,6 @@ div.me .me-speed { position: absolute; left: 50%; top: 62px; transform: translat
 div.me .me-hit { pointer-events: all; cursor: pointer; }
 /* the locate button with the map turned the way you face */
 .fab.fab-heading { box-shadow: 0 0 0 2px var(--c-accent), 0 0 14px rgba(var(--c-accent-rgb), 0.55); }
-.fab.fab-heading svg { transform: rotate(-35deg); }
 /* the scent card with several people: their numbers, who is picked, whose scent drifts over whom */
 .ground-card .gc-people { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .ground-card .gc-people .seg button { padding: 5px 12px; min-width: 34px; }

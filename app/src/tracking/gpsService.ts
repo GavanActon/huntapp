@@ -3,7 +3,7 @@ import { withMap } from '../map/mapController'
 import { useAppStore } from '../state/appStore'
 import { followCenter } from '../config'
 import { useGpsStore, type Fix } from './gpsStore'
-import { requestCompass, startCompass, stopCompass, useCompass } from './compass'
+import { compassAskable, requestCompass, startCompass, stopCompass, useCompass, wakeCompass } from './compass'
 import { FixFilter } from './fixFilter'
 
 /** A geolocation watch: one fix in the store, filtered (fixFilter.ts) so
@@ -78,6 +78,10 @@ export function locateAndFollow() {
     // the beam on the dot: which way the phone faces (iOS asks, from this tap)
     void requestCompass()
     startCompass()
+  } else if (compassAskable() && useCompass.getState().status !== 'on') {
+    // following again after a pan, with location brought back on at startup:
+    // the compass has not been asked for from a tap this launch
+    void wakeCompass()
   }
   useGpsStore.getState().setLocating(true)
   useAppStore.getState().setFollow(true)
@@ -89,12 +93,23 @@ export function locateAndFollow() {
 }
 
 /** The locate button: off → following, north up → following, heading up
- *  (skipped without a compass) → off; panned away → follow again. */
+ *  (skipped without a compass) → off; panned away → follow again. A compass
+ *  that has not read yet is asked for from this tap and the map turns once
+ *  it does: on an iPhone, location brought back on at startup started it
+ *  without a tap, so it heard nothing, and heading up was skipped for good. */
 export function toggleLocate() {
   const g = useGpsStore.getState()
   if (!g.locating || !useAppStore.getState().follow) return locateAndFollow()
-  if (!g.headingUp && useCompass.getState().status === 'on') return g.setHeadingUp(true)
-  stopLocating()
+  if (g.headingUp) return stopLocating()
+  const st = useCompass.getState().status
+  if (st === 'on') return g.setHeadingUp(true)
+  if (st === 'denied' || (st === 'none' && !compassAskable())) return stopLocating()
+  void wakeCompass().then((ok) => {
+    const s = useGpsStore.getState()
+    if (!s.locating || !useAppStore.getState().follow || s.headingUp) return
+    if (ok) s.setHeadingUp(true)
+    else stopLocating()
+  })
 }
 
 /** Location off: no follow, north up, and the watch stops (the track with it). */

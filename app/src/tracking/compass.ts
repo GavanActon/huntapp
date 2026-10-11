@@ -187,20 +187,62 @@ export async function requestCompass(): Promise<boolean> {
   }
 }
 
-/** Start listening (counted: every start needs its stop). */
-export function startCompass() {
-  users++
-  if (users > 1) return
+/** This browser asks before it gives the compass (iOS), so a compass that
+ *  has heard nothing may only be waiting for a tap to ask from. */
+export function compassAskable(): boolean {
+  const DOE = (window as { DeviceOrientationEvent?: { requestPermission?: unknown } }).DeviceOrientationEvent
+  return typeof DOE?.requestPermission === 'function'
+}
+
+/** Listen afresh: the readings so far go, and a few silent seconds mean no compass. */
+function listen() {
   got = false
   raw = []
   calmSince = 0
   useCompass.setState({ status: useCompass.getState().status === 'denied' ? 'denied' : 'waiting', steady: true })
+  window.removeEventListener('deviceorientationabsolute', onEvent as EventListener)
+  window.removeEventListener('deviceorientation', onEvent as EventListener)
   window.addEventListener('deviceorientationabsolute', onEvent as EventListener)
   window.addEventListener('deviceorientation', onEvent as EventListener)
   // nothing after a few seconds: this phone or browser has no compass for us
+  window.clearTimeout(timer)
   timer = window.setTimeout(() => {
     if (!got && useCompass.getState().status === 'waiting') useCompass.setState({ status: 'none' })
   }, 3000)
+}
+
+/** Start listening (counted: every start needs its stop). */
+export function startCompass() {
+  users++
+  if (users > 1) return
+  listen()
+}
+
+/**
+ * From a tap, for a compass that is started but silent. iOS gives the
+ * compass only to a page that asked from a tap, and asks again every launch,
+ * so one started without a tap (location brought back on at startup) hears
+ * nothing and reads as no compass three seconds on. This asks, listens
+ * afresh, and resolves true once a heading comes in; false when refused, or
+ * still silent. Call it straight from the tap's handler: the ask has to
+ * happen before anything is awaited.
+ */
+export async function wakeCompass(): Promise<boolean> {
+  if (useCompass.getState().status === 'on') return true
+  const asked = requestCompass()
+  if (!(await asked) || users === 0) return false
+  if (useCompass.getState().status !== 'on') listen()
+  return new Promise((resolve) => {
+    const settle = (s: CompassStatus) => {
+      if (s === 'waiting') return false
+      resolve(s === 'on')
+      return true
+    }
+    if (settle(useCompass.getState().status)) return
+    const off = useCompass.subscribe((c) => {
+      if (settle(c.status)) off()
+    })
+  })
 }
 
 export function stopCompass() {
