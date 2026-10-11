@@ -37,6 +37,11 @@ interface GpsState {
   /** The map turns with the phone's compass, so up is the way you face. */
   headingUp: boolean
   setHeadingUp: (v: boolean) => void
+  /** Heading up and following: where the dot sits on the screen, css px
+   *  from the map's middle ([0, 0] the middle). Left there by a drag or a
+   *  pinch; the locate button puts it back (positionLayer.ts). */
+  youAt: [number, number]
+  setYouAt: (p: [number, number]) => void
   setStatus: (s: GpsStatus, lastError?: string | null) => void
   setFix: (f: Fix | null) => void
 }
@@ -53,6 +58,8 @@ export const useGpsStore = create<GpsState>((set) => ({
   setLocating: (locating) => set({ locating }),
   headingUp: false,
   setHeadingUp: (headingUp) => set({ headingUp }),
+  youAt: [0, 0],
+  setYouAt: (youAt) => set({ youAt }),
   setStatus: (status, lastError) => set(lastError === undefined ? { status } : { status, lastError }),
   setFix: (fix) => set({ fix }),
 }))

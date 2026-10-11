@@ -30,6 +30,7 @@ import { EXPLORE_LAYERS, exploreTap, viewMoved } from '../explore'
 import { initBoxLayer } from '../explore/boxLayer'
 import { COVERAGE_FILE, COVERAGE_KEY, syncCoverageState } from '../explore/coverage'
 import { useExplore } from '../explore/store'
+import { useGpsStore } from '../tracking/gpsStore'
 
 /** Your pins and the preset places, each as the strip's marks say. */
 function placesGeoJson(): FeatureCollection {
@@ -323,7 +324,11 @@ export default function MapView() {
         saveView({ center: [c.lng, c.lat], zoom: m.getZoom(), bearing: m.getBearing() })
         if (useAppStore.getState().online) viewMoved(m)
       })
-      m.on('dragstart', () => useAppStore.getState().setFollow(false))
+      // heading up, a drag moves where you sit on the screen and following goes on
+      // (positionLayer.ts settle); north up it lets go of you
+      m.on('dragstart', () => {
+        if (!useGpsStore.getState().headingUp) useAppStore.getState().setFollow(false)
+      })
 
       // tap a place: your own pin says what it is, with Delete (placePopup);
       // the camp and the lakes are presets and open Dig in on themselves.

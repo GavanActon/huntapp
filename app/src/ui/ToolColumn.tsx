@@ -21,12 +21,21 @@ export default function ToolColumn(): JSX.Element {
   const follow = useAppStore((s) => s.follow)
   const locating = useGpsStore((s) => s.locating)
   const headingUp = useGpsStore((s) => s.headingUp)
+  const offMiddle = useGpsStore((s) => s.youAt[0] !== 0 || s.youAt[1] !== 0)
   const acquiring = useGpsStore((s) => s.status === 'acquiring')
   const rotated = Math.abs(bearing) > 0.5
   const EXPLORE = useAppStore((s) => s.exploreMode)
 
   const locateClass = `fab${locating && follow ? ' active' : ''}${headingUp ? ' fab-heading' : ''}${acquiring ? ' fab-acquiring' : ''}`
-  const locateLabel = !locating ? 'Show my position' : !follow ? 'Follow my position' : headingUp ? 'Turn location off' : 'Turn the map the way I face'
+  const locateLabel = !locating
+    ? 'Show my position'
+    : !follow
+      ? 'Follow my position'
+      : headingUp
+        ? offMiddle
+          ? 'Put me back in the middle'
+          : 'Turn location off'
+        : 'Turn the map the way I face'
 
   return (
     <div className="toolcol">

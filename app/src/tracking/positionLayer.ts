@@ -138,6 +138,7 @@ export function initPositionLayer() {
   onEachMap((map) => {
     onMap = null
     current = map
+    wireHands(map)
     const fix = useGpsStore.getState().fix
     if (fix) place(map, fix)
     map.on('zoom', () => {
@@ -158,20 +159,32 @@ export function initPositionLayer() {
   useCompass.subscribe((c) => {
     beam()
     const map = current
-    if (!map || c.heading == null || !useGpsStore.getState().headingUp) return
+    if (!map || c.heading == null || !useGpsStore.getState().headingUp || busy()) return
     const now = performance.now()
     const d = Math.abs(((c.heading - map.getBearing() + 540) % 360) - 180)
     // a degree of wobble is not worth turning the whole map for
     if (d < 1.5 || now - lastTurn < 120) return
     lastTurn = now
-    map.rotateTo(c.heading, { duration: 150, easing: (t) => t })
+    turnTo(map, c.heading, 150)
+  })
+  useAppStore.subscribe((s, prev) => {
+    // follow let go (a drag north up, Go to, a route): the place on the screen goes with it
+    if (prev.follow && !s.follow) useGpsStore.getState().setYouAt([0, 0])
   })
   useGpsStore.subscribe((s, prev) => {
-    if (s.headingUp !== prev.headingUp && !s.headingUp) current?.easeTo({ bearing: 0, duration: 400 })
+    if (s.headingUp !== prev.headingUp && !s.headingUp) {
+      s.setYouAt([0, 0])
+      current?.easeTo({ bearing: 0, duration: 400 })
+    }
     // turned on: the map turns now, not at the compass's next change (a phone
     // held still may not make one for a while)
     const h = useCompass.getState().heading
-    if (s.headingUp && !prev.headingUp && h != null) current?.easeTo({ bearing: h, duration: 400 })
+    if (s.headingUp && !prev.headingUp && h != null && current) turnTo(current, h, 400)
+    // put back in the middle by the locate button: there now
+    if (s.youAt !== prev.youAt && s.youAt[0] === 0 && s.youAt[1] === 0 && s.fix && current && !busy()) {
+      const center = useAppStore.getState().follow ? followCenter(s.fix.lon, s.fix.lat) : null
+      if (center) current.easeTo({ center, duration: 400 })
+    }
     if (s.fix === prev.fix) return
     if (!s.fix) {
       // location switched off: the dot goes with it
@@ -185,7 +198,84 @@ export function initPositionLayer() {
     const map = current
     if (!map) return
     place(map, s.fix)
-    const center = useAppStore.getState().follow ? followCenter(s.fix.lon, s.fix.lat) : null
-    if (center) map.easeTo({ center, duration: 600 })
+    // not under a finger: the fix waits for the hand to come off
+    const center = useAppStore.getState().follow && !busy() ? followCenter(s.fix.lon, s.fix.lat) : null
+    if (center) map.easeTo({ center, offset: s.headingUp ? s.youAt : [0, 0], duration: 600 })
   })
+}
+
+/**
+ * Heading up, the map turns about you: the dot holds its place on the
+ * screen and the ground swings round it. Following, that place is the
+ * middle, or wherever a drag or a pinch left you (low on the screen, say,
+ * to see more ahead), and the map follows you there. Not following, it
+ * turns about the dot while the dot is on the screen, else about the middle.
+ */
+function turnTo(map: MlMap, bearing: number, ms: number) {
+  const g = useGpsStore.getState()
+  const f = g.fix
+  const center = f && useAppStore.getState().follow ? followCenter(f.lon, f.lat) : null
+  const linear = (t: number) => t
+  if (center) map.easeTo({ bearing, center, offset: g.youAt, duration: ms, easing: linear })
+  else if (f && onScreen(map, f) != null) map.easeTo({ bearing, around: [f.lon, f.lat], duration: ms, easing: linear })
+  else map.rotateTo(bearing, { duration: ms, easing: linear })
+}
+
+/** Where a fix sits on the screen, css px from the map's middle (the
+ *  padding's middle, as the camera has it), or null off it or near an edge. */
+function onScreen(map: MlMap, f: Fix): [number, number] | null {
+  const c = map.getContainer()
+  const w = c.clientWidth
+  const h = c.clientHeight
+  const p = map.project([f.lon, f.lat])
+  const EDGE = 32
+  if (p.x < EDGE || p.y < EDGE || p.x > w - EDGE || p.y > h - EDGE) return null
+  const { left = 0, right = 0, top = 0, bottom = 0 } = map.getPadding()
+  return [p.x - (left + (w - left - right) / 2), p.y - (top + (h - top - bottom) / 2)]
+}
+
+/** The fingers on the map: while any is down the camera is theirs (no
+ *  follow, no turning), and once the last comes off and the map has
+ *  settled, heading up and following, the dot's place is kept where the
+ *  gesture left it. Off the screen it was a look elsewhere: follow goes. */
+const hands = new Set<number>()
+let gestured = false
+/** the last finger is off and the map is still coasting: hands off until it stops */
+let coasting = false
+const busy = () => hands.size > 0 || coasting
+
+function wireHands(map: MlMap) {
+  map.getCanvasContainer().addEventListener('pointerdown', (e) => {
+    hands.add(e.pointerId)
+    gestured = false
+  })
+  const up = (e: PointerEvent) => {
+    if (!hands.delete(e.pointerId) || hands.size) return
+    coasting = true
+    if (!map.isMoving()) settle(map)
+    else map.once('moveend', () => settle(map))
+    // a coast that never says it ended does not keep the camera from you for good
+    window.setTimeout(() => {
+      if (coasting) settle(map)
+    }, 2000)
+  }
+  window.addEventListener('pointerup', up)
+  window.addEventListener('pointercancel', up)
+  // a move of the user's own (a tap moves nothing, and keeps the place as it was)
+  map.on('move', (e) => {
+    if (hands.size && (e as { originalEvent?: Event }).originalEvent) gestured = true
+  })
+}
+
+function settle(map: MlMap) {
+  if (hands.size) return
+  coasting = false
+  if (!gestured) return
+  gestured = false
+  const g = useGpsStore.getState()
+  if (!g.headingUp || !useAppStore.getState().follow || !g.fix) return
+  const at = onScreen(map, g.fix)
+  if (!at) return useAppStore.getState().setFollow(false)
+  // a few pixels off the middle is the middle
+  g.setYouAt(Math.hypot(at[0], at[1]) < 12 ? [0, 0] : [Math.round(at[0]), Math.round(at[1])])
 }
