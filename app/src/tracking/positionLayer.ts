@@ -168,6 +168,10 @@ export function initPositionLayer() {
   })
   useGpsStore.subscribe((s, prev) => {
     if (s.headingUp !== prev.headingUp && !s.headingUp) current?.easeTo({ bearing: 0, duration: 400 })
+    // turned on: the map turns now, not at the compass's next change (a phone
+    // held still may not make one for a while)
+    const h = useCompass.getState().heading
+    if (s.headingUp && !prev.headingUp && h != null) current?.easeTo({ bearing: h, duration: 400 })
     if (s.fix === prev.fix) return
     if (!s.fix) {
       // location switched off: the dot goes with it

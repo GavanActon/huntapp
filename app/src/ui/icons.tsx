@@ -12,6 +12,15 @@ export const IconLocate = (p: IconProps) => (
   </svg>
 )
 
+/** Heading up: you, and the beam the way you face, as the dot on the map has it. */
+export const IconHeading = (p: IconProps) => (
+  <svg width={S(p)} height={S(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <path d="M12 15.5 L4.85 4.05 A13.5 13.5 0 0 1 19.15 4.05 Z" fill="currentColor" stroke="none" opacity=".5" />
+    <circle cx="12" cy="15.5" r="4.6" />
+    <circle cx="12" cy="15.5" r="2.5" fill="currentColor" stroke="none" />
+  </svg>
+)
+
 export const IconCompass = (p: IconProps & { rotation?: number }) => (
   <svg
     width={S(p)}
