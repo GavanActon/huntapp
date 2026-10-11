@@ -11,7 +11,7 @@ import { layeringAt, onProfile, type Layering } from '../boundaryLayer'
 import { cachedPointForecast, compass, hourAt } from '../openMeteo'
 import { sunPosition } from '../sun'
 import { onWeatherGrid, windGridCovers, windGridInfo, windSampler } from '../windGrid'
-import { angleDiff, checkWeight, metresBetween, SEEN_KMH, seenWeight, STRENGTH_KMH, useWindChecks, type Strength, type WindCheck } from './windChecks'
+import { angleDiff, CHECK_W0_SPEED, checkW0, checkWeight, maxReachMs, metresBetween, placeReach, puffBoost, SEEN_KMH, seenWeight, STRENGTH_KMH, useWindChecks, type Strength, type WindCheck } from './windChecks'
 import { biasFor, biasMatters, biasWords, learnBiases, type Bias, type Lesson } from './bias'
 import { fitAmbient, fitHoldsUntil, fitMatters, fitWeightAt, fitWords, sessionAt, sessionsOf, sitScore as scoreSit, type AmbientFit, type MapProbeFn, type ProbeFn, type SitScore } from './ambientFit'
 import { tuneValues, useScentTune, type TuneValues } from './scentTune'
@@ -499,6 +499,8 @@ interface Ctx {
   seen: SeenShift[]
   /** what the season's checks have taught, by lesson (bias.ts) */
   biases: Map<Lesson, Bias>
+  /** the place's memory: checks of other days, to come back when the air is in the same situation */
+  memory: Remembered[]
   /** how far the hardwoods' leaves are down, 0 in leaf to 1 bare (leaves.ts) */
   leaves: number
   /** the sit's fit of the air above the trees, to apply by distance and age; `full` for a probe, applied as is */
@@ -551,6 +553,87 @@ function seenShifts(ms: number, checks: WindCheck[]): SeenShift[] {
   return out
 }
 
+/**
+ * The place's memory (docs/WIND-LEARNING.md, layer 4): a felt check comes
+ * back on another day when the air is in the same situation, not for a
+ * ring of time and distance. Gavan's check on the Searchmont valley floor,
+ * from 308° at dusk under a 152° forecast, says "when the forecast is SSE
+ * at dusk, the floor here runs back from the NW"; the next morning the
+ * same floor ran along the valley under a southerly at midday, so the time
+ * of day is part of the situation as much as the wind is.
+ *
+ * A check is remembered as its turn off the forecast it had (so a
+ * remembered check carries over when the forecast itself has moved a
+ * little), the forecast's speed, and the sun's part of the day where it
+ * was made. It comes back, once out of the live blend's reach, wherever
+ * the forecast now runs within 45° of the remembered one (in full within
+ * 15°), at a speed within a factor 2.5, in the same part of the day:
+ * night, the low sun of morning, the low sun of evening, or day. It weighs
+ * at most a third of a fresh check's say (MEMORY_SHARE), as far as the
+ * fresh check would have reached, scaled by likeness in model.ts, and
+ * fades over the season (MEMORY_DAYS). A check with no forecast saved (one
+ * made before 2026-10-06) has nothing to be remembered against.
+ */
+interface Remembered {
+  c: WindCheck
+  /** the felt wind's turn off the forecast it had, degrees, + clockwise */
+  turn: number
+  fDir: number
+  fKmh: number
+  part: DayPart
+}
+
+type DayPart = 'night' | 'low-am' | 'low-pm' | 'day'
+
+/** The sun's part of the day: below civil twilight, the low sun either side of noon, or up. */
+function dayPart(ms: number, lat: number, lon: number): DayPart {
+  const sun = sunPosition(ms, lat, lon)
+  if (sun.elevDeg < -6) return 'night'
+  if (sun.elevDeg < 8) return sun.azDeg < 180 ? 'low-am' : 'low-pm'
+  return 'day'
+}
+
+const DAY_PART_WORD: Record<DayPart, string> = { night: 'at night', 'low-am': 'in the morning', 'low-pm': 'in the evening', day: 'by day' }
+/** a remembered check's say against a fresh one's */
+const MEMORY_SHARE = 1 / 3
+/** it fades with this e-folding, days */
+const MEMORY_DAYS = 45
+/** and is forgotten after this many */
+const MEMORY_MAX_DAYS = 120
+
+const memoryMemo = new WeakMap<WindCheck[], Remembered[]>()
+
+/** The checks to remember at a moment: felt ones with a direction and a forecast saved, out of the live blend's reach by then. */
+function memoryOf(checks: WindCheck[], ms: number): Remembered[] {
+  let all = memoryMemo.get(checks)
+  if (!all) {
+    all = []
+    for (const c of checks) {
+      if (c.seen || c.dirFrom == null || c.strength === 'calm' || !c.forecast || c.forecast.kmh < 3) continue
+      const turn = ((((c.dirFrom - c.forecast.dirFrom) % 360) + 540) % 360) - 180
+      all.push({ c, turn, fDir: c.forecast.dirFrom, fKmh: c.forecast.kmh, part: dayPart(c.ts, c.lat, c.lon) })
+    }
+    memoryMemo.set(checks, all)
+  }
+  return all.filter((r) => ms - r.c.ts > maxReachMs(r.c) && ms - r.c.ts < MEMORY_MAX_DAYS * 86_400_000)
+}
+
+const rawSigmaMemo = new WeakMap<WindCheck, number>()
+
+/** The model's own spread at a check's spot and minute with no checks in:
+ *  how sure it was before anyone said anything, for the check's say
+ *  (windChecks.ts checkW0). Worked out once a check, with the grids in;
+ *  until then the call saved with the check stands in. */
+function rawSigma(c: WindCheck): number | undefined {
+  const hit = rawSigmaMemo.get(c)
+  if (hit !== undefined) return hit
+  if (!grid) return undefined
+  const ev = evaluate({ ...makeCtx(c.ts, false), checks: [], memory: [] }, c.lon, c.lat, false)
+  if (!ev) return undefined
+  rawSigmaMemo.set(c, ev.sigma)
+  return ev.sigma
+}
+
 function makeCtx(ms: number, withAmbient = true): Ctx {
   const home = homePlace()
   const sun = sunPosition(ms, home.lat, home.lon)
@@ -574,6 +657,7 @@ function makeCtx(ms: number, withAmbient = true): Ctx {
     checks: useWindChecks.getState().checks,
     seen: seenShifts(ms, useWindChecks.getState().checks),
     biases: learnBiases(useWindChecks.getState().checks, ms),
+    memory: memoryOf(useWindChecks.getState().checks, ms),
     leaves: leavesDown(ms),
     ambient: withAmbient ? ambientFor(ms) : null,
     tune: tuneValues(),
@@ -597,7 +681,8 @@ let sessMemo: { checks: WindCheck[]; sessions: WindCheck[][] } | null = null
 function sessions(): WindCheck[][] {
   const checks = useWindChecks.getState().checks
   if (sessMemo && sessMemo.checks === checks) return sessMemo.sessions
-  const here = checks.filter((c) => !c.seen && !otherAreaAt(c.lon, c.lat))
+  // felt and seen: a look at the treetops pins the air above for the sit's fit (ambientFit.ts)
+  const here = checks.filter((c) => !otherAreaAt(c.lon, c.lat))
   sessMemo = { checks, sessions: sessionsOf(here) }
   return sessMemo.sessions
 }
@@ -622,9 +707,12 @@ function probeFor(): ProbeFn {
       base = makeCtx(c.ts, false)
       ctxs.set(c.ts, base)
     }
-    const ctx: Ctx = { ...base, checks: [], ambient: { turn, lnRatio, fit: null, full: true }, lidsOnly }
+    const ctx: Ctx = { ...base, checks: [], memory: [], ambient: { turn, lnRatio, fit: null, full: true }, lidsOnly }
     const ev = evaluate(ctx, c.lon, c.lat, false)
-    return ev ? { kmh: Math.hypot(ev.e, ev.n), dirFrom: (towardOf(ev.e, ev.n) + 180) % 360, regime: ev.regime, woods: ev.woods } : null
+    if (!ev) return null
+    // a look at the treetops is the 10 m wind above the trees, before the land brings it down
+    if (c.seen) return { kmh: ev.U, dirFrom: ev.dirFrom, regime: 'aloft', woods: false }
+    return { kmh: Math.hypot(ev.e, ev.n), dirFrom: (towardOf(ev.e, ev.n) + 180) % 360, regime: ev.regime, woods: ev.woods }
   }
 }
 
@@ -634,7 +722,7 @@ function probeFor(): ProbeFn {
 function mapProbe(): MapProbeFn {
   return (c, others, fit) => {
     const base = makeCtx(c.ts, false)
-    const ctx: Ctx = { ...base, checks: others, biases: learnBiases(others, c.ts), ambient: fit ? { turn: fit.turn, lnRatio: fit.lnRatio, fit, full: false } : null }
+    const ctx: Ctx = { ...base, checks: others, biases: learnBiases(others, c.ts), memory: memoryOf(others, c.ts), ambient: fit ? { turn: fit.turn, lnRatio: fit.lnRatio, fit, full: false } : null }
     const ev = evaluate(ctx, c.lon, c.lat, false)
     return ev ? { kmh: Math.hypot(ev.e, ev.n), dirFrom: (towardOf(ev.e, ev.n) + 180) % 360, regime: ev.regime, woods: ev.woods } : null
   }
@@ -1317,9 +1405,17 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   // as a floor on sigma instead, scaled by how much of the answer the
   // checks make up. Checks that agree tighten the spread; checks that
   // disagree open it.
-  let wsum = 0
-  let oE = 0
-  let oN = 0
+  // How hard and which way blend apart (2026-10-11): a puff's strength is
+  // a range read well, so speed keeps the full say (nine parts to one where
+  // and when it was made); its direction is one sample of the gusts, so
+  // which way it says counts by how sure the model was of the spot without
+  // any checks (windChecks.ts checkW0): little on the Searchmont ridge,
+  // where the model had the air within ±25° and the puffs swung 180–299°,
+  // nine parts on the valley floor below, where it was lost. On the replay
+  // of the twelve Searchmont checks the ridge went from 71% within 45° with
+  // the old blend to 86%.
+  let sW = 0
+  let sK = 0
   let uE = 0
   let uN = 0
   let wdir = 0
@@ -1334,30 +1430,75 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     return !!m.woods === th > 0 && !!m.slot === !!slot ? 1 : 0.3
   }
   for (const c of ctx.checks) {
-    // and by how much a puff that hard can say: a drift wanders, a breezy puff points
-    const w = checkWeight(c, lon, lat, ctx.ms) * likeOf(c) * CHECK_CONF[c.strength]
-    if (w < 0.03) continue
-    const k = STRENGTH_KMH[c.strength]
-    const [ce, cn] = c.dirFrom == null ? [0, 0] : vec(k, c.dirFrom + 180)
-    oE += w * ce
-    oN += w * cn
-    wsum += w
+    // by time and distance, likeness, and how much a puff that hard can say: a drift wanders, a breezy puff points
+    const reach = checkWeight(c, lon, lat, ctx.ms, 1)
+    if (reach < 0.003) continue
+    const base = reach * likeOf(c) * CHECK_CONF[c.strength]
+    const ws = base * CHECK_W0_SPEED
+    if (ws < 0.03) continue
+    sW += ws
+    sK += ws * STRENGTH_KMH[c.strength]
     nChecks++
     who.add(c.by || 'you')
     if (c.dirFrom != null && c.strength !== 'calm') {
+      const wd = base * checkW0(c, rawSigma(c))
       const [ue, un] = vec(1, c.dirFrom + 180)
-      uE += w * ue
-      uN += w * un
-      wdir += w
+      uE += wd * ue
+      uN += wd * un
+      wdir += wd
+      if (c.swingDeg) swingFloor = Math.max(swingFloor, (wd * c.swingDeg) / 2)
     }
-    if (c.swingDeg) swingFloor = Math.max(swingFloor, (w * c.swingDeg) / 2)
     const mins = Math.round(Math.abs(ctx.ms - c.ts) / 60_000)
     if (!nearest || mins < nearest.min) nearest = { min: mins, m: Math.round(metresBetween(lon, lat, c.lon, c.lat)), ago: c.ts <= ctx.ms }
   }
-  if (wsum > 0) {
-    E = (E + oE) / (1 + wsum)
-    N = (N + oN) / (1 + wsum)
+  // the place's memory: checks of other days, where the air is in the same
+  // situation now (the forecast's way and strength, and the part of the day),
+  // turned with the forecast as it now runs here
+  let memW = 0
+  let memBest: { r: Remembered; w: number } | null = null
+  if (ctx.memory.length) {
+    const part: DayPart = ctx.sunElev < -6 ? 'night' : ctx.sunElev < 8 ? (ctx.sunAz < 180 ? 'low-am' : 'low-pm') : 'day'
+    for (const r of ctx.memory) {
+      if (r.part !== part) continue
+      // nothing reaches past 400 m: a cheap box first, the map asks every cell
+      if (Math.abs(lat - r.c.lat) > 0.004 || Math.abs(lon - r.c.lon) > 0.006) continue
+      const reach = placeReach(r.c, lon, lat)
+      if (reach < 0.02) continue
+      const dm = clamp(1 - (angleDiff(forecastDir, r.fDir) - 15) / 30, 0, 1)
+      const sm = clamp(1 - (Math.abs(Math.log(Math.max(forecastU, 0.5) / r.fKmh)) - Math.log(1.5)) / (Math.log(2.5) - Math.log(1.5)), 0, 1)
+      const fade = Math.exp(-(ctx.ms - r.c.ts) / (MEMORY_DAYS * 86_400_000))
+      const base = puffBoost(r.c) * MEMORY_SHARE * reach * likeOf(r.c) * CHECK_CONF[r.c.strength] * dm * sm * fade
+      const wd = base * checkW0(r.c, rawSigma(r.c))
+      if (wd < 0.03) continue
+      const ws = base * CHECK_W0_SPEED
+      sW += ws
+      sK += ws * STRENGTH_KMH[r.c.strength]
+      const [ue, un] = vec(1, forecastDir + r.turn + 180)
+      uE += wd * ue
+      uN += wd * un
+      wdir += wd
+      memW += wd
+      if (!memBest || wd > memBest.w) memBest = { r, w: wd }
+    }
   }
+  if (sW > 0 || wdir > 0) {
+    const sp0 = Math.hypot(E, N)
+    const spd = (sp0 + sK) / (1 + sW)
+    // the model's way at one part, the checks' at theirs; a model near calm has no way to speak of
+    const m0 = sp0 > 0.05 ? 1 : 0
+    const vE = (m0 * E) / Math.max(sp0, 1e-6) + uE
+    const vN = (m0 * N) / Math.max(sp0, 1e-6) + uN
+    const vl = Math.hypot(vE, vN)
+    if (vl > 1e-6) {
+      E = (spd * vE) / vl
+      N = (spd * vN) / vl
+    } else if (sp0 > 1e-6) {
+      E = (E * spd) / sp0
+      N = (N * spd) / sp0
+    }
+  }
+  // the checks' say on the direction, for the spread and the words below
+  const wsum = wdir
   // the checks' own spread about their mean direction: R = 1 all one way, 0 every way
   const R = wdir > 0 ? Math.hypot(uE, uN) / wdir : 1
   const checkSpread = R < 0.999 ? (Math.sqrt(-2 * Math.log(Math.max(R, 1e-3))) * 180) / Math.PI : 0
@@ -1423,6 +1564,14 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
         checkSpread >= 25
           ? `Blended with ${nChecks} wind checks nearby${people}, which disagree by about ±${Math.round(checkSpread)}°: the spread is held open that wide, and the side with more checks carries the direction`
           : `Blended with ${nChecks} wind checks nearby${people}, agreeing within about ±${Math.round(Math.max(checkSpread, 5))}°; the nearest ${nearest.m < 20 ? 'here' : `${nearest.m} m away`}, ${nearest.min} min ${nearest.ago ? 'before' : 'after'} this time`,
+      )
+    }
+    if (memBest && memW / (1 + wsum) >= 0.15) {
+      const c = memBest.r.c
+      const day = new Date(c.ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+      const where = metresBetween(lon, lat, c.lon, c.lat) < 20 ? 'here' : `${Math.round(metresBetween(lon, lat, c.lon, c.lat) / 10) * 10} m away`
+      reasons.push(
+        `Remembered from ${day} ${DAY_PART_WORD[memBest.r.part]}, with the forecast from the ${compass(memBest.r.fDir)} as now: the air ${where} ran from the ${compass(c.dirFrom!)}; it counts for ${Math.round((100 * memW) / (1 + wsum))}% of the wind here`,
       )
     }
     if (seenNear && seenW >= 0.1) {

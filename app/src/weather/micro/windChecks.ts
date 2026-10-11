@@ -75,6 +75,11 @@ export const STRENGTH_KMH: Record<Strength, number> = { calm: 0.3, drift: 1.5, l
  * middle, so a check at the top can pull but cannot pin.
  */
 export const STRENGTH_RANGE: Record<Strength, [number, number]> = { calm: [0, 1], drift: [1, 2.5], light: [2.5, 6], breezy: [6, 13], windy: [13, Infinity] }
+/** How well a puff's direction is known, by how hard it blew: a creeping
+ *  drift wanders (the 60 checks of 2026 at noon went every way at drift),
+ *  a breezy one points. Degrees, one sigma. The fit (ambientFit.ts) and a
+ *  check's weight in the blend (checkW0) both read it. */
+export const DIR_SIGMA: Record<Strength, number> = { calm: 90, drift: 50, light: 35, breezy: 28, windy: 25 }
 /** Each step in three, short and plain (Gavan, 2026-10-08): how far the
  *  powder gets in a second, what it looks like, what you feel (the face,
  *  the leaves, the branches: Beaufort 0–4 at head height in the bush). */
@@ -325,20 +330,54 @@ export function metresBetween(aLon: number, aLat: number, bLon: number, bLat: nu
  * A felt check's reach, as the place's own correction. Since 2026-10-08 the
  * air above the trees is fitted to the sit's checks first (ambientFit.ts,
  * applied in model.ts), and the field everywhere moves with that; what is
- * left at each check is this place's, so its reach is shorter (150 m
- * e-folding) and stronger (W0 = 9: nine parts check to one part model
- * where and when it was made, 90%) and it holds longer (an hour's
- * e-folding, nothing past three), since a place effect lasts as long as
- * the regime does. model.ts also scales it by likeness: a check under the
- * trees corrects the trees first, a check in a slot the slots.
+ * left at each check is this place's, so its reach is shorter (100 m
+ * e-folding) and it holds for an hour's e-folding, nothing past three,
+ * since a place effect lasts as long as the regime does. model.ts also
+ * scales it by likeness: a check under the trees corrects the trees first,
+ * a check in a slot the slots.
+ *
+ * How strong it is where and when it was made is checkW0: up to nine parts
+ * check to one part model (90%), where the model was lost there, and as
+ * little as one part (50%) where it was sure of the spot and the puff is
+ * one sample of the gusts.
  */
 const TAU_MS = 60 * 60_000
 /** 100 m e-folding and nothing past 400 m (2026-10-09, Gavan: "the wind checks need to be more localized, right now it's a huge circle"): a puff speaks for the air round it, the sit's fit carries the rest */
 const LEN_M = 100
 const MAX_MS = 3 * 3600_000
 const MAX_M = 400
-/** a felt check's weight where and when it was made: nine, so it leads the ground wind there 90% */
+/** a felt check's weight where and when it was made, at the most: nine, so it leads the ground wind there 90% */
 const W0 = 9
+/** the same, for what a puff says of how hard it blows: its range is read well, so speed keeps the full say (model.ts) */
+export const CHECK_W0_SPEED = W0
+/** and at the least: a quarter, a fifth of the say, where the model was surer of the spot than a puff can be */
+const W0_MIN = 0.25
+/** the spread taken for a check that saved no call */
+const SIGMA_UNKNOWN = 45
+
+/**
+ * A felt check's weight where and when it was made: how sure the model was
+ * of the spot against how well a puff that hard points, as the ratio of
+ * their variances (each the other's error, so the surer one leads), held
+ * between W0_MIN and W0. A breezy puff on the Searchmont ridge, where the
+ * model called the air within ±25°, is one sample of the gusts and takes
+ * a third (2026-10-11: on the climb the app chased each puff, 236° called
+ * right after a 236° puff where the next felt 180°); a puff on the valley
+ * floor below, where the model was lost (±88°), takes nine parts. A calm
+ * check speaks to speed, not direction, and keeps nine.
+ *
+ * `sigmaModel` is the model's own spread there with no checks in
+ * (model.ts rawSigma); the call saved with a check carries the blend of the
+ * checks before it, whose quarrel opens its spread (±110° on the ridge
+ * after a few puffs), and would hand the next puff a full say for it.
+ */
+export function checkW0(c: WindCheck, sigmaModel?: number): number {
+  if (c.seen) return SEEN_W0
+  if (c.dirFrom == null || c.strength === 'calm') return W0
+  const sm = sigmaModel ?? c.model?.sigmaDeg ?? SIGMA_UNKNOWN
+  const so = DIR_SIGMA[c.strength] + (c.swingDeg ?? 0) / 2
+  return Math.max(W0_MIN, Math.min(W0, (sm / so) ** 2))
+}
 
 /** A check's time scale: a wind that has held for a while is trusted twice as long. */
 function tauOf(c: WindCheck): number {
@@ -346,6 +385,15 @@ function tauOf(c: WindCheck): number {
 }
 function maxOf(c: WindCheck): number {
   return c.held ? 1.5 * MAX_MS : MAX_MS
+}
+/** How long a felt check counts in the live blend: past this it is the place's memory (model.ts), no longer a fresh check. */
+export function maxReachMs(c: WindCheck): number {
+  return maxOf(c)
+}
+/** A felt check's reach in distance alone, the way a remembered one reaches (model.ts): 100 m e-folding, nothing past 400 m. */
+export function placeReach(c: WindCheck, lon: number, lat: number): number {
+  const d = metresBetween(lon, lat, c.lon, c.lat)
+  return d > MAX_M ? 0 : Math.exp(-d / LEN_M)
 }
 
 /** A seen check's reach: the wind above the trees is one air over kilometres
@@ -356,14 +404,14 @@ const SEEN_LEN_M = 2500
 const SEEN_MAX_M = 8000
 const SEEN_W0 = 2
 
-/** How far a felt check reaches as the place's own correction: W0 where
- *  and when it was made, an hour and 100 m e-folding, nothing past 3 h or
- *  400 m (2 h and 4.5 h for a wind that had held). Returns the weight
- *  (0 = out of reach). A seen check never blends in as head-height air: 0
- *  here, its weight is seenWeight's. */
-export function checkWeight(c: WindCheck, lon: number, lat: number, ms: number): number {
+/** How far a felt check reaches as the place's own correction: checkW0
+ *  where and when it was made, an hour and 100 m e-folding, nothing past
+ *  3 h or 400 m (2 h and 4.5 h for a wind that had held). Returns the
+ *  weight (0 = out of reach). A seen check never blends in as head-height
+ *  air: 0 here, its weight is seenWeight's. */
+export function checkWeight(c: WindCheck, lon: number, lat: number, ms: number, w0 = checkW0(c)): number {
   if (c.seen) return 0
-  return W0 * puffBoost(c) * reachWeight(c, lon, lat, ms, LEN_M, MAX_M)
+  return w0 * puffBoost(c) * reachWeight(c, lon, lat, ms, LEN_M, MAX_M)
 }
 
 /** A series of puffs is more evidence than one: a check's weight grows
@@ -405,7 +453,8 @@ const W_SHOWN = PULL_SHOWN / (1 - PULL_SHOWN)
 export function checkRadiusM(c: WindCheck, ms: number, share: number): number {
   const dt = Math.abs(ms - c.ts)
   if (dt > maxOf(c)) return 0
-  const [len, max, w0] = c.seen ? [SEEN_LEN_M, SEEN_MAX_M, SEEN_W0] : [LEN_M, MAX_M, W0]
+  const [len, max] = c.seen ? [SEEN_LEN_M, SEEN_MAX_M] : [LEN_M, MAX_M]
+  const w0 = checkW0(c) * (c.seen ? 1 : puffBoost(c))
   return Math.max(0, Math.min(max, len * (Math.log((w0 * (1 - share)) / share) - dt / tauOf(c))))
 }
 
@@ -416,7 +465,7 @@ export function checkReachM(c: WindCheck, ms: number): number {
 
 /** When a check stops making up PULL_SHOWN of the wind even where it was made. */
 export function checkSpentAt(c: WindCheck): number {
-  const w0 = c.seen ? SEEN_W0 : W0
+  const w0 = checkW0(c) * (c.seen ? 1 : puffBoost(c))
   return c.ts + Math.min(maxOf(c), tauOf(c) * Math.log(w0 / W_SHOWN))
 }
 

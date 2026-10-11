@@ -1,4 +1,4 @@
-import { angleDiff, judgeCall, puffBoost, STRENGTH_RANGE, type Strength, type WindCheck } from './windChecks'
+import { angleDiff, DIR_SIGMA, judgeCall, puffBoost, STRENGTH_RANGE, type Seen, type WindCheck } from './windChecks'
 
 /**
  * The air above the trees, fitted to the checks of a sit.
@@ -34,6 +34,15 @@ import { angleDiff, judgeCall, puffBoost, STRENGTH_RANGE, type Strength, type Wi
  * check at the top of the scale can pull the ratio up but never pins it.
  * Under a canopy the speed says as much about the trees' share as about
  * the air above, so it counts half there; direction counts in full.
+ *
+ * The treetops seen moving join the fit too (2026-10-11). They are the air
+ * above the trees itself, so their probe is the 10 m wind the ground model
+ * starts from, not the head-height air, and they pin the turn directly.
+ * Where they agree with the forecast and a check at the ground does not,
+ * the turn stays near nothing and the miss stays the place's own: the
+ * Searchmont valley floor ran from 308° at dusk under a 152° forecast while
+ * the treetops 500 m off showed 180°, a rotor in the valley, not a wrong
+ * forecast to turn the whole neighbourhood by.
  *
  * A leave-one-out score says whether it helps: each check scored by the
  * fit made from the others, beside the raw model and the forecast. That is
@@ -105,10 +114,12 @@ export const FIT_MAX_CHECKS = 16
 
 const PRIOR_TURN = 40
 const PRIOR_LN_RATIO = 0.45
-/** How well a puff's direction is known, by how hard it blew: a creeping
- *  drift wanders (the 60 checks of 2026 at noon went every way at drift),
- *  a breezy one points. Degrees, one sigma. */
-const DIR_SIGMA: Record<Strength, number> = { calm: 90, drift: 50, light: 35, breezy: 28, windy: 25 }
+/** How well the treetops' way is read from afar, degrees, one sigma. */
+const SEEN_DIR_SIGMA = 30
+/** What each sign means at 10 m, km/h: Beaufort's bands (SEEN_KMH holds their middles). */
+const SEEN_RANGE: Record<Seen, [number, number]> = { still: [0, 6], leaves: [6, 20], branches: [20, 29], sway: [29, 39], bend: [39, Infinity] }
+/** A look at the treetops sees the air the fit is after, not the ground's answer to it: it counts this much more than a puff. */
+const SEEN_FIT_W = 1.5
 const SPEED_SIGMA = Math.log(2)
 const COARSE_STEP = 15
 const LN_RATIOS = [-0.9, -0.6, -0.3, 0, 0.3, 0.6, 0.9, 1.1]
@@ -139,9 +150,9 @@ export function fitWeightAt(f: AmbientFit, lon: number, lat: number, ms: number)
   return fade * Math.exp(-((d / FIT_SCALE_M) * (d / FIT_SCALE_M)))
 }
 
-/** The sits: felt checks in order, split where more than SESSION_GAP_MS passes or a check is SESSION_SPAN_M from the sit's centre. */
+/** The sits: checks in order, felt and seen, split where more than SESSION_GAP_MS passes or a check is SESSION_SPAN_M from the sit's centre. */
 export function sessionsOf(checks: WindCheck[]): WindCheck[][] {
-  const felt = checks.filter((c) => !c.seen).sort((a, b) => a.ts - b.ts)
+  const felt = [...checks].sort((a, b) => a.ts - b.ts)
   const out: WindCheck[][] = []
   let cur: WindCheck[] = []
   let cx = 0
@@ -207,6 +218,21 @@ function lnLikeSpeed(c: WindCheck, p: Probe): number {
   return Math.log(Math.max(upper - lower, 0.02))
 }
 
+/** A look at the treetops against the 10 m wind under a candidate: its
+ *  direction to SEEN_DIR_SIGMA, its Beaufort band like a puff's range. */
+function lnLikeSeen(c: WindCheck, p: Probe): number {
+  let s = 0
+  if (c.dirFrom != null && c.seen !== 'still') {
+    const z = angleDiff(c.dirFrom, p.dirFrom) / SEEN_DIR_SIGMA
+    s += Math.log(0.9 * Math.exp(-0.5 * z * z) + 0.1)
+  }
+  const [lo, hi] = SEEN_RANGE[c.seen!]
+  const m = Math.log(Math.max(p.kmh, 0.2))
+  const upper = hi === Infinity ? 1 : Phi((Math.log(hi) - m) / SPEED_SIGMA)
+  const lower = lo <= 0 ? 0 : Phi((Math.log(lo) - m) / SPEED_SIGMA)
+  return s + Math.log(Math.max(upper - lower, 0.02))
+}
+
 function lnPrior(turn: number, lnRatio: number): number {
   return -0.5 * (turn / PRIOR_TURN) ** 2 - 0.5 * (lnRatio / PRIOR_LN_RATIO) ** 2
 }
@@ -224,10 +250,10 @@ export function fitAmbient(checks: WindCheck[], probe: ProbeFn): AmbientFit | nu
   const use = sorted.slice(-FIT_MAX_CHECKS)
   if (!use.length) return null
   const refTs = use[use.length - 1].ts
-  const w = use.map((c) => fitWeight(c, refTs))
+  const w = use.map((c) => fitWeight(c, refTs) * (c.seen ? SEEN_FIT_W : 1))
   // each check's probe is a function of the candidate alone: the woods flag
   // (half weight on speed) is read at the forecast as it stands
-  const woods = use.map((c) => probe(c, 0, 0)?.woods ?? false)
+  const woods = use.map((c) => !c.seen && (probe(c, 0, 0)?.woods ?? false))
   let anyProbe = false
   const score = (turn: number, lnRatio: number): number => {
     let s = lnPrior(turn, lnRatio)
@@ -235,7 +261,8 @@ export function fitAmbient(checks: WindCheck[], probe: ProbeFn): AmbientFit | nu
       const p = probe(use[k], turn, lnRatio)
       if (!p) continue
       anyProbe = true
-      s += w[k] * (lnLikeDir(use[k], p) + (woods[k] ? 0.5 : 1) * lnLikeSpeed(use[k], p))
+      // a seen check's probe is the 10 m wind above the trees (model.ts probeFor)
+      s += w[k] * (use[k].seen ? lnLikeSeen(use[k], p) : lnLikeDir(use[k], p) + (woods[k] ? 0.5 : 1) * lnLikeSpeed(use[k], p))
     }
     return s
   }
@@ -301,7 +328,7 @@ export function fitAmbient(checks: WindCheck[], probe: ProbeFn): AmbientFit | nu
     held: !!use[use.length - 1].held,
     sure: total > 0 ? near / total : 0,
     gain: (best - base) / Math.max(1, n),
-    allWoods: woods.every(Boolean),
+    allWoods: use.every((c, k) => c.seen || woods[k]),
     allOpen: woods.every((x) => !x),
   }
 }
@@ -317,6 +344,8 @@ export function sitScore(checks: WindCheck[], probe: ProbeFn, asMap?: MapProbeFn
   const out: SitScore = { n: 0, forecast: { n: 0, agree: 0, close: 0 }, raw: { agree: 0, close: 0 }, fit: { agree: 0, close: 0 } }
   const sorted = [...checks].sort((a, b) => a.ts - b.ts).slice(-FIT_MAX_CHECKS)
   for (const c of sorted) {
+    // a look at the treetops helps the others' fit; the score is the felt checks'
+    if (c.seen) continue
     const raw = probe(c, 0, 0)
     if (!raw) continue
     out.n++

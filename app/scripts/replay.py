@@ -1,6 +1,16 @@
 """Replay the hunt log's wind checks through the ground model as it is now.
 
     python scripts/replay.py <hunt-log.gpx> [--url http://localhost:5195/] [--out replay.csv] [--days 2026-09-29,...]
+    python scripts/replay.py <checks.json> --url "http://localhost:5195/?area=searchmont" --loo --all-days
+
+The checks come from the hunt log's GPX export, or as JSON: a list of
+checks as the phone keeps them (windChecks.ts WindCheck), the way the
+shared checks sit in D1 (`checks.data`). JSON keeps what the GPX loses: the
+exact direction, a seen check, the puffs, and the call the phone made with
+its spread (`model.sigmaDeg`) and the forecast it had. A seen check is
+an input only, never scored: it is the wind above the trees, not at
+head height. --all-days hands each check the others of every day, so a
+lesson from another day (model.ts, lessons by situation) can reach it.
 
 For each day with checks the app is opened headless with its clock set to
 that day, every api.open-meteo.com call rerouted to the historical-forecast
@@ -41,11 +51,39 @@ POINTS = {"N": 0, "NE": 45, "E": 90, "SE": 135, "S": 180, "SW": 225, "W": 270, "
 # windChecks.ts STRENGTH_KMH
 STRENGTH = {"calm": 0.3, "drift": 1.5, "light": 5, "breezy": 12, "windy": 22}
 # the archive runs a day or so behind
-LAST_ARCHIVE_DAY = date.today() - timedelta(days=1)
+# the archive serves the day so far as well
+LAST_ARCHIVE_DAY = date.today()
 # named places, for the summary (m)
-PLACES = {"bog": (48.9250, -85.6006, 120), "camp": (48.9262, -85.59872, 200), "lake strip": (48.95406, -85.55121, 150)}
+PLACES = {"bog": (48.9250, -85.6006, 120), "camp": (48.9262, -85.59872, 200), "lake strip": (48.95406, -85.55121, 150), "searchmont floor": (46.7755, -84.0450, 450), "searchmont top": (46.7668, -84.0400, 450), "sault test": (46.4700, -84.5040, 800)}
 
 ARCHIVE = "https://historical-forecast-api.open-meteo.com"
+
+
+def parse_json(path: Path) -> list[dict]:
+    """Checks as the phone keeps them, each carried whole in `wc`."""
+    out = []
+    for c in json.loads(path.read_text(encoding="utf-8")):
+        wc = {k: v for k, v in c.items() if not k.startswith("_")}
+        calm = c.get("dirFrom") is None or c["strength"] == "calm"
+        m = c.get("model") or {}
+        out.append(
+            {
+                "ts": c["ts"],
+                "local": datetime.fromtimestamp(c["ts"] / 1000, TZ),
+                "lat": c["lat"],
+                "lon": c["lon"],
+                "feltStrength": c["strength"],
+                "feltKmh": STRENGTH.get(c["strength"], 0.3),
+                "feltDirFrom": None if calm else c["dirFrom"],
+                "seen": c.get("seen") or "",
+                "loggedDirFrom": m.get("dirFrom"),
+                "loggedKmh": m.get("kmh"),
+                "loggedRegime": m.get("regime", ""),
+                "loggedSigma": m.get("sigmaDeg"),
+                "wc": wc,
+            }
+        )
+    return out
 
 
 def parse_gpx(path: Path) -> list[dict]:
@@ -184,7 +222,7 @@ def hour_band(local: datetime) -> str:
 
 
 def run(args) -> list[dict]:
-    checks = parse_gpx(Path(args.gpx))
+    checks = parse_json(Path(args.gpx)) if args.gpx.endswith(".json") else parse_gpx(Path(args.gpx))
     if args.days:
         want = set(args.days.split(","))
         checks = [c for c in checks if c["local"].date().isoformat() in want]
@@ -194,6 +232,8 @@ def run(args) -> list[dict]:
     print(f"{len(checks)} checks over {len(by_day)} days", flush=True)
     rows: list[dict] = []
     home = None
+    # every check of the run as the store holds it, for --all-days
+    all_objs = [as_check(c, k) for k, c in enumerate(sorted(checks, key=lambda c: c["ts"]))] if args.all_days else []
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True, args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"])
         for day, todays in sorted(by_day.items()):
@@ -222,9 +262,13 @@ def run(args) -> list[dict]:
             if args.loo:
                 objs = [as_check(c, k) for k, c in enumerate(todays)]
                 for n, c in enumerate(todays):
+                    if c.get("seen"):
+                        continue  # an input to the others, never scored as head-height air
                     t1 = time.time()
-                    others = [o for k, o in enumerate(objs) if k != n]
-                    r = page.evaluate(LOO_JS, {"me": objs[n], "others": others})
+                    me = objs[n]
+                    pool = all_objs if args.all_days else objs
+                    others = [o for o in pool if o["id"] != me["id"]]
+                    r = page.evaluate(LOO_JS, {"me": me, "others": others})
                     if time.time() - t1 > 5:
                         print(f"    check {n + 1}/{len(todays)} took {time.time() - t1:.0f} s", flush=True)
                     row = {k: v for k, v in c.items() if k != "local"}
@@ -288,9 +332,12 @@ def run(args) -> list[dict]:
 def as_check(c: dict, k: int) -> dict:
     """A GPX check as the store holds one (windChecks.ts WindCheck): the felt
     wind, and the call the phone logged as `model` (no woods or slot flag:
-    the likeness in model.ts then sits between)."""
+    the likeness in model.ts then sits between). A JSON check is already
+    one, and goes as it is."""
+    if "wc" in c:
+        return dict(c["wc"])
     out = {
-        "id": f"gpx{k}",
+        "id": f"gpx{c['ts']}",  # unique across days, for --all-days
         "ts": c["ts"],
         "lon": c["lon"],
         "lat": c["lat"],
@@ -374,6 +421,7 @@ def main() -> int:
     ap.add_argument("--out")
     ap.add_argument("--days", help="local days to run, comma separated")
     ap.add_argument("--loo", action="store_true", help="each check judged by the others of its day: raw rules, the local blend, the fit of the air above")
+    ap.add_argument("--all-days", action="store_true", help="--loo: the others of every day, not only the check's own (lessons from other days)")
     args = ap.parse_args()
     rows = run(args)
     if not rows:

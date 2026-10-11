@@ -1007,6 +1007,75 @@ nothing that matters: at that cell the mechanical part stays under
 - A camp station can later post checks with `source: 'station'`.
 - The phone's barometer is not available to a web app.
 
+#### A puff's say, the treetops in the fit, and the place's memory (2026-10-11)
+
+Built from Gavan's two Searchmont outings (docs/WIND-LEARNING.md, "What
+set it off", steps 1–2):
+- **The dusk:** the valley floor ran from 308° under a 152° forecast,
+  while the treetops 500 m off agreed with the forecast.
+- **The next midday:** ridge-top puffs swung 180–299°, and the app called
+  each next puff from the last.
+
+Three changes:
+
+- **How hard and which way blend apart.** A puff's strength is a range
+  read well, so for speed a check keeps the full say: nine parts to one
+  where and when it was made.
+  - Its direction counts by how sure the model was of the spot before any
+    check (`windChecks.ts checkW0`): the ratio of the variances, model's
+    spread over the puff's (`DIR_SIGMA`, plus half a swing), held between
+    a quarter and nine.
+  - The model's spread is its own with no checks in (`model.ts rawSigma`,
+    worked out once a check). The call saved with a check carries the
+    earlier puffs' quarrel, which on the ridge read ±110° and handed the
+    next puff a full say.
+  - A calm check speaks to speed only.
+- **The treetops join the sit's fit** (`ambientFit.ts`). A seen check is
+  the air above the trees, so its probe is the 10 m wind the cell starts
+  from, scored to ±30° and its Beaufort band, at 1.5 times a puff's say.
+  Where it agrees with the forecast and a ground check does not, the fit's
+  turn stays near nothing and the miss stays the place's own. The sit's
+  score counts the felt checks only.
+- **The place's memory** (`model.ts`, layer 4 of WIND-LEARNING.md). A
+  felt check out of the live blend's three hours comes back where the air
+  is in the same situation:
+  - the forecast within 45° of the one it had (in full within 15°);
+  - its speed within a factor 2.5 (in full within 1.5);
+  - the same part of the day: night (sun below −6°), the low sun of
+    morning or of evening (below 8°), or day.
+
+  It comes back as its turn off the forecast, applied to the forecast as
+  it now runs, at a third of a fresh check's say. It reaches as far as a
+  check does (100 m e-folding, nothing past 400 m) and is scaled by
+  likeness. It fades with a 45-day e-folding and is forgotten after 120
+  days. A check with no forecast saved (before 2026-10-06) has nothing to
+  be remembered against.
+
+  The reasons say: "Remembered from 10 Oct in the evening, with the
+  forecast from the S as now: the air here ran from the N; it counts for
+  64% of the wind here".
+
+**Replay of the 12 Searchmont checks** (`scripts/replay.py` on the D1
+checks as JSON, `--loo --all-days`), each check judged by the others:
+
+| | within 45° | median miss | speed within 2× |
+|---|---|---|---|
+| raw rules | 67% | 37° | 44% |
+| old blend | 67% | 42° | 56% |
+| new blend | 78% | 34° | 56% |
+| ridge only: raw / old / new | 71% / 71% / 86% | 16° / 42° / 29° | 57% / 71% / 71% |
+
+The 4 Sault test checks are unchanged: 2 of 4 raw, 1 of 4 blended, from
+the region-wide lesson (`bias.ts`).
+
+The memory has no field test yet: no outing so far repeats a situation.
+It was checked by hand on the dev server with a check planted the
+evening before. At the same hour the floor call turned from 197° to 313°
+with the reason above; the morning and 470 m away were untouched.
+
+Not field-checked. The quarter floor and the third for memory are
+guesses that want a season of checks.
+
 ## Limits
 
 - **Not validated in the field yet.** The constants are from the literature

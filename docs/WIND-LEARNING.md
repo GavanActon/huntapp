@@ -297,6 +297,45 @@ The trial, with the decision rule fixed before it runs:
    skies per site. If none passes, PALM or the GPU engine (layer 1) is
    the way to the night cases.
 
+### First trial, Searchmont (2026-10-11)
+
+The setup:
+- A 12 × 12 km grid of 30 m MRDEM round the valley spot and the hill,
+  in UTM 16N, with trees.
+- Each case started from HRDPS's wind, temperature and cloud for the
+  hour (Open-Meteo's past forecasts).
+- Scripts in `C:/tmp/wn-trial/` (`trial.py`).
+- Run times: about 30 s a case for the mass solver; 15–18 min for the
+  momentum solver on XEVO beside the seed runners.
+
+**WindNinja 4.0 refuses `momentum_flag` with `non_neutral_stability`.**
+The two can't share a config file, even with momentum set false.
+Stability exists only in the mass solver.
+
+| Check (what Gavan felt) | mass | mass + slope flows + stability | momentum | momentum + slope flows |
+|---|---|---|---|---|
+| Dusk, valley floor (308°) | 150°, 158° off | 149°, 159° off | 158°, 150° off | 156°, 152° off |
+| Dusk, treetops seen (180°) | 150°, 30° off | 149°, 31° off | 169°, 11° off | 158°, 22° off |
+| Midday, valley floor (249°) | 187°, 62° off | 184°, 65° off | 202°, 47° off | 206°, 43° off |
+| Midday, the top, 5 checks (180–299°) | 182–187° | 183–185° | 175–186° | 170–180° |
+
+- **No setting makes the rotor.** Every one keeps the dusk valley floor
+  within 8° of the forecast, about 150° off what was felt.
+- **The momentum solver's terrain turning helps a little.** It turns the
+  midday floor toward the valley's line (202–206° against 249°), and it
+  reads the dusk treetops best.
+- **Slope flows change little at the check spots.**
+
+By the rule fixed above, nothing here passes. That points the night
+cases at the other routes:
+- the momentum solver on the 1 m LiDAR resampled to 5–10 m (HRDEM
+  2024, Sault Ste. Marie, covers the hill), to see whether a sharper
+  hill alone separates the flow;
+- PALM or the GPU engine, with stability resolved rather than
+  parameterised;
+- stations on the floor and the ridge, to confirm the rotor is real
+  and how often.
+
 ### The first step needs no bake
 
 **Score the forecast itself.** Compare HRDPS at every station with what
@@ -321,8 +360,8 @@ Open-Meteo's historical-forecast API keeps past HRDPS runs.
 | Step | What | Size | Layer |
 |---|---|---|---|
 | 0 | Get the checks off the phones: find the install that holds them, a "send all" with counts in Settings | ½ day | data |
-| 1 | The rule: when ambient-seeing checks agree with the forecast, a floor miss is a lesson about the place, not a turn of the map; on exposed ground a puff is a sample of the gusts' spread, so one puff stops taking 90% of the call | ½–1 day | 3 |
-| 2 | Place memory by situation, shown on the card | 1 day | 4 |
+| 1 | The rule: when ambient-seeing checks agree with the forecast, a floor miss is a lesson about the place, not a turn of the map; on exposed ground a puff is a sample of the gusts' spread, so one puff stops taking 90% of the call. **Built 2026-10-11** (MICRO-WIND.md §8, last subsection) | ½–1 day | 3 |
+| 2 | Place memory by situation, shown on the card. **Built 2026-10-11** (in the reasons; not yet field-tested) | 1 day | 4 |
 | 3 | Shelter per direction baked into the grid; lessons spread by likeness | 1 day | 4 |
 | 4 | The backwards solve proper: the ambient and stability posterior, the likely cause, the next useful check; scored on replay | 2–3 days | 3 |
 | 5 | Stations at Searchmont, floor and ridge | Gavan's buy | data |
