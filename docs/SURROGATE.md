@@ -300,6 +300,94 @@ The Highland fold retrained the same way (`runs/seed1-hold-highland-lake`, on xo
 
 That fold was the first training job on xonix through the GPU kit (§6): 12,000 steps in 11.7 min (the four-area run) and 12.1 min (the seventeen-area rerun) against 25.4 on the laptop, with ten WindNinja runners pinning its CPU, so the loader is not starving the 5090 badly at this net's size. Batch 2's 18 sites are due the evening of 2026-10-10; the next retrain takes all 35, with a US site held out for the 3DEP check and Big Southern Butte and Salmon River scored against the measured Idaho wind.
 
+### Seed set complete, 2026-10-11 evening: 36 built areas, folds on 35
+
+All 30 seed sites finished on xonix at 17:46 (480 directions, none
+failed, no turbulence grid flagged), joining the five first areas and
+Whitefish Lake: 36 built areas. Four jobs went to xonix through the kit,
+12–14 min each on the 5090 with its CPU pinned. Held-out cores,
+eight-way average:
+
+| held out | training areas | turn MAE | turn median | turn r | speed MAE | speed r | speed bias |
+|---|---|---|---|---|---|---|---|
+| Blanchard River | 4 | 15.7° | 6.6° | 0.41 | 0.173 | 0.80 | −0.03 |
+| | 17 | 14.1° | 6.0° | 0.47 | 0.166 | 0.82 | −0.04 |
+| | 35 | 13.7° | 5.8° | 0.50 | 0.165 | 0.82 | −0.04 |
+| Highland Lake | 4 | 3.3° | 1.9° | 0.54 | 0.119 | 0.80 | −0.10 |
+| | 17 | 3.2° | 1.8° | 0.57 | 0.105 | 0.82 | −0.08 |
+| | 35 | 3.2° | 1.9° | 0.59 | 0.099 | 0.82 | −0.07 |
+| Rothrock, PA (3DEP) | 35 | 5.5° | 2.5° | 0.67 | 0.080 | 0.95 | −0.01 |
+
+Every batch moves both mountain folds the same way: the turn r climbs
+and Highland's speed under-call shrinks (−0.10 to −0.07). Rothrock is
+the US check: its DEM is USGS 3DEP where the Canadian areas use MRDEM,
+and held out it beats its own yardsticks by more than the Canadian
+folds do (mass layer 16.5° / speed r 0.49; interpolation 8.4° / 0.93),
+so the DEM source does not shift the net. Its nearest Canadian
+analogue in the set is Matane.
+
+**The serving net.** `runs/seed2-all` (all 36 areas) is copied to
+`runs/all`, which `build_windsd.py` uses for any area without a
+held-out net of its own; the five-area net is kept as `runs/all-5areas`.
+The five areas' SD grids in the app are still the pass-2 held-out nets
+(four areas each); rebaking them from 35-area folds is a deploy and
+Gavan's call (Pickle's needs `--overwrite-published` now that its SD
+grid is published).
+
+### The teacher against measured wind: Big Southern Butte and Salmon River, 2026-10-11
+
+Two seed sites are WindNinja's own field campaigns (Wagenbrenner et al.,
+Zenodo 8226638, CC-BY 4.0: cup-and-vane sensors at 3 m, 30 s means,
+2010–11; fetched to `pipeline/raw/idaho/`, scored by
+`pipeline/surrogate/idaho.py`, results in `runs/idaho/`). Measured and
+modelled are compared the same way: each sensor's speed as a ratio to
+the campaign's reference sensor and its turn from the reference, in
+10-minute blocks with the reference over 6 m/s and steady, binned by the
+reference's direction into our 16 sectors, 10+ blocks from 2+ days per
+sensor and bin. The butte's vanes carry fixed offsets of 13–95° against
+the reference (the same in every wind, day and night), so the reference
+was put on the mean of the five plain vanes 6 km out, and turns are also
+scored about each sensor's own mean.
+
+**Big Southern Butte** (an isolated 800 m butte on a sagebrush plain; 55
+sensors, 10 sectors with data, 457 sensor-sectors):
+
+| | speed ratio r | ratio MAE | ratio bias | turn r | turn MAE |
+|---|---|---|---|---|---|
+| WindNinja momentum (the teacher) | 0.40 | 0.35 | +0.02 | 0.10 | 54° |
+| mass-consistent neutral (today's SD) | 0.15 | 0.57 | +0.49 | 0.00 | 52° |
+| uniform ambient | | 0.31 | | | 52° |
+
+- On the exposed ground (summit and windward flank) the teacher's ratio
+  r is 0.46 against 0.16 for the mass layer, which runs about +0.75 too
+  fast over the whole summit. In the SW to W sectors, where the campaign
+  has most of its wind, the teacher's r is 0.67–0.78.
+- But it overdoes the contrast both ways: where it predicts a speed-up
+  over 1.3 the measured median is 1.11, and where it predicts separation
+  under 0.5 in the lee the measured median is 0.57 (unsteady air). Its
+  shelter is in the right place and too deep. So its absolute error is
+  no better than calling the wind uniform.
+- Turning cannot be judged here: no model's turn correlates with the
+  measured turn, and the vanes' own offsets are of the same size.
+
+**Salmon River Canyon** (27 sensors, 7 sectors): no skill for any model.
+The strong reference winds are down-canyon easterlies between midnight
+and 10:00, which Butler et al. describe as decoupled from the gradient
+wind: stable, drainage-driven air that a neutral solver cannot have. The
+teacher's ratio r is −0.06 with a +1.0 bias; the one thing it tracks is
+how the canyon floor's turn changes with sector (own-mean turn r 0.62).
+
+**What this means for the flywheel.** The teacher is worth learning for
+the shape of terrain speed-up and shelter in synoptic wind, which is
+where the mass layer fails and where the net inherits a real gain. It
+is not a teacher of absolute contrast (too strong), of lee turning
+(untested, probably too clean) or of anything thermally driven, which
+is the point §1 makes and the stability teacher of
+[WIND-LEARNING.md](WIND-LEARNING.md) exists for. Two cheap follow-ups
+in the current frame: damp the net's speed contrast toward the measured
+slope (a scalar on the deviation from the ambient, fitted on the butte),
+and keep the checks' floor and stability layers above it as they are.
+
 ## 7. The SD wind as a bake step, and the HD/SD switch in the app
 
 Built 2026-10-10 (Gavan: "give me an SD/HD wind option in the app. Build
