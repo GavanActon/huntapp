@@ -57,6 +57,8 @@ export class FixFilter {
   /** the position last given out (the estimate once it has moved past the deadband) */
   private outLon = 0
   private outLat = 0
+  /** what the last push did with its fix, for the dev log (gpsLog.ts) */
+  last: 'first' | 'smooth' | 'held' | 'jumpTaken' | 'stale' = 'first'
 
   reset() {
     this.v = -1
@@ -66,19 +68,30 @@ export class FixFilter {
 
   /** The filtered fix, or null with why the raw one was left out. */
   push(raw: Fix, now = Date.now()): { fix: Fix; why?: undefined } | { fix: null; why: DropReason } {
-    if (raw.ts <= this.ts || now - raw.ts > STALE_MS) return { fix: null, why: 'stale' }
+    if (raw.ts <= this.ts || now - raw.ts > STALE_MS) {
+      this.last = 'stale'
+      return { fix: null, why: 'stale' }
+    }
     const r2 = raw.accuracy * raw.accuracy
-    if (this.v < 0) return { fix: this.take(raw) }
+    if (this.v < 0) {
+      this.last = 'first'
+      return { fix: this.take(raw) }
+    }
 
     const dt = (raw.ts - this.ts) / 1000
     const vPred = this.v + Q * Q * dt
     const d = this.metres(raw)
     if (d > Math.max(JUMP_MIN_M, JUMP_SIGMAS * Math.sqrt(vPred + r2))) {
       this.held = [...this.held, raw].slice(-HOLD_N)
-      if (this.held.length === HOLD_N && this.agree(this.held)) return { fix: this.take(raw) }
+      if (this.held.length === HOLD_N && this.agree(this.held)) {
+        this.last = 'jumpTaken'
+        return { fix: this.take(raw) }
+      }
+      this.last = 'held'
       return { fix: null, why: 'jump' }
     }
     this.held = []
+    this.last = 'smooth'
 
     const k = vPred / (vPred + r2)
     this.lon += k * (raw.lon - this.lon)

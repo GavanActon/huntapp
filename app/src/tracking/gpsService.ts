@@ -5,6 +5,7 @@ import { followCenter } from '../config'
 import { useGpsStore, type Fix } from './gpsStore'
 import { compassAskable, requestCompass, startCompass, stopCompass, useCompass, wakeCompass } from './compass'
 import { FixFilter } from './fixFilter'
+import { gpsLogFix, gpsLogStart, gpsLogStop } from './gpsLog'
 
 /** A geolocation watch: one fix in the store, filtered (fixFilter.ts) so
  *  the dot and the track do not wander with the canopy's multipath, and
@@ -26,12 +27,13 @@ function remember(on: boolean) {
   }
 }
 
-export function startGps() {
+export function startGps(why = 'location on') {
   if (watchId != null) return
   const gps = useGpsStore.getState()
   if (!('geolocation' in navigator)) return gps.setStatus('error', 'no geolocation')
   if (!window.isSecureContext) return gps.setStatus('insecure')
   gps.setStatus('acquiring')
+  gpsLogStart(why)
   watchId = navigator.geolocation.watchPosition(
     (p) => {
       const raw: Fix = {
@@ -44,6 +46,7 @@ export function startGps() {
       }
       const gps = useGpsStore.getState()
       const { fix, why } = filter.push(raw)
+      gpsLogFix(raw, fix, filter)
       if (!fix) {
         gps.setDropped({ ...gps.dropped, [why]: gps.dropped[why] + 1 })
         return
@@ -62,6 +65,7 @@ export function startGps() {
 }
 
 export function stopGps() {
+  gpsLogStop()
   if (watchId != null) navigator.geolocation.clearWatch(watchId)
   watchId = null
   filter.reset()
@@ -146,7 +150,7 @@ export function resumeLocation(): void {
   // first fix or dragged to the box's edge by every one (areas/switch.ts)
   useAppStore.getState().setFollow(!takeHoldFollow())
   startCompass()
-  startGps()
+  startGps('brought back at startup')
 }
 
 /**
@@ -161,6 +165,6 @@ document.addEventListener('visibilitychange', () => {
   else if (watchId != null && Date.now() - hiddenAt > 30_000) {
     navigator.geolocation.clearWatch(watchId)
     watchId = null
-    startGps()
+    startGps(`back after ${Math.round((Date.now() - hiddenAt) / 1000)} s away`)
   }
 })
