@@ -48,11 +48,9 @@ export function startGps() {
         gps.setDropped({ ...gps.dropped, [why]: gps.dropped[why] + 1 })
         return
       }
+      // the map follows in positionLayer, which knows where on the screen you are kept
       gps.setFix(fix)
       gps.setStatus('on')
-      // a fix outside the area is the phone at home: the map stays where it is
-      const center = useAppStore.getState().follow ? followCenter(fix.lon, fix.lat) : null
-      if (center) withMap((m) => m.easeTo({ center, duration: 500 }))
     },
     (err) => {
       const s = useGpsStore.getState()
@@ -93,13 +91,16 @@ export function locateAndFollow() {
 }
 
 /** The locate button: off → following, north up → following, heading up
- *  (skipped without a compass) → off; panned away → follow again. A compass
+ *  (skipped without a compass) → off; panned away → follow again; heading
+ *  up with you dragged off the middle → the middle, then off. A compass
  *  that has not read yet is asked for from this tap and the map turns once
  *  it does: on an iPhone, location brought back on at startup started it
  *  without a tap, so it heard nothing, and heading up was skipped for good. */
 export function toggleLocate() {
   const g = useGpsStore.getState()
   if (!g.locating || !useAppStore.getState().follow) return locateAndFollow()
+  // heading up with you moved off the middle: the middle first, then off
+  if (g.headingUp && (g.youAt[0] !== 0 || g.youAt[1] !== 0)) return g.setYouAt([0, 0])
   if (g.headingUp) return stopLocating()
   const st = useCompass.getState().status
   if (st === 'on') return g.setHeadingUp(true)
