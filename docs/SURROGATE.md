@@ -37,6 +37,18 @@ Three things decide whether it works, and the plan is built round them:
   check inverse stay on top, as they do over the momentum bake today. A
   better teacher (PALM with canopy drag on the seed set) is a later
   upgrade behind the same gate, not a change to this design.
+- **Neutral air only, for now.** The teacher is WindNinja's momentum
+  solve in neutral air, so the net knows nothing of stability: no
+  drainage, no decoupled floor, and no lee rotor of the kind the
+  Searchmont check met on 2026-10-10 (floor from 308° under treetops at
+  180°; this net calls the spot 166° and reverses under 0.2% of cells for
+  a south-south-easterly, because a 30 m neutral solve smooths rotors
+  away). Those live in the rules above the net today. The way to them is
+  a teacher with stability and canopy (PALM or the GPU engine,
+  [SCALE-PLAN.md](SCALE-PLAN.md) phase 4) and a v2 net that takes
+  stability as an input and gives its own spread: layers 1 and 2 of
+  [WIND-LEARNING.md](WIND-LEARNING.md). The seed set as kitted is
+  neutral; a stability teacher reuses its DEMs and adds runs.
 - **Two loops, kept apart.** HD solves to net is a weeks-long server-side
   loop. Checks to floor layer and ambient is a minutes-long phone-side
   loop. Checks validate the net and tune the floor; they cannot retrain

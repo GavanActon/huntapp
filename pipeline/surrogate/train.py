@@ -48,7 +48,7 @@ if __name__ == "__main__" and "--remote" in sys.argv[1:]:
 
 import torch  # noqa: E402
 
-from fields import (AREAS, DATA, N_IN, REL_SCALE_M, REL_WINDOW, Area, bearing, d4,  # noqa: E402
+from fields import (DATA, built_areas, N_IN, REL_SCALE_M, REL_WINDOW, Area, bearing, d4,  # noqa: E402
                     direction_index, load_area, predict_domain, wrap180)
 from model import WIDTHS, UNet, n_params  # noqa: E402
 
@@ -179,7 +179,11 @@ def main() -> None:
 
     torch.manual_seed(args.seed)
     torch.backends.cudnn.benchmark = True
-    names = args.areas or [a for a in AREAS if a != args.holdout]
+    # the areas built under --data, not the checkout's: in the GPU kit the
+    # code sits beside a data folder of its own, and the module-level list
+    # (fields.AREAS, the checkout's) fell back to the five first areas there
+    # (the xonix Highland fold of 2026-10-10 09:10 trained on four)
+    names = args.areas or [a for a in built_areas(args.data) if a != args.holdout]
     name = args.name or (f"hold-{args.holdout}" if args.holdout else "all")
     run = args.data / "runs" / name
     run.mkdir(parents=True, exist_ok=True)
