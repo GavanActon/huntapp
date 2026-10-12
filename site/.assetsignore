@@ -9,3 +9,5 @@ checks.js
 party.js
 indexnow.js
 sitestats.js
+bake.js
+migrations
