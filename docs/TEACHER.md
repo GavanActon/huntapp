@@ -291,7 +291,7 @@ The 10 m stable case ran on xonix in WSL2 (22 ranks, 1.4 s a step, 4.7×
 XEVO; 8,468 steps for 2.5 h of air in about 3.3 h of wall time). The
 physics the case exists for showed up: over the last half hour the floor
 under the check is turned 118° from the ambient at 0.19 of its speed and
-reversed 43% of the time, with a reversed patch of 810 ha across the
+reversed 62% of the time, with a reversed patch of 810 ha across the
 valley, and the treetops come out from 138° (felt 180°, within 45°). But
 the floor's direction is 36°, not the 308° felt, and the run is not
 gradeable by its own gate: the whole low layer went slack, the ambient
@@ -315,7 +315,12 @@ far too low: he saw the tops moving steadily). So the first run is too
 dead aloft, not too calm below. The target for the next runs is
 two-level: the floor under 2 km/h with its gusts from about 308°, and
 the canopy top a few km/h, steady, within 45° of 180°. The gate in
-`palm_to_fields.py` is being changed to that. Next: the neutral run as
+`palm_to_fields.py` now reads that way (seen treetops must move at 3 km/h or
+more; a floor check's felt direction is scored on the gusts where the
+hunter said so; calm is under 2 km/h), and `convert` drops the unwritten
+zero records the masked output file carries (18 of 60 here), which had
+been read as calm samples: the reversed share at the floor is 62%, not
+the 43% first reported. Next: the neutral run as
 the baseline, then the stable case with milder cooling (0.4 K/h) so the
 canopy top keeps its wind while the floor is free to decouple.
 

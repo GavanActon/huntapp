@@ -9,7 +9,8 @@ score of a run against WindNinja and against what Gavan felt.
 CONVERT reads a run's averaged 3D output (<run>_av_3d.*.nc: u, v, w, e,
 theta on the cell centres, interpolate_to_grid_center) and, when there, its
 terrain-following masked output (<run>_masked_M001.*.nc: u, v, w every 30 s
-on the first four levels over the ground), and writes
+on the first four levels over the ground; the records PALM sized for but
+never wrote, time 0 and all zeros, are dropped), and writes
 pipeline/raw/teacher/palm/fields/<run>.npz in the surrogate's convention
 (pipeline/surrogate/fields.py):
 
@@ -29,7 +30,14 @@ pipeline/raw/teacher/palm/fields/<run>.npz in the surrogate's convention
                height over the ambient, from the masked samples; reversedHead
                the share of samples turned more than 90 deg from the ambient
                (a puff is a sample of a distribution: WIND-LEARNING.md)
+  gustFromHead (1, R, C) where the gusty moments come FROM, degrees true: the
+               circular mean direction of the samples in the top quartile of
+               speed at the cell; gustSpreadHead their circular standard
+               deviation, degrees (on a calm floor the few gusts are what is
+               felt)
   directions   (1,) the ambient FROM, degrees true
+  ambientKph   () the ambient speed used, km/h (also in meta): a field's
+               ratio x ambientKph is the modelled speed in km/h
   core, valid  (R, C) bool
   meta         json: epsg, bounds, cell, the ambient (how it was taken, its
                speed and direction, true and grid), gridConvergenceDeg, the
@@ -43,24 +51,34 @@ ground, the approach flow in a cyclic box); --ambient aloft:600 the
 horizontal mean at 600 m over the lowest ground, above every hill. The meta
 carries all three, whichever is used.
 
-SCORE reads the converted runs of a case and prints, per run:
-- the check points: the call at head height and at 10 m over the canopy
-  (the cell, and the median direction of the 3 x 3 around it), against
-  what was felt, and whether the floor turned past 90 deg from the ambient;
+SCORE reads the converted runs of a case and prints, per run, in km/h
+(a field's ratio x ambientKph):
+- the check points, read at two levels: at the floor (head height) the mean
+  wind (the cell, and the median direction of the 3 x 3 around it) AND the
+  gusts (gustHead at the cell, from the 3 x 3's circular mean of
+  gustFromHead, and their spread), the share of the time reversed, and
+  whether the mean turned past 90 deg from the ambient; at the treetops the
+  wind at 10 m over the canopy. Each against what was felt or seen; a check
+  whose felt direction was the gusts' (felt_is="gusts") is scored on them,
+  with the mean wind's miss printed beside it;
 - the gate of TEACHER.md Track A for the Searchmont case (below);
 - with --windninja, the run against a WindNinja run over the core, in
   eval.py's terms (turn error MAE / median / within 22.5 deg, turn r, speed
   ratio r and bias), WindNinja's ascii u, v grids (km/h) on the same 10 m
   lattice: the momentum dusk run is C:/tmp/wn-trial/searchmont10/dusk-mom.
 
-THE GATE for Searchmont (what "the teacher is right" means, in numbers):
+THE GATE for Searchmont (what "the teacher is right" means, in numbers).
+It reads two levels, because that is what was there: a valley floor under
+an inversion, near calm with a few gusts, and treetops moving steadily.
   stable SSE (from 152 at 16.2 km/h, dusk):
-    floor (46.77744, -84.04824) at head height: from within 45 deg of 308
-      (felt 308, puffs 303 and 313), and turned more than 90 deg from the
-      ambient, in the cell and in the 3 x 3 median;
+    floor (46.77744, -84.04824) at head height: calm, the mean wind under
+      CALM_KPH (2 km/h: "generally 1.6 km/h, a few gusts, very very calm");
+      its GUSTS (the top quartile of the 30 s samples) from within 45 deg of
+      308 (felt 308, puffs 303 and 313: the 308 was the gusts); the mean
+      turned more than 90 deg from the ambient, in the cell and in the
+      3 x 3 median;
     the reversal is a place, not a cell: reversed (turn > 90) over at least
       0.5 ha of the valley floor round the point (50 cells at 10 m);
-    floor speed light: under 0.5 of the ambient;
     treetops 500 m SE (46.77371, -84.04476) at 10 m over the canopy: from
       within 45 deg of 180, not reversed.
   midday (from 186 at 10.4 km/h, convective):
@@ -72,9 +90,14 @@ THE GATE for Searchmont (what "the teacher is right" means, in numbers):
   neutral SSE: no pass mark. It says whether a reversal is stability's
     (neutral does not reverse: the hypothesis) or the hill's alone.
   and before any of it: the run is gradeable only if its averaging began
-    after 1.5 h of spin-up and its ambient is within 1.5x of the forecast's
-    speed (calibrated). A short or uncalibrated test prints the checks as
-    diagnostics and NOT GRADEABLE.
+    after 1.5 h of spin-up AND, at every check seen at the treetops
+    (seen=True), the modelled wind at 10 m over the canopy is at least
+    SEEN_MIN_KPH (3 km/h: tops seen moving steadily). A short test, or one
+    whose canopy top is dead, prints the checks as diagnostics and NOT
+    GRADEABLE, and says why. The ambient's ratio to the forecast's speed is
+    printed as a note, not a refusal: HRDPS's 10 m wind is a 2.5 km cell's,
+    over mostly higher ground, and a valley floor under an inversion is
+    rightly far under it (TEACHER.md, the first full run).
 """
 
 from __future__ import annotations
@@ -96,12 +119,15 @@ FILL = -9000.0  # PALM writes -9999 (or -999999) inside the ground
 CHECKS = {
     "searchmont": {
         "stable": [
-            dict(label="floor 17:33", lat=46.77744, lon=-84.04824, felt=308, level="Head", gate=dict(within=45, reversed=True, light=0.5, patch_cells_m2=5000)),
-            dict(label="treetops 18:24 (seen)", lat=46.77371, lon=-84.04476, felt=180, level="", gate=dict(within=45, reversed=False)),
+            # the 308 was the gusts; the mean floor wind was near calm (Gavan, 2026-10-12)
+            dict(label="floor 17:33", lat=46.77744, lon=-84.04824, felt=308, level="Head", felt_is="gusts",
+                 gate=dict(within=45, reversed=True, calm=True, patch_cells_m2=5000)),
+            dict(label="treetops 18:24 (seen)", lat=46.77371, lon=-84.04476, felt=180, level="", seen=True,
+                 gate=dict(within=45, reversed=False)),
         ],
         "neutral": [
-            dict(label="floor 17:33", lat=46.77744, lon=-84.04824, felt=308, level="Head", gate=None),
-            dict(label="treetops 18:24 (seen)", lat=46.77371, lon=-84.04476, felt=180, level="", gate=None),
+            dict(label="floor 17:33", lat=46.77744, lon=-84.04824, felt=308, level="Head", felt_is="gusts", gate=None),
+            dict(label="treetops 18:24 (seen)", lat=46.77371, lon=-84.04476, felt=180, level="", seen=True, gate=None),
         ],
         "convective": [
             dict(label="floor 10:58", lat=46.77327, lon=-84.04020, felt=249, level="Head", gate=dict(within=45, reversed=False)),
@@ -117,10 +143,16 @@ CHECKS = {
 }
 # WindNinja momentum at the midday top checks (WIND-LEARNING.md, First trial: 175-186 deg)
 WINDNINJA_TOP_MEDIAN_MISS = 30.0
-# a run is graded only when spun up (its averaging starts this late) and calibrated (its
-# ambient within this factor of the forecast's speed); else the checks are diagnostics
+# a run is graded only when spun up (its averaging starts this late) and its treetops seen
+# moving steadily are at least SEEN_MIN_KPH at 10 m over the canopy; else the checks are
+# diagnostics. AMBIENT_FACTOR is a printed note now (the ambient over the forecast's
+# speed), not a refusal: a floor under an inversion is rightly far under a 2.5 km cell's
+# 10 m wind
 MIN_SPINUP_S = 5400.0
+SEEN_MIN_KPH = 3.0
 AMBIENT_FACTOR = 1.5
+# a floor whose mean wind is under this is calm ("generally 1.6 km/h, a few gusts")
+CALM_KPH = 2.0
 
 
 # ---------------------------------------------------------------- small things
@@ -136,6 +168,20 @@ def from_deg(u, v):
 
 def wrap180(a):
     return (np.asarray(a) + 180.0) % 360.0 - 180.0
+
+
+def circ_mean(deg, axis=None, where=None) -> tuple:
+    """The circular mean of directions (degrees) and their circular standard
+    deviation (degrees, sqrt(-2 ln R)), unweighted; NaN (and ~where) skipped."""
+    rad = np.radians(np.asarray(deg, np.float64))
+    ok = np.isfinite(rad) if where is None else (where & np.isfinite(rad))
+    n = ok.sum(axis=axis)
+    s = np.where(ok, np.sin(rad), 0.0).sum(axis=axis)
+    c = np.where(ok, np.cos(rad), 0.0).sum(axis=axis)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        mean = np.degrees(np.arctan2(s, c)) % 360.0
+        spread = np.degrees(np.sqrt(-2.0 * np.log(np.clip(np.hypot(s, c) / n, 1e-12, 1.0))))
+    return np.where(n > 0, mean, np.nan), np.where(n > 0, spread, np.nan)
 
 
 def pearson(a, b) -> float:
@@ -181,20 +227,29 @@ def read_3d(path: Path, names: list[str]) -> tuple[dict, np.ndarray, float]:
     return out, zu, t
 
 
-def read_mask(path: Path) -> tuple[dict, np.ndarray]:
+def read_mask(path: Path) -> tuple[dict, np.ndarray, int]:
     """The masked samples: {name: (T, K, R, C) row 0 south}, the K levels over
-    the ground (k = 1..4 grid levels)."""
+    the ground (k = 1..4 grid levels), their times, and how many records were
+    dropped as never written."""
     from netCDF4 import Dataset
     out = {}
     with Dataset(path) as nc:
         nc.set_auto_mask(False)
         times = np.asarray(nc["time"][:], np.float64)
+        # PALM sizes the time axis for every planned sample; a run that stops writing
+        # short leaves the rest as time 0 and all zeros (searchmont_stable: 18 of 60),
+        # which would read as calm samples: keep the records while time increases
+        nt = 1 if times.size and np.isfinite(times[0]) else 0
+        while nt < times.size and np.isfinite(times[nt]) and times[nt] > times[nt - 1]:
+            nt += 1
+        dropped = int(times.size - nt)
+        times = times[:nt]
         for n in ("u", "v", "w"):
             if n in nc.variables:
-                a = np.asarray(nc[n][:], np.float64)
+                a = np.asarray(nc[n][:nt], np.float64)
                 a[(a < FILL) | ~np.isfinite(a)] = np.nan
                 out[n] = a
-    return out, times
+    return out, times, dropped
 
 
 def level_index(field: np.ndarray) -> np.ndarray:
@@ -281,7 +336,8 @@ def convert_domain(args, info: dict, dom: dict, f3: Path, fm: Path | None, amb_r
     a_from_grid = float(from_deg(au, av))
     a_from_true = (a_from_grid + gamma) % 360.0
 
-    arrays = dict(dem=grid["dem"].astype(np.float32), directions=np.array([a_from_true], np.float32))
+    arrays = dict(dem=grid["dem"].astype(np.float32), directions=np.array([a_from_true], np.float32),
+                  ambientKph=np.array(a_speed * 3.6, np.float64))
     for key, d in lv.items():
         arrays[f"u{key}"] = (d["u"] / a_speed)[None].astype(np.float32)
         arrays[f"v{key}"] = (d["v"] / a_speed)[None].astype(np.float32)
@@ -291,7 +347,7 @@ def convert_domain(args, info: dict, dom: dict, f3: Path, fm: Path | None, amb_r
     # ---- gusts and lulls at head height from the masked samples
     mask_note = "none"
     if fm is not None:
-        m, times = read_mask(fm)
+        m, times, dropped = read_mask(fm)
         mu, mv = m["u"][:, 0, ::-1, :], m["v"][:, 0, ::-1, :]  # k = 1: the first level over the ground
         if mu.shape[1:] == (R, C):
             mu, mv = mu * to2, mv * to2
@@ -300,6 +356,11 @@ def convert_domain(args, info: dict, dom: dict, f3: Path, fm: Path | None, amb_r
             arrays["lullHead"] = (np.nanpercentile(sp, 10, axis=0) / a_speed)[None].astype(np.float32)
             turn = wrap180(bearing_toward(mu, mv) - bearing_toward(au, av))
             arrays["reversedHead"] = np.nanmean(np.abs(turn) > 90.0, axis=0)[None].astype(np.float32)
+            # the gusty moments: where the top quartile of speed comes FROM (true), and how spread
+            top = sp >= np.nanpercentile(sp, 75, axis=0)[None]
+            g_from, g_spread = circ_mean((from_deg(mu, mv) + gamma) % 360.0, axis=0, where=top)
+            arrays["gustFromHead"] = g_from[None].astype(np.float32)
+            arrays["gustSpreadHead"] = g_spread[None].astype(np.float32)
             res = 0.5 * (np.nanvar(mu, axis=0) + np.nanvar(mv, axis=0))
             arrays["turbHead"] = (np.sqrt(res + (arrays["turbHead"][0] * a_speed) ** 2) / a_speed)[None].astype(np.float32)
             # the canopy-top level's resolved part: the masked level nearest canopy + 10 m
@@ -309,6 +370,8 @@ def convert_domain(args, info: dict, dom: dict, f3: Path, fm: Path | None, amb_r
             res_top = 0.5 * (np.nanvar(uu, axis=0) + np.nanvar(vv, axis=0))
             arrays["turb"] = (np.sqrt(res_top + (arrays["turb"][0] * a_speed) ** 2) / a_speed)[None].astype(np.float32)
             mask_note = f"{fm.name}: {len(times)} samples, {times[0]:.0f}-{times[-1]:.0f} s"
+            if dropped:
+                mask_note += f" ({dropped} unwritten records dropped)"
         else:
             mask_note = f"{fm.name}: shape {mu.shape[1:]} is not the case's; skipped"
 
@@ -408,6 +471,28 @@ def call_at(fd: dict, level: str, r: int, c: int) -> dict:
     return dict(fromTrue=fr, from3x3=med, speed=float(math.hypot(u[r, c], v[r, c])), turn=turn, turn3x3=turn9)
 
 
+def gusts_at(fd: dict, r: int, c: int, amb_kph: float) -> dict:
+    """The floor's gusts at a cell, in km/h: gustHead and lullHead at the cell,
+    where the gusts come from (the 3 x 3's circular mean of gustFromHead, and
+    the cell's), their spread at the cell, and the share of the time reversed."""
+    out = {}
+    if "gustHead" in fd:
+        out["gustKph"] = float(fd["gustHead"][0, r, c]) * amb_kph
+        out["lullKph"] = float(fd["lullHead"][0, r, c]) * amb_kph
+        out["reversedShare"] = float(fd["reversedHead"][0, r, c])
+    if "gustFromHead" in fd:
+        g9, _ = circ_mean(fd["gustFromHead"][0, r - 1:r + 2, c - 1:c + 2])
+        out["gustFrom"] = float(g9)
+        out["gustFromCell"] = float(fd["gustFromHead"][0, r, c])
+        out["gustSpread"] = float(fd["gustSpreadHead"][0, r, c])
+    return out
+
+
+def is_seen(ck: dict) -> bool:
+    """A check seen at the treetops (its tops seen moving), not felt at the floor."""
+    return bool(ck.get("seen")) or (ck["level"] == "" and "seen" in ck["label"])
+
+
 def reversed_patch(fd: dict, level: str, r: int, c: int) -> int:
     """Cells in the connected patch turned more than 90 deg from the ambient that holds (r, c)."""
     from scipy.ndimage import label
@@ -474,57 +559,99 @@ def score(args) -> None:
         fd = load_field(run)
         m = fd["meta"]
         st = m["stability"]
-        print(f"\n{run} ({st}): ambient from {m['ambient']['fromTrue']:.0f} true at {m['ambient']['speedKph']:.1f} km/h "
+        amb_kph = float(fd["ambientKph"]) if "ambientKph" in fd else float(m["ambient"]["speedKph"])
+        ratio = amb_kph / max(m["forecast"]["kph"], 1e-6)
+        print(f"\n{run} ({st}): ambient from {m['ambient']['fromTrue']:.0f} true at {amb_kph:.1f} km/h "
               f"({m['ambient']['used']}); forecast {m['forecast']['fromTrue']:g} at {m['forecast']['kph']:g}")
-        rows, gate_ok, top_miss = [], [], []
+        rows, gate_ok, top_miss, seen_low = [], [], [], []
         for ck in checks.get(st, []):
             r, c = cell_of(m, ck["lat"], ck["lon"])
             call = call_at(fd, ck["level"], r, c)
             miss = abs(float(wrap180(call["fromTrue"] - ck["felt"])))
             miss9 = abs(float(wrap180(call["from3x3"] - ck["felt"])))
-            lvl = "head" if ck["level"] == "Head" else "canopy+10"
-            line = (f"  {ck['label']:24} felt {ck['felt']:3}  {lvl:9} from {call['fromTrue']:3.0f} (3x3 {call['from3x3']:3.0f}), "
-                    f"miss {miss:3.0f} ({miss9:3.0f}), turn {call['turn']:+4.0f}, speed {call['speed']:.2f}")
+            kph = call["speed"] * amb_kph
+            floor = ck["level"] == "Head"
+            seen = is_seen(ck)
+            felt_is = ck.get("felt_is", "mean")
+            row = dict(check=ck["label"], felt=ck["felt"], level="head" if floor else "canopy+10", **call,
+                       speedKph=kph, miss=miss, miss3x3=miss9)
             gate = ck.get("gate")
+            verdict = {}
+            if floor:
+                gu = gusts_at(fd, r, c, amb_kph)
+                row.update(feltIs=felt_is, **gu)
+                line = (f"  {ck['label']:22} felt {ck['felt']:3} ({felt_is})   mean {kph:.1f} km/h from {call['fromTrue']:3.0f} "
+                        f"(3x3 {call['from3x3']:3.0f}), miss {miss:3.0f} ({miss9:3.0f}), turn {call['turn']:+4.0f}")
+                gmiss = None
+                if "gustFrom" in gu:
+                    gmiss = abs(float(wrap180(gu["gustFrom"] - ck["felt"])))
+                    row["gustMiss"] = gmiss
+                    line += (f" | gusts {gu['gustKph']:.1f} km/h from {gu['gustFrom']:3.0f} (spread {gu['gustSpread']:.0f}), "
+                             f"miss {gmiss:3.0f}")
+                elif "gustKph" in gu:
+                    line += f" | gusts {gu['gustKph']:.1f} km/h (no gustFromHead: reconvert)"
+                if "reversedShare" in gu:
+                    line += f" | reversed {gu['reversedShare']:.0%}"
+                # the felt direction is scored on what was felt: the gusts', or the mean's
+                scored_miss = gmiss if felt_is == "gusts" else miss
+                if gate:
+                    if gate.get("calm"):
+                        verdict["calm"] = kph < CALM_KPH
+                    if felt_is == "gusts":
+                        verdict["direction"] = gmiss is not None and gmiss <= gate["within"]
+                    else:
+                        verdict["direction"] = miss <= gate["within"] and miss9 <= gate["within"]
+            else:
+                line = (f"  {ck['label']:22} felt {ck['felt']:3}   canopy+10 {kph:.1f} km/h from {call['fromTrue']:3.0f} "
+                        f"(3x3 {call['from3x3']:3.0f}), miss {miss:3.0f} ({miss9:3.0f}), turn {call['turn']:+4.0f}")
+                scored_miss = miss
+                if gate:
+                    verdict["direction"] = miss <= gate["within"] and miss9 <= gate["within"]
             if gate:
-                ok = miss <= gate["within"] and miss9 <= gate["within"]
                 rev = abs(call["turn"]) > 90 and call["turn3x3"] > 90
-                ok &= rev if gate["reversed"] else not rev
-                if gate.get("light"):
-                    ok &= call["speed"] < gate["light"]
+                verdict["reversed" if gate["reversed"] else "not reversed"] = rev if gate["reversed"] else not rev
                 if gate.get("patch_cells_m2"):
                     n = reversed_patch(fd, ck["level"], r, c)
-                    need = gate["patch_cells_m2"] / m["cell"] ** 2
-                    ok &= n >= need
-                    line += f", reversed patch {n * m['cell'] ** 2 / 1e4:.2f} ha"
+                    row["reversedPatchHa"] = n * m["cell"] ** 2 / 1e4
+                    verdict[f"patch {row['reversedPatchHa']:.2f} ha"] = n >= gate["patch_cells_m2"] / m["cell"] ** 2
+                ok = all(verdict.values())
                 gate_ok.append(ok)
-                line += "  PASS" if ok else "  fail"
+                line += " | " + ", ".join(f"{k} {'PASS' if v else 'FAIL'}" for k, v in verdict.items())
+                row["verdict"] = {k.split(" ")[0] if k.startswith("patch") else k: v for k, v in verdict.items()}
+                row["pass"] = ok
+            if seen:
+                moving = kph >= SEEN_MIN_KPH
+                row.update(seen=True, seenMoving=moving, seenMinKph=SEEN_MIN_KPH)
+                line += f" | seen-moving: {'PASS' if moving else 'FAIL'} (needs {SEEN_MIN_KPH:g} km/h)"
+                if not moving:
+                    seen_low.append(f"{ck['label']} is {kph:.1f} km/h at 10 m over the canopy, under the {SEEN_MIN_KPH:g} km/h "
+                                    f"of tops seen moving steadily")
             if ck.get("top"):
-                top_miss.append(miss)
-            if "gustHead" in fd and ck["level"] == "Head":
-                line += (f"  [gust {fd['gustHead'][0, r, c]:.2f}, lull {fd['lullHead'][0, r, c]:.2f}, "
-                         f"reversed {fd['reversedHead'][0, r, c]:.0%} of the time]")
+                top_miss.append(scored_miss)
             print(line)
-            rows.append(dict(check=ck["label"], felt=ck["felt"], **call, miss=miss, miss3x3=miss9))
+            rows.append(row)
         if top_miss:
             med = float(np.median(top_miss))
             ok = med <= WINDNINJA_TOP_MEDIAN_MISS
             gate_ok.append(ok)
             print(f"  the top, 5 checks: median miss {med:.0f} deg against WindNinja's {WINDNINJA_TOP_MEDIAN_MISS:.0f}  {'PASS' if ok else 'fail'}")
-        res = dict(checks=rows)
+        res = dict(checks=rows, ambientKph=amb_kph, ambientOverForecast=ratio)
+        # a note, not a refusal: the forecast is a 2.5 km cell's 10 m wind over mostly higher ground
+        print(f"  note: the ambient {amb_kph:.1f} km/h is {ratio:.2f}x the forecast's {m['forecast']['kph']:g}"
+              f"{'' if 1 / AMBIENT_FACTOR <= ratio <= AMBIENT_FACTOR else f' (outside {AMBIENT_FACTOR:g}x)'}; "
+              f"not a refusal (a 2.5 km cell's 10 m wind, mostly higher ground)")
         if gate_ok:
-            # gradeable only when spun up and calibrated: an unsettled or too-weak ambient
-            # makes "reversed from the ambient" meaningless (a 6 min test once "passed")
-            spun = m.get("averaged_until_s", 0) - m.get("average_s", 0) >= MIN_SPINUP_S
-            ratio = m["ambient"]["speedKph"] / max(m["forecast"]["kph"], 1e-6)
-            calibrated = 1 / AMBIENT_FACTOR <= ratio <= AMBIENT_FACTOR
-            if spun and calibrated:
+            # gradeable only when spun up (a 6 min test once "passed") and with its seen
+            # treetops moving: a dead canopy top makes the floor's reading meaningless
+            began = m.get("averaged_until_s", 0) - m.get("average_s", 0)
+            spun = began >= MIN_SPINUP_S
+            why = ([] if spun else [f"averaging began at {began:.0f} s, under {MIN_SPINUP_S:.0f} s of spin-up"]) + seen_low
+            res["gradeable"] = dict(spunUp=spun, seenMoving=not seen_low, why=why)
+            if not why:
                 res["gate"] = all(gate_ok)
                 print(f"  gate: {'PASS' if res['gate'] else 'FAIL'}")
             else:
                 res["gate"] = None
-                why = ([] if spun else [f"averaging began at {m.get('averaged_until_s', 0) - m.get('average_s', 0):.0f} s, under {MIN_SPINUP_S:.0f} s of spin-up"]) + \
-                      ([] if calibrated else [f"ambient {m['ambient']['speedKph']:.1f} km/h is {ratio:.2f}x the forecast's {m['forecast']['kph']:g}"])
                 print(f"  gate: NOT GRADEABLE ({'; '.join(why)}); the checks above are diagnostics only")
         if args.windninja:
             w = vs_windninja(fd, Path(args.windninja))
