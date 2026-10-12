@@ -4,7 +4,7 @@
 
 - Cost: free during the beta. No account.
 - Phones: runs in the phone's browser and goes on the home screen (Safari on an iPhone, Chrome on Android). It isn't in the App Store or Google Play yet. Open it at https://groundwind.app/app
-- Where: built area by area, a 10 × 10 km block around a hunter's spot. Built areas include Pickle Lake near White River, Ontario (WMU 21B), Lac Bailey in Québec (zone 18) and Highland Lake in the Yukon (GMS 4-09). Anyone can request a spot at https://groundwind.app/#request
+- Where: it goes deep on one spot at a time. Each area is a 10 × 10 km block built around a hunter's spot and saved to the phone. Built areas include Pickle Lake near White River, Ontario (WMU 21B), Lac Bailey in Québec (zone 18) and Highland Lake in the Yukon (GMS 4-09). Anyone can request a spot at https://groundwind.app/#request
 - No signal: save an area at camp and all of it works offline. Out for days, a text from an inReach or an iPhone on satellite brings back the newest HD forecast.
 - Made in Canada. Contact: hello@groundwind.app
 
@@ -17,11 +17,12 @@
 - Party setup: every sitter's scent cone at once, to see whose scent drifts over whom and place the caller and the shooter.
 - Bush and sight lines: brush thickness at eye level from the LiDAR point cloud, how far you'll see and where you can shoot.
 - Routes: three ways in on foot over the LiDAR ground, the easiest walk and hunt routes that keep your scent off the best ground.
+- Land: private land and parks on each built spot (Ontario's patent land, BC's private parcels and reserves, First Nation settlement land in the Yukon). Québec's private land isn't in yet. For lot lines, owners' names and Crown land by use, onX Hunt, HuntStand and iHunter go further.
 - Game scores: moose, deer, grouse and bear scored hour by hour for the week ahead from habitat, the last ten days of weather, the wind and the rut. Every score shows its reasons.
 
 ## Beside other hunting apps
 
-Most hunters already carry onX Hunt or iHunter for the land and zones, and Windy for the weather, and those apps cover the whole map. Groundwind is an active hunt partner on the spot you're hunting, there to help you make better decisions when it counts. HuntWise, HuntStand and Windy show a forecast wind, worked out for 10 m up over open ground. Groundwind is meant to be used beside those apps: it takes the forecast down to head height on the hunter's own ground and draws their scent on it. It doesn't show who owns the land.
+Most hunters already carry onX Hunt or iHunter for the land and zones, and Windy for the weather, and those apps cover the whole map. Groundwind is an active hunt partner on the spot you're hunting, there to help you make better decisions when it counts. HuntWise, HuntStand and Windy show a forecast wind, worked out for 10 m up over open ground. Groundwind is meant to be used beside those apps: it takes the forecast down to head height on the hunter's own ground and draws their scent on it. It marks private land and parks on its spots, and leaves lot lines and owners' names to those apps.
 
 ## Pages
 
@@ -38,3 +39,4 @@ Most hunters already carry onX Hunt or iHunter for the land and zones, and Windy
 - Elevation and LiDAR: Natural Resources Canada (Open Government Licence – Canada)
 - Forest: Ontario's Forest Resources Inventory and Québec's forest maps (MRNF)
 - Terrain wind: WindNinja (US Forest Service)
+- Land: Land Information Ontario, ParcelMap BC and GeoYukon, under each one's Open Government Licence
