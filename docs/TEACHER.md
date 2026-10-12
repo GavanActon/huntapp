@@ -324,6 +324,26 @@ the 43% first reported. Next: the neutral run as
 the baseline, then the stable case with milder cooling (0.4 K/h) so the
 canopy top keeps its wind while the floor is free to decouple.
 
+### The neutral run, 2026-10-12 17:03: the baseline
+
+The same box and wind in neutral air (3 h of air, the last hour
+averaged; 10,926 steps, 4.1 h on xonix). It reads the way a neutral
+model should: the treetops at the seen check 6.7 km/h from 170° (felt
+180°, pass), the floor at the check 1.8 km/h from 156° following the
+ambient, reversed 9% of the window, gusts 2.5 km/h from 158° (felt from
+308°, miss 150°). Against WindNinja's dusk run over the core: turn MAE
+13.7°, median 5.8°, 87% within 22.5°, speed r 0.65, so the two neutral
+models broadly agree and PALM is not inventing structure.
+
+Read as a pair with the stable run, the Searchmont question splits
+cleanly by height: neutral air gets the treetops right and the floor
+wrong (it follows the wind above); strongly stable air gets the floor's
+decoupling and reversal right and kills the treetops. The milder stable
+run is aimed between them. One namelist detail for the next build: the
+neutral run's masked 30 s output covered only 5 min (11 samples of 120
+written), so its reversed share and gusts rest on little; the stable
+runs' windows are 30 min.
+
 ## Track B: GPU engine
 
 Status 2026-10-12, early hours. Step 1 of [GPU-SOLVER.md](GPU-SOLVER.md)'s
