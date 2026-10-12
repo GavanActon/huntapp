@@ -300,11 +300,24 @@ at the reference 1.6 km/h against the forecast's 16, with 27 km/h left at
 a wind held by the column's volume flow put the momentum aloft and let
 the valley sleep, which is a stronger inversion than a windy dusk makes.
 Against WindNinja the numbers (turn r 0.02, speed r 0.37) mean nothing
-in that state. Next: the neutral run as the baseline, then the stable
-case again with milder cooling (0.3–0.5 K/h, or a fixed small surface
-flux), so the air at 30 m stays near the forecast while the floor is
-free to decouple. The decoupling and the reversal are there; the dose
-is wrong.
+in that state.
+
+**Gavan's correction, 2026-10-12:** at the floor the wind really was
+"generally 1.6 km/h, a few gusts, very very calm"; the 308° was the
+gusts. So a near-calm floor is right, and the gate's rule that the
+ambient must sit near the forecast's 16 km/h is wrong for a valley floor
+under an inversion: HRDPS's 10 m wind is a 2.5 km cell's, mostly higher
+ground. Read at the right height, the run's 30 s samples say: floor at
+his spot 0.6 km/h median, gusts to 1 km/h (speed right), but the gusty
+moments came from 60–105°, not 308° (direction wrong); at the treetop
+spot 0.6 km/h at 35 m above ground, from 188° (direction right, speed
+far too low: he saw the tops moving steadily). So the first run is too
+dead aloft, not too calm below. The target for the next runs is
+two-level: the floor under 2 km/h with its gusts from about 308°, and
+the canopy top a few km/h, steady, within 45° of 180°. The gate in
+`palm_to_fields.py` is being changed to that. Next: the neutral run as
+the baseline, then the stable case with milder cooling (0.4 K/h) so the
+canopy top keeps its wind while the floor is free to decouple.
 
 ## Track B: GPU engine
 
