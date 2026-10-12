@@ -286,6 +286,10 @@ def run(write: bool = True) -> dict:
             "sunEl": round(r["sunEl"], 1),
             "minFromSunset": round(r["minFromSunset"]) if r["minFromSunset"] is not None else "",
             "stabBin": stab_bin(m),
+            "aloftKmh": round(m.d["above"]["aloft"], 1),
+            "aloftSrc": m.d["above"]["aloftSrc"],
+            "riAbove": round(m.d["above"]["ri"], 2),
+            "smearRow": m.d["above"]["row"] if m.d["canopyFloor"] else "",
             "treeH": round(r["treeH"]),
             "rel": r["rel"],
             "landform": r["landform"],
@@ -372,6 +376,7 @@ def run(write: bool = True) -> dict:
         "Searchmont ridge": [x for x in directional if x["place"] == "searchmont top"],
         "Searchmont floor": [x for x in directional if x["place"] == "searchmont floor"],
         "Sault test": [x for x in directional if x["area"] == "sault-test"],
+        "Pickle low sun (under 12°)": [x for x in directional if x["set"] == "gpx" and float(x["sunEl"]) < 12],
         "stable (S >= 0.4)": [x for x in directional if x["stabBin"] == "stable"],
         "convective": [x for x in directional if x["stabBin"] == "convective"],
         "neutral": [x for x in directional if x["stabBin"] == "neutral"],
@@ -529,7 +534,7 @@ def run(write: bool = True) -> dict:
 
     # console
     print(f"{len(rows)} felt checks scored ({len(directional)} with a direction)")
-    for g in ("all", "Pickle (GPX, 8-point)", "Searchmont", "Searchmont ridge", "Searchmont floor", "Sault test", "stable (S >= 0.4)", "convective", "neutral"):
+    for g in ("all", "Pickle (GPX, 8-point)", "Pickle low sun (under 12°)", "Searchmont", "Searchmont ridge", "Searchmont floor", "Sault test", "stable (S >= 0.4)", "convective", "neutral"):
         print(f"\n{g}")
         for name, _ in SOURCES:
             sc = table[g][name]
@@ -551,7 +556,10 @@ def run(write: bool = True) -> dict:
 # rest change one thing each. "post hoc" marks a change thought of after
 # seeing the replay, to be judged on new checks, not these.
 VARIANTS = [
-    ("v1 (as designed)", {}),
+    ("v2: SMEAR II under canopy (as run)", {}),
+    ("v1: the hand rules (no SMEAR)", {"smear": False}),
+    ("v2, the 5 m/s rule on HRDPS 10 m, not 80 m", {"topWind": "10m"}),
+    ("v2, post hoc: SMEAR's stable rows only after sunset", {"smearNightOnly": True}),
     ("no meander noise (every check speaks fully)", {"meander": 0.0}),
     ("meander = the model's full spread", {"meander": 1.0}),
     ("ambient prior without the station tail", {"ambTail": False}),
@@ -573,14 +581,14 @@ def main() -> None:
     print("=" * 70)
     v1 = run(write=True)
     sens.insert(0, (VARIANTS[0][0], v1))
-    lines = ["", "## Sensitivity (one change each; within 45° on all directional checks)", "", "| variant | check-free | causal sit | hour both ways | check again | Pickle check-free | Searchmont check-free |", "|---|---|---|---|---|---|---|"]
+    lines = ["", "## Sensitivity (one change each; within 45° on all directional checks)", "", "| variant | check-free | causal sit | hour both ways | check again | Pickle check-free | Pickle low sun check-free | Pickle low sun causal | Searchmont check-free |", "|---|---|---|---|---|---|---|---|---|"]
     for name, sm in sens:
         t = sm["table"]
 
         def f(g, k):
             return f"{t[g][k]['within45'] * 100:.0f}%"
 
-        lines.append(f"| {name} | {f('all', 'classes: check-free')} | {f('all', 'classes: causal sit')} | {f('all', 'classes: hour both ways (like the blend)')} | {sm['checkAgain']} | {f('Pickle (GPX, 8-point)', 'classes: check-free')} | {f('Searchmont', 'classes: check-free')} |")
+        lines.append(f"| {name} | {f('all', 'classes: check-free')} | {f('all', 'classes: causal sit')} | {f('all', 'classes: hour both ways (like the blend)')} | {sm['checkAgain']} | {f('Pickle (GPX, 8-point)', 'classes: check-free')} | {f('Pickle low sun (under 12°)', 'classes: check-free')} | {f('Pickle low sun (under 12°)', 'classes: causal sit')} | {f('Searchmont', 'classes: check-free')} |")
     with open(RAW / "replay.md", "a", encoding="utf-8") as fh:
         fh.write("\n".join(lines) + "\n")
     print("\n".join(lines))

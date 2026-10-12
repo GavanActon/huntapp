@@ -1,7 +1,11 @@
 # The backwards solve: classes of what the air is doing
 
 Status: built offline in Python on 2026-10-12 (`pipeline/inverse/`). Nothing
-is in the app yet. This is layers 3 and 4 of
+is in the app yet.
+- **v1** was the hand rules.
+- **v2**, the same day, calibrates the floor under a canopy from SMEAR II
+  (below) and takes stability from the air above the trees. v2 is what the
+  scripts run now; the replay section gives both. This is layers 3 and 4 of
 [WIND-LEARNING.md](WIND-LEARNING.md) as a replayable model, scored on every
 check we hold.
 
@@ -58,6 +62,11 @@ That makes 252 numbers per spot.
 - **The swing**, when the puffs swung 90° or more.
 - **The "treetops moving while it's calm here" flag**, when given.
 
+**Under a canopy (v2).** At a cell under stands of 8 m or more, the
+coupled/decoupled split, the coupled floor's speed and the decoupled floor's
+calm share come from SMEAR II (the table after the classes). They replace
+the hand rules for those two classes there.
+
 **A seen check** speaks to θa only: the treetops' direction ±30°
 (`SEEN_DIR_SIGMA`).
 
@@ -68,9 +77,9 @@ the belief. The meander widens the cone but does not move its centre.
 
 | Class | What the air is doing | Prior weight (before the 0.03 floor) | Direction felt (FROM) | σ, uniform share | Head-height speed (median, log-σ) | P(swing ≥ 90°), P(aloft) |
 |---|---|---|---|---|---|---|
-| **C** coupled | the wind above comes down, turned by the terrain | 1.0 × (1 − 0.6·S·low) | the terrain call for θa: the micro grid's momentum solve (the stable lid by `stable`), as `model.ts momentumAt` | 15°, 0.05 | forecast speed × the cell's momentum ratio × 0.45 open / 0.25 under trees × the app's stable damping; 0.8 | 0.20, 0.30 |
+| **C** coupled | the wind above comes down, turned by the terrain | 1.0 × (1 − 0.6·S·low) | the terrain call for θa: the micro grid's momentum solve (the stable lid by `stable`), as `model.ts momentumAt` | 15°, 0.05 | forecast speed × the cell's momentum ratio × 0.45 open / 0.25 under trees × the app's stable damping; 0.8. **v2 under stands of 8 m+:** U10 × SMEAR's floor/top ratio | 0.20, 0.30 |
 | **CH** channelled | a slot in the trees or a valley floor runs the air along its axis | 1.5 × chan × (1 − 0.3·S). chan = 1 in a slot (the app's `slotAt` rule), else the valley's depth (cross rise − along rise within 1.5 km, 30 → 100 m) × floor | along the axis, toward the end θa pushes: logistic on cos(θa − axis), slope 4 | 25° (+25° in an unsteady slot), 0.05 | forecast × 0.45; 0.7 | 0.15, 0.40 |
-| **D** decoupled | the floor is cut off from the air above: calm, wandering, a few local gusts | 2.5 × S × max(low, 0.7·floor, 0.4 under trees of 8 m+) × mixN, + 1.0 × clamp((5 − F)/4) | half round the compass, half ±70° about the drainage line (else the terrain call) | 70°, 0.50 | 0.8 km/h; 0.9 | 0.50, 0.80 |
+| **D** decoupled | the floor is cut off from the air above: calm, wandering, a few local gusts | 2.5 × S × max(low, 0.7·floor, 0.4 under trees of 8 m+) × mixN, + 1.0 × clamp((5 − F)/4). **v2 under stands of 8 m+:** coupled + decoupled = 1, split by SMEAR's P(decoupled) | half round the compass, half ±70° about the drainage line (else the terrain call) | 70°, 0.50 | 0.8 km/h; 0.9. **v2 under stands of 8 m+:** 0.4 km/h (85% calm) | 0.50, 0.80 |
 | **K** drainage | cold air running downhill | 2.0 × S × slope × (a drainage line) × mixN | from uphill: `katDir` + 180 | 30°, 0.10 | max(1.2, 0.5 × `katSpd`) km/h; 0.7 | 0.10, 0.60 |
 | **A** upslope | sun-warmed slope pulling air up | 1.5 × heat × (1 − stable) × mixD × slope | from downhill: `thAspect` | 30°, 0.10 | 2.5 km/h; 0.7 | 0.25, 0.40 |
 | **B** breeze | lake breeze by day, land breeze off a cold shore | lake: 1.5 × e^(−shore/500) × clamp((dT − 1)/6) × clamp(sw/500) × [sun > 10°] × e^(−max(0, U10 − 10)/10). Land: 1.0 × e^(−shore/300) × clamp((−dT − 1)/6) × clear sky × mixN | lake: from the water (`onshore` + 180); land: `onshore` | 35°, 0.10 | max(2, 0.5 × `breezeMax`) km/h; 0.7 | 0.15, 0.40 |
@@ -100,8 +109,66 @@ The drivers:
   deep, the Goulais valley.
 
 All the numbers are in `pipeline/inverse/classes.py` (`TABLE`,
-`prior_weights`, `CONFIG`). None is fitted: they come from the physics in
-MICRO-WIND.md and the regimes in `model.ts`.
+`prior_weights`, `SMEAR`, `CONFIG`). None is fitted to our checks. They come
+from:
+- the physics in MICRO-WIND.md and the regimes in `model.ts`;
+- since v2, SMEAR II's floor under a canopy.
+
+### The floor under a canopy: SMEAR II (v2)
+
+**The source.** SMEAR II, Hyytiälä, Finland: boreal Scots pine about 18–20 m
+tall, flat ground.
+- **Floor:** the 3 m subcanopy sonic.
+- **Top:** the 33.6 m sonic, about 14 m over the crowns.
+- **Stability:** z/L from the 27 m eddy covariance, **above** the canopy.
+- **The sample:** Sep–Nov 2019–2022, 13,073 half-hours with the top at
+  1.5 m/s or more.
+- **Definitions:**
+  - calm floor: under 0.25 m/s;
+  - decoupled: calm, or the floor more than 90° off the top.
+- docs/research/wind-regime-datasets.md §3;
+  `pipeline/raw/regimes/smear-ii/first_look.py`.
+
+| stability above the canopy | P(decoupled) → the D share | floor within 45° of the top | calm floor | floor/top speed |
+|---|---|---|---|---|
+| unstable (day) | 0.11 | 74% | 10% | 0.22 |
+| neutral (day 85/5/0.19, night 83/7/0.18) | 0.07 | 84% | 6% | 0.19 |
+| stable, 0.1 < z/L < 1 (night) | 0.27 | 54% | 24% | 0.14 |
+| very stable, z/L > 1 (night) | 0.74 | 18% | 60% | 0.10 |
+| top over 5 m/s (night, any stability): overrides | 0.01 | 99% | 0% | 0.17 |
+
+How the classes use it, under stands of 8 m or more:
+- **Prior:** coupled 1 − P(decoupled) and decoupled P(decoupled). These
+  replace the two hand weights; the other classes keep theirs.
+- **Coupled speed:** the terrain wind 10 m over the canopy (U10, the
+  analogue of SMEAR's top) × the floor/top ratio for the row.
+- **Decoupled speed:** a lognormal at 0.4 km/h (log-σ 0.9), so 85% of it is
+  "calm". SMEAR's calm share within its decoupled is 0.86, 0.89 and 0.81 by
+  stability.
+- **Coupled direction.** The table implies the coupled floor follows the top
+  within 45° in 90% (neutral), 74% (stable) and 69% (very stable) of cases.
+  That is a spread of about 27°, 40° and 44°. The likelihood's coupled
+  spread (15° in quadrature with the meander, 35–50° at the Pickle bog) is
+  of that size, and was left as it was.
+- **Stability measured at the floor predicted nothing at SMEAR II.** The
+  trunk space reads unstable under a cooling crown. So the input is the air
+  above the trees:
+  - **The aloft wind** is the HRDPS 80 m wind. Where treetops were seen
+    within 30 min and 1 km, it is held inside that word's band: still 0–7.5,
+    leaves 7.5–18, branches 18–28.5, sway 28.5–39, bend 39+ km/h (the
+    midpoints of `SEEN_KMH`).
+  - **The layering:** the bulk Ri over 2–80 m with that wind in the shear
+    (`layeringAt`'s formula).
+  - **The class:** z/L from Businger–Dyer (z/L = Ri/(1 − 5Ri), so z/L 0.1 is
+    Ri 0.067 and z/L 1 is Ri 0.167). Neutral when dθ < 0.2 K; unstable when
+    convective ≥ 0.3.
+  - **The 5 m/s rule** reads the aloft wind.
+  - **It is the HRDPS cell's profile** (2.5 km), not the valley's or the
+    hollow's.
+- **The heights don't match.** HRDPS 80 m runs stronger than SMEAR's top
+  (about 14 m over the crowns), most of all in stable air. Reading 80 m
+  makes the 5 m/s rule fire more often than SMEAR's own would. A sensitivity
+  row reads it on the HRDPS 10 m instead.
 
 **One change before the scored run.** The first run blurred the shown wind
 with the meander. The broad classes then pulled the mixture's mode about,
@@ -164,6 +231,76 @@ Each felt check is scored five ways:
   situation (below).
 - **after the check:** the posterior, the class it picks, "check again"
   and Sharpen.
+
+### v2: SMEAR II under the canopy, against v1
+
+| within 45° (median miss) | v1 hand rules | v2 SMEAR II |
+|---|---|---|
+| all 66, check-free | 42% (62°) | 39% (63°) |
+| all, causal sit | 41% (66°) | 41% (66°) |
+| all, hour both ways (like the blend) | 45% (60°) | 45% (60°) |
+| Pickle low sun (under 12°, 22), check-free | 45% | 36% (63°) |
+| Pickle low sun, causal sit | 41% | 41% (68°) |
+| Searchmont 9, check-free | 67% | 67% |
+| "check again" raised | 19 of 75 | 14 of 75 |
+| speed: exact band, check-free / causal | 41% / 45% | 47% / 48% |
+
+The app on the same checks: forecast 38%, logged 42%, raw rules 42%, blend
+44%, fit + blend 45%. On Pickle at low sun: forecast 41%, raw rules 36%,
+fit + blend 55%.
+
+The head-to-heads under v2 (classes only / app only / both / neither):
+- check-free against the raw rules: 5 / 7 / 21 / 33;
+- causal against the app as logged: 9 / 10 / 18 / 29;
+- hour both ways against the blend: 9 / 8 / 21 / 28.
+
+The SMEAR row each check under a canopy took: top over 5 m/s 18, very
+stable 11, neutral 11, unstable 2. 33 checks were in the open.
+
+**How the Pickle dawn and dusk checks moved** (bog, under 11–21 m stands):
+- **The calm dawns (09-27 06:29, 06:58; 09-28 19:41).**
+  - The cell's profile was very stable (Ri 0.9–2.8) with 80 m at
+    11–17 km/h, under the 5 m/s rule.
+  - Decoupled went from 0.46 to 0.61 before the check, and to 0.73–0.77
+    after it.
+  - "Check again" stopped firing at all three: the calm now has a cause.
+  - That is the gain.
+- **The 09-28 dusk (18:12–19:06; sun still 3–11° up, 80 m 5–11 km/h,
+  Ri 2–3, very stable).**
+  - Decoupled and drainage now lead, so the shown wind moved to the drainage
+    line (from 2–27°).
+  - Gavan felt 0°, 90°, 315° and 270°.
+  - Two that v1 had within 45° (315°, 270°: the forecast's line) are now
+    missed. That is the loss: 45% → 36% at low sun.
+  - SMEAR's stable rows are night rows. Holding them to after sunset gives
+    41% at low sun and 41% overall. That rule came after seeing this replay
+    (post hoc), so it is judged on new checks, not these.
+- **The 10-02 dusk (18:43–19:14; 80 m 18.7–20 km/h).**
+  - The 5 m/s rule made them coupled 0.88–0.95.
+  - Their direction was already right and stays right.
+  - Their speed band moved from light to drift, which is what was felt.
+- **09-29 08:16** (80 m 19.7 km/h, over the rule): after the check it is
+  now coupled 0.48 (v1: decoupled 0.38). It is still missed (felt 315°
+  under a 167° forecast).
+
+**The Searchmont dusk didn't move** (the floor is open: treeH 0, so the
+SMEAR split does not reach it).
+- **17:33:** HRDPS neutral, 80 m at 30 km/h; unchanged at 165° (felt 308°).
+- **18:24 calm:** the seen treetops ("leaves") hold the aloft wind at
+  18 km/h, not 30.
+  - Ri rises to 1.6 and S from 0 to 0.68.
+  - The prior moves from CH 0.40 / C 0.38 to C 0.36 / CH 0.33 / D 0.12.
+  - After the calm: D 0.44, K 0.27 (v1: D 0.35, K 0.23).
+- **The treetop rule is the one way stability above reached that valley.**
+  An open valley floor at dusk wants its own numbers: SPLASH on a valley
+  floor, the Searchmont stations.
+
+**What v2 settles:** the SMEAR calibration is no worse than the hand rules
+in direction overall (39–45% against 41–45%, within a check or two). It is
+better on calm dawns, speed and "check again", and worse on the bog's
+pre-sunset dusk. 22 low-sun checks can't say more.
+
+The tables below are **v1** (the hand rules), kept as the baseline.
 
 ### Agreement with the felt direction (within 45°, median miss)
 
@@ -318,18 +455,24 @@ a Dirichlet with pseudo-count 0.5 multiplied into the prior.
 
 ### Sensitivity
 
-Each row changes one thing from v1. Rows marked "post hoc" were thought of
-after seeing the replay and must be judged on new checks.
+Each row changes one thing from v2, as the scripts run now. Rows marked
+"post hoc" were thought of after seeing the replay and must be judged on new
+checks.
 
-| variant | check-free | causal sit | hour both ways | check again | Pickle check-free | Searchmont check-free |
-|---|---|---|---|---|---|---|
-| v1 (as designed) | 42% | 41% | 45% | 19 | 38% | 67% |
-| no meander noise (every check speaks fully) | 42% | 45% | 48% | 13 | 38% | 67% |
-| meander = the model's full spread | 42% | 38% | 41% | 22 | 38% | 67% |
-| ambient prior without the station tail | 41% | 39% | 44% | 18 | 36% | 67% |
-| post hoc: canopy shelters the floor's thermal flows | 42% | 41% | 45% | 18 | 38% | 67% |
-| the shown wind blurred by the meander (the first run's display) | 41% | 41% | 45% | 18 | 36% | 67% |
-| post hoc: the shown wind is the most likely class's own | 47% | 48% | 48% | 19 | 43% | 67% |
+| variant | check-free | causal sit | hour both ways | check again | Pickle check-free | Pickle low sun check-free | Pickle low sun causal | Searchmont check-free |
+|---|---|---|---|---|---|---|---|---|
+| v2: SMEAR II under canopy (as run) | 39% | 41% | 45% | 14 | 34% | 36% | 41% | 67% |
+| v1: the hand rules (no SMEAR) | 42% | 41% | 45% | 19 | 38% | 45% | 41% | 67% |
+| v2, the 5 m/s rule on HRDPS 10 m, not 80 m | 39% | 41% | 47% | 16 | 34% | 36% | 41% | 67% |
+| v2, post hoc: SMEAR's stable rows only after sunset | 41% | 39% | 45% | 14 | 36% | 41% | 36% | 67% |
+| no meander noise (every check speaks fully) | 39% | 45% | 48% | 9 | 34% | 36% | 45% | 67% |
+| meander = the model's full spread | 39% | 38% | 41% | 19 | 34% | 36% | 36% | 67% |
+| ambient prior without the station tail | 39% | 41% | 45% | 14 | 34% | 36% | 41% | 67% |
+| post hoc: canopy shelters the floor's thermal flows | 39% | 41% | 45% | 13 | 34% | 36% | 41% | 67% |
+| the shown wind blurred by the meander (the first run's display) | 38% | 42% | 48% | 13 | 32% | 36% | 41% | 67% |
+| post hoc: the shown wind is the most likely class's own | 45% | 48% | 48% | 14 | 42% | 45% | 50% | 67% |
+
+On v1 the last row read 47% / 48% / 48%.
 
 ### The D1 checks, one table
 
@@ -550,13 +693,15 @@ py -3.14 pipeline/inverse/replay_inverse.py         # the replay, the sensitivit
 
 1. Get the ~500 checks off Gavan's other install (WIND-LEARNING step 0),
    and rerun.
-2. Take the classes' head-height speed medians from the app's own calls,
-   and set the puff noise from the noise floor (about 60° for light and
-   drift). Both are calibrations, not new physics.
-3. A shadow-onset term in S (the slope or floor in terrain shadow), once
+2. Set the puff noise from the noise floor (about 60° for light and drift),
+   and the open-ground speed medians from the app's own calls. Under a
+   canopy SMEAR II now sets them. Both are calibrations, not new physics.
+3. The SMEAR rows by time from sunset as well as stability, from SMEAR II
+   in full (2003–2022). The pre-sunset dusk is where v2 lost.
+4. A shadow-onset term in S (the slope or floor in terrain shadow), once
    there are new dusk checks to judge it.
-4. Port the state and the two outputs behind a devlog flag. Log the
+5. Port the state and the two outputs behind a devlog flag. Log the
    posterior with every check, so the next replay scores what the phone
    believed.
-5. Stations on the Searchmont floor and ridge, to give the dusk classes a
+6. Stations on the Searchmont floor and ridge, to give the dusk classes a
    truth.

@@ -44,7 +44,72 @@ CONFIG = {
     "canopyMix": False,  # post hoc: under trees the floor's thermal flows are mixed by the head-height wind, not the 10 m wind
     "displayMeander": False,  # the shown wind is the mean flow: the meander widens the cone, it doesn't move its centre
     "display": "mixture",  # the shown wind: the mode of the classes' mixture, or "topClass": the most likely class's own direction
+    "smear": True,  # v2: under canopy, the coupled/decoupled split, the floor/top speed ratio and the decoupled floor's calm share from SMEAR II
+    "smearNightOnly": False,  # post hoc: SMEAR's stable rows are night rows; before sunset (sun over 0) use its neutral row
+    "topWind": "80m",  # what the 5 m/s-aloft rule reads: the HRDPS 80 m wind (or the seen treetops' band), or "10m": HRDPS 10 m
 }
+
+# SMEAR II, Hyytiala (boreal Scots pine ~18-20 m, flat), Sep-Nov 2019-2022, 13,073
+# half-hours with the top at 1.5 m/s or more: floor = 3 m subcanopy sonic, top =
+# 33.6 m sonic, stability = z/L from the 27 m EC (z - d ~ 14 m), ABOVE the canopy.
+# Calm floor: under 0.25 m/s. Decoupled: calm, or the floor over 90 deg off the top.
+# docs/research/wind-regime-datasets.md section 3 (pipeline/raw/regimes/smear-ii/first_look.py).
+# Stability measured at the floor predicted nothing there.
+SMEAR = {
+    #               P(decoupled) P(floor within 45 of top) P(calm floor) floor/top speed
+    "unstable": dict(dec=0.11, follow=0.74, calm=0.10, ratio=0.22),  # day, unstable
+    "neutral": dict(dec=0.07, follow=0.84, calm=0.06, ratio=0.19),  # day 85/5/0.19, night 83/7/0.18
+    "stable": dict(dec=0.27, follow=0.54, calm=0.24, ratio=0.14),  # night, 0.1 < z/L < 1
+    "very stable": dict(dec=0.74, follow=0.18, calm=0.60, ratio=0.10),  # night, z/L > 1
+    "top > 5 m/s": dict(dec=0.01, follow=0.99, calm=0.00, ratio=0.17),  # night, any stability: the override
+}
+UNDER_CANOPY_M = 8.0  # treeH: the SMEAR split applies under stands this tall
+TOP_COUPLED_KMH = 18.0  # 5 m/s
+# The decoupled floor under canopy is mostly calm: calm / decoupled = 0.86, 0.89, 0.81
+# by stability. A lognormal at 0.4 km/h (log-sigma 0.9) puts 85% under 1 km/h ("calm").
+DECOUPLED_CANOPY_KMH = 0.4
+# SEEN_KMH's bands (windChecks.ts): the midpoints between the words' speeds
+SEEN_BAND = {"still": (0.0, 7.5), "leaves": (7.5, 18.0), "branches": (18.0, 28.5), "sway": (28.5, 39.0), "bend": (39.0, 1e9)}
+
+
+def aloft_of(r: dict) -> tuple[float, str]:
+    """The wind above the trees, km/h: HRDPS 80 m, held inside the band of
+    treetops seen within 30 min and 1 km (their word, at about 10 m over the
+    crowns: a constraint, not a reading)."""
+    w = float(r["archiveKmh80"])
+    near = [x for x in (r.get("seenNear") or []) if abs(x["minApart"]) <= 30 and x["m"] <= 1000]
+    if near:
+        x = min(near, key=lambda q: abs(q["minApart"]))
+        lo, hi = SEEN_BAND.get(x["seen"], (0.0, 1e9))
+        return min(hi, max(lo, w)), f"seen {x['seen']}"
+    return w, "hrdps 80 m"
+
+
+def stability_above(r: dict) -> dict:
+    """The air's layering from the 2/80 m profile with the aloft wind in the
+    shear (boundaryLayer.ts layeringAt), and its SMEAR class: z/L from the bulk
+    Ri by Businger-Dyer (z/L = Ri / (1 - 5 Ri), so z/L 0.1 ~ Ri 0.067 and
+    z/L 1 ~ Ri 0.167). It is the HRDPS cell's profile (2.5 km), not a
+    valley's or a hollow's."""
+    aloft, src = aloft_of(r)
+    t2, t80, w10 = r["t2"], r["t80"], r["archiveKmh10"]
+    dth = t80 - t2 + 0.0098 * 78
+    du = max(0.6, (aloft - w10) / 3.6)
+    ri = (9.81 / (273.15 + t2)) * dth * 78 / (du * du)
+    stable = clamp((ri - 0.1) / 0.9) * clamp(dth / 0.8) if dth > 0 else 0.0
+    if r["convective"] >= 0.3:
+        cls = "unstable"
+    elif dth < 0.2 or ri < 0.067:
+        cls = "neutral"
+    elif ri < 0.167:
+        cls = "stable"
+    else:
+        cls = "very stable"
+    if CONFIG["smearNightOnly"] and cls in ("stable", "very stable") and r["sunEl"] > 0:
+        cls = "neutral"
+    top = aloft if CONFIG["topWind"] == "80m" else float(r["archiveKmh10"])
+    row = "top > 5 m/s" if top >= TOP_COUPLED_KMH else cls
+    return {"aloft": aloft, "aloftSrc": src, "ri": ri, "stable": stable, "cls": cls, "row": row}
 
 # One row per class.
 #   sigma: the class's own direction spread (deg); "coupled" adds nothing past the
@@ -157,7 +222,9 @@ def coupled_dir(r: dict, theta: float) -> tuple[float, float]:
 def drivers(r: dict) -> dict:
     """The parameters the priors read, from a params.json record."""
     F = float(r["forecastKmh"])
-    S = max(r["stable"], 0.6 * cool_of(r))
+    above = stability_above(r)
+    st = above["stable"] if CONFIG["smear"] else r["stable"]
+    S = max(st, 0.6 * cool_of(r))
     low = max(clamp(r["pool"] / 1.5), clamp(-r["rel"] / 6))
     floor = max(clamp(-r["rel"] / 6), 0.8 if (r["landform"] in ("valley", "flat") and r["thSlope"] < 3) else 0.0)
     _, ratio = coupled_dir(r, float(r["forecastDir"]))
@@ -179,7 +246,8 @@ def drivers(r: dict) -> dict:
         heat = r["sw"] * max(0.0, cos_inc) / max(0.15, math.sin(el))
     dT = r["t2"] - r["waterC"]
     return dict(
-        F=F, S=S, Cv=r["convective"], stable=r["stable"], low=low, floor=floor, U10=U10, ratio=ratio,
+        F=F, S=S, Cv=r["convective"], stable=st, low=low, floor=floor, U10=U10, ratio=ratio, above=above,
+        canopyFloor=CONFIG["smear"] and r["treeH"] >= UNDER_CANOPY_M,
         mixN=math.exp(-max(0.0, Umix - 5) / 8), mixD=math.exp(-max(0.0, Umix - 8) / 10),
         chan=chan, axis=axis, slope=clamp((r["thSlope"] - 0.5) / 3), heat=clamp(heat / 600), dT=dT,
         trees=r["treeH"] >= 8, openCell=r["treeH"] < 2,
@@ -213,6 +281,12 @@ def prior_weights(r: dict, d: dict, palm: dict | None = None) -> np.ndarray:
         lake = 1.5 * math.exp(-r["shoreDist"] / 500) * clamp((d["dT"] - 1) / 6) * clamp(r["sw"] / 500) * (1.0 if r["sunEl"] > 10 else 0.0) * math.exp(-max(0.0, d["U10"] - 10) / 10)
         land = 1.0 * math.exp(-r["shoreDist"] / 300) * clamp((-d["dT"] - 1) / 6) * (1 - r["cloud"] / 100) * d["mixN"]
     w[5, :] = lake + land
+    if d["canopyFloor"]:
+        # under a closed stand the floor follows the air above or comes loose from it,
+        # in SMEAR II's shares by the stability above (the 5 m/s rule overriding)
+        dec = SMEAR[d["above"]["row"]]["dec"]
+        w[0, :] = 1.0 - dec
+        w[2, :] = dec
     wind_g = clamp((F - 6) / 6)
     for j, th in enumerate(THETA):
         w[6, j] = 2.0 * lee_of(r, th) * wind_g * (0.4 + 0.6 * S) * (1 - 0.7 * d["Cv"])
@@ -278,10 +352,18 @@ def median_kmh(r: dict, d: dict) -> np.ndarray:
     F = d["F"]
     S = d["S"]
     damp = (1 - 0.3 * S) * (1 - 0.7 * S * d["low"])
+    if d["canopyFloor"]:
+        # SMEAR II: the floor at 3 m over the top at ~14 m above the crowns, the
+        # analogue of the terrain wind 10 m over the canopy (U10)
+        coupled = d["U10"] * SMEAR[d["above"]["row"]]["ratio"]
+        decoupled = DECOUPLED_CANOPY_KMH
+    else:
+        coupled = F * d["ratio"] * (0.45 if d["openCell"] else 0.25) * damp
+        decoupled = 0.8
     return np.array([
-        F * d["ratio"] * (0.45 if d["openCell"] else 0.25) * damp,
+        coupled,
         F * 0.45,
-        0.8,
+        decoupled,
         max(1.2, 0.5 * r["katSpd"] * 3.6),
         2.5,
         max(2.0, 0.5 * r["breezeMax"] * 3.6),
