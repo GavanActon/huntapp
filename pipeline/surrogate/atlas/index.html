@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Groundwind wind atlas</title>
+<meta name="description" content="Every site the Groundwind surrogate learned from: WindNinja's wind (HD) and the net's (SD), as moving streaks over satellite imagery.">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<style>
+  :root {
+    --bg: #101a15; --panel: rgba(16, 26, 21, 0.88); --line: rgba(255, 255, 255, 0.12);
+    --text: #e8eee9; --dim: #9fb0a6; --accent: #9db58f; --hd: #5fe3ff; --sd: #ff9f5a;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 15px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #map { position: absolute; inset: 0; }
+  #wind { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .panel {
+    position: absolute; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); max-width: 560px; margin: 0 auto;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; backdrop-filter: blur(8px);
+    display: grid; gap: 8px;
+  }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  select, button {
+    font: inherit; color: var(--text); background: rgba(255, 255, 255, 0.06); border: 1px solid var(--line);
+    border-radius: 9px; padding: 7px 10px; min-height: 38px;
+  }
+  select { flex: 1 1 180px; min-width: 0; }
+  button { cursor: pointer; }
+  button[aria-pressed="true"] { background: var(--accent); color: #0f1a12; border-color: transparent; font-weight: 600; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; min-width: 52px; background: transparent; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"] { background: var(--accent); }
+  #dir { flex: 0 1 120px; }
+  .info { color: var(--dim); font-size: 13px; }
+  .info b { color: var(--text); font-weight: 600; }
+  .tag { display: inline-block; font-size: 12px; padding: 1px 7px; border-radius: 99px; border: 1px solid var(--line); margin-left: 4px; }
+  .tag.held { color: #0f1a12; background: var(--accent); border-color: transparent; }
+  .key { display: flex; gap: 12px; font-size: 12px; color: var(--dim); }
+  .key i { display: inline-block; width: 18px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+  details summary { cursor: pointer; color: var(--dim); font-size: 13px; }
+  details p { margin: 6px 0 0; color: var(--dim); font-size: 13px; }
+  .maplibregl-ctrl-attrib { font-size: 10px; }
+  @media (max-width: 420px) { .seg button { min-width: 44px; } }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<canvas id="wind"></canvas>
+<div class="panel">
+  <div class="row">
+    <select id="site" aria-label="Site"></select>
+  </div>
+  <div class="row">
+    <div class="seg" role="group" aria-label="Which wind">
+      <button data-mode="hd" aria-pressed="false">HD</button>
+      <button data-mode="sd" aria-pressed="false">SD</button>
+      <button data-mode="both" aria-pressed="true">Both</button>
+    </div>
+    <select id="dir" aria-label="Wind from"></select>
+    <button id="now" title="The forecast wind at the site now">Now</button>
+  </div>
+  <div class="info" id="info">Loading the sites…</div>
+  <div class="key"><span><i style="background:var(--hd)"></i>HD · WindNinja</span><span><i style="background:var(--sd)"></i>SD · the net</span></div>
+  <details>
+    <summary>What this is</summary>
+    <p>Each site is a 15 × 15 km box of 30 m terrain. <b>HD</b> is WindNinja's momentum solve for a wind from the chosen direction (neutral air, terrain only, 10 m above the ground). <b>SD</b> is the surrogate net's prediction for the same terrain, the wind an SD area gets.</p>
+    <p><b>Held out</b> means the net never saw that site, so its SD is what a new area would get. <b>In-sample</b> means the net trained on that site's own WindNinja runs, so the two will look closer there than they would anywhere new.</p>
+    <p>Streak speed follows the forecast wind with <b>Now</b>, else the solve's own 22 km/h. Neither model has stability: no night drainage, no rotors.</p>
+  </details>
+</div>
+<script>
+const COMPASS = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+const state = { sites: [], site: null, mode: "both", dir: 270, kmh: 22, fields: {} };
+const $ = (id) => document.getElementById(id);
+
+const map = new maplibregl.Map({
+  container: "map",
+  style: {
+    version: 8,
+    sources: {
+      sat: {
+        type: "raster", tileSize: 256, maxzoom: 18,
+        tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
+        attribution: "Imagery © Esri, Maxar, Earthstar Geographics",
+      },
+    },
+    layers: [{ id: "sat", type: "raster", source: "sat" }],
+  },
+  center: [-95, 50], zoom: 3, attributionControl: { compact: true },
+});
+map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+
+// ---- the fields: a PNG per site, direction and kind (atlas.py) ----
+function loadField(site, dir, kind) {
+  const key = `${site.id}/${dir}/${kind}`;
+  if (state.fields[key]) return state.fields[key];
+  const name = `${site.id}/${dir.toFixed(1).padStart(5, "0")}-${kind}.png`;
+  state.fields[key] = new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement("canvas");
+      c.width = img.width; c.height = img.height;
+      const g = c.getContext("2d", { willReadFrequently: true });
+      g.drawImage(img, 0, 0);
+      const px = g.getImageData(0, 0, img.width, img.height).data;
+      const n = img.width * img.height, u = new Float32Array(n), v = new Float32Array(n), ok = new Uint8Array(n);
+      for (let i = 0; i < n; i++) {
+        u[i] = (px[4 * i] - 127.5) / site.scale;
+        v[i] = (px[4 * i + 1] - 127.5) / site.scale;
+        ok[i] = px[4 * i + 2] > 127 ? 1 : 0;
+      }
+      resolve({ w: img.width, h: img.height, u, v, ok });
+    };
+    img.onerror = () => reject(new Error(`no field ${name}`));
+    img.src = name;
+  });
+  return state.fields[key];
+}
+
+// grid cell (col, row; edges at 0..cols, 0..rows) to lon/lat through the four corners
+function cellToLngLat(site, c, r) {
+  const [tl, tr, br, bl] = site.corners;
+  const x = c / site.cols, y = r / site.rows;
+  const top = [tl[0] + (tr[0] - tl[0]) * x, tl[1] + (tr[1] - tl[1]) * x];
+  const bot = [bl[0] + (br[0] - bl[0]) * x, bl[1] + (br[1] - bl[1]) * x];
+  return [top[0] + (bot[0] - top[0]) * y, top[1] + (bot[1] - top[1]) * y];
+}
+
+function sample(f, c, r, out) {
+  const x = c - 0.5, y = r - 0.5;
+  const x0 = Math.floor(x), y0 = Math.floor(y);
+  if (x0 < 0 || y0 < 0 || x0 + 1 >= f.w || y0 + 1 >= f.h) return false;
+  const fx = x - x0, fy = y - y0;
+  const i00 = y0 * f.w + x0, i10 = i00 + 1, i01 = i00 + f.w, i11 = i01 + 1;
+  if (!(f.ok[i00] & f.ok[i10] & f.ok[i01] & f.ok[i11])) return false;
+  const w00 = (1 - fx) * (1 - fy), w10 = fx * (1 - fy), w01 = (1 - fx) * fy, w11 = fx * fy;
+  out[0] = f.u[i00] * w00 + f.u[i10] * w10 + f.u[i01] * w01 + f.u[i11] * w11;
+  out[1] = f.v[i00] * w00 + f.v[i10] * w10 + f.v[i01] * w01 + f.v[i11] * w11;
+  return true;
+}
+
+// ---- the streaks ----
+const canvas = $("wind");
+const ctx = canvas.getContext("2d");
+let dpr = 1;
+function resize() {
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = Math.round(canvas.clientWidth * dpr);
+  canvas.height = Math.round(canvas.clientHeight * dpr);
+  clearTrails();
+}
+function clearTrails() { ctx.clearRect(0, 0, canvas.width, canvas.height); for (const s of systems) for (const p of s.ps) p.sx = NaN; }
+window.addEventListener("resize", resize);
+
+const N = matchMedia("(max-width: 600px)").matches ? 1400 : 2600;
+const systems = [
+  { kind: "hd", colour: [95, 227, 255], field: null, ps: [] },
+  { kind: "sd", colour: [255, 159, 90], field: null, ps: [] },
+];
+const tmp = [0, 0];
+
+function spawn(p, site) {
+  p.c = Math.random() * site.cols; p.r = Math.random() * site.rows;
+  p.age = Math.floor(Math.random() * 80); p.sx = NaN;
+}
+
+function frame() {
+  requestAnimationFrame(frame);
+  const site = state.site;
+  if (!site) return;
+  // fade what is there, then draw the new segments
+  ctx.globalCompositeOperation = "destination-in";
+  ctx.fillStyle = "rgba(0,0,0,0.9)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.globalCompositeOperation = "source-over";
+  ctx.lineWidth = 1.6 * dpr;
+  ctx.lineCap = "round";
+  const zoom = map.getZoom();
+  // cells a frame for a ratio of 1: steadier on screen across zooms
+  const step = 0.18 * (state.kmh / 22) * Math.pow(2, Math.max(0, 14 - zoom) * 0.8);
+  for (const s of systems) {
+    const show = state.mode === "both" || state.mode === s.kind;
+    if (!show || !s.field) continue;
+    const f = s.field;
+    while (s.ps.length < N) { const p = {}; spawn(p, site); s.ps.push(p); }
+    for (const p of s.ps) {
+      if (p.age++ > 90 || !sample(f, p.c, p.r, tmp)) { spawn(p, site); continue; }
+      const sp = Math.hypot(tmp[0], tmp[1]);
+      p.c += tmp[0] * step;
+      p.r -= tmp[1] * step;
+      const ll = cellToLngLat(site, p.c, p.r);
+      const pt = map.project(ll);
+      const x = pt.x * dpr, y = pt.y * dpr;
+      if (Number.isFinite(p.sx)) {
+        const a = Math.min(1, 0.35 + 0.5 * sp);
+        const [cr, cg, cb] = s.colour;
+        ctx.strokeStyle = `rgba(${cr},${cg},${cb},${a.toFixed(2)})`;
+        ctx.beginPath(); ctx.moveTo(p.sx, p.sy); ctx.lineTo(x, y); ctx.stroke();
+      }
+      p.sx = x; p.sy = y;
+    }
+  }
+}
+
+// ---- the controls ----
+function setPressed() {
+  document.querySelectorAll(".seg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === state.mode)));
+}
+function nearestDir(deg) { return (Math.round((((deg % 360) + 360) % 360) / 22.5) % 16) * 22.5; }
+function info(extra = "") {
+  const s = state.site;
+  if (!s) return;
+  const held = s.heldOut ? `<span class="tag held">SD held out</span>` : `<span class="tag">SD in-sample</span>`;
+  $("info").innerHTML = `<b>${s.name}</b>${s.teaches && s.teaches !== "home area" ? ` · ${s.teaches}` : ""} · relief ${s.relief} m${held}<br>` +
+    `Wind from <b>${COMPASS[Math.round(state.dir / 22.5) % 16]} (${state.dir}°)</b> at <b>${Math.round(state.kmh)} km/h</b>${extra}`;
+}
+function hash() {
+  const s = state.site;
+  if (s) history.replaceState(null, "", `#site=${s.id}&dir=${state.dir}&mode=${state.mode}`);
+}
+async function show() {
+  const s = state.site;
+  if (!s) return;
+  info();
+  hash();
+  try {
+    const [hd, sd] = await Promise.all([loadField(s, state.dir, "hd"), loadField(s, state.dir, "sd")]);
+    if (s !== state.site) return;
+    systems[0].field = hd; systems[1].field = sd;
+    for (const sys of systems) for (const p of sys.ps) spawn(p, s);
+    clearTrails();
+  } catch (e) {
+    $("info").textContent = e.message;
+  }
+}
+function boxOutline(s) {
+  const ring = [...s.corners, s.corners[0]];
+  const data = { type: "Feature", geometry: { type: "LineString", coordinates: ring } };
+  if (map.getSource("box")) map.getSource("box").setData(data);
+  else {
+    map.addSource("box", { type: "geojson", data });
+    map.addLayer({ id: "box", type: "line", source: "box", paint: { "line-color": "#ffffff", "line-opacity": 0.55, "line-width": 1.2, "line-dasharray": [3, 2] } });
+  }
+}
+function pickSite(id, fly = true) {
+  const s = state.sites.find((x) => x.id === id) || state.sites[0];
+  state.site = s;
+  $("site").value = s.id;
+  systems.forEach((sys) => { sys.field = null; sys.ps = []; });
+  if (map.isStyleLoaded()) boxOutline(s); else map.once("load", () => boxOutline(s));
+  if (fly) {
+    const xs = s.corners.map((c) => c[0]), ys = s.corners.map((c) => c[1]);
+    map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: { top: 30, bottom: 230, left: 20, right: 20 }, duration: 1200 });
+  }
+  show();
+}
+async function now() {
+  const s = state.site;
+  if (!s) return;
+  $("now").disabled = true;
+  try {
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${s.centre[1]}&longitude=${s.centre[0]}&current=wind_speed_10m,wind_direction_10m`);
+    const d = await r.json();
+    const deg = d.current.wind_direction_10m, kmh = d.current.wind_speed_10m;
+    state.dir = nearestDir(deg);
+    state.kmh = Math.max(4, kmh);
+    $("dir").value = String(state.dir);
+    await show();
+    info(` · the forecast now: ${Math.round(deg)}° at ${Math.round(kmh)} km/h, shown as the nearest of 16`);
+  } catch (e) {
+    $("info").textContent = "The forecast didn't answer: " + e.message;
+  } finally {
+    $("now").disabled = false;
+  }
+}
+
+COMPASS.forEach((name, i) => {
+  const o = document.createElement("option");
+  o.value = String(i * 22.5); o.textContent = `From ${name}`;
+  $("dir").appendChild(o);
+});
+$("dir").addEventListener("change", (e) => { state.dir = Number(e.target.value); state.kmh = 22; show(); });
+$("site").addEventListener("change", (e) => pickSite(e.target.value));
+$("now").addEventListener("click", now);
+document.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => { state.mode = b.dataset.mode; setPressed(); clearTrails(); hash(); }));
+map.on("move", clearTrails);
+// a link that changes only the #: follow it
+window.addEventListener("hashchange", () => {
+  const h = Object.fromEntries(new URLSearchParams(location.hash.slice(1)));
+  if (h.mode && h.mode !== state.mode) { state.mode = h.mode; setPressed(); clearTrails(); }
+  if (h.dir && Number(h.dir) !== state.dir) { state.dir = Number(h.dir); $("dir").value = String(state.dir); state.kmh = 22; if (!h.site || h.site === state.site?.id) show(); }
+  if (h.site && h.site !== state.site?.id) pickSite(h.site);
+});
+
+fetch("sites.json").then((r) => r.json()).then((sites) => {
+  state.sites = sites;
+  for (const s of sites) {
+    const o = document.createElement("option");
+    o.value = s.id; o.textContent = `${s.name}${s.heldOut ? "  · held out" : ""}`;
+    $("site").appendChild(o);
+  }
+  const h = Object.fromEntries(new URLSearchParams(location.hash.slice(1)));
+  if (h.dir) state.dir = Number(h.dir);
+  if (h.mode) state.mode = h.mode;
+  $("dir").value = String(state.dir);
+  setPressed();
+  resize();
+  pickSite(h.site || (sites.find((s) => s.id === "seed-gorge-or") || sites[0]).id);
+  requestAnimationFrame(frame);
+}).catch((e) => { $("info").textContent = "No sites: " + e.message; });
+</script>
+</body>
+</html>
