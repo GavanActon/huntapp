@@ -1,6 +1,8 @@
 # Plan: SD everywhere, HD to order, asked for from the app
 
-Status: proposed 2026-10-07, not approved, nothing built. It settles the
+Status: proposed 2026-10-07. The loop's Queue and Bake (steps 2 and 3)
+built 2026-10-11 and tested locally, not deployed: see "The loop as built"
+below. It settles the
 SD / HD back-and-forth into one build order with effort by order of
 magnitude. It builds on [AREAS.md](AREAS.md) (Live, SD and HD; Requests),
 [TILES.md](TILES.md) and [SCALE-PLAN.md](SCALE-PLAN.md); it does not
@@ -84,6 +86,76 @@ them, 10–20 s each).
    ([PARTY.md](PARTY.md) "HD for the party"), and the Worker serving HD
    files from R2 only with it.
 
+## The loop as built (2026-10-11)
+
+Steps 2 and 3, SD only, tested end to end against `wrangler dev --local`
+and R2 under `_test/`; nothing deployed. Not built: the email (step 4),
+the app's side (the status poll, the runtime area list), HD.
+
+- **D1.** `requests` gains `box`, `install`, `name`, `stage`, `step`,
+  `area_id`, `error`, `claimed_at`, `done_at`, `updated_at`, `agent`
+  (`kind` was there); a new table `areas` keeps each area shipped. A new
+  request with a point is `queued`; one without (a place name on the
+  site) and every row from before keep `stage` NULL, left to a person.
+  Stages: queued → claimed → baking → review | done | failed; cancelled
+  from Explore's cancel while still queued.
+- **Worker** (`site/bake.js`, `site/worker.js`). `POST /api/request` takes
+  `kind` (default sd), `box` ({west, south, east, north}; else worked out
+  from Explore's `tile`), `install` and `name`, and answers `{id}`.
+  `GET /api/request?id=` is the phone's status (`stage`, `step`,
+  `area_id`, the error's last line, `updated`; never the email or the
+  point). `GET /api/bake/next` claims the oldest queued request in one
+  UPDATE … RETURNING, after handing the asking agent back any it left
+  claimed or baking; `POST /api/bake/<id>` moves it on (each stage only
+  from the ones it may follow; done writes the area in the same
+  transaction). Both behind `X-Bake-Key` = the secret `BAKE_KEY`.
+  `GET /areas/index.json` (the form of the build's `data/areas/index.json`,
+  plus `data`, https://data.groundwind.app/data/, so a file is
+  `data` + `base` + its name) and `/areas/<id>/area.json`, from `areas`,
+  60 s cache.
+- **Agent** (`pipeline/agent.py`, its docstring has the rest). `--new --sd`
+  round the box (the core; the region 5 km more), the province by the
+  point, Ontario's stands from the FRI package on this PC where one covers
+  it (else SCANFI), the bake with the SD steps into
+  `pipeline/raw/requests/`, the checklist as the gate (the two warnings
+  every SD area has by design, Terrain from the 30 m MRDEM and Bush and
+  lanes from the satellite bush model, pass; anything else parks it at
+  review, and `--approve <id>` ships it), the pack and
+  `manifest.json` to R2 `data/areas/<id>/` (where the app reads every
+  area's files, `VITE_DATA_BASE` https://data.groundwind.app/data/; the
+  index's `data` says the same), done. `bake_area.py` now writes the
+  coverage, relief and zone into an area file kept apart
+  (`HUNTAPP_AREAS_DIR`) on a scratch-folder bake, and an SD area file no
+  longer lists the stands as GeoJSON (12.7 MB in Ontario; the map reads
+  them from the forest tiles). A bake the agent was in
+  when it stopped is handed back at its next start and goes on from the
+  step it was in.
+- **Measured** (request 7, a 10 × 10 km Explore box 15 km south-east of
+  Pickle Lake, White River FRI): **76 min** of bake, not the 15 the table
+  above assumed. Topo 24 min (Toporama and the MRDEM hillshade WMS to z16
+  over the core), DEM tiles 28 min (one core, encoding z16), habitat
+  10.5 min (the satellite bush model), imagery 4.7, wind-sd 2.4, the rest
+  under 2 each. Pack 114 MB, 22 files; R2 upload 3 min. It parked at
+  review on the two SD warnings only (which now pass).
+
+The 76 minutes for a 10 × 10 km box are topo 24 + DEM tiles 28 +
+habitat 10.5: a 20-minute promise needs the staged inputs of
+[TILES.md](TILES.md) (and the tiles' display layers made once, not per
+request), not a faster agent.
+
+To switch it on, once:
+
+```
+cd site
+npx wrangler d1 execute groundwind --remote --file migrations/2026-10-11-requests-bake.sql
+npx wrangler d1 execute groundwind --remote --command "PRAGMA table_info(requests)"   # box … agent there
+npx wrangler secret put BAKE_KEY          # a long random value
+npx wrangler deploy
+setx BAKE_KEY "<the same value>"          # on XEVO
+py -3.14 pipeline/agent.py --once         # one request, to see it work
+py -3.14 pipeline/agent.py --at-logon     # then --watch at every sign-in
+```
+
 ## Hosting
 
 Status 2026-10-10: R2 is on, the bucket `groundwind-data` exists (location
@@ -92,14 +164,19 @@ dev ports (GET, HEAD, range headers exposed), and an account API token
 scoped to it (Object Read & Write) is in XEVO's user environment as
 `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` (tested: list, put, get, delete).
 The custom domain `data.groundwind.app` is attached and live (zone
-c22ad859df4f4831b2b935792ada8ce4). Nothing is in the bucket yet.
+c22ad859df4f4831b2b935792ada8ce4). 2026-10-11: the app's data is in it
+(`app/scripts/r2_sync.py`: 195 files, 779 MB, under `data/`, the
+git-ignored bake inputs left out) and a build reading it was checked
+headless (Blanchard River, Pickle Lake: every data request to R2, ranges
+206, CORS clean, Download saves an area). The app does not read it yet.
 
 - R2 bucket `groundwind-data`, custom domain `data.groundwind.app`
   (Cloudflare's own edge: Range and CORS work; the "never proxy" rule was
   for GitHub Pages behind the proxy). Check PMTiles range reads with the
   headless script before switching the app over.
-- Copy the four areas as they are. `VITE_DATA_BASE=https://data.groundwind.app/`
-  in the Pages build; `warm-cache.sh` warms that host. The app's dist
+- Copy the areas as they are. `VITE_DATA_BASE=https://data.groundwind.app/data/`
+  in the Pages build (the `data/` is part of it: the objects keep the
+  app's paths); `warm-cache.sh` warms that host. The app's dist
   falls from 351 MB to a few MB and the 1 GB cap stops mattering.
 - Cost: $0.015 a GB-month, no egress fee. 450 MB now; 15 GB with
   northern Ontario's tiles; 100 GB for the country is $1.50 a month.

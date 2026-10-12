@@ -432,7 +432,11 @@ def bake(args) -> int:
     if "coverage" in chosen:
         cov = coverage(area, results)
         have = sum(1 for g in ("pmtiles", "geo", "baseGeo", "grids") for e in cov[g].values() if "file" in e)
-        if area.SCRATCH:  # describes the scratch folder, not the area's files
+        # a scratch run of one of the app's areas describes the scratch folder,
+        # not the area's files, so it goes beside them; an area file kept
+        # apart (HUNTAPP_AREAS_DIR: a request's, pipeline/agent.py) has that
+        # folder for its files, and takes the report and the found values
+        if area.SCRATCH and not area.KEPT_APART:
             dest = area.OUT_DIR / f"coverage-{a['id']}.json"
             dest.write_text(json.dumps(cov, indent=1, ensure_ascii=False), encoding="utf-8")
         else:
@@ -858,6 +862,11 @@ def new_area(args) -> str:
     if args.sd:  # the bush model's understory stands in for the point cloud's; one wind grid
         files["pmtiles"] = [k for k in files["pmtiles"] if k != "contoursWide"] + ["understory", "contoursWide"]
         files["grids"] = [g for g in files.get("grids", []) if g != "micro-sd"]
+        # the stands as GeoJSON stay the bake's input: the map draws them from
+        # the forest tiles (mapStyle.ts reads the archive first), and in Ontario
+        # the file is 12 MB of a phone's download for nothing
+        if "forest" in files["pmtiles"]:
+            files["geo"] = [g for g in files.get("geo", []) if g != "forest"]
     bake_by = {
         "ON": {"vectors": "on.lio", "forest": {"adapter": "on.fri", "gdb": None, "crs": None, "vintage": None}, "imagery": "on.oiwms", "pointcloud": "on.fri_leafon"},
         "YT": {

@@ -1,9 +1,12 @@
--- Area requests from the site's form (and later the app's own button), the
--- app's usage stats (events, below), the site's own (site_events), the wind
--- checks hunters share (checks) and a hunting party's sealed mailbox
--- (party_items).
+-- Area requests from the site's form and the app's Explore card, the areas
+-- baked for them (areas), the app's usage stats (events, below), the site's
+-- own (site_events), the wind checks hunters share (checks) and a hunting
+-- party's sealed mailbox (party_items).
 -- Apply with: npx wrangler d1 execute groundwind --remote --file schema.sql
 -- Read with:  npx wrangler d1 execute groundwind --remote --command "SELECT * FROM requests ORDER BY at DESC"
+-- A column added here never reaches a table that exists: each change comes
+-- with its ALTER TABLE statements in migrations/, applied by hand (then
+-- check with PRAGMA table_info(<table>) on --remote).
 CREATE TABLE IF NOT EXISTS requests (
   id INTEGER PRIMARY KEY,
   at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -17,11 +20,43 @@ CREATE TABLE IF NOT EXISTS requests (
   who TEXT,              -- a hash of the sender's address, only to slow a flood
   status TEXT NOT NULL DEFAULT 'new',
   tile TEXT,             -- Explore: the box drawn (b-<x0>-<y0>-<x1>-<y1>, habitat-cell indices, app/src/explore/box.ts), or the SD lattice cell (t-<i>-<j>) before 2026-10-09
-  kind TEXT              -- sd or hd
+  kind TEXT,             -- sd or hd
+  -- the bake loop (docs/SD-HD-PLAN.md; worker.js /api/bake, pipeline/agent.py)
+  box TEXT,              -- JSON {west, south, east, north}: sent, or worked out from tile
+  install TEXT,          -- the asking phone's install id (16 hex, as in events)
+  name TEXT,             -- the area's name as asked for
+  stage TEXT,            -- queued, claimed, baking, review, done, failed, cancelled; NULL: left to a person (no point, or from before the loop)
+  step TEXT,             -- the bake step under way (habitat, wind-sd …), for the phone
+  area_id TEXT,          -- the area it became (areas.id)
+  error TEXT,            -- failed: the traceback's tail; review: what the checklist flagged
+  claimed_at TEXT,
+  done_at TEXT,
+  updated_at TEXT,       -- the stage's last change
+  agent TEXT             -- the machine baking it (XEVO)
 );
 -- a table made before 2026-10-08 needs the two columns added:
 --   ALTER TABLE requests ADD COLUMN tile TEXT; ALTER TABLE requests ADD COLUMN kind TEXT;
+-- and one made before 2026-10-11 the bake loop's: migrations/2026-10-11-requests-bake.sql
 CREATE INDEX IF NOT EXISTS requests_who_at ON requests (who, at);
+
+-- The areas baked on request (pipeline/agent.py posts each one when it is
+-- in R2): /areas/index.json lists the done ones and /areas/<id>/area.json
+-- hands over the file, so a new area needs no app build. The files
+-- themselves are in R2 under areas/<id>/ (data.groundwind.app).
+CREATE TABLE IF NOT EXISTS areas (
+  id TEXT PRIMARY KEY,         -- the area's id: its files are <layer>-<id>.<ext> under areas/<id>/ in R2
+  name TEXT NOT NULL,
+  lat REAL,                    -- the area's centre
+  lon REAL,
+  kind TEXT,                   -- sd or hd
+  stage TEXT NOT NULL,         -- done: in /areas/index.json; anything else (withdrawn) keeps it out
+  area_json TEXT NOT NULL,     -- the area file as the bake wrote it (app/src/areas/<id>.json's form)
+  files_json TEXT NOT NULL,    -- areas/<id>/manifest.json in R2, byte for byte: {files: {name: {size, hash, z?, bounds?}}}
+  size_bytes INTEGER,          -- the pack: what a phone saves for it
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  request_id INTEGER           -- requests.id it was baked for
+);
 
 -- The app's usage stats (app/src/analytics.ts → /api/events, stats.js;
 -- every event and the queries in docs/ANALYTICS.md). No position, no names:
