@@ -41,6 +41,11 @@
   .tag.held { color: #0f1a12; background: var(--accent); border-color: transparent; }
   .key { display: flex; gap: 12px; font-size: 12px; color: var(--dim); }
   .key i { display: inline-block; width: 18px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+  .row.between { justify-content: space-between; }
+  .dens { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--dim); }
+  .dens button { min-height: 30px; min-width: 34px; padding: 2px 8px; font-size: 16px; line-height: 1; }
+  .dens button:disabled { opacity: 0.4; }
+  #dval { min-width: 30px; text-align: center; color: var(--text); }
   details summary { cursor: pointer; color: var(--dim); font-size: 13px; }
   details p { margin: 6px 0 0; color: var(--dim); font-size: 13px; }
   .maplibregl-ctrl-attrib { font-size: 10px; }
@@ -64,7 +69,12 @@
     <button id="now" title="The forecast wind at the site now">Now</button>
   </div>
   <div class="info" id="info">Loading the sites…</div>
-  <div class="key"><span><i style="background:var(--hd)"></i>HD · WindNinja</span><span><i style="background:var(--sd)"></i>SD · the net</span></div>
+  <div class="row between">
+    <div class="key"><span><i style="background:var(--hd)"></i>HD · WindNinja</span><span><i style="background:var(--sd)"></i>SD · the net</span></div>
+    <div class="dens" role="group" aria-label="How many streaks">
+      <span>Streaks</span><button id="less" aria-label="Fewer streaks">−</button><span id="dval">×1</span><button id="more" aria-label="More streaks">+</button>
+    </div>
+  </div>
   <details>
     <summary>What this is</summary>
     <p>Each site is a 15 × 15 km box of 30 m terrain. <b>HD</b> is WindNinja's momentum solve for a wind from the chosen direction (neutral air, terrain only, 10 m above the ground). <b>SD</b> is the surrogate net's prediction for the same terrain, the wind an SD area gets.</p>
@@ -156,16 +166,53 @@ function resize() {
 function clearTrails() { ctx.clearRect(0, 0, canvas.width, canvas.height); for (const s of systems) for (const p of s.ps) p.sx = NaN; }
 window.addEventListener("resize", resize);
 
-const N = matchMedia("(max-width: 600px)").matches ? 1400 : 2600;
+// The streaks keep one look at every zoom (Gavan, 2026-10-12): as many to a
+// patch of screen, and as fast across it, whether the box fills the screen
+// or one valley does. They are spawned only where the box meets the view,
+// their count follows that part's area on screen, and they move a set number
+// of screen pixels a frame. − / + sets how many.
+const DENSITY_KEY = "groundwind-atlas-density";
+const DENSITIES = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4];
+let density = 1;
+try { density = Number(localStorage.getItem(DENSITY_KEY)) || 1; } catch (e) { /* no storage: the default */ }
+const PX_PER_STREAK = 260; // screen px² per streak at ×1
+const PX_PER_FRAME = 1.1; // screen px a frame at the solve's 22 km/h and a ratio of 1
 const systems = [
   { kind: "hd", colour: [95, 227, 255], field: null, ps: [] },
   { kind: "sd", colour: [255, 159, 90], field: null, ps: [] },
 ];
 const tmp = [0, 0];
+let view = null; // the part of the box on screen, in cells, and how many screen px a cell is
+
+// lon/lat to grid cells, through the corners as a parallelogram (close enough for the view's bounds)
+function lngLatToCell(site, lng, lat) {
+  const [tl, tr, , bl] = site.corners;
+  const ax = tr[0] - tl[0], ay = tr[1] - tl[1], bx = bl[0] - tl[0], by = bl[1] - tl[1];
+  const dx = lng - tl[0], dy = lat - tl[1];
+  const det = ax * by - ay * bx;
+  return [((dx * by - dy * bx) / det) * site.cols, ((ax * dy - ay * dx) / det) * site.rows];
+}
+
+function viewOf(site) {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  const pts = [[0, 0], [w, 0], [w, h], [0, h]].map(([x, y]) => {
+    const ll = map.unproject([x, y]);
+    return lngLatToCell(site, ll.lng, ll.lat);
+  });
+  const c0 = Math.max(0, Math.min(...pts.map((q) => q[0]))), c1 = Math.min(site.cols, Math.max(...pts.map((q) => q[0])));
+  const r0 = Math.max(0, Math.min(...pts.map((q) => q[1]))), r1 = Math.min(site.rows, Math.max(...pts.map((q) => q[1])));
+  if (c1 <= c0 || r1 <= r0) return null;
+  const cc = (c0 + c1) / 2, rr = (r0 + r1) / 2;
+  const a = map.project(cellToLngLat(site, cc, rr)), b = map.project(cellToLngLat(site, cc + 1, rr));
+  return { c0, r0, c1, r1, pxPerCell: Math.max(1e-3, Math.hypot(b.x - a.x, b.y - a.y)) };
+}
 
 function spawn(p, site) {
-  p.c = Math.random() * site.cols; p.r = Math.random() * site.rows;
-  p.age = Math.floor(Math.random() * 80); p.sx = NaN;
+  const v = view || { c0: 0, r0: 0, c1: site.cols, r1: site.rows };
+  p.c = v.c0 + Math.random() * (v.c1 - v.c0);
+  p.r = v.r0 + Math.random() * (v.r1 - v.r0);
+  p.age = Math.floor(Math.random() * 80);
+  p.sx = NaN;
 }
 
 function frame() {
@@ -179,21 +226,28 @@ function frame() {
   ctx.globalCompositeOperation = "source-over";
   ctx.lineWidth = 1.6 * dpr;
   ctx.lineCap = "round";
-  const zoom = map.getZoom();
-  // cells a frame for a ratio of 1: steadier on screen across zooms
-  const step = 0.18 * (state.kmh / 22) * Math.pow(2, Math.max(0, 14 - zoom) * 0.8);
-  for (const s of systems) {
-    const show = state.mode === "both" || state.mode === s.kind;
-    if (!show || !s.field) continue;
+  view = viewOf(site);
+  if (!view) return;
+  const shown = systems.filter((s) => (state.mode === "both" || state.mode === s.kind) && s.field);
+  if (!shown.length) return;
+  // as many as the box's part of the screen holds at this density; both kinds share a little more than one's worth
+  const onScreen = (view.c1 - view.c0) * (view.r1 - view.r0) * view.pxPerCell * view.pxPerCell;
+  const n = Math.round(Math.min(6000, Math.max(60, (density * onScreen) / PX_PER_STREAK / (shown.length > 1 ? 1.5 : 1))));
+  // cells a frame for a ratio of 1, so the same screen speed at every zoom
+  const step = (PX_PER_FRAME / view.pxPerCell) * (state.kmh / 22);
+  for (const s of shown) {
     const f = s.field;
-    while (s.ps.length < N) { const p = {}; spawn(p, site); s.ps.push(p); }
+    while (s.ps.length < n) { const p = {}; spawn(p, site); s.ps.push(p); }
+    if (s.ps.length > n) s.ps.length = n;
     for (const p of s.ps) {
-      if (p.age++ > 90 || !sample(f, p.c, p.r, tmp)) { spawn(p, site); continue; }
+      if (p.age++ > 90 || p.c < view.c0 || p.c > view.c1 || p.r < view.r0 || p.r > view.r1 || !sample(f, p.c, p.r, tmp)) {
+        spawn(p, site);
+        continue;
+      }
       const sp = Math.hypot(tmp[0], tmp[1]);
       p.c += tmp[0] * step;
       p.r -= tmp[1] * step;
-      const ll = cellToLngLat(site, p.c, p.r);
-      const pt = map.project(ll);
+      const pt = map.project(cellToLngLat(site, p.c, p.r));
       const x = pt.x * dpr, y = pt.y * dpr;
       if (Number.isFinite(p.sx)) {
         const a = Math.min(1, 0.35 + 0.5 * sp);
@@ -204,6 +258,19 @@ function frame() {
       p.sx = x; p.sy = y;
     }
   }
+}
+
+function setDensity(d) {
+  density = d;
+  $("dval").textContent = `×${d}`;
+  $("less").disabled = d <= DENSITIES[0];
+  $("more").disabled = d >= DENSITIES[DENSITIES.length - 1];
+  try { localStorage.setItem(DENSITY_KEY, String(d)); } catch (e) { /* kept for this visit only */ }
+}
+function stepDensity(dir) {
+  const i = DENSITIES.indexOf(density);
+  const k = i < 0 ? DENSITIES.indexOf(1) : i;
+  setDensity(DENSITIES[Math.max(0, Math.min(DENSITIES.length - 1, k + dir))]);
 }
 
 // ---- the controls ----
@@ -286,6 +353,9 @@ COMPASS.forEach((name, i) => {
 $("dir").addEventListener("change", (e) => { state.dir = Number(e.target.value); state.kmh = 22; show(); });
 $("site").addEventListener("change", (e) => pickSite(e.target.value));
 $("now").addEventListener("click", now);
+$("less").addEventListener("click", () => stepDensity(-1));
+$("more").addEventListener("click", () => stepDensity(1));
+setDensity(DENSITIES.includes(density) ? density : 1);
 document.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => { state.mode = b.dataset.mode; setPressed(); clearTrails(); hash(); }));
 map.on("move", clearTrails);
 // a link that changes only the #: follow it
