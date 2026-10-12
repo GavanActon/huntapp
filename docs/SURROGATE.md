@@ -317,6 +317,9 @@ eight-way average:
 | | 17 | 3.2° | 1.8° | 0.57 | 0.105 | 0.82 | −0.08 |
 | | 35 | 3.2° | 1.9° | 0.59 | 0.099 | 0.82 | −0.07 |
 | Rothrock, PA (3DEP) | 35 | 5.5° | 2.5° | 0.67 | 0.080 | 0.95 | −0.01 |
+| Pickle Lake | 35 | 0.4° | 0.3° | 0.97 | 0.043 | 0.98 | −0.04 |
+| Lac Bailey | 35 | 3.7° | 1.9° | 0.73 | 0.065 | 0.96 | +0.01 |
+| Sault test | 35 | 0.2° | 0.2° | 0.76 | 0.062 | 0.84 | −0.06 |
 
 Every batch moves both mountain folds the same way: the turn r climbs
 and Highland's speed under-call shrinks (−0.10 to −0.07). Rothrock is
@@ -329,10 +332,13 @@ analogue in the set is Matane.
 **The serving net.** `runs/seed2-all` (all 36 areas) is copied to
 `runs/all`, which `build_windsd.py` uses for any area without a
 held-out net of its own; the five-area net is kept as `runs/all-5areas`.
-The five areas' SD grids in the app are still the pass-2 held-out nets
-(four areas each); rebaking them from 35-area folds is a deploy and
-Gavan's call (Pickle's needs `--overwrite-published` now that its SD
-grid is published).
+**Shipped 2026-10-11 21:40:** every `runs/hold-<id>` is now that area's
+35-area fold (the four-area ones kept as `hold-<id>-4areas`), and the five
+SD grids were rebaked from them with the speed damping of 0.6 (Pickle's
+under `--overwrite-published`, its SD grid being published). Against
+their WindNinja grids over the region lattice: Pickle 0.5° / turn r 0.95,
+Sault 0.4° / 0.88, Lac Bailey 3.6° / 0.69, Highland 5.3° / 0.56,
+Blanchard 15.0° / 0.48.
 
 ### The net at 1,200 weather stations, 2026-10-11
 
