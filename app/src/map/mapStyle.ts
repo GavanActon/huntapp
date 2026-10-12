@@ -326,8 +326,17 @@ const BUSH_LAYER_MINZOOM = BUSH_MINZOOM - 1.5
 /** The lanes are on for a fresh phone, and at the opening's zoom (13 and
  *  the coarse pass through 11) a metre-wide lane is under a pixel: their
  *  tiles were 330 KB of a cold open's first seconds for nothing to see
- *  (2026-10-07). They come in a notch further in than the opening. */
+ *  (2026-10-07). They come in a notch further in than the opening, until
+ *  the opening has landed: then out as far as the bush (openLanesOut), or
+ *  the button did nothing zoomed out (Gavan, 2026-10-12: "the range button
+ *  doesn't work at lower zoom levels"). */
 const LANES_LAYER_MINZOOM = 13.5
+
+/** The cold open over (MapView, on the first idle): the lanes drawn out as
+ *  far as the bush's zoomed-out tiles go. */
+export function openLanesOut(map: MlMap) {
+  if (map.getLayer('lanes')) map.setLayerZoomRange('lanes', BUSH_LAYER_MINZOOM, 24)
+}
 
 const FONT = ['Noto Sans Regular']
 const FONT_MED = ['Noto Sans Medium']

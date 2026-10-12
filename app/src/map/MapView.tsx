@@ -9,10 +9,10 @@ import { bootManifest } from '../offline/updates'
 import { fineDetail, markShown, useAppStore, type LayerOpacity, type LayerVisibility } from '../state/appStore'
 import { placeColour } from '../state/pinColours'
 import { usePlacesStore } from '../state/placesStore'
-import { geoUrls, holdOpening, setMap, withMap } from './mapController'
+import { geoUrls, holdOpening, onFirstIdle, setMap, withMap } from './mapController'
 import { useMeasureStore } from '../measure/measureStore'
 import { useBushLabels } from '../bushLabels/labelStore'
-import { baseTone, BOG_TUFT, bogTuftImage, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour, lidarShadeShown, type ArchiveRange, reliefShadePaint, standIn, syncUnderlays } from './mapStyle'
+import { baseTone, BOG_TUFT, bogTuftImage, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour, lidarShadeShown, openLanesOut, type ArchiveRange, reliefShadePaint, standIn, syncUnderlays } from './mapStyle'
 import { offlineComplete, registerAllDataFiles, registerDataFile, sourceModes } from './pmtilesRegistry'
 import { showInfoPopup } from './infoPopup'
 import { showPlacePopup } from './placePopup'
@@ -289,6 +289,10 @@ export default function MapView() {
       // parsed ('style.load'), not 'load': a live tile source that never
       // finishes would otherwise hold every layer back
       setMap(m)
+      // the opening landed, the lanes go out as far as the bush (openLanesOut)
+      withMap((map) => {
+        if (map === m) onFirstIdle(m, () => openLanesOut(m))
+      })
       // the GeoJSON of the layers that are off waits for its switch
       // (flushDeferredGeo in the layer sync below)
       withMap((map) => {
