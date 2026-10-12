@@ -74,6 +74,9 @@ else
   export MAMBA_ROOT_PREFIX="${MAMBA_ROOT_PREFIX:-$HOME/micromamba}"
   if [[ ! -x "$MM" ]]; then
     mkdir -p "$HOME/.local"
+    # a fresh Ubuntu 24.04 under WSL has no bzip2, and tar dies unpacking
+    # micromamba without it (xonix, 2026-10-12)
+    command -v bzip2 >/dev/null || { echo "bzip2 is missing: sudo apt-get update && sudo apt-get install -y bzip2, then run this again"; exit 1; }
     (cd "$HOME/.local" && curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xj bin/micromamba)
   fi
   if [[ ! -d "$MAMBA_ROOT_PREFIX/envs/$ENV_NAME" ]]; then
