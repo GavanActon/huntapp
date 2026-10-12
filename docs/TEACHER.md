@@ -285,6 +285,27 @@ About a working week of agent time and 3–4 nights of xonix.
 4. **Decide later:** the cloud spend if PALM becomes the teacher of record
    ($0.7–1.4 k for the full seed set), against a subset on xonix.
 
+### The first full run: stable Searchmont on xonix, 2026-10-12
+
+The 10 m stable case ran on xonix in WSL2 (22 ranks, 1.4 s a step, 4.7×
+XEVO; 8,468 steps for 2.5 h of air in about 3.3 h of wall time). The
+physics the case exists for showed up: over the last half hour the floor
+under the check is turned 118° from the ambient at 0.19 of its speed and
+reversed 43% of the time, with a reversed patch of 810 ha across the
+valley, and the treetops come out from 138° (felt 180°, within 45°). But
+the floor's direction is 36°, not the 308° felt, and the run is not
+gradeable by its own gate: the whole low layer went slack, the ambient
+at the reference 1.6 km/h against the forecast's 16, with 27 km/h left at
+600 m. The case over-stabilised: a ground cooling of 1 K/h for 2.5 h under
+a wind held by the column's volume flow put the momentum aloft and let
+the valley sleep, which is a stronger inversion than a windy dusk makes.
+Against WindNinja the numbers (turn r 0.02, speed r 0.37) mean nothing
+in that state. Next: the neutral run as the baseline, then the stable
+case again with milder cooling (0.3–0.5 K/h, or a fixed small surface
+flux), so the air at 30 m stays near the forecast while the floor is
+free to decouple. The decoupling and the reversal are there; the dose
+is wrong.
+
 ## Track B: GPU engine
 
 Status 2026-10-12, early hours. Step 1 of [GPU-SOLVER.md](GPU-SOLVER.md)'s
