@@ -334,6 +334,35 @@ The five areas' SD grids in the app are still the pass-2 held-out nets
 Gavan's call (Pickle's needs `--overwrite-published` now that its SD
 grid is published).
 
+### The net at 1,200 weather stations, 2026-10-11
+
+The wind-learning thread's station scoreboard (`pipeline/stations/`,
+written up in [WIND-LEARNING.md](WIND-LEARNING.md)) is the first
+measure of the net against real wind at scale: 29 days of Environment
+Canada observations at about 1,200 public stations, 548,613
+station-hours with the wind over 5 km/h, scoring HRDPS as is against
+HRDPS turned by the net's response at the station's cell (a 15 km MRDEM
+box round each, the eight-way average), on the same hours. Only two
+stations sit inside a trained area. With the 36-area serving net:
+
+| stations | HRDPS within 45° | with the net | median error |
+|---|---|---|---|
+| all | 88% | 88% | 14° → 14° |
+| flat, gentle, hilly | 91 / 89 / 83% | 91 / 89 / 84% | |
+| mountain | 70% | 73% | 26° → 22° |
+| valley floor | 74% | 79% | 25° → 19° |
+| valley floor at night | 72% | 77% | |
+| ridge, direction | 78% | 77% | |
+| ridge, speed within 2× | 70% | 73% | |
+
+The net pays where the terrain does and costs nothing on the flat,
+which is the folds' and the butte's story told by 1,200 stations. The
+one place it takes a point back is ridge direction, and it shaves a
+point of speed accuracy at fire-weather stations, where HRDPS already
+runs about 1.3× high and the net's speed-up adds to that: the same
+over-contrast the butte showed, and the same cheap fix (damp the
+deviation from the ambient toward the measured slope).
+
 ### The teacher against measured wind: Big Southern Butte and Salmon River, 2026-10-11
 
 Two seed sites are WindNinja's own field campaigns (Wagenbrenner et al.,
