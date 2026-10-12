@@ -481,6 +481,20 @@ and are compared with:
   bandwidth ratio (1.79 TB/s against 384 GB/s). The job's log prints the
   measured figure every 1,000 steps.
 
+### The 15 m run on the 5090, 2026-10-12 01:04
+
+The queued run went through the kit: 98 M cells, 29,692 steps, 80 min,
+0.60 GLUPS, 20.6 GB peak. Resolution did not fix the physics. Against
+WindNinja over the core the speed r rose from 0.45 to 0.56 and the
+plain is close (r 0.78), but at the sensors the ratio MAE went from
+0.37 to 0.42 with a +0.38 bias: the summit came out at 1.96 of the
+reference (measured 1.09, WindNinja 1.03), worse than at 30 m, and the
+lee flank at 1.06 (measured 0.80, WindNinja 0.47) with no wake at all:
+0.1% of cells under half the ambient against WindNinja's 17%. So the
+missing wake and the over-sped summit are the floor and closure, not the
+grid, and the next step is the steep-ground wall and the near-ground
+stress, not more cells. Step 1 stays open.
+
 ### What was learned on the way
 
 The 10 m answer lives in the first cell over the ground, and most of the
