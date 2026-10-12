@@ -43,7 +43,7 @@
     "pointcloud": null,
     "wind": "sd",
     "nts": ["041J12", "041J13", "041K09", "041K16"],
-    "sdRun": "seed1-hold-blanchard-river"
+    "sdRun": "all"
   },
   "coverage": {
     "checked": "2026-10-10",
