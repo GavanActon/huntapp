@@ -93,6 +93,23 @@ Classes, so exposed ground and the lee are scored apart:
     py -3.14 pipeline/surrogate/idaho.py src --min-ref 3 --tag 3ms
     py -3.14 pipeline/surrogate/idaho.py src --min-ref 3 --hours 11-19 --tag 3ms-day
 
+The contrast damping scan: WindNinja's field taken toward the sector's
+ambient, amb + k (field - amb) in u and v (grid axes, fields.damp_contrast),
+k = 0.3 ... 1.1, each scored as above (ratio r, MAE, bias, the slope of
+measured - 1 on modelled - 1, the exposed / lee or ridge / floor classes,
+the turn about each sensor's own mean); then the k with the least ratio MAE
+and the k that brings the slope to 1. --pred scores a net's prediction
+(predict.py) in WindNinja's place, for the scoreboard or the scan:
+
+    py -3.14 pipeline/surrogate/idaho.py bsb --ref-offset auto --tag ringdir --damp-scan
+    py -3.14 pipeline/surrogate/idaho.py src --damp-scan
+    py -3.14 pipeline/surrogate/idaho.py bsb --ref-offset auto --tag ringdir --damp-scan --damp-mode speed --ks 0.5,0.6,0.7,0.8,1.0
+
+--damp-mode speed damps the speed only, the modelled ratio to the reference
+taken to 1 + k (ratio - 1) with the turns as they are (build_windsd --damp);
+ratio r is then the same at every k, by construction.
+    py -3.14 pipeline/surrogate/idaho.py bsb --ref-offset auto --tag ringdir-seed2-all --damp-scan --pred pred-seed2-all-seed-bsb-id.npz
+
 The first run of a campaign reads its database once into
 pipeline/raw/idaho/blocks10-<campaign>.csv.gz (the 10 min blocks of every
 sensor, about a minute for BSB's 11.6 M rows); later runs read that.
@@ -106,6 +123,7 @@ Output, pipeline/raw/surrogate/runs/idaho/:
   <campaign>[-tag]-scatter.png       measured against modelled, WindNinja
                                      and mass neutral: ratio, turn, and the
                                      turn about each sensor's own mean
+  <campaign>[-tag]-damp[-speed].json, .md   the damping scan (--damp-scan)
 """
 
 from __future__ import annotations
@@ -126,8 +144,8 @@ from scipy.ndimage import map_coordinates, uniform_filter
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from fields import (DATA, baseline_field, bearing, direction_index, load_area, load_baseline,  # noqa: E402
-                    pearson, slope_deg, wrap180)
+from fields import (DATA, baseline_field, bearing, damp_contrast, direction_index, load_area,  # noqa: E402
+                    load_baseline, pearson, slope_deg, wrap180)
 
 RAW = HERE.parent / "raw" / "idaho"
 OUT = DATA / "runs" / "idaho"
@@ -387,8 +405,12 @@ def point_class(c: Campaign, cls: dict, sid: str, direction: float) -> str:
     return "windward flank" if w > 0 else "lee flank"
 
 
-def model_points(c: Campaign, area, base, pos: pd.DataFrame, pts: pd.DataFrame) -> pd.DataFrame:
-    """Add each model's ratio and turn to the measured points."""
+def model_points(c: Campaign, area, base, pos: pd.DataFrame, pts: pd.DataFrame, damp: float = 1.0,
+                 models: tuple[str, ...] = ("wn", "wn90", "mass")) -> pd.DataFrame:
+    """Add each model's ratio and turn to the measured points. damp takes
+    WindNinja's field (and its 90 m mean) toward the sector's ambient first,
+    amb + damp * (field - amb) in u and v (grid axes, Area.amb), so the
+    ratio to the reference and the turn are both those of the damped field."""
     ref = pos[pos["id"] == c.ref]
     if ref.empty:
         raise SystemExit(f"the reference {c.ref} is not on the {area.name} grid")
@@ -398,9 +420,12 @@ def model_points(c: Campaign, area, base, pos: pd.DataFrame, pts: pd.DataFrame) 
     for b in sorted(pts["bin"].unique()):
         d = float(b * BIN)
         i = direction_index(area, d)
-        fields["wn"][b] = (area.u[i], area.v[i])
-        fields["wn90"][b] = (uniform_filter(area.u[i], 3, mode="nearest"), uniform_filter(area.v[i], 3, mode="nearest"))
-        if base is not None:
+        u, v = damp_contrast(area.u[i], area.v[i], *area.amb(d), damp)
+        if "wn" in models:
+            fields["wn"][b] = (u, v)
+        if "wn90" in models:
+            fields["wn90"][b] = (uniform_filter(u, 3, mode="nearest"), uniform_filter(v, 3, mode="nearest"))
+        if base is not None and "mass" in models:
             fields["mass"][b] = baseline_field(base, "neutral", d, area.conv)
     pos_i = pos.set_index("id")
     out = pts[pts["id"].isin(pos_i.index)].copy()
@@ -556,6 +581,8 @@ def fmt(x, nd=2) -> str:
 
 def tables(c: Campaign, board: dict) -> str:
     lines = [f"# {c.name}: WindNinja (the teacher) against the measured wind", "",
+             *([f"The WindNinja rows are {board['field']}'s field (--pred).", ""]
+               if board.get("field", "WindNinja momentum") != "WindNinja momentum" else []),
              f"Reference {c.ref}; reference blocks: 10 min, mean >= {board['filters']['min_ref_ms']} m/s, "
              f"steadiness >= {board['filters']['steady']}"
              + (f", hours {board['filters']['hours']} local" if board['filters']['hours'] else "")
@@ -675,6 +702,150 @@ def figure(c: Campaign, pts: pd.DataFrame, board: dict, path: Path) -> None:
     tmp.replace(path)
 
 
+# ---- the contrast damping scan ------------------------------------------------
+
+
+DAMP_KS = (0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1)
+# per campaign: the class whose ratio r and the class whose ratio bias the
+# scan reports (the butte's exposed ground and lee; the canyon's ridge and floor)
+SCAN_CLASSES = {"bsb": (("exposed", ("upper", "windward flank")), ("lee flank", ("lee flank",))),
+                "src": (("ridge", ("ridge",)), ("canyon floor", ("canyon floor",)))}
+
+
+def use_prediction(area, path: str) -> dict:
+    """Put a predict.py output (pred-<run>-<area>.npz: u, v on the area's own
+    grid and axes) in place of WindNinja's u, v. Returns its meta."""
+    f = Path(path)
+    if not f.exists() and (DATA / f.name).exists():
+        f = DATA / f.name
+    z = np.load(f, allow_pickle=False)
+    if z["u"].shape != area.u.shape or not np.allclose(z["directions"], area.directions):
+        raise SystemExit(f"{f} is not on the {area.name} grid: u {z['u'].shape} against {area.u.shape}")
+    area.u = z["u"].astype(np.float32)
+    area.v = z["v"].astype(np.float32)
+    meta = json.loads(str(z["meta"])) if "meta" in z.files else {}
+    return meta | {"file": str(f)}
+
+
+def damp_row(c: Campaign, area, pos: pd.DataFrame, pts: pd.DataFrame, cls: dict, k: float,
+             mode: str = "vector", undamped: pd.DataFrame | None = None) -> dict:
+    """The field damped by k, scored as the board scores WindNinja. mode
+    vector: u and v toward the ambient (amb + k (field - amb)), so the turns
+    shrink too; mode speed: the modelled speed ratio only, 1 + k (ratio - 1),
+    after the ratio to the reference (which stands for the ambient there),
+    the turns left as they are (undamped: the k = 1 points, made once). slope: the
+    measured ratio's departure from 1 regressed on the modelled one's through
+    the origin (under 1 = the modelled contrast is too big for what it gets
+    right: overdone, or partly wrong, which a regression slope cannot tell
+    apart). spread: the measured ratios' standard deviation over the
+    modelled ones', the size of the contrast alone (1 = the same size)."""
+    if mode == "speed":
+        p = (undamped if undamped is not None else model_points(c, area, None, pos, pts, models=("wn",))).copy()
+        for col in ("wn_ratio", "wn_flat_ratio"):
+            p[col] = np.maximum(0.0, 1.0 + k * (p[col] - 1.0))
+        p = anomalies(p)
+    else:
+        p = model_points(c, area, None, pos, pts, damp=k, models=("wn",))
+    p["class"] = [point_class(c, cls, r["id"], r["dir"]) for _, r in p.iterrows()]
+    s = scores(p, "wn")
+    x = p["wn_ratio"].to_numpy(float) - 1.0
+    y = p["ratio"].to_numpy(float) - 1.0
+    (rn, rk), (bn, bk) = SCAN_CLASSES[c.key]
+    sr = scores(p[p["class"].isin(rk)], "wn")
+    sb = scores(p[p["class"].isin(bk)], "wn")
+    return {"k": float(k), "n": s["n"], "ratio_r": s.get("ratio_r"), "ratio_mae": s.get("ratio_mae"),
+            "ratio_bias": s.get("ratio_bias"), "slope": float((x * y).sum() / (x * x).sum()),
+            "slope_ols": float(np.polyfit(x, y, 1)[0]), "spread": float(y.std() / x.std()),
+            "class_r": sr.get("ratio_r"), "class_r_n": sr.get("n"),
+            "class_bias": sb.get("ratio_bias"), "class_bias_n": sb.get("n"),
+            "anom_mae": s.get("anom_mae"), "turn_mae": s.get("turn_mae"),
+            "net_r": s.get("net_r"), "net_mae": s.get("net_mae")}
+
+
+def damp_scan(c: Campaign, area, pos: pd.DataFrame, pts: pd.DataFrame, cls: dict, label: str,
+              ks=DAMP_KS, mode: str = "vector") -> dict:
+    """WindNinja's field (or a net's, --pred) taken toward the ambient by k,
+    amb + k (field - amb), scored for each k; then the k that minimises the
+    ratio MAE and the k that brings the slope to 1, each refined between the
+    grid's points."""
+    from scipy.optimize import brentq, minimize_scalar
+
+    und = model_points(c, area, None, pos, pts, models=("wn",)) if mode == "speed" else None
+    memo: dict[float, dict] = {}
+
+    def at(k: float) -> dict:
+        k = round(float(k), 4)
+        if k not in memo:
+            memo[k] = damp_row(c, area, pos, pts, cls, k, mode, und)
+        return memo[k]
+
+    rows = [at(k) for k in ks]
+
+    g = int(np.argmin([r["ratio_mae"] for r in rows]))
+    lo, hi = max(0.0, ks[g] - 0.1), ks[g] + 0.1
+    m = minimize_scalar(lambda k: at(k)["ratio_mae"], bounds=(lo, hi), method="bounded",
+                        options={"xatol": 0.005})
+    k_mae = float(m.x)
+    def to_one(key: str) -> float:
+        """The k where rows' key crosses 1, refined between the grid's points."""
+        f = np.array([r[key] for r in rows]) - 1.0
+        bracket = None
+        for i in range(len(ks) - 1):
+            if f[i] * f[i + 1] <= 0:
+                bracket = (ks[i], ks[i + 1])
+                break
+        if bracket is None:  # outside the grid: look wider
+            a, b = 0.02, 3.0
+            if (at(a)[key] - 1) * (at(b)[key] - 1) < 0:
+                bracket = (a, b)
+        if bracket is None:
+            return math.nan
+        return float(brentq(lambda k: at(k)[key] - 1.0, *bracket, xtol=0.002))
+
+    k_slope, k_spread = to_one("slope"), to_one("spread")
+    on = pts[pts["id"].isin(pos["id"])]["ratio"].to_numpy(float)
+    return {"campaign": c.name, "field": label, "mode": mode, "ks": list(ks), "rows": rows,
+            "uniform_ratio_mae": float(np.mean(np.abs(1.0 - on))), "uniform_ratio_bias": float(np.mean(1.0 - on)),
+            "classes": [SCAN_CLASSES[c.key][0][0], SCAN_CLASSES[c.key][1][0]],
+            "k_min_mae": k_mae, "at_k_min_mae": at(k_mae),
+            "k_slope_1": k_slope, "at_k_slope_1": at(k_slope) if math.isfinite(k_slope) else None,
+            "k_spread_1": k_spread, "at_k_spread_1": at(k_spread) if math.isfinite(k_spread) else None}
+
+
+def damp_table(c: Campaign, scan: dict, args) -> str:
+    rn, bn = scan["classes"]
+    what = ("its speed contrast damped, ratio 1 + k (ratio - 1), turns as they are" if scan.get("mode") == "speed"
+            else "its contrast damped, amb + k (field - amb)")
+    lines = [f"# {c.name}: {scan['field']} with {what}", "",
+             f"Reference {c.ref}, reference blocks >= {args.min_ref:g} m/s, steadiness >= {args.steady}"
+             + (f", hours {args.hours}" if args.hours else "")
+             + (f", reference direction turned {args.ref_offset:+.1f} deg" if args.ref_offset else "")
+             + (f", sectors {', '.join(f'{d:g}' for d in args.sectors)}" if args.sectors else "")
+             + f"; {scan['rows'][0]['n']} sensor-bins. slope: measured - 1 on modelled - 1 through the origin;"
+             " slope OLS: the same with an intercept; spread: sd of the measured ratios over sd of the modelled;"
+             " turn MAE own mean: about each sensor's own mean.", "",
+             f"| k | ratio r | ratio MAE | ratio bias | slope | slope OLS | spread | {rn} r | {bn} bias | "
+             "turn MAE own mean | turn MAE | net r |", "|---|---|---|---|---|---|---|---|---|---|---|---|"]
+
+    def row(r: dict, k: str) -> str:
+        return (f"| {k} | {fmt(r['ratio_r'])} | {fmt(r['ratio_mae'], 3)} | {fmt(r['ratio_bias'], 3)} | "
+                f"{fmt(r['slope'])} | {fmt(r['slope_ols'])} | {fmt(r['spread'])} | {fmt(r['class_r'])} | "
+                f"{fmt(r['class_bias'], 3)} | "
+                f"{fmt(r['anom_mae'], 1)} | {fmt(r['turn_mae'], 1)} | {fmt(r['net_r'])} |")
+
+    for r in scan["rows"]:
+        lines.append(row(r, f"{r['k']:.1f}"))
+    lines.append(row(scan["at_k_min_mae"], f"**{scan['k_min_mae']:.2f}** (least ratio MAE)"))
+    for key, what in (("slope", "slope 1"), ("spread", "spread 1")):
+        if scan[f"at_k_{key}_1"]:
+            lines.append(row(scan[f"at_k_{key}_1"], f"**{scan[f'k_{key}_1']:.2f}** ({what})"))
+        else:
+            lines.append(f"| {what} | not reached for k in 0.02-3 |" + " |" * 10)
+    lines += ["", f"uniform ambient (k = 0): ratio MAE {fmt(scan['uniform_ratio_mae'], 3)}, "
+              f"ratio bias {fmt(scan['uniform_ratio_bias'], 3)}", ""]
+    return "\n".join(lines)
+
+
 # ---- main -------------------------------------------------------------------
 
 
@@ -691,8 +862,20 @@ def main() -> None:
     ap.add_argument("--min-days", type=int, default=2)
     ap.add_argument("--tag", default="")
     ap.add_argument("--rebuild", action="store_true", help="reread the database into blocks")
+    ap.add_argument("--damp-scan", action="store_true",
+                    help="score WindNinja's field with its deviation from the ambient scaled by k = 0.3 ... 1.1 "
+                         "(writes <campaign>[-tag]-damp.json, .md; not the scoreboard)")
+    ap.add_argument("--damp-mode", choices=["vector", "speed"], default="vector",
+                    help="the scan's damping: u, v toward the ambient (vector), or the speed ratio only (speed)")
+    ap.add_argument("--ks", default=None, help="the scan's k, comma-separated (default 0.3,0.4,...,1.1)")
+    ap.add_argument("--sectors", default=None,
+                    help="score only these reference sectors (FROM, degrees, comma-separated, e.g. 202.5,225,247.5,270)")
+    ap.add_argument("--pred", default=None,
+                    help="a predict.py output (pred-<run>-<area>.npz) to score in WindNinja's place")
     args = ap.parse_args()
     c = CAMPAIGNS[args.campaign]
+    if args.sectors:
+        args.sectors = [float(x) for x in args.sectors.split(",")]
     if args.min_ref is None:
         args.min_ref = c.strong_ms
 
@@ -710,13 +893,36 @@ def main() -> None:
         args.ref_offset = float(args.ref_offset)
         why = "given" if args.ref_offset else ""
     pts, refbins, info = measured(c, sens, blk, args)
+    if args.sectors:
+        pts = pts[pts["bin"].isin([int(b) for b in bin_of(np.array(args.sectors))])]
     if pts.empty:
         raise SystemExit("no sensor-bin has enough blocks")
 
     area = load_area(c.area, features=False)
-    base = load_baseline(c.area)
+    label = "WindNinja momentum"
+    if args.pred:
+        pm = use_prediction(area, args.pred)
+        label = f"the net {pm.get('run')}" + (" (in-sample: trained on this area)" if pm.get("in_sample") else "")
+        print(f"  WindNinja's field replaced by {pm['file']}: {label}")
     pos = positions(area, sens)
     cls = classify(c, pos, area)
+    stem = c.key + (f"-{args.tag}" if args.tag else "")
+    if args.damp_scan:
+        ks = tuple(float(x) for x in args.ks.split(",")) if args.ks else DAMP_KS
+        scan = damp_scan(c, area, pos, pts, cls, label, ks, args.damp_mode)
+        scan["filters"] = {"min_ref_ms": args.min_ref, "steady": args.steady, "hours": args.hours,
+                           "sectors": args.sectors,
+                           "ref_offset": args.ref_offset, "min_n": args.min_n, "min_days": args.min_days,
+                           "pred": args.pred}
+        md = damp_table(c, scan, args)
+        OUT.mkdir(parents=True, exist_ok=True)
+        out = f"{stem}-damp" + ("-speed" if args.damp_mode == "speed" else "")
+        (OUT / f"{out}.json").write_text(json.dumps(scan, indent=1))
+        (OUT / f"{out}.md").write_text(md, encoding="utf-8")
+        print(md)
+        print(f"wrote {OUT / out}.json, .md")
+        return
+    base = load_baseline(c.area)
     pts = model_points(c, area, base, pos, pts)
     pts["class"] = [point_class(c, cls, r["id"], r["dir"]) for _, r in pts.iterrows()]
 
@@ -728,7 +934,7 @@ def main() -> None:
                          "s_ref": float(r["s_ref"]), "sensors": int(k.sum())})
     ref = pos[pos["id"] == c.ref].iloc[0]
     board = {
-        "campaign": c.name, "area": c.area, "period": c.period, "reference": c.ref,
+        "campaign": c.name, "area": c.area, "period": c.period, "reference": c.ref, "field": label,
         "source": "Zenodo 10.5281/zenodo.8226638 (CC-BY 4.0), pipeline/raw/idaho/" + c.db,
         "filters": {"min_ref_ms": args.min_ref, "steady": args.steady, "hours": args.hours,
                     "ref_offset": args.ref_offset, "ref_offset_why": why, "ring_median_turns": ring,
@@ -761,7 +967,6 @@ def main() -> None:
         board["summit"] = {"dem_m": cls["_summit"][0], "row": cls["_summit"][1], "col": cls["_summit"][2]}
 
     OUT.mkdir(parents=True, exist_ok=True)
-    stem = c.key + (f"-{args.tag}" if args.tag else "")
     (OUT / f"{stem}-scoreboard.json").write_text(json.dumps(board, indent=1))
     md = tables(c, board)
     (OUT / f"{stem}-scoreboard.md").write_text(md, encoding="utf-8")

@@ -363,6 +363,32 @@ runs about 1.3× high and the net's speed-up adds to that: the same
 over-contrast the butte showed, and the same cheap fix (damp the
 deviation from the ambient toward the measured slope).
 
+### Contrast damping, 2026-10-11 night: speed only, 0.6
+
+The over-contrast the butte and the stations both showed was measured
+and fixed in one scalar (`pipeline/surrogate/idaho.py --damp-scan`,
+`build_windsd.py --damp`). On the butte the spread of the modelled speed
+ratios is 1.5× the measured spread for both the teacher and the net; the
+raw least-squares optimum (k ≈ 0.3) is the model's weak single-sensor
+skill and its too-deep lee, not the right contrast. Scaling only the
+speed's deviation from the ambient, |V| → 1 + K (|V| − 1) with the
+direction kept:
+
+| K | butte ratio MAE | spread, modelled / measured | lee bias | stations: valley dir / speed ×2 | mountain | ridge | fire-weather speed |
+|---|---|---|---|---|---|---|---|
+| 1.0 | 0.353 | 1.24 | −0.20 | 79 / 65% | 73 / 49% | 77 / 73% | 81–83% |
+| 0.6 | 0.277 | 1.0 | −0.02 | 79 / 66% | 73 / 49% | 77 / 72% | 83–85% |
+
+Damping the whole vector (turns shrinking too) won two points of ridge
+direction and lost a valley-floor point; a speed-level factor under 1
+won back flat ground and the fire stations and cost the mountains. So:
+`--damp 0.6` is the SD bake's default, direction untouched, level
+untouched; the ×1.05 the net runs on flat ground against the stations
+is the net's own and a training matter. Both values are in the grid's
+header (`model.momentum.surrogate.damp`). Nothing changes for the HD
+bands, which carry the teacher's full contrast until collect() is
+revisited.
+
 ### The teacher against measured wind: Big Southern Butte and Salmon River, 2026-10-11
 
 Two seed sites are WindNinja's own field campaigns (Wagenbrenner et al.,

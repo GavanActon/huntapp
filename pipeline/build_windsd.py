@@ -19,7 +19,7 @@ collect(), which leaves WindNinja's 1-2 degree grid twist in; the other is
 that the net's values are cell centres, while collect() reads WindNinja's
 corner values as centres (SURROGATE.md §5).
 
-    py -3.14 pipeline/build_windsd.py --area blanchard-river [--run <name>] [--tta] [--device cuda|cpu]
+    py -3.14 pipeline/build_windsd.py --area blanchard-river [--run <name>] [--tta] [--damp K] [--speed-level s] [--device cuda|cpu]
 
 The net is pipeline/raw/surrogate/runs/<run>/ckpt.pt. By default the one
 trained with this area held out (hold-<id>), so the SD wind is the honest
@@ -29,6 +29,20 @@ once train.py has finished it (its config.json is written at the end; the
 checkpoint is saved every 1000 steps while it trains). --tta averages the
 eight turns and mirrors of the scene: about 0.4 degrees of turn error for
 eight passes, worth it when serving.
+
+The teacher overdoes the terrain's contrast against measured wind
+(SURROGATE.md §5: Big Southern Butte, the 1,200 stations), so the net's
+answer can be toned down before anything else, in this order, per
+direction and cell, in the grid's axes, then turned to true north and
+resampled as before:
+  --damp-vector K  u, v toward the ambient: u = ex + K (u - ex), the same
+                   for v, (ex, ey) the ambient the net was fed (Area.amb);
+                   the turns shrink with the speed contrast
+  --damp K         the speed only, the direction kept: |V| -> 1 + K (|V| - 1)
+  --speed-level s  the whole speed: |V| -> s |V|
+Each defaults to 1, which is the net as it is (no arithmetic at all); the
+meta records all three (damp, dampVector, speedLevel) and the micro grid's
+header carries them on (model.momentum.surrogate).
 
 Output: pipeline/raw/windsd-<id>.npz, windcfd-<id>.npz's layout (directions,
 u<dir>, v<dir>, s<dir>, east and north in units of the regional wind, on
@@ -68,8 +82,8 @@ from build_windcfd import BUFFER_M, CELL_M, DIRECTIONS, area_dir, utm_epsg
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE / "surrogate"))
 
-from fields import (DATA, REL_SCALE_M, REL_WINDOW, Area, ambient, bearing, fill_dem,  # noqa: E402
-                    grid_convergence, pearson, predict_domain, terrain_features, wrap180)
+from fields import (DATA, REL_SCALE_M, REL_WINDOW, Area, ambient, bearing, damp_contrast, damp_speed,  # noqa: E402
+                    fill_dem, grid_convergence, pearson, predict_domain, terrain_features, wrap180)
 
 RUNS = DATA / "runs"
 SD_VERSION = 1
@@ -232,7 +246,7 @@ def lattice_sampler(epsg: int, bounds: list[float], shape: tuple[int, int]):
 # ---- the check against WindNinja --------------------------------------------
 
 
-def compare(bands: dict[str, np.ndarray], dirs: list[float], gamma: float) -> None:
+def compare(bands: dict[str, np.ndarray], dirs: list[float], gamma: float, tone: str = "") -> None:
     """The SD grid against the area's WindNinja grid, over the lattice, all
     16 directions pooled, as surrogate/eval.py defines the numbers: the turn
     error is bearing(SD) - bearing(HD); turn r is between their turns away
@@ -266,7 +280,8 @@ def compare(bands: dict[str, np.ndarray], dirs: list[float], gamma: float) -> No
         return
     c = {k: np.concatenate(v) for k, v in cols.items()}
     a = np.abs(c["err"])
-    print(f"  against WindNinja ({p.name}, turned to true north), {n_dirs} directions pooled over the lattice:")
+    print(f"  against WindNinja ({p.name}, turned to true north), {n_dirs} directions pooled over the lattice, "
+          f"SD {tone or 'undamped'}:")
     print(f"    turn MAE     {a.mean():.1f}°")
     print(f"    turn median  {np.median(a):.1f}°")
     print(f"    turn r       {pearson(c['tp'], c['tt']):.2f}")
@@ -281,8 +296,27 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--run", default=None, help="the net, runs/<run>/ckpt.pt (default: the area's bake.sdRun, else hold-<id>, else all)")
     ap.add_argument("--tta", action="store_true", help="average the eight D4 turns of the scene")
+    # 0.6 by default: the teacher and the net overdo the terrain contrast about
+    # 1.5x (Big Southern Butte, 2026-10-11: the spread of modelled speed ratios
+    # against the measured ones; the lee predicted twice as slack as measured).
+    # Scaling only the speed's deviation from the ambient by 0.6 puts the
+    # butte's lee bias at zero and its ratio MAE from 0.35 to 0.28, and at
+    # 1,200 weather stations improves every speed row but ridges (-0.5) while
+    # the direction keeps its valley and mountain gains; damping the vector
+    # instead (--damp-vector) cost a valley-floor point. SURROGATE.md section 5
+    ap.add_argument("--damp", type=float, default=0.6, metavar="K",
+                    help="the speed only: |V| -> 1 + K (|V| - 1), the direction kept (default 0.6; 1 is the net as it is)")
+    ap.add_argument("--damp-vector", type=float, default=1.0, metavar="K",
+                    help="u, v toward the ambient: u -> ex + K (u - ex), the turns shrinking too (default 1)")
+    ap.add_argument("--speed-level", type=float, default=1.0, metavar="S",
+                    help="the whole speed: |V| -> S |V| (default 1)")
     ap.add_argument("--device", default=None, choices=["cuda", "cpu"])
     args = ap.parse_args()
+    for flag, x in (("--damp", args.damp), ("--damp-vector", args.damp_vector), ("--speed-level", args.speed_level)):
+        if not (math.isfinite(x) and x >= 0):
+            raise SystemExit(f"{flag} {x}: want a number 0 or more (1 = as it is)")
+    tone = ", ".join(f"{name} x{x:g}" for name, x in (("contrast", args.damp_vector), ("speed contrast", args.damp),
+                                                      ("speed level", args.speed_level)) if x != 1.0)
 
     t0 = time.time()
     area_id = REGION["id"]
@@ -306,7 +340,8 @@ def main() -> None:
     train_areas = list(config.get("train_areas") or [])
     in_sample = area_id in train_areas
     print(f"{area_id}: net {run} ({config.get('steps')} steps, trained on {', '.join(train_areas) or '?'}"
-          f"{'; this area is IN its training set' if in_sample else ''}) on {device}{', 8-way TTA' if args.tta else ''}")
+          f"{'; this area is IN its training set' if in_sample else ''}) on {device}{', 8-way TTA' if args.tta else ''}"
+          f"{f', {tone}' if tone else ''}")
 
     dem, epsg, bounds = domain()
     R, C = dem.shape
@@ -322,6 +357,12 @@ def main() -> None:
 
     t1 = time.time()
     pu, pv, pt = predict_domain(model, dom, dirs, device=device, tta=args.tta)
+    if tone:
+        # toward the ambient the net was fed, in its own (grid) axes, before the turn to true north
+        for i, d in enumerate(dirs):
+            ex, ey = dom.amb(d)
+            pu[i], pv[i] = damp_contrast(pu[i], pv[i], ex, ey, args.damp_vector)
+            pu[i], pv[i] = damp_speed(pu[i], pv[i], args.damp, args.speed_level, ex, ey)
     tu, tv = to_true_north(pu, pv, dom.conv)
     print(f"  predicted {len(dirs)} directions in {time.time() - t1:.1f}s")
 
@@ -345,6 +386,7 @@ def main() -> None:
         "steps": config.get("steps"), "train_areas": train_areas, "in_sample": in_sample, "tta": bool(args.tta),
         "generated": date.today().isoformat(), "convergence_deg": round(dom.conv, 4),
         "surrogate": "U-Net", "sdVersion": SD_VERSION,
+        "damp": float(args.damp), "dampVector": float(args.damp_vector), "speedLevel": float(args.speed_level),
     }
     out = CACHE_DIR / f"windsd-{area_id}.npz"
     tmp = out.with_name(out.name + ".part")
@@ -357,7 +399,7 @@ def main() -> None:
           if turb_ok else " · no turbulence")
     print(f"{area_id}: {len(dirs)} directions onto {hb.COLS}×{hb.ROWS} · speed {np.percentile(sp, 5):.2f}–"
           f"{np.percentile(sp, 95):.2f} of the regional wind{tn} · {rel(out)} ({out.stat().st_size / 1e6:.1f} MB)")
-    compare(bands, dirs, dom.conv)
+    compare(bands, dirs, dom.conv, tone)
     print(f"done in {time.time() - t0:.0f}s")
 
 

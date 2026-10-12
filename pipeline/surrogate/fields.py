@@ -103,6 +103,38 @@ def wrap180(a: np.ndarray) -> np.ndarray:
     return (a + 180.0) % 360.0 - 180.0
 
 
+def damp_contrast(u, v, ex: float, ey: float, k: float):
+    """The field's deviation from the ambient scaled by k: (ex + k (u - ex),
+    ey + k (v - ey)), u, v and (ex, ey) in the same axes (the grid's, as
+    Area.amb gives the ambient). k = 1 is the field as it is, 0 the uniform
+    ambient. The teacher overdoes the terrain's contrast against measured
+    wind (SURROGATE.md §5, Big Southern Butte): k < 1 tones the speed-up and
+    the shelter down together, and the turns with them."""
+    if k == 1.0:
+        return u, v
+    return ex + k * (u - ex), ey + k * (v - ey)
+
+
+def damp_speed(u, v, k: float, level: float = 1.0, ex: float | None = None, ey: float | None = None):
+    """The speed only, the direction kept: the magnitude's departure from the
+    ambient's (1) scaled by k, then the whole magnitude by level,
+    |V'| = level * max(0, 1 + k (|V| - 1)). Where |V| is 0 the direction is
+    the ambient's (ex, ey) when given. k = level = 1 is the field as it is.
+    Against measured wind (SURROGATE.md §5) the speed-up and the shelter are
+    overdone while the turns are what pays in valleys, so this leaves them."""
+    if k == 1.0 and level == 1.0:
+        return u, v
+    sp = np.hypot(u, v)
+    new = level * np.maximum(0.0, 1.0 + k * (sp - 1.0))
+    moving = sp > 1e-9
+    sc = np.where(moving, new / np.where(moving, sp, 1.0), 0.0)
+    uu, vv = u * sc, v * sc
+    if ex is not None and ey is not None:
+        uu = np.where(moving, uu, new * ex)
+        vv = np.where(moving, vv, new * ey)
+    return uu, vv
+
+
 def gradients(dem: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """dz/dx (east) and dz/dy (north), dimensionless. np.gradient's row
     derivative points south, so dz/dy is its negative. Central differences

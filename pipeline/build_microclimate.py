@@ -658,7 +658,13 @@ def main() -> None:
                       f"momentum solve: direction spread, degrees, for a wind from {d:g}° (turbulence against the local wind)"))
     solver = "WindNinja 4.0.0 momentum (OpenFOAM, RNG k-epsilon), trees, 10 m"
     if sd:
-        solver = f"surrogate of WindNinja momentum (U-Net, run {sd_meta.get('run')}{', in-sample' if sd_meta.get('in_sample') else ''}), 10 m"
+        # a windsd file from before the flags is undamped
+        tone = {"damp": float(sd_meta.get("damp", 1.0)), "dampVector": float(sd_meta.get("dampVector", 1.0)),
+                "speedLevel": float(sd_meta.get("speedLevel", 1.0))}
+        said = ", ".join(f"{name} x{tone[k]:g}" for k, name in (("dampVector", "contrast"), ("damp", "speed contrast"),
+                                                               ("speedLevel", "speed level")) if tone[k] != 1.0)
+        solver = (f"surrogate of WindNinja momentum (U-Net, run {sd_meta.get('run')}{', in-sample' if sd_meta.get('in_sample') else ''}"
+                  f"{f', {said}' if said else ''}), 10 m")
     out_header = {
         "region": REGION["id"],
         "generated": date.today().isoformat(),
@@ -672,7 +678,7 @@ def main() -> None:
         "coverNames": header["coverNames"],
         "landformNames": header["landformNames"],
         "lakes": [],
-        "model": {"z0Ref": Z0_REF, "zBlend": Z_BLEND, "lidNeutral": LID_NEUTRAL, "lidStable": LID_STABLE, "bare": BARE, "larchLed": LARCH_LED, **({"fetchRamp": {"shore": FETCH_SHORE, "fullM": FETCH_FULL_M}} if fetch_m is not None else {}), **({"momentum": {"directions": [d for d, _, _ in cfd], "solver": solver, "source": "sd" if sd else "cfd", **({"spreadRef": round(turb_ref, 2)} if turb else {}), **({"surrogate": {"run": sd_meta.get("run"), "sha256": sd_meta.get("sha256"), "tta": sd_meta.get("tta")}} if sd else {})}} if cfd else {})},
+        "model": {"z0Ref": Z0_REF, "zBlend": Z_BLEND, "lidNeutral": LID_NEUTRAL, "lidStable": LID_STABLE, "bare": BARE, "larchLed": LARCH_LED, **({"fetchRamp": {"shore": FETCH_SHORE, "fullM": FETCH_FULL_M}} if fetch_m is not None else {}), **({"momentum": {"directions": [d for d, _, _ in cfd], "solver": solver, "source": "sd" if sd else "cfd", **({"spreadRef": round(turb_ref, 2)} if turb else {}), **({"surrogate": {"run": sd_meta.get("run"), "sha256": sd_meta.get("sha256"), "tta": sd_meta.get("tta"), **tone}} if sd else {})}} if cfd else {})},
         "bands": [],
     }
     # the momentum bands go last: the app reads the base bands first, then
