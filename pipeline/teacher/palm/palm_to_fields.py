@@ -133,6 +133,8 @@ CHECKS = {
             dict(label="floor 10:58", lat=46.77327, lon=-84.04020, felt=249, level="Head", gate=dict(within=45, reversed=False)),
             dict(label="slope 268 m", lat=46.76752, lon=-84.04458, felt=236, level="Head", gate=None),
             dict(label="slope 290 m", lat=46.76672, lon=-84.04382, felt=180, level="Head", gate=None),
+            # calm in a pocket on the climb (11:34, 304 m): no direction felt; the run should be near calm here
+            dict(label="pocket 304 m (calm)", lat=46.76624, lon=-84.04316, felt=None, level="Head", gate=dict(calm=True)),
             dict(label="top 332 m", lat=46.76684, lon=-84.04131, felt=180, level="Head", gate=None, top=True),
             dict(label="top 363 m", lat=46.76689, lon=-84.03931, felt=237, level="Head", gate=None, top=True),
             dict(label="top 379 m", lat=46.76721, lon=-84.03861, felt=199, level="Head", gate=None, top=True),
