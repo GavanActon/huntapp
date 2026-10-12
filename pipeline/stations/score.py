@@ -54,16 +54,18 @@ def sun_elev(t: datetime, lat: float, lon: float) -> float:
     return math.degrees(math.asin(max(-1.0, min(1.0, cz))))
 
 
-def sd_call(resp: dict, fdir: float, fspd: float) -> tuple[float, float]:
+def sd_call(resp: dict, fdir: float, fspd: float, damp: float = 1.0) -> tuple[float, float]:
     """HRDPS through the station's terrain response: the local wind for a unit
-    wind from fdir, between the two directions either side, scaled."""
+    wind from fdir, between the two directions either side, scaled. `damp`
+    softens the speed contrast as the SD bake does (build_windsd.py --damp,
+    2026-10-11: |V| -> 1 + damp (|V| - 1), the direction untouched)."""
     k = (fdir % 360) / 22.5
     i0 = int(math.floor(k)) % 16
     i1 = (i0 + 1) % 16
     f = k - math.floor(k)
     u = (1 - f) * resp["u"][i0] + f * resp["u"][i1]
     v = (1 - f) * resp["v"][i0] + f * resp["v"][i1]
-    return (math.degrees(math.atan2(-u, -v)) + 360) % 360, fspd * math.hypot(u, v)
+    return (math.degrees(math.atan2(-u, -v)) + 360) % 360, fspd * (1 + damp * (math.hypot(u, v) - 1))
 
 
 def load_obs() -> dict[tuple[str, str], tuple[float, float]]:
@@ -130,6 +132,7 @@ def main() -> int:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--run", default="seed2-all", help="the net whose SD terrain to score (surrogate-<run>.json)")
+    ap.add_argument("--damp", type=float, default=0.6, help="the speed-contrast damping the SD bake ships with (build_windsd.py --damp); 1 = the raw net")
     args = ap.parse_args()
     terrain = {r["id"]: r for r in csv.DictReader(open(OUT / "terrain.csv", encoding="utf-8"))}
     stations = json.loads((OUT / "stations.json").read_text(encoding="utf-8"))
@@ -154,7 +157,7 @@ def main() -> int:
                        "relief": int(te["relief3"]) if te else None, "tpi": int(te["tpi1"]) if te else None,
                        "inSample": bool((sur.get(r["id"]) or {}).get("inSample"))}
                 if r["id"] in sur:
-                    row["sdDir"], row["sdSpd"] = sd_call(sur[r["id"]], fdir, fspd)
+                    row["sdDir"], row["sdSpd"] = sd_call(sur[r["id"]], fdir, fspd, args.damp)
                 else:
                     row["sdDir"] = row["sdSpd"] = None
                 t = datetime.fromisoformat(r["t"].replace("Z", "+00:00"))

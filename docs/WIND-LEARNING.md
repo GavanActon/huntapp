@@ -139,11 +139,20 @@ and 5.
   - Each check is weighed by what it can see. Treetops, open ground and
     ridges pin the ambient; a floor check in a slot or a lee mostly
     tests the place.
-  - The answer is the ambient's posterior. Where the ambient fits and a
-    floor check still misses, it gives a named likely cause ("a valley
-    rotor: SSE across the valley, hill upwind").
-  - It also names the next useful check: the spot whose puff would
-    shrink the doubt most for this sit.
+  - The answer is the ambient's posterior, and which candidate dynamic
+    (rotor, drainage, channelling, speed-up) explains the checks.
+- **What the hunter sees** (Gavan, 2026-10-11, via the surrogate thread:
+  "they just need to see the right output, or be told to sample a few
+  more times, and when to sharpen the wind"). The candidates are the
+  model's own state, not something the card explains. The loop's
+  outputs are three:
+  - the wind it believes;
+  - "check again", when the top candidates can't be told apart by the
+    checks it has;
+  - a prompt to Sharpen the wind, when one more check would settle it.
+
+  The reasons go to the devlog, and to Dig in at the most. This replaces
+  the 2026-10-08 wording, "the card says the most likely reason".
 - **Exists:** `ambientFit.ts` (MICRO-WIND §8), one turn and ratio over
   2.5 km. It can't tell a wrong forecast from an odd spot. With a second
   floor check at Searchmont it could have turned the air ~150° for 2.5 km
@@ -161,7 +170,8 @@ and 5.
   - the turn and ratio seen, and how often.
 
   It applies whenever the forecast puts the wind in that situation
-  again, on any day, and the card says so with the reason.
+  again, on any day. The reason line ("Remembered from 10 Oct in the
+  evening…") is internal, like layer 3's.
 - **Spread by likeness, not rings:** to cells with the same landform
   (floor, slope, ridge) and the same shelter from that direction (the
   upwind horizon angle over 300–1000 m, baked per direction), within the
@@ -374,7 +384,7 @@ cases at the other routes:
   and against HRDPS turned and scaled by the SD terrain wind. Both on the
   same hours; stations inside an area the net trained on are left out.
 
-Net `seed1-hold-blanchard-river` (17 areas); 548,613 station-hours. The serving net, `seed2-all` (all 35 areas, the same evening), scores the same within a point in every row: valley floors 74% → 79% (night 72% → 77%), mountains 70% → 73%, hilly 83% → 84%, ridges 78% → 77% with speed 70% → 73%. Only 2 of the 1,200 stations sit inside an area either net trained on.
+Net `seed1-hold-blanchard-river` (17 areas); 548,613 station-hours. The serving net, `seed2-all` (all 35 areas, the same evening), scores the same within a point in every row: valley floors 74% → 79% (night 72% → 77%), mountains 70% → 73%, hilly 83% → 84%, ridges 78% → 77% with speed 70% → 73%. Only 2 of the 1,200 stations sit inside an area either net trained on. With the speed damping the SD bake ships with since 2026-10-11 (`build_windsd.py --damp 0.6`: |V| → 1 + 0.6 (|V| − 1), direction untouched; `score.py --damp`), direction is unchanged and speed within ×2 rises a point in most rows (all 85%, hilly 80%, valley floors 66%, slopes 74%), ridges 72%.
 
 | | within 45°: HRDPS → SD | median miss | speed within ×2 |
 |---|---|---|---|
@@ -421,8 +431,8 @@ Open-Meteo's historical-forecast API keeps past HRDPS runs.
   area checklist.
 - **A second visit beats the first.** Score a place under a wind it has
   seen before, against its first time.
-- **It explains** the likely cause, and asks for the check that would
-  settle it.
+- **It asks for the check that would settle it.** It says "check again"
+  when it can't tell, and keeps the cause to itself.
 
 ## Order and size
 
