@@ -29,6 +29,14 @@ jobs:
         working-directory: app
         env:
           BASE_PATH: /
+          # Area data from R2 (docs/AREAS.md, Hosting), prepared, not on: with
+          # this set the app reads its data from data.groundwind.app and the
+          # build leaves app/public/data out of dist. Before the push that sets
+          # it, sync the bucket from that commit (app/scripts/r2_sync.py after a
+          # local build). For that first deploy keep KEEP_DATA_IN_DIST too, so a
+          # phone still on the old build finds the app's own data/; drop it after.
+          # VITE_DATA_BASE: https://data.groundwind.app/data/
+          # KEEP_DATA_IN_DIST: 1
       - uses: actions/upload-pages-artifact@v3
         with:
           path: app/dist
@@ -53,3 +61,5 @@ jobs:
       - run: sleep 20 && bash app/scripts/warm-cache.sh
         env:
           CF_CACHE_TOKEN: ${{ secrets.CF_CACHE_TOKEN }}
+          # with VITE_DATA_BASE above: the grids are warmed where the app reads them
+          # WARM_DATA: https://data.groundwind.app/data

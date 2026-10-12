@@ -7,8 +7,16 @@
 # fetched: they are range-read and too many.
 #   CF_CACHE_TOKEN   a token with Cache Purge on the zone (optional)
 #   CF_ZONE_ID       the zone (optional with the token; groundwind.app's by default)
+#   WARM_DATA        where the area data is served, as the build's
+#                    VITE_DATA_BASE less its trailing slash: R2's
+#                    https://data.groundwind.app/data once the app reads it
+#                    there; the app's own $HOST/data by default. It is in the
+#                    same zone, so the purge above clears it too. The data
+#                    host's edge keeps a file only with a cache rule for it
+#                    (cf-cache-status DYNAMIC means it fetched from R2 again).
 set -u
 HOST="${WARM_HOST:-https://hunt.groundwind.app}"
+DATA="${WARM_DATA:-$HOST/data}"
 ZONE="${CF_ZONE_ID:-c22ad859df4f4831b2b935792ada8ce4}"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
@@ -37,10 +45,13 @@ done
 for p in /manifest.webmanifest /sw.js; do
   fetch "$HOST$p"
 done
+# the grids the first view reads (the HD and SD wind, the habitat), then the going grid
+echo "warming $DATA"
 for a in "$ROOT"/app/src/areas/*.json; do
   id=$(grep -o -E '"id": *"[^"]+"' "$a" | head -1 | cut -d'"' -f4)
   base=$(grep -o -E '"base": *"[^"]*"' "$a" | head -1 | cut -d'"' -f4)
-  for g in micro habitat going; do
-    fetch "$HOST/data/${base}${g}-${id}.hab"
+  grids=$(tr -d '\n\r' < "$a" | grep -o -E '"grids": *\[[^]]*\]' | head -1)
+  for g in micro micro-sd habitat going; do
+    case "$grids" in *"\"$g\""*) fetch "$DATA/${base}${g}-${id}.hab";; esac
   done
 done

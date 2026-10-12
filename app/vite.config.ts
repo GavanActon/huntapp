@@ -1,9 +1,10 @@
 import { execSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { closeSync, openSync, readdirSync, readFileSync, readSync, statSync } from 'node:fs'
+import { closeSync, openSync, readdirSync, readFileSync, readSync, rmdirSync, statSync, unlinkSync } from 'node:fs'
 import type { ServerResponse } from 'node:http'
+import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig, type Plugin, type ResolvedConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 import { VitePWA, type ManifestOptions } from 'vite-plugin-pwa'
@@ -39,6 +40,17 @@ function archiveRange(path: string): Partial<ArchiveRange> {
 }
 
 const sha16 = (data: string | Buffer) => createHash('sha1').update(data).digest('hex').slice(0, 16)
+
+/** Where the app reads the baked data (areas/index.ts DATA_BASE): the app's
+ *  own data/ unless VITE_DATA_BASE names another host, as R2's
+ *  https://data.groundwind.app/data/ (docs/AREAS.md, Hosting). Read from
+ *  the resolved config, so a .env file counts as it does for the app. */
+const dataBaseOf = (config: ResolvedConfig): string => (config.env.VITE_DATA_BASE as string | undefined) || `${config.base}data/`
+/** The data is served from another host: the build leaves app/public/data
+ *  out of dist (only the manifests it writes stay, which app/scripts/r2_sync.py
+ *  uploads), unless KEEP_DATA_IN_DIST is set, for a deploy that switches
+ *  hosts while phones on the old build still read the app's own data/. */
+const dataIsRemote = (config: ResolvedConfig): boolean => /^https?:\/\//i.test(dataBaseOf(config)) && !process.env.KEEP_DATA_IN_DIST
 
 /** A file of the area's pack, the files the app saves for it (config.ts
  *  BUNDLES), told from the pipeline's intermediates by its layer. A PMTiles
@@ -156,8 +168,14 @@ function dataManifest(): Plugin {
     res.setHeader('cache-control', 'no-store')
     res.end(body)
   }
+  let resolved: ResolvedConfig | null = null
+  /** the manifests this build wrote, by their path in dist */
+  const emitted = new Set<string>()
   return {
     name: 'data-manifest',
+    configResolved(config) {
+      resolved = config
+    },
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const path = req.url?.split('?')[0] ?? ''
@@ -183,10 +201,45 @@ function dataManifest(): Plugin {
         }
         if (bad) this.error(`src/areas/${name}: ${bad} is missing or not what the app reads`)
       }
-      this.emitFile({ type: 'asset', fileName: 'data/manifest.json', source: build() })
+      const emit = (fileName: string, source: string) => {
+        this.emitFile({ type: 'asset', fileName, source })
+        emitted.add(fileName)
+      }
+      emit('data/manifest.json', build())
       const list = areas()
-      this.emitFile({ type: 'asset', fileName: 'data/areas/index.json', source: index(list) })
-      for (const a of list) if (a.base) this.emitFile({ type: 'asset', fileName: `data/${a.base}manifest.json`, source: manifestOf(a) })
+      emit('data/areas/index.json', index(list))
+      for (const a of list) if (a.base) emit(`data/${a.base}manifest.json`, manifestOf(a))
+    },
+    // the data served from another host: what vite copied of public/data goes
+    // (some 780 MB), the manifests above stay for r2_sync.py to upload
+    closeBundle() {
+      if (!resolved || !dataIsRemote(resolved)) return
+      const out = resolve(resolved.root, resolved.build.outDir, 'data')
+      let n = 0
+      let bytes = 0
+      const prune = (rel: string): boolean => {
+        let empty = true
+        for (const name of readdirSync(resolve(out, rel))) {
+          const sub = rel ? `${rel}/${name}` : name
+          const path = resolve(out, sub)
+          if (statSync(path).isDirectory()) {
+            if (prune(sub)) rmdirSync(path)
+            else empty = false
+          } else if (emitted.has(`data/${sub}`)) empty = false
+          else {
+            bytes += statSync(path).size
+            unlinkSync(path)
+            n++
+          }
+        }
+        return empty
+      }
+      try {
+        prune('')
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e
+      }
+      resolved.logger.info(`data-manifest: ${n} data files (${(bytes / 1e6).toFixed(0)} MB) left out of dist; the app reads ${dataBaseOf(resolved)}`)
     },
   }
 }
@@ -251,6 +304,8 @@ function areaLinks(): Plugin {
   const areaDir = fileURLToPath(new URL('./src/areas/', import.meta.url))
   const dataDir = fileURLToPath(new URL('./public/data/', import.meta.url))
   let base = '/'
+  /** the data base the page's early grid fetch reads (dataBaseOf) */
+  let data = '/data/'
   /** How many bytes of a grid the first view reads, for the page's early
    *  fetch of it: a v2 file's header and the bands before its "first"
    *  boundary (pipeline/habfile.py), else the whole file. Null when it is
@@ -316,7 +371,7 @@ function areaLinks(): Plugin {
   const slot = () =>
     JSON.stringify({
       default: DEFAULT_AREA,
-      data: `${base}data/`,
+      data,
       areas: Object.fromEntries(
         areas().map((a) => [a.id, { name: a.name, region: a.region, base: a.base, grids: a.grids, ...(a.id === DEFAULT_AREA ? {} : { manifest: base + fileOf(a.id) }) }]),
       ),
@@ -325,6 +380,7 @@ function areaLinks(): Plugin {
     name: 'area-links',
     configResolved(config) {
       base = config.base
+      data = dataBaseOf(config)
     },
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
