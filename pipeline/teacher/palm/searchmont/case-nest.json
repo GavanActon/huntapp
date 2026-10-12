@@ -1,0 +1,155 @@
+{
+ "case": "searchmont",
+ "tag": "nest",
+ "built": "2026-10-11 23:18",
+ "epsg": 32616,
+ "dx": 20.0,
+ "nx": 256,
+ "ny": 256,
+ "bounds": [
+  722970.0,
+  5181750.0,
+  728090.0,
+  5186870.0
+ ],
+ "gridConvergenceDeg": 2.1534814303818286,
+ "origin_lonlat": [
+  -84.08057348589115,
+  46.7520466963731
+ ],
+ "origin_z": 226.67169189453125,
+ "relief_m": 230.4254150390625,
+ "taper_m": 640.0,
+ "core_m": 3000.0,
+ "centre": [
+  725530.0,
+  5184310.0
+ ],
+ "point_xy": [
+  725333.3302519749,
+  5184663.7577168895
+ ],
+ "point_latlon": [
+  46.77744,
+  -84.04824
+ ],
+ "vertical": {
+  "dz": [
+   20.0,
+   80.0
+  ],
+  "start": 520.0,
+  "end": 1320.0,
+  "nz": 48,
+  "top": 1579
+ },
+ "nz_do3d": 17,
+ "canopy_levels": 2,
+ "leaf": 0.5,
+ "terrain": "hrdem",
+ "canopy": "chm",
+ "sources": [
+  "HRDEM 1 m LiDAR (ON-Sault_SteMarie_UTM16_2024-1m-dtm, ON-Sault_SteMarie_UTM16_2024-1m-dsm), NRCan, OGL-Canada",
+  "habitat grid of area searchmont (FRI stands, OMNRF, OGL-Ontario)"
+ ],
+ "runs": {
+  "searchmont_neutral_nest": {
+   "direction": 152.0,
+   "speed_kph": 16.2,
+   "stability": "neutral",
+   "hours": 3.0,
+   "average_s": 3600.0,
+   "why": "control: the same wind with no stratification; WindNinja's physics with resolved turbulence and canopy"
+  },
+  "searchmont_stable_nest": {
+   "direction": 152.0,
+   "speed_kph": 16.2,
+   "stability": "stable",
+   "hours": 2.5,
+   "average_s": 1800.0,
+   "theta_surface": 291.8,
+   "theta_gradients": [
+    [
+     0.0,
+     2.0
+    ],
+    [
+     300.0,
+     0.5
+    ]
+   ],
+   "surface": "rate",
+   "heating_rate": -1.0,
+   "surface_heatflux": -0.02,
+   "cthf": -0.02,
+   "why": "the case: does stable air under the same SSE wind reverse the floor?"
+  },
+  "searchmont_midday_nest": {
+   "direction": 186.0,
+   "speed_kph": 10.4,
+   "stability": "convective",
+   "hours": 2.5,
+   "average_s": 1800.0,
+   "theta_surface": 292.4,
+   "theta_gradients": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     800.0,
+     1.0
+    ]
+   ],
+   "surface_heatflux": 0.06,
+   "cthf": 0.09,
+   "why": "the other half of the test: a southerly by day must channel along the valley (felt 249), not reverse"
+  }
+ },
+ "canopy_summary": {
+  "cover_mean": 0.8787771224975587,
+  "lai_mean": 2.6282618045806885,
+  "lai_p90": 3.375,
+  "height_p90_mean": 18.55592155456543
+ },
+ "trial_dem": "C:/tmp/wn-trial/searchmont10/dem.tif",
+ "nest": {
+  "domain": "N02",
+  "dx": 10.0,
+  "nx": 300,
+  "ny": 300,
+  "bounds": [
+   724030.0,
+   5182810.0,
+   727030.0,
+   5185810.0
+  ],
+  "llx": 1060.0,
+  "lly": 1060.0,
+  "vertical": {
+   "dz": [
+    10.0
+   ],
+   "start": null,
+   "end": null,
+   "nz": 48,
+   "top": 480
+  },
+  "nz_do3d": 30,
+  "npe": [
+   8,
+   16
+  ],
+  "canopy_levels": 3,
+  "canopy_summary": {
+   "cover_mean": 0.7971537777777777,
+   "lai_mean": 2.4280495643615723,
+   "lai_p90": 3.375,
+   "height_p90_mean": 16.34275245666504
+  },
+  "centre": [
+   725530.0,
+   5184310.0
+  ]
+ }
+}

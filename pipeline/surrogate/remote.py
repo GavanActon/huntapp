@@ -61,7 +61,11 @@ PIPE = HERE.parent
 # fields.DATA, spelled out: importing fields would pull in scipy just to sync
 DATA = PIPE / "raw" / "surrogate"
 RUNNER = PIPE / "windcfd" / "surrogate"
-SCRIPTS = ("train.py", "predict.py", "eval.py")
+SCRIPTS = ("train.py", "predict.py", "eval.py", "lbm.py")
+# code from outside this folder that also goes to the kit: the GPU engine
+# spike (docs/TEACHER.md track B) is self-contained, numpy and torch only,
+# and its 5090 runs go through the same jobs
+EXTRA_CODE = (HERE.parent / "teacher" / "lbm" / "lbm.py",)
 POLL_S = 30
 SHOW_S = 120
 STALE_S = 2 * 3600
@@ -112,7 +116,8 @@ def copy(src: Path, dst: Path, label: str) -> int:
 
 
 def code_files() -> list[Path]:
-    return sorted(HERE.glob("*.py"), key=lambda p: p.name)
+    extra = [p for p in EXTRA_CODE if p.exists()]
+    return sorted([*HERE.glob("*.py"), *extra], key=lambda p: p.name)
 
 
 def code_hash(files: list[Path]) -> str:

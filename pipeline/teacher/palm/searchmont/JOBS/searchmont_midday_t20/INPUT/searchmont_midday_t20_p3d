@@ -1,0 +1,65 @@
+! searchmont_midday_t20: PALM searchmont, convective, wind from 186 deg true (183.85 on the UTM grid),
+! 10.4 km/h at 30 m over the lowest ground. Built by pipeline/teacher/palm/build_case.py.
+! the other half of the test: a southerly by day must channel along the valley (felt 249), not reverse
+&initialization_parameters
+    nx = 255, ny = 255, nz = 48,
+    dx = 20, dy = 20, dz = 20, 80,
+    dz_stretch_level_start = 520,
+    dz_stretch_level_end = 1320,
+    topography = 'read_from_file',
+    initializing_actions = 'set_constant_profiles',
+    bc_lr = 'cyclic', bc_ns = 'cyclic',
+    omega = 0.0,                          ! no Coriolis, as WindNinja; the grid's rotation does not matter then
+    uv_heights = 0, 10, 30, 60, 100, 200, 300, 500, 3000,
+    u_profile  = 0, 0.135, 0.194, 0.232, 0.26, 0.299, 0.322, 0.351, 0.351,
+    v_profile  = 0, 2.013, 2.882, 3.451, 3.874, 4.451, 4.79, 5.218, 5.218,
+    roughness_length = 0.1,               ! where the driver's z0 has no value
+    conserve_volume_flow = .T.,
+    conserve_volume_flow_mode = 'initial_profiles',
+    rayleigh_damping_height = 1420,
+    rayleigh_damping_factor = 0.01,
+    psolver = 'poisfft',
+    fft_method = 'fftw',
+    neutral = .F.,
+    pt_surface = 292.4,
+    pt_vertical_gradient = 0, 1,
+    pt_vertical_gradient_level = 0, 800,
+    bc_pt_b = 'neumann',
+    surface_heatflux = 0.06,              ! K m/s, the model's bottom (the lowest ground)
+    wall_heatflux = 0.06, 0.0, 0.0, 0.0, 0.0, 0.0,   ! raised ground: upward faces only, so a stair-stepped slope is not counted twice
+/
+
+&runtime_parameters
+    end_time = 600.12,
+    create_disturbances = .T.,
+    dt_disturb = 150.0,
+    disturbance_energy_limit = 0.01,
+    dt_run_control = 60.0,
+    netcdf_data_format = 2,
+    interpolate_to_grid_center = .T.,     ! u, v, w on the cell centres: the DEM's lattice
+
+    ! the field the teacher gives: the mean over the last stretch, near the ground
+    data_output = 'u_av', 'v_av', 'w_av', 'e_av', 'theta_av',
+    nz_do3d = 17,
+    averaging_interval = 300.06,
+    dt_data_output_av = 300.06,
+    skip_time_data_output_av = 300.06,
+    dt_averaging_input = 10.0,
+
+    ! gusts and lulls: the lowest four levels over the ground, every 30 s over the same stretch
+    data_output_masks(1,:) = 'u', 'v', 'w',
+    mask_k_over_surface(1,:) = 1, 2, 3, 4,
+    dt_domask(1) = 30.0,
+    skip_time_domask(1) = 300.06,
+
+    data_output_pr = '#u', '#v', 'w', 'e', 'w"u"', 'w"v"', '#theta', 'w"theta"',
+    dt_dopr = 600.0,
+    averaging_interval_pr = 600.0,
+    dt_dots = 60.0,
+/
+
+&plant_canopy_parameters
+    canopy_mode = 'read_from_file',
+    canopy_drag_coeff = 0.2,
+    cthf = 0.09,                    ! K m/s at the canopy top (the code's unit; the docs say W/m2)
+/

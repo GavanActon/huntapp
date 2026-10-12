@@ -1,0 +1,4 @@
+# built by build_case.py: the NetCDF drivers and the grid arrays rebuild in a few minutes
+*/JOBS/*/INPUT/*_static*
+*/grid*.npz
+__pycache__/
