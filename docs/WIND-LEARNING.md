@@ -99,6 +99,22 @@ and 5.
   name in the working folder. `run.ps1` starts each run in its own folder
   (1e5f5e3), and any new runner or variant must keep that, or two runs
   finishing together swap turbulence.
+- **Measured evidence** (the surrogate thread, 2026-10-11; Zenodo 8226638,
+  `pipeline/surrogate/idaho.py`, SURROGATE.md §5):
+  - **Big Southern Butte, 55 sensors.** WindNinja's speed-ratio r is 0.40,
+    against 0.15 for the mass-consistent layer (0.46 against 0.16 on
+    exposed ground; 0.67–0.78 in the SW–W sectors).
+  - But it over-contrasts both ways. Predicted speed-ups over 1.3 measure
+    1.11 at the median, and predicted lee shelter under 0.5 measures
+    0.57, so its absolute error is no better than a uniform wind.
+  - The turning can't be tested there: the vanes carry fixed offsets of
+    13–95°.
+  - **Salmon River Canyon:** no skill for any model. Its strong winds are
+    night-time drainage down the canyon, decoupled from the wind above:
+    stable air a neutral solver cannot have.
+  - So today's teacher gets the shape of synoptic speed-up and shelter
+    and nothing thermal. **The canyon's 27 sensors at night are a ready
+    test set for a stability teacher.**
 - **Gate:** the teacher reproduces the Searchmont reversal (or whatever
   stations there show), and wins SCALE-PLAN's tier scoreboard.
 
@@ -326,15 +342,68 @@ Stability exists only in the mass solver.
   reads the dusk treetops best.
 - **Slope flows change little at the check spots.**
 
+**On the 2024 LiDAR at 10 m** (HRDEM Sault Ste. Marie, both UTM projects,
+8 × 8 km, mesh 1.1 M, 43–48 min a run on XEVO), the dusk case:
+- Momentum gives the valley floor 151° (157° off what was felt) and the
+  treetops 152°.
+- Momentum + slope flows gives 152° and 149°.
+- Small pockets of reversed air appear: 1.3% of cells turned past 90°
+  from the ambient (about 0.2% at 30 m), 0.17% with slope flows. None is
+  on the floor.
+
+**So a sharper hill alone doesn't make the rotor: it is stability.** That
+matches the Salmon River canyon above.
+
 By the rule fixed above, nothing here passes. That points the night
 cases at the other routes:
-- the momentum solver on the 1 m LiDAR resampled to 5–10 m (HRDEM
-  2024, Sault Ste. Marie, covers the hill), to see whether a sharper
-  hill alone separates the flow;
 - PALM or the GPU engine, with stability resolved rather than
   parameterised;
 - stations on the floor and the ridge, to confirm the rotor is real
   and how often.
+
+### The scoreboard, first run (2026-10-11)
+
+`pipeline/stations/`:
+- `collect.py`: the station readings, 29 days, 12 Sep – 10 Oct 2026.
+- `hrdps.py`: Open-Meteo's archive of past HRDPS forecasts at 1,154
+  stations inside its domain.
+- `surrogate_at.py`: the net on a 15 km box of 30 m MRDEM round each
+  station, read at the station's cell for the 16 directions.
+- `score.py`: each station's reading on the hour (quality flag 100),
+  where it measured 5 km/h or more, against HRDPS as the phone has it,
+  and against HRDPS turned and scaled by the SD terrain wind. Both on the
+  same hours; stations inside an area the net trained on are left out.
+
+Net `seed1-hold-blanchard-river` (17 areas); 548,613 station-hours. The serving net, `seed2-all` (all 35 areas, the same evening), scores the same within a point in every row: valley floors 74% → 79% (night 72% → 77%), mountains 70% → 73%, hilly 83% → 84%, ridges 78% → 77% with speed 70% → 73%. Only 2 of the 1,200 stations sit inside an area either net trained on.
+
+| | within 45°: HRDPS → SD | median miss | speed within ×2 |
+|---|---|---|---|
+| all | 88% → 88% | 14° → 14° | 85% → 84% |
+| flat (relief < 50 m within 3 km) | 91% → 91% | 13° → 13° | 90% → 89% |
+| gentle (50–150 m) | 89% → 89% | 14° → 14° | 87% → 86% |
+| hilly (150–400 m) | 83% → 83% | 17° → 16° | 79% → 79% |
+| mountain (400 m+) | 70% → 73% | 26° → 22° | 50% → 48% |
+| valley floor (hills, 15 m+ below the 1 km mean) | 74% → 79% | 25° → 19° | 66% → 65% |
+| valley floor, night | 72% → 77% | 26° → 20° | 66% → 67% |
+| slope | 81% → 82% | 18° → 17° | 74% → 73% |
+| ridge | 78% → 77% | 19° → 19° | 70% → 72% |
+
+Read it with three things in mind:
+- **HRDPS has a home advantage at the airports.** Environment Canada's
+  and NAV CANADA's readings go into its analysis, and the archive is
+  each run's first hours. At the provincial fire weather stations it is
+  as good on direction (89% within 45° in Ontario) but runs too strong
+  (×1.31 on the median).
+- **The SD terrain earns its keep on valley floors and in mountains**,
+  by day and by night, by turning the forecast along the valley. On flat
+  and gentle ground it changes nothing. On ridges it gives back a point
+  of direction for two of speed. It shaves a little speed accuracy at
+  the fire weather stations, where HRDPS already runs high.
+- **These are 10 m anemometers in the open:** the forecast and the
+  terrain layer, never the head-height air under the trees.
+
+**Next:** WindNinja at the pairs, and a stability teacher scored here,
+on the valley floors at night.
 
 ### The first step needs no bake
 
