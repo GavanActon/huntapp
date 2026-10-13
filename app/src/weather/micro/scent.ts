@@ -1795,7 +1795,7 @@ function syncDistances(map: MlMap, people: Sitter[]) {
 
 /** The cloud's opacity: the card's Strength, a little fainter under each person's own edge. */
 function cloudOpacity(dim: boolean): number {
-  // under each person's own edge it steps back; under the embers a little, so their glow carries
+  // under each person's own edge it steps back; under the veil a little, so its wisps carry
   return (dim ? 0.6 : 0.8) * useScent.getState().strength
 }
 
@@ -2130,7 +2130,7 @@ function draw(map: MlMap) {
     drawn = null
     removeLayers(map)
     particles.stop()
-    embers.stop()
+    veil.stop()
     return
   }
   const runs = runsFor(people, planMinute())
@@ -2139,7 +2139,7 @@ function draw(map: MlMap) {
     drawn = null
     removeLayers(map)
     particles.stop()
-    embers.stop()
+    veil.stop()
     useScent.setState({ plumes, group: null })
     return
   }
@@ -2150,21 +2150,21 @@ function draw(map: MlMap) {
   if (hidden) {
     removeLayers(map)
     particles.stop()
-    embers.stop()
+    veil.stop()
     useScent.setState({ plumes, group: people.length > 1 ? groupOf(f, runs) : null })
     return
   }
   const v = drawnView(view, people.length)
   if (v === 'particles') {
     removeLayers(map)
-    embers.stop()
+    veil.stop()
     particles.start(map, f, runs)
   } else {
     particles.stop()
     drawCloud(map, f, v === 'people')
-    // the cloud gives off embers that flow the way the scent goes; each person's own edge reads better without them
-    if (v === 'cloud') embers.start(map, f, runs)
-    else embers.stop()
+    // a faint veil streams through the cloud the way the scent goes; each person's own edge reads better without it
+    if (v === 'cloud') veil.start(map, f, runs)
+    else veil.stop()
     if (v === 'people') drawEdges(map, people, runs)
     else removeEdges(map)
   }
@@ -2430,45 +2430,42 @@ const particles = (() => {
 })()
 
 /**
- * The cone's embers (Gavan, 2026-10-13: "particles coming off the cone. I
- * move it, emitters change before stabilizing 1-2 seconds later … flowy
- * fire"). In the cloud view the sit keeps giving off glowing motes, each
- * running along one of the plume's own particle paths (smoothed), the sit's
- * minutes played SPEED times fast, so a mote crosses the cone in a few
- * seconds. They are drawn additive on a half-size buffer, soft amber where
- * many run together near the sit, orange as they thin, then deep red, and
- * they fade where the scent at nose height fades ("calmer, less fire",
- * 2026-10-13: half the pace and half the glow of the first cut). Each cone (moved, a new hour, the clock's minute) starts its own
- * stream at once, and the motes already out finish their runs on the old
- * paths and fade, so the cone flows into its new shape instead of jumping.
- * Reduced motion or a hidden tab draws one still frame of a steady stream.
+ * The cone's veil (Gavan, 2026-10-13: "cloud plus a little ethereal layer
+ * … more directed, linear", after embers that read as fire). In the cloud
+ * view the sit keeps giving off faint pale wisps, each riding one of the
+ * plume's own particle paths straightened out, the sit's minutes played
+ * SPEED times fast: long narrow streaks soft at both ends, sliding down the
+ * scent's line through the cloud, widening a little as the puff spreads and
+ * fading where the scent at nose height fades. Drawn on a half-size buffer
+ * and laid over the cloud at LAYER, so the cloud stays the read. Each cone
+ * (moved, a new hour, the clock's minute) starts its own stream at once, and
+ * the wisps already out finish their runs on the old paths and fade, so the
+ * cone flows into its new shape instead of jumping ("I move it, emitters
+ * change before stabilizing 1-2 seconds later"). Reduced motion or a hidden
+ * tab draws one still frame of a steady stream.
  */
-const embers = (() => {
+const veil = (() => {
   /** sit seconds a real second */
-  const SPEED = 75
-  /** motes a second, and the most out at once */
-  const RATE = 60
+  const SPEED = 45
+  /** wisps a second, and the most out at once */
+  const RATE = 18
   const MAX = 600
-  /** a path smoothed over this many 5 s steps either side, so a mote flows rather than twitches */
+  /** a wisp's length, steps of DT back along its run */
+  const TRAIL = 10
+  /** the whole veil's alpha over the cloud */
+  const LAYER = 0.5
+  /** a path smoothed over this many 5 s steps either side, then its run straightened over LONG */
   const SMOOTH = 2
-  /** a mote's glow in heat shades, amber to deep red */
-  const HEAT = 10
-  /** its tail, steps of DT back along the path, and the glows laid along it: [share back, alpha, size] */
-  const TRAIL = 6
-  const TAIL_GLOWS: [number, number, number][] = [
-    [1, 0.2, 0.6],
-    [0.66, 0.4, 0.75],
-    [0.33, 0.7, 0.9],
-    [0, 1, 1],
-  ]
+  const LONG = 8
   interface Path {
     k0: number
     k1: number
+    /** the straightened run, m east and north of the first sit */
     x: Float32Array
     y: Float32Array
     /** the nose-height level under each step, everyone's scent together */
     lv: Float32Array
-    /** distance travelled to each step, m: the glow widens with it as the puff spreads */
+    /** distance travelled to each step, m: the wisp widens with it as the puff spreads */
     tv: Float32Array
   }
   interface Gen {
@@ -2478,54 +2475,49 @@ const embers = (() => {
     ky: number
     paths: Path[]
   }
-  interface Mote {
+  interface Wisp {
     gen: Gen
     p: Path
     /** when it left the sit, ms */
     t0: number
   }
   let gen: Gen | null = null
-  let motes: Mote[] = []
+  let wisps: Wisp[] = []
   let canvas: HTMLCanvasElement | null = null
   let soft: HTMLCanvasElement | null = null
-  let sprites: HTMLCanvasElement[] | null = null
+  let sprite: HTMLCanvasElement | null = null
   let raf = 0
   let map: MlMap | null = null
   let last = 0
   let carry = 0
   const still = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.visibilityState !== 'visible'
 
-  /** soft round glows, one per heat shade: amber, orange, deep red */
-  function glows(): HTMLCanvasElement[] {
-    if (sprites) return sprites
-    const stops: [number, number, number, number][] = [
-      [0, 255, 195, 120],
-      [0.4, 255, 150, 70],
-      [0.75, 235, 95, 40],
-      [1, 190, 50, 25],
-    ]
-    sprites = []
-    for (let s = 0; s < HEAT; s++) {
-      const h = s / (HEAT - 1)
-      let k = 0
-      while (k < stops.length - 2 && h > stops[k + 1][0]) k++
-      const [h0, r0, g0, b0] = stops[k]
-      const [h1, r1, g1, b1] = stops[k + 1]
-      const t = (h - h0) / (h1 - h0)
-      const rgb = `${Math.round(r0 + (r1 - r0) * t)},${Math.round(g0 + (g1 - g0) * t)},${Math.round(b0 + (b1 - b0) * t)}`
-      const c = document.createElement('canvas')
-      c.width = c.height = 32
-      const g = c.getContext('2d')!
-      const rg = g.createRadialGradient(16, 16, 0, 16, 16, 16)
-      rg.addColorStop(0, `rgba(${rgb},1)`)
-      rg.addColorStop(0.35, `rgba(${rgb},0.55)`)
-      rg.addColorStop(0.7, `rgba(${rgb},0.15)`)
-      rg.addColorStop(1, `rgba(${rgb},0)`)
-      g.fillStyle = rg
-      g.fillRect(0, 0, 32, 32)
-      sprites.push(c)
-    }
-    return sprites
+  /** a soft pale puff, stretched into each wisp */
+  function puff(): HTMLCanvasElement {
+    if (sprite) return sprite
+    const c = document.createElement('canvas')
+    c.width = c.height = 64
+    const g = c.getContext('2d')!
+    const rg = g.createRadialGradient(32, 32, 0, 32, 32, 32)
+    for (const [r, a] of [
+      [0, 1],
+      [0.3, 0.7],
+      [0.6, 0.25],
+      [1, 0],
+    ])
+      rg.addColorStop(r, `rgba(248,238,222,${a})`)
+    g.fillStyle = rg
+    g.fillRect(0, 0, 64, 64)
+    return (sprite = c)
+  }
+
+  /** where a run is at step k, between its steps */
+  function at(p: Path, k: number, out: number[], o: number) {
+    const j0 = Math.max(0, Math.floor(k) - p.k0)
+    const j1 = Math.min(j0 + 1, p.x.length - 1)
+    const t = k - Math.floor(k)
+    out[o] = p.x[j0] + (p.x[j1] - p.x[j0]) * t
+    out[o + 1] = p.y[j0] + (p.y[j1] - p.y[j0]) * t
   }
 
   function draw(now: number) {
@@ -2543,29 +2535,29 @@ const embers = (() => {
     ctx.setTransform(d, 0, 0, d, 0, 0)
     ctx.clearRect(0, 0, w, h)
     const calm = still()
-    // the stream: new motes from the sit, old ones finishing their runs
+    // the stream: new wisps from the sit, old ones finishing their runs
     if (calm) {
-      // one still frame of a steady stream: motes spread evenly over their runs, the same each time
-      motes = []
+      // one still frame of a steady stream: wisps spread evenly over their runs, the same each time
+      wisps = []
       if (gen) {
         const rnd = mulberry32(0x5eed)
         const span = (p: Path) => ((p.k1 - p.k0) * DT * 1000) / SPEED
         for (let i = 0; i < Math.min(MAX, gen.paths.length * 2); i++) {
           const p = gen.paths[Math.floor(rnd() * gen.paths.length)]
-          motes.push({ gen, p, t0: now - rnd() * span(p) })
+          wisps.push({ gen, p, t0: now - rnd() * span(p) })
         }
       }
     } else if (gen) {
       const dt = last ? Math.min(0.1, (now - last) / 1000) : 0
       carry += RATE * dt
-      while (carry >= 1 && motes.length < MAX) {
+      while (carry >= 1 && wisps.length < MAX) {
         carry -= 1
-        motes.push({ gen, p: gen.paths[Math.floor(Math.random() * gen.paths.length)], t0: now - Math.random() * dt * 1000 })
+        wisps.push({ gen, p: gen.paths[Math.floor(Math.random() * gen.paths.length)], t0: now - Math.random() * dt * 1000 })
       }
       if (carry >= 1) carry = 0
     }
     last = now
-    if (!motes.length) {
+    if (!wisps.length) {
       if (gen && !calm) raf = requestAnimationFrame(draw)
       return
     }
@@ -2578,10 +2570,9 @@ const embers = (() => {
     }
     const g = soft.getContext('2d')!
     g.clearRect(0, 0, sw, sh)
-    g.globalCompositeOperation = 'lighter'
-    const glow = glows()
+    const img = puff()
     const lt = Math.log(TRACE)
-    // metres to screen for each stream's own sit: rotation and zoom, near enough in pitch
+    // metres to half-size screen for each stream's own sit: rotation and zoom, near enough in pitch
     const proj = new Map<Gen, number[]>()
     const affine = (s: Gen) => {
       let a = proj.get(s)
@@ -2589,64 +2580,50 @@ const embers = (() => {
         const o = map!.project([s.lon, s.lat])
         const pe = map!.project([s.lon + 100 / s.kx, s.lat])
         const pn = map!.project([s.lon, s.lat + 100 / s.ky])
-        a = [o.x, o.y, (pe.x - o.x) / 100, (pe.y - o.y) / 100, (pn.x - o.x) / 100, (pn.y - o.y) / 100]
+        a = [o.x / 2, o.y / 2, (pe.x - o.x) / 200, (pe.y - o.y) / 200, (pn.x - o.x) / 200, (pn.y - o.y) / 200]
         proj.set(s, a)
       }
       return a
     }
-    const alive: Mote[] = []
-    for (const m of motes) {
+    const xy = [0, 0, 0, 0]
+    const alive: Wisp[] = []
+    for (const m of wisps) {
       const { p } = m
       const kf = p.k0 + ((now - m.t0) / 1000) * (SPEED / DT)
       if (kf >= p.k1) continue
       alive.push(m)
       const i0 = Math.max(0, Math.floor(kf) - p.k0)
-      const i1 = Math.min(i0 + 1, p.x.length - 1)
-      const t = kf - Math.floor(kf)
-      const x = p.x[i0] + (p.x[i1] - p.x[i0]) * t
-      const y = p.y[i0] + (p.y[i1] - p.y[i0]) * t
       const lv = p.lv[i0]
       if (lv < TRACE) continue
       const [ox, oy, ex, ey, nx, ny] = affine(m.gen)
-      // where it was a moment ago, for its tail
-      const kb = Math.max(p.k0, kf - TRAIL)
-      const j0 = Math.max(0, Math.floor(kb) - p.k0)
-      const j1 = Math.min(j0 + 1, p.x.length - 1)
-      const tb = kb - Math.floor(kb)
-      const xb = p.x[j0] + (p.x[j1] - p.x[j0]) * tb
-      const yb = p.y[j0] + (p.y[j1] - p.y[j0]) * tb
-      const pxPerM = Math.hypot(ex, ey)
+      // its head, and where its tail trails back along the run
+      at(p, kf, xy, 0)
+      at(p, Math.max(p.k0, kf - TRAIL), xy, 2)
+      const hx = ox + xy[0] * ex + xy[1] * nx
+      const hy = oy + xy[0] * ey + xy[1] * ny
+      const bx = ox + xy[2] * ex + xy[3] * nx
+      const by = oy + xy[2] * ey + xy[3] * ny
+      const len = Math.hypot(hx - bx, hy - by)
+      const wid = Math.min(12, Math.max(1.5, (2.5 + 0.05 * p.tv[i0]) * Math.hypot(ex, ey)))
+      const ux = len > 0.01 ? (hx - bx) / len : 1
+      const uy = len > 0.01 ? (hy - by) / len : 0
+      const half = len / 2 + wid
       const v = Math.min(1, (Math.log(lv) - lt) / -lt)
       const run = (kf - p.k0) / Math.max(1, p.k1 - p.k0)
-      // hot where the scent is strong and the mote is young, cooling as it thins and runs on
-      const heat = Math.min(HEAT - 1, Math.max(0, Math.round((1 - v * (1 - 0.5 * run)) * (HEAT - 1))))
-      const half = Math.min(30, Math.max(2, ((3.5 + 0.05 * p.tv[i0]) * pxPerM) / 2))
       // in over its first moments, out over the last third of its run
-      const born = Math.min(1, (now - m.t0) / 150)
-      const dying = Math.min(1, (1 - run) * 3)
-      const a = (0.08 + 0.4 * v) * born * dying
-      const qx = (ox + x * ex + y * nx) / 2
-      const qy = (oy + x * ey + y * ny) / 2
-      const bx = (ox + xb * ex + yb * nx) / 2
-      const by = (oy + xb * ey + yb * ny) / 2
-      // the head, and a tail of fading glows back along the path: a lick of flame, not a dot
-      for (const [f, fa, fs] of TAIL_GLOWS) {
-        const hx = qx + (bx - qx) * f
-        const hy = qy + (by - qy) * f
-        const r = half * fs
-        g.globalAlpha = a * fa
-        g.drawImage(glow[Math.min(HEAT - 1, heat + Math.round(f * 2))], hx - r, hy - r, 2 * r, 2 * r)
-      }
+      g.globalAlpha = (0.06 + 0.16 * v) * Math.min(1, (now - m.t0) / 800) * Math.min(1, (1 - run) * 3)
+      g.setTransform(ux * half, uy * half, -uy * wid, ux * wid, (hx + bx) / 2, (hy + by) / 2)
+      g.drawImage(img, -1, -1, 2, 2)
     }
-    motes = alive
-    if (import.meta.env.DEV) (window as unknown as { __embers?: number }).__embers = alive.length
+    wisps = alive
+    if (import.meta.env.DEV) (window as unknown as { __veil?: number }).__veil = alive.length
+    g.setTransform(1, 0, 0, 1, 0, 0)
     g.globalAlpha = 1
-    g.globalCompositeOperation = 'source-over'
-    ctx.globalAlpha = useScent.getState().strength
+    ctx.globalAlpha = useScent.getState().strength * LAYER
     ctx.imageSmoothingEnabled = true
     ctx.drawImage(soft, 0, 0, w, h)
     ctx.globalAlpha = 1
-    if (!calm && (gen || motes.length)) raf = requestAnimationFrame(draw)
+    if (!calm && (gen || wisps.length)) raf = requestAnimationFrame(draw)
   }
 
   const redrawStill = () => {
@@ -2677,8 +2654,8 @@ const embers = (() => {
           if (b - a < 2) continue
           const base = p * tr.steps
           const n = b - a + 1
-          const x = new Float32Array(n)
-          const y = new Float32Array(n)
+          const sx = new Float32Array(n)
+          const sy = new Float32Array(n)
           const lv = new Float32Array(n)
           const tv = new Float32Array(n)
           for (let k = a; k <= b; k++) {
@@ -2691,14 +2668,28 @@ const embers = (() => {
               my += tr.y[base + q]
             }
             const j = k - a
-            x[j] = ox + mx / (hi - lo + 1)
-            y[j] = oy + my / (hi - lo + 1)
+            sx[j] = ox + mx / (hi - lo + 1)
+            sy[j] = oy + my / (hi - lo + 1)
             const cx = Math.floor((ox + tr.x[base + k] - fr.west) / CELL_M)
             const cy = Math.floor((fr.north - oy - tr.y[base + k]) / CELL_M)
             lv[j] = cx >= 0 && cy >= 0 && cx < fr.w && cy < fr.h ? fr.grid[cy * fr.w + cx] : 0
-            tv[j] = j === 0 ? Math.hypot(x[0] - ox, y[0] - oy) : tv[j - 1] + Math.hypot(x[j] - x[j - 1], y[j] - y[j - 1])
+            tv[j] = j === 0 ? Math.hypot(sx[0] - ox, sy[0] - oy) : tv[j - 1] + Math.hypot(sx[j] - sx[j - 1], sy[j] - sy[j - 1])
           }
-          // a mote starts at the sit: the path's release minute is the sit's, not the stream's
+          // the straightened run: a window that narrows toward the ends, so it still leaves from the sit
+          const x = new Float32Array(n)
+          const y = new Float32Array(n)
+          for (let j = 0; j < n; j++) {
+            const s = Math.min(LONG, j, n - 1 - j)
+            let mx = 0
+            let my = 0
+            for (let q = j - s; q <= j + s; q++) {
+              mx += sx[q]
+              my += sy[q]
+            }
+            x[j] = mx / (2 * s + 1)
+            y[j] = my / (2 * s + 1)
+          }
+          // a wisp starts at the sit: the path's release minute is the sit's, not the stream's
           paths.push({ k0: a, k1: b, x, y, lv, tv })
         }
       })
@@ -2709,7 +2700,7 @@ const embers = (() => {
       if (raf) cancelAnimationFrame(raf)
       raf = 0
       gen = null
-      motes = []
+      wisps = []
       last = 0
       carry = 0
       map?.off('move', redrawStill)
@@ -2720,7 +2711,7 @@ const embers = (() => {
     },
     wake() {
       last = 0
-      if ((gen || motes.length) && !raf) raf = requestAnimationFrame(draw)
+      if ((gen || wisps.length) && !raf) raf = requestAnimationFrame(draw)
     },
   }
 })()
@@ -2894,7 +2885,7 @@ export function initScentLayer() {
     })
     document.addEventListener('visibilitychange', () => {
       particles.wake()
-      embers.wake()
+      veil.wake()
       // out of a pocket: the cone catches up with the clock at once, not at the next minute
       if (document.visibilityState === 'visible' && useScent.getState().people.length && useAppStore.getState().planTimeMs == null) schedule()
     })
