@@ -837,7 +837,7 @@ footer .links a:hover { color: var(--ink); text-decoration: underline; }
   -webkit-mask-image: linear-gradient(to bottom, transparent, #000 22%, #000 78%, transparent); mask-image: linear-gradient(to bottom, transparent, #000 22%, #000 78%, transparent); }
 .strip-row { border-top: 0; }
 .mark img { height: 36px; border-radius: 9px; background: none; }
-.breath { border: 0; height: 1px; background: var(--line); margin: 48px 0; }
+.breath { border: 0; height: 1px; background: none; margin: 48px 0; }
 .page main > section, .page main > figure { border-top: 0; }
 @media (min-width: 860px) { .breath { margin: 72px 0; } }
 .beat .row-text > h2 { max-width: 560px; }
