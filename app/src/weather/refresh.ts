@@ -102,6 +102,20 @@ function subjects(): { lon: number; lat: number; name: string }[] {
   return areaPlaces().map((p) => ({ lon: p.lon, lat: p.lat, name: p.name }))
 }
 
+/** The nearest saved place of the area the app is in with a forecast in
+ *  the cache, and that forecast: the strip's stand-in with no signal, and
+ *  the weather a tapped point's popup reads (it asks for none of its own). */
+export function nearestCachedForecast(lon: number, lat: number): { p: { lon: number; lat: number; name: string }; f: PointForecast } | null {
+  let best: { p: { lon: number; lat: number; name: string }; f: PointForecast; d: number } | null = null
+  for (const p of areaPlaces()) {
+    const f = cachedPointForecast(p.lon, p.lat)
+    if (!f) continue
+    const d = Math.hypot((p.lon - lon) * Math.cos((lat * Math.PI) / 180), p.lat - lat)
+    if (!best || d < best.d) best = { p: { lon: p.lon, lat: p.lat, name: p.name }, f, d }
+  }
+  return best
+}
+
 export function onWeatherRefreshed(cb: () => void): () => void {
   listeners.add(cb)
   return () => listeners.delete(cb)

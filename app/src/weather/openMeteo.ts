@@ -103,10 +103,21 @@ function cacheKey(lon: number, lat: number) {
   return `${CACHE_PREFIX}${lon.toFixed(2)},${lat.toFixed(2)}`
 }
 
-export function fetchTimeout(url: string, ms = FETCH_TIMEOUT_MS): Promise<Response> {
-  const ctl = new AbortController()
-  const t = setTimeout(() => ctl.abort(), ms)
-  return fetch(url, { signal: ctl.signal }).finally(() => clearTimeout(t))
+/** Open-Meteo turns part of a burst away with 429: a cold open asks for
+ *  about nine forecasts at once, and a tap's popup that asked in the middle
+ *  of it got nothing (2026-10-13). A 429 asks again after these waits,
+ *  spread a little so the burst's retries do not land together. */
+const RETRY_429_MS = [1_000, 3_000]
+
+/** A fetch with a timeout on each try, asked again on a 429. */
+export async function fetchTimeout(url: string, ms = FETCH_TIMEOUT_MS): Promise<Response> {
+  for (let k = 0; ; k++) {
+    const ctl = new AbortController()
+    const t = setTimeout(() => ctl.abort(), ms)
+    const resp = await fetch(url, { signal: ctl.signal }).finally(() => clearTimeout(t))
+    if (resp.status !== 429 || k >= RETRY_429_MS.length) return resp
+    await new Promise((r) => setTimeout(r, RETRY_429_MS[k] * (0.75 + 0.5 * Math.random())))
+  }
 }
 
 /** Where a forecast is asked for: the point pulled into the box of the area
@@ -131,9 +142,25 @@ async function openMeteo(params: Record<string, string>): Promise<Record<string,
   return j
 }
 
-export async function fetchPointForecast(lon: number, lat: number): Promise<PointForecast> {
+// One ask per point at a time: the weather sweep, the strip and the Spots
+// scorer each asked for the home's forecast on a cold open, three pairs in
+// the same instant, and Open-Meteo turned some of them away (2026-10-13).
+// A second ask while one is out shares it.
+const pointAsks = new Map<string, Promise<PointForecast>>()
+
+export function fetchPointForecast(lon: number, lat: number): Promise<PointForecast> {
   const at = forecastPoint(lon, lat)
-  ;({ lon, lat } = at)
+  const key = `${at.lon.toFixed(4)},${at.lat.toFixed(4)}`
+  let ask = pointAsks.get(key)
+  if (!ask) {
+    ask = askPointForecast(at).finally(() => pointAsks.delete(key))
+    pointAsks.set(key, ask)
+  }
+  return ask
+}
+
+async function askPointForecast(at: { lon: number; lat: number; timezone: string }): Promise<PointForecast> {
+  const { lon, lat } = at
   const common = {
     latitude: lat.toFixed(4),
     longitude: lon.toFixed(4),

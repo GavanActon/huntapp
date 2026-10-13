@@ -2,12 +2,12 @@ import { memo, useDeferredValue, useEffect, useMemo, useRef, useState, type CSSP
 import { inRegion } from '../config'
 import { useMapBearing } from '../map/mapBearing'
 import { MARK_KINDS, MARK_NAMES, useAppStore } from '../state/appStore'
-import { areaPlaces, selectedPlace, homePlace, usePlacesStore } from '../state/placesStore'
+import { selectedPlace, homePlace, usePlacesStore } from '../state/placesStore'
 import { useSpotsStore } from '../state/spotsStore'
 import { pickTarget } from '../state/viewsStore'
 import { useGpsStore } from '../tracking/gpsStore'
-import { cachedPointForecast, fetchPointForecast, forecastBasisMs, hourAt, hourRow, isThunder, nextHrdpsRunMs, pointForecast, type HourRow, type PointForecast } from '../weather/openMeteo'
-import { forecastStale, onWeatherRefreshed, refreshWeather } from '../weather/refresh'
+import { fetchPointForecast, forecastBasisMs, hourAt, hourRow, isThunder, nextHrdpsRunMs, pointForecast, type HourRow, type PointForecast } from '../weather/openMeteo'
+import { forecastStale, nearestCachedForecast, onWeatherRefreshed, refreshWeather } from '../weather/refresh'
 import { skyGlyphSvg } from '../weather/skyGlyph'
 import { moonPhase } from '../weather/moon'
 import { sunTimes } from '../weather/sun'
@@ -84,18 +84,6 @@ export function stripSubject(): { lon: number; lat: number; name: string } {
   return { lon: home.lon, lat: home.lat, name: home.name }
 }
 
-/** The nearest saved place with a forecast in the cache, in the area the
- *  app is in (spotsLayer's rule). */
-function nearestCachedPlace(lon: number, lat: number): { p: Subject; f: PointForecast } | null {
-  let best: { p: Subject; f: PointForecast; d: number } | null = null
-  for (const p of areaPlaces()) {
-    const f = cachedPointForecast(p.lon, p.lat)
-    if (!f) continue
-    const d = Math.hypot((p.lon - lon) * Math.cos((lat * Math.PI) / 180), p.lat - lat)
-    if (!best || d < best.d) best = { p: { lon: p.lon, lat: p.lat, name: p.name }, f, d }
-  }
-  return best
-}
 
 /** The strip's subject and its forecast. `force` refetches a `Here`
  *  subject (the refresh sweep only covers saved places). With no signal
@@ -113,7 +101,7 @@ async function loadSubject(force: boolean): Promise<{ subject: Subject; forecast
   const r = await pointForecast(subj.lon, subj.lat)
   if (r) return { subject: subj, forecast: r.forecast, stale: r.stale }
   if (subj.name === 'Here') {
-    const near = nearestCachedPlace(subj.lon, subj.lat)
+    const near = nearestCachedForecast(subj.lon, subj.lat)
     if (near) return { subject: near.p, forecast: near.f, stale: forecastStale(near.f) }
   }
   return { subject: subj, forecast: null, stale: false }
