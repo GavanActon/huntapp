@@ -652,6 +652,9 @@ def main() -> None:
                     help="the stratified runs' ground: a fixed heat flux (the runs' default), a cooling/heating rate, or none")
     ap.add_argument("--rate", type=float, default=-1.0, help="K/h with --surface rate")
     ap.add_argument("--cthf", default="", help="canopy-top heat flux, K m/s (kinematic, whatever PALM's docs say), or 'none'")
+    ap.add_argument("--gradients", default="",
+                    help="the stratified runs' initial potential-temperature profile, 'level:K/100m,...' "
+                         "(e.g. 0:0.7,300:0.5, HRDPS's 2-80 m at 18:24 on 2026-10-10); default the case's")
     args = ap.parse_args()
     case = CASES[args.case]
     t0 = time.time()
@@ -718,6 +721,11 @@ def main() -> None:
                 run["heating_rate"] = args.rate
             if args.cthf:
                 run["cthf"] = None if args.cthf == "none" else float(args.cthf)
+            if args.gradients:
+                # the first runs held 2 K/100 m over the lowest 300 m from the start, which put the
+                # whole valley layer, canopy top included, to sleep whatever the ground did (0.4 and
+                # 1 K/h of cooling gave the same 1.6 km/h); HRDPS had 0.7 K/100 m at 18:24
+                run["theta_gradients"] = [tuple(float(x) for x in s.split(":")) for s in args.gradients.split(",")]
         name = f"{args.case}_{r}{tag}"
         inp = out_case / "JOBS" / name / "INPUT"
         for old in inp.glob(f"{name}_*_N02"):

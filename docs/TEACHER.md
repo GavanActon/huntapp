@@ -344,6 +344,27 @@ neutral run's masked 30 s output covered only 5 min (11 samples of 120
 written), so its reversed share and gusts rest on little; the stable
 runs' windows are 30 min.
 
+### The milder stable run, 2026-10-13 (XEVO): the cooling rate is not the lever
+
+xonix's run of the milder case died unseen overnight; it ran on XEVO
+instead (8 ranks, 10.5 h). Halving the ground's cooling from 1 to 0.4
+K/h changed almost nothing: the reference wind 1.6 km/h again, the seen
+treetops 0.3 km/h (now from 170°, felt 180°, the best direction yet), the
+floor calm and reversed 65% of the window with its gusts from 32° (felt
+308°). The namelists show why: both runs started from 2 K/100 m over the
+lowest 300 m and the same −0.02 K m/s at the canopy top. That imposed
+inversion, about three times what HRDPS had at the cell at 18:24 (+0.53 K
+over 2–80 m, 0.7 K/100 m; at 17:33 it was neutral), put the whole valley
+layer to sleep from the first minute, canopy top included, whatever the
+ground did.
+
+So the next stable case starts from HRDPS's own evening profile and lets
+the valley make its pool: `build_case.py --gradients 0:0.7,300:0.5 --tag
+hrdps` (the flag is new), 1 K/h at the ground, the same canopy-top
+cooling. If the floor decouples and reverses while the seen treetops keep
+a few km/h from about 180°, the case is answered; it is built and on the
+share as `searchmont_stable_hrdps`.
+
 ## Track B: GPU engine
 
 Status 2026-10-12, early hours. Step 1 of [GPU-SOLVER.md](GPU-SOLVER.md)'s
