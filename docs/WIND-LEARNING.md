@@ -557,6 +557,76 @@ station agrees. A firmer mountain number needs more stations in steep
 boxes: BC's fire weather network (licence to ask) and RAWS through
 Synoptic (a free key).
 
+### The check tuner's numbers, measured at the stations (2026-10-13)
+
+Gavan asked for more weight on a tuning algorithm: can a few checks
+correct the outcome? `ambientFit.ts` already reads a sit's checks the right
+way round. The forecast's error is the unknown, a turn and a speed ratio;
+the fit has a prior on each, scores each check's likelihood through the
+ground model, takes the best candidate, and fades it with time and
+distance. But every number in it was set by hand.
+
+`pipeline/stations/tune.py` measures those numbers at the 1,131 stations
+(HRDPS through the SD net, 29 days); results in
+`pipeline/raw/stations/tune.md`.
+
+**How wrong the forecast runs, one sigma** (the fit's prior):
+
+| Forecast 10 m wind | Turn | Speed (ln ratio) |
+|---|---|---|
+| under 8 km/h | 37° | 0.70 |
+| 8–20 km/h | 20° | 0.47 |
+| over 20 km/h | 13° | 0.32 |
+
+Stable nights run 29° and 0.73; mountains 32° and 0.81. The app had
+40° and 0.45 for every wind.
+
+**How much of a check's offset still holds later, at the same station:**
+- **The turn:** 0.64 an hour on, 0.49 at two, 0.41 at three, 0.30 at six,
+  and about a quarter through the next day (the place's own).
+- **The speed:** 0.77, 0.67, 0.60, 0.47, and about two-fifths. The stations'
+  own means are 37% of the speed's error: shelter and siting, which last.
+- **At another station the same hour:** 0.64 within 10 km, 0.20 at 10–25 km.
+  The app's 2.5 km reach is safe.
+
+**Virtual hunters.** A check is a station's reading plus a puff's noise.
+Real puffs at one sit differ by about ±47°, light ones more (27 pairs in
+the replay). At ±60°, today's settings made direction worse with 2–4 puffs,
+because they read a puff at ±25–35°:
+
+| Puffs | Direction within 45° | Median miss |
+|---|---|---|
+| none (the call alone) | 88% | 14° |
+| 2, today's settings | 81% | 23° |
+| 2, measured settings | 91% | 13° |
+| 4, measured settings | 93% | 12° |
+| 8, measured settings | 96% | 11° |
+
+With the measured settings, speed within ×2 went 88% → 96–98% right
+after. The gain fades to the call's own skill by about three hours. With
+steadier checks (±30°: the treetops, a puff watched for long) both
+settings help.
+
+**What changed in ambientFit.ts:**
+- The prior by the forecast's speed the checks logged (`priorFor`).
+- The fit's puff sigma at the puffs' measured noise: 40–55° by strength,
+  `FIT_DIR_SIGMA`. The local blend keeps `DIR_SIGMA`.
+- The turn and the speed fade apart: a quick part (1.6 h and 2.8 h) plus a
+  lasting quarter and two-fifths, all of it gone a day after the last check
+  (`fitWeightsAt`). model.ts applies the two weights apart.
+
+**On Gavan's 76 checks** (`app/scripts/replay.py --loo --all-days`), no
+change:
+- Pickle fit + blend 40% within 45° both ways, median miss 64° → 63°,
+  speed 72%.
+- Searchmont 78% and Sault 25% unchanged: the fit reached none of them.
+
+The fit only reaches 10–11 of the 60 Pickle checks, and the misses there
+are the place's and the regime's (drainage, the canopy, a rotor), which an
+offset on the forecast can't take out. That is what the classes in
+INVERSE.md and the place's memory (layer 4) are for. The speed's lasting
+part, once a sit has measured it, belongs there.
+
 ### The first step needs no bake
 
 **Score the forecast itself.** Compare HRDPS at every station with what

@@ -13,7 +13,7 @@ import { sunPosition } from '../sun'
 import { onWeatherGrid, windGridCovers, windGridInfo, windSampler } from '../windGrid'
 import { angleDiff, CHECK_W0_SPEED, checkW0, checkWeight, maxReachMs, metresBetween, placeReach, puffBoost, SEEN_KMH, seenWeight, STRENGTH_KMH, useWindChecks, type Strength, type WindCheck } from './windChecks'
 import { biasFor, biasMatters, biasWords, learnBiases, type Bias, type Lesson } from './bias'
-import { fitAmbient, fitHoldsUntil, fitMatters, fitWeightAt, fitWords, sessionAt, sessionsOf, sitScore as scoreSit, type AmbientFit, type MapProbeFn, type ProbeFn, type SitScore } from './ambientFit'
+import { fitAmbient, fitHoldsUntil, fitMatters, fitWeightAt, fitWeightsAt, fitWords, sessionAt, sessionsOf, sitScore as scoreSit, type AmbientFit, type MapProbeFn, type ProbeFn, type SitScore } from './ambientFit'
 import { tuneValues, useScentTune, type TuneValues } from './scentTune'
 import { leavesDown, leavesNote } from './leaves'
 
@@ -883,8 +883,10 @@ interface Eval {
   bias: Bias | null
   /** the gusts here against the hour's gust factor: 1.3 in the gusty zone inside a windward edge */
   gustMul?: number
-  /** how much of the sit's fit of the air above reached this cell, 0–1 */
+  /** how much of the sit's fit of the air above reached this cell, 0–1: its turn's share */
   fitW: number
+  /** the same for its speed ratio, which lasts longer (ambientFit.ts LN_KEEP) */
+  fitWL: number
   /** the local 10 m wind, east and north km/h: what the air above the trees (or the drainage layer) does, for the scent column */
   e10: number
   n10: number
@@ -1074,13 +1076,14 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   // checked included; full among the checks, a Gaussian off them, fading
   // for hours after the last. A probe (fitting) applies a candidate as is.
   let fitW = 0
+  let fitWL = 0
   if (ctx.ambient) {
     const a = ctx.ambient
-    fitW = a.full ? 1 : a.fit ? fitWeightAt(a.fit, lon, lat, ctx.ms) : 0
-    if (fitW > 0.02) {
-      dirFrom = (((dirFrom + a.turn * fitW) % 360) + 360) % 360
-      U *= Math.exp(a.lnRatio * fitW)
-    } else fitW = 0
+    const ws = a.full ? { turn: 1, ln: 1 } : a.fit ? fitWeightsAt(a.fit, lon, lat, ctx.ms) : { turn: 0, ln: 0 }
+    fitW = ws.turn > 0.02 ? ws.turn : 0
+    fitWL = ws.ln > 0.02 ? ws.ln : 0
+    if (fitW) dirFrom = (((dirFrom + a.turn * fitW) % 360) + 360) % 360
+    if (fitWL) U *= Math.exp(a.lnRatio * fitWL)
   }
   const lay = ctx.lay
   const reasons: string[] | null = withReasons ? [] : null
@@ -1092,7 +1095,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     // off the grid: an open-ground profile, nothing local
     const f = 0.7 * (1 - 0.6 * lay.stable)
     const sp = U * f
-    return { e: Ue * f, n: Un * f, sigma: 15 + 60 * Math.exp(-sp / 3.6 / 0.6), regime: sp < 0.8 ? 'calm' : 'wind', swirl: false, gusty: ctx.gf >= 1.8 && U >= 8, parts: [{ key: 'terrain', kmh: sp, toward: (dirFrom + 180) % 360 }], reasons, local10: U, U, dirFrom, forecastU, inGrid: false, slot: false, woods: false, bias: null, fitW, e10: Ue, n10: Un, cell: -1, th: 0, cf: f, tumbleMix: 0 }
+    return { e: Ue * f, n: Un * f, sigma: 15 + 60 * Math.exp(-sp / 3.6 / 0.6), regime: sp < 0.8 ? 'calm' : 'wind', swirl: false, gusty: ctx.gf >= 1.8 && U >= 8, parts: [{ key: 'terrain', kmh: sp, toward: (dirFrom + 180) % 360 }], reasons, local10: U, U, dirFrom, forecastU, inGrid: false, slot: false, woods: false, bias: null, fitW, fitWL, e10: Ue, n10: Un, cell: -1, th: 0, cf: f, tumbleMix: 0 }
   }
 
   // ---- terrain and roughness: the two lids, blended by stability ----
@@ -1588,7 +1591,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     if (lay.source === 'estimate') reasons.push('No layering forecast cached: stability estimated from the sky and the wind')
   }
 
-  return { e: E, n: N, sigma, regime, swirl: swirl || tumble >= TUMBLE_SWIRL, gusty, parts, reasons, local10, U, dirFrom, forecastU, inGrid: true, slot: !!slot, woods: th > 0, bias: applied ? lessonBias : null, gustMul, fitW, e10, n10, cell: i, th, cf, tumbleMix }
+  return { e: E, n: N, sigma, regime, swirl: swirl || tumble >= TUMBLE_SWIRL, gusty, parts, reasons, local10, U, dirFrom, forecastU, inGrid: true, slot: !!slot, woods: th > 0, bias: applied ? lessonBias : null, gustMul, fitW, fitWL, e10, n10, cell: i, th, cf, tumbleMix }
 }
 
 function headlineOf(ev: Eval, kmh: number, dirFrom: number, gustKmh: number): string {
@@ -1642,8 +1645,8 @@ export function groundWind(lon: number, lat: number, ms: number): GroundWind | n
     inWoods: ev.woods,
     bias: ev.bias ? { deg: ev.bias.deg, ratio: ev.bias.ratio } : null,
     ambient:
-      ev.fitW > 0 && ctx.ambient?.fit
-        ? { turn: ctx.ambient.turn * ev.fitW, ratio: Math.exp(ctx.ambient.lnRatio * ev.fitW), weight: ev.fitW, count: ctx.ambient.fit.count, sure: ctx.ambient.fit.sure, holdsUntil: fitHoldsUntil(ctx.ambient.fit), words: fitWords(ctx.ambient.fit) }
+      (ev.fitW > 0 || ev.fitWL > 0) && ctx.ambient?.fit
+        ? { turn: ctx.ambient.turn * ev.fitW, ratio: Math.exp(ctx.ambient.lnRatio * ev.fitWL), weight: ev.fitW, count: ctx.ambient.fit.count, sure: ctx.ambient.fit.sure, holdsUntil: fitHoldsUntil(ctx.ambient.fit), words: fitWords(ctx.ambient.fit) }
         : null,
   }
 }

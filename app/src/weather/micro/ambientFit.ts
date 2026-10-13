@@ -1,4 +1,4 @@
-import { angleDiff, DIR_SIGMA, judgeCall, puffBoost, STRENGTH_RANGE, type Seen, type WindCheck } from './windChecks'
+import { angleDiff, judgeCall, puffBoost, STRENGTH_RANGE, type Seen, type Strength, type WindCheck } from './windChecks'
 
 /**
  * The air above the trees, fitted to the checks of a sit.
@@ -103,8 +103,24 @@ export const FIT_TAU_MS = 2 * 3600_000
 export const SESSION_GAP_MS = 2 * 3600_000
 /** Checks further than this from a sit's centre are a different place: the air above may differ. */
 export const SESSION_SPAN_M = 3000
-/** The fit holds after the last check with this e-folding (twice for a wind that had held). */
-export const HOLD_MS = 3 * 3600_000
+/**
+ * How much of a fit still holds after its last check, measured at 1,131
+ * stations over 29 days (pipeline/stations/tune.py, 2026-10-13): an offset
+ * on the forecast measured now carries, as the best weight, 0.64 of its
+ * turn an hour on, 0.49 two, 0.41 three, 0.30 six and about a quarter
+ * through the next day (the place's own turn: a valley's line, a station's
+ * siting); of its speed ratio 0.77, 0.67, 0.60, 0.47 and about two-fifths
+ * (the place's own shelter, 37% of the speed's error). Each fades as
+ * KEEP + (1 - KEEP) exp(-age / TAU), all of it gone LAST_MS after the last
+ * check; a wind that had held keeps its quick part twice as long. Until
+ * 2026-10-13 both faded together with a 3 h e-folding, which held the quick
+ * part too long and dropped the lasting part by the evening.
+ */
+const TURN_KEEP = 0.25
+const TURN_TAU_MS = 1.6 * 3600_000
+const LN_KEEP = 0.4
+const LN_TAU_MS = 2.8 * 3600_000
+export const LAST_MS = 24 * 3600_000
 /** It counts from this long before the first check. */
 export const LEAD_MS = 30 * 60_000
 /** One air: the forecast's own grid is 2.5 km. The fit's weight falls as a Gaussian with this scale from the checks' centre. */
@@ -112,8 +128,50 @@ export const FIT_SCALE_M = 2500
 /** A sit's fit uses at most this many checks, the newest. */
 export const FIT_MAX_CHECKS = 16
 
+/**
+ * How wrong the forecast's 10 m wind runs, one sigma, by its own speed: the
+ * prior on the turn (degrees) and on the speed ratio (ln). Measured at the
+ * stations (tune.py): the turn 37° under 8 km/h, 20° at 8–20 and 13° over
+ * 20; the ratio 0.70, 0.47 and 0.32 (stable nights 29° and 0.73, mountains
+ * 32° and 0.81). Until 2026-10-13 one 40° and 0.45 for every wind: too loose
+ * a turn in a breeze, so a few puffs could swing the whole neighbourhood,
+ * and too tight a ratio in light air.
+ */
+const PRIOR_AT: [number, number, number][] = [
+  [6, 37, 0.7],
+  [14, 20, 0.47],
+  [24, 13, 0.32],
+]
+/** With no forecast logged on the checks: the old single prior. */
 const PRIOR_TURN = 40
 const PRIOR_LN_RATIO = 0.45
+
+/** The priors for a sit whose checks logged the forecast's 10 m speed (km/h): through PRIOR_AT, flat past its ends. */
+function priorFor(kmh: number | null): [number, number] {
+  if (kmh == null || !Number.isFinite(kmh)) return [PRIOR_TURN, PRIOR_LN_RATIO]
+  if (kmh <= PRIOR_AT[0][0]) return [PRIOR_AT[0][1], PRIOR_AT[0][2]]
+  for (let i = 1; i < PRIOR_AT.length; i++) {
+    const [v1, t1, l1] = PRIOR_AT[i]
+    if (kmh <= v1) {
+      const [v0, t0, l0] = PRIOR_AT[i - 1]
+      const f = (kmh - v0) / (v1 - v0)
+      return [t0 + (t1 - t0) * f, l0 + (l1 - l0) * f]
+    }
+  }
+  const last = PRIOR_AT[PRIOR_AT.length - 1]
+  return [last[1], last[2]]
+}
+
+/**
+ * How well a felt check's direction tells the air above, one sigma, in the
+ * fit: the checks of one sit at one spot differ by a median 45° (27 pairs
+ * within 20 minutes and 200 m in the 2026 replay: about ±47° a check, light
+ * ones wider), wider than the 25–35° DIR_SIGMA gives a light or breezy
+ * puff. Stations handed puffs that noisy are only helped by a fit that
+ * knows it (tune.py: two puffs read at 25–35° took 88% within 45° to 81%,
+ * read at their own noise to 91%). The local blend keeps DIR_SIGMA.
+ */
+const FIT_DIR_SIGMA: Record<Strength, number> = { calm: 90, drift: 55, light: 50, breezy: 45, windy: 40 }
 /** How well the treetops' way is read from afar, degrees, one sigma. */
 const SEEN_DIR_SIGMA = 30
 /** What each sign means at 10 m, km/h: Beaufort's bands (SEEN_KMH holds their middles). */
@@ -140,14 +198,23 @@ export function fitWeight(c: WindCheck, refTs: number): number {
   return Math.exp(-Math.abs(refTs - c.ts) / tau) * (c.swingDeg ? 0.7 : 1) * puffBoost(c)
 }
 
-/** The fit's weight at a spot and moment: full among the checks, a Gaussian off them, fading after the last. */
-export function fitWeightAt(f: AmbientFit, lon: number, lat: number, ms: number): number {
-  if (ms < f.firstTs - LEAD_MS) return 0
-  const hold = f.held ? 2 * HOLD_MS : HOLD_MS
-  const fade = Math.exp(-Math.max(0, ms - f.lastTs) / hold)
+/** The fit's weights at a spot and moment, the turn's and the speed ratio's: full among the checks, a Gaussian off them, each fading after the last as the stations say. */
+export function fitWeightsAt(f: AmbientFit, lon: number, lat: number, ms: number): { turn: number; ln: number } {
+  const age = Math.max(0, ms - f.lastTs)
+  if (ms < f.firstTs - LEAD_MS || age > LAST_MS) return { turn: 0, ln: 0 }
+  const k = f.held ? 2 : 1
   const kx = 111_320 * Math.cos((lat * Math.PI) / 180)
   const d = Math.hypot((lon - f.lon) * kx, (lat - f.lat) * 110_574)
-  return fade * Math.exp(-((d / FIT_SCALE_M) * (d / FIT_SCALE_M)))
+  const space = Math.exp(-((d / FIT_SCALE_M) * (d / FIT_SCALE_M)))
+  return {
+    turn: space * (TURN_KEEP + (1 - TURN_KEEP) * Math.exp(-age / (k * TURN_TAU_MS))),
+    ln: space * (LN_KEEP + (1 - LN_KEEP) * Math.exp(-age / (k * LN_TAU_MS))),
+  }
+}
+
+/** The turn's weight: what the card says of how much of the fit reaches a spot. */
+export function fitWeightAt(f: AmbientFit, lon: number, lat: number, ms: number): number {
+  return fitWeightsAt(f, lon, lat, ms).turn
 }
 
 /** The sits: checks in order, felt and seen, split where more than SESSION_GAP_MS passes or a check is SESSION_SPAN_M from the sit's centre. */
@@ -182,8 +249,7 @@ export function sessionAt(sessions: WindCheck[][], ms: number): WindCheck[] | nu
   for (const s of sessions) {
     const first = s[0].ts
     const last = s[s.length - 1]
-    const hold = last.held ? 2 * HOLD_MS : HOLD_MS
-    if (ms >= first - LEAD_MS && ms <= last.ts + 2 * hold) best = s
+    if (ms >= first - LEAD_MS && ms <= last.ts + LAST_MS) best = s
   }
   return best
 }
@@ -203,7 +269,7 @@ function Phi(z: number): number {
  *  fit alone. Nothing for a calm check. */
 function lnLikeDir(c: WindCheck, p: Probe): number {
   if (c.dirFrom == null || c.strength === 'calm') return 0
-  const sig = p.kmh < 1.5 ? 90 : DIR_SIGMA[c.strength] + (c.swingDeg ?? 0) / 2
+  const sig = p.kmh < 1.5 ? 90 : FIT_DIR_SIGMA[c.strength] + (c.swingDeg ?? 0) / 2
   const z = angleDiff(c.dirFrom, p.dirFrom) / sig
   return Math.log(0.9 * Math.exp(-0.5 * z * z) + 0.1)
 }
@@ -233,8 +299,8 @@ function lnLikeSeen(c: WindCheck, p: Probe): number {
   return s + Math.log(Math.max(upper - lower, 0.02))
 }
 
-function lnPrior(turn: number, lnRatio: number): number {
-  return -0.5 * (turn / PRIOR_TURN) ** 2 - 0.5 * (lnRatio / PRIOR_LN_RATIO) ** 2
+function lnPrior(turn: number, lnRatio: number, prior: [number, number]): number {
+  return -0.5 * (turn / prior[0]) ** 2 - 0.5 * (lnRatio / prior[1]) ** 2
 }
 
 const wrap = (d: number) => ((((d + 180) % 360) + 360) % 360) - 180
@@ -250,13 +316,16 @@ export function fitAmbient(checks: WindCheck[], probe: ProbeFn): AmbientFit | nu
   const use = sorted.slice(-FIT_MAX_CHECKS)
   if (!use.length) return null
   const refTs = use[use.length - 1].ts
+  // the prior by the forecast's speed the checks logged (their median)
+  const fk = use.map((c) => c.forecast?.kmh).filter((v): v is number => v != null && Number.isFinite(v)).sort((x, y) => x - y)
+  const prior = priorFor(fk.length ? fk[Math.floor(fk.length / 2)] : null)
   const w = use.map((c) => fitWeight(c, refTs) * (c.seen ? SEEN_FIT_W : 1))
   // each check's probe is a function of the candidate alone: the woods flag
   // (half weight on speed) is read at the forecast as it stands
   const woods = use.map((c) => !c.seen && (probe(c, 0, 0)?.woods ?? false))
   let anyProbe = false
   const score = (turn: number, lnRatio: number): number => {
-    let s = lnPrior(turn, lnRatio)
+    let s = lnPrior(turn, lnRatio, prior)
     for (let k = 0; k < use.length; k++) {
       const p = probe(use[k], turn, lnRatio)
       if (!p) continue
@@ -351,8 +420,8 @@ export function sitScore(checks: WindCheck[], probe: ProbeFn, asMap?: MapProbeFn
     out.n++
     const others = sorted.filter((o) => o !== c)
     const f = others.length ? fitAmbient(others, probe) : null
-    const fw = fitMatters(f) ? fitWeightAt(f, c.lon, c.lat, c.ts) : 0
-    const withFit = others.length && asMap ? asMap(c, others, fitMatters(f) ? f : null) : fw > 0 ? probe(c, f!.turn * fw, f!.lnRatio * fw) : raw
+    const fw = fitMatters(f) ? fitWeightsAt(f, c.lon, c.lat, c.ts) : { turn: 0, ln: 0 }
+    const withFit = others.length && asMap ? asMap(c, others, fitMatters(f) ? f : null) : fw.turn > 0 || fw.ln > 0 ? probe(c, f!.turn * fw.turn, f!.lnRatio * fw.ln) : raw
     const vr = judgeCall(c, raw)
     const vf = judgeCall(c, withFit ?? raw)
     if (vr === 'agree') out.raw.agree++
@@ -380,9 +449,9 @@ export function fitWords(f: AmbientFit): string {
   return `the air above the trees runs ${bits.join(' at ')}`
 }
 
-/** When the fit has faded to a third of itself: the words for "held till". */
+/** When the turn's quick part has faded to half the fit: the words for "held till". */
 export function fitHoldsUntil(f: AmbientFit): number {
-  return f.lastTs + (f.held ? 2 : 1) * HOLD_MS
+  return f.lastTs + (f.held ? 2 : 1) * TURN_TAU_MS * Math.log((1 - TURN_KEEP) / (0.5 - TURN_KEEP))
 }
 
 /**
