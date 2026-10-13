@@ -299,8 +299,26 @@ function heldUp(s: number, h: number): number {
 function keepOfDrop(stable: number): number {
   return Math.min(1, Math.max(0, (stable - 0.3) / 0.5))
 }
+/**
+ * The hold off a drop is for still air: a puff drifting off a bank's lip
+ * goes on at its level over the low ground. Air that moves follows the
+ * ground down: stable flow over a hill hugs its lee slope (or goes round),
+ * so it carries the scent down with it. Held on a night of any wind, a cone
+ * on a hilltop lost most of its scent into the air above the slope and
+ * all but vanished (Blanchard River, 2026-10-12: 300–600 m cones fell to
+ * 45–75 m once the relief landed, at 2.5–8 km/h at head height). So the
+ * hold fades with the head-height wind at the particle, whole at
+ * STILL_FROM and gone by STILL_TO, m/s.
+ */
+const STILL_FROM = 0.3
+const STILL_TO = 1.0
+function stillShare(headWind: number): number {
+  return Math.min(1, Math.max(0, (STILL_TO - headWind) / (STILL_TO - STILL_FROM)))
+}
 /** a particle never rises more than this above the ground, m */
 const MAX_AGL = 60
+/** what still air holds a puff up by off a drop at most, m: a bank's or a lip's height, not a hillside's */
+const HOLD_MAX = 8
 /**
  * An edge: the mean head-height wind falls to this share of the fastest
  * the particle has had since it last lost scent. The air that does not
@@ -744,6 +762,8 @@ export function simulatePlume(
   // core only), for a drop kept in still air, a steep lee face by day, a
   // bank upwind of the sit, and the bush at nose height
   const keep = keepOfDrop(stable) * T.keepDrop
+  // a steep lee face separates the flow in mixed air only (the hold's own ramp, the other way)
+  const sepMixed = 1 - keepOfDrop(stable)
   const dtm = column || keep > 0 ? reliefNear(lon, lat, kx, ky) : null
   // σz by distance travelled in 1 m steps, for every step the column model
   // takes (its layer shares) and for the steps held up off a drop
@@ -772,7 +792,14 @@ export function simulatePlume(
   // ground rising CAVITY_MIN_M or more past SEP_SLOPE makes a cavity the
   // sit lies in, where the low air runs back toward the bank
   let cavityH = 0
-  if (column && dtm && iSrc >= 0 && out[7] < 3) {
+  // the cavity is an eddy of the wind above the bank, in mixed air, as the
+  // lee face's separation is (sepMixed): on a stable night the flow goes on
+  // over the bank or round it, and the eddy held a hilltop's scent at the
+  // sit. Where the sit's own ground air drains, pools or runs off the shore
+  // (out[4]), that air is not the wind's, and turning it back pointed a
+  // slope's drainage cone uphill, into the air it rides (Blanchard River,
+  // 2026-10-12)
+  if (column && dtm && iSrc >= 0 && out[7] < 3 && out[4] <= 0.5 && sepMixed > 0.5) {
     // in the open only: under a canopy the trunk space has no terrain cavity of its own
     const as = Math.hypot(out[5], out[6])
     if (as >= 0.5) {
@@ -1000,17 +1027,29 @@ export function simulatePlume(
             } else {
               const dz = g0 - g1
               if (dz > 0) {
-                // falling ground: in still air the puff keeps its level; by day too
-                // past a steep lee face in the open, where the flow separates; cold
-                // air that drains, pools or runs off the shore follows the ground
-                // down. The slope is the drop over the ground grid's own cell, never
-                // over the particle's step (a metre or two, which made every 1 m
-                // step down between cells a lee face: Lac Bailey, 2026-10-09, cones
-                // five metres apart "totally different"); under a canopy the trunk
-                // space follows its floor, so no separation there
+                // falling ground: in still air the puff keeps its level (stillShare:
+                // air that moves follows the ground down); by day too past a steep
+                // lee face in the open, where the flow separates; cold air that
+                // drains, pools or runs off the shore follows the ground down. The
+                // slope is the drop over the ground grid's own cell, never over the
+                // particle's step (a metre or two, which made every 1 m step down
+                // between cells a lee face: Lac Bailey, 2026-10-09, cones five
+                // metres apart "totally different"); under a canopy the trunk space
+                // follows its floor, so no separation there
+                // Separation needs mixed air: on a stable night the flow stays on
+                // the lee slope and goes down it (it fades as the still-air hold
+                // comes in, over the same stability ramp), and on a hill with any
+                // wind that hold stays out too: every 10 m cell past 17° held the
+                // scent up and hilltop cones vanished (Blanchard River, 2026-10-12)
                 const ds = Math.max(Math.hypot(dx, dy), 10)
-                const k2 = column && col && !col.stand && dz / ds >= T.sepSlope ? 1 : keep
-                if (out[4] <= 0.5 && k2 > 0) zRel = Math.min(MAX_AGL - zc0, zRel + dz * k2)
+                const sep = column && col && !col.stand && dz / ds >= T.sepSlope ? sepMixed : 0
+                const hold = keep * stillShare(mean)
+                if (out[4] <= 0.5) {
+                  if (sep > 0 && sep >= hold) zRel = Math.min(MAX_AGL - zc0, zRel + dz * sep)
+                  // still air keeps a bank's drop, not a hillside's: down a long
+                  // slope that air drains, so the hold stops at HOLD_MAX
+                  else if (hold > 0) zRel = Math.min(Math.max(zRel, HOLD_MAX), zRel + dz * hold)
+                }
               } else if (dz < 0) {
                 // rising ground takes back what was gained, never below the release height
                 zRel = Math.max(0, zRel + dz)
