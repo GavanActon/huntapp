@@ -246,7 +246,7 @@ def join_replays(checks: list[dict]) -> None:
         if not f.exists():
             continue
         for r in csv.DictReader(open(f, encoding="utf-8")):
-            by_ts.setdefault(int(r["ts"]), {}).update({"rawDir": num(r["rawDir"]), "rawKmh": num(r["rawKmh"]), "rawRegime": r["rawRegime"], "blendDir": num(r["blendDir"]), "fitDir": num(r["fitDir"]), "treeHreplay": num(r.get("treeH")), "replayFile": f.name})
+            by_ts.setdefault(int(r["ts"]), {}).update({"rawDir": num(r["rawDir"]), "rawKmh": num(r["rawKmh"]), "rawRegime": r["rawRegime"], "blendDir": num(r["blendDir"]), "fitDir": num(r["fitDir"]), "fitKmh": num(r.get("fitKmh")), "blendKmh": num(r.get("blendKmh")), "treeHreplay": num(r.get("treeH")), "replayFile": f.name})
     base = FIELD / "replay-2026-10-07-baseline.csv"
     if base.exists():
         for r in csv.DictReader(open(base, encoding="utf-8")):

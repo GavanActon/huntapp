@@ -628,6 +628,64 @@ On the ridge, the classes give what the forecast gives: the climb's air was
 coupled. The puffs' 180–299° spread is meander, not a class change, and
 the classes don't chase it. The app's logged calls did: 57%, 28°.
 
+### The speed-fix pair (speed only, offline)
+
+**The variant.** The station thread's corrected speed above the canopy goes
+into the tower floor model. Direction is untouched.
+- **The inputs:**
+  - `pipeline/raw/inverse/pair-speed.csv`: per check, `wsTop`, the
+    station-corrected open 10 m speed carried to just above the canopy by
+    the bake's roughness ratio;
+  - `wsTopAlt` = corrected10Kmh / 3.6, a lower bound;
+  - `clsGrad`, the stability class.
+- **The floor model:** the LightGBM SD floor model (`floor-models/sd_calm.txt`
+  for p_calm, `sd_logratio.txt` for log(floor/top)), trained in
+  `pipeline/towers/floor.py` on SMEAR II, NEON and AmeriFlux.
+- **Head-height speed** = wsTop × exp(logratio) × 3.6 km/h. The band is
+  calm where p_calm ≥ 0.5, else the speed's band (`STRENGTH_RANGE`).
+- **The features:**
+  - zeta_grad NaN, sd_ztop_rel 1.3, sd_zfloor_rel 2/sd_h;
+  - sun and hours since sunrise and sunset from the almanac;
+  - slope and wind-against-downslope from the micro grid (`thSlope`,
+    `thAspect`, with the SD wind's direction);
+  - decid = hardwood / (hardwood + conifer) from the habitat grid (FRI);
+  - the canopy as `floor.py`'s SD grade: ETH Global Canopy Height 2020
+    (10 m) and Hansen GFC-2024 cover after loss (30 m), read per check with
+    `canopy_sites.py`'s readers and cached in
+    `pipeline/raw/inverse/sd-canopy.json`.
+- **Run:** `replay_inverse.py`'s `pair_speed()`.
+- **Checks:** 74 felt checks with a pair row. The 2026-09-28 19:41 bog calm
+  has none.
+
+**Within one band / exact band** (felt word against each call's band):
+
+| | all (74) | under stands, treeH 8 m+ (41) | open (33) | Pickle (59) | Searchmont + Sault (15) |
+|---|---|---|---|---|---|
+| app, logged at the time | 92% / 47% | 93% / 54% | 91% / 39% | 93% / 49% | 87% / 40% |
+| app fit + blend (replay) | 89% / 34% | 90% / 22% | 88% / 48% | 92% / 32% | 80% / 40% |
+| classes v3, check-free | 84% / 42% | 83% / 39% | 85% / 45% | 85% / 41% | 80% / 47% |
+| classes v3, causal | 85% / 43% | 85% / 39% | 85% / 48% | 86% / 42% | 80% / 47% |
+| **pair, wsTop** | 89% / 38% | **93%** / 34% | 85% / 42% | 90% / 39% | 87% / 33% |
+| pair, wsTopAlt | 84% / 35% | 88% / 39% | 79% / 30% | 81% / 31% | **93% / 53%** |
+
+**What it shows:**
+- **No call reaches the app's logged speed** (92% / 47%).
+  - The GPX's logged speeds are whole km/h, mostly "1 km/h" = drift, and
+    drift is the commonest felt word (26 of 74). So that column is flattered.
+- **With wsTop the pair matches fit + blend overall** (89%) and leads under
+  stands (93% within one band). It never calls calm: p_calm stays under 0.5
+  at every check, so it gets none of the 8 felt calms.
+  - It calls light 52 times against 25 felt. It runs a band high on
+    drift-heavy Pickle.
+- **wsTopAlt is the reverse.** It calls calm 18 times (2 of the 8 felt calms
+  right) and runs a band low at Pickle. It is the best on the Searchmont and
+  Sault checks (93% / 53%), where wsTop calls the ridge's breezy puffs
+  light-to-breezy.
+- **The truth sits between them:** wsTop over-calls, wsTopAlt under-calls.
+- **One caveat on reading the 74 checks.** The ETH p90 within 100 m is 5 m
+  or more at every check, because the trees round an opening count. The
+  "under stands" split uses the area grid's `treeH` instead.
+
 ## What the data can and cannot settle
 
 **It can settle:**

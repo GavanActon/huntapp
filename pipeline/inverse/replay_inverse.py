@@ -29,7 +29,7 @@ import math
 import statistics
 import sys
 from collections import Counter, defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -52,7 +52,8 @@ from classes import (  # noqa: E402
     info_gain,
     seen_loglik,
 )
-from build_params import RAW, TZ, metres, sun_position  # noqa: E402
+from build_params import AREAS as AREA_DIRS, RAW, ROOT as ROOT_DIR, TZ, metres, sun_position  # noqa: E402
+from habfile import read_hab  # noqa: E402
 
 SAME_M = 400.0  # a check speaks for the class within this
 AMB_M = 2500.0  # and for the ambient within this
@@ -496,6 +497,8 @@ def run(write: bool = True) -> dict:
     }
     if not write:
         return summary
+    pair_res, pair_md = pair_speed(rows, P)
+    summary["pairSpeed"] = pair_res
     (RAW / "summary.json").write_text(json.dumps(summary, indent=1, default=str), encoding="utf-8")
 
     out_cols = [c for c in rows[0].keys() if c not in ("lat", "lon")]
@@ -531,6 +534,7 @@ def run(write: bool = True) -> dict:
     md.append("|" + "---|" * len(cols))
     for x in rows:
         md.append("| " + " | ".join(fmt(x[c]) for c in cols) + " |")
+    md += pair_md
     (RAW / "replay.md").write_text("\n".join(md) + "\n", encoding="utf-8")
 
     # console
@@ -551,6 +555,207 @@ def run(write: bool = True) -> dict:
     for p_ in summary["palm"]:
         print("palm:", p_)
     return summary
+
+
+# ---------------------------------------------------------------- the speed-fix pair (offline variant)
+#
+# The station thread's corrected speed above the canopy (pipeline/raw/inverse/pair-speed.csv:
+# wsTop, the open 10 m speed carried to just above the canopy by the bake's roughness ratio;
+# wsTopAlt = corrected10Kmh / 3.6, a lower bound) fed to the tower floor model (LightGBM,
+# pipeline/raw/towers/floor-models/sd_calm.txt and sd_logratio.txt, trained in
+# pipeline/towers/floor.py on SMEAR II, NEON and AmeriFlux towers). Head-height speed =
+# wsTop x exp(logratio) x 3.6 km/h; the band is calm where p_calm >= 0.5, else the speed's.
+# Direction untouched. The canopy features are floor.py's SD grade: ETH Global Canopy Height
+# 2020 (10 m) and Hansen GFC-2024 cover after loss (30 m), read the way
+# pipeline/towers/canopy_sites.py reads them, at each check.
+
+FLOOR_MODELS = ROOT_DIR / "pipeline" / "raw" / "towers" / "floor-models"
+PAIR_CSV = RAW / "pair-speed.csv"
+SD_CANOPY = RAW / "sd-canopy.json"
+PAIR_CALM_P = 0.5
+
+
+def sd_canopy(P: list[dict]) -> dict:
+    """ETH height and Hansen closure stats at each check (floor.py grade_of), cached."""
+    cache = json.loads(SD_CANOPY.read_text(encoding="utf-8")) if SD_CANOPY.exists() else {}
+    todo = [r for r in P if r["id"] not in cache]
+    if not todo:
+        return cache
+    sys.path.insert(0, str(ROOT_DIR / "pipeline" / "towers"))
+    import canopy_sites as cs
+    from pyproj import Transformer
+    from rasterio.crs import CRS
+
+    crs = CRS.from_epsg(32616)  # every check is in UTM 16N (-90 to -84)
+    fwd = Transformer.from_crs(4326, 32616, always_xy=True)
+    inv = Transformer.from_crs(32616, 4326, always_xy=True)
+    half = 2600.0
+    clusters: dict[tuple, list[dict]] = defaultdict(list)
+    for r in todo:
+        x, y = fwd.transform(r["lon"], r["lat"])
+        clusters[(round(x / 2500.0), round(y / 2500.0))].append(r)
+    for key, rs in clusters.items():
+        xs = [fwd.transform(r["lon"], r["lat"]) for r in rs]
+        tx, ty = float(np.mean([p[0] for p in xs])), float(np.mean([p[1] for p in xs]))
+        w, s = inv.transform(tx - half, ty - half)
+        e, n = inv.transform(tx + half, ty + half)
+        print(f"  SD canopy: {len(rs)} checks round {n:.3f},{w:.3f}")
+        H10 = cs.sd_grid([cs.ETH_URL.format(tile=t) for t in cs._eth_tiles(w, s, e, n)], crs, tx, ty, half, 10.0, nodata=255)
+        TC = cs.sd_grid([cs.HANSEN_URL.format(layer="treecover2000", tile=t) for t in cs._hansen_tiles(w, s, e, n)], crs, tx, ty, half, 30.0)
+        LY = cs.sd_grid([cs.HANSEN_URL.format(layer="lossyear", tile=t) for t in cs._hansen_tiles(w, s, e, n)], crs, tx, ty, half, 30.0)
+        TCL = np.where((LY >= 1) & (LY <= 24), 0.0, TC).astype(np.float32)
+        for r, (px, py) in zip(rs, xs):
+            rec = {"source": "ETH 2020 10 m + Hansen GFC-2024 after loss 30 m"}
+            if np.isfinite(H10).any():
+                eth = cs.grid_stats(H10, tx - half, ty + half, 10.0, px, py, H10 < cs.OPEN_H)
+                r100 = eth["by_radius"].get("100") or {}
+                rec.update(h=r100.get("p90"), h_med=r100.get("tree_median"), edge_m=eth.get("edge_m"),
+                           in_opening=float(bool(eth.get("tower_in_opening"))), fetch=eth.get("fetch_m"))
+            if np.isfinite(TCL).any():
+                han = cs.grid_stats(TCL, tx - half, ty + half, 30.0, px, py, TCL < 10, value="cover")
+                rec.update(closure100=(han["by_radius"].get("100") or {}).get("closure"),
+                           closure250=(han["by_radius"].get("250") or {}).get("closure"))
+            cache[r["id"]] = rec
+        SD_CANOPY.write_text(json.dumps(cache, indent=1), encoding="utf-8")
+    return cache
+
+
+def hours_since(ms: float, lat: float, lon: float) -> tuple[float, float]:
+    """Hours since the last sunrise and the last sunset (upper limb, -0.833 deg), NaN past 30 h (floor.py)."""
+    rise = sset = float("nan")
+    prev = sun_position(ms, lat, lon)[0] + 0.833
+    t = ms
+    for _ in range(int(30 * 12)):
+        t -= 300_000
+        e = sun_position(t, lat, lon)[0] + 0.833
+        # going back in time: below then above (now) is a rise; above then below is a set
+        if e < 0 <= prev and math.isnan(rise):
+            rise = (ms - t) / 3_600_000
+        if e >= 0 > prev and math.isnan(sset):
+            sset = (ms - t) / 3_600_000
+        if not (math.isnan(rise) or math.isnan(sset)):
+            break
+        prev = e
+    return rise, sset
+
+
+def rose_at_bearing(fetch: dict | None, wd: float) -> float:
+    if not fetch:
+        return float("nan")
+    v = sorted((float(k) % 360, float(x)) for k, x in fetch.items())
+    if len(v) != 16:
+        return float("nan")
+    r = [x for _, x in v] + [v[0][1]]
+    x = (wd % 360) / 22.5
+    i = int(x) % 16
+    f = x - int(x)
+    return r[i] * (1 - f) + r[i + 1] * f
+
+
+def pair_speed(rows: list[dict], P: list[dict]) -> tuple[dict, list[str]]:
+    """The speed-fix pair's head-height speed and band per check, and the band scores."""
+    import lightgbm as lgb
+
+    if not PAIR_CSV.exists():
+        return {}, []
+    pair = {r["id"]: r for r in csv.DictReader(open(PAIR_CSV, encoding="utf-8"))}
+    calm_m = lgb.Booster(model_file=str(FLOOR_MODELS / "sd_calm.txt"))
+    lr_m = lgb.Booster(model_file=str(FLOOR_MODELS / "sd_logratio.txt"))
+    feats = calm_m.feature_name()
+    assert feats == lr_m.feature_name()
+    byid = {r["id"]: r for r in P}
+    can = sd_canopy([byid[x["id"]] for x in rows if x["id"] in pair])
+    hab = {}
+    for area, d in AREA_DIRS.items():
+        hab[area] = read_hab(d / f"habitat-{area}.hab", want=["hardwood", "conifer"])[1]
+
+    def num(v):
+        try:
+            x = float(v)
+            return x if math.isfinite(x) else float("nan")
+        except (TypeError, ValueError):
+            return float("nan")
+
+    X, X_alt, ids = [], [], []
+    for x in rows:
+        pr = pair.get(x["id"])
+        if pr is None:
+            continue
+        r = byid[x["id"]]
+        c = can.get(x["id"], {})
+        rr, cc = r["cell"]
+        hw, cf = float(hab[r["area"]]["hardwood"][rr, cc]), float(hab[r["area"]]["conifer"][rr, cc])
+        decid = hw / (hw + cf) if hw + cf > 0 else float("nan")
+        rise, sset = hours_since(r["ts"], r["lat"], r["lon"])
+        wd = num(pr["sd10Dir"])
+        slope = float(r["thSlope"])
+        wvd = abs(((wd + 180 - r["thAspect"]) + 180) % 360 - 180) if (r["thAspect"] is not None and slope > 0 and math.isfinite(wd)) else float("nan")
+        h = num(c.get("h"))
+        f = dict(
+            zeta_grad=float("nan"), cls_grad=num(pr["clsGrad"]), sun=float(r["sunEl"]),
+            h_since_sunset=sset, h_since_sunrise=rise,
+            month=datetime.fromtimestamp(r["ts"] / 1000, timezone.utc).month,
+            decid=decid, slope=slope, wind_vs_downslope=wvd,
+            sd_h=h, sd_h_med=num(c.get("h_med")), sd_closure100=num(c.get("closure100")), sd_closure250=num(c.get("closure250")),
+            sd_edge_m=num(c.get("edge_m")), sd_fetch_up=rose_at_bearing(c.get("fetch"), wd), sd_in_opening=num(c.get("in_opening")),
+            sd_ztop_rel=1.3, sd_zfloor_rel=(2.0 / h) if h > 0 else float("nan"),
+        )
+        X.append([num(pr["wsTop"]) if k == "ws_top" else f[k] for k in feats])
+        X_alt.append([num(pr["wsTopAlt"]) if k == "ws_top" else f[k] for k in feats])
+        ids.append(x["id"])
+        x["sdH"] = None if not math.isfinite(h) else round(h, 1)
+        x["sdClosure100"] = c.get("closure100")
+    out = {}
+    for tag, M in (("pair", np.array(X, float)), ("pairAlt", np.array(X_alt, float))):
+        pc = calm_m.predict(M)
+        lr = lr_m.predict(M)
+        top = M[:, feats.index("ws_top")]
+        kmh = top * np.exp(lr) * 3.6
+        for i, k in enumerate(ids):
+            out.setdefault(k, {})
+            out[k][f"{tag}Kmh"] = round(float(kmh[i]), 2)
+            out[k][f"{tag}PCalm"] = round(float(pc[i]), 2)
+            out[k][f"{tag}Band"] = "calm" if pc[i] >= PAIR_CALM_P else band_of(kmh[i])
+            out[k][f"{tag}SpeedBand"] = band_of(kmh[i])
+    for x in rows:
+        x.update(out.get(x["id"], {"pairKmh": "", "pairPCalm": "", "pairBand": "", "pairSpeedBand": "", "pairAltKmh": "", "pairAltPCalm": "", "pairAltBand": "", "pairAltSpeedBand": ""}))
+        x["fitBand"] = band_of(byid[x["id"]].get("fitKmh"))
+
+    scored = [x for x in rows if x["id"] in out]
+    # under a stand by the area's own grid (ETH's p90 within 100 m is 5 m+ at every check: the trees round an opening count)
+    forest = [x for x in scored if float(x["treeH"]) >= 8]
+    opened = [x for x in scored if float(x["treeH"]) < 8]
+
+    def bscore(sub, col):
+        n = ok = ex = 0
+        for x in sub:
+            b = x.get(col)
+            if not b:
+                continue
+            n += 1
+            d = abs(BANDS.index(b) - BANDS.index(x["feltStrength"]))
+            ok += d <= 1
+            ex += d == 0
+        return {"n": n, "within1": ok / n if n else None, "exact": ex / n if n else None}
+
+    cols = [("app logged", "loggedBand"), ("app fit + blend (replay)", "fitBand"), ("classes v3 check-free", "freeBand"),
+            ("classes v3 causal", "speedBand"), ("pair, wsTop", "pairBand"), ("pair, wsTop, speed only (no p_calm)", "pairSpeedBand"),
+            ("pair, wsTopAlt", "pairAltBand"), ("pair, wsTopAlt, speed only", "pairAltSpeedBand")]
+    groups = {"all": scored, "under stands (treeH 8 m+)": forest, "open (treeH under 8 m)": opened, "Pickle": [x for x in scored if x["set"] == "gpx"], "Searchmont + Sault": [x for x in scored if x["set"] == "d1"]}
+    res = {g: {name: bscore(sub, col) for name, col in cols} for g, sub in groups.items()}
+    felt_calm = [x for x in scored if x["feltStrength"] == "calm"]
+    res["calmHits"] = {name: sum(1 for x in felt_calm if x.get(col) == "calm") for name, col in cols}
+    res["calmCalls"] = {name: sum(1 for x in scored if x.get(col) == "calm") for name, col in cols}
+    res["nFeltCalm"] = len(felt_calm)
+    res["bandCounts"] = {name: dict(Counter(x.get(col) for x in scored)) for name, col in cols}
+    res["bandCounts"]["felt"] = dict(Counter(x["feltStrength"] for x in scored))
+    md = ["", "## The speed-fix pair (speed bands only; direction untouched)", "",
+          f"{len(scored)} felt checks with a pair row, {len(forest)} under stands of 8 m or more (the area grid's treeH). Within one band / exact.", "",
+          "| | " + " | ".join(groups) + " |", "|---|" + "---|" * len(groups)]
+    for name, _ in cols:
+        md.append(f"| {name} | " + " | ".join(f"{res[g][name]['within1'] * 100:.0f}% / {res[g][name]['exact'] * 100:.0f}% (n {res[g][name]['n']})" if res[g][name]["n"] else "" for g in groups) + " |")
+    md += ["", f"Felt calm {len(felt_calm)}: called calm by " + ", ".join(f"{k} {v}" for k, v in res["calmHits"].items()) + ".", ""]
+    return res, md
 
 
 # The sensitivity runs: v1 is the table as designed before the replay; the
