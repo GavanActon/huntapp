@@ -621,6 +621,32 @@ head-height call three ways:
 
 If the third lands on the checks, both rules are replaced together.
 
+**The replay, 2026-10-12: the pair doesn't ship yet.** Scored on 74 felt
+checks in `replay_inverse.py`'s `pair_speed()`, with the per-check input
+from `pipeline/stations/at_checks.py`. Full table in INVERSE.md, "The
+speed-fix pair".
+
+| Within one felt band / exact | Score |
+|---|---|
+| app, logged | 92% / 47% |
+| app, fit + blend | 89% / 34% |
+| pair, wind above the trees from the open-ground speed × roughness ratio | 89% / 38% |
+| pair, wind above the trees from the speed as a mast in a clearing would read it | 84% / 35% |
+
+- **The two choices of the wind above the trees bracket the truth.** The
+  first never calls calm and runs a band high at Pickle; the second runs a
+  band low there, but is best at Searchmont and Sault (93% / 53%).
+- **The app's lead is flattered.** The GPX logged whole km/h, mostly
+  1 km/h, and drift is the commonest felt word.
+- **Not refuted either.** What would settle it:
+  - exact-valued checks from D1 rather than the GPX;
+  - more calm and breezy checks;
+  - one convention for the wind above the trees: the roughness ratio where
+    the spot stands inside the stand, the mast reading where it stands in an
+    opening ringed by trees;
+  - a canopy read at the spot itself. ETH's 100 m p90 reads 5 m+ at every
+    check, because the trees round an opening count.
+
 ## What world class means, measured
 
 - **Honest doubt.** When the card says ±30°, it holds about 70% of the
