@@ -627,6 +627,83 @@ offset on the forecast can't take out. That is what the classes in
 INVERSE.md and the place's memory (layer 4) are for. The speed's lasting
 part, once a sit has measured it, belongs there.
 
+**The rules for several checks, the same day** (`tune.py --part3`;
+`pipeline/raw/stations/tune-multi.md`):
+- **The gate was the reason the fit so seldom reached a check.** fitMatters
+  also asked that the checks prefer the fit by e to one per check. Puffs as
+  noisy as real ones cleared that in 4–7% of sits. With four puffs at ±60°
+  it held direction at 90% within 45° against 94% without it, and put a
+  far-off forecast right in 18% of sits against 58%. Dropped; the 8° or
+  one-fifth size bar stays (it costs nothing).
+- **A tail on the prior.** `PRIOR_TAIL` 6% is spread evenly over every turn
+  and ratio. The forecast is now and then far off (4–8% of station-hours
+  past three of its usual turn), and with the tail eight puffs that agree
+  put it right in 83% of those sits against 70%, at no cost elsewhere.
+- **Older checks in a sit count longer: `FIT_TAU` 2 h → 4 h.** Each is read
+  against the forecast of its own minute, so it still says how far off the
+  forecast runs. On four checks over three hours, counting them all alike
+  did best: a far-off call put right in 36% of sits, against 28% at 2 h.
+- **How many checks settle it** (`puffsToSettle`): enough for the fit to go
+  half way from the forecast to the checks, (50° / the forecast's usual
+  turn)². That is 2 in light air, about 7 in a moderate wind, and about 15
+  in a breeze, where the forecast is seldom far off. The card says so
+  (`nextPuff`, from the forecast speed the check logged).
+
+On Gavan's checks, the fit now reaches 47 of the 60 Pickle checks, against
+11:
+- **Pickle:** fit + blend 40% → 49% within 45°, median miss 63° → 51°.
+  Speed is unchanged (72%).
+- **Searchmont:** 7 of 9 → 6 of 9, but that is one check going from 37° to
+  46°, just over the line. Four others came closer (28→24°, 20→11°, 25→17°,
+  17→7°), and the summed miss went down.
+- **Sault:** unchanged.
+- **All 66 with a direction:** 44% → 50%. It is the first change to the
+  fit that clearly helps on the field checks.
+
+**Hunting hours** (`tune.py --part4`; `pipeline/raw/stations/tune-hours.md`).
+Gavan: "we need to optimise for the right hours."
+- **Legal light:** the sun at −5° or higher. Dawn and dusk are the first
+  and last three legal hours of each station's day: 55% and 26% of the
+  station-hours.
+- **The forecast's direction misses are the same in legal light.** They
+  run 36°, 19° and 13° against 37°, 20° and 13°, and dawn and dusk run like
+  midday. The speed misses are a little tighter (0.65, 0.41, 0.30), since
+  nights add the slack. Priors fitted to these hours did no better on the
+  virtual hunters than the all-hours ones, so `PRIOR_AT` stays.
+- **The virtual hunters are the same in every scope.** In legal light, 2,
+  4 and 8 puffs give 92%, 94% and 97% within 45°, and a far-off call is put
+  right in 38%, 57% and 83% of sits. At dawn and dusk it is 91%, 94% and
+  97%, and 35%, 61% and 79%.
+- **A speed offset fades faster in the hunt than overnight.** In legal
+  light it holds 0.72, 0.57, 0.47 and 0.35 at 1, 2, 3 and 6 h, against
+  0.77, 0.67, 0.60 and 0.47 over all hours. At dawn and dusk it holds 0.70,
+  0.48, 0.31 and 0.26. The turn holds 0.60, 0.45, 0.36 and 0.27. So
+  `LN_KEEP` 0.4 → 0.3, `LN_TAU` 2.8 → 2.2 h and `TURN_TAU` 1.6 → 1.5 h,
+  which fit legal light to within 0.03.
+
+**The field checks by hour.** Gavan's hours, with the sun worked out at
+each check's place and minute:
+- **Legal light:** the multi-check rules take fit + blend from 44% to 48%
+  within 45° (64 checks).
+- **Dawn and dusk:** nothing, 46% both ways (26 checks). Midday gains
+  most.
+- **Where dusk fails:** light air at the Pickle lake strip on 30 Sept swung
+  315, 270, 135, 270 and 45 inside 85 minutes. The local blend averaged
+  that into an east wind and turned three 50–70° raw calls into 143–174°
+  misses.
+- **Tried and not shipped:** the checks' mean direction counted by R² (how
+  far they agree). At dawn and dusk four checks came closer and two went
+  further. At midday three went further, one of them 61° → 148°. Overall
+  that is one more check within 45°.
+- **Why it can't be read yet: the replay's inputs drift between runs.**
+  The raw calls on 29 Sept's near-calm midday moved 15–20° with no code
+  change (the archived forecast or the ensemble's grace). That is a check
+  or two of noise either way, so a rule this small needs both versions
+  scored inside one page load before it can be judged.
+
+The Searchmont floor checks (17:33 and 18:24 EDT on 10 Oct, sun 13° and
+5° up, sunset about 19:00) were inside legal light.
+
 ### The first step needs no bake
 
 **Score the forecast itself.** Compare HRDPS at every station with what

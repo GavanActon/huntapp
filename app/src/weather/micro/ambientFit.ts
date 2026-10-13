@@ -82,6 +82,10 @@ export interface AmbientFit {
   sure: number
   /** how much the checks prefer the fit to the forecast as it stands, nats per check */
   gain: number
+  /** the forecast's 10 m speed the checks logged (their median), km/h; null when none did */
+  forecastKmh: number | null
+  /** the prior on the turn it was fitted under, degrees: how far off the forecast runs in that wind */
+  priorTurn: number
   /** all the checks sat under the trees, or all in the open: the speed is only half pinned */
   allWoods: boolean
   allOpen: boolean
@@ -97,8 +101,15 @@ export interface SitScore {
   fit: { agree: number; close: number }
 }
 
-/** A fit's time scale: a check's say fades with this e-folding against the newest check. */
-export const FIT_TAU_MS = 2 * 3600_000
+/**
+ * A fit's time scale: a check's say fades with this e-folding against the
+ * newest check. Each check is read against the forecast of its own minute,
+ * so an older one still says how far off the forecast runs: on virtual
+ * hunters with four checks over three hours, counting them all the same
+ * did best and 2 h worst (pipeline/stations/tune.py part 3: a far-off call
+ * put right in 36% of sits, against 28%); 4 h keeps a little caution.
+ */
+export const FIT_TAU_MS = 4 * 3600_000
 /** Checks further apart than this in time are different sits. */
 export const SESSION_GAP_MS = 2 * 3600_000
 /** Checks further than this from a sit's centre are a different place: the air above may differ. */
@@ -115,11 +126,17 @@ export const SESSION_SPAN_M = 3000
  * check; a wind that had held keeps its quick part twice as long. Until
  * 2026-10-13 both faded together with a 3 h e-folding, which held the quick
  * part too long and dropped the lasting part by the evening.
+ * Those are every hour's. A hunter checks in legal light (the sun at −5° or
+ * higher, tune.py part 4), and there the turn carries 0.60, 0.45, 0.36 and
+ * 0.27 and the speed ratio 0.72, 0.57, 0.47 and 0.35: the speed fades
+ * faster in the hunt than through the night, fastest at dawn and dusk
+ * (0.70, 0.48, 0.31, 0.26), so its quick part is 2.2 h to a lasting 0.3
+ * (was 2.8 h to 0.4), and the turn's 1.5 h (was 1.6).
  */
 const TURN_KEEP = 0.25
-const TURN_TAU_MS = 1.6 * 3600_000
-const LN_KEEP = 0.4
-const LN_TAU_MS = 2.8 * 3600_000
+const TURN_TAU_MS = 1.5 * 3600_000
+const LN_KEEP = 0.3
+const LN_TAU_MS = 2.2 * 3600_000
 export const LAST_MS = 24 * 3600_000
 /** It counts from this long before the first check. */
 export const LEAD_MS = 30 * 60_000
@@ -186,10 +203,14 @@ const LN_RATIO_RANGE: [number, number] = [-1.0, 1.2]
 /** The fit is worth applying and saying: two checks or more (one check
  *  patches its own ground through the local blend; it does not move the
  *  air over the whole neighbourhood, which on the 2026 replay cost a hit),
- *  a turn of 8° or a speed off by a fifth, and the checks prefer it to the
- *  forecast by at least e to one per check. */
+ *  and a turn of 8° or a speed off by a fifth. Until 2026-10-13 the checks
+ *  also had to prefer it to the forecast by e to one per check: puffs as
+ *  noisy as real ones cleared that in 4–7% of sits, so the fit almost never
+ *  moved the air (tune.py part 3: four puffs at ±60°, 90% within 45° with
+ *  that bar, 94% without, and a far-off forecast put right in 18% of sits
+ *  against 58%). The prior already weighs the forecast against them. */
 export function fitMatters(f: AmbientFit | null): f is AmbientFit {
-  return !!f && f.count >= 2 && (Math.abs(f.turn) >= 8 || Math.abs(f.lnRatio) >= Math.log(1.2)) && f.gain >= 1
+  return !!f && f.count >= 2 && (Math.abs(f.turn) >= 8 || Math.abs(f.lnRatio) >= Math.log(1.2))
 }
 
 /** A check's say in a sit's fit against the sit's newest check: by age, half again for a swing. */
@@ -299,8 +320,21 @@ function lnLikeSeen(c: WindCheck, p: Probe): number {
   return s + Math.log(Math.max(upper - lower, 0.02))
 }
 
+/**
+ * The forecast is now and then far off: 4–8% of station-hours past three
+ * times its usual turn (tune.py), a front early, a wind that went round.
+ * So the prior is PRIOR_TAIL of it spread evenly over every turn and ratio
+ * besides the Gaussian, and checks that agree can overrule the forecast
+ * then: with eight puffs at ±60° a far-off call is put right in 83% of
+ * sits against 70% (tune.py part 3), at no cost where it is close.
+ */
+const PRIOR_TAIL = 0.06
+
 function lnPrior(turn: number, lnRatio: number, prior: [number, number]): number {
-  return -0.5 * (turn / prior[0]) ** 2 - 0.5 * (lnRatio / prior[1]) ** 2
+  const g = Math.exp(-0.5 * (turn / prior[0]) ** 2 - 0.5 * (lnRatio / prior[1]) ** 2)
+  // the tail's density against the Gaussian's peak: PRIOR_TAIL of the mass over 360° and the ratio's 2.2
+  const tail = ((PRIOR_TAIL / (1 - PRIOR_TAIL)) * 2 * Math.PI * prior[0] * prior[1]) / (360 * (LN_RATIO_RANGE[1] - LN_RATIO_RANGE[0]))
+  return Math.log((1 - PRIOR_TAIL) * g + tail)
 }
 
 const wrap = (d: number) => ((((d + 180) % 360) + 360) % 360) - 180
@@ -318,7 +352,8 @@ export function fitAmbient(checks: WindCheck[], probe: ProbeFn): AmbientFit | nu
   const refTs = use[use.length - 1].ts
   // the prior by the forecast's speed the checks logged (their median)
   const fk = use.map((c) => c.forecast?.kmh).filter((v): v is number => v != null && Number.isFinite(v)).sort((x, y) => x - y)
-  const prior = priorFor(fk.length ? fk[Math.floor(fk.length / 2)] : null)
+  const forecastKmh = fk.length ? fk[Math.floor(fk.length / 2)] : null
+  const prior = priorFor(forecastKmh)
   const w = use.map((c) => fitWeight(c, refTs) * (c.seen ? SEEN_FIT_W : 1))
   // each check's probe is a function of the candidate alone: the woods flag
   // (half weight on speed) is read at the forecast as it stands
@@ -397,6 +432,8 @@ export function fitAmbient(checks: WindCheck[], probe: ProbeFn): AmbientFit | nu
     held: !!use[use.length - 1].held,
     sure: total > 0 ? near / total : 0,
     gain: (best - base) / Math.max(1, n),
+    forecastKmh,
+    priorTurn: prior[0],
     allWoods: use.every((c, k) => c.seen || woods[k]),
     allOpen: woods.every((x) => !x),
   }
@@ -455,13 +492,39 @@ export function fitHoldsUntil(f: AmbientFit): number {
 }
 
 /**
- * The puff that would teach the most next, from what this sit's checks
- * cannot yet tell apart. Null when the fit is sharp and the sit is covered.
+ * How many checks settle the air in a wind: enough that the fit goes half
+ * way from the forecast to what they say, (a puff's spread / the forecast's
+ * usual turn)², a puff read at PUFF_READ. Light air, where the forecast is
+ * often off, takes 2; a moderate wind (20°) about 7; a breeze (13°), where
+ * it is seldom far off, about 15 (tune.py: two puffs in light air carried
+ * about half the correction, four about 70%).
  */
-export function nextPuff(f: AmbientFit | null, count: number): string | null {
-  if (!f) return count < 2 ? 'A second puff, 50 m or more from this one, lets the map fit the air here rather than patch it.' : null
+const PUFF_READ = 50
+export function puffsToSettle(forecastKmh: number | null): number {
+  return Math.max(2, Math.ceil((PUFF_READ / priorFor(forecastKmh)[0]) ** 2))
+}
+
+/**
+ * The puff that would teach the most next, from what this sit's checks
+ * cannot yet tell apart, then how many more this wind takes to settle.
+ * Null when the fit is sharp and the sit is covered.
+ */
+export function nextPuff(f: AmbientFit | null, count: number, forecastKmh: number | null = null): string | null {
+  const kmh = forecastKmh ?? f?.forecastKmh ?? null
+  const need = puffsToSettle(kmh)
+  if (!f) {
+    if (count >= 2) return null
+    return need <= 3
+      ? 'In air this light the forecast is often off: one more puff, 50 m or more from this one, and the map fits the air here.'
+      : 'A second puff, 50 m or more from this one, lets the map fit the air here rather than patch it.'
+  }
   if (f.allWoods) return 'One puff in the open (a bog, a shore, a cutline) would split the air above from the trees’ share: every check so far was under the canopy.'
   if (f.allOpen && count >= 2) return 'One puff under the trees would say how much of this gets in to where you sit: every check so far was in the open.'
   if (f.sure < 0.5 && count >= 2) return 'The checks disagree on the direction: one more puff where you will sit would settle which air you are in.'
+  if (need > 8) return `In a wind like this the forecast is seldom more than about ${Math.round(f.priorTurn)}° off: your puffs mostly confirm it.`
+  if (count < need) {
+    const more = need - count
+    return `${more} more puff${more === 1 ? '' : 's'}, spaced out, and the air here is settled: in this wind about ${need} is what it takes to trust your checks over the forecast.`
+  }
   return null
 }

@@ -347,7 +347,7 @@ export default function WindCheckCard() {
     const m = saved.model
     const felt = saved.dirFrom == null || saved.strength === 'calm' ? 'calm' : `toward ${towardWords((saved.dirFrom + 180) % 360, saved.swingDeg)}, ${saved.strength}`
     const said = m ? callWords(m) : null
-    const puff = nextPuff(sit?.fit ?? null, sit?.count ?? 1)
+    const puff = nextPuff(sit?.fit ?? null, sit?.count ?? 1, saved.forecast?.kmh ?? null)
     // when to puff again: sooner after a miss; a wind that had held, later
     const againMs = saved.ts + (v === 'miss' ? 25 : saved.held ? 60 : 40) * 60_000
     // the map's call moved: 10° or a quarter in speed
