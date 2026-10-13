@@ -44,8 +44,11 @@ CONFIG = {
     "canopyMix": False,  # post hoc: under trees the floor's thermal flows are mixed by the head-height wind, not the 10 m wind
     "displayMeander": False,  # the shown wind is the mean flow: the meander widens the cone, it doesn't move its centre
     "display": "mixture",  # the shown wind: the mode of the classes' mixture, or "topClass": the most likely class's own direction
-    "smear": True,  # v2: under canopy, the coupled/decoupled split, the floor/top speed ratio and the decoupled floor's calm share from SMEAR II
-    "smearNightOnly": False,  # post hoc: SMEAR's stable rows are night rows; before sunset (sun over 0) use its neutral row
+    # the floor under a canopy: "hand" (v1, the hand rules), "smear" (v2, SMEAR II: the
+    # sheltered-stand bound), "neon" (v3, the median of NEON's forested towers: the default)
+    "floor": "neon",
+    "slopeDrain": True,  # v3: under stable air a sloped or valley-bottom floor drains instead of going calm (NEON)
+    "stableNightOnly": False,  # post hoc: the towers' stable rows are night rows; before sunset (sun over 0) use the neutral row
     "topWind": "80m",  # what the 5 m/s-aloft rule reads: the HRDPS 80 m wind (or the seen treetops' band), or "10m": HRDPS 10 m
 }
 
@@ -63,6 +66,30 @@ SMEAR = {
     "very stable": dict(dec=0.74, follow=0.18, calm=0.60, ratio=0.10),  # night, z/L > 1
     "top > 5 m/s": dict(dec=0.01, follow=0.99, calm=0.00, ratio=0.17),  # night, any stability: the override
 }
+# NEON, 27 forested towers (25 with canopy >= 5 m), Sep-Nov 2017-2025, 30-min, top
+# >= 1.5 m/s; stability above the canopy from the temperature pair (gradient z/L,
+# checked against eddy covariance at BONA and DEJU: 76-83% agree); calm floor under
+# 0.3 m/s. pipeline/raw/regimes/neon/first_look.md (pipeline/towers/neon_look.py).
+# Median across the forested towers:
+#   follow = the floor within 45 deg of the top, of the non-calm half-hours
+#   calm = the calm floor share (all towers); calmFlat = the median of the 12 flat
+#   towers (< 2 deg), read off its per-tower table (stable 29%, very stable 46%)
+#   ratio = floor/top speed (the 8 forested towers with the floor at 1.1-2.8 m read
+#   0.30 / 0.25 / 0.19 neutral / stable / very stable: close to the median)
+NEON = {
+    "unstable": dict(follow=0.88, calm=0.01, calmFlat=0.01, ratio=0.32),
+    "neutral": dict(follow=0.94, calm=0.01, calmFlat=0.01, ratio=0.28),
+    "stable": dict(follow=0.83, calm=0.10, calmFlat=0.29, ratio=0.24),
+    "very stable": dict(follow=0.83, calm=0.25, calmFlat=0.46, ratio=0.22),
+    # night, top over 5 m/s: 91-100% follow and 0% calm at all but RMNP (48%: the whole layer drains) and WREF
+    "top > 5 m/s": dict(follow=0.99, calm=0.00, calmFlat=0.00, ratio=0.28),
+}
+# Stable nights on sloped or valley-bottom ground: the share the floor runs downslope
+# (the top's own share in brackets): BONA 80 (1), BART 82 (54), GRSM 66 (92), RMNP 94
+# (86), ORNL 58 (32), UKFS 51 (26), TALL 58 (53), SCBI 22 (2). Median 62%; flat towers
+# 3-24% against chance 25%. Their calm share under stable air: median 5%.
+NEON_DRAIN = 0.62
+NEON_DRAIN_CALM = 0.05
 UNDER_CANOPY_M = 8.0  # treeH: the SMEAR split applies under stands this tall
 TOP_COUPLED_KMH = 18.0  # 5 m/s
 # The decoupled floor under canopy is mostly calm: calm / decoupled = 0.86, 0.89, 0.81
@@ -85,6 +112,15 @@ def aloft_of(r: dict) -> tuple[float, str]:
     return w, "hrdps 80 m"
 
 
+def sloped_of(r: dict) -> float:
+    """0 on flat ground, 1 on a slope or valley bottom that drains (NEON's split):
+    the ~100 m slope from 2 deg (0) to 3 deg (1), or 20 m or more under the ground
+    round it (rel, ~500 m; NEON's TPI500 below -20 m), with a drainage line."""
+    if r["katDir"] is None:
+        return 0.0
+    return max(clamp((r["thSlope"] - 2.0) / 1.0), 1.0 if r["rel"] <= -20 else 0.0)
+
+
 def stability_above(r: dict) -> dict:
     """The air's layering from the 2/80 m profile with the aloft wind in the
     shear (boundaryLayer.ts layeringAt), and its SMEAR class: z/L from the bulk
@@ -105,7 +141,7 @@ def stability_above(r: dict) -> dict:
         cls = "stable"
     else:
         cls = "very stable"
-    if CONFIG["smearNightOnly"] and cls in ("stable", "very stable") and r["sunEl"] > 0:
+    if CONFIG["stableNightOnly"] and cls in ("stable", "very stable") and r["sunEl"] > 0:
         cls = "neutral"
     top = aloft if CONFIG["topWind"] == "80m" else float(r["archiveKmh10"])
     row = "top > 5 m/s" if top >= TOP_COUPLED_KMH else cls
@@ -223,7 +259,7 @@ def drivers(r: dict) -> dict:
     """The parameters the priors read, from a params.json record."""
     F = float(r["forecastKmh"])
     above = stability_above(r)
-    st = above["stable"] if CONFIG["smear"] else r["stable"]
+    st = above["stable"] if CONFIG["floor"] != "hand" else r["stable"]
     S = max(st, 0.6 * cool_of(r))
     low = max(clamp(r["pool"] / 1.5), clamp(-r["rel"] / 6))
     floor = max(clamp(-r["rel"] / 6), 0.8 if (r["landform"] in ("valley", "flat") and r["thSlope"] < 3) else 0.0)
@@ -247,7 +283,8 @@ def drivers(r: dict) -> dict:
     dT = r["t2"] - r["waterC"]
     return dict(
         F=F, S=S, Cv=r["convective"], stable=st, low=low, floor=floor, U10=U10, ratio=ratio, above=above,
-        canopyFloor=CONFIG["smear"] and r["treeH"] >= UNDER_CANOPY_M,
+        canopyFloor=CONFIG["floor"] != "hand" and r["treeH"] >= UNDER_CANOPY_M,
+        sloped=sloped_of(r),
         mixN=math.exp(-max(0.0, Umix - 5) / 8), mixD=math.exp(-max(0.0, Umix - 8) / 10),
         chan=chan, axis=axis, slope=clamp((r["thSlope"] - 0.5) / 3), heat=clamp(heat / 600), dT=dT,
         trees=r["treeH"] >= 8, openCell=r["treeH"] < 2,
@@ -283,10 +320,21 @@ def prior_weights(r: dict, d: dict, palm: dict | None = None) -> np.ndarray:
     w[5, :] = lake + land
     if d["canopyFloor"]:
         # under a closed stand the floor follows the air above or comes loose from it,
-        # in SMEAR II's shares by the stability above (the 5 m/s rule overriding)
-        dec = SMEAR[d["above"]["row"]]["dec"]
-        w[0, :] = 1.0 - dec
+        # by the stability above (the 5 m/s rule overriding): SMEAR II's shares (v2), or
+        # NEON's median (v3), where a stable floor on a slope or in a valley drains
+        row = d["above"]["row"]
+        if CONFIG["floor"] == "smear":
+            dec, drain = SMEAR[row]["dec"], None
+        else:
+            dec, drain = NEON[row]["calmFlat"], 0.0
+            if CONFIG["slopeDrain"] and row in ("stable", "very stable"):
+                sl = d["sloped"]
+                drain = NEON_DRAIN * sl
+                dec = dec * (1 - sl) + NEON_DRAIN_CALM * sl
+        w[0, :] = 1.0 - dec - (drain or 0.0)
         w[2, :] = dec
+        if drain is not None:
+            w[3, :] = drain
     wind_g = clamp((F - 6) / 6)
     for j, th in enumerate(THETA):
         w[6, j] = 2.0 * lee_of(r, th) * wind_g * (0.4 + 0.6 * S) * (1 - 0.7 * d["Cv"])
@@ -355,7 +403,8 @@ def median_kmh(r: dict, d: dict) -> np.ndarray:
     if d["canopyFloor"]:
         # SMEAR II: the floor at 3 m over the top at ~14 m above the crowns, the
         # analogue of the terrain wind 10 m over the canopy (U10)
-        coupled = d["U10"] * SMEAR[d["above"]["row"]]["ratio"]
+        table = SMEAR if CONFIG["floor"] == "smear" else NEON
+        coupled = d["U10"] * table[d["above"]["row"]]["ratio"]
         decoupled = DECOUPLED_CANOPY_KMH
     else:
         coupled = F * d["ratio"] * (0.45 if d["openCell"] else 0.25) * damp

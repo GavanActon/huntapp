@@ -290,6 +290,7 @@ def run(write: bool = True) -> dict:
             "aloftSrc": m.d["above"]["aloftSrc"],
             "riAbove": round(m.d["above"]["ri"], 2),
             "smearRow": m.d["above"]["row"] if m.d["canopyFloor"] else "",
+            "sloped": round(m.d["sloped"], 2),
             "treeH": round(r["treeH"]),
             "rel": r["rel"],
             "landform": r["landform"],
@@ -556,10 +557,12 @@ def run(write: bool = True) -> dict:
 # rest change one thing each. "post hoc" marks a change thought of after
 # seeing the replay, to be judged on new checks, not these.
 VARIANTS = [
-    ("v2: SMEAR II under canopy (as run)", {}),
-    ("v1: the hand rules (no SMEAR)", {"smear": False}),
-    ("v2, the 5 m/s rule on HRDPS 10 m, not 80 m", {"topWind": "10m"}),
-    ("v2, post hoc: SMEAR's stable rows only after sunset", {"smearNightOnly": True}),
+    ("v3: NEON median under canopy, slopes drain (as run)", {}),
+    ("v2: SMEAR II under canopy (the sheltered bound)", {"floor": "smear", "slopeDrain": False}),
+    ("v1: the hand rules", {"floor": "hand"}),
+    ("v3 without the slope drainage rule", {"slopeDrain": False}),
+    ("v3, the 5 m/s rule on HRDPS 10 m, not 80 m", {"topWind": "10m"}),
+    ("v3, post hoc: the stable rows only after sunset", {"stableNightOnly": True}),
     ("no meander noise (every check speaks fully)", {"meander": 0.0}),
     ("meander = the model's full spread", {"meander": 1.0}),
     ("ambient prior without the station tail", {"ambTail": False}),

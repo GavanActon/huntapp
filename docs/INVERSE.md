@@ -1,13 +1,18 @@
 # The backwards solve: classes of what the air is doing
 
 Status: built offline in Python on 2026-10-12 (`pipeline/inverse/`). Nothing
-is in the app yet.
-- **v1** was the hand rules.
-- **v2**, the same day, calibrates the floor under a canopy from SMEAR II
-  (below) and takes stability from the air above the trees. v2 is what the
-  scripts run now; the replay section gives both. This is layers 3 and 4 of
+is in the app yet. This is layers 3 and 4 of
 [WIND-LEARNING.md](WIND-LEARNING.md) as a replayable model, scored on every
-check we hold.
+check we hold. Three versions, all from the same day:
+- **v1** was the hand rules.
+- **v2** calibrates the floor under a canopy from SMEAR II, and takes
+  stability from the air above the trees.
+- **v3** replaces SMEAR II with NEON's median forested tower: a stable
+  floor on flat ground goes calm, and on a slope or valley bottom it
+  drains.
+
+v3 is what the scripts run now. SMEAR II stays as the bound for a
+sheltered stand. The replay section gives all three.
 
 ## What it is
 
@@ -62,9 +67,10 @@ That makes 252 numbers per spot.
 - **The swing**, when the puffs swung 90° or more.
 - **The "treetops moving while it's calm here" flag**, when given.
 
-**Under a canopy (v2).** At a cell under stands of 8 m or more, the
-coupled/decoupled split, the coupled floor's speed and the decoupled floor's
-calm share come from SMEAR II (the table after the classes). They replace
+**Under a canopy (v2, v3).** At a cell under stands of 8 m or more, the
+coupled/decoupled split (and in v3 drainage on slopes), the coupled floor's
+speed and the decoupled floor's calm share come from the tower sets: SMEAR
+II in v2, NEON's median in v3 (the tables after the classes). They replace
 the hand rules for those two classes there.
 
 **A seen check** speaks to θa only: the treetops' direction ±30°
@@ -77,9 +83,9 @@ the belief. The meander widens the cone but does not move its centre.
 
 | Class | What the air is doing | Prior weight (before the 0.03 floor) | Direction felt (FROM) | σ, uniform share | Head-height speed (median, log-σ) | P(swing ≥ 90°), P(aloft) |
 |---|---|---|---|---|---|---|
-| **C** coupled | the wind above comes down, turned by the terrain | 1.0 × (1 − 0.6·S·low) | the terrain call for θa: the micro grid's momentum solve (the stable lid by `stable`), as `model.ts momentumAt` | 15°, 0.05 | forecast speed × the cell's momentum ratio × 0.45 open / 0.25 under trees × the app's stable damping; 0.8. **v2 under stands of 8 m+:** U10 × SMEAR's floor/top ratio | 0.20, 0.30 |
+| **C** coupled | the wind above comes down, turned by the terrain | 1.0 × (1 − 0.6·S·low) | the terrain call for θa: the micro grid's momentum solve (the stable lid by `stable`), as `model.ts momentumAt` | 15°, 0.05 | forecast speed × the cell's momentum ratio × 0.45 open / 0.25 under trees × the app's stable damping; 0.8. **v2/v3 under stands of 8 m+:** U10 × the tower set's floor/top ratio | 0.20, 0.30 |
 | **CH** channelled | a slot in the trees or a valley floor runs the air along its axis | 1.5 × chan × (1 − 0.3·S). chan = 1 in a slot (the app's `slotAt` rule), else the valley's depth (cross rise − along rise within 1.5 km, 30 → 100 m) × floor | along the axis, toward the end θa pushes: logistic on cos(θa − axis), slope 4 | 25° (+25° in an unsteady slot), 0.05 | forecast × 0.45; 0.7 | 0.15, 0.40 |
-| **D** decoupled | the floor is cut off from the air above: calm, wandering, a few local gusts | 2.5 × S × max(low, 0.7·floor, 0.4 under trees of 8 m+) × mixN, + 1.0 × clamp((5 − F)/4). **v2 under stands of 8 m+:** coupled + decoupled = 1, split by SMEAR's P(decoupled) | half round the compass, half ±70° about the drainage line (else the terrain call) | 70°, 0.50 | 0.8 km/h; 0.9. **v2 under stands of 8 m+:** 0.4 km/h (85% calm) | 0.50, 0.80 |
+| **D** decoupled | the floor is cut off from the air above: calm, wandering, a few local gusts | 2.5 × S × max(low, 0.7·floor, 0.4 under trees of 8 m+) × mixN, + 1.0 × clamp((5 − F)/4). **v2/v3 under stands of 8 m+:** coupled + decoupled (+ drainage on slopes, v3) = 1, split by the tower set's shares | half round the compass, half ±70° about the drainage line (else the terrain call) | 70°, 0.50 | 0.8 km/h; 0.9. **v2/v3 under stands of 8 m+:** 0.4 km/h (85% calm) | 0.50, 0.80 |
 | **K** drainage | cold air running downhill | 2.0 × S × slope × (a drainage line) × mixN | from uphill: `katDir` + 180 | 30°, 0.10 | max(1.2, 0.5 × `katSpd`) km/h; 0.7 | 0.10, 0.60 |
 | **A** upslope | sun-warmed slope pulling air up | 1.5 × heat × (1 − stable) × mixD × slope | from downhill: `thAspect` | 30°, 0.10 | 2.5 km/h; 0.7 | 0.25, 0.40 |
 | **B** breeze | lake breeze by day, land breeze off a cold shore | lake: 1.5 × e^(−shore/500) × clamp((dT − 1)/6) × clamp(sw/500) × [sun > 10°] × e^(−max(0, U10 − 10)/10). Land: 1.0 × e^(−shore/300) × clamp((−dT − 1)/6) × clear sky × mixN | lake: from the water (`onshore` + 180); land: `onshore` | 35°, 0.10 | max(2, 0.5 × `breezeMax`) km/h; 0.7 | 0.15, 0.40 |
@@ -231,6 +237,117 @@ Each felt check is scored five ways:
   situation (below).
 - **after the check:** the posterior, the class it picks, "check again"
   and Sharpen.
+
+### The floor under a canopy: NEON (v3, the default)
+
+**The source.** 27 NEON towers, 25 of them forested (canopy 5 m or more),
+Sep–Nov 2017–2025, half-hours with the top at 1.5 m/s or more.
+- **Stability above the canopy:** gradient z/L from the temperature pair,
+  scaled to match eddy covariance. At BONA and DEJU it agrees with eddy
+  covariance on the class 76–83% of the time.
+- **Calm floor:** under 0.3 m/s.
+- `pipeline/raw/regimes/neon/first_look.md`, written by
+  `pipeline/towers/neon_look.py`.
+
+| stability above (median of the forested towers) | floor follows the top (≤ 45°, of non-calm) | calm floor, all towers | calm floor, the 12 flat towers (< 2°) → the D share | floor/top speed |
+|---|---|---|---|---|
+| unstable | 88% | 1% | 1% | 0.32 |
+| neutral | 94% | 1% | 1% | 0.28 |
+| stable | 83% | 10% | 29% | 0.24 |
+| very stable | 83% | 25% | 46% (read off the per-tower table) | 0.22 |
+| night, top over 5 m/s (overrides) | 91–100% at all but RMNP (48%: the whole layer drains) and WREF | 0% | 0% | 0.28 |
+
+**Under stable air, flat floors go calm and sloped floors drain.**
+- The median calm share is 29% at the flat towers, against 5% at the 11
+  sloped or valley towers.
+- The share of stable nights the floor runs downslope (the top's share in
+  brackets):
+  - BONA (3.2°, valley) 80% (1%);
+  - BART (3.1°) 82% (54%);
+  - GRSM (5.1°, valley) 66% (92%);
+  - RMNP (3.9°) 94% (86%): the whole layer drains;
+  - ORNL (4.0°) 58% (32%);
+  - UKFS (4.5°) 51% (26%);
+  - TALL (7.5°) 58% (53%);
+  - SCBI (9.6°) 22% (2%): no drainage signal.
+- The median is 62%. Flat towers run downslope 3–24% of the time, against
+  25% by chance.
+
+**SMEAR II through the same method** reads 92 / 75 / 64% follow and
+9 / 31 / 66% calm (neutral / stable / very stable). Its pine stand is at
+the sheltered end, so it stays as the bound for a sheltered stand.
+
+How v3 uses it, under stands of 8 m or more:
+- **Flat ground** (the ~100 m slope under 2°, or no drainage line):
+  - decoupled takes the flat towers' calm share, and coupled the rest;
+  - neutral and unstable: 0.01;
+  - stable: 0.29; very stable: 0.46.
+- **Sloped or valley-bottom ground**, under stable or very stable air:
+  - **drainage 0.62** (the median above), coming from uphill (`katDir` +
+    180), whatever the top does;
+  - decoupled 0.05, coupled the rest.
+  - "Sloped or valley" means a slope of 3° or more (ramped from 2°), or
+    20 m or more under the ground round it (`rel`, about NEON's TPI500 below
+    −20 m), and it needs a drainage line.
+- **The 5 m/s rule** still overrides: coupled 0.99.
+- **Coupled speed:** U10 × NEON's floor/top ratio.
+  - **The caveat:** only 9 of NEON's 27 floors are at 1.4–3.1 m; many sit
+    in the trunk space at 4–11 m. So these likelihoods are for the floor
+    layer, not head height exactly.
+  - The 8 forested towers with the floor at 1.1–2.8 m read 0.30 / 0.25 /
+    0.19 (neutral / stable / very stable), close to the median, so the speed
+    ratio holds at head height.
+  - Their calm and follow shares weren't split out that way.
+
+### v3: NEON, against v1 and v2
+
+| within 45° (median miss) | v1 hand rules | v2 SMEAR II | v3 NEON |
+|---|---|---|---|
+| all 66, check-free | 42% (62°) | 39% (63°) | 41% (66°) |
+| all, causal sit | 41% | 41% | 42% (68°) |
+| all, hour both ways (like the blend) | 45% | 45% | **47%** (60°) |
+| all, causal + memory | 42% | 42% | 44% |
+| Pickle low sun (22), check-free | 45% | 36% | 41% (70°) |
+| Pickle low sun, causal sit | 41% | 41% | 45% |
+| Searchmont 9, check-free | 67% | 67% | 67% |
+| "check again" raised | 19 of 75 | 14 | 16 |
+| speed: exact band, check-free / causal | 41% / 45% | 47% / 48% | 43% / 44% |
+
+- **The app on the same checks:** forecast 38%, logged 42%, raw rules 42%,
+  blend 44%, fit + blend 45%. On Pickle at low sun, fit + blend is 55%.
+- **Head to head under v3** (classes only / app only / both / neither):
+  - hour both ways against the blend: 10 / 8 / 21 / 27;
+  - against fit + blend: 10 / 9 / 21 / 26;
+  - causal against the app as logged: 10 / 10 / 18 / 28.
+
+**The Pickle dusk checks v2 lost** (09-28, the bog, sun 3–11° up, very
+stable by the cell's profile):
+- **19:05 (felt 315°) and 19:06 (felt 270°) are back.** Under NEON's very
+  stable row the bog's prior splits 0.54 coupled to 0.46 decoupled (SMEAR:
+  0.26 to 0.74), so the shown wind is 281° again, not the drainage line.
+- **18:12 (felt 0°) is now missed.** The shown wind is 193°: with the
+  forecast at 2.4 km/h, the ambient prior is wide and nothing pins it.
+  v1 and v2 had it right by way of the drainage line.
+- **18:46 (felt 90°)** stays missed by all three.
+- **The calm dawns (09-27 06:29, 06:58)** keep their decoupled call (0.67
+  and 0.80 after the calm), with no "check again".
+
+**The slope rule touched no check.** Every check under a canopy in stable
+air is on the flat bog (slope 0.6–1.3°, `rel` −0.5 to +0.5). "v3 without the
+slope drainage rule" reads the same in every column. It waits for checks on
+sloped, wooded ground at dusk.
+
+**The Searchmont dusk didn't move:**
+- **17:33:** still 165° against 308° felt.
+- **18:24 calm:** D 0.44, K 0.27, as in v2.
+- The floor there is open ground (treeH 0), and neither tower set speaks for
+  an open valley floor. That needs a valley-floor set (SPLASH) or the
+  Searchmont stations.
+
+**What v3 settles.** Against v2 it wins back two checks and loses one. On
+the hour both ways it is the best of the three, 47% against the app's 45%.
+That is one check, inside the noise; the order of v1, v2 and v3 is not
+settled by these data.
 
 ### v2: SMEAR II under the canopy, against v1
 
@@ -455,24 +572,26 @@ a Dirichlet with pseudo-count 0.5 multiplied into the prior.
 
 ### Sensitivity
 
-Each row changes one thing from v2, as the scripts run now. Rows marked
+Each row changes one thing from v3, as the scripts run now. Rows marked
 "post hoc" were thought of after seeing the replay and must be judged on new
 checks.
 
 | variant | check-free | causal sit | hour both ways | check again | Pickle check-free | Pickle low sun check-free | Pickle low sun causal | Searchmont check-free |
 |---|---|---|---|---|---|---|---|---|
-| v2: SMEAR II under canopy (as run) | 39% | 41% | 45% | 14 | 34% | 36% | 41% | 67% |
-| v1: the hand rules (no SMEAR) | 42% | 41% | 45% | 19 | 38% | 45% | 41% | 67% |
-| v2, the 5 m/s rule on HRDPS 10 m, not 80 m | 39% | 41% | 47% | 16 | 34% | 36% | 41% | 67% |
-| v2, post hoc: SMEAR's stable rows only after sunset | 41% | 39% | 45% | 14 | 36% | 41% | 36% | 67% |
-| no meander noise (every check speaks fully) | 39% | 45% | 48% | 9 | 34% | 36% | 45% | 67% |
-| meander = the model's full spread | 39% | 38% | 41% | 19 | 34% | 36% | 36% | 67% |
-| ambient prior without the station tail | 39% | 41% | 45% | 14 | 34% | 36% | 41% | 67% |
-| post hoc: canopy shelters the floor's thermal flows | 39% | 41% | 45% | 13 | 34% | 36% | 41% | 67% |
-| the shown wind blurred by the meander (the first run's display) | 38% | 42% | 48% | 13 | 32% | 36% | 41% | 67% |
-| post hoc: the shown wind is the most likely class's own | 45% | 48% | 48% | 14 | 42% | 45% | 50% | 67% |
+| v3: NEON median under canopy, slopes drain (as run) | 41% | 42% | 47% | 16 | 36% | 41% | 45% | 67% |
+| v2: SMEAR II under canopy (the sheltered bound) | 39% | 41% | 45% | 14 | 34% | 36% | 41% | 67% |
+| v1: the hand rules | 42% | 41% | 45% | 19 | 38% | 45% | 41% | 67% |
+| v3 without the slope drainage rule | 41% | 42% | 47% | 16 | 36% | 41% | 45% | 67% |
+| v3, the 5 m/s rule on HRDPS 10 m, not 80 m | 41% | 42% | 47% | 18 | 36% | 41% | 45% | 67% |
+| v3, post hoc: the stable rows only after sunset | 41% | 42% | 47% | 13 | 36% | 41% | 45% | 67% |
+| no meander noise (every check speaks fully) | 41% | 45% | 50% | 13 | 36% | 41% | 45% | 67% |
+| meander = the model's full spread | 41% | 41% | 44% | 19 | 36% | 41% | 41% | 67% |
+| ambient prior without the station tail | 41% | 42% | 45% | 16 | 36% | 41% | 45% | 67% |
+| post hoc: canopy shelters the floor's thermal flows | 41% | 42% | 47% | 15 | 36% | 41% | 45% | 67% |
+| the shown wind blurred by the meander (the first run's display) | 41% | 44% | 48% | 15 | 36% | 41% | 45% | 67% |
+| post hoc: the shown wind is the most likely class's own | 47% | 50% | 50% | 16 | 43% | 45% | 55% | 67% |
 
-On v1 the last row read 47% / 48% / 48%.
+On v1 the last row read 47% / 48% / 48%; on v2, 45% / 48% / 48%.
 
 ### The D1 checks, one table
 
@@ -695,9 +814,11 @@ py -3.14 pipeline/inverse/replay_inverse.py         # the replay, the sensitivit
    and rerun.
 2. Set the puff noise from the noise floor (about 60° for light and drift),
    and the open-ground speed medians from the app's own calls. Under a
-   canopy SMEAR II now sets them. Both are calibrations, not new physics.
-3. The SMEAR rows by time from sunset as well as stability, from SMEAR II
-   in full (2003–2022). The pre-sunset dusk is where v2 lost.
+   canopy NEON now sets them. Both are calibrations, not new physics.
+3. The tower rows by time from sunset as well as stability, and the calm
+   and follow shares from the towers with the floor at 1.4–3.1 m only:
+   SMEAR II in full (2003–2022), NEON's low floors. The pre-sunset dusk is
+   where v2 lost.
 4. A shadow-onset term in S (the slope or floor in terrain shadow), once
    there are new dusk checks to judge it.
 5. Port the state and the two outputs behind a devlog flag. Log the
