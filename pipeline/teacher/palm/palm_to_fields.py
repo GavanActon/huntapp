@@ -569,8 +569,10 @@ def score(args) -> None:
         for ck in checks.get(st, []):
             r, c = cell_of(m, ck["lat"], ck["lon"])
             call = call_at(fd, ck["level"], r, c)
-            miss = abs(float(wrap180(call["fromTrue"] - ck["felt"])))
-            miss9 = abs(float(wrap180(call["from3x3"] - ck["felt"])))
+            # a check felt calm has no direction: only its calm gate is scored
+            no_dir = ck["felt"] is None
+            miss = float("nan") if no_dir else abs(float(wrap180(call["fromTrue"] - ck["felt"])))
+            miss9 = float("nan") if no_dir else abs(float(wrap180(call["from3x3"] - ck["felt"])))
             kph = call["speed"] * amb_kph
             floor = ck["level"] == "Head"
             seen = is_seen(ck)
@@ -582,16 +584,16 @@ def score(args) -> None:
             if floor:
                 gu = gusts_at(fd, r, c, amb_kph)
                 row.update(feltIs=felt_is, **gu)
-                line = (f"  {ck['label']:22} felt {ck['felt']:3} ({felt_is})   mean {kph:.1f} km/h from {call['fromTrue']:3.0f} "
+                line = (f"  {ck['label']:22} felt {('calm' if no_dir else ck['felt']):>4} ({felt_is})   mean {kph:.1f} km/h from {call['fromTrue']:3.0f} "
                         f"(3x3 {call['from3x3']:3.0f}), miss {miss:3.0f} ({miss9:3.0f}), turn {call['turn']:+4.0f}")
                 gmiss = None
-                if "gustFrom" in gu:
+                if "gustFrom" in gu and not no_dir:
                     gmiss = abs(float(wrap180(gu["gustFrom"] - ck["felt"])))
                     row["gustMiss"] = gmiss
                     line += (f" | gusts {gu['gustKph']:.1f} km/h from {gu['gustFrom']:3.0f} (spread {gu['gustSpread']:.0f}), "
                              f"miss {gmiss:3.0f}")
                 elif "gustKph" in gu:
-                    line += f" | gusts {gu['gustKph']:.1f} km/h (no gustFromHead: reconvert)"
+                    line += f" | gusts {gu['gustKph']:.1f} km/h" + ("" if no_dir else " (no gustFromHead: reconvert)")
                 if "reversedShare" in gu:
                     line += f" | reversed {gu['reversedShare']:.0%}"
                 # the felt direction is scored on what was felt: the gusts', or the mean's
@@ -599,9 +601,11 @@ def score(args) -> None:
                 if gate:
                     if gate.get("calm"):
                         verdict["calm"] = kph < CALM_KPH
-                    if felt_is == "gusts":
+                    if no_dir:
+                        pass
+                    elif felt_is == "gusts":
                         verdict["direction"] = gmiss is not None and gmiss <= gate["within"]
-                    else:
+                    elif "within" in gate:
                         verdict["direction"] = miss <= gate["within"] and miss9 <= gate["within"]
             else:
                 line = (f"  {ck['label']:22} felt {ck['felt']:3}   canopy+10 {kph:.1f} km/h from {call['fromTrue']:3.0f} "
@@ -610,8 +614,9 @@ def score(args) -> None:
                 if gate:
                     verdict["direction"] = miss <= gate["within"] and miss9 <= gate["within"]
             if gate:
-                rev = abs(call["turn"]) > 90 and call["turn3x3"] > 90
-                verdict["reversed" if gate["reversed"] else "not reversed"] = rev if gate["reversed"] else not rev
+                if "reversed" in gate:
+                    rev = abs(call["turn"]) > 90 and call["turn3x3"] > 90
+                    verdict["reversed" if gate["reversed"] else "not reversed"] = rev if gate["reversed"] else not rev
                 if gate.get("patch_cells_m2"):
                     n = reversed_patch(fd, ck["level"], r, c)
                     row["reversedPatchHa"] = n * m["cell"] ** 2 / 1e4
@@ -628,7 +633,7 @@ def score(args) -> None:
                 if not moving:
                     seen_low.append(f"{ck['label']} is {kph:.1f} km/h at 10 m over the canopy, under the {SEEN_MIN_KPH:g} km/h "
                                     f"of tops seen moving steadily")
-            if ck.get("top"):
+            if ck.get("top") and not no_dir:
                 top_miss.append(scored_miss)
             print(line)
             rows.append(row)

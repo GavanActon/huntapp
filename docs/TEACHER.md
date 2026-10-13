@@ -365,6 +365,42 @@ cooling. If the floor decouples and reverses while the seen treetops keep
 a few km/h from about 180°, the case is answered; it is built and on the
 share as `searchmont_stable_hrdps`.
 
+### The midday run against the hike, 2026-10-13
+
+What looked like a dead xonix run was two runs sharing its cores: the
+midday case queued "after PALM" slipped into the moment between the
+neutral run ending and the milder stable run starting, so both ran
+together on 22 ranks each overnight, three times slower (0.185 against
+0.059 µs per point and step), and both finished at about 03:30. A queue
+that waits on `pgrep palm` needs to wait on the chain, not the process.
+
+The midday case (from 186°, 10.4 km/h, a mixed layer to 800 m, the ground
+and the crowns heating) against the nine checks of the 2026-10-11 hike,
+beside what the app called and the forecast at each:
+
+| check | felt | PALM | app | forecast |
+|---|---|---|---|---|
+| floor 10:58 | 249 | 200 (49) | 216 (33) | 190 (59) |
+| slope 268 m | 236 | 204 (32) | 214 (22) | 191 (45) |
+| slope 290 m | 180 | 222 (42) | 234 (54) | 191 (11) |
+| pocket 304 m | calm | 2.1 km/h | 9.9 km/h | 11 km/h |
+| top 332 m | 180 | 236 (56) | 201 (21) | 191 (11) |
+| top 363 m | 237 | 205 (32) | 185 (52) | 191 (46) |
+| top 379 m | 199 | 194 (5) | 211 (12) | 191 (8) |
+| top 384 m | 299 | 197 (102) | 201 (98) | 192 (107) |
+| top 419 m | 185 | 203 (18) | 213 (28) | 192 (7) |
+
+On direction the three tie: 5 of 8 within 45° each, medians 37°, 30° and
+28°; the 299° at 384 m is a puff nobody explains. Where PALM pulls ahead
+is the calm pocket: 2.1 km/h at head height against the app's 9.9, which
+is the decoupling the app's rules cannot make. Its floor speeds run low
+generally (its domain wind came out 6.7 km/h against the forecast's
+10.4, the volume-flow forcing again), so the speed column needs the
+forcing fixed before it means much. Reading: under a sunny southerly the
+hike's ground is mostly coupled and the forecast already holds it; the
+physics teacher earns its keep where the air comes off the wind above
+(the pocket, the dusk floor), which is where the classifier needs it.
+
 ## Track B: GPU engine
 
 Status 2026-10-12, early hours. Step 1 of [GPU-SOLVER.md](GPU-SOLVER.md)'s
