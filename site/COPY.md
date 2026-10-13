@@ -7,40 +7,29 @@ The first rule of hunting
 
 ## Don't get winded.
 
-Groundwind is the hunting app for the wind where you stand.
+Groundwind: the wind & scent app for moose, elk and deer.
 
-- Your HD forecast, solved over HD LiDAR and every stand of trees, down to head height where your scent leaves you.
-- Your scent cone, from where you stand, on your ground.
-- Where he beds, where you can walk, where you can shoot, from the bush at eye level.
-- Each puff of powder calibrates the wind to what you actually felt.
-- Works with no signal. HD weather and party status come in by satellite.
+A mature bull or buck reads the air the way you read a map. He circles downwind before he commits, and one thread of your scent in the wrong place ends the hunt before it starts. Why the bull circles for your wind.
+
+The problem? Forecasts are calibrated 10 m in the air, over open ground.
+
+The solution? Groundwind. We take the HD forecast and solve it against LiDAR and your local forest canopy. We show you what the wind is doing at head height, exactly where your scent leaves you.
+
 Built on a physical wind model and published research for every layer.
+
+[Buttons: Open the beta · Request your spot]
 
 It's made for your phone. Point the camera here to open it there, then add it to your home screen.
 
-## He lives by his nose.
+## Why the wind at your face isn't the forecast.
 
-A moose reads the air the way you read a map. He circles downwind of a call before he commits, and one thread of your scent in the wrong place ends the hunt before it starts. You never know it happened. Why the bull circles for your wind.
-
-## The wind at your face isn't what's in your forecast.
-
-Forecasts are calibrated 10 m up over open ground. Your scent leaves you at head height under the trees, where it bends over the ridge, slows in the spruce and drains downhill at dusk. Groundwind shows you where your scent is really going.
+Your scent doesn't travel in a straight line. It bends over ridges, slows in the spruce, and drains downhill at dusk. Groundwind shows you where your scent is really going.
 
 [How, the dig-in. Opens on tap.]
 
-### Behind the summit
-
-In the clip, at Highland Lake in the Yukon, the forecast draws one straight south wind over the mountain. On the ground the wind breaks off the summit and circles back, so if you sit on the north face your scent runs back up toward the top and spreads in every direction. The lee of a ridge or a tree line tumbles the same way, and the scent cone widens to match.
-
-### Cold air at dusk
-
-Once the sun is down, the air on a slope cools and slides downhill, whatever the forecast says. Here, on the same mountain at 8 pm, the forecast is a south wind at 11 km/h, and your scent drains east down the slope instead.
-
-### Up a tree
-
-Hold your dot to say where you sit, on the ground or in a 4 or 6 m stand. From a stand your scent rides the air before it comes down.
-
-In the clip, on a still night off a 6 m bank at Pickle Lake, the scent is strong right below you from the ground, comes down 60 m out from a 4 m stand, and 160 m out from 6 m. How much a stand buys depends on the drop and the air. A lake warmer than the air, or a land breeze, mixes it back down sooner, and the cone shows that too.
+- **Behind the summit** While the forecast shows a straight south wind over the mountain, Groundwind shows how it breaks off the summit, circles back, and pushes your scent up the north face.
+- **Cold air draining** Once the sun goes down, air on a slope cools and slides downhill—regardless of what the forecast says. Groundwind maps your thermals.
+- **Up a tree** From a deer stand, your scent rides the air before dropping. Hold your dot to tell the app you are 4 m or 6 m up, and the cone shows where your scent comes back down.
 
 ## So we built the wind for your ground.
 
@@ -57,18 +46,14 @@ Every layer is built on published research, and it all runs on your phone with n
 
 ## Know the bush before you're in it.
 
-The LiDAR reads the brush at eye level. The thicket that takes an hour to cross is where he beds. The old burn is where he feeds, where you walk quietly and where you can see far enough to shoot. Plan the walk in and the sit before you leave camp.
+The thicket that takes an hour to cross is where he beds. The old burn is where he feeds. Groundwind uses LiDAR to read the brush at eye level so you can plan your walk and your sit from camp.
 
 [How, the dig-in. Opens on tap.]
 
-### Bush and sight lines
+- **Shooting lanes and sight lines** The Hunt view maps open lanes and thick cover, and Dig in shows exactly how far you'll be able to see and shoot in eight directions.
+- **Route planning** Thick bush is loud and slow. The map finds the easiest walk in, and routes that keep your scent off the best ground.
+- **Bush** The Bush view colours the brush between 0.5 and 3 m, from open to thicket: open, light, thick or thicket from the LiDAR point cloud.
 
-Bush thickness comes from the LiDAR point cloud as open, light, thick or thicket. It decides how far you'll see, how loud the walk is, and where a moose can stand unseen.
-
-- **Bush** The Bush view colours the brush between 0.5 and 3 m, from open to thicket.
-- **Range** The Bow view is your range: open lanes stay clear and thick bush goes dark, so you know where you'll be able to see and shoot.
-- **Sight lines** Dig in on any spot for which ways you'll see out and which the bush or a rise closes in.
-- **Going** Routes and the moose scores both read it: thick bush is slow and loud to walk, and it's cover.
 Eye-level cover isn't the canopy. A closed canopy shades the brush out, while a cut or a burn fills in with suckers and saplings. Groundwind counts the LiDAR returns between 0.5 and 3 m against everything below 3 m, cell by 10 m cell. Where the point cloud hasn't been fetched yet, it estimates the brush from each stand's age and makeup.
 
 ### On the move
@@ -78,30 +63,32 @@ A lot of moose and elk hunting is moving. You angle in on a bull you've heard, s
 - **Angle** Log his grunts with Heard. The map draws his line and where he'd swing to get your wind, so you can angle in from the right side.
 - **Wind** The streaks run at head height: over the bluff, down the draw, round the edge of the stand.
 - **Scent** Drop a cone at the corner ahead and see where you'd blow before you get there.
-- **Range** Before you step out, Bow and the sight lines tell you how far you'll see from the next spot.
+- **Range** Before you step out, the shooting lanes and the sight lines tell you how far you'll see from the next spot.
+
 ### Routes and the log
 
 Routes finds three ways in on foot over the LiDAR ground. One is the easiest walk, and the hunt routes skirt the best ground and keep your scent off it. Your track, the calls you heard and your wind checks are grouped into outings as you go.
 
-## Each puff calibrates the wind.
+## Calibrate the wind with your powder.
 
-Puff your powder and tap where it went. The wind calibrates to what you actually felt, and remembers how the air moves where you hunt.
+Puff your powder and log where it went. Groundwind immediately calibrates the map to what you actually felt.
 
 [How, the dig-in. Opens on tap.]
 
-A check pulls the ground wind inside its ring toward what you felt, and it fades with time, more slowly if you say the wind has held. It also becomes a lesson for its kind of air, like cold air draining, a lake breeze or a slot in the trees. That lesson is a turn and a speed correction the model applies wherever that air turns up, forgotten over about two weeks.
+- **Local learning** Every puff teaches the app how the air moves in that specific spot. Over time, it learns local patterns like lake breezes or cold air drains.
+- **Set up your party** Drop sitters on the map and see whose scent drifts over whom, so you can put the caller 40 to 50 m upwind of the shooter. More on calling with the wind.
+
+A check pulls the ground wind inside its ring toward what you felt, and it fades with time, more slowly if you say the wind has held. It also becomes a lesson for its kind of air, like cold air draining, a lake breeze or a slot in the trees. That lesson is a turn and a speed correction the model applies wherever that air turns up, forgotten over about two weeks. How many puffs it takes, and how long they hold.
 
 Each check saves what the forecast and the model said beside what you felt, so the hunt log keeps score of how often each was right. If you say yes when the app asks, your checks also come to us without your name or notes, and they teach the ground wind where it's wrong. Settings, then Share wind checks, switches it off.
 
-## Plan the sit. Walk in. Hunt.
+## When does game move? We keep score.
 
-Put the party where you'll sit tonight and see whose scent drifts over whom, where the wind swirls and where they're likely to be. It saves you walking in to find the wind totally in the wrong place.
+Groundwind scores movement for moose and deer across your area, hour by hour, based on habitat, the rut, canopy cover, and the last 10 days of weather.
+
+Big game feels the heat early. By the third day of highs over 18 °C, moose bed through the heat and move at night. Groundwind flags the first cool day that breaks the heat wave.
 
 [How, the dig-in. Opens on tap.]
-
-### The party
-
-Set the time to the evening hunt and drop the sitters. Each cone shows on the evening wind, numbered, with whose scent drifts over whom, so you can move them until nobody is on the way he'll come in. The old rule still holds. Put the caller 40 to 50 m upwind of the shooter, so a bull circling downwind of the calls walks into the shooter. More on calling with the wind.
 
 ### Where they'll be
 
@@ -111,6 +98,7 @@ Groundwind scores moose, deer, grouse and bear across your area, hour by hour fo
 - **Deer** South-facing aspen and hazel near cuts, lakes and roads.
 - **Grouse** Young aspen over alder, or spruce and jack pine for spruce grouse. Tight in wind and rain, out on the roads at dawn and dusk.
 - **Bear** Berries in 6 to 20-year cuts and burns through September, then denning cover.
+
 ### A warm week beds them down
 
 Groundwind reads the last ten days of highs beside the forecast, because moose feel heat early. Every hour's score carries the temperature, and the scoring says plainly when the game is lying up and when the break is coming. The rules come from habitat guides and published field studies.
@@ -118,27 +106,38 @@ Groundwind reads the last ten days of highs beside the forecast, because moose f
 - **Moose, deer** Heat stress starts near 14 °C. By the third day of highs over 18 °C they bed through the heat and move at night. The first cool day after is the one to be out.
 - **Grouse** Tight in wind over 25 km/h and in rain. Calm, cool mornings and the two hours before dark.
 - **Bear** Less bothered by heat. On the berries through September, then into denning cover after mid-October.
+
+[The chart: moose activity by temperature. Full at 10 °C or under, 80% from 10 to 14 °C, half from 14 to 20 °C, about a third over 20 °C.]
+
 An example week, in the app's words
 
 - **Mon** 19°
 - **Tue** 21°
 - **Wed** 22°
 - **Thu** 13°
+
 warm spell, day 3: bedded through the heat, moving at night
 
 first cool day after 3 warm ones: expect movement
 
-## No signal. HD weather & party status by satellite.
+## Offline, off-grid, and satellite ready.
 
-Save your area at camp and all of it works offline. Out for days? Text from your inReach or iPhone and the newest HD forecast comes back by satellite and pulled into the app, so you’re always ready for the next ridge.
+Save your area at camp, and Groundwind works completely offline.
 
 [How, the dig-in. Opens on tap.]
+
+- **No signal required** Your track, pins, and wind checks are all saved locally.
+- **inReach / satellite sync** Out for days? Text Groundwind from your inReach or iPhone satellite, and the next 48 hours of HD weather data comes back in a single 160-character text message.
 
 With signal, Groundwind asks for each new run of the 2.5 km HD forecast (HRDPS) as it lands, four times a day, and saves the next two days on your phone with a seven-day outlook behind them. Walk out of service and it's still there, with its age shown.
 
 Out for days, send the line the app writes for your camp to the Groundwind number from an iPhone on satellite or an inReach. The next two days come back in one 160-character text. Paste it in and the ground wind, your scent cone and the heat map all run on it, because the terrain and the bush are already on your phone.
 
 The text carries the 10 m wind at its turning points, about a dozen a day and back within about 2° and half a km/h on average, far inside the forecast's own error. With it come the gusts, the temperatures and winds aloft that decide whether the wind reaches the ground, cloud, rain and how much the models agree, plus a check that catches a reply cut short. The first words are plain, for an inReach's screen: the wind now, its next big change and the first rain. The camp is in the request, so there's no account to make. On an inReach it's two messages on your plan, one out and one back, and the first time you have signal again the phone fetches the full forecast as usual.
+
+[Quote]
+Prepare as much as you can, bring the best tools you can to the hunt, and adjust it while you're out there, because we all know the best plans don't survive contact with the real world.
+— Gavan, from moose camp near White River
 
 ## We need your help.
 
@@ -151,7 +150,12 @@ Groundwind gets better with your input. Share your wind checks when the app asks
 - **Highland Lake** Yukon · GMS 4-09
 Open the beta and all three are there. Your own spot will look like them.
 
-[How, the dig-in. Opens on tap.]
+[Put it on your phone, opens on tap.]
 
 On an iPhone, open the link in Safari, tap Share, then Add to Home Screen. On Android, open it in Chrome and choose Install app. Before you lose signal, save the area in Settings, under Maps on this phone.
 
+## Claim your hunting spot.
+
+Because the ground wind needs high-res LiDAR and specific forest inventory data, it doesn't work everywhere automatically. Tell us where you hunt. We will hand-build a 10 × 10 km block around it and email you when it's live on the map.
+
+[The request form: email, where you hunt, what you hunt, Send request.]
