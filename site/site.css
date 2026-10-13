@@ -714,6 +714,7 @@ footer .links a:hover { color: var(--ink); text-decoration: underline; }
 .art .byline { font-size: 0.95rem; color: var(--faint); }
 .art figure { margin: 10px 0; display: grid; justify-items: center; gap: 14px; }
 .art .phone { width: min(100%, 270px); }
+.art .cardshot { width: min(100%, 376px); height: auto; border-radius: 14px; box-shadow: var(--shadow); }
 .art .table-wrap { margin-block: 4px; }
 .rule {
   background: var(--raised);

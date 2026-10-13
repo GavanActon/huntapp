@@ -33,7 +33,7 @@
       "@type": "Article",
       "headline": "A few puffs of powder tune the wind",
       "description": "How many puffs of powder it takes to tune the wind to your spot, where to take them and how long they hold. Measured at 1,100 weather stations and on our own checks.",
-      "image": ["https://groundwind.app/og.png"],
+      "image": ["https://groundwind.app/og.png", "https://groundwind.app/media/two-checks.jpg", "https://groundwind.app/media/check-card.jpg"],
       "datePublished": "2026-10-13",
       "dateModified": "2026-10-13",
       "inLanguage": "en-CA",
@@ -78,6 +78,10 @@
     <li><b>From the second check, across the area.</b> With two or more checks in a day, the app works out how far the air above the trees runs from the forecast: a turn and a speed. The card puts it in words, like "the air above the trees runs 20° left of the forecast at about half its speed". The streaks and cones then turn across 2 to 3&nbsp;km round your checks, about the size of the forecast's own square.</li>
     <li><b>Over the season, by kind of air.</b> Each check is also a lesson for its kind of air: cold air draining, a lake breeze, a slot in the trees. The map carries it to the same air elsewhere and lets it go over about two weeks.</li>
   </ul>
+  <figure>
+    <div class="phone"><video data-loop src="media/sharpen.mp4" poster="media/sharpen.jpg" muted loop playsinline preload="none" aria-label="A wind check in the app: the scent cone drawn from the forecast, a tap on the powder's direction and how hard it blows, the saved check, then the cone swung round to the wind that was felt"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
+    <figcaption class="readout">One check: <b>Sharpen</b>, the powder's way, how hard<br><span class="s">The cone turns to what you felt</span></figcaption>
+  </figure>
 
   <h2 id="forecast">How far the forecast runs from the air</h2>
   <p>How much a puff should count depends on how far off the forecast usually is, so we measured it. At about 1,100 Environment Canada weather stations, over 29 days this fall, we compared the HD forecast (HRDPS), run through Groundwind's terrain wind, with what each station measured, in legal light: half an hour before sunrise to half an hour after sunset. That's 330,000 station-hours <span class="cites">(<a href="#r-swob">ECCC</a>; <a href="#r-hrdps">HRDPS</a>; <a href="#r-om">Open-Meteo</a>)</span>.</p>
@@ -136,22 +140,30 @@
     </table>
   </div>
   <p>The card counts for you. After each check it says how many more would settle the air where you are, or, in a steady breeze, that the forecast is seldom more than 15 to 20° off and your puffs mostly confirm it.</p>
-  <p>We tested this on 12,000 virtual sits at the same stations, all in legal light. Each puff was a station's real reading with a swing of ±60° added, rougher than our own, and the tuned wind was scored against what the station measured:</p>
-  <div class="table-wrap">
-    <table>
-      <caption class="sr">How often the tuned wind came within 45° of the station, by the number of puffs</caption>
-      <thead><tr><th scope="col">Puffs</th><th scope="col">Within 45° of the station</th><th scope="col">Forecast over 45° off: put right</th></tr></thead>
-      <tbody>
-        <tr><th scope="row">None</th><td>89%</td><td>None</td></tr>
-        <tr><th scope="row">2</th><td>92%</td><td>38%</td></tr>
-        <tr><th scope="row">4</th><td>94%</td><td>57%</td></tr>
-        <tr><th scope="row">8</th><td>97%</td><td>83%</td></tr>
-      </tbody>
-    </table>
-  </div>
-  <p>Most of the time the forecast is close and your puffs confirm it. What they're for is the bad day. In one sit in nine the forecast was more than 45° off when the puffs were taken, and eight puffs put it right in five of those six. Dawn and dusk came out the same. Steadier reads, like a puff watched for longer, do better still.</p>
+  <figure>
+    <img class="cardshot" src="media/check-card.jpg" width="752" height="596" loading="lazy" alt="The check card after a second check in light air. It reads: This sit's 2 checks: the air above the trees runs 15° left of the forecast at about 82% of its speed. Then: 1 more puff, spaced out, and the air here is settled: in this wind about 3 is what it takes to trust your checks over the forecast.">
+    <figcaption class="readout">The card after a second check, <b>7 km/h</b><br><span class="s">One more puff settles it</span></figcaption>
+  </figure>
+  <p>We tested this on 12,000 virtual sits at the same stations, all in legal light. Each puff was a station's real reading with a swing of ±60° added, rougher than our own, and the tuned wind was scored against what the station measured.</p>
+  <figure>
+    <div class="tdiag one">
+      <div>
+        <p class="tdiag-h"><b>When the forecast was over 45° off</b> · how often the puffs put it right</p>
+        <svg viewBox="0 0 320 170" role="img" aria-labelledby="td-f">
+          <title id="td-f">Of the virtual sits where the forecast was more than 45° off, the share the puffs put right: none with no puffs, 38% with two, 57% with four and 83% with eight.</title>
+          <text class="t-ink" x="76" y="45" text-anchor="end">None</text><rect x="86" y="30" width="200" height="22" rx="4" style="fill:var(--raised); stroke:var(--line)"/><text x="92" y="45" style="fill:var(--ink)">0%</text><text class="t-ink" x="76" y="79" text-anchor="end">2 puffs</text><rect x="86" y="64" width="200" height="22" rx="4" style="fill:var(--raised); stroke:var(--line)"/><rect x="86" y="64" width="76" height="22" rx="4" style="fill:var(--accent); opacity:0.85"/><text x="168" y="79" style="fill:var(--ink)">38%</text><text class="t-ink" x="76" y="113" text-anchor="end">4 puffs</text><rect x="86" y="98" width="200" height="22" rx="4" style="fill:var(--raised); stroke:var(--line)"/><rect x="86" y="98" width="114" height="22" rx="4" style="fill:var(--accent); opacity:0.85"/><text x="206" y="113" style="fill:var(--ink)">57%</text><text class="t-ink" x="76" y="147" text-anchor="end">8 puffs</text><rect x="86" y="132" width="200" height="22" rx="4" style="fill:var(--raised); stroke:var(--line)"/><rect x="86" y="132" width="166" height="22" rx="4" style="fill:var(--accent); opacity:0.85"/><text x="246" y="147" text-anchor="end" style="fill:var(--bg, #0a100b)">83%</text>
+        </svg>
+      </div>
+    </div>
+    <figcaption class="readout">12,000 virtual sits at the stations, in legal light<br><span class="s">Puffs as rough as real ones, ±60°</span></figcaption>
+  </figure>
+  <p>Most of the time the forecast is close and your puffs confirm it: on its own it came within 45° of the station 89% of the time, and with 2, 4 and 8 puffs 92%, 94% and 97%. What they're for is the bad day. In one sit in nine the forecast was more than 45° off when the puffs were taken, and eight puffs put it right in five of those six. Dawn and dusk came out the same. Steadier reads, like a puff watched for longer, do better still.</p>
 
   <h2 id="where">Where and when to puff</h2>
+  <figure>
+    <div class="phone"><video data-loop src="media/two-checks.mp4" poster="media/two-checks.jpg" muted loop playsinline preload="none" aria-label="A second wind check at Pickle Lake on a Friday at 1 pm, with a light west wind. A check from half an hour before, 300 m back, is already logged. The powder goes northeast; the card says the sit's two checks put the air above the trees 15 degrees left of the forecast, and asks for one puff under the trees next. Then the streaks all round turn and the scent cone swings to the northeast."></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
+    <figcaption class="readout">The second check, <b>300 m</b> from the first<br><span class="s">The card asks for one under the trees next</span></figcaption>
+  </figure>
   <div class="rule">
     <p class="tag" style="--dot: var(--accent)">The rule</p>
     <ul>
@@ -165,6 +177,27 @@
 
   <h2 id="holds">How long a check holds</h2>
   <p>At the stations in legal light, a forecast's direction miss measured now is 60% still there an hour later, 45% after two hours, and about a quarter after six. The speed miss holds a little longer, and about a third of it belongs to the place, like shelter and how the ground lies, which lasts. Dawn and dusk change fastest: three hours on, a third of either is left.</p>
+  <figure>
+    <div class="tdiag one">
+      <div>
+        <p class="tdiag-h"><b>How much of a check still holds</b> · hours after it</p>
+        <svg viewBox="0 0 320 196" role="img" aria-labelledby="td-h">
+          <title id="td-h">Share of a check's correction still holding, by hours after it. Direction: 60% after an hour, 45% after two, about a quarter after six. Speed: 72%, 57%, then about a third. The app's fade, drawn as lines, runs through the stations' measurements, drawn as dots.</title>
+          <path class="span" d="M44,131.0 L300,131.0"/><path class="span" d="M44,96.0 L300,96.0"/><path class="span" d="M44,61.0 L300,61.0"/><path class="span" d="M44,26.0 L300,26.0"/>
+          <path class="span" d="M44,166 L300,166"/>
+          <path d="M44.0,26.0 L54.7,42.1 L65.3,55.8 L76.0,67.3 L86.7,77.1 L97.3,85.4 L108.0,92.4 L118.7,98.3 L129.3,103.3 L140.0,107.6 L150.7,111.2 L161.3,114.2 L172.0,116.8 L182.7,119.0 L193.3,120.8 L204.0,122.4 L214.7,123.7 L225.3,124.8 L236.0,125.8 L246.7,126.6 L257.3,127.3 L268.0,127.8 L278.7,128.3 L289.3,128.7 L300.0,129.1" style="fill:none; stroke:var(--wind); stroke-width:2.5"/>
+          <path d="M44.0,26.0 L54.7,36.5 L65.3,45.9 L76.0,54.3 L86.7,61.8 L97.3,68.5 L108.0,74.4 L118.7,79.8 L129.3,84.5 L140.0,88.8 L150.7,92.5 L161.3,95.9 L172.0,98.9 L182.7,101.6 L193.3,104.0 L204.0,106.2 L214.7,108.1 L225.3,109.8 L236.0,111.3 L246.7,112.7 L257.3,113.9 L268.0,115.0 L278.7,116.0 L289.3,116.8 L300.0,117.6" style="fill:none; stroke:var(--accent); stroke-width:2.5"/>
+          <circle style="fill:var(--raised); stroke:var(--wind); stroke-width:2" cx="86.7" cy="82.0" r="4"/><circle style="fill:var(--raised); stroke:var(--wind); stroke-width:2" cx="129.3" cy="103.0" r="4"/><circle style="fill:var(--raised); stroke:var(--wind); stroke-width:2" cx="172.0" cy="115.6" r="4"/><circle style="fill:var(--raised); stroke:var(--wind); stroke-width:2" cx="300.0" cy="128.2" r="4"/>
+          <circle style="fill:var(--raised); stroke:var(--accent); stroke-width:2" cx="86.7" cy="65.2" r="4"/><circle style="fill:var(--raised); stroke:var(--accent); stroke-width:2" cx="129.3" cy="86.2" r="4"/><circle style="fill:var(--raised); stroke:var(--accent); stroke-width:2" cx="172.0" cy="100.2" r="4"/><circle style="fill:var(--raised); stroke:var(--accent); stroke-width:2" cx="300.0" cy="117.0" r="4"/>
+          <text x="38" y="170.0" text-anchor="end">0%</text><text x="38" y="100.0" text-anchor="end">50%</text><text x="38" y="30.0" text-anchor="end">100%</text>
+          <text x="44.0" y="184" text-anchor="middle">0 h</text><text x="86.7" y="184" text-anchor="middle">1 h</text><text x="129.3" y="184" text-anchor="middle">2 h</text><text x="172.0" y="184" text-anchor="middle">3 h</text><text x="214.7" y="184" text-anchor="middle">4 h</text><text x="257.3" y="184" text-anchor="middle">5 h</text><text x="300.0" y="184" text-anchor="middle">6 h</text>
+          <text class="t-air" x="300" y="147.0" text-anchor="end">direction</text>
+          <text x="236" y="99" text-anchor="middle" style="fill:var(--accent)">speed</text>
+        </svg>
+      </div>
+    </div>
+    <figcaption class="readout">Dots: the stations, in legal light · lines: <b>the app's fade</b><br><span class="s">Most of a check's say is gone in a few hours: check again</span></figcaption>
+  </figure>
   <p>The app fades your checks the same way. Half the turn is gone in under two hours, twice that if you said the wind has held, and a quarter of it stays until a day after your last check. The speed fades a little slower, to the third that stays.</p>
   <p>Distance matters as well. At another station within 10&nbsp;km, two-thirds of a miss holds, and past 10&nbsp;km about a fifth. A check tunes your patch of bush, not the next lake over.</p>
 
@@ -175,6 +208,23 @@
     <li><b>Speed:</b> within a factor of two on 40% of checks on its own, and nearly three in four with the others.</li>
   </ul>
   <p>Each check is judged against one puff, and a single puff is rough, so no map can match every one. The day's other checks helped least at dawn and dusk. That's when light air swings the powder every way. On the lake shore one evening the wind came from the northwest, the west, the southeast and the northeast inside an hour and a half. That's the window we're working on next. Until then, puff where you'll sit, and the ring round that check does the work.</p>
+  <figure>
+    <div class="tdiag one">
+      <div>
+        <p class="tdiag-h"><b>Where the powder went</b> · the lake shore at Pickle, 30 Sept at dusk</p>
+        <svg viewBox="0 0 320 220" role="img" aria-labelledby="td-r">
+          <title id="td-r">Five puffs in 85 minutes on the lake shore at dusk, each pointing where the powder went: southeast at 17:32, east at 18:01 and 18:53, northwest at 18:27 and southwest at 18:56.</title>
+          <defs><marker id="ah-r" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--scent)"/></marker></defs>
+          <circle class="ring" cx="160" cy="108" r="66" style="stroke:var(--line-strong); stroke-width:1"/>
+          <text x="160" y="20" text-anchor="middle">N</text><text x="160" y="204" text-anchor="middle">S</text><text x="64" y="112" text-anchor="middle">W</text>
+          <path d="M160,108 L206.7,154.7" style="stroke:var(--scent); stroke-width:2.5; fill:none" marker-end="url(#ah-r)"/><path d="M160,108 L226.0,108.0" style="stroke:var(--scent); stroke-width:2.5; fill:none" marker-end="url(#ah-r)"/><path d="M160,108 L113.3,61.3" style="stroke:var(--scent); stroke-width:2.5; fill:none" marker-end="url(#ah-r)"/><path d="M160,108 L113.3,154.7" style="stroke:var(--scent); stroke-width:2.5; fill:none" marker-end="url(#ah-r)"/>
+          <circle class="caller" cx="160" cy="108" r="5"/>
+          <text class="t-ink" x="218" y="170" text-anchor="start">17:32</text><text class="t-ink" x="242" y="112" text-anchor="start">18:01 · 18:53</text><text class="t-ink" x="102" y="54" text-anchor="end">18:27</text><text class="t-ink" x="102" y="170" text-anchor="end">18:56</text>
+        </svg>
+      </div>
+    </div>
+    <figcaption class="readout">Five puffs in <b>85 minutes</b><br><span class="s">Light air at dusk: average these and you get a wind that isn't there</span></figcaption>
+  </figure>
 
   <h2 id="share">Every check teaches the map</h2>
   <p>Each check keeps what the forecast and the map said beside what you felt, and the hunt log keeps score of how often each was right. If you say yes when the app asks, your checks also come to us without your name or notes. That's how we measure all of this, and how the ground wind learns where it's wrong.</p>
