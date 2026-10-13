@@ -507,6 +507,56 @@ What it isn't:
    in the bake and on the phone, as one band of speed factors by stability
    class, or as a small model the phone runs.
 
+### HD at the stations inside its boxes (2026-10-13)
+
+Gavan asked how accurate HD is at the weather sites. HD means WindNinja's
+momentum field at the station's 30 m cell, turning and scaling the
+forecast. The same 29 days, scored as score.py does.
+- **Canadian stations:** `pipeline/stations/hd_at.py`. Only 3 of the 1,209
+  ECCC stations fall inside any of the 36 boxes: the two at Sault, and
+  McCreary at Riding Mountain. All are flat.
+- **US stations:** `pipeline/stations/us_hd.py`. Six stations with wind,
+  from IEM (Iowa Environmental Mesonet: ASOS, RWIS and HADS DCP), inside
+  the 17 US boxes. The forecast is HRRR, and HRDPS at Poker Creek.
+- **None stands in the butte's lee or the Salmon canyon.** The only station
+  in the Salmon box, near Riggins, stopped reporting in 2021.
+- **The SD net trained on all these boxes,** so its rows are in-sample.
+
+| station (relief within 3 km, slope) | dir within 45°: forecast → HD → SD | median miss | speed within ×2 (5 km/h+ hours): forecast → HD → SD | median speed ratio: forecast → HD |
+|---|---|---|---|---|
+| Lily Lake road weather, CO (1,035 m, 7.8°, a hollow) | 51% → 55% → 57% | 44° → 36° → 35° | 43% → 52% → 57% | ×2.05 → ×1.59 |
+| Poker Creek RAWS, AK (512 m, 9.9°) | 90% → 89% → 90% | 15° → 16° → 18° | 90% → 91% → 92% | ×0.90 → ×1.07 |
+| Compton RAWS, Ozarks (446 m, on a rise) | 85% → 86% → 86% | 20° → 17° → 17° | 69% → 44% → 47% | ×1.61 → ×2.16 |
+| Hood River airport, Columbia Gorge (251 m) | 57% → 57% → 57% | 34° → 33° → 34° | 62% → 63% → 62% | ×1.02 → ×1.00 |
+| Hunt, Texas Hill Country (127 m) | 87% → 87% → 88% | 14° → 14° → 14° | 88% → 85% → 86% | ×1.06 → ×1.20 |
+| Pittsfield airport, IL (48 m, flat) | 94% → 94% → 94% | 11° → 11° → 11° | 95% → 94% → 95% | ×1.07 → ×1.09 |
+| the 3 Canadian stations (flat) | 90% → 90% → 90% | 13° → 13° → 13° | 85% → 81% → 84% | ×1.19 → ×1.28 |
+
+What it says:
+- **HD earns its keep in real mountains, on both counts.** At Lily Lake,
+  in a hollow at 2,700 m, it turns the forecast toward what was measured:
+  4 points more within 45°, and the median miss 8° smaller. It also takes
+  speed down where the forecast runs double. It is the one station of the
+  nine in steep ground.
+- **On flat and gentle ground it changes nothing in direction.**
+- **On a rise or a hill it can cost speed.** It speeds up the high ground,
+  where a station in a clearing reads slow: at Compton, ×1.61 becomes
+  ×2.16. That is the same over-contrast the butte showed, and the reason
+  for the SD bake's 0.6 damping.
+- **It doesn't fix the Gorge.** At Hood River the forecast misses direction
+  by a median 34°, and the 30 m terrain turning doesn't correct it.
+  Channelling on the scale of the Gorge, and stability, are beyond a
+  neutral solve.
+- **The net copies its teacher closely at instruments:** within 0–6° of
+  turn, and speed ×0.72–1.12 of HD's.
+
+**The honest number:** across all nine stations HD equals the forecast in
+direction, and is a point or two worse in speed. Its value is the pattern
+at a hunter's scale, which stations rarely sample, and the one mountain
+station agrees. A firmer mountain number needs more stations in steep
+boxes: BC's fire weather network (licence to ask) and RAWS through
+Synoptic (a free key).
+
 ### The first step needs no bake
 
 **Score the forecast itself.** Compare HRDPS at every station with what
