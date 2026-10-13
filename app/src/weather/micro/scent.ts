@@ -1796,7 +1796,7 @@ function syncDistances(map: MlMap, people: Sitter[]) {
 /** The cloud's opacity: the card's Strength, a little fainter under each person's own edge. */
 function cloudOpacity(dim: boolean): number {
   // under each person's own edge it steps back; under the embers a little, so their glow carries
-  return (dim ? 0.6 : 0.72) * useScent.getState().strength
+  return (dim ? 0.6 : 0.8) * useScent.getState().strength
 }
 
 /** The Strength slider moved: the cloud already drawn takes it at once (the puffs read it each frame). */
@@ -2435,26 +2435,26 @@ const particles = (() => {
  * fire"). In the cloud view the sit keeps giving off glowing motes, each
  * running along one of the plume's own particle paths (smoothed), the sit's
  * minutes played SPEED times fast, so a mote crosses the cone in a few
- * seconds. They are drawn additive on a half-size buffer: where many run
- * together near the sit they burn yellow-white, thinning out they go
- * orange, then deep red, and they fade where the scent at nose height
- * fades. Each cone (moved, a new hour, the clock's minute) starts its own
+ * seconds. They are drawn additive on a half-size buffer, soft amber where
+ * many run together near the sit, orange as they thin, then deep red, and
+ * they fade where the scent at nose height fades ("calmer, less fire",
+ * 2026-10-13: half the pace and half the glow of the first cut). Each cone (moved, a new hour, the clock's minute) starts its own
  * stream at once, and the motes already out finish their runs on the old
  * paths and fade, so the cone flows into its new shape instead of jumping.
  * Reduced motion or a hidden tab draws one still frame of a steady stream.
  */
 const embers = (() => {
   /** sit seconds a real second */
-  const SPEED = 150
+  const SPEED = 75
   /** motes a second, and the most out at once */
-  const RATE = 90
+  const RATE = 60
   const MAX = 600
   /** a path smoothed over this many 5 s steps either side, so a mote flows rather than twitches */
   const SMOOTH = 2
-  /** a mote's glow in heat shades, white-hot to deep red */
+  /** a mote's glow in heat shades, amber to deep red */
   const HEAT = 10
   /** its tail, steps of DT back along the path, and the glows laid along it: [share back, alpha, size] */
-  const TRAIL = 4
+  const TRAIL = 6
   const TAIL_GLOWS: [number, number, number][] = [
     [1, 0.2, 0.6],
     [0.66, 0.4, 0.75],
@@ -2495,14 +2495,14 @@ const embers = (() => {
   let carry = 0
   const still = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.visibilityState !== 'visible'
 
-  /** soft round glows, one per heat shade: white-hot, yellow, orange, deep red */
+  /** soft round glows, one per heat shade: amber, orange, deep red */
   function glows(): HTMLCanvasElement[] {
     if (sprites) return sprites
     const stops: [number, number, number, number][] = [
-      [0, 255, 245, 210],
-      [0.3, 255, 205, 110],
-      [0.6, 255, 135, 40],
-      [1, 200, 45, 15],
+      [0, 255, 195, 120],
+      [0.4, 255, 150, 70],
+      [0.75, 235, 95, 40],
+      [1, 190, 50, 25],
     ]
     sprites = []
     for (let s = 0; s < HEAT; s++) {
@@ -2620,11 +2620,11 @@ const embers = (() => {
       const run = (kf - p.k0) / Math.max(1, p.k1 - p.k0)
       // hot where the scent is strong and the mote is young, cooling as it thins and runs on
       const heat = Math.min(HEAT - 1, Math.max(0, Math.round((1 - v * (1 - 0.5 * run)) * (HEAT - 1))))
-      const half = Math.min(26, Math.max(1.5, ((2.5 + 0.045 * p.tv[i0]) * pxPerM) / 2))
+      const half = Math.min(30, Math.max(2, ((3.5 + 0.05 * p.tv[i0]) * pxPerM) / 2))
       // in over its first moments, out over the last third of its run
       const born = Math.min(1, (now - m.t0) / 150)
       const dying = Math.min(1, (1 - run) * 3)
-      const a = (0.12 + 0.6 * v) * born * dying
+      const a = (0.08 + 0.4 * v) * born * dying
       const qx = (ox + x * ex + y * nx) / 2
       const qy = (oy + x * ey + y * ny) / 2
       const bx = (ox + xb * ex + yb * nx) / 2
@@ -2639,6 +2639,7 @@ const embers = (() => {
       }
     }
     motes = alive
+    if (import.meta.env.DEV) (window as unknown as { __embers?: number }).__embers = alive.length
     g.globalAlpha = 1
     g.globalCompositeOperation = 'source-over'
     ctx.globalAlpha = useScent.getState().strength
