@@ -401,6 +401,41 @@ hike's ground is mostly coupled and the forecast already holds it; the
 physics teacher earns its keep where the air comes off the wind above
 (the pocket, the dusk floor), which is where the classifier needs it.
 
+### The stable run from HRDPS's own profile, 2026-10-13 (xonix): both levels at once, all but one
+
+Started from the forecast's evening profile at the cell (0.7 K/100 m to
+300 m, 0.5 above) instead of the imposed 2 K/100 m, the same 1 K/h at the
+ground and canopy-top cooling (8,500 steps; a duplicate copy shared
+xonix's cores for five hours before it was found and stopped). It is the
+first run the gate can grade, and it gets three of the four things Gavan
+observed that dusk:
+
+| | felt or seen | neutral | stable, 2 K/100 m start | stable, HRDPS start |
+|---|---|---|---|---|
+| floor 17:33, speed | calm, a few gusts | 1.8 km/h | 0.3 km/h | 0.7 km/h, gusts 1.1 |
+| floor 17:33, the gusts from | 308° | 158° | 32–60° | 203° |
+| treetops 18:24, speed | moving steadily | 6.7 km/h | 0.3 km/h | 3.1 km/h |
+| treetops 18:24, from | 180° | 170° | 138–170° | 173° |
+
+The calm, decoupled floor under treetops still moving from the right
+direction is the two-layer state none of the models had before. What it
+does not make is the floor's drift from 308°: it calls 203°, turned 66°
+from the ambient, and reverses the floor only 13% of the window. A
+hypothesis that the 308° was a drift down the floor's own micro-slope
+(the ground falls 0.3° toward a hollow at 128° over 300 m, invisible to
+PALM's 10 m steps, WindNinja's smoothing and the app's 1° drainage
+cut-off) failed its test: on Gavan's 11 quiet dusk checks at Pickle the
+300 m fall line lands within 45° of what was felt 0% of the time,
+against the forecast's 55%. Same test, incidentally: in that quiet air
+the forecast's own direction beat the app's logged call, 55% to 27%.
+
+Where this leaves Track A: PALM is the only model here that holds a
+calm floor under a moving canopy, which is the decoupled class the
+reverse solve lacks a prior for; it does not yet say which way a
+decoupled floor drifts. That question is probably below 10 m resolution
+and below the scale a one-hunter check set can settle, which makes the
+valley-floor datasets (Kettle Ponds, i-Box, METCRAX) the next judge.
+
 ## Track B: GPU engine
 
 Status 2026-10-12, early hours. Step 1 of [GPU-SOLVER.md](GPU-SOLVER.md)'s
