@@ -20,7 +20,7 @@
 
 - Wind at head height, in layers that each go deeper:
   - the HD forecast at 10 and 80 m;
-  - our own wind model, trained on WindNinja's full 3D flow solves over 36 places in Canada and the US, from the Yukon to Pennsylvania, which gives a new spot its ground wind;
+  - our own wind model, trained on WindNinja's full 3D flow solves across Canada and the US, from the Yukon to Pennsylvania, which gives a new spot its ground wind;
   - on a built spot, WindNinja's full solve itself over the 1 m LiDAR ground in 16 directions, so the wind speeds up over a bluff, goes slack in its lee and breaks off behind a summit;
   - then slowed and channelled by the stands of trees, with the thermals and the gusts;
   - and corrected by the hunter's own wind checks (below).

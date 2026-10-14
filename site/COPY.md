@@ -38,7 +38,7 @@ Groundwind takes the 2.5 km HD forecast and solves it over HD LiDAR and every st
 Every layer is built on published research, and it all runs on your phone with no bars.
 
 - **Forecast** The 2.5 km HD forecast (HRDPS) at 10 and 80 m, so it knows when the ground air comes loose from the wind above on a clear, cold night.
-- **Terrain** WindNinja's full 3D flow solve over the 1 m LiDAR ground, in 16 directions: faster over the bluff, slack in its lee, breaking off behind a summit and circling back. A new spot starts on our own wind model, trained on those solves over 36 places in Canada and the US.
+- **Terrain** WindNinja's full 3D flow solve over the 1 m LiDAR ground, in 16 directions: faster over the bluff, slack in its lee, breaking off behind a summit and circling back. A new spot starts on our own wind model, trained on those solves across Canada and the US.
 - **Heat and cold** Cold air draining downhill at dusk, warm air rising upslope by day, lake and land breezes.
 - **Trees and leaves** Stand height and closure from the LiDAR point cloud, the hardwoods' leaves coming down by date, wind channelled down the slots between stands.
 - **Gusts and swirl** The forecast's gusts widen the cone, and the air tumbles behind tree lines, in openings and in the lee of a ridge.
