@@ -1,26 +1,20 @@
-import { useEffect, useMemo, useState, type CSSProperties, type JSX } from 'react'
+import { useEffect, useMemo, useState, type JSX } from 'react'
 import { ACTIVE_AREA, AREA_LIST, type AreaDef } from '../../areas'
 import { switchArea } from '../../areas/switch'
-import type { PlaceDef } from '../../config'
-import { useHuntLog, type LogEntry } from '../../log/huntLog'
 import { getMap } from '../../map/mapController'
-import { isDroppedPin } from '../../map/placePopup'
-import { compass8 } from '../../spots/conditions'
+import { DROPPED_NAME, isDroppedPin, openPinSheet } from '../../map/placePopup'
 import { loadHabitat, onHabitat } from '../../spots/habitatGrid'
 import { fromHome } from '../../spots/scoring'
-import { huntedLine, huntedWinds, sectorOf, suggestWinds, windsLabel, windVerdict } from '../../spots/standWinds'
-import { PIN_COLOURS, placeColour } from '../../state/pinColours'
-import { homePlace, placeArea, usePlacesStore, type SavedPlace } from '../../state/placesStore'
+import { windsLabel, windVerdict } from '../../spots/standWinds'
+import { placeColour } from '../../state/pinColours'
+import { homePlace, latestNote, placeArea, usePlacesStore, type SavedPlace } from '../../state/placesStore'
 import { ensureProfile, onProfile } from '../../weather/boundaryLayer'
 import { loadMicro, onMicro } from '../../weather/micro/model'
 import { useWindChecks } from '../../weather/micro/windChecks'
 import { ensureWeatherGrid, onWeatherGrid } from '../../weather/windGrid'
-import { IconLocate, IconPin, IconTrash } from '../icons'
-import Rose from '../Rose'
+import { IconEdit, IconLocate, IconPin } from '../icons'
 import '../ground.css'
 import './log.css'
-
-const KINDS: PlaceDef['kind'][] = ['camp', 'lake', 'landing', 'stand', 'trail']
 
 /**
  * Pins: the camp, the lakes, the stands and landings, and the pins dropped
@@ -32,22 +26,19 @@ const KINDS: PlaceDef['kind'][] = ['camp', 'lake', 'landing', 'stand', 'trail']
  * scroll on the phone does not land on a row that reloads into another area.
  *
  * A stand can carry its good winds (spots/standWinds.ts): the row then
- * says how the ground wind at the next sit reads against them, and the
- * editor has the rose to set them, a suggestion from the bake, and the
- * winds the log says it has been sat on.
+ * says how the ground wind at the next sit reads against them. A row's
+ * pencil opens the pin's own sheet over the list (PinSheet.tsx): its name,
+ * colour, kind, notes and good winds, ‹ Back to here.
  */
 export default function PinsSheet(): JSX.Element {
   const places = usePlacesStore((s) => s.places)
   const selectedId = usePlacesStore((s) => s.selectedId)
   const select = usePlacesStore((s) => s.select)
-  const update = usePlacesStore((s) => s.update)
   const remove = usePlacesStore((s) => s.remove)
   const add = usePlacesStore((s) => s.add)
-  const [editing, setEditing] = useState<string | null>(null)
   // the other areas' folds opened, by area id
   const [unfolded, setUnfolded] = useState<string[]>([])
   const checks = useWindChecks((s) => s.checks)
-  const entries = useHuntLog((s) => s.entries)
   // the ground model, the layering profile, the wind grid and the habitat bake land on their own time
   const [tick, setTick] = useState(0)
   useEffect(() => {
@@ -88,9 +79,10 @@ export default function PinsSheet(): JSX.Element {
   const addHere = () => {
     const c = getMap()?.getCenter()
     if (!c) return
-    const p = add({ name: 'New place', lon: c.lng, lat: c.lat, kind: 'stand' })
+    // unnamed like any new pin: its sheet's name field starts empty
+    const p = add({ name: DROPPED_NAME, lon: c.lng, lat: c.lat, kind: 'stand' })
     select(p.id)
-    setEditing(p.id)
+    openPinSheet(p.id, { push: true })
   }
   // folded under its area's name, a place needs no more than its kind
   const where = (p: SavedPlace, folded: boolean) => (p.id === home.id || folded ? p.kind : `${p.kind} · ${elsewhere(p)?.name ?? fromHome(p.lon, p.lat, home)}`)
@@ -103,44 +95,6 @@ export default function PinsSheet(): JSX.Element {
 
   const row = (p: SavedPlace, folded: boolean) => {
     const on = p.id === selectedId
-    if (editing === p.id) {
-      return (
-        <div key={p.id} className="place-row place-row-edit">
-          <div className="pe-fields">
-            <input className="pe-name" value={p.name} onChange={(e) => update(p.id, { name: e.target.value })} />
-            <select value={p.kind} onChange={(e) => update(p.id, { kind: e.target.value as PlaceDef['kind'] })}>
-              {KINDS.map((k) => (
-                <option key={k} value={k}>
-                  {k}
-                </option>
-              ))}
-            </select>
-            <div className="pin-swatches">
-              {PIN_COLOURS.map((c) => (
-                <button key={c} className={`pin-swatch${placeColour(p) === c ? ' on' : ''}`} style={{ '--sw': c } as CSSProperties} aria-label={`Colour ${c}`} aria-pressed={placeColour(p) === c} onClick={() => update(p.id, { color: c })} />
-              ))}
-            </div>
-            <textarea className="pe-note" placeholder="Note" value={p.note ?? ''} onChange={(e) => update(p.id, { note: e.target.value })} />
-            <WindsEditor p={p} tick={tick} entries={entries} onChange={(winds) => update(p.id, { winds })} />
-          </div>
-          <div className="saved-actions">
-            <button className="btn-secondary" onClick={() => setEditing(null)}>
-              Done
-            </button>
-            <button
-              className="icon-btn danger"
-              aria-label="Delete"
-              onClick={() => {
-                if (confirm(`Delete ${p.name}?`)) remove(p.id)
-                setEditing(null)
-              }}
-            >
-              <IconTrash size={16} />
-            </button>
-          </div>
-        </div>
-      )
-    }
     return (
       <div key={p.id} className={`place-row${on ? ' place-current' : ''}`}>
         <button className="row-text place-go" aria-pressed={on} onClick={() => tap(p)}>
@@ -153,10 +107,11 @@ export default function PinsSheet(): JSX.Element {
             {p.winds?.length ? ` · winds ${windsLabel(p.winds)}` : ''}
             {p.note ? ` · ${p.note}` : ''}
           </span>
+          {latestNote(p) && <span className="row-desc pin-note">{latestNote(p)!.text}</span>}
           {verdicts.get(p.id) && <span className={`row-desc pw-verdict pw-${verdicts.get(p.id)!.grade}`}>{verdicts.get(p.id)!.text}</span>}
         </button>
-        <button className="icon-btn" aria-label="Edit" onClick={() => setEditing(p.id)}>
-          <IconPin size={16} />
+        <button className="icon-btn" aria-label="Edit" onClick={() => openPinSheet(p.id, { push: true })}>
+          <IconEdit size={16} />
         </button>
         <button className="icon-btn" aria-label="Go" onClick={() => goTo(p)}>
           <IconLocate size={16} />
@@ -205,46 +160,6 @@ export default function PinsSheet(): JSX.Element {
           </div>
         )
       })}
-    </div>
-  )
-}
-
-/**
- * The stand's good winds: tap the arrows the wind blows FROM that still
- * hunt here. Suggest fills it from the bake's feeding side; the log's own
- * tally of winds sat on sits under it.
- */
-function WindsEditor({ p, tick, entries, onChange }: { p: SavedPlace; tick: number; entries: LogEntry[]; onChange: (winds: number[] | undefined) => void }): JSX.Element {
-  const winds = p.winds ?? []
-  // tick: the bake may land after the editor opens; entries: a new log entry retallies
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const suggested = useMemo(() => suggestWinds(p.lon, p.lat), [p.lon, p.lat, tick])
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const hunted = useMemo(() => huntedLine(huntedWinds(p)), [p, entries])
-  const toggle = (deg: number) => {
-    const k = sectorOf(deg)
-    const next = winds.includes(k) ? winds.filter((w) => w !== k) : [...winds, k].sort((a, b) => a - b)
-    onChange(next.length ? next : undefined)
-  }
-  return (
-    <div className="pe-winds">
-      <div className="pe-winds-head">
-        <span>Good winds</span>
-        {suggested && (
-          <button className="linklike" onClick={() => onChange(suggested)}>
-            Suggest
-          </button>
-        )}
-        {winds.length > 0 && (
-          <button className="linklike" onClick={() => onChange(undefined)}>
-            Clear
-          </button>
-        )}
-      </div>
-      <Rose turn={0} value={null} lit={winds.map((k) => k * 45)} inward onPick={toggle} label={(b) => `wind from the ${compass8(b)}`}>
-        <span className="pe-winds-mid">{winds.length ? windsLabel(winds) : 'tap where the wind blows from'}</span>
-      </Rose>
-      {hunted && <div className="pe-winds-hunted">{hunted}</div>}
     </div>
   )
 }

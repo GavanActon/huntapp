@@ -13,7 +13,7 @@ import { useCheckForm } from '../ui/WindCheckCard'
 import { compass } from '../weather/openMeteo'
 import { metresBetween } from '../weather/micro/windChecks'
 import { useScent } from '../weather/micro/scent'
-import { DROPPED_NAME, showPlacePopup } from './placePopup'
+import { DROPPED_NAME, openPinSheet } from './placePopup'
 import { closeOnTapOff } from './tapPopup'
 import { attachTapWeather } from './tapWeather'
 
@@ -96,12 +96,12 @@ export function showInfoPopup(m: MlMap, lngLat: { lng: number; lat: number }, he
     else sc.show(lng, lat)
     popup.remove()
   })
-  // a pin: its own popup takes over, the name and colour right there
+  // a pin: its sheet takes over, the name, colour and notes right there
   el.querySelector('.pp-save')?.addEventListener('click', () => {
     const sp = usePlacesStore.getState().add({ name: head?.name ?? DROPPED_NAME, lon: lng, lat, kind: 'stand' })
     popup.remove()
     head?.onPin?.()
-    showPlacePopup(m, sp)
+    openPinSheet(sp.id)
   })
   el.querySelector('.pp-digin')?.addEventListener('click', () => {
     popup.remove()

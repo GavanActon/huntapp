@@ -16,6 +16,7 @@
 export type SwitchThen =
   | { kind: 'look' }
   | { kind: 'spot'; lon: number; lat: number; name?: string; link?: string }
+  /** pins: its sheet open on it once there (map/placePopup.ts Open) */
   | { kind: 'select'; id: string; pins?: boolean }
   | { kind: 'outing'; id: string }
   | { kind: 'entry'; id: string }

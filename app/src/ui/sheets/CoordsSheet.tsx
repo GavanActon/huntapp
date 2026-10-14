@@ -4,7 +4,7 @@ import { switchArea } from '../../areas/switch'
 import { isLink, parsePlace, placeWords, type Place } from '../../map/coords'
 import { addRecent, canGoTo, goToSpot, recentPlaces } from '../../map/goto'
 import { withMap } from '../../map/mapController'
-import { DROPPED_NAME } from '../../map/placePopup'
+import { DROPPED_NAME, openPinSheet } from '../../map/placePopup'
 import { coordWords, mapsLink } from '../../share/link'
 import { useAppStore } from '../../state/appStore'
 import { usePlacesStore } from '../../state/placesStore'
@@ -132,9 +132,10 @@ export default function CoordsSheet({ text: given }: { text?: string }): JSX.Ele
   }
   const pin = (p: Place) => {
     addRecent(p)
-    usePlacesStore.getState().add({ name: p.name ?? DROPPED_NAME, lon: p.lon, lat: p.lat, kind: 'stand' })
+    const sp = usePlacesStore.getState().add({ name: p.name ?? DROPPED_NAME, lon: p.lon, lat: p.lat, kind: 'stand' })
     setPinned(true)
     setNote('Pinned. It is in Pins.')
+    openPinSheet(sp.id, { push: true })
   }
 
   const onKey = (e: KeyboardEvent<HTMLInputElement>) => {

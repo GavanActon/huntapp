@@ -56,6 +56,11 @@ export function dayTimeLabel(ms: number): string {
   return isToday(ms) ? timeLabel(ms) : `${dayShort(ms)} ${timeLabel(ms)}`
 }
 
+/** When a note was written: "9:45 AM" today, "Sat 9:45 AM" this past week, "Oct 3, 9:45 AM" before. */
+export function stampLabel(ms: number): string {
+  return Date.now() - ms < 6 * 86_400_000 ? dayTimeLabel(ms) : `${dateShort(ms)}, ${timeLabel(ms)}`
+}
+
 /** Compact hour: "8a", "1p". */
 export function hourShort(ms: number): string {
   const h = new Date(ms).getHours()

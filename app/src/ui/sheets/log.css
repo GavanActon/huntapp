@@ -293,25 +293,26 @@
 }
 
 /* a stand's good winds and the verdict for the next sit */
-.pins .pw-verdict {
+.pins .pw-verdict,
+.pin-sheet .pw-verdict {
   font-size: calc(12px * var(--ui-scale));
   font-weight: 600;
   color: var(--c-text-dim);
 }
 
-.pins .pw-good { color: #9be36a; }
-.pins .pw-edge { color: var(--c-warn); }
-.pins .pw-wrong { color: #ff8a80; }
-.pins .pw-calm { color: #a7c7e7; }
+.pins .pw-good, .pin-sheet .pw-good { color: #9be36a; }
+.pins .pw-edge, .pin-sheet .pw-edge { color: var(--c-warn); }
+.pins .pw-wrong, .pin-sheet .pw-wrong { color: #ff8a80; }
+.pins .pw-calm, .pin-sheet .pw-calm { color: #a7c7e7; }
 
-.pins .pe-winds {
+.pin-sheet .pe-winds {
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding-top: 6px;
 }
 
-.pins .pe-winds-head {
+.pin-sheet .pe-winds-head {
   display: flex;
   gap: 12px;
   align-items: baseline;
@@ -319,27 +320,209 @@
   color: var(--c-text-dim);
 }
 
-.pins .pe-winds-head span {
+.pin-sheet .pe-winds-head span {
   flex: 1;
   font-weight: 600;
   color: var(--c-text);
 }
 
-.pins .pe-winds .gc-rose {
+.pin-sheet .pe-winds .gc-rose {
   width: 150px;
   height: 150px;
 }
 
-.pins .pe-winds-mid {
+.pin-sheet .pe-winds-mid {
   display: block;
   max-width: 64px;
   font-size: 11px;
   color: var(--c-text-dim);
 }
 
-.pins .pe-winds-hunted {
+.pin-sheet .pe-winds-hunted {
   font-size: calc(11.5px * var(--ui-scale));
   color: var(--c-text-dim);
+}
+
+/* a pin's latest note in its row: a line of it */
+.pins .pin-note {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--c-text);
+}
+
+/* one pin (PinSheet.tsx): name, colour, kind, the note box and the notes, good winds folded */
+.pin-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pin-sheet .ps-head {
+  padding-bottom: 2px;
+}
+
+.pin-sheet .ps-dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(var(--c-bg-rgb), 0.9);
+}
+
+.pin-sheet .ps-name {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: calc(18px * var(--ui-scale));
+  font-weight: 750;
+  color: var(--c-text);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px dashed var(--c-border-strong);
+  border-radius: 0;
+  padding: 2px 0;
+}
+
+.pin-sheet .ps-name:focus {
+  outline: none;
+  border-bottom: 1px solid var(--c-accent);
+}
+
+.pin-sheet .ps-about {
+  font-size: calc(12.5px * var(--ui-scale));
+  color: var(--c-text-dim);
+}
+
+.pin-sheet .pin-swatches {
+  gap: 9px;
+  margin: 0;
+}
+
+.pin-sheet .pin-swatch {
+  width: 26px;
+  height: 26px;
+}
+
+.pin-sheet .ps-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pin-sheet .ps-kinds button {
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--c-border);
+  font-size: calc(12.5px * var(--ui-scale));
+  font-weight: 600;
+  color: var(--c-text-dim);
+}
+
+.pin-sheet .ps-kinds button.on {
+  border-color: var(--c-accent);
+  background: rgba(var(--c-ink-rgb), 0.12);
+  color: var(--c-text);
+}
+
+.pin-sheet textarea {
+  display: block;
+  width: 100%;
+  resize: none;
+  overflow: hidden;
+  font: inherit;
+  font-size: calc(15px * var(--ui-scale));
+  line-height: 1.35;
+  color: var(--c-text);
+  background: rgba(var(--c-ink-rgb), 0.08);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  padding: 9px 10px;
+}
+
+.pin-sheet textarea:focus {
+  outline: none;
+  border-color: var(--c-accent);
+}
+
+.pin-sheet .ps-addnote {
+  margin-top: 4px;
+}
+
+.pin-sheet .ps-notes {
+  display: flex;
+  flex-direction: column;
+}
+
+.pin-sheet .ps-note {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 2px;
+  border-top: 1px solid rgba(var(--c-ink-rgb), 0.12);
+  text-align: left;
+  color: var(--c-text);
+}
+
+.pin-sheet .ps-note:first-child {
+  border-top: 0;
+}
+
+.pin-sheet .ps-note-text {
+  font-size: calc(14px * var(--ui-scale));
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.pin-sheet .ps-note-when {
+  font-size: calc(11.5px * var(--ui-scale));
+  color: var(--c-text-dim);
+}
+
+.pin-sheet .ps-note-when .linklike {
+  font-size: inherit;
+}
+
+.pin-sheet .ps-fold {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 2px 4px;
+  border-top: 1px solid rgba(var(--c-ink-rgb), 0.12);
+  color: var(--c-text);
+  text-align: left;
+  font-size: calc(14px * var(--ui-scale));
+}
+
+.pin-sheet .ps-fold b {
+  flex: 1;
+  font-weight: 700;
+}
+
+.pin-sheet .ps-verdict {
+  margin-top: -4px;
+}
+
+.pin-sheet .ps-meta {
+  padding-top: 8px;
+  border-top: 1px solid rgba(var(--c-ink-rgb), 0.12);
+  font-size: calc(12px * var(--ui-scale));
+  color: var(--c-text-dim);
+  user-select: text;
+}
+
+.pin-sheet .ps-acts {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 6px;
+}
+
+.pin-sheet .ps-acts .linklike {
+  margin-left: auto;
+  font-size: calc(13px * var(--ui-scale));
 }
 
 /* another area's places, folded under its name below this area's and your own */

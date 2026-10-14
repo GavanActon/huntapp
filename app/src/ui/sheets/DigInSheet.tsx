@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type JSX } from 'react'
 import { fmtCoord } from '../../map/MapView'
-import { DROPPED_NAME } from '../../map/placePopup'
+import { DROPPED_NAME, openPinSheet } from '../../map/placePopup'
 import { useMeasureStore } from '../../measure/measureStore'
 import { openRoutes } from '../../routes/routeStore'
 import { shareSpot } from '../../share/share'
@@ -173,9 +173,10 @@ export default function DigInSheet({ lon, lat }: { lon: number; lat: number }): 
 
   // ---- the ⋯ menu
   const pin = () => {
-    // dropped and left alone: nothing selected, no sheet (Pins lists it)
-    usePlacesStore.getState().add({ name: DROPPED_NAME, lon, lat, kind: 'stand' })
+    // nothing selected; its sheet goes over Dig in, ‹ Back to it
+    const sp = usePlacesStore.getState().add({ name: DROPPED_NAME, lon, lat, kind: 'stand' })
     closeMenu()
+    openPinSheet(sp.id, { push: true })
   }
   /** The row says how it went, then the menu goes: "Copied" only once the clipboard has it. */
   const say = (row: 'share' | 'copy', ok: boolean) => {

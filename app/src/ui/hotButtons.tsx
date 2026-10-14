@@ -2,7 +2,7 @@ import { useRef, type JSX } from 'react'
 import { inRegion } from '../config'
 import { toggleCone, useHunting } from '../hunting/hunting'
 import { getMap } from '../map/mapController'
-import { DROPPED_NAME, showPlacePopup } from '../map/placePopup'
+import { DROPPED_NAME, openPinSheet } from '../map/placePopup'
 import { useMeasureStore } from '../measure/measureStore'
 import { closeRoutes, openRoutes, useRoutes } from '../routes/routeStore'
 import { useAppStore, type HotId, type LayerVisibility } from '../state/appStore'
@@ -36,8 +36,8 @@ export interface HotDef {
 const off = () => false
 
 /** A pin at the middle of the map (your exact position while the map
- *  follows you) and its popup open on it, so the drop is seen and the name
- *  and colour are a tap away. Never selected: the strip and heat stay put. */
+ *  follows you) and its sheet open on it: the name, colour and a note right
+ *  there. Never selected: the strip and heat stay put. */
 function dropPin() {
   const map = getMap()
   if (!map) return
@@ -54,7 +54,7 @@ function dropPin() {
     lat = c.lat
   }
   const sp = usePlacesStore.getState().add({ name: DROPPED_NAME, lon, lat, kind: 'stand' })
-  showPlacePopup(map, sp)
+  openPinSheet(sp.id)
 }
 
 /** A map layer as a hot button: on when the layer is. */

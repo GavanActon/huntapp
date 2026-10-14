@@ -5,6 +5,7 @@ import BottomSheet from '../BottomSheet'
 const DigInSheet = lazy(() => import('./DigInSheet'))
 const ScoringSheet = lazy(() => import('./ScoringSheet'))
 const PinsSheet = lazy(() => import('./PinsSheet'))
+const PinSheet = lazy(() => import('./PinSheet'))
 const HuntLogSheet = lazy(() => import('./HuntLogSheet'))
 const SettingsSheet = lazy(() => import('./SettingsSheet'))
 const ScentTuneSheet = lazy(() => import('./ScentTuneSheet'))
@@ -23,6 +24,7 @@ const TITLES: Record<SheetKind, string> = {
   digin: '',
   scoring: 'Scoring',
   pins: 'Pins',
+  pin: '',
   huntlog: 'Hunt log',
   settings: 'Settings',
   scentTune: 'Scent tuning',
@@ -45,6 +47,9 @@ function panel(s: Sheet): ReactNode {
       return <ScoringSheet lon={s.lon} lat={s.lat} />
     case 'pins':
       return <PinsSheet />
+    case 'pin':
+      // keyed by the pin: another one opened in its place starts afresh
+      return <PinSheet key={s.id} id={s.id} />
     case 'huntlog':
       return <HuntLogSheet />
     case 'settings':

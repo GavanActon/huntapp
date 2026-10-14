@@ -8,6 +8,8 @@ export type Sheet =
   | { kind: 'digin'; lon: number; lat: number }
   | { kind: 'scoring'; lon: number; lat: number }
   | { kind: 'pins' }
+  /** one pin: its name, colour, kind, notes and good winds (ui/sheets/PinSheet.tsx) */
+  | { kind: 'pin'; id: string }
   | { kind: 'huntlog' }
   | { kind: 'settings' }
   | { kind: 'scentTune' }
@@ -30,6 +32,8 @@ export const SHEET_HALF_PCT: Record<SheetKind, number> = {
   digin: 58,
   scoring: 72,
   pins: 46,
+  // the name, colour and kind, the note box and the latest notes; the pin itself kept in view above
+  pin: 56,
   huntlog: 44,
   settings: 72,
   // the scent model's knobs: tall, the cone still in view above

@@ -36,7 +36,7 @@ export function initAreaArrival(): void {
   if (then.kind === 'select') {
     if (!usePlacesStore.getState().places.some((p) => p.id === then.id)) return
     usePlacesStore.getState().select(then.id)
-    if (then.pins) useAppStore.getState().openSheet({ kind: 'pins' })
+    if (then.pins) useAppStore.getState().openSheet({ kind: 'pin', id: then.id })
     return
   }
   if (then.kind === 'spot') return arriveAt({ lon: then.lon, lat: then.lat, name: then.name }, then.link)

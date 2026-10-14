@@ -254,12 +254,23 @@ export function followCenter(lon: number, lat: number): [number, number] | null 
   return [Math.min(Math.max(lon, w), e), Math.min(Math.max(lat, s), n)]
 }
 
+/** A note on a place: when it was written (ms, and its key on the place) and what it says. */
+export interface PinNote {
+  at: number
+  text: string
+}
+
 export interface PlaceDef {
   name: string
   lon: number
   lat: number
   kind: 'camp' | 'lake' | 'landing' | 'stand' | 'trail'
+  /** a preset's line about it from its area file ("On the peninsula"); your
+   *  own pins keep dated notes instead (notes) */
   note?: string
+  /** what you wrote about it, oldest first, each stamped when it was written
+   *  (the Pin sheet, the pin's popup) */
+  notes?: PinNote[]
   /** its dot on the map, picked in its popup or the Pins editor; the kind's colour until then (state/pinColours.ts) */
   color?: string
   /** the winds this stand hunts well on: compass sectors the wind blows
