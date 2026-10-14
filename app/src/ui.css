@@ -863,6 +863,21 @@
   color: var(--c-warn) !important;
 }
 
+/* drawing a path: no Clear, so back stands at the right beside Done; the last path's colour before its length */
+.path-card .tb-head .path-back {
+  margin-left: auto;
+}
+
+.path-swatch {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border-radius: 50%;
+  vertical-align: 1px;
+  box-shadow: 0 0 0 1.5px rgba(8, 20, 34, 0.85);
+}
+
 .measure-card .tb-facts {
   gap: 4px 14px;
   align-items: baseline;

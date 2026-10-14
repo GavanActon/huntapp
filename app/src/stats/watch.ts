@@ -157,15 +157,14 @@ function watchTools() {
   const tool = span('tool')
   const form = span('form')
   let measured = 0
-  const toolNow = () => (useMeasureStore.getState().active ? 'measure' : usePaths.getState().draft ? 'path' : useRoutes.getState().open ? 'routes' : null)
+  const toolNow = () => (useMeasureStore.getState().active ? 'measure' : usePaths.getState().drawing ? 'path' : useRoutes.getState().open ? 'routes' : null)
   useMeasureStore.subscribe((s, p) => {
     if (s.active !== p.active) tool(toolNow(), p.active ? { pts: measured } : undefined)
     measured = s.points.length
   })
   usePaths.subscribe((s, p) => {
-    if (!s.draft === !p.draft) return
-    tool(toolNow(), p.draft ? { pts: p.draft.points.length } : undefined)
-    if (p.draft && !s.draft && s.paths !== p.paths) track('path_keep', { pts: p.draft.points.length, edit: p.draft.id != null })
+    if (s.drawing !== p.drawing) tool(toolNow(), p.drawing ? { paths: p.drawn.length } : undefined)
+    if (s.drawn.length > p.drawn.length) track('path_keep', { pts: s.paths[s.paths.length - 1]?.points.length ?? 0 })
   })
   useRoutes.subscribe((s, p) => {
     if (s.open !== p.open) tool(toolNow())

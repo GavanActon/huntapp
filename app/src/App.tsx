@@ -110,7 +110,7 @@ export default function App() {
   const topCard = useAppStore((s) => s.topCard != null)
   const viewMenuOpen = useAppStore((s) => s.viewMenuOpen)
   const measuring = useMeasureStore((s) => s.active)
-  const drawing = usePaths((s) => s.draft != null)
+  const drawing = usePaths((s) => s.drawing)
   // the bush-label tool (a link with ?label=bush): its card in the bar, the map's tap its own
   const labelling = useBushLabels((s) => s.active)
   const routing = useRoutes((s) => s.open)

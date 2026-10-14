@@ -244,11 +244,10 @@ export const IconRuler = (p: IconProps) => (
   </svg>
 )
 
-/** Draw a path: a dotted walk laid down behind a pencil's tip. */
+/** Draw a path: a dotted line, nothing else (Gavan, 2026-10-14: a pencil beside it read as the wind's puff). */
 export const IconPath = (p: IconProps) => (
-  <svg width={S(p)} height={S(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M2.5 21.5c2.5-1.2 2.2-4.6 5-5.6s4.5-.4 5.6-2.2" strokeDasharray="0.1 3.1" strokeWidth="2.4" />
-    <path d="M14.2 12.6l.9-3.2 5.6-5.6a1.6 1.6 0 0 1 2.3 2.3l-5.6 5.6z" />
+  <svg width={S(p)} height={S(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 20.5c3.2-.4 4.4-3.4 6.8-5.6s5.6-1.2 7.6-3.8S19.2 5 21 3.5" strokeWidth="2.7" strokeDasharray="0.1 3.6" />
   </svg>
 )
 

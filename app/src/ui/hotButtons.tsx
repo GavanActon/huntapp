@@ -100,14 +100,14 @@ export const HOT_DEFS: Record<HotId, HotDef> = {
       m.start(you ? [fix.lon, fix.lat] : undefined, you ? 'you' : undefined)
     },
   },
-  // where you plan to walk, drawn a tap at a time as a dotted line (paths/); a second tap keeps it
+  // where you plan to walk, drawn freehand as dotted lines, a stroke a path (paths/); a second tap puts it up
   path: {
     id: 'path',
     name: 'Draw a path',
     short: 'Path',
     Icon: IconPath,
-    useActive: () => usePaths((s) => s.draft != null),
-    onTap: () => (usePaths.getState().draft ? usePaths.getState().done() : startPath()),
+    useActive: () => usePaths((s) => s.drawing),
+    onTap: () => (usePaths.getState().drawing ? usePaths.getState().done() : startPath()),
   },
   scent: {
     id: 'scent',

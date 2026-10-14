@@ -2043,7 +2043,8 @@ function syncMarkers(map: MlMap | null) {
       if (held) return (held = false)
       const p = useScent.getState().people[k]
       if (p && useMeasureStore.getState().active) return useMeasureStore.getState().addPoint([p.lon, p.lat])
-      if (p && usePaths.getState().draft) return usePaths.getState().addPoint([p.lon, p.lat])
+      // drawing a path, a person is not picked: the finger was meant for the map
+      if (p && usePaths.getState().drawing) return
       if (p && useRoutes.getState().open) return useRoutes.getState().setTo({ lon: p.lon, lat: p.lat, kind: 'map', name: sitterName(p, k) })
       useScent.getState().setPick(k)
     })

@@ -8,16 +8,16 @@ import { closeRoutes, useRoutes } from '../routes/routeStore'
 import { markShown, useAppStore } from '../state/appStore'
 import { PIN_COLOURS } from '../state/pinColours'
 import { agoLabel, durationLabel } from '../time'
-import { usePaths, type PlannedPath } from './pathStore'
+import { nextColour, usePaths, type PlannedPath } from './pathStore'
 import '../ui/minipop.css'
 
 /**
  * Your planned walks on the map: dotted lines, each in its own colour,
- * over a darker dot so they read on the photo and the shade alike. While
- * one is drawn, one finger (or the mouse) draws freehand and two move the
- * map; a tap adds a straight leg. Each stroke carries on from the end of
- * the path. A kept path answers a tap with its length, its time on foot,
- * Edit and Delete. Hidden with the strip's marks (Paths).
+ * over a darker dot so they read on the photo and the shade alike. With
+ * the Path button down, one finger (or the mouse) draws freehand and two
+ * move the map; each stroke is a path of its own, done when the finger
+ * lifts. A kept path answers a tap with its length, its time on foot, its
+ * name and colour, and Delete. Hidden with the strip's marks (Paths).
  */
 
 const SRC = 'paths'
@@ -28,9 +28,8 @@ const GAP = 2.4
 // a finger's stroke: a sample every few pixels, thinned when it lifts to what the eye can tell from the line
 const SAMPLE_PX = 3
 const SIMPLIFY_PX = 1.2
-// a press that goes nowhere, quickly, is a tap
+// a press that goes nowhere draws nothing
 const TAP_PX = 8
-const TAP_MS = 450
 // a second finger this soon, or this close, is a pinch starting: the first finger drew nothing
 const PINCH_MS = 300
 const PINCH_PX = 30
@@ -61,15 +60,15 @@ function addLayers(map: MlMap) {
     layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: { 'line-color': ['get', 'color'], 'line-width': W, 'line-dasharray': [0, GAP] },
   })
-  // a kept path's tap, wide enough for a thumb; the one being drawn takes taps as points instead
+  // a kept path's tap, wide enough for a thumb (not the stroke under the finger)
   map.addLayer({
     id: 'paths-hit',
     type: 'line',
     source: SRC,
-    filter: ['all', ['==', ['get', 'kind'], 'path'], ['!', ['has', 'draft']]] as never,
+    filter: ['all', ['==', ['get', 'kind'], 'path'], ['!', ['has', 'live']]] as never,
     paint: { 'line-color': '#000', 'line-width': 22, 'line-opacity': 0 },
   })
-  // the draft's two ends: where it starts, and where the next stroke carries on from
+  // the stroke under the finger: where it started, and the finger's end of it
   map.addLayer({
     id: 'paths-ends',
     type: 'circle',
@@ -86,20 +85,21 @@ function addLayers(map: MlMap) {
 }
 
 function buildFc(): FeatureCollection {
-  const { paths, draft } = usePaths.getState()
+  const { paths, drawing } = usePaths.getState()
   const features: Feature[] = []
-  if (markShown(useAppStore.getState(), 'paths')) {
+  // drawing, every path shows, the marks off or not: you see what you are adding to
+  if (drawing || markShown(useAppStore.getState(), 'paths')) {
     for (const p of paths) {
-      // the one open to edit is drawn as the draft
-      if (p.id === draft?.id || p.points.length < 2) continue
+      if (p.points.length < 2) continue
       features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: p.points }, properties: { kind: 'path', id: p.id, color: p.color } })
     }
   }
-  if (draft) {
-    // the stroke under the finger draws as it goes
-    const pts = stroke ? [...draft.points, ...stroke.samples.map((s) => s.ll)] : draft.points
-    if (pts.length >= 2) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: pts }, properties: { kind: 'path', draft: true, color: draft.color } })
-    for (const p of pts.length > 1 ? [pts[0], pts[pts.length - 1]] : pts) features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: p }, properties: { kind: 'end', color: draft.color } })
+  if (drawing && stroke) {
+    // the stroke under the finger draws as it goes, in the colour it will keep
+    const color = nextColour(paths)
+    const pts = stroke.samples.map((s) => s.ll)
+    if (pts.length >= 2) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: pts }, properties: { kind: 'path', live: true, color } })
+    for (const p of pts.length > 1 ? [pts[0], pts[pts.length - 1]] : pts) features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: p }, properties: { kind: 'end', color } })
   }
   return { type: 'FeatureCollection', features }
 }
@@ -120,7 +120,7 @@ const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 
 let open: maplibregl.Popup | null = null
 
-/** A kept path, tapped: its name (a field, as a pin's is), its colour, how far and how long on foot, Delete and Edit. */
+/** A kept path, tapped: its name (a field, as a pin's is), its colour, how far and how long on foot, and Delete. */
 function showPathPopup(map: MlMap, p: PlannedPath, at: [number, number]) {
   open?.remove()
   const el = document.createElement('div')
@@ -131,7 +131,7 @@ function showPathPopup(map: MlMap, p: PlannedPath, at: [number, number]) {
     `<div class="mp-sub numeral"><b>${esc(f.dist)}</b> · about ${esc(f.walk)} on foot</div>` +
     `<div class="pin-swatches">${swatches}</div>` +
     `<div class="mp-sub">drawn ${esc(agoLabel(Date.now() - p.savedAt))}</div>` +
-    `<div class="pp-acts"><button class="mp-danger pa-delete">Delete</button><button class="mp-plain pa-edit">Edit</button></div>`
+    `<div class="pp-acts"><button class="mp-danger pa-delete">Delete</button></div>`
   const pop = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, closeOnClick: false, offset: 10, maxWidth: '240px' }).setLngLat(at).setDOMContent(el).addTo(map)
   closeOnTapOff(map, pop)
   pop.on('close', () => {
@@ -158,19 +158,15 @@ function showPathPopup(map: MlMap, p: PlannedPath, at: [number, number]) {
     pop.remove()
     usePaths.getState().remove(p.id)
   })
-  el.querySelector('.pa-edit')?.addEventListener('click', () => {
-    pop.remove()
-    startPath(p.id)
-  })
 }
 
-/** Draw a new path, or edit a kept one: the ruler and the route card go, they want the same taps. */
-export function startPath(id?: string) {
+/** Put the Path button down: the ruler and the route card go, they want the same taps. */
+export function startPath() {
   useMeasureStore.getState().stop()
   if (useRoutes.getState().open) closeRoutes()
   useAppStore.getState().closeSheet()
   open?.remove()
-  usePaths.getState().start(id)
+  usePaths.getState().start()
 }
 
 // ---------- freehand ----------
@@ -242,7 +238,7 @@ function simplify(pts: Sample[], tol: number): Sample[] {
   return pts.filter((_, i) => keep[i])
 }
 
-/** The finger lifted, or a second one landed (`pinch`): a tap is a straight leg, a stroke is kept thinned. */
+/** The finger lifted, or a second one landed (`pinch`): the stroke, thinned, is a path. A tap draws nothing. */
 function endStroke(map: MlMap, pinch = false) {
   const st = stroke
   stroke = null
@@ -250,10 +246,8 @@ function endStroke(map: MlMap, pinch = false) {
   const first = st.samples[0]
   const far = Math.max(...st.samples.map((s) => Math.hypot(s.x - first.x, s.y - first.y)))
   const ms = Date.now() - st.t0
-  const tap = far < TAP_PX
-  const keep = tap ? !pinch && ms < TAP_MS : !(pinch && (ms < PINCH_MS || far < PINCH_PX))
-  if (!keep) return render(map)
-  usePaths.getState().addStroke(tap ? [first.ll] : simplify(st.samples, SIMPLIFY_PX).map((s) => s.ll))
+  if (far < TAP_PX || (pinch && (ms < PINCH_MS || far < PINCH_PX))) return render(map)
+  usePaths.getState().addPath(simplify(st.samples, SIMPLIFY_PX).map((s) => s.ll))
 }
 
 /** The draw gestures, caught on the map's own box before MapLibre's handlers
@@ -262,7 +256,7 @@ function endStroke(map: MlMap, pinch = false) {
 function wireFreehand(map: MlMap) {
   const box = map.getContainer()
   const canvas = map.getCanvas()
-  const drawing = (e: Event) => usePaths.getState().draft != null && e.target === canvas
+  const drawing = (e: Event) => usePaths.getState().drawing && e.target === canvas
 
   box.addEventListener(
     'touchstart',
@@ -322,7 +316,7 @@ function wireFreehand(map: MlMap) {
     },
     { capture: true },
   )
-  // the map's own click and double click stand aside: the stroke and the tap were handled above
+  // the map's own click and double click stand aside: drawing, a tap on the map is nothing
   const swallow = (e: Event) => {
     if (!drawing(e)) return
     e.stopPropagation()
@@ -347,8 +341,8 @@ export function initPathLayer() {
 
     map.on('click', (e) => {
       const st = usePaths.getState()
-      // the bare map's taps never get here while drawing (wireFreehand); your dot's does: a leg to where you stand
-      if (st.draft) return st.addPoint([e.lngLat.lng, e.lngLat.lat])
+      // drawing, the bare map's taps never get here (wireFreehand), and your dot's is nothing
+      if (st.drawing) return
       // a kept path: only while no tool has the tap, and a kept route under it wins (routeLayer)
       if (useMeasureStore.getState().active || useRoutes.getState().open) return
       const hit = map.queryRenderedFeatures(e.point, { layers: ['paths-hit', 'routes-hit'].filter((id) => map.getLayer(id)) })
@@ -358,7 +352,7 @@ export function initPathLayer() {
     })
 
     map.on('mouseenter', 'paths-hit', () => {
-      if (!usePaths.getState().draft) map.getCanvas().style.cursor = 'pointer'
+      if (!usePaths.getState().drawing) map.getCanvas().style.cursor = 'pointer'
     })
     map.on('mouseleave', 'paths-hit', () => (map.getCanvas().style.cursor = ''))
   })
@@ -369,16 +363,16 @@ export function initPathLayer() {
     else withMap(render)
   }
   usePaths.subscribe((s, p) => {
-    if (s.paths !== p.paths || s.draft !== p.draft) redraw()
+    if (s.paths !== p.paths || s.drawing !== p.drawing) redraw()
   })
   useAppStore.subscribe((s, p) => {
     if (markShown(s, 'paths') !== markShown(p, 'paths')) redraw()
   })
-  // the ruler or the route card taken up mid-draw: what is drawn is kept
+  // the ruler or the route card taken up mid-draw: the Path button comes up, what is drawn stays
   useMeasureStore.subscribe((s, p) => {
-    if (s.active && !p.active && usePaths.getState().draft) usePaths.getState().done()
+    if (s.active && !p.active && usePaths.getState().drawing) usePaths.getState().done()
   })
   useRoutes.subscribe((s, p) => {
-    if (s.open && !p.open && usePaths.getState().draft) usePaths.getState().done()
+    if (s.open && !p.open && usePaths.getState().drawing) usePaths.getState().done()
   })
 }
