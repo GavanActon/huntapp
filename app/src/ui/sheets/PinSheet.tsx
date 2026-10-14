@@ -1,32 +1,24 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type JSX } from 'react'
+import { useLayoutEffect, useRef, useState, type CSSProperties, type JSX } from 'react'
 import { ACTIVE_AREA } from '../../areas'
 import type { PinNote, PlaceDef } from '../../config'
-import { useHuntLog, type LogEntry } from '../../log/huntLog'
 import { DROPPED_NAME, isDroppedPin } from '../../map/placePopup'
 import { coordWords } from '../../share/link'
 import { shareSpot } from '../../share/share'
-import { compass8 } from '../../spots/conditions'
-import { loadHabitat, onHabitat } from '../../spots/habitatGrid'
 import { fromHome } from '../../spots/scoring'
-import { huntedLine, huntedWinds, sectorOf, suggestWinds, windsLabel, windVerdict } from '../../spots/standWinds'
 import { useAppStore } from '../../state/appStore'
 import { PIN_COLOURS, placeColour } from '../../state/pinColours'
-import { homePlace, placeArea, usePlacesStore, type SavedPlace } from '../../state/placesStore'
+import { homePlace, placeArea, usePlacesStore } from '../../state/placesStore'
 import { agoLabel, stampLabel } from '../../time'
-import { ensureProfile, onProfile } from '../../weather/boundaryLayer'
-import { loadMicro, onMicro } from '../../weather/micro/model'
-import { useWindChecks } from '../../weather/micro/windChecks'
-import { ensureWeatherGrid, onWeatherGrid } from '../../weather/windGrid'
-import Rose from '../Rose'
-import '../ground.css'
 import './log.css'
 
 const KINDS: PlaceDef['kind'][] = ['stand', 'trail', 'landing', 'camp', 'lake']
 
 /**
  * One pin, all of it: its name, colour and kind, a box for the next note and
- * the notes before it, newest first, each stamped when it was written; a
- * stand's good winds folded under one row; where it is; Share and Delete.
+ * the notes before it, newest first, each stamped when it was written; where
+ * it is; Share and Delete. No good winds (Gavan, 2026-10-14: "cut the good
+ * winds from it"); a stand that has them still says how the next sit reads
+ * in its popup and its Pins row.
  * Adding a pin opens it (Gavan, 2026-10-14: "adding a pin brings up a screen
  * with all the details"), as do the popup's Open and a Pins row's Edit.
  *
@@ -39,27 +31,12 @@ export default function PinSheet({ id }: { id: string }): JSX.Element {
   const stacked = useAppStore((s) => s.sheets.length > 1)
   // the note being typed: written already, kept out of the list until it is done
   const [draftAt, setDraftAt] = useState<number | null>(null)
-  const [windsOpen, setWindsOpen] = useState(false)
   const [shared, setShared] = useState<string | null>(null)
   // the field's own words: the store holds Pin for an empty one, and a name typed as "Pin" must not blank it
   const [name, setName] = useState(p && p.name !== DROPPED_NAME ? p.name : '')
   // pushed over a list scrolled down (Pins), the sheet's body keeps that scroll: start at the name
   const root = useRef<HTMLDivElement>(null)
   useLayoutEffect(() => root.current?.closest('.sheet-body')?.scrollTo(0, 0), [])
-  const checks = useWindChecks((s) => s.checks)
-  // the ground model, the layering profile, the wind grid and the habitat bake land on their own time
-  const [tick, setTick] = useState(0)
-  useEffect(() => {
-    const bump = () => setTick((t) => t + 1)
-    void Promise.all([loadMicro(), ensureProfile(), ensureWeatherGrid(), loadHabitat()]).then(bump)
-    const offs = [onMicro(bump), onProfile(bump), onWeatherGrid(bump), onHabitat(bump)]
-    return () => offs.forEach((o) => o())
-  }, [])
-  const verdict = useMemo(
-    () => (p?.winds?.length ? windVerdict(p, Date.now()) : null),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [p?.winds, p?.lon, p?.lat, tick, checks],
-  )
   if (!p) return <div className="empty">This pin is gone.</div>
 
   const close = () => {
@@ -130,14 +107,6 @@ export default function PinSheet({ id }: { id: string }): JSX.Element {
           ))}
         </div>
       )}
-
-      <button className="ps-fold" aria-expanded={windsOpen} onClick={() => setWindsOpen((o) => !o)}>
-        <b>Good winds</b>
-        <span className="dim">{p.winds?.length ? windsLabel(p.winds) : ''}</span>
-        <span className="dim">{windsOpen ? '⌃' : '›'}</span>
-      </button>
-      {verdict && <div className={`ps-verdict pw-verdict pw-${verdict.grade}`}>{verdict.text}</div>}
-      {windsOpen && <WindsEditor p={p} tick={tick} onChange={(winds) => update(p.id, { winds })} />}
 
       <div className="ps-meta">
         {p.savedAt > 0 ? `dropped ${agoLabel(Date.now() - p.savedAt)}` : p.kind}
@@ -256,47 +225,6 @@ function NoteRow({ id, n }: { id: string; n: PinNote }): JSX.Element {
           Delete
         </button>
       </span>
-    </div>
-  )
-}
-
-/**
- * The stand's good winds: tap the arrows the wind blows FROM that still
- * hunt here. Suggest fills it from the bake's feeding side; the log's own
- * tally of winds sat on sits under it.
- */
-function WindsEditor({ p, tick, onChange }: { p: SavedPlace; tick: number; onChange: (winds: number[] | undefined) => void }): JSX.Element {
-  const entries: LogEntry[] = useHuntLog((s) => s.entries)
-  const winds = p.winds ?? []
-  // tick: the bake may land after the editor opens; entries: a new log entry retallies
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const suggested = useMemo(() => suggestWinds(p.lon, p.lat), [p.lon, p.lat, tick])
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const hunted = useMemo(() => huntedLine(huntedWinds(p)), [p, entries])
-  const toggle = (deg: number) => {
-    const k = sectorOf(deg)
-    const next = winds.includes(k) ? winds.filter((w) => w !== k) : [...winds, k].sort((a, b) => a - b)
-    onChange(next.length ? next : undefined)
-  }
-  return (
-    <div className="pe-winds">
-      <div className="pe-winds-head">
-        <span />
-        {suggested && (
-          <button className="linklike" onClick={() => onChange(suggested)}>
-            Suggest
-          </button>
-        )}
-        {winds.length > 0 && (
-          <button className="linklike" onClick={() => onChange(undefined)}>
-            Clear
-          </button>
-        )}
-      </div>
-      <Rose turn={0} value={null} lit={winds.map((k) => k * 45)} inward onPick={toggle} label={(b) => `wind from the ${compass8(b)}`}>
-        <span className="pe-winds-mid">{winds.length ? windsLabel(winds) : 'tap where the wind blows from'}</span>
-      </Rose>
-      {hunted && <div className="pe-winds-hunted">{hunted}</div>}
     </div>
   )
 }

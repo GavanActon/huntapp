@@ -293,55 +293,16 @@
 }
 
 /* a stand's good winds and the verdict for the next sit */
-.pins .pw-verdict,
-.pin-sheet .pw-verdict {
+.pins .pw-verdict {
   font-size: calc(12px * var(--ui-scale));
   font-weight: 600;
   color: var(--c-text-dim);
 }
 
-.pins .pw-good, .pin-sheet .pw-good { color: #9be36a; }
-.pins .pw-edge, .pin-sheet .pw-edge { color: var(--c-warn); }
-.pins .pw-wrong, .pin-sheet .pw-wrong { color: #ff8a80; }
-.pins .pw-calm, .pin-sheet .pw-calm { color: #a7c7e7; }
-
-.pin-sheet .pe-winds {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding-top: 6px;
-}
-
-.pin-sheet .pe-winds-head {
-  display: flex;
-  gap: 12px;
-  align-items: baseline;
-  font-size: calc(12.5px * var(--ui-scale));
-  color: var(--c-text-dim);
-}
-
-.pin-sheet .pe-winds-head span {
-  flex: 1;
-  font-weight: 600;
-  color: var(--c-text);
-}
-
-.pin-sheet .pe-winds .gc-rose {
-  width: 150px;
-  height: 150px;
-}
-
-.pin-sheet .pe-winds-mid {
-  display: block;
-  max-width: 64px;
-  font-size: 11px;
-  color: var(--c-text-dim);
-}
-
-.pin-sheet .pe-winds-hunted {
-  font-size: calc(11.5px * var(--ui-scale));
-  color: var(--c-text-dim);
-}
+.pins .pw-good { color: #9be36a; }
+.pins .pw-edge { color: var(--c-warn); }
+.pins .pw-wrong { color: #ff8a80; }
+.pins .pw-calm { color: #a7c7e7; }
 
 /* a pin's latest note in its row: a line of it */
 .pins .pin-note {
@@ -351,7 +312,7 @@
   color: var(--c-text);
 }
 
-/* one pin (PinSheet.tsx): name, colour, kind, the note box and the notes, good winds folded */
+/* one pin (PinSheet.tsx): name, colour, kind, the note box and the notes */
 .pin-sheet {
   display: flex;
   flex-direction: column;
@@ -482,27 +443,6 @@
 
 .pin-sheet .ps-note-when .linklike {
   font-size: inherit;
-}
-
-.pin-sheet .ps-fold {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 10px 2px 4px;
-  border-top: 1px solid rgba(var(--c-ink-rgb), 0.12);
-  color: var(--c-text);
-  text-align: left;
-  font-size: calc(14px * var(--ui-scale));
-}
-
-.pin-sheet .ps-fold b {
-  flex: 1;
-  font-weight: 700;
-}
-
-.pin-sheet .ps-verdict {
-  margin-top: -4px;
 }
 
 .pin-sheet .ps-meta {

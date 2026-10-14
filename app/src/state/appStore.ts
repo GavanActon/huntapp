@@ -8,7 +8,7 @@ export type Sheet =
   | { kind: 'digin'; lon: number; lat: number }
   | { kind: 'scoring'; lon: number; lat: number }
   | { kind: 'pins' }
-  /** one pin: its name, colour, kind, notes and good winds (ui/sheets/PinSheet.tsx) */
+  /** one pin: its name, colour, kind and notes (ui/sheets/PinSheet.tsx) */
   | { kind: 'pin'; id: string }
   | { kind: 'huntlog' }
   | { kind: 'settings' }

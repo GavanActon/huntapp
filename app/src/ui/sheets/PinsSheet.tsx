@@ -28,7 +28,7 @@ import './log.css'
  * A stand can carry its good winds (spots/standWinds.ts): the row then
  * says how the ground wind at the next sit reads against them. A row's
  * pencil opens the pin's own sheet over the list (PinSheet.tsx): its name,
- * colour, kind, notes and good winds, ‹ Back to here.
+ * colour, kind and notes, ‹ Back to here.
  */
 export default function PinsSheet(): JSX.Element {
   const places = usePlacesStore((s) => s.places)
