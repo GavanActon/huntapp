@@ -36,7 +36,10 @@ export default function PinSheet({ id }: { id: string }): JSX.Element {
   const [name, setName] = useState(p && p.name !== DROPPED_NAME ? p.name : '')
   // pushed over a list scrolled down (Pins), the sheet's body keeps that scroll: start at the name
   const root = useRef<HTMLDivElement>(null)
-  useLayoutEffect(() => root.current?.closest('.sheet-body')?.scrollTo(0, 0), [])
+  // a block, not an arrow's value: newer Chrome's scrollTo returns a Promise, which React would take for a clean-up
+  useLayoutEffect(() => {
+    root.current?.closest('.sheet-body')?.scrollTo(0, 0)
+  }, [])
   if (!p) return <div className="empty">This pin is gone.</div>
 
   const close = () => {
