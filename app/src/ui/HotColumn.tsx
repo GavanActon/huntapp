@@ -37,19 +37,38 @@ export default function HotColumn({ side }: { side: HotSide }): JSX.Element | nu
 
 const GAP = 10 // .hotcol-col's gap
 
+/** How far the column's stack has still to slide down (up, if less than 0)
+ *  to where it comes to rest: it rides the bar's card (bottom: --barh, a
+ *  0.18 s slide), and a fit mid-slide must count the room it ends with. */
+function stillToSlide(stack: HTMLElement | null): number {
+  if (!stack || typeof stack.getAnimations !== 'function') return 0
+  for (const a of stack.getAnimations()) {
+    if (!(a instanceof CSSTransition) || a.transitionProperty !== 'bottom') continue
+    const frames = (a.effect as KeyframeEffect | null)?.getKeyframes()
+    const end = parseFloat(String(frames?.[frames.length - 1]?.bottom))
+    if (Number.isFinite(end)) return parseFloat(getComputedStyle(stack).bottom) - end
+  }
+  return 0
+}
+
 /** How many buttons stand one above another before the column wraps: the
- *  room from the column's foot up to the strip and the card under it (less
- *  the compass over the near column), in slots as tall as the first one. */
+ *  room from the column's foot, where it comes to rest, up to the strip and
+ *  the card under it (less the compass over the near column), in slots as
+ *  tall as the first one. Measured mid-slide it once kept the slide's start:
+ *  a card closing left the columns wrapped short, on a PC flat along the
+ *  foot (Gavan, 2026-10-14), since nothing resizes when the slide ends. */
 function useRowsThatFit(ref: RefObject<HTMLDivElement | null>, n: number, labels: boolean, hidden: boolean): number {
   const [rows, setRows] = useState(Math.max(1, n))
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
+    const stack = el.closest<HTMLElement>('.toolcol, .leftstack')
     const fit = () => {
       const slot = el.querySelector<HTMLElement>('.hotslot')
       if (!slot) return
       const top = document.querySelector('.toparea')?.getBoundingClientRect().bottom ?? 0
-      const room = el.getBoundingClientRect().bottom - top - 12 - el.offsetTop
+      const foot = el.getBoundingClientRect().bottom + stillToSlide(stack)
+      const room = foot - top - 12 - el.offsetTop
       const h = slot.offsetHeight + parseFloat(getComputedStyle(slot).marginBottom || '0') + GAP
       const fits = Math.max(1, Math.floor((room + GAP) / h))
       setRows((r) => (r === fits ? r : fits))
@@ -59,9 +78,15 @@ function useRowsThatFit(ref: RefObject<HTMLDivElement | null>, n: number, labels
     const ro = new ResizeObserver(fit)
     for (const t of [document.querySelector('.toparea'), document.querySelector('.bottombar'), el.parentElement]) if (t) ro.observe(t)
     window.addEventListener('resize', fit)
+    // and once more where the slide stops, should one start unseen
+    const slid = (e: TransitionEvent) => {
+      if (e.target === stack && e.propertyName === 'bottom') fit()
+    }
+    stack?.addEventListener('transitionend', slid)
     return () => {
       ro.disconnect()
       window.removeEventListener('resize', fit)
+      stack?.removeEventListener('transitionend', slid)
     }
   }, [ref, n, labels, hidden])
   return rows
