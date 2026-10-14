@@ -15,6 +15,7 @@ import HotColumn from './ui/HotColumn'
 import ToolColumn from './ui/ToolColumn'
 import SheetHost from './ui/sheets/SheetHost'
 import MeasureCard from './ui/MeasureCard'
+import PathCard from './ui/PathCard'
 import RouteCard from './ui/RouteCard'
 import { initRoutes, useRoutes } from './routes/routeStore'
 import { initRouteLayer } from './routes/routeLayer'
@@ -30,6 +31,8 @@ import { initMoveLayer } from './hunting/moveLayer'
 import HeardCard, { useHeardForm } from './ui/HeardCard'
 import WindCheckCard, { useCheckForm } from './ui/WindCheckCard'
 import { initMeasureLayer } from './measure/measureLayer'
+import { initPathLayer } from './paths/pathLayer'
+import { usePaths } from './paths/pathStore'
 import { initBushLabels } from './bushLabels/labelLayer'
 import { useBushLabels } from './bushLabels/labelStore'
 import BushLabelCard from './ui/BushLabelCard'
@@ -107,6 +110,7 @@ export default function App() {
   const topCard = useAppStore((s) => s.topCard != null)
   const viewMenuOpen = useAppStore((s) => s.viewMenuOpen)
   const measuring = useMeasureStore((s) => s.active)
+  const drawing = usePaths((s) => s.draft != null)
   // the bush-label tool (a link with ?label=bush): its card in the bar, the map's tap its own
   const labelling = useBushLabels((s) => s.active)
   const routing = useRoutes((s) => s.open)
@@ -138,6 +142,7 @@ export default function App() {
     warmStart()
     initTheme()
     initTextScale()
+    initPathLayer()
     initMeasureLayer()
     initBushLabels()
     initWindFlow()
@@ -195,7 +200,7 @@ export default function App() {
       {!sheetOpen && !formUp && (
         <div className="leftstack">
           {!viewMenuOpen && !EXPLORE && <HotColumn side="far" />}
-          {!measuring && (
+          {!measuring && !drawing && (
             <div className="leftfoot">
               <ViewPill />
             </div>
@@ -206,10 +211,11 @@ export default function App() {
       <div className="bottombar" ref={barRef}>
         {labelling && <BushLabelCard />}
         {!labelling && measuring && <MeasureCard />}
-        {!labelling && !measuring && routing && <RouteCard />}
-        {!labelling && !measuring && !routing && logging && <LogCard />}
-        {!labelling && !measuring && !routing && !logging && hearing && <HeardCard />}
-        {!labelling && !measuring && !routing && !logging && !hearing && checking && <WindCheckCard />}
+        {!labelling && !measuring && drawing && <PathCard />}
+        {!labelling && !measuring && !drawing && routing && <RouteCard />}
+        {!labelling && !measuring && !drawing && !routing && logging && <LogCard />}
+        {!labelling && !measuring && !drawing && !routing && !logging && hearing && <HeardCard />}
+        {!labelling && !measuring && !drawing && !routing && !logging && !hearing && checking && <WindCheckCard />}
       </div>
       <SheetHost />
       <DevBadge />

@@ -1351,7 +1351,26 @@
   pointer-events: auto;
 }
 
+/* the column, and where it is too tall for the screen, its wrap: a second
+   column toward the middle of the map, feet level (HotColumn) */
 .hotcol {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.toolcol .hotcol,
+.app-lefty .leftstack .hotcol {
+  flex-direction: row-reverse;
+}
+
+.app-lefty .toolcol .hotcol {
+  flex-direction: row;
+}
+
+.hotcol-col {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1359,7 +1378,7 @@
   pointer-events: none;
 }
 
-.hotcol > * {
+.hotcol-col > * {
   pointer-events: auto;
 }
 
@@ -1605,7 +1624,8 @@
   z-index: 10;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  /* to the screen's edge: a wrapped column stands inward, My location stays under the outer one */
+  align-items: flex-end;
   gap: 12px;
   transition: bottom 0.18s ease-out;
 }
@@ -1627,6 +1647,7 @@
 .app-lefty .toolcol {
   right: auto;
   left: calc(var(--sal, 0px) + 12px);
+  align-items: flex-start;
 }
 
 /* My location while the GPS is still looking: the glyph breathes */
@@ -2155,76 +2176,127 @@
   color: var(--c-text-dim);
 }
 
-/* ---------- Map buttons: the editor's rows ---------- */
+/* ---------- Map buttons: the editor (ui/sheets/ButtonsSheet.tsx) ---------- */
 
-/* a slot in use: the button's icon, its name, − at the right */
-.hotedit-slot,
+/* the two columns side by side, as they stand on the map */
+.hotedit-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding-top: 6px;
+}
+
+/* a column, and the tray of the rest: each takes a dropped button */
+.hotedit-col,
+.hotedit-tray {
+  border-radius: var(--r-md);
+  border: 1.5px dashed transparent;
+  background: rgba(var(--c-ink-rgb), 0.05);
+  padding: 6px;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.hotedit-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 140px;
+}
+
+.hotedit-tray {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  min-height: 56px;
+}
+
+.hotedit-col.over,
+.hotedit-tray.over {
+  border-color: var(--c-accent);
+  background: rgba(var(--c-accent-rgb), 0.08);
+}
+
+.hotedit-colhead {
+  padding: 2px 4px 2px;
+  font-size: calc(11px * var(--ui-scale));
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-text-dim);
+  font-weight: 700;
+}
+
+/* a button: its icon in a small circle and its name; held, it lifts */
+.hotedit-tile,
 .hotedit-locked {
   display: flex;
   align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(var(--c-ink-rgb), 0.1);
+  gap: 8px;
+  min-height: 44px;
+  padding: 5px 8px 5px 5px;
+  border-radius: var(--r-md);
+  font-size: calc(13px * var(--ui-scale));
+  line-height: 1.2;
   color: var(--c-text);
-  text-align: left;
 }
 
-.hotedit-slot > :last-child {
-  margin-left: auto;
+.hotedit-tile {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  cursor: grab;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
-.hotedit-slot > button:last-child {
+.hotedit-tile.lifted {
+  opacity: 0.3;
+}
+
+/* My location, always at the foot of the thumb's column */
+.hotedit-locked {
+  color: var(--c-text-dim);
+  border: 1px solid transparent;
+}
+
+.hotedit-ic {
   flex: none;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: rgba(255, 107, 107, 0.18);
-  color: #ff8a80;
-  font-weight: 800;
-  font-size: calc(18px * var(--ui-scale));
-  line-height: 1;
+  background: rgba(var(--c-ink-rgb), 0.1);
+  color: var(--c-text);
 }
 
-.hotedit-slot .fab,
-.hotedit-locked .fab {
+/* where the button will land */
+.hotedit-ph {
   flex: none;
-  box-shadow: none;
+  min-height: 44px;
+  border-radius: var(--r-md);
+  border: 1.5px dashed var(--c-accent);
+  background: rgba(var(--c-accent-rgb), 0.12);
 }
 
-/* a free slot: a dashed ring and the one word inside the row */
-.hotedit-empty {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(var(--c-ink-rgb), 0.1);
-  color: var(--c-text-faint);
+/* the button under the finger, held up above it so it shows */
+.hotedit-ghost {
+  position: fixed;
+  z-index: 1000;
+  width: min(46vw, 200px);
+  transform: translate(-50%, -115%);
+  pointer-events: none;
 }
 
-.hotedit-empty::before {
-  content: '';
-  flex: none;
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  border: 1.5px dashed rgba(143, 169, 191, 0.6);
-}
-
-/* a tap on a free slot picks which column the Add chips fill */
-button.hotedit-empty {
-  width: 100%;
-  text-align: left;
-}
-
-.hotedit-empty.on {
-  color: var(--c-accent);
-}
-
-.hotedit-empty.on::before {
+.hotedit-ghost .hotedit-tile {
   border-color: var(--c-accent);
+  box-shadow: var(--shadow-fab);
+  background: var(--c-surface-heavy);
+}
+
+.hotedit-hint {
+  padding: 8px 2px 4px;
+  font-size: calc(12px * var(--ui-scale));
+  color: var(--c-text-faint);
 }
 
 /* the ⋯ with new maps waiting: a dot at its corner */
@@ -2241,36 +2313,6 @@ button.hotedit-empty {
 
 .wxfold-dots {
   position: relative;
-}
-
-/* the chips to add, wrapping */
-.hotedit-add {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 6px 0 4px;
-}
-
-.hotedit-add > button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 11px;
-  border-radius: var(--r-md);
-  background: rgba(var(--c-ink-rgb), 0.1);
-  border: 1px solid rgba(var(--c-ink-rgb), 0.2);
-  color: var(--c-text);
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.hotedit-add > button:disabled {
-  opacity: 0.4;
-}
-
-/* the right column, always there */
-.hotedit-locked {
-  color: var(--c-text-dim);
 }
 
 /* ---------- text size: one dial, three stops (ui/textScale.ts) ----------
@@ -2427,9 +2469,7 @@ button.hotedit-empty {
 }
 
 .menu-row,
-.wx-menu-row,
-.hotedit-slot,
-.hotedit-locked {
+.wx-menu-row {
   font-size: calc(15px * var(--ui-scale));
 }
 
@@ -2478,13 +2518,6 @@ button.hotedit-empty {
   font-size: calc(10.5px * var(--ui-scale));
 }
 
-.hotedit-empty {
-  font-size: calc(14px * var(--ui-scale));
-}
-
-.hotedit-add > button {
-  font-size: calc(12.5px * var(--ui-scale));
-}
 
 /* ---- Spots: where to be for the target at the planning time ---- */
 

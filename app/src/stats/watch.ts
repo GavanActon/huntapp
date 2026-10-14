@@ -15,6 +15,7 @@ import { useHuntLog } from '../log/huntLog'
 import { onEachMap, onFirstIdle } from '../map/mapController'
 import { DROPPED_NAME } from '../map/placePopup'
 import { useMeasureStore } from '../measure/measureStore'
+import { usePaths } from '../paths/pathStore'
 import { useAppUpdate } from '../offline/appUpdate'
 import { useDownloads } from '../offline/downloads'
 import { useRoutes } from '../routes/routeStore'
@@ -156,10 +157,15 @@ function watchTools() {
   const tool = span('tool')
   const form = span('form')
   let measured = 0
-  const toolNow = () => (useMeasureStore.getState().active ? 'measure' : useRoutes.getState().open ? 'routes' : null)
+  const toolNow = () => (useMeasureStore.getState().active ? 'measure' : usePaths.getState().draft ? 'path' : useRoutes.getState().open ? 'routes' : null)
   useMeasureStore.subscribe((s, p) => {
     if (s.active !== p.active) tool(toolNow(), p.active ? { pts: measured } : undefined)
     measured = s.points.length
+  })
+  usePaths.subscribe((s, p) => {
+    if (!s.draft === !p.draft) return
+    tool(toolNow(), p.draft ? { pts: p.draft.points.length } : undefined)
+    if (p.draft && !s.draft && s.paths !== p.paths) track('path_keep', { pts: p.draft.points.length, edit: p.draft.id != null })
   })
   useRoutes.subscribe((s, p) => {
     if (s.open !== p.open) tool(toolNow())

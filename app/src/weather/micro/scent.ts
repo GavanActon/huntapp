@@ -6,6 +6,7 @@ import { devlog } from '../../devlog'
 import { getMap, onEachMap, withMap } from '../../map/mapController'
 import { closeOnTapOff } from '../../map/tapPopup'
 import { useMeasureStore } from '../../measure/measureStore'
+import { usePaths } from '../../paths/pathStore'
 import { useRoutes } from '../../routes/routeStore'
 import { useAppStore } from '../../state/appStore'
 import { compass } from '../openMeteo'
@@ -2042,6 +2043,7 @@ function syncMarkers(map: MlMap | null) {
       if (held) return (held = false)
       const p = useScent.getState().people[k]
       if (p && useMeasureStore.getState().active) return useMeasureStore.getState().addPoint([p.lon, p.lat])
+      if (p && usePaths.getState().draft) return usePaths.getState().addPoint([p.lon, p.lat])
       if (p && useRoutes.getState().open) return useRoutes.getState().setTo({ lon: p.lon, lat: p.lat, kind: 'map', name: sitterName(p, k) })
       useScent.getState().setPick(k)
     })

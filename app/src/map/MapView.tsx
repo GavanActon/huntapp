@@ -11,6 +11,7 @@ import { placeColour } from '../state/pinColours'
 import { usePlacesStore } from '../state/placesStore'
 import { geoUrls, holdOpening, onFirstIdle, setMap, withMap } from './mapController'
 import { useMeasureStore } from '../measure/measureStore'
+import { drawingPath } from '../paths/pathStore'
 import { useBushLabels } from '../bushLabels/labelStore'
 import { baseTone, BOG_TUFT, bogTuftImage, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour, lidarShadeShown, openLanesOut, type ArchiveRange, reliefShadePaint, standIn, syncUnderlays } from './mapStyle'
 import { offlineComplete, registerAllDataFiles, registerDataFile, sourceModes } from './pmtilesRegistry'
@@ -353,8 +354,8 @@ export default function MapView() {
       // a wait for a double tap and filters for brushes of the screen were
       // tried on 2026-10-02 and made the popup unreliable in the hand.
       m.on('click', 'pins-pt', (e) => {
-        // the ruler, a person being placed, the route card and the bush labels each own the tap
-        if (useMeasureStore.getState().active || useScent.getState().adding || useRoutes.getState().open || useBushLabels.getState().active) return
+        // the ruler, a path being drawn, a person being placed, the route card and the bush labels each own the tap
+        if (useMeasureStore.getState().active || drawingPath() || useScent.getState().adding || useRoutes.getState().open || useBushLabels.getState().active) return
         const id = e.features?.[0]?.properties?.id as string | undefined
         const p = id ? usePlacesStore.getState().places.find((q) => q.id === id) : undefined
         if (!p) return
@@ -364,6 +365,7 @@ export default function MapView() {
       })
       m.on('click', (e) => {
         if (useMeasureStore.getState().active) return // the ruler owns the tap
+        if (drawingPath()) return // so does a path being drawn (paths/pathLayer)
         if (useBushLabels.getState().active) return // so does the bush-label tool (bushLabels/labelLayer)
         if (useRoutes.getState().open) return // so does the route card (routes/routeLayer)
         const scent = useScent.getState()
@@ -373,15 +375,15 @@ export default function MapView() {
         if (useHeardForm.getState().placing) return useHeardForm.getState().show({ lon: e.lngLat.lng, lat: e.lngLat.lat })
         // outside every baked box the tap picks the cell under it for the card (explore/index.ts)
         if (exploreTap(m, e)) return
-        // a place, a numbered pin, a wind check or a kept route has its own tap
-        const hit = m.queryRenderedFeatures(e.point, { layers: ['pins-pt', 'spots-pin', 'windchecks-hit', 'routes-hit', 'huntlog-dot'].filter((id) => m.getLayer(id)) })
+        // a place, a numbered pin, a wind check, a kept route or a path has its own tap
+        const hit = m.queryRenderedFeatures(e.point, { layers: ['pins-pt', 'spots-pin', 'windchecks-hit', 'routes-hit', 'paths-hit', 'huntlog-dot'].filter((id) => m.getLayer(id)) })
         if (hit.length) return
         // the weather there, the score while the heat is on, then the actions (map/infoPopup.ts)
         showInfoPopup(m, e.lngLat)
       })
       // a log entry (a moose heard, a sighting): what and when, Delete, and press-and-hold to move it
       m.on('click', 'huntlog-dot', (e) => {
-        if (useMeasureStore.getState().active || useScent.getState().adding || useRoutes.getState().open || useBushLabels.getState().active) return
+        if (useMeasureStore.getState().active || drawingPath() || useScent.getState().adding || useRoutes.getState().open || useBushLabels.getState().active) return
         const id = e.features?.[0]?.properties?.id as string | undefined
         const entry = id ? useHuntLog.getState().entries.find((x) => x.id === id) : undefined
         if (entry) showLogPopup(m, entry)

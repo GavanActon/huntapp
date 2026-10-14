@@ -244,6 +244,14 @@ export const IconRuler = (p: IconProps) => (
   </svg>
 )
 
+/** Draw a path: a dotted walk laid down behind a pencil's tip. */
+export const IconPath = (p: IconProps) => (
+  <svg width={S(p)} height={S(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2.5 21.5c2.5-1.2 2.2-4.6 5-5.6s4.5-.4 5.6-2.2" strokeDasharray="0.1 3.1" strokeWidth="2.4" />
+    <path d="M14.2 12.6l.9-3.2 5.6-5.6a1.6 1.6 0 0 1 2.3 2.3l-5.6 5.6z" />
+  </svg>
+)
+
 export const IconEdit = (p: IconProps) => (
   <svg width={S(p)} height={S(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <path d="M4 20l1-4.3L16.4 4.3a1.9 1.9 0 0 1 2.7 0l.6.6a1.9 1.9 0 0 1 0 2.7L8.3 19 4 20Z" />

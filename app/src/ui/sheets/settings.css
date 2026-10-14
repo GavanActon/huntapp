@@ -299,14 +299,6 @@
   margin: 6px 0 4px;
 }
 
-/* ---------- Map buttons ---------- */
-
-.hotedit-slot > span:nth-child(2),
-.hotedit-locked > span:nth-child(2) {
-  flex: 1;
-  min-width: 0;
-}
-
 /* a short text field on a row: the initials */
 .st-row .st-text {
   width: 72px;

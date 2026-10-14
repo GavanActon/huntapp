@@ -4,6 +4,8 @@ import { toggleCone, useHunting } from '../hunting/hunting'
 import { getMap } from '../map/mapController'
 import { DROPPED_NAME, openPinSheet } from '../map/placePopup'
 import { useMeasureStore } from '../measure/measureStore'
+import { startPath } from '../paths/pathLayer'
+import { usePaths } from '../paths/pathStore'
 import { closeRoutes, openRoutes, useRoutes } from '../routes/routeStore'
 import { useAppStore, type HotId, type LayerVisibility } from '../state/appStore'
 import { usePlacesStore } from '../state/placesStore'
@@ -11,12 +13,12 @@ import { useGpsStore } from '../tracking/gpsStore'
 import { useScent } from '../weather/micro/scent'
 import { useHeardForm } from './HeardCard'
 import { useCheckForm } from './WindCheckCard'
-import { IconBush, IconContour, IconDepth, IconEar, IconLanes, IconPin, IconPowder, IconRadar, IconRoute, IconRuler, IconScent, IconWind } from './icons'
+import { IconBush, IconContour, IconDepth, IconEar, IconLanes, IconPath, IconPin, IconPowder, IconRadar, IconRoute, IconRuler, IconScent, IconWind } from './icons'
 import { logWindHere } from './logWindHere'
 
 /**
- * The hot buttons: what either column can hold (Map buttons picks up to
- * four per side per mode). Each knows its icon, its two names (the editor's and the
+ * The hot buttons: what either column can hold (Map buttons places them,
+ * any number per side per mode). Each knows its icon, its two names (the editor's and the
  * short one under the button), whether it reads as on, and what a tap
  * does. The on state is always read from the store it acts on, so a
  * button agrees with the map whichever way the thing was switched.
@@ -98,6 +100,15 @@ export const HOT_DEFS: Record<HotId, HotDef> = {
       m.start(you ? [fix.lon, fix.lat] : undefined, you ? 'you' : undefined)
     },
   },
+  // where you plan to walk, drawn a tap at a time as a dotted line (paths/); a second tap keeps it
+  path: {
+    id: 'path',
+    name: 'Draw a path',
+    short: 'Path',
+    Icon: IconPath,
+    useActive: () => usePaths((s) => s.draft != null),
+    onTap: () => (usePaths.getState().draft ? usePaths.getState().done() : startPath()),
+  },
   scent: {
     id: 'scent',
     name: 'Scent cone',
@@ -147,7 +158,7 @@ export const HOT_DEFS: Record<HotId, HotDef> = {
 }
 
 /** Every hot button, in the order the editor's Add chips list them. */
-export const HOT_ORDER: HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'contours', 'pin', 'understory', 'lanes', 'bathy', 'radar']
+export const HOT_ORDER: HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'path', 'contours', 'pin', 'understory', 'lanes', 'bathy', 'radar']
 
 const HOLD_MS = 450
 

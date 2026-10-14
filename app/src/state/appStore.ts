@@ -39,7 +39,8 @@ export const SHEET_HALF_PCT: Record<SheetKind, number> = {
   // the scent model's knobs: tall, the cone still in view above
   scentTune: 80,
   guide: 72,
-  buttons: 66,
+  // both columns side by side and the tray of the rest, all in view while a button is dragged
+  buttons: 84,
   views: 66,
   offline: 60,
   layers: 80,
@@ -59,11 +60,12 @@ export const topSheet = (s: AppState): Sheet | null => s.sheets[s.sheets.length 
  *  an outing from the Hunt log. The columns stay under it. */
 export type TopCard = { kind: 'scent' } | { kind: 'outing'; id: string }
 
-/** The buttons either column can hold, picked in Map buttons. My location
- *  is not one of them: it is always at the foot of the near column. Nor is
- *  the heat map: it sits on the strip's head beside the quarry chip. */
-export type HotId = 'windcheck' | 'scent' | 'heard' | 'windflow' | 'routes' | 'measure' | 'contours' | 'pin' | 'understory' | 'lanes' | 'bathy' | 'radar'
-export const HOT_MAX = 4
+/** The buttons either column can hold, picked in Map buttons, as many as
+ *  you like (a column too tall for the screen wraps inward: HotColumn). My
+ *  location is not one of them: it is always at the foot of the near
+ *  column. Nor is the heat map: it sits on the strip's head beside the
+ *  quarry chip. */
+export type HotId = 'windcheck' | 'scent' | 'heard' | 'windflow' | 'routes' | 'measure' | 'path' | 'contours' | 'pin' | 'understory' | 'lanes' | 'bathy' | 'radar'
 /** The two columns: `near` is the thumb's side (right, or left for a left hand), `far` the other. */
 export type HotSide = 'near' | 'far'
 export type HotSets = Record<HotSide, HotId[]>
@@ -73,20 +75,26 @@ export const DEFAULT_HOT: Record<'hunt' | 'fish', HotSets> = {
   fish: { near: ['pin', 'bathy', 'windflow'], far: ['routes', 'measure'] },
 }
 // Low power was taken out 2026-10-03: a saved layout holding it drops it here (unknown ids)
-const HOT_IDS: readonly HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'contours', 'pin', 'understory', 'lanes', 'bathy', 'radar']
+const HOT_IDS: readonly HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'path', 'contours', 'pin', 'understory', 'lanes', 'bathy', 'radar']
 /** Buttons that were: a saved layout keeps its slot (Person became the contour lines, 2026-10-02; + Person lives on the live card and the map popup). */
 const HOT_RENAMED: Record<string, HotId> = { person: 'contours' }
 
-/** Known ids only, each once, at most HOT_MAX. */
+/** Known ids only, each once. */
 function cleanHot(ids: readonly unknown[]): HotId[] {
   const out: HotId[] = []
   for (const raw of ids) {
     const id = typeof raw === 'string' && raw in HOT_RENAMED ? HOT_RENAMED[raw] : raw
     if (!HOT_IDS.includes(id as HotId) || out.includes(id as HotId)) continue
     out.push(id as HotId)
-    if (out.length >= HOT_MAX) break
   }
   return out
+}
+
+/** Both columns, each button in one of them only (the near column keeps one found in both). */
+function cleanSets(s: { near?: unknown; far?: unknown }, d: HotSets): HotSets {
+  const near = Array.isArray(s.near) ? cleanHot(s.near) : d.near
+  const far = (Array.isArray(s.far) ? cleanHot(s.far) : d.far).filter((id) => !near.includes(id))
+  return { near, far }
 }
 
 /** Every map layer the Layers sheet can switch. Keys match the style's
@@ -212,11 +220,12 @@ export type LeavesMode = 'auto' | 'on' | 'down'
 
 /** Your marks on the map, each shown or not from the strip's marks button
  *  (a press and hold lists them): your pins, the preset places (camp, the
- *  lakes), the walked tracks, the hunt log's game dots and the wind checks. */
-export type MarkKind = 'pins' | 'places' | 'tracks' | 'game' | 'wind'
-export const MARK_KINDS: readonly MarkKind[] = ['pins', 'places', 'tracks', 'game', 'wind']
-export const MARK_NAMES: Record<MarkKind, string> = { pins: 'Pins', places: 'Places', tracks: 'Tracks', game: 'Game', wind: 'Wind checks' }
-const ALL_MARKS: Record<MarkKind, boolean> = { pins: true, places: true, tracks: true, game: true, wind: true }
+ *  lakes), the walked tracks, the paths drawn to walk, the hunt log's game
+ *  dots and the wind checks. */
+export type MarkKind = 'pins' | 'places' | 'tracks' | 'paths' | 'game' | 'wind'
+export const MARK_KINDS: readonly MarkKind[] = ['pins', 'places', 'tracks', 'paths', 'game', 'wind']
+export const MARK_NAMES: Record<MarkKind, string> = { pins: 'Pins', places: 'Places', tracks: 'Tracks', paths: 'Paths', game: 'Game', wind: 'Wind checks' }
+const ALL_MARKS: Record<MarkKind, boolean> = { pins: true, places: true, tracks: true, paths: true, game: true, wind: true }
 
 /** A mark on the map now: picked in the list and not all hidden by the tap. */
 export const markShown = (s: Pick<AppState, 'marks' | 'marksHidden'>, k: MarkKind): boolean => !s.marksHidden && s.marks[k]
@@ -256,9 +265,10 @@ export interface AppState {
   /** the view pill's menu up (the hot column hides under it); session only */
   viewMenuOpen: boolean
   setViewMenuOpen: (v: boolean) => void
-  /** both columns' buttons per mode, up to HOT_MAX each; persisted */
+  /** both columns' buttons per mode, top to bottom, any number; persisted */
   hotButtons: Record<'hunt' | 'fish', HotSets>
-  setHotButtons: (mode: 'hunt' | 'fish', side: HotSide, ids: HotId[]) => void
+  /** a mode's two columns at once: a button dragged across is never in both */
+  setHotSets: (mode: 'hunt' | 'fish', sets: HotSets) => void
   /** the near column and the view pill swap sides for a left hand; persisted */
   leftHanded: boolean
   setLeftHanded: (v: boolean) => void
@@ -362,7 +372,7 @@ export const useAppStore = create<AppState>()(
       viewMenuOpen: false,
       setViewMenuOpen: (viewMenuOpen) => set({ viewMenuOpen }),
       hotButtons: DEFAULT_HOT,
-      setHotButtons: (mode, side, ids) => set((st) => ({ hotButtons: { ...st.hotButtons, [mode]: { ...st.hotButtons[mode], [side]: cleanHot(ids) } } })),
+      setHotSets: (mode, sets) => set((st) => ({ hotButtons: { ...st.hotButtons, [mode]: cleanSets(sets, st.hotButtons[mode]) } })),
       leftHanded: false,
       setLeftHanded: (leftHanded) => set({ leftHanded }),
       // a fresh phone's names off and the top row extra large: Gavan's (2026-10-03)
@@ -497,8 +507,7 @@ export const useAppStore = create<AppState>()(
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<AppState>
         const hot = (p.hotButtons ?? {}) as Partial<Record<'hunt' | 'fish', Partial<Record<HotSide, unknown>>>>
-        const pick = (v: unknown, d: HotId[]): HotId[] => (Array.isArray(v) ? cleanHot(v) : d)
-        const sets = (m: 'hunt' | 'fish'): HotSets => ({ near: pick(hot[m]?.near, DEFAULT_HOT[m].near), far: pick(hot[m]?.far, DEFAULT_HOT[m].far) })
+        const sets = (m: 'hunt' | 'fish'): HotSets => cleanSets(hot[m] ?? {}, DEFAULT_HOT[m])
         return {
           ...current,
           ...p,

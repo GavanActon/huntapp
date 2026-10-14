@@ -15,6 +15,7 @@ import { devlog } from '../devlog'
 import { initDigInMarker } from '../map/diginMarker'
 import { getMap, onEachMap, onFirstIdle, withMap } from '../map/mapController'
 import { useMeasureStore } from '../measure/measureStore'
+import { drawingPath } from '../paths/pathStore'
 import { useRoutes } from '../routes/routeStore'
 import { useAppStore } from '../state/appStore'
 import { areaPlaces, homePlace, selectedPlace, usePlacesStore } from '../state/placesStore'
@@ -149,8 +150,8 @@ function ensureSources(m: MlMap) {
   )
   // a numbered pin: Dig in on it (MapView keeps its popup off the pin)
   m.on('click', 'spots-pin', (e) => {
-    // the ruler, a person being placed and the route card each own the tap
-    if (useMeasureStore.getState().active || useScent.getState().adding || useRoutes.getState().open) return
+    // the ruler, a path being drawn, a person being placed and the route card each own the tap
+    if (useMeasureStore.getState().active || drawingPath() || useScent.getState().adding || useRoutes.getState().open) return
     const n = e.features?.[0]?.properties?.n as number | undefined
     if (n == null) return
     const sp = useSpotsStore.getState().result?.spots[n - 1]

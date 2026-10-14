@@ -5,6 +5,8 @@ import { useHuntLog, type LogSpecies } from '../log/huntLog'
 import { openHuntLog } from '../log/logView'
 import { snapshot } from '../log/snapshot'
 import { useMeasureStore } from '../measure/measureStore'
+import { startPath } from '../paths/pathLayer'
+import { usePaths } from '../paths/pathStore'
 import { campEnd, clearRoutes, useRoutes, youEnd } from '../routes/routeStore'
 import { isFish } from '../spots/types'
 import { CONTOUR_INTERVALS, useAppStore, type HotId, type LayerOpacity, type LeavesMode, type WindStyle } from '../state/appStore'
@@ -335,6 +337,21 @@ function MeasureRows({ go }: RowsProps) {
   )
 }
 
+function PathRows({ go }: RowsProps) {
+  const n = usePaths((s) => s.paths.length)
+  const removeAll = () => {
+    if (confirm(n === 1 ? 'Delete the path?' : `Delete all ${n} paths?`)) usePaths.getState().removeAll()
+  }
+  return (
+    <>
+      <Act onTap={go(() => startPath())}>New path</Act>
+      <Act disabled={n === 0} onTap={go(removeAll)}>
+        Delete all paths
+      </Act>
+    </>
+  )
+}
+
 const LAYER_OPACITY: Partial<Record<HotId, keyof LayerOpacity>> = { understory: 'understory', lanes: 'lanes' }
 
 /** A layer's strength where it has one. No way to the Layers sheet: that is the view pill's (2026-10-03). */
@@ -371,6 +388,8 @@ function rows(id: HotId, go: RowsProps['go']): JSX.Element | null {
       return <RoutesRows go={go} />
     case 'measure':
       return <MeasureRows go={go} />
+    case 'path':
+      return <PathRows go={go} />
     case 'understory':
     case 'lanes':
     case 'bathy':
