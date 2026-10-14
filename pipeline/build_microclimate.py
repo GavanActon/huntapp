@@ -403,6 +403,9 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--wind", choices=["hd", "sd"], default="hd",
                     help="momentum bands from WindNinja's solve (hd, windcfd-<id>.npz) or the surrogate net's (sd, windsd-<id>.npz)")
+    ap.add_argument("--habitat", default=None,
+                    help="the habitat grid to read the cover, stands and lakes from (default the area's habitat-<id>.hab; "
+                         "the fast SD pass gives pipeline/raw/habitat-lite-<id>.hab, sd_wind.py)")
     args = ap.parse_args()
     # an SD area has no WindNinja run: its one grid takes the surrogate's bands
     sd_area = BAKE.get("wind") == "sd"
@@ -417,7 +420,7 @@ def main() -> None:
         sd_meta = json.loads(str(np.load(sd_path)["meta"]))
     t0 = time.time()
     print(f"microclimate on the habitat lattice {COLS}×{ROWS} ({DX:.0f}×{DY:.0f} m)")
-    header, hab = read_hab(OUT_DIR / f"habitat-{REGION['id']}.hab")
+    header, hab = read_hab(args.habitat or OUT_DIR / f"habitat-{REGION['id']}.hab")
     assert header["cols"] == COLS and header["rows"] == ROWS, "habitat grid does not match build_habitat.py"
     cover = hab["cover"].astype(np.uint8)
     height = hab["height"]

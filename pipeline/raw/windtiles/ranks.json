@@ -1,0 +1,291 @@
+{
+ "_note": "2026-10-13. Ontario: moose WMUs by 2025 harvest (data.ontario.ca moose_2025.csv; the 2026 tag quotas put fly-in units first), alternating with deer WMUs by 2025 harvest (white-tailed_deer_2025.csv). Quebec: moose zones by the 2024-2025 average harvest (Donnees Quebec CSV), alternating with deer zones by 2025 harvest rolled up to whole zones.",
+ "ON": [
+  [
+   "15B",
+   "moose 190"
+  ],
+  [
+   "92",
+   "deer 3276"
+  ],
+  [
+   "4",
+   "moose 111"
+  ],
+  [
+   "43B",
+   "deer 2716"
+  ],
+  [
+   "3",
+   "moose 104"
+  ],
+  [
+   "67",
+   "deer 2441"
+  ],
+  [
+   "41",
+   "moose 98"
+  ],
+  [
+   "60",
+   "deer 2037, moose 43"
+  ],
+  [
+   "15A",
+   "moose 82"
+  ],
+  [
+   "90",
+   "deer 2023"
+  ],
+  [
+   "30",
+   "moose 76"
+  ],
+  [
+   "85",
+   "deer 1871"
+  ],
+  [
+   "23",
+   "moose 71"
+  ],
+  [
+   "65",
+   "deer 1639"
+  ],
+  [
+   "39",
+   "moose 71"
+  ],
+  [
+   "93",
+   "deer 1457"
+  ],
+  [
+   "24",
+   "moose 70"
+  ],
+  [
+   "47",
+   "deer 1436"
+  ],
+  [
+   "28",
+   "moose 66"
+  ],
+  [
+   "82A",
+   "deer 1431"
+  ],
+  [
+   "5",
+   "moose 64"
+  ],
+  [
+   "89",
+   "deer 1377"
+  ],
+  [
+   "29",
+   "moose 61"
+  ],
+  [
+   "58",
+   "deer 1308"
+  ],
+  [
+   "16B",
+   "moose 60"
+  ],
+  [
+   "62",
+   "deer 1243"
+  ],
+  [
+   "12B",
+   "moose 53"
+  ],
+  [
+   "84",
+   "deer 1215"
+  ],
+  [
+   "19",
+   "moose 47"
+  ],
+  [
+   "57",
+   "deer 1170"
+  ],
+  [
+   "21A",
+   "moose 45"
+  ],
+  [
+   "59",
+   "deer 1135"
+  ],
+  [
+   "2",
+   "moose 45"
+  ],
+  [
+   "64A",
+   "deer 1134"
+  ],
+  [
+   "1C",
+   "moose 40"
+  ],
+  [
+   "63A",
+   "deer 1121"
+  ],
+  [
+   "21B",
+   "moose 37"
+  ],
+  [
+   "61",
+   "deer 1019, moose 20"
+  ],
+  [
+   "16A",
+   "moose 37"
+  ],
+  [
+   "8",
+   "deer 905"
+  ],
+  [
+   "16C",
+   "moose 26"
+  ],
+  [
+   "80",
+   "deer 884"
+  ],
+  [
+   "13",
+   "moose 14"
+  ],
+  [
+   "49",
+   "deer 876"
+  ],
+  [
+   "17",
+   "moose 13"
+  ],
+  [
+   "56",
+   "deer 854"
+  ],
+  [
+   "91",
+   "deer 720"
+  ],
+  [
+   "87",
+   "deer 707"
+  ]
+ ],
+ "QC": [
+  [
+   "01",
+   "moose avg 5757"
+  ],
+  [
+   "06",
+   "deer 10556"
+  ],
+  [
+   "28",
+   "moose avg 3855"
+  ],
+  [
+   "10",
+   "deer 8887"
+  ],
+  [
+   "02",
+   "moose avg 3686"
+  ],
+  [
+   "07",
+   "deer 8533"
+  ],
+  [
+   "13",
+   "moose avg 2279"
+  ],
+  [
+   "08",
+   "deer 8442"
+  ],
+  [
+   "18",
+   "moose avg 1488"
+  ],
+  [
+   "20",
+   "deer 8406 (Anticosti)"
+  ],
+  [
+   "19",
+   "moose avg 810"
+  ],
+  [
+   "04",
+   "deer 8142"
+  ],
+  [
+   "26",
+   "moose avg 761"
+  ],
+  [
+   "03",
+   "deer 5337"
+  ],
+  [
+   "14",
+   "moose avg 700"
+  ],
+  [
+   "05",
+   "deer 3936"
+  ],
+  [
+   "27",
+   "moose avg 642"
+  ],
+  [
+   "11",
+   "deer 1775"
+  ],
+  [
+   "09",
+   "deer 1733"
+  ],
+  [
+   "16",
+   "moose avg 395"
+  ],
+  [
+   "29",
+   "moose avg 321"
+  ],
+  [
+   "15",
+   "moose avg 305"
+  ],
+  [
+   "12",
+   "moose avg 189"
+  ]
+ ]
+}

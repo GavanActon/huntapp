@@ -23,8 +23,9 @@ import { eventsExport, eventsIngest, statsQuery } from './stats.js'
 // where the app lives for now: links, the QR code and shares all go through
 // groundwind.app/app, so moving the app is this one line
 const APP = 'https://hunt.groundwind.app/'
-// pages that may send a request: the site, and later the app's own button
-const ORIGINS = ['https://groundwind.app', 'https://hunt.groundwind.app', 'https://gavanacton.github.io']
+// pages that may send a request: the site, the app's own button, and the app's dev
+// site (app/dev-site; its requests are real ones, into the same queue)
+const ORIGINS = ['https://groundwind.app', 'https://hunt.groundwind.app', 'https://gavanacton.github.io', 'https://hunt-dev.groundwind.app', 'https://groundwind-hunt-dev.gavan-acton.workers.dev']
 // the app's dev server, on the PC or the phone over the LAN (HTTPS_DEV=1)
 const DEV_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d{2,5})?$/
 const GAME = new Set(['moose', 'elk', 'deer', 'bear', 'grouse'])

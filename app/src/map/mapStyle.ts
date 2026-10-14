@@ -6,6 +6,7 @@ import { ATTRIBUTION, CONTOUR_FINE_FROM, CORE, DATA_FILES, FINE_RELIEF, LIVE, RE
 import { LIVE_RASTER, LIVE_VECTOR, SHARP_IMAGERY } from '../sources'
 import type { ContourInterval, LayerOpacity, LayerVisibility } from '../state/appStore'
 import { COVERAGE_KEY, COVERAGE_SOURCE, coverageLayers, coverageSource } from '../explore/coverage'
+import { STREAM_PICTURES, STREAMED_LABEL_MAX_ANGLE, streamedContours, streamedDem, streamedImagery, viewLit } from './streamPictures'
 
 /** Bush-tuned flavour of the Protomaps dark basemap: dark green land, navy
  *  water, so the topo, hillshade and forest layers carry the contrast. */
@@ -151,9 +152,10 @@ export function reliefShadePaint(layers: LayerVisibility, opacity: LayerOpacity)
     }
   const k = opacity.hillshade / IMAGERY_SHADE_AT
   const a = (v: number) => Math.min(1, v * k).toFixed(3)
+  // the lit side by the view (viewLit: 1 but where the pictures stream over open alpine)
   return {
     'hillshade-illumination-altitude': [20, 20, 20, 20],
-    'hillshade-highlight-color': [0.7, 0.85, 0.7, 0.4].map((v) => `rgba(255,250,235,${a(v)})`),
+    'hillshade-highlight-color': [0.7, 0.85, 0.7, 0.4].map((v) => `rgba(255,250,235,${a(v * viewLit())})`),
     'hillshade-shadow-color': [1, 1, 1, 0.75].map((v) => `rgba(16,20,12,${a(v)})`),
     'hillshade-exaggeration': 1,
   }
@@ -300,13 +302,15 @@ const RELIEF_STOPS: [number, string][] = [
   [470, '#d9ccbd'],
   [600, '#f1ebe2'],
 ]
-const RELIEF_RAMP = (() => {
+/** The stops stretched from the tuned span onto [lo, hi]: the area's, or
+ *  the view's own (map/viewLook.ts, with the pictures streamed). */
+export function reliefRamp([lo, hi]: [number, number]): ExpressionSpecification {
   const [t0, t1] = RELIEF_TUNED
-  // a span the wrong way round would put the stops out of order: the tuned one then
-  const [lo, hi] = RELIEF[1] > RELIEF[0] ? RELIEF : RELIEF_TUNED
   const at = (m: number) => lo + ((m - t0) * (hi - lo)) / (t1 - t0)
   return ['interpolate', ['linear'], ['elevation'], ...RELIEF_STOPS.flatMap(([m, c]) => [at(m), c])] as unknown as ExpressionSpecification
-})()
+}
+// a span the wrong way round would put the stops out of order: the tuned one then
+const RELIEF_RAMP = reliefRamp(RELIEF[1] > RELIEF[0] ? RELIEF : RELIEF_TUNED)
 
 /** The core's archives (the 1 m LiDAR shade and contours) begin a zoom past
  *  the region's bake and run to the core's own maxzoom; their layers take
@@ -448,7 +452,8 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
         )
       }
     } else {
-      const live = LIVE_RASTER[key]
+      // streamed (a trial): Esri's photo where no province publishes one
+      const live = LIVE_RASTER[key] ?? (key === 'satellite' ? streamedImagery() : undefined)
       if (!live) return
       sources[key] = {
         type: 'raster',
@@ -481,7 +486,8 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   // tiles draw in the field. Over the area's box only, as the baked is: past
   // it is the province's photo or the dark ground, and the worker's cache of
   // it, kept with no cap (vite.config.ts imagery-tiles), stays the box's size
-  if (SHARP_IMAGERY) {
+  // streamed (a trial) with Esri's photo as the imagery itself, the same photo again over the box is a second fetch of every tile
+  if (SHARP_IMAGERY && !streamedImagery()) {
     const s = SHARP_IMAGERY
     sources['satellite-sharp'] = {
       type: 'raster',
@@ -515,9 +521,12 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   // turns dark past ~15°), so the hillsides went with it on zooming in
   // (Gavan, 2026-09-29, Bow view), and outside the core there was nothing
   // to take over at all.
-  const dem = has('dem')
+  // the pictures streamed (streamPictures.ts, a trial): the heights from Mapterhorn's tiles
+  const dem = has('dem') || STREAM_PICTURES
   if (dem) {
-    sources.dem = archive('dem', { type: 'raster-dem', encoding: 'mapbox', tileSize: 256, attribution: `MRDEM © Natural Resources Canada, ${FINE_RELIEF.attribution}` })
+    sources.dem = has('dem')
+      ? archive('dem', { type: 'raster-dem', encoding: 'mapbox', tileSize: 256, attribution: `MRDEM © Natural Resources Canada, ${FINE_RELIEF.attribution}` })
+      : streamedDem()
     const lakes = o.geo.get('waterbody')
     if (lakes) sources.lakes = { type: 'geojson', data: geoData('lakes', lakes, 'relief'), attribution: ATTRIBUTION.lakes }
     // with signal the live MRDEM shade under the DEM's: the DEM stops at the
@@ -533,7 +542,8 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
         'hillshade',
         'hillshade',
       ) as LayerSpecification
-      const baked = has('satellite') ? rasters.findIndex((l) => l.id === 'satellite') : -1
+      // streamed (a trial), under the live imagery the same way: over it, it washed the photo grey
+      const baked = has('satellite') || STREAM_PICTURES ? rasters.findIndex((l) => l.id === 'satellite') : -1
       if (baked >= 0) rasters.splice(baked, 0, shade)
       else rasters.push(shade)
       liveShadeUnderImagery = baked >= 0
@@ -727,12 +737,14 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   // 10 m from z12); step >= 50 is the index line, labelled from z12. Where
   // the 1 m LiDAR lines take over (the core, z13.5+) the parts tagged
   // `core` drop out so the two bakes never double up.
-  if (has('contoursWide')) {
-    sources.contoursWide = archive('contoursWide', { type: 'vector', minzoom: 8, maxzoom: 14 })
+  // streamed (a trial): cut on the phone from Mapterhorn's heights, `level` 1 the index lines
+  const streamedLines = !has('contoursWide') && STREAM_PICTURES
+  if (has('contoursWide') || streamedLines) {
+    sources.contoursWide = streamedLines ? streamedContours(o.contourInterval) : archive('contoursWide', { type: 'vector', minzoom: 8, maxzoom: 14 })
     const outsideLidar = (f: FilterSpecification): FilterSpecification =>
       has('contours') ? (['step', ['zoom'], f, CORE_HANDOFF, ['all', f, ['==', ['get', 'core'], 0]]] as unknown as FilterSpecification) : f
-    const index: FilterSpecification = ['>=', ['get', 'step'], 50]
-    const thin: FilterSpecification = ['<', ['get', 'step'], 50]
+    const index: FilterSpecification = streamedLines ? ['>=', ['get', 'level'], 1] : ['>=', ['get', 'step'], 50]
+    const thin: FilterSpecification = streamedLines ? ['==', ['get', 'level'], 0] : ['<', ['get', 'step'], 50]
     const wide = { source: 'contoursWide', 'source-layer': 'contours' } as const
     rasters.push(
       tag(
@@ -778,7 +790,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
             'text-font': FONT,
             'text-size': 10,
             'symbol-spacing': 300,
-            'text-max-angle': 30,
+            'text-max-angle': streamedLines ? STREAMED_LABEL_MAX_ANGLE : 30,
           },
           paint: { 'text-color': ink.text, 'text-halo-color': ink.halo, 'text-halo-width': 1.2 },
         },

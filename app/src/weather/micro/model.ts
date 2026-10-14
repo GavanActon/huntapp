@@ -374,11 +374,14 @@ function loadDirs(ks: number[], priority: RequestPriority): Promise<void> {
       .load(names, priority)
       .then(() => {
         const g = f.grid
+        // tiles stood in meanwhile (useMosaic): the area's own directions go to its kept state
+        const into = file === f ? { u: momU, v: momV, t: momT, turb: hasTurb } : areaGrid?.file === f ? { u: areaGrid.momU, v: areaGrid.momV, t: areaGrid.momT, turb: areaGrid.hasTurb } : null
+        if (!into) return
         for (const k of want) {
           const d = momName(k)
-          momU[k] = g.raw(`mU${d}`)
-          momV[k] = g.raw(`mV${d}`)
-          if (hasTurb) momT[k] = g.raw(`mT${d}`)
+          into.u[k] = g.raw(`mU${d}`)
+          into.v[k] = g.raw(`mV${d}`)
+          if (into.turb) into.t[k] = g.raw(`mT${d}`)
         }
         const asked = want.filter((k) => wantedDirs.has(k))
         for (const k of asked) wantedDirs.delete(k)
@@ -469,6 +472,55 @@ export function loadRestOfMicro(): Promise<void> {
     Array.from({ length: MOM_N }, (_, k) => k),
     'low',
   ).then(() => f.keep())
+}
+
+// ---- SD wind tiles (windTiles.ts): past the area's box, a mosaic of the
+// national tiles under the view takes the grid's place, every band in at
+// once; back over the box, the area's own grid returns as it was left
+type GridState = {
+  grid: Habitat | null
+  bands: Band[]
+  scales: number[]
+  hasBare: boolean
+  file: BandFile | null
+  fullIn: boolean
+  momU: (Band | null)[]
+  momV: (Band | null)[]
+  momScale: number
+  hasMom: boolean
+  momT: (Band | null)[]
+  momTScale: number
+  momRef: number
+  hasTurb: boolean
+}
+let areaGrid: GridState | null = null
+/** the area's own grid while a mosaic of tiles stands in for it */
+export const onTiles = () => areaGrid != null
+
+export function useMosaic(g: Habitat, mom: { scale: number; tScale: number; spreadRef: number }): void {
+  areaGrid ??= { grid, bands, scales, hasBare, file, fullIn, momU, momV, momScale, hasMom, momT, momTScale, momRef, hasTurb }
+  adopt(g, '')
+  file = null
+  fullIn = true
+  const dirs = Array.from({ length: MOM_N }, (_, k) => momName(k))
+  hasMom = dirs.every((d) => g.has(`mU${d}`) && g.has(`mV${d}`))
+  momU = hasMom ? dirs.map((d) => g.raw(`mU${d}`)) : []
+  momV = hasMom ? dirs.map((d) => g.raw(`mV${d}`)) : []
+  momScale = mom.scale
+  hasTurb = hasMom && dirs.every((d) => g.has(`mT${d}`))
+  momT = hasTurb ? dirs.map((d) => g.raw(`mT${d}`)) : []
+  momTScale = mom.tScale
+  momRef = mom.spreadRef
+  for (const cb of listeners) cb()
+}
+
+export function useAreaGrid(): void {
+  const a = areaGrid
+  if (!a) return
+  areaGrid = null
+  ;({ grid, bands, scales, hasBare, file, fullIn, momU, momV, momScale, hasMom, momT, momTScale, momRef, hasTurb } = a)
+  slotAxis = null
+  for (const cb of listeners) cb()
 }
 
 /** Called when the micro grid lands, and when the leaves knob moves under

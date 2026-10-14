@@ -14,6 +14,9 @@ import { useMeasureStore } from '../measure/measureStore'
 import { useBushLabels } from '../bushLabels/labelStore'
 import { baseTone, BOG_TUFT, bogTuftImage, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour, lidarShadeShown, openLanesOut, type ArchiveRange, reliefShadePaint, standIn, syncUnderlays } from './mapStyle'
 import { offlineComplete, registerAllDataFiles, registerDataFile, sourceModes } from './pmtilesRegistry'
+import { probeTerrainDepth, STREAM_PICTURES, STREAMED_KEYS } from './streamPictures'
+import { initViewLook } from './viewLook'
+import { initWindTiles } from '../weather/micro/windTiles'
 import { showInfoPopup } from './infoPopup'
 import { showPlacePopup } from './placePopup'
 import { useScent } from '../weather/micro/scent'
@@ -194,6 +197,12 @@ export default function MapView() {
       const listing = await bootManifest()
       const known = listing ? new Set(Object.keys(listing.files)) : null
       const [available, geo] = await Promise.all([registerAllDataFiles(known), resolveGeo(known)])
+      // the pictures streamed (streamPictures.ts, a trial): the baked ones left out of the style,
+      // and how deep the streamed heights go here asked before the style is made
+      if (STREAM_PICTURES) {
+        for (const k of STREAMED_KEYS) available.delete(k)
+        devlog('map', `pictures streamed · Mapterhorn to z${await probeTerrainDepth(HOME.center[0], HOME.center[1])}`)
+      }
       // the coverage index's archive, outside every area's folder (explore/coverage.ts)
       const online = useAppStore.getState().online
       if (online && (await registerDataFile(COVERAGE_KEY, COVERAGE_FILE, null, `${DATA_BASE}explore/${COVERAGE_FILE}`)) !== 'missing') available.add(COVERAGE_KEY)
@@ -240,7 +249,7 @@ export default function MapView() {
         return
       }
       const m = map
-      if (import.meta.env.DEV) (window as unknown as { __map?: unknown }).__map = m
+      if (import.meta.env.DEV || import.meta.env.VITE_DEV_SITE) (window as unknown as { __map?: unknown }).__map = m
       // the live layers under the baked ones, on only where they can show:
       // set before the first frame asks for tiles, then as the view moves
       const underlays = () => {
@@ -259,6 +268,10 @@ export default function MapView() {
       m.on('load', () => {
         if (useAppStore.getState().online) viewMoved(m)
         sync()
+        // the pictures streamed (a trial): the colours and shade follow the view, and past
+        // the box the national SD wind tiles stand in for the area's wind grid
+        initViewLook(m)
+        initWindTiles(m)
       })
       useExplore.subscribe(sync)
       // Explore on: the grid shows; off: it goes, and the fence follows the signal

@@ -52,6 +52,7 @@ import AreaOffer from './ui/AreaOffer'
 import { initStatsWatch } from './stats/watch'
 import BoxCard from './explore/BoxCard'
 import WhereTo from './explore/WhereTo'
+import DevBadge from './ui/DevBadge'
 
 /** What has gone wrong (offline with maps missing, no location), and with
  *  the map turned the way you face, the heading: the way that is up. */
@@ -211,6 +212,7 @@ export default function App() {
         {!labelling && !measuring && !routing && !logging && !hearing && checking && <WindCheckCard />}
       </div>
       <SheetHost />
+      <DevBadge />
     </div>
   )
 }

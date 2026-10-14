@@ -43,6 +43,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import habfile  # noqa: E402  (read_hab_raw, write_hab, PREVIEW_PREFIX: was used but never imported since 194dc05)
 ROOT = HERE.parent
 TILES = HERE / "raw" / "tiles"
 AREAS = TILES / "areas"

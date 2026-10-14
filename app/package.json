@@ -13,6 +13,7 @@
   "dependencies": {
     "@protomaps/basemaps": "^5.7.2",
     "dexie": "^4.4.4",
+    "maplibre-contour": "^0.1.1",
     "maplibre-gl": "^5.24.0",
     "pmtiles": "^4.4.1",
     "react": "^19.2.7",

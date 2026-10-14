@@ -133,9 +133,12 @@ export const LIVE_RASTER: Partial<Record<'base' | 'labels' | 'toposheet' | 'sate
   // NRCan Toporama, the whole sheet: blue lakes with their shores, creeks,
   // woods, contours, roads and names, the classic topo look. Explore's base
   // from z7 (Gavan, 2026-10-08: on the geometry base the lakes were names
-  // without water); the hunting views keep their quiet base
+  // without water); the hunting views keep their quiet base. On white paper:
+  // the sheet leaves open ground and rock unfilled, and over the map's dark
+  // ground the treeless mountains past Blanchard River's box came out black
+  // with the wooded valleys pale (Gavan, 2026-10-13: "Blanchard - weird")
   toposheet: {
-    tiles: [wms('https://maps.geogratis.gc.ca/wms/toporama_en', 'WMS-Toporama')],
+    tiles: [wms('https://maps.geogratis.gc.ca/wms/toporama_en', 'WMS-Toporama', { extra: { TRANSPARENT: 'false' } })],
     tileSize: 256,
     attribution: 'Toporama © Natural Resources Canada',
     minzoom: 7,
