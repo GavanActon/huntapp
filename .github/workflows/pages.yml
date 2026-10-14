@@ -1,10 +1,13 @@
-# Build the app and publish it to GitHub Pages on every push to main.
+# Build the app and publish it to GitHub Pages when the `live` branch moves:
+# main goes to the dev site first (dev.yml), and a build checked there is
+# promoted with `git push origin <sha>:live` (docs/DEPLOY.md). The repo's
+# github-pages environment lets only `live` deploy.
 # The app lives at the root of its custom domain, hunt.groundwind.app
 # (the repo's Pages setting), so BASE_PATH is /.
 name: pages
 on:
   push:
-    branches: [main]
+    branches: [live]
   workflow_dispatch:
 permissions:
   contents: read
@@ -15,6 +18,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
+    # run by hand from main, it would put main live past the dev site
+    if: github.ref == 'refs/heads/live'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

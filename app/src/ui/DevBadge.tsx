@@ -2,11 +2,14 @@ import type { JSX } from 'react'
 import { STREAM_PICTURES } from '../map/streamPictures'
 
 /**
- * The dev site (dev.hunt.groundwind.app, a build with VITE_DEV_SITE=1):
+ * The dev site (hunt-dev.groundwind.app, a build with VITE_DEV_SITE=1):
  * a badge that says so, which build it is, and whether the map's pictures
  * are streamed or baked, a tap switching between them (map/streamPictures.ts).
+ * DEV is main's build, its commit the one to promote (docs/DEPLOY.md); TRY a
+ * working tree's preview (VITE_DEV_SITE=try), uncommitted changes on that commit.
  */
 export const DEV_SITE = !!import.meta.env.VITE_DEV_SITE
+const TRY = import.meta.env.VITE_DEV_SITE === 'try'
 
 export default function DevBadge(): JSX.Element | null {
   if (!DEV_SITE) return null
@@ -36,7 +39,7 @@ export default function DevBadge(): JSX.Element | null {
         pointerEvents: 'auto',
       }}
     >
-      DEV · {__BUILD__.sha} · {STREAM_PICTURES ? 'streamed' : 'baked'}
+      {TRY ? 'TRY' : 'DEV'} · {__BUILD__.sha} · {STREAM_PICTURES ? 'streamed' : 'baked'}
     </button>
   )
 }

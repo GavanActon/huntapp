@@ -385,9 +385,11 @@ a single level under groundwind.app.
 - **What it is:** a Worker named `groundwind-hunt-dev` holding only the
   built app (`app/dev-site/wrangler.toml`): no code, bindings, routes or
   cron.
-- **Deploy:** `app/scripts/deploy-dev.ps1` builds this working tree (no
-  commit needed) and deploys it. Run it from PowerShell: Git Bash turns
-  `BASE_PATH=/` into a Windows path and the page loads nothing.
+- **Deploy (2026-10-14, docs/DEPLOY.md):**
+  - Every push to `main` puts main's build here.
+  - `app/scripts/deploy-dev.ps1` now sends a working tree to a preview
+    address, https://try-groundwind-hunt-dev.gavan-acton.workers.dev.
+  - The live app moves only with the `live` branch.
 - **Data:** read from R2 (`VITE_DATA_BASE`), which this forces first; the
   script syncs R2's manifests. R2's CORS allows the dev origins.
 - **On the page:** a DEV badge shows the build and whether pictures are
@@ -395,8 +397,8 @@ a single level under groundwind.app.
   (`VITE_DEV_SITE`). Shared wind checks still send, since they're real
   observations.
 - **Not yet:** area requests from the dev site. The live Worker's
-  request endpoint doesn't list the dev origin, and adding it means a
-  live Worker deploy.
+  request endpoint lists the dev origin in `site/worker.js` (4f2b48d), but
+  that change isn't deployed yet.
 - **Before the live app reads R2:** dev and live share R2's `data/`, so
   give the dev site a prefix of its own first.
 - **What went wrong first:** `wrangler pages project create` run from

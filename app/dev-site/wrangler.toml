@@ -1,12 +1,15 @@
-# The app's dev site (docs/SD-FAST.md, "The dev site"): the built app only,
-# no code, no bindings, no routes. Its address, hunt-dev.groundwind.app, is
-# added by hand in the dashboard (the Worker's Domains). Deploy with
-# app/scripts/deploy-dev.ps1, never by hand from site/: wrangler run there
-# picks up the groundwind.app Worker's config (2026-10-13, it took the site's
-# domains).
+# The app's dev site (docs/DEPLOY.md): the built app only, no code, no
+# bindings, no routes. Its address, hunt-dev.groundwind.app, is added by hand
+# in the dashboard (the Worker's Domains). main's build goes there from
+# .github/workflows/dev.yml; a working tree's goes to the preview alias `try`
+# (app/scripts/deploy-dev.ps1). Never deploy by hand from site/: wrangler run
+# there picks up the groundwind.app Worker's config (2026-10-13, it took the
+# site's domains).
 name = "groundwind-hunt-dev"
+account_id = "ebcafd8e3dbdaad405e17dfb174c0f0f"
 compatibility_date = "2026-10-01"
 workers_dev = true
+preview_urls = true
 
 [assets]
 directory = "../dist-dev"
