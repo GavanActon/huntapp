@@ -4,18 +4,24 @@ import { track } from '../../analytics'
 import { useAppStore } from '../../state/appStore'
 import { agoLabel, clockShort } from '../../time'
 import { refreshWeather, campForecast, hrdpsRunLabel } from '../../weather/refresh'
-import { applySatText, markAsked, runLabel, satAsk, windWords, type SatAsk, type SatResult } from '../../weather/satForecast'
+import { applySatText, markAsked, runLabel, SAT_WAIT_MS, satAsk, windWords, type SatAsk, type SatResult } from '../../weather/satForecast'
 import '../areas.css'
 import '../sat.css'
 
 /**
  * Weather by satellite (weather/satForecast.ts, docs/SAT-FORECAST.md): no
- * signal, and the newest forecast by text. Two steps on one sheet. Send:
- * the request the app wrote, with Text it (an iPhone on satellite opens
- * Messages with it filled in) and Copy (for an inReach's Messenger). Paste:
- * the answer, the whole message as it came; a paste is the update, with no
- * button after it. The request is remembered, so the sheet opened again
- * minutes later says when it was asked.
+ * signal, and the newest forecast by text. One step at a time, so it is
+ * plain where you are (Gavan, 2026-10-14: the paste worked and the sheet
+ * still looked unfinished, its "Weather updated" under the box).
+ * Send: the request the app wrote, with Text it (an iPhone on satellite
+ * opens Messages with it filled in) and Copy (for an inReach's Messenger).
+ * Paste: once sent, the request folds to "Sent 2 min ago · Send again" and
+ * Paste is the big button; a paste is the update, with no button after it.
+ * Updated: the sheet becomes the answer, with Done back to the map and its
+ * new streaks. The request is remembered, so the sheet opened again within
+ * SAT_WAIT_MS opens on the paste; a tap that only opened Messages is not
+ * proof it went, hence Send again. A reply got some other way can be
+ * pasted without sending.
  */
 
 /** +18075550100 as a person reads it: +1 807 555 0100. */
@@ -29,16 +35,27 @@ let pasteTimer = 0
 export default function SatSheet(): JSX.Element {
   const units = useAppStore((s) => s.units)
   const online = useAppStore((s) => s.online)
+  const closeSheet = useAppStore((s) => s.closeSheet)
   const [ask, setAsk] = useState<SatAsk>(satAsk)
   const [text, setText] = useState('')
   const [result, setResult] = useState<SatResult | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  /** 'auto' follows the request; Send again and "Already have a reply?" pick a step by hand */
+  const [view, setView] = useState<'auto' | 'ask' | 'paste'>('auto')
   const f = campForecast()
   const canPaste = typeof navigator.clipboard?.readText === 'function'
   const now = Date.now()
+  const waiting = ask.askedAt != null && now - ask.askedAt < SAT_WAIT_MS
+  const step = view === 'auto' ? (waiting ? 'paste' : 'ask') : view
 
-  const sent = () => setAsk(markAsked(ask))
+  const sent = () => {
+    setAsk(markAsked(ask))
+    setView('auto')
+  }
+  // Text it is a link to Messages: step on after the tap has opened it,
+  // not while the link is still being followed
+  const sentLater = () => window.setTimeout(sent, 250)
 
   const copy = (what: string, done: string) => {
     if (typeof navigator.clipboard?.writeText !== 'function') return setNote('Could not copy')
@@ -78,6 +95,28 @@ export default function SatSheet(): JSX.Element {
   // what the phone has now: the run its newest hours are from, and how old
   const had = f ? (f.sat ? `HRDPS ${runLabel(f.sat.runMs)} by satellite, ${agoLabel(now - f.sat.at)}` : `${f.hrdpsHours ? `HRDPS ${hrdpsRunLabel(f.fetchedAt)}` : 'Forecast'}, fetched ${agoLabel(now - f.fetchedAt)}`) : 'No forecast on the phone yet'
 
+  if (result?.ok) {
+    return (
+      <div className="coords sat">
+        <div className="sat-done">
+          <strong>Weather updated</strong>
+          <span>
+            HRDPS {runLabel(result.runMs)} · {result.hours} h
+          </span>
+          {result.change && (
+            <span>
+              At dusk ({clockShort(result.change.atMs)}): {windWords(result.change.now, units)}
+              {result.change.was && `, was ${windWords(result.change.was, units)}`}
+            </span>
+          )}
+        </div>
+        <button className="btn-primary" onClick={closeSheet}>
+          Done
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="coords sat">
       <div className="coords-help">{had}</div>
@@ -90,71 +129,76 @@ export default function SatSheet(): JSX.Element {
         </div>
       )}
 
-      <div className="coords-label">1 · Send this</div>
-      <div className="sat-req numeral">{ask.text}</div>
-      <div className="coords-acts">
-        {SAT_NUMBER && (
-          <a className="btn-primary" href={`sms:${SAT_NUMBER}?&body=${encodeURIComponent(ask.text)}`} onClick={sent}>
-            Text it
-          </a>
-        )}
-        <button
-          className={SAT_NUMBER ? 'btn-secondary' : 'btn-primary'}
-          onClick={() => {
-            sent()
-            copy(ask.text, 'Copied. Paste it into a message to the number.')
-          }}
-        >
-          Copy
-        </button>
-      </div>
-      {SAT_NUMBER ? (
-        <div className="coords-help">
-          To <span className="numeral">{prettyNumber(SAT_NUMBER)}</span>{' '}
-          <button className="linklike" onClick={() => copy(SAT_NUMBER, 'Number copied')}>
-            Copy number
-          </button>
-          <br />
-          iPhone on satellite: Text it, then Send. inReach: a new message in Messenger to the number, paste, send.
-        </div>
-      ) : (
-        <div className="coords-help">The Groundwind number is not set up yet. A reply made another way can still be pasted below.</div>
-      )}
-
-      <div className="coords-label">2 · Paste the answer</div>
-      {ask.askedAt && !result?.ok && <div className="coords-help">Asked {agoLabel(now - ask.askedAt)}. An answer takes a few minutes; on an inReach, check for messages.</div>}
-      {canPaste && (
-        <button className="btn-secondary coords-paste" onClick={paste}>
-          Paste
-        </button>
-      )}
-      <textarea
-        className="coords-box sat-box"
-        rows={3}
-        value={text}
-        placeholder="The whole reply, as it came"
-        aria-label="The reply"
-        autoCapitalize="off"
-        autoCorrect="off"
-        autoComplete="off"
-        spellCheck={false}
-        onChange={(e) => take(e.target.value)}
-      />
-      {note && <div className="coords-help">{note}</div>}
-      {result && !result.ok && <div className="coords-help sat-bad">{result.why}</div>}
-      {result?.ok && (
-        <div className="coords-found sat-ok">
-          <span>Weather updated</span>
-          <small>
-            HRDPS {runLabel(result.runMs)} · {result.hours} h
-          </small>
-          {result.change && (
-            <small>
-              At dusk ({clockShort(result.change.atMs)}): {windWords(result.change.now, units)}
-              {result.change.was && `, was ${windWords(result.change.was, units)}`}
-            </small>
+      {step === 'ask' ? (
+        <>
+          <div className="coords-label">1 · Send this</div>
+          <div className="sat-req numeral">{ask.text}</div>
+          <div className="coords-acts">
+            {SAT_NUMBER && (
+              <a className="btn-primary" href={`sms:${SAT_NUMBER}?&body=${encodeURIComponent(ask.text)}`} onClick={sentLater}>
+                Text it
+              </a>
+            )}
+            <button
+              className={SAT_NUMBER ? 'btn-secondary' : 'btn-primary'}
+              onClick={() => {
+                sent()
+                copy(ask.text, 'Copied. Paste it into a message to the number.')
+              }}
+            >
+              Copy
+            </button>
+          </div>
+          {SAT_NUMBER ? (
+            <div className="coords-help">
+              To <span className="numeral">{prettyNumber(SAT_NUMBER)}</span>{' '}
+              <button className="linklike" onClick={() => copy(SAT_NUMBER, 'Number copied')}>
+                Copy number
+              </button>
+              <br />
+              iPhone on satellite: Text it, then Send. inReach: a new message in Messenger to the number, paste, send.
+            </div>
+          ) : (
+            <div className="coords-help">The Groundwind number is not set up yet.</div>
           )}
-        </div>
+          {note && <div className="coords-help">{note}</div>}
+          <div className="sat-step">
+            <button className="linklike" onClick={() => setView('paste')}>
+              Already have a reply? Paste it
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="sat-step">
+            <span>{waiting && ask.askedAt != null ? `Sent ${agoLabel(now - ask.askedAt)}` : 'Nothing sent from this phone'}</span>
+            <button className="linklike" onClick={() => setView('ask')}>
+              {waiting ? 'Send again' : 'Send a request'}
+            </button>
+          </div>
+
+          <div className="coords-label">2 · Paste the answer</div>
+          {waiting && <div className="coords-help">An answer takes a few minutes; on an inReach, check for messages.</div>}
+          {canPaste && (
+            <button className="btn-primary coords-paste" onClick={paste}>
+              Paste
+            </button>
+          )}
+          <textarea
+            className="coords-box sat-box"
+            rows={3}
+            value={text}
+            placeholder="The whole reply, as it came"
+            aria-label="The reply"
+            autoCapitalize="off"
+            autoCorrect="off"
+            autoComplete="off"
+            spellCheck={false}
+            onChange={(e) => take(e.target.value)}
+          />
+          {note && <div className="coords-help">{note}</div>}
+          {result && !result.ok && <div className="coords-help sat-bad">{result.why}</div>}
+        </>
       )}
     </div>
   )

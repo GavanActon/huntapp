@@ -19,7 +19,8 @@
   line-height: 1.35;
 }
 
-.sat-online {
+.sat-online,
+.sat-step {
   display: flex;
   gap: 8px;
   align-items: baseline;
@@ -27,7 +28,19 @@
   color: var(--c-text-dim);
 }
 
-.sat-ok > span {
+/* the answer taken in: the whole sheet, then Done */
+.sat-done {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 2px 6px;
+  font-size: calc(15px * var(--ui-scale));
+  color: var(--c-text);
+}
+
+.sat-done strong {
+  font-size: calc(22px * var(--ui-scale));
+  font-weight: 700;
   color: var(--c-good);
 }
 

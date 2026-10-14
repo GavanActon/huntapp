@@ -28,16 +28,22 @@ what is left before it works for real. See [Going live](#going-live).
   - **Copy** (inReach): in Garmin Messenger, start a message to the
     number, paste, send. The request for an area never changes, so it can
     also be saved once as an inReach preset.
-- **2 · Paste the answer**: the whole reply, as it came. Pasting is the
-  update, with no button after it. The sheet says "Weather updated", the
-  run and the hours under it, and how the wind at the coming dusk changed
-  ("At dusk (7:13): NW 6, was NW 5"). A reply for a run the phone already
-  has (fetched with signal) says "Weather updated" too and leaves the
-  fetched numbers alone: they are a little finer than the text's.
-- The request is remembered. Close the sheet and pocket the phone; when it
-  opens again it says when you asked. An answer takes a few minutes. With
-  Apple's satellite you stay connected for it. On an inReach, check for
-  messages.
+- **2 · Paste the answer**: once Text it or Copy is tapped, step 1 folds
+  to "Sent 2 min ago · Send again" (a tap that opened Messages is no proof
+  the text went) and Paste is the big button. "Already have a reply?
+  Paste it" under step 1 skips the sending. Paste the whole reply, as it
+  came. Pasting is the update, with no button after it.
+- **Updated**: the sheet becomes the answer: "Weather updated", the run
+  and the hours under it, how the wind at the coming dusk changed ("At
+  dusk (7:13): NW 6, was NW 5"), and Done back to the map. A reply for a
+  run the phone already has (fetched with signal) says "Weather updated"
+  too and leaves the fetched numbers alone: they are a little finer than
+  the text's. (Until 2026-10-14 both steps sat on one page and the answer
+  showed under the box, easy to miss.)
+- The request is remembered. Close the sheet and pocket the phone; opened
+  again within 6 h (`SAT_WAIT_MS`, a run lands every 6 h) it opens on the
+  paste. An answer takes a few minutes. With Apple's satellite you stay
+  connected for it. On an inReach, check for messages.
 - What goes wrong says so: no code in the text, part of it missing or
   changed, or a reply for another area.
 
