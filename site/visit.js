@@ -297,7 +297,7 @@
   document.addEventListener('click', onClick, { capture: true, passive: true })
   document.addEventListener('auxclick', (e) => e.button === 1 && onClick(e), { capture: true, passive: true })
 
-  // a "How", the table under the chart, an FAQ: opened, and how long it stayed open
+  // a "Go deep", the table under the chart, an FAQ: opened, and how long it stayed open
   const opened = new WeakMap()
   document.addEventListener(
     'toggle',

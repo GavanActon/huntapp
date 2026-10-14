@@ -1,28 +1,46 @@
 # Groundwind
 
-> Groundwind is a hunting app that shows the wind at head height and where your scent goes, for moose, elk, deer and bear hunters. It solves the 2.5 km HD forecast (Environment and Climate Change Canada's HRDPS) over 1 m LiDAR terrain and the forest, adds the thermals, and the hunter's own wind checks correct it. It runs on iPhone and Android and works with no signal.
+> Groundwind is a hunting app that goes deep on the ground you hunt. It shows the wind at head height and where your scent goes, from the 2.5 km HD forecast (Environment and Climate Change Canada's HRDPS) solved over 1 m LiDAR terrain and every stand of trees. Out there it's a hunt partner: your wind checks correct it, a grunt you log puts the bull on the map, and the whole party's scent shows on every phone. Each hunt on that ground adds to it. For moose, elk, deer and bear hunters, on iPhone and Android, with no signal.
 
 - Cost: free during the beta. No account.
 - Phones: runs in the phone's browser and goes on the home screen (Safari on an iPhone, Chrome on Android). It isn't in the App Store or Google Play yet. Open it at https://groundwind.app/app
-- Where: it goes deep on one spot at a time. Each area is a 10 × 10 km block built around a hunter's spot and saved to the phone. Built areas include Pickle Lake near White River, Ontario (WMU 21B), Lac Bailey in Québec (zone 18) and Highland Lake in the Yukon (GMS 4-09). Anyone can request a spot at https://groundwind.app/#request
-- No signal: save an area at camp and all of it works offline. Out for days, a text from an inReach or an iPhone on satellite brings back the newest HD forecast.
+- Where: each area is a 10 × 10 km block built around a hunter's spot and saved to the phone. Most hunters go back to the same few spots every season, and that's the ground it goes deep on. Built areas include Pickle Lake near White River, Ontario (WMU 21B), Lac Bailey in Québec (zone 18), Highland Lake in the Yukon (GMS 4-09) and the Blanchard River in BC. Anyone can request a spot at https://groundwind.app/#request. Ontario and Québec spots are ready within 48 hours.
+- No signal: save an area at camp and all of it works offline. Out for days, a text from an inReach or an iPhone on satellite brings back up to 48 hours of the newest HD forecast in one 160-character message.
 - Made in Canada. Contact: hello@groundwind.app
 
-## What it does
+## On the hunt
 
-- Wind at head height: the HD forecast solved over the 1 m LiDAR ground with WindNinja's 3D flow solve in 16 directions, then slowed and channelled by the stands of trees, so it speeds up over a bluff, goes slack in its lee and breaks off behind a summit.
-- Scent cone: drawn from where the hunter sits, on the ground or in a 4 or 6 m stand, on the head-height wind rather than straight down the forecast.
+- Live wind and scent: the card reads the head-height wind where you stand, your scent cone follows you as you walk, and the app asks for a wind check when the last one has faded.
+- Game: heard a grunt or saw one? Four taps log what it was, the way it came from, how far and when. The map puts him in order with the others, draws where he's likely to go and where he'd swing to get your wind, so you angle in from the right side.
+- Party: where each hunter is, their wind checks, sightings and scent cones on every phone in the party whenever there's signal. See whose scent drifts over whom, and place the caller and the shooter.
+- Round the next corner: drop a scent cone at the corner ahead to see where you'd blow before you get there, with the shooting lanes and how far you'll see from there.
+- Weather: the HD forecast for the area, rain radar, and the game scores for the hour.
+
+## Deep on your ground
+
+- Wind at head height, in layers that each go deeper:
+  - the HD forecast at 10 and 80 m;
+  - our own wind model, trained on WindNinja's full 3D flow solves over 36 places in Canada and the US, from the Yukon to Pennsylvania, which gives a new spot its ground wind;
+  - on a built spot, WindNinja's full solve itself over the 1 m LiDAR ground in 16 directions, so the wind speeds up over a bluff, goes slack in its lee and breaks off behind a summit;
+  - then slowed and channelled by the stands of trees, with the thermals and the gusts;
+  - and corrected by the hunter's own wind checks (below).
 - Thermals: cold air draining downhill at dusk, warm air rising upslope by day, lake and land breezes.
-- Wind checks: puff powder, tap where it went, and the wind near you calibrates to what you felt. The hunt log keeps score of how often the forecast and the model matched.
-- Party setup: every sitter's scent cone at once, to see whose scent drifts over whom and place the caller and the shooter.
+- Scent cone: drawn on the head-height wind from where the hunter sits. From a 4 or 6 m stand the scent rides the air and is mixed down by the cover, and the cone shows where it comes back down to nose height.
 - Bush and sight lines: brush thickness at eye level from the LiDAR point cloud, how far you'll see and where you can shoot.
 - Routes: three ways in on foot over the LiDAR ground, the easiest walk and hunt routes that keep your scent off the best ground.
-- Land: private land and parks on each built spot (Ontario's patent land, BC's private parcels and reserves, First Nation settlement land in the Yukon). Québec's private land isn't in yet. For lot lines, owners' names and Crown land by use, onX Hunt, HuntStand and iHunter go further.
-- Game scores: moose, deer, grouse and bear scored hour by hour for the week ahead from habitat, the last ten days of weather, the wind and the rut. Every score shows its reasons.
+- Land: private land and parks on each built spot (Ontario's patent land, BC's private parcels and reserves, First Nation settlement land in the Yukon). Québec's private land isn't in yet.
+- Game scores: moose, deer, grouse and bear scored hour by hour for the week ahead from habitat, the last ten days of weather, the wind and the rut. Every score shows its reasons. There are no elk scores yet; the wind and scent work for any animal.
+
+## Deeper with every hunt
+
+- Wind checks: puff powder, tap where it went, and the wind within a couple of hundred metres turns to what you felt. From two or more checks it works out how the air above the trees is running against the forecast and carries that a couple of kilometres around you for the next few hours.
+- Lessons: each check also teaches the model how its kind of air behaves at your spot, like cold air draining, a lake breeze or a slot in the trees, and the model uses it wherever that air turns up for about two weeks.
+- Hunt log: your track, the game you heard or saw and your wind checks, grouped into outings, with a season's score of how often the forecast and the model matched what you felt.
+- Shared checks: if the hunter says yes, their checks come back without a name or notes and teach the ground wind where it's wrong, for everyone.
 
 ## Beside other hunting apps
 
-Most hunters already carry onX Hunt or iHunter for the land and zones, and Windy for the weather, and those apps cover the whole map. Groundwind is an active hunt partner on the spot you're hunting, there to help you make better decisions when it counts. HuntWise, HuntStand and Windy show a forecast wind, worked out for 10 m up over open ground. Groundwind is meant to be used beside those apps: it takes the forecast down to head height on the hunter's own ground and draws their scent on it. It marks private land and parks on its spots, and leaves lot lines and owners' names to those apps.
+onX Hunt, HuntStand and iHunter cover whole states and provinces, and Windy covers the weather for the whole continent. Groundwind goes deep on the ground you hunt, and on the hunt it's the one app you need. HuntWise, HuntStand and Windy show a forecast wind, worked out for 10 m up over open ground; Groundwind takes that forecast down to head height on the hunter's own ground and draws their scent on it. Two things it leaves to the others: lot lines with owners' names, which onX, HuntStand and iHunter carry, and maps of ground it hasn't built yet.
 
 ## Pages
 
@@ -32,7 +50,7 @@ Most hunters already carry onX Hunt or iHunter for the land and zones, and Windy
 - [Wind checks](https://groundwind.app/wind-checks): how many puffs of powder it takes to tune the wind to your spot, where to take them and how long they hold, measured at 1,100 weather stations
 - [Calling moose with the wind](https://groundwind.app/moose-calling-wind): why the bull circles for your wind, and where the caller and the shooter go
 - [When moose move](https://groundwind.app/moose-weather): temperature, rain, wind and the rut, from the research
-- [Compared with other apps](https://groundwind.app/compare): what onX Hunt, HuntStand, HuntWise, iHunter and Windy each do with the wind, checked October 2026, and where Groundwind fits beside them
+- [Compared with other apps](https://groundwind.app/compare): what onX Hunt, HuntStand, HuntWise, iHunter and Windy each do with the wind, checked October 2026, and what to keep them for
 
 ## Data
 

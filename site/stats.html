@@ -718,7 +718,7 @@ function renderSite(d) {
   tq.addEventListener('input', showTaps)
   c6.append(h('div', { class: 'row' }, tq), tapHost)
   showTaps()
-  const c7 = card('Opened', 'Each "How", table and question opened, by how many page loads, and how long it stayed open')
+  const c7 = card('Opened', 'Each "Go deep", table and question opened, by how many page loads, and how long it stayed open')
   table(c7, [{ k: 'page', t: 'Page' }, { k: 'where', t: 'Where' }, { k: 'el', t: 'Summary' }, { k: 'views', t: 'Loads', n: 1 }, { k: 'opens', t: 'Opens', n: 1 }, { k: 'avg_s', t: 'Open, avg', n: 1, f: (v) => mins(v) }],
     d.digs.map((r) => ({ ...r, where: secName(r.page, r.sec) })), { sort: 'views' })
   g3.append(c6, c7)

@@ -54,7 +54,7 @@
       "name": "Groundwind",
       "url": "https://groundwind.app/",
       "installUrl": "https://groundwind.app/app",
-      "description": "A hunting app that shows the wind at head height and where your scent goes, for moose, elk, deer and bear. It solves the 2.5 km HD forecast (HRDPS) over 1 m LiDAR terrain and the forest, adds the thermals, and the hunter's own wind checks correct it. Works with no signal.",
+      "description": "A hunting app for moose, elk, deer and bear that goes deep on the ground you hunt. It shows the wind at head height and where your scent goes, solving the 2.5 km HD forecast (HRDPS) over 1 m LiDAR terrain and the forest with the thermals, and out there it's a hunt partner: the hunter's own wind checks correct it, a logged grunt puts the bull on the map, and the party's scent shows on every phone. Works with no signal.",
       "applicationCategory": "SportsApplication",
       "applicationSubCategory": "Hunting",
       "operatingSystem": "iOS, Android",
@@ -68,8 +68,10 @@
         "Wind at head height: the 2.5 km HD forecast (HRDPS) solved over the 1 m LiDAR ground and every stand of trees, with WindNinja's 3D flow solve in 16 directions",
         "Scent cone from where you sit, on the ground or in a 4 or 6 m stand, carried on the ground wind",
         "Thermals: cold air draining downhill at dusk, warm air rising upslope by day, lake and land breezes",
-        "Wind checks: puff powder, tap where it went, and the wind calibrates to what you felt",
-        "The whole party's scent cones at once, to place the caller and the shooter",
+        "Wind checks: puff powder, tap where it went, and the wind calibrates to what you felt; each check also teaches the model how its kind of air behaves at your spot",
+        "Live wind and scent where you stand as you walk, and a prompt for a wind check when the last has faded",
+        "Game: log a grunt or a sighting in four taps, and see where he's likely to go and where he'd swing to get your wind",
+        "The whole party on every phone: where each one is, their checks, sightings and scent cones, to place the caller and the shooter",
         "Bush thickness at eye level and sight lines from the LiDAR point cloud",
         "Walking routes over the LiDAR ground that keep your scent off the best ground",
         "Moose, deer, grouse and bear scored hour by hour for the week ahead",
@@ -110,7 +112,7 @@
       <a class="btn btn-go" href="/app">Open the beta</a>
       <a class="btn btn-quiet" href="#request">Request your spot</a>
     </div>
-    <p class="hero-also">Already carry onX or Windy? <a href="/compare">See how it fits beside them.</a></p>
+    <p class="hero-also">Already carry onX or Windy? <a href="/compare">See what to keep them for.</a></p>
     <div class="qr">
       <img src="media/app-qr.svg" width="96" height="96" alt="QR code for groundwind.app/app">
       <p><b>It's made for your phone.</b> Point the camera here to open it there, then add it to your home screen.</p>
@@ -128,7 +130,7 @@
     <h2 id="p1-title">Why the wind at your face isn't the forecast.</h2>
     <p>Your scent doesn't travel in a straight line. It bends over ridges, slows in the spruce, and drains downhill at dusk. Groundwind shows you where your scent is really going.</p>
     <details class="dig">
-      <summary>How</summary>
+      <summary>Go deep</summary>
       <div class="dig-body">
         <div class="dig-detail">
           <figure class="loop dig-loop">
@@ -171,7 +173,7 @@
   </div>
   <ol class="stack" aria-label="The layers of the wind model, in order">
     <li><b>Forecast</b><span>The 2.5&nbsp;km HD forecast (HRDPS) at 10 and 80&nbsp;m, so it knows when the ground air comes loose from the wind above on a clear, cold night.</span></li>
-    <li><b>Terrain</b><span>WindNinja's full 3D flow solve over the 1&nbsp;m LiDAR ground, in 16 directions: faster over the bluff, slack in its lee, breaking off behind a summit and circling back.</span></li>
+    <li><b>Terrain</b><span>WindNinja's full 3D flow solve over the 1&nbsp;m LiDAR ground, in 16 directions: faster over the bluff, slack in its lee, breaking off behind a summit and circling back. A new spot starts on our own wind model, trained on those solves over 36 places in Canada and the US.</span></li>
     <li><b>Heat and cold</b><span>Cold air draining downhill at dusk, warm air rising upslope by day, lake and land breezes.</span></li>
     <li><b>Trees and leaves</b><span>Stand height and closure from the LiDAR point cloud, the hardwoods' leaves coming down by date, wind channelled down the slots between stands.</span></li>
     <li><b>Gusts and swirl</b><span>The forecast's gusts widen the cone, and the air tumbles behind tree lines, in openings and in the lee of a ridge.</span></li>
@@ -187,7 +189,7 @@
     <h2 id="p4-title">Know the bush before you're in it.</h2>
     <p>The thicket that takes an hour to cross is where he beds. The old burn is where he feeds. Groundwind uses LiDAR to read the brush at eye level so you can plan your walk and your sit from camp.</p>
     <details class="dig">
-      <summary>How</summary>
+      <summary>Go deep</summary>
       <div class="dig-body">
   <figure class="loop dig-loop">
     <div class="phone"><video data-loop src="media/bushview.mp4" poster="media/bushview.jpg" muted loop playsinline preload="none" aria-label="A lake narrows at Lac Bailey in Québec: the land alone, then the shooting lanes showing where you can see and shoot, then the Bush view colouring the brush from open on the 1991 burn to thicket in the fir"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
@@ -202,7 +204,7 @@
         <h3>On the move</h3>
         <p>A lot of moose and elk hunting is moving. You angle in on a bull you've heard, still-hunt an edge or work round a bluff, and that's where a forecast is least use. Before you step round the corner, see what the air is doing there and how far you'll see.</p>
         <ul class="uses">
-      <li><b>Angle</b><span>Log his grunts with Heard. The map draws his line and where he'd swing to get your wind, so you can angle in from the right side.</span></li>
+      <li><b>Angle</b><span>Log his grunts with Game. The map draws his line and where he'd swing to get your wind, so you can angle in from the right side.</span></li>
       <li><b>Wind</b><span>The streaks run at head height: over the bluff, down the draw, round the edge of the stand.</span></li>
       <li><b>Scent</b><span>Drop a cone at the corner ahead and see where you'd blow before you get there.</span></li>
       <li><b>Range</b><span>Before you step out, the shooting lanes and the sight lines tell you how far you'll see from the next spot.</span></li>
@@ -226,7 +228,7 @@
     <h2 id="p2-title">Calibrate the wind with your powder.</h2>
     <p>Puff your powder and log where it went. Groundwind immediately calibrates the map to what you actually felt.</p>
     <details class="dig">
-      <summary>How</summary>
+      <summary>Go deep</summary>
       <div class="dig-body">
   <figure class="loop dig-loop">
     <div class="phone"><video data-loop src="media/sharpen.mp4" poster="media/sharpen.jpg" muted loop playsinline preload="none" aria-label="A wind check in the app: the scent cone drawn from the forecast, a tap on the powder's direction, the saved check, then the cone swung round to the wind that was felt"></video><button class="loop-toggle" type="button" aria-label="Pause"></button></div>
@@ -257,7 +259,7 @@
     <p>Groundwind scores movement for moose and deer across your area, hour by hour, based on habitat, the rut, canopy cover, and the last 10 days of weather.</p>
     <p>Big game feels the heat early. By the third day of highs over 18&nbsp;°C, moose bed through the heat and move at night. Groundwind flags the first cool day that breaks the heat wave.</p>
     <details class="dig">
-      <summary>How</summary>
+      <summary>Go deep</summary>
       <div class="dig-body">
         <h3>Where they'll be</h3>
         <p>Groundwind scores moose, deer, grouse and bear across your area, hour by hour for the week ahead, from the habitat, the last ten days of weather, the wind, the rut and the leaves. It doesn't mean they're there. Log what you see and the map leans toward it for about a week, and blank sits push it down. Every score shows its reasons, and every rule is a knob from off to double.</p>
@@ -376,7 +378,7 @@
     <h2 id="p5-title">Offline, off-grid, and satellite ready.</h2>
     <p>Save your area at camp, and Groundwind works completely offline.</p>
     <details class="dig">
-      <summary>How</summary>
+      <summary>Go deep</summary>
       <div class="dig-body">
         <ul class="uses">
       <li><b>No signal required</b><span>Your track, pins, and wind checks are all saved locally.</span></li>
@@ -487,7 +489,7 @@
     </details>
     <details>
       <summary>How is it different from onX, HuntWise or Windy?</summary>
-      <p>Use it beside them. Most of us already carry onX or iHunter for the land and Windy for the weather, and they cover the whole map. Groundwind is your active hunt partner on the spot you're hunting, there to help you make better decisions when it counts. HuntWise, HuntStand and Windy show a forecast wind, worked out for 10&nbsp;m up over open ground. Groundwind takes it down to head height over your ridge, your stands of trees and your shoreline, draws your scent on that, and lets a puff of powder correct it. It marks private land and parks on the spots it builds, and leaves lot lines and owners' names to onX and iHunter. <a href="/compare">What each app does, side by side.</a></p>
+      <p>onX and iHunter cover every province and state, and Windy covers the weather for the whole continent. Groundwind goes deep on the ground you hunt, and out there it's your hunt partner, there to help you make better decisions when it counts. HuntWise, HuntStand and Windy show a forecast wind, worked out for 10&nbsp;m up over open ground. Groundwind takes it down to head height over your ridge, your stands of trees and your shoreline, draws your scent on that, and lets a puff of powder correct it. On the hunt it's the one app you need. It marks private land and parks on the spots it builds, and leaves lot lines and owners' names to onX and iHunter. <a href="/compare">What each app does, side by side.</a></p>
     </details>
     <details>
       <summary>What's a scent cone?</summary>
@@ -531,8 +533,8 @@
       <span class="go">Read ›</span>
     </a>
     <a href="/compare">
-      <h3>Beside other apps</h3>
-      <p>What onX, HuntStand, HuntWise, iHunter and Windy each do with the wind, and where Groundwind fits.</p>
+      <h3>Other hunting apps</h3>
+      <p>What onX, HuntStand, HuntWise, iHunter and Windy each do with the wind, and what to keep them for.</p>
       <span class="go">Compare ›</span>
     </a>
   </div>

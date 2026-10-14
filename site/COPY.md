@@ -1,6 +1,6 @@
 # Groundwind homepage copy
 
-Edit the words, keep the headings and the order. `##` is a beat, `###` is a heading inside its "How" dig-in, a line starting with `- ` is a bullet. Anything in [brackets] is a note and is not on the page.
+Edit the words, keep the headings and the order. `##` is a beat, `###` is a heading inside its "Go deep" dig-in, a line starting with `- ` is a bullet. Anything in [brackets] is a note and is not on the page.
 
 [Rule line above the headline]
 The first rule of hunting
@@ -25,7 +25,7 @@ It's made for your phone. Point the camera here to open it there, then add it to
 
 Your scent doesn't travel in a straight line. It bends over ridges, slows in the spruce, and drains downhill at dusk. Groundwind shows you where your scent is really going.
 
-[How, the dig-in. Opens on tap.]
+[Go deep, the dig-in. Opens on tap.]
 
 - **Behind the summit** While the forecast shows a straight south wind over the mountain, Groundwind shows how it breaks off the summit, circles back, and pushes your scent up the north face.
 - **Cold air draining** Once the sun goes down, air on a slope cools and slides downhill—regardless of what the forecast says. Groundwind maps your thermals.
@@ -38,7 +38,7 @@ Groundwind takes the 2.5 km HD forecast and solves it over HD LiDAR and every st
 Every layer is built on published research, and it all runs on your phone with no bars.
 
 - **Forecast** The 2.5 km HD forecast (HRDPS) at 10 and 80 m, so it knows when the ground air comes loose from the wind above on a clear, cold night.
-- **Terrain** WindNinja's full 3D flow solve over the 1 m LiDAR ground, in 16 directions: faster over the bluff, slack in its lee, breaking off behind a summit and circling back.
+- **Terrain** WindNinja's full 3D flow solve over the 1 m LiDAR ground, in 16 directions: faster over the bluff, slack in its lee, breaking off behind a summit and circling back. A new spot starts on our own wind model, trained on those solves over 36 places in Canada and the US.
 - **Heat and cold** Cold air draining downhill at dusk, warm air rising upslope by day, lake and land breezes.
 - **Trees and leaves** Stand height and closure from the LiDAR point cloud, the hardwoods' leaves coming down by date, wind channelled down the slots between stands.
 - **Gusts and swirl** The forecast's gusts widen the cone, and the air tumbles behind tree lines, in openings and in the lee of a ridge.
@@ -48,7 +48,7 @@ Every layer is built on published research, and it all runs on your phone with n
 
 The thicket that takes an hour to cross is where he beds. The old burn is where he feeds. Groundwind uses LiDAR to read the brush at eye level so you can plan your walk and your sit from camp.
 
-[How, the dig-in. Opens on tap.]
+[Go deep, the dig-in. Opens on tap.]
 
 - **Shooting lanes and sight lines** The Hunt view maps open lanes and thick cover, and Dig in shows exactly how far you'll be able to see and shoot in eight directions.
 - **Route planning** Thick bush is loud and slow. The map finds the easiest walk in, and routes that keep your scent off the best ground.
@@ -60,7 +60,7 @@ Eye-level cover isn't the canopy. A closed canopy shades the brush out, while a 
 
 A lot of moose and elk hunting is moving. You angle in on a bull you've heard, still-hunt an edge or work round a bluff, and that's where a forecast is least use. Before you step round the corner, see what the air is doing there and how far you'll see.
 
-- **Angle** Log his grunts with Heard. The map draws his line and where he'd swing to get your wind, so you can angle in from the right side.
+- **Angle** Log his grunts with Game. The map draws his line and where he'd swing to get your wind, so you can angle in from the right side.
 - **Wind** The streaks run at head height: over the bluff, down the draw, round the edge of the stand.
 - **Scent** Drop a cone at the corner ahead and see where you'd blow before you get there.
 - **Range** Before you step out, the shooting lanes and the sight lines tell you how far you'll see from the next spot.
@@ -73,7 +73,7 @@ Routes finds three ways in on foot over the LiDAR ground. One is the easiest wal
 
 Puff your powder and log where it went. Groundwind immediately calibrates the map to what you actually felt.
 
-[How, the dig-in. Opens on tap.]
+[Go deep, the dig-in. Opens on tap.]
 
 - **Local learning** Every puff teaches the app how the air moves in that specific spot. Over time, it learns local patterns like lake breezes or cold air drains.
 - **Set up your party** Drop sitters on the map and see whose scent drifts over whom, so you can put the caller 40 to 50 m upwind of the shooter. More on calling with the wind.
@@ -88,7 +88,7 @@ Groundwind scores movement for moose and deer across your area, hour by hour, ba
 
 Big game feels the heat early. By the third day of highs over 18 °C, moose bed through the heat and move at night. Groundwind flags the first cool day that breaks the heat wave.
 
-[How, the dig-in. Opens on tap.]
+[Go deep, the dig-in. Opens on tap.]
 
 ### Where they'll be
 
@@ -124,7 +124,7 @@ first cool day after 3 warm ones: expect movement
 
 Save your area at camp, and Groundwind works completely offline.
 
-[How, the dig-in. Opens on tap.]
+[Go deep, the dig-in. Opens on tap.]
 
 - **No signal required** Your track, pins, and wind checks are all saved locally.
 - **inReach / satellite sync** Out for days? Text Groundwind from your inReach or iPhone satellite, and the next 48 hours of HD weather data comes back in a single 160-character text message.
