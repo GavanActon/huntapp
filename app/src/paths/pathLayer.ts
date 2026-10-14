@@ -18,6 +18,12 @@ import '../ui/minipop.css'
  * move the map; each stroke is a path of its own, done when the finger
  * lifts. A kept path answers a tap with its length, its time on foot, its
  * name and colour, and Delete. Hidden with the strip's marks (Paths).
+ *
+ * The stroke under the finger is ink on a canvas over the map, drawn the
+ * next frame. Through the map's GeoJSON every move waited on a worker to
+ * re-cut the whole source, and the first ink came 0.4–0.75 s after the
+ * finger landed on a phone (Gavan, 2026-10-14: "first touch always
+ * lags"). A kept stroke stays as ink until the map has drawn it as a path.
  */
 
 const SRC = 'paths'
@@ -60,26 +66,13 @@ function addLayers(map: MlMap) {
     layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: { 'line-color': ['get', 'color'], 'line-width': W, 'line-dasharray': [0, GAP] },
   })
-  // a kept path's tap, wide enough for a thumb (not the stroke under the finger)
+  // a kept path's tap, wide enough for a thumb
   map.addLayer({
     id: 'paths-hit',
     type: 'line',
     source: SRC,
-    filter: ['all', ['==', ['get', 'kind'], 'path'], ['!', ['has', 'live']]] as never,
+    filter: line,
     paint: { 'line-color': '#000', 'line-width': 22, 'line-opacity': 0 },
-  })
-  // the stroke under the finger: where it started, and the finger's end of it
-  map.addLayer({
-    id: 'paths-ends',
-    type: 'circle',
-    source: SRC,
-    filter: ['==', ['get', 'kind'], 'end'],
-    paint: {
-      'circle-radius': 6,
-      'circle-color': '#12263c',
-      'circle-stroke-color': ['get', 'color'],
-      'circle-stroke-width': 2.5,
-    },
   })
   layersOn = map
 }
@@ -93,13 +86,6 @@ function buildFc(): FeatureCollection {
       if (p.points.length < 2) continue
       features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: p.points }, properties: { kind: 'path', id: p.id, color: p.color } })
     }
-  }
-  if (drawing && stroke) {
-    // the stroke under the finger draws as it goes, in the colour it will keep
-    const color = nextColour(paths)
-    const pts = stroke.samples.map((s) => s.ll)
-    if (pts.length >= 2) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: pts }, properties: { kind: 'path', live: true, color } })
-    for (const p of pts.length > 1 ? [pts[0], pts[pts.length - 1]] : pts) features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: p }, properties: { kind: 'end', color } })
   }
   return { type: 'FeatureCollection', features }
 }
@@ -177,8 +163,8 @@ interface Sample {
   ll: [number, number]
 }
 
-/** The stroke under a finger or the mouse, in screen pixels and on the ground. */
-let stroke: { samples: Sample[]; t0: number; touch: boolean } | null = null
+/** The stroke under a finger or the mouse, in screen pixels and on the ground, in the colour it will keep. */
+let stroke: { samples: Sample[]; t0: number; touch: boolean; color: string } | null = null
 // two fingers down: the map's pinch or pan, until every finger is up
 let mapGesture = false
 let lastTouchMs = 0
@@ -192,12 +178,100 @@ function sampleAt(map: MlMap, clientX: number, clientY: number): Sample {
   return { x, y, ll: [ll.lng, ll.lat] }
 }
 
+// ---------- ink: the stroke under the finger, and kept ones until the map shows them ----------
+
+let ink: HTMLCanvasElement | null = null
+/** kept strokes still drawn as ink, by the id of the path each became, until the map draws that path */
+let inked: { pts: [number, number][]; color: string; id: string }[] = []
+
+/** The ink canvas, just over the map's (under its markers and popups), the map's size at the screen's pixels. */
+function inkOn(map: MlMap): CanvasRenderingContext2D | null {
+  const box = map.getCanvasContainer()
+  if (!ink || ink.parentElement !== box) {
+    ink?.remove()
+    ink = document.createElement('canvas')
+    ink.className = 'paths-ink'
+    ink.style.cssText = 'position:absolute;left:0;top:0;pointer-events:none'
+    map.getCanvas().after(ink)
+  }
+  const dpr = window.devicePixelRatio || 1
+  // the GL canvas's size: its container is a box with no height of its own
+  const w = map.getCanvas().clientWidth
+  const h = map.getCanvas().clientHeight
+  if (ink.width !== Math.round(w * dpr) || ink.height !== Math.round(h * dpr)) {
+    ink.width = Math.round(w * dpr)
+    ink.height = Math.round(h * dpr)
+    ink.style.width = `${w}px`
+    ink.style.height = `${h}px`
+  }
+  const ctx = ink.getContext('2d')
+  ctx?.setTransform(dpr, 0, 0, dpr, 0, 0)
+  ctx?.clearRect(0, 0, w, h)
+  return ctx
+}
+
+/** The same dots as the map's line: a dark dot under a coloured one, GAP × W apart. Points come from the ground, so a map that moves keeps them in place. */
+function inkLine(map: MlMap, ctx: CanvasRenderingContext2D, pts: [number, number][], color: string) {
+  if (pts.length < 2) return
+  ctx.beginPath()
+  pts.forEach((ll, i) => {
+    const p = map.project(ll)
+    if (i) ctx.lineTo(p.x, p.y)
+    else ctx.moveTo(p.x, p.y)
+  })
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.setLineDash([0, GAP * W])
+  ctx.lineWidth = CASE_W
+  ctx.strokeStyle = 'rgba(8, 20, 34, 0.85)'
+  ctx.stroke()
+  ctx.lineWidth = W
+  ctx.strokeStyle = color
+  ctx.stroke()
+}
+
+function drawInk(map: MlMap) {
+  if (!stroke && !inked.length) {
+    // nothing to show: the canvas gives its memory back
+    if (ink && ink.width) ink.width = ink.height = 0
+    return
+  }
+  const ctx = inkOn(map)
+  if (!ctx) return
+  for (const k of inked) inkLine(map, ctx, k.pts, k.color)
+  if (!stroke) return
+  const pts = stroke.samples.map((s) => s.ll)
+  inkLine(map, ctx, pts, stroke.color)
+  // where it started, and the finger's end of it
+  ctx.setLineDash([])
+  for (const ll of pts.length > 1 ? [pts[0], pts[pts.length - 1]] : pts) {
+    const p = map.project(ll)
+    ctx.beginPath()
+    ctx.arc(p.x, p.y, 6, 0, 2 * Math.PI)
+    ctx.fillStyle = '#12263c'
+    ctx.fill()
+    ctx.lineWidth = 2.5
+    ctx.strokeStyle = stroke.color
+    ctx.stroke()
+  }
+}
+
 function drawSoon(map: MlMap) {
   if (frame) return
   frame = requestAnimationFrame(() => {
     frame = 0
-    render(map)
+    drawInk(map)
   })
+}
+
+/** A frame the map drew: a kept stroke it now shows as a path (or that is gone, taken back) comes off the ink, in that same frame. */
+function inkHandover(map: MlMap) {
+  if (!inked.length || !map.getLayer('paths-line')) return
+  const have = new Set(usePaths.getState().paths.map((p) => p.id))
+  const left = inked.filter((k) => have.has(k.id) && !map.queryRenderedFeatures({ layers: ['paths-line'], filter: ['==', ['get', 'id'], k.id] }).length)
+  if (left.length === inked.length) return
+  inked = left
+  drawInk(map)
 }
 
 function extend(map: MlMap, clientX: number, clientY: number) {
@@ -246,8 +320,28 @@ function endStroke(map: MlMap, pinch = false) {
   const first = st.samples[0]
   const far = Math.max(...st.samples.map((s) => Math.hypot(s.x - first.x, s.y - first.y)))
   const ms = Date.now() - st.t0
-  if (far < TAP_PX || (pinch && (ms < PINCH_MS || far < PINCH_PX))) return render(map)
-  usePaths.getState().addPath(simplify(st.samples, SIMPLIFY_PX).map((s) => s.ll))
+  if (far < TAP_PX || (pinch && (ms < PINCH_MS || far < PINCH_PX))) return drawInk(map)
+  const pts = simplify(st.samples, SIMPLIFY_PX).map((s) => s.ll)
+  const before = usePaths.getState().drawn.length
+  usePaths.getState().addPath(pts)
+  const { drawn } = usePaths.getState()
+  if (drawn.length === before) return drawInk(map)
+  // the ink holds until the map has drawn the path (inkHandover): no frame without it
+  const k = { pts, color: st.color, id: drawn[drawn.length - 1] }
+  inked.push(k)
+  drawInk(map)
+  // whatever happens to that send, the ink does not stay
+  window.setTimeout(() => {
+    if (!inked.includes(k)) return
+    inked = inked.filter((o) => o !== k)
+    drawInk(map)
+  }, 1500)
+}
+
+function beginStroke(map: MlMap, clientX: number, clientY: number, touch: boolean) {
+  stroke = { samples: [sampleAt(map, clientX, clientY)], t0: Date.now(), touch, color: nextColour(usePaths.getState().paths) }
+  // the first dot under the finger now, not a frame later
+  drawInk(map)
 }
 
 /** The draw gestures, caught on the map's own box before MapLibre's handlers
@@ -267,8 +361,7 @@ function wireFreehand(map: MlMap) {
         e.stopPropagation()
         e.preventDefault() // no click, no mouse echo, no page scroll
         const t = e.touches[0]
-        stroke = { samples: [sampleAt(map, t.clientX, t.clientY)], t0: Date.now(), touch: true }
-        return drawSoon(map)
+        return beginStroke(map, t.clientX, t.clientY, true)
       }
       // a second finger: the stroke ends and the map takes the pinch from here
       if (stroke) endStroke(map, true)
@@ -304,7 +397,7 @@ function wireFreehand(map: MlMap) {
     (e) => {
       if (!drawing(e) || e.button !== 0 || Date.now() - lastTouchMs < 700) return
       e.stopPropagation()
-      stroke = { samples: [sampleAt(map, e.clientX, e.clientY)], t0: Date.now(), touch: false }
+      beginStroke(map, e.clientX, e.clientY, false)
       const move = (ev: MouseEvent) => extend(map, ev.clientX, ev.clientY)
       const up = () => {
         window.removeEventListener('mousemove', move, true)
@@ -338,6 +431,11 @@ export function initPathLayer() {
     addLayers(map)
     render(map)
     wireFreehand(map)
+    map.on('render', () => inkHandover(map))
+    // ink sits on the ground: a map that moves takes it along
+    map.on('move', () => {
+      if (stroke || inked.length) drawInk(map)
+    })
 
     map.on('click', (e) => {
       const st = usePaths.getState()
