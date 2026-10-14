@@ -51,6 +51,7 @@ export interface TuneValues {
   edgeLift: number
   edgeDrop: number
   sepSlope: number
+  sepWind: number
   cavityBack: number
   bodyRise: number
   keepDrop: number
@@ -103,6 +104,7 @@ export const GROUPS: { name: string; knobs: Knob[] }[] = [
       { key: 'edgeLift', label: 'Lift at a tree line', hint: 'how far up the canopy the puff rides at a windward edge, as a share of the stand height', value: 0.67, min: 0, max: 1, step: 0.05, unit: '×h' },
       { key: 'edgeDrop', label: 'Edge when the wind falls to', hint: 'the head wind as a share of what the puff had, below which it is an edge', value: 0.6, min: 0.2, max: 0.9, step: 0.05, unit: '×' },
       { key: 'sepSlope', label: 'Separation slope', hint: 'a lee face steeper than this is passed over by day; 0.3 is 17°', value: 0.3, min: 0.1, max: 0.6, step: 0.05 },
+      { key: 'sepWind', label: 'Separation needs wind', hint: 'the forecast wind below which a lee face and a bank make no eddy, whole at twice this; 0 is any wind', value: 5, min: 0, max: 15, step: 1, unit: ' km/h' },
       { key: 'cavityBack', label: 'Back-flow under a bank', hint: 'the low air under a bank upwind runs back toward it at this share of the wind', value: 0.25, min: 0, max: 0.6, step: 0.05, unit: '×' },
       { key: 'bodyRise', label: 'Body lift in cold calm', hint: 'how high your own warmth lifts the scent in cold calm air', value: 2, min: 0, max: 5, step: 0.5, unit: ' m' },
       { key: 'keepDrop', label: 'Keep the drop in still air', hint: 'on a stable night how much of a drop in the ground the puff keeps as height', value: 1, min: 0, max: 1, step: 0.1, unit: '×' },

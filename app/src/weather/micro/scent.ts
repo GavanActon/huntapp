@@ -11,7 +11,7 @@ import { useAppStore } from '../../state/appStore'
 import { compass } from '../openMeteo'
 import { onProfile } from '../boundaryLayer'
 import { onWeatherGrid } from '../windGrid'
-import { groundGust, groundSampler, groundStability, loadMicro, microGrid, onMicro, SAMPLE_N, type GroundSampler } from './model'
+import { groundGust, groundSampler, groundStability, groundWind, loadMicro, microGrid, onMicro, SAMPLE_N, type GroundSampler } from './model'
 import { ensureRelief, onRelief, reliefCell, reliefNear, WATER } from './relief'
 import { habitat } from '../../spots/habitatGrid'
 import { leavesDown } from './leaves'
@@ -463,6 +463,25 @@ function trapFactor(trap: number, hold = 0.6): number {
 
 /** Past this slope (17°) the flow separates from a lee face in neutral air too (Wood 1995), and the hollow under it is passed over. */
 // SEP_SLOPE: a knob now, its modelled value in scentTune.ts
+/**
+ * How much of a lee face's separation, and of a bank's eddy, the wind
+ * coming over the hills makes: the forecast's 10 m wind at the sit (km/h),
+ * none below the sepWind knob, whole at twice it. Under about 1.5 m/s the
+ * wind meanders more than it blows (Anfossi et al. 2005), and by day the
+ * sun's convection outruns it (U under w*, 1–2 m/s), so no steady eddy
+ * holds in a hill's lee. The two rules firing at 3 km/h lifted a cone off
+ * a north slope and ran its near field back, pointing it south in a SW
+ * wind (Blanchard River, 2026-10-13); round that sit over three days of
+ * forecast, 22 light-wind cones that pointed against the streaks follow
+ * them now, and none went the other way. Not the local 10 m wind under
+ * each puff: that is the lee's own shelter, and it turned the eddy off
+ * where it forms in a 15 km/h wind. Not the sit's either: a crest's
+ * speed-up kept the bank's back-flow, every cone round the sit running
+ * backward on a 6.5 km/h night.
+ */
+function sepByWind(regionalKmh: number, fromKmh: number): number {
+  return fromKmh <= 0 ? 1 : Math.min(1, Math.max(0, (regionalKmh - fromKmh) / fromKmh))
+}
 /** How far upwind of a sit a bank is looked for, m, and the rise it must have to make a cavity. */
 const CAVITY_SCAN_M = 150
 /** the rise it must have, m, and how far downwind of it the cavity reaches, in rises (Lac Bailey, 2026-10-09: any 3 m hummock within 150 m made the near field run backward, and cones five metres apart differed wholesale) */
@@ -764,6 +783,8 @@ export function simulatePlume(
   const keep = keepOfDrop(stable) * T.keepDrop
   // a steep lee face separates the flow in mixed air only (the hold's own ramp, the other way)
   const sepMixed = 1 - keepOfDrop(stable)
+  // and only in a wind over the hills (sepByWind)
+  const sepWind = T.sepWind > 0 ? sepByWind(groundWind(lon, lat, ms)?.regionalKmh ?? 0, T.sepWind) : 1
   const dtm = column || keep > 0 ? reliefNear(lon, lat, kx, ky) : null
   // σz by distance travelled in 1 m steps, for every step the column model
   // takes (its layer shares) and for the steps held up off a drop
@@ -802,7 +823,8 @@ export function simulatePlume(
   if (column && dtm && iSrc >= 0 && out[7] < 3 && out[4] <= 0.5 && sepMixed > 0.5) {
     // in the open only: under a canopy the trunk space has no terrain cavity of its own
     const as = Math.hypot(out[5], out[6])
-    if (as >= 0.5) {
+    // the eddy wants the wind: half the separation's, or none
+    if (as >= 0.5 && sepWind >= 0.5) {
       const ux = -out[5] / as
       const uy = -out[6] / as
       let gPrev = gSrc
@@ -1040,9 +1062,10 @@ export function simulatePlume(
                 // the lee slope and goes down it (it fades as the still-air hold
                 // comes in, over the same stability ramp), and on a hill with any
                 // wind that hold stays out too: every 10 m cell past 17° held the
-                // scent up and hilltop cones vanished (Blanchard River, 2026-10-12)
+                // scent up and hilltop cones vanished (Blanchard River, 2026-10-12).
+                // It needs a wind over the hill as well (sepByWind)
                 const ds = Math.max(Math.hypot(dx, dy), 10)
-                const sep = column && col && !col.stand && dz / ds >= T.sepSlope ? sepMixed : 0
+                const sep = column && col && !col.stand && dz / ds >= T.sepSlope ? sepMixed * sepWind : 0
                 const hold = keep * stillShare(mean)
                 if (out[4] <= 0.5) {
                   if (sep > 0 && sep >= hold) zRel = Math.min(MAX_AGL - zc0, zRel + dz * sep)
