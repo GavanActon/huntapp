@@ -1,5 +1,5 @@
 {
- "_note": "2026-10-15, a first draft; docs/SD-RANKS.md has every source. The order past Ontario and Quebec, by harvest and this fall's hunters (Gavan: 'based on hunting harvest numbers and where hunters will be this fall'). Canada: score = 0.5 harvest share + 0.5 hunter share, against Alberta. US states: 0.5 USFWS licence-holder share + 0.5 a harvest index (deer + 3 elk + 3 moose + bear). Units best first in each. hunt_priority.py reads only ON and QC so far; 'outlines' says where each jurisdiction's units come from. US tiles also need US input adapters before any bake. The US report suggests running the elk and moose states (CO, MT, ID, WY: ~63% of US elk; AK, ME: ~82% of moose) as a parallel track rather than waiting for their state rank; that is Gavan's call.",
+ "_note": "2026-10-15, a first draft; docs/SD-RANKS.md has every source. The order past Ontario and Quebec, by harvest and this fall's hunters (Gavan: 'based on hunting harvest numbers and where hunters will be this fall'). Canada: score = 0.5 harvest share + 0.5 hunter share, against Alberta. US states: 0.5 USFWS licence-holder share + 0.5 a harvest index (deer + 3 elk + 3 moose + bear). Units best first in each. hunt_priority.py reads only ON and QC so far; 'outlines' says where each jurisdiction's units come from. US tiles also need US input adapters before any bake. The US report suggests running the elk and moose states (CO, MT, ID, WY: ~63% of US elk; AK, ME: ~82% of moose) as a parallel track rather than waiting for their state rank; that is Gavan's call. 2026-10-16, Gavan ('whatever you suggest is fine for now'): Maine moved up to 10th, after New York (moose and forest like Quebec's, where the model is strong); the mountain elk states stay at their harvest rank until the model has mountain training, to revisit when the US adapters land; the Canada order stands.",
  "order": {
   "CA": [
    "AB",
@@ -23,6 +23,7 @@
    "TN",
    "NC",
    "NY",
+   "ME",
    "LA",
    "MN",
    "OH",
@@ -46,7 +47,6 @@
    "KS",
    "WY",
    "CA",
-   "ME",
    "SD",
    "MD",
    "WA",
@@ -105,6 +105,10 @@
   [
    "NY",
    "deer 223k, bear 1,759; 560k licences"
+  ],
+  [
+   "ME",
+   "deer 42k, moose 2,319, bear 3,611; 208k licences"
   ],
   [
    "LA",
@@ -197,10 +201,6 @@
   [
    "CA",
    "deer 41k, elk 207, bear 979; 278k licences"
-  ],
-  [
-   "ME",
-   "deer 42k, moose 2,319, bear 3,611; 208k licences"
   ],
   [
    "SD",

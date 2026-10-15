@@ -49,13 +49,17 @@ of a harvest index, where the index is deer + 3 × elk + 3 × moose + bear.
   does (Montana and Colorado hunters per animal).
 - **The order holds without the 3×:** with every species at 1× the top 15
   are the same.
-- **Top 15:** TX, PA, MI, WI, GA, AL, MO, TN, NC, NY, LA, MN, OH, MS, OK.
+- **Top 15:** TX, PA, MI, WI, GA, AL, MO, TN, NC, NY, ME, LA, MN, OH, MS.
+  Maine is moved up to 10th, from 34th (Gavan, 2026-10-16: "whatever you
+  suggest is fine for now"): its moose and forest country is like
+  Québec's, where the model is strong.
 - **Then:** AR, VA, CO, IL, KY, SC, MT, OR, IN, ID, WV, FL, IA, AZ, UT, KS,
   WY, CA, ME, and the rest.
 - **The elk and moose states sit lower on hunter numbers:** Colorado 18,
-  Montana 22, Idaho 25, Wyoming 32, Maine 34. To put them in the top 10,
-  elk and moose would have to count about 10× a deer. That's a judgement
-  for Gavan.
+  Montana 22, Idaho 25, Wyoming 32 (and Maine 34 before it was moved up). To put them in the top 10,
+  elk and moose would have to count about 10× a deer. They stay at their
+  harvest rank until the model has mountain training. Revisit this when
+  the US adapters land.
 - **Licence holders** are USFWS "2023 data" as compiled by Stacker. The
   official dashboard, tracs.fws.gov, refused this network (HTTP 451).
 - **Deer harvest** is the National Deer Association's 2026 Deer Report
