@@ -1,5 +1,5 @@
 {
- "_note": "2026-10-15, a first draft; docs/SD-RANKS.md has every source. The order past Ontario and Quebec, by harvest and this fall's hunters (Gavan: 'based on hunting harvest numbers and where hunters will be this fall'). Canada: score = 0.5 harvest share + 0.5 hunter share, against Alberta. US states: 0.5 USFWS licence-holder share + 0.5 a harvest index (deer + 3 elk + 3 moose + bear). Units best first in each. hunt_priority.py reads only ON and QC so far; 'outlines' says where each jurisdiction's units come from. US tiles also need US input adapters before any bake.",
+ "_note": "2026-10-15, a first draft; docs/SD-RANKS.md has every source. The order past Ontario and Quebec, by harvest and this fall's hunters (Gavan: 'based on hunting harvest numbers and where hunters will be this fall'). Canada: score = 0.5 harvest share + 0.5 hunter share, against Alberta. US states: 0.5 USFWS licence-holder share + 0.5 a harvest index (deer + 3 elk + 3 moose + bear). Units best first in each. hunt_priority.py reads only ON and QC so far; 'outlines' says where each jurisdiction's units come from. US tiles also need US input adapters before any bake. The US report suggests running the elk and moose states (CO, MT, ID, WY: ~63% of US elk; AK, ME: ~82% of moose) as a parallel track rather than waiting for their state rank; that is Gavan's call.",
  "order": {
   "CA": [
    "AB",
@@ -228,7 +228,7 @@
   ],
   [
    "AK",
-   "deer 17k, moose 7,497, bear 1,822; 98k licences"
+   "deer 17k, elk 109, moose 7,497, bear 1,822; 98k licences"
   ],
   [
    "NJ",
@@ -1180,7 +1180,7 @@
  "US-TX": [
   [
    "08 East",
-   "deer 83,981 (2017-18 est.)"
+   "deer 83,981 (2017-18 est.), 60,245 hunters"
   ],
   [
    "06",
@@ -1192,7 +1192,7 @@
   ],
   [
    "14",
-   "deer 47,411 (2017-18 est.)"
+   "deer 47,411 (2017-18 est.), 59,332 hunters"
   ],
   [
    "11",
@@ -1754,7 +1754,7 @@
  "US-TN": [
   [
    "Sumner",
-   "deer 3,571 (2025-26)"
+   "deer 3,571 (2025-26; 3,659 in 2024-25)"
   ],
   [
    "Giles",
@@ -1829,8 +1829,8 @@
    "deer 2,052 (2025-26)"
   ],
   [
-   "Hamilton",
-   "deer 2,013 (2025-26)"
+   "Sevier",
+   "bear 67 (2025-26, top bear county); deer minor"
   ]
  ],
  "US-NC": [
@@ -1911,8 +1911,8 @@
    "deer 3,085, bear 117 (2025)"
   ],
   [
-   "Craven",
-   "deer 3,034 (2025-26)"
+   "Beaufort",
+   "deer 2,746 (2025-26), bear 257 (2025)"
   ]
  ],
  "US-NY": [
@@ -2082,7 +2082,7 @@
  "US-CO": [
   [
    "70",
-   "elk 1,275, deer 859 (2024)"
+   "elk 1,275 (3,448 hunters), deer 859 (2024)"
   ],
   [
    "62",
@@ -2090,7 +2090,7 @@
   ],
   [
    "81",
-   "elk 882, deer 295 (2024)"
+   "elk 882 (3,726 hunters), deer 295 (2024)"
   ],
   [
    "78",
@@ -2332,7 +2332,7 @@
   ],
   [
    "elk:21",
-   "elk 1,400 (2025)"
+   "elk 1,400, 3,121 hunters (2025)"
   ],
   [
    "elk:129",
