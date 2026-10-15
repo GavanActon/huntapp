@@ -592,9 +592,13 @@ function columnOf(out: Float32Array, hab: HabBands | null, conv: number, leafOn:
   }
   const deep = stableDepth(stable) * T.stableDepth
   // the way the head wind runs (it carries the shore and tree-wall rules the
-  // solve does not); near calm at head height, the solve's way
-  const dirE = hs >= 0.3 ? he / hs : as > 0 ? ae / as : 0
-  const dirN = hs >= 0.3 ? hn / hs : as > 0 ? an / as : 0
+  // solve does not); near calm at head height, the solve's way. In a lee's
+  // eddy the air below the canopy top runs back with the floor however slow
+  // the floor is (PALM: the backflow 10-25 m deep at the narrows), so a puff
+  // mixed up into the stand goes back up the slope, not on with the solve
+  const eddy = out[14] > 0
+  const dirE = hs >= 0.3 || (eddy && hs > 0.01) ? he / hs : as > 0 ? ae / as : 0
+  const dirN = hs >= 0.3 || (eddy && hs > 0.01) ? hn / hs : as > 0 ? an / as : 0
   let zb: number
   let kind: Column['kind']
   let a = 2
@@ -775,6 +779,15 @@ export function simulatePlume(
   const RELEASE = T.releaseMin * 60
   const TOTAL = T.followMin * 60
   const { stable, convective, warmWater, t2 } = groundStability(ms)
+  // the puffs' kicks at PALM's head-height turbulence (2026-10-15). PALM's
+  // floor turbulence (turbHead at 4 m, 14 boxes) follows the wind over the
+  // trees, not the slowed floor wind: 0.09 of the local 10 m wind in neutral
+  // air, 0.14 in a sunny mix, 0.03 in settled air, a third more where the air
+  // tumbles in a lee or a swirl. The old kicks went with the floor wind (and
+  // a 0.1 m/s floor): 2x PALM's on open flat ground, 6x on a still night,
+  // 0.7x in a lee. The wander a box can't make (a still night's, the
+  // forecast's doubt) is the meander's and the pale shade's
+  const kickA = Math.max(0.02, 0.09 + 0.08 * convective - 0.075 * stable)
   const noseAt = noseTable(height, stable, convective, T.vertMix)
   const noseGround = height === GROUND_H ? noseAt : noseTable(GROUND_H, stable, convective, T.vertMix)
   const kx = 111_320 * Math.cos((lat * Math.PI) / 180)
@@ -1020,7 +1033,13 @@ export function simulatePlume(
         const v = (-ue * sn + un * c) * gm
         const spd = Math.sqrt(u * u + v * v)
         // the gusts' size with the wind and the spread; a canopy's sweeps and the bush stir harder
-        const sigT = (0.1 + 0.35 * spd + 0.25 * spd * Math.sin(Math.min(80, out[2] * SPREAD) * (Math.PI / 180))) * (burst[k] ? 1.5 : 1) * (1 + 0.5 * (mixF - 1)) * T.gustSize
+        const tumbling = out[3] === 1 || out[14] > 0 ? 1 : Math.min(1, out[11] / 30)
+        // where the air tumbles (a lee's eddy, a swirl) its turbulence is the
+        // wind over the rise's, not the sheltered local 10 m wind's (PALM's
+        // lee at the narrows: 0.29 m/s under a local 10 m wind of 0.5)
+        const u10 = Math.hypot(out[5], out[6])
+        const uKick = u10 + tumbling * Math.max(0, out[15] - u10)
+        const sigT = (0.02 + kickA * uKick * (1 + 0.35 * tumbling)) * (burst[k] ? 1.5 : 1) * (1 + 0.5 * (mixF - 1)) * T.gustSize
         up = up * (1 - DT / TL) + sigT * Math.sqrt((2 * DT) / TL) * gauss(rnd)
         vp = vp * (1 - DT / TL) + sigT * Math.sqrt((2 * DT) / TL) * gauss(rnd)
         const dx = (u + up) * DT
@@ -1193,12 +1212,12 @@ export function simulatePlume(
  * tongue (the share of the minutes a nose notices the sit, the wind as
  * forecast) gives it swung any way round the sit, times how likely that
  * swing is, sd degrees being the model's doubt for the spot and the
- * forecast's (model.ts Spread): 0.37 of it at one sd, 0.02 at two. Not the
+ * forecast's (model.ts Spread): 0.61 of it at one sd, 0.14 at two. Not the
  * average over the swings: that thins a narrow tongue under the noticeable
  * line everywhere (a 5 m stand at dawn went from 0.35 to 0.15 and its cone
- * was gone). The weight is the Gaussian's squared: at its own (0.61 at one
- * sd) the PALM card's false alarms rose 53 -> 61, squared they fell to 47
- * with the held-out score kept (MICRO-WIND §7). PALM's plumes run
+ * was gone). With the puffs' kicks at PALM's turbulence (kickA) the tongue
+ * is PALM-narrow, and the shade, drawn as doubt and not as scent, carries
+ * the cover the kicks used to (MICRO-WIND §7). PALM's plumes run
  * in a tongue where the air is known; the checks put the forecast's
  * head-height way 75 deg off at the median at Pickle Lake, so the cone a
  * hunter can trust is the tongue swung that far, and a check at the sit
@@ -1213,7 +1232,7 @@ function swungGrid(t: Float32Array, sd: number): Float32Array {
   const ws = new Float64Array(K)
   for (let k = 0; k < K; k++) {
     const a = -span + (2 * span * k) / (K - 1)
-    ws[k] = Math.exp(-((a / sd) ** 2))
+    ws[k] = Math.exp(-0.5 * (a / sd) ** 2)
     cs[k] = Math.cos((a * Math.PI) / 180)
     sn[k] = Math.sin((a * Math.PI) / 180)
   }

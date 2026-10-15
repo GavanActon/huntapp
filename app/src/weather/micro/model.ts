@@ -994,6 +994,8 @@ interface Eval {
   tumbleMix: number
   /** the scent's spreads, degrees (SPREAD_DEFAULT) */
   spread: Spread
+  /** how far past the swap the lee's eddy runs back, 0 (none) to 1: the air below the canopy top runs with it (the scent column) */
+  eddy: number
 }
 
 /** The scent's spreads, degrees: the place's own swing with the forecast right, the model's error for this kind of spot, and the forecast's; checks nearby pull the last two in. */
@@ -1053,7 +1055,10 @@ const LEE_REACH_M = 300
 // scored over 18 PALM runs (scripts/palm_compare.py, 2026-10-15): from 68% of
 // head-height directions within 45° of PALM with the rule off to 72%, 38% to
 // 60% where the ground rises over 10° upwind, PALM's reversals found 12% → 43%
-const LEE_DEFAULT = { rise0: 5, rise1: 15, back: 0.5, open: 0.6, uphill: 1, conv: 1, off: 0 }
+// u0, u1: the forecast wind (km/h) over which the eddy comes in; backU: the
+// return flow's speed as a share of that wind where the eddy is whole (0: a
+// share of the floor's own sheltered wind, as before 2026-10-15)
+const LEE_DEFAULT = { rise0: 5, rise1: 15, back: 0.5, open: 0.6, uphill: 1, conv: 1, u0: 2, u1: 5, backU: 0.1, off: 0 }
 let leeTune = { ...LEE_DEFAULT }
 export function setLeeTune(t: Partial<typeof LEE_DEFAULT> | null): void {
   leeTune = { ...LEE_DEFAULT, ...t }
@@ -1355,7 +1360,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     const f = 0.7 * (1 - 0.6 * lay.stable)
     const sp = U * f
     const sigma0 = 15 + 60 * Math.exp(-sp / 3.6 / 0.6)
-    return { e: Ue * f, n: Un * f, sigma: sigma0, regime: sp < 0.8 ? 'calm' : 'wind', swirl: false, gusty: ctx.gf >= 1.8 && U >= 8, parts: [{ key: 'terrain', kmh: sp, toward: (dirFrom + 180) % 360 }], reasons, local10: U, U, dirFrom, forecastU, inGrid: false, slot: false, woods: false, bias: null, fitW, fitWL, e10: Ue, n10: Un, cell: -1, th: 0, cf: f, tumbleMix: 0, spread: { place: sigma0, model: 45, forecast: forcedAir ? 0 : spreadTune.forecast } }
+    return { e: Ue * f, n: Un * f, sigma: sigma0, regime: sp < 0.8 ? 'calm' : 'wind', swirl: false, gusty: ctx.gf >= 1.8 && U >= 8, parts: [{ key: 'terrain', kmh: sp, toward: (dirFrom + 180) % 360 }], reasons, local10: U, U, dirFrom, forecastU, inGrid: false, slot: false, woods: false, bias: null, fitW, fitWL, e10: Ue, n10: Un, cell: -1, th: 0, cf: f, tumbleMix: 0, eddy: 0, spread: { place: sigma0, model: 45, forecast: forcedAir ? 0 : spreadTune.forecast } }
   }
 
   // ---- terrain and roughness: the two lids, blended by stability ----
@@ -1521,7 +1526,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   const rise = shoreRules && edges ? riseUpwind(i, lon, lat, dirFrom) : NaN
   // a sunny day's upslope flow (below) already climbs a lit lee slope, so the
   // eddy gives way as the sun stirs the air
-  const lee = leeShare(rise) * (1 - s) * (1 - leeTune.conv * lay.convective) * clamp((U - 3) / 6, 0, 1) * (th > 0 ? 1 : leeTune.open)
+  const lee = leeShare(rise) * (1 - s) * (1 - leeTune.conv * lay.convective) * clamp((U - leeTune.u0) / (leeTune.u1 - leeTune.u0), 0, 1) * (th > 0 ? 1 : leeTune.open)
   const slot = open && lee < leeTune.back && !slotTune.off && b(K_THSLOPE, i) < slotTune.maxSlope ? slotAt(g, i) : null
   if (slot) {
     const axE = Math.sin(slot.axis * RAD)
@@ -1563,8 +1568,10 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   // the eddy behind the rise: the mean head-height air slows to nothing at
   // LEE_BACK of it and past that runs back toward the rise, at up to half
   // what it had, the direction swapping as the eddy breathes
+  let eddy = 0
   if (lee > 0.02) {
     const k = 1 - lee / leeTune.back
+    if (k < 0) eddy = Math.min(1, -k / 0.5)
     if (k >= 0 || !leeTune.uphill) {
       const f = k >= 0 ? k : 0.5 * k
       mechE *= f
@@ -1573,7 +1580,11 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
       // the return flow climbs the lee slope toward the crest
       // (the micro grid's aspect is the way the slope faces: uphill is 180° from it)
       const facing = bearing(K_THASPECT, i)
-      const sp = Math.hypot(mechE, mechN) * 0.5 * -k
+      // the eddy is the wind over the rise turning back: in PALM's deep lees
+      // (a rise over 10 deg) the floor ran back at 0.09-0.125 of the wind,
+      // under trees as in the open, where the floor's own sheltered share
+      // gave 0.016-0.035 of it
+      const sp = leeTune.backU > 0 ? leeTune.backU * U * Math.min(1, -k / 0.5) : Math.hypot(mechE, mechN) * 0.5 * -k
       const to = facing != null && b(K_THSLOPE, i) >= 2 ? (facing + 180) % 360 : (towardOf(mechE, mechN) + 180) % 360
       ;[mechE, mechN] = vec(sp, to)
     }
@@ -1893,7 +1904,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     if (lay.source === 'estimate') reasons.push('No layering forecast cached: stability estimated from the sky and the wind')
   }
 
-  return { e: E, n: N, sigma, regime, swirl: swirl || tumble >= TUMBLE_SWIRL, gusty, parts, reasons, local10, U, dirFrom, forecastU, inGrid: true, slot: !!slot, woods: th > 0, bias: applied ? lessonBias : null, gustMul, fitW, fitWL, e10, n10, cell: i, th, cf, tumbleMix, spread: spreadOf }
+  return { e: E, n: N, sigma, regime, swirl: swirl || tumble >= TUMBLE_SWIRL, gusty, parts, reasons, local10, U, dirFrom, forecastU, inGrid: true, slot: !!slot, woods: th > 0, bias: applied ? lessonBias : null, gustMul, fitW, fitWL, e10, n10, cell: i, th, cf, tumbleMix, spread: spreadOf, eddy }
 }
 
 function headlineOf(ev: Eval, kmh: number, dirFrom: number, gustKmh: number): string {
@@ -2034,10 +2045,12 @@ export function groundForScoring(ms: number, lon: number, lat: number, full = fa
  *  spread that are the air tumbling, which mix upward too (Eval.tumbleMix,
  *  2026-10-09); out[12] the whole plume's swing with the forecast right,
  *  and out[13] the doubt it may swing by as well (the model's and the
- *  forecast's), degrees (Spread, 2026-10-15). Null when there is no wind at
- *  all to start from. */
+ *  forecast's), degrees (Spread, 2026-10-15); out[14] the lee's eddy past
+ *  the swap, 0-1 (Eval.eddy); out[15] the 10 m wind the cell starts from,
+ *  m/s (Eval.U: the forecast's, before the terrain). Null when there is no
+ *  wind at all to start from. */
 export type GroundSampler = (lon: number, lat: number, out: Float32Array) => boolean
-export const SAMPLE_N = 14
+export const SAMPLE_N = 16
 export function groundSampler(ms: number): GroundSampler | null {
   const ctx = makeCtx(ms)
   if (!ctx.regional && !ctx.fallback) return null
@@ -2059,6 +2072,8 @@ export function groundSampler(ms: number): GroundSampler | null {
       out[11] = ev.tumbleMix
       out[12] = ev.spread.place * spreadTune.swing
       out[13] = Math.hypot(ev.spread.model, ev.spread.forecast)
+      out[14] = ev.eddy
+      out[15] = ev.U / 3.6
     }
     return true
   }
