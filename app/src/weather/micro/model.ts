@@ -16,6 +16,7 @@ import { biasFor, biasMatters, biasWords, learnBiases, type Bias, type Lesson } 
 import { fitAmbient, fitHoldsUntil, fitMatters, fitWeightAt, fitWeightsAt, fitWords, sessionAt, sessionsOf, sitScore as scoreSit, type AmbientFit, type MapProbeFn, type ProbeFn, type SitScore } from './ambientFit'
 import { tuneValues, useScentTune, type TuneValues } from './scentTune'
 import { leavesDown, leavesNote } from './leaves'
+import { elevAt, ensureRelief, onRelief } from './relief'
 
 /**
  * The ground wind: the air a hunter feels at head height, at a point and a
@@ -221,6 +222,7 @@ function adopt(g: Habitat, prefix: string): void {
   hasBare = g.has(prefix + 'canopyBare')
   grid = g
   slotAxis = null
+  leeRise = null
 }
 
 /**
@@ -467,6 +469,8 @@ export function loadRestOfMicro(): Promise<void> {
     clearTimeout(restTimer)
     restTimer = null
   }
+  // the 10 m ground the lee of the land reads (riseUpwind), once the map is up
+  ensureRelief()
   if (!hasMom) return f.keep()
   return loadDirs(
     Array.from({ length: MOM_N }, (_, k) => k),
@@ -520,6 +524,7 @@ export function useAreaGrid(): void {
   areaGrid = null
   ;({ grid, bands, scales, hasBare, file, fullIn, momU, momV, momScale, hasMom, momT, momTScale, momRef, hasTurb } = a)
   slotAxis = null
+  leeRise = null
   for (const cb of listeners) cb()
 }
 
@@ -686,7 +691,43 @@ function rawSigma(c: WindCheck): number | undefined {
   return ev.sigma
 }
 
+/** The air held to one wind and layering, for scoring the rules against a
+ *  model run on the same wind (scripts/palm_compare.py: PALM's boxes): the
+ *  forecast, the treetops seen, the checks and the fit all out of it. The
+ *  app never sets it. */
+export interface ForcedAir {
+  kmh: number
+  /** blowing FROM */
+  dir: number
+  lay?: Partial<Layering>
+  sunElev?: number
+}
+let forcedAir: ForcedAir | null = null
+export function setForcedAir(f: ForcedAir | null): void {
+  forcedAir = f
+  bump()
+}
+
 function makeCtx(ms: number, withAmbient = true): Ctx {
+  const c = makeCtxLive(ms, withAmbient)
+  if (!forcedAir) return c
+  const f = forcedAir
+  return {
+    ...c,
+    lay: { ...c.lay, w10: f.kmh, d10: f.dir, ...f.lay },
+    sunElev: f.sunElev ?? c.sunElev,
+    regional: null,
+    fallback: { kmh: f.kmh, dir: f.dir },
+    gf: 1,
+    checks: [],
+    seen: [],
+    biases: learnBiases([], ms),
+    memory: [],
+    ambient: null,
+  }
+}
+
+function makeCtxLive(ms: number, withAmbient = true): Ctx {
   const home = homePlace()
   const sun = sunPosition(ms, home.lat, home.lon)
   const f = cachedPointForecast(home.lon, home.lat)
@@ -965,6 +1006,81 @@ const _reg = new Float32Array(2)
 let shoreRules = true
 export function setShoreRules(on: boolean): void {
   shoreRules = on
+}
+
+// ---------------------------------------------------------------- the lee of the land
+
+/**
+ * The eddy behind a rise. The terrain wind (the momentum solve, at 10 m over
+ * the trees) slows in the lee of a hill or a bank but never turns back; the
+ * air at head height under it does. PALM at 2–4 m (TEACHER.md, "Funnelling,
+ * and the spots for rules": the Pickle narrows from eight directions, Lac
+ * Bailey's bank) reverses the mean head-height wind by how steeply the ground
+ * rises upwind within 300 m (Winstral's Sx): 4% of cells under 3°, 15% at
+ * 3–6°, 37% at 6–10°, 67% over 10°, a layer about a tree height deep under
+ * air still going with the forecast. In settled air the eddy lifts off and
+ * the slope drains instead (the drainage below takes it); in a near calm the
+ * slopes' own flows run the place.
+ *
+ * Sx needs the ground finer than the micro grid holds it: the going grid's
+ * 10 m LiDAR elevation (relief.ts), so the rule is on where that is loaded.
+ * Each cell's rise is worked out per wind sector the first time it is asked
+ * for and kept for as long as the grid is.
+ */
+const LEE_SECTORS = 16
+const LEE_STEP_M = 20
+const LEE_REACH_M = 300
+/**
+ * The rule's numbers: the rise where the eddy starts (rise0) and where it is
+ * full (rise1), degrees; its share of the mean past which the head-height air
+ * runs back (back); its share over open ground and water, where nothing holds
+ * the wind above off the ground (open); and whether the air that runs back
+ * climbs the slope (uphill) or runs straight against the wind. Held here so
+ * scripts/palm_compare.py can score settings side by side (setLeeTune); the
+ * app never changes them.
+ */
+// scored over 18 PALM runs (scripts/palm_compare.py, 2026-10-15): from 68% of
+// head-height directions within 45° of PALM with the rule off to 72%, 38% to
+// 60% where the ground rises over 10° upwind, PALM's reversals found 12% → 43%
+const LEE_DEFAULT = { rise0: 5, rise1: 15, back: 0.5, open: 0.6, uphill: 1, conv: 1, off: 0 }
+let leeTune = { ...LEE_DEFAULT }
+export function setLeeTune(t: Partial<typeof LEE_DEFAULT> | null): void {
+  leeTune = { ...LEE_DEFAULT, ...t }
+  bump()
+}
+let leeRise: Float32Array | null = null
+
+/** The steepest rise within LEE_REACH_M upwind of a point, degrees; NaN without the going grid. */
+function riseUpwind(i: number, lon: number, lat: number, fromDeg: number): number {
+  const sector = (((Math.round(fromDeg / (360 / LEE_SECTORS)) % LEE_SECTORS) + LEE_SECTORS) % LEE_SECTORS)
+  if (leeRise) {
+    const hit = leeRise[i * LEE_SECTORS + sector]
+    if (!Number.isNaN(hit)) return hit
+  }
+  const z0 = elevAt(lon, lat)
+  if (!Number.isFinite(z0)) return NaN
+  const brg = sector * (360 / LEE_SECTORS) * RAD
+  const kx = 111320 * Math.cos(lat * RAD)
+  const ky = 110540
+  let best = -90
+  for (let x = LEE_STEP_M; x <= LEE_REACH_M; x += LEE_STEP_M) {
+    const z = elevAt(lon + (Math.sin(brg) * x) / kx, lat + (Math.cos(brg) * x) / ky)
+    if (!Number.isFinite(z)) break
+    best = Math.max(best, Math.atan2(z - z0, x) / RAD)
+  }
+  const g = grid
+  if (g) {
+    if (!leeRise || leeRise.length !== g.size * LEE_SECTORS) leeRise = new Float32Array(g.size * LEE_SECTORS).fill(NaN)
+    leeRise[i * LEE_SECTORS + sector] = best
+  }
+  return best
+}
+
+/** How much of the mean head-height wind the eddy behind a rise takes, 0–1. */
+function leeShare(rise: number): number {
+  if (!Number.isFinite(rise) || leeTune.off) return 0
+  const t = clamp((rise - leeTune.rise0) / (leeTune.rise1 - leeTune.rise0), 0, 1)
+  return t * t * (3 - 2 * t)
 }
 
 // ---------------------------------------------------------------- slots in the trees
@@ -1304,7 +1420,16 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   // it, the cross part is held off by the wall it comes from, and some of
   // what is blocked leaves by the open end. This takes the place of the
   // plain shelter behind one tree line.
-  const slot = open ? slotAt(g, i) : null
+  // the lee of the land first (riseUpwind): in the eddy behind a rise a gap
+  // in the trees is a pocket, not a funnel (PALM's narrows: a west wind over
+  // the hill 41° off the gap's line leaves it reversed half the time at a
+  // quarter of the wind, where a north wind 37° off across open water runs
+  // down it at 1.4 times)
+  const rise = shoreRules && edges ? riseUpwind(i, lon, lat, dirFrom) : NaN
+  // a sunny day's upslope flow (below) already climbs a lit lee slope, so the
+  // eddy gives way as the sun stirs the air
+  const lee = leeShare(rise) * (1 - s) * (1 - leeTune.conv * lay.convective) * clamp((U - 3) / 6, 0, 1) * (th > 0 ? 1 : leeTune.open)
+  const slot = open && lee < leeTune.back ? slotAt(g, i) : null
   if (slot) {
     const axE = Math.sin(slot.axis * RAD)
     const axN = Math.cos(slot.axis * RAD)
@@ -1341,6 +1466,28 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     const tN = mechN - nrm * wallN
     mechE = ahead * (tE + nrm * wallE * aheadN)
     mechN = ahead * (tN + nrm * wallN * aheadN)
+  }
+  // the eddy behind the rise: the mean head-height air slows to nothing at
+  // LEE_BACK of it and past that runs back toward the rise, at up to half
+  // what it had, the direction swapping as the eddy breathes
+  if (lee > 0.02) {
+    const k = 1 - lee / leeTune.back
+    if (k >= 0 || !leeTune.uphill) {
+      const f = k >= 0 ? k : 0.5 * k
+      mechE *= f
+      mechN *= f
+    } else {
+      // the return flow climbs the lee slope toward the crest
+      // (the micro grid's aspect is the way the slope faces: uphill is 180° from it)
+      const facing = bearing(K_THASPECT, i)
+      const sp = Math.hypot(mechE, mechN) * 0.5 * -k
+      const to = facing != null && b(K_THSLOPE, i) >= 2 ? (facing + 180) % 360 : (towardOf(mechE, mechN) + 180) % 360
+      ;[mechE, mechN] = vec(sp, to)
+    }
+    if (lee > 0.25) swirl = true
+    if (reasons && (lee >= leeTune.back || !slot) && lee > 0.25) {
+      edgeNote = `in the lee of a ${Math.round(rise)}° rise upwind: the air here ${lee >= leeTune.back ? 'eddies back toward it' : 'stalls and swaps direction'}`
+    }
   }
   const mechG = Math.hypot(mechE, mechN)
   // enough wind, and enough of a gust factor, that the air comes down in bursts
@@ -1723,6 +1870,11 @@ const bump = () => {
 listeners.add(bump)
 onProfile(bump)
 onWeatherGrid(bump)
+// the 10 m ground landing turns the lee of the land on: the field is not what it was
+onRelief(() => {
+  leeRise = null
+  for (const cb of listeners) cb()
+})
 useWindChecks.subscribe(bump)
 useScentTune.subscribe(bump)
 // the leaves knob moves the head-height wind under every hardwood: to all

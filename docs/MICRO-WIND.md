@@ -376,6 +376,82 @@ On the calm decoupled evening the model was built on the rule changes
 nothing that matters: at that cell the mechanical part stays under
 0.6 km/h either way and drainage still decides the regime.
 
+### 5b. The lee of the land (2026-10-15, from PALM)
+
+The terrain wind (WindNinja's momentum solve, 10 m over the trees) slows
+in the lee of a hill or a bank but never turns back. The air at head height
+under it does. PALM, a large-eddy model with the trees in it, run at 2–4 m,
+shows a reversed layer about a tree height deep there (TEACHER.md,
+"Funnelling, and the spots for rules"). It was found on the Pickle narrows
+from eight directions and on Lac Bailey's bank, with the air above the
+trees still going with the forecast. How often the mean head-height wind
+runs back depends on how steeply the ground rises upwind within 300 m
+(Winstral's Sx):
+
+| upwind rise | reversed |
+|---|---|
+| under 3° | 4% |
+| 3–6° | 15% |
+| 6–10° | 37% |
+| over 10° | 67% |
+
+The rule (`model.ts`, `riseUpwind`, `leeShare`):
+- **The rise.** The steepest rise within 300 m upwind, in 20 m steps on the
+  going grid's 10 m LiDAR elevation (relief.ts `elevAt`). It is worked out
+  per cell and per 22.5° wind sector the first time it is asked for. The
+  rule is on wherever the going grid is loaded, which `loadRestOfMicro`
+  now asks for once the map is up.
+- **The eddy's share.** It grows from nothing at a 5° rise to full at 15°
+  (a smoothstep). It is cut by stability, (1 − stable), because in
+  settled air the eddy lifts off the ground and the slope drains instead,
+  so the drainage below takes the slope. It is cut by sunshine,
+  (1 − convective), because a sunny day's upslope flow already climbs a
+  lit lee slope and both would count it twice. It is cut by the wind,
+  fading below 9 km/h and gone by 3, because in a near calm the slopes'
+  own flows run the place. Over open ground and water it is 0.6 of
+  that, since nothing holds the wind above off the ground.
+- **What it does.** The mean head-height wind is scaled by (1 − share /
+  0.5): it slows to nothing at half the eddy. Past that it runs back at up
+  to half what it had. It climbs the slope toward the crest where the
+  slope is over 2° (the return flow climbs the lee slope), and runs
+  straight back where the ground is flat. It swirls (wider spread) past a
+  quarter.
+- **Lee before slot.** Where the eddy holds half the mean or more, a gap in
+  the trees is a pocket, not a funnel, and the slot rule (§5) is not
+  applied. At the narrows, a west wind over the hill, 41° off the gap's
+  line, leaves the gap reversed half the time at a quarter of the wind,
+  while a north wind 37° off across open water runs down it at 1.4 times.
+
+**How it was scored** (`app/scripts/palm_compare.py`). The app's
+groundWind is run with the air forced to each PALM run's forecast wind and
+layering (`setForcedAir`), on a lattice over the run's box, and scored
+against PALM's head-height wind at the same points. The settings were
+chosen side by side (`setLeeTune`) on 18 runs at Pickle and Lac Bailey:
+- every point within 45° of PALM: 68% with the rule off, 72% on;
+- under the trees: 60% → 67%;
+- where the rise upwind is over 10°: 38% → 60%;
+- PALM's reversals found: 12% → 43%, with 76% of the app's reversals
+  right;
+- no run of the 18 got worse but the sunny morning, which the sunshine cut
+  brings back to within 2 points.
+
+Searchmont, not used to choose the settings: 69% → 75%; over a 10° rise,
+28% → 59%. All 20 runs together (45,728 points), as shipped:
+- 69% → 74% within 45°;
+- under the trees 65% → 72%;
+- over a 10° rise 32% → 59%;
+- PALM's reversals found 8% → 53%, with 73% of the app's reversals right;
+- open water unchanged at 84%;
+- 15 runs better, 4 the same, 1 worse: the sunny morning, by 3 points.
+
+What it leaves: the slot rule reverses about 19% of slot cells where PALM
+reverses 8–11%, so its cross-slot return eddy is too keen. Gavan's logged checks (`scripts/replay.py --lee`): Pickle 21
+of 53 within 45° with the rule off and 20 on, the one difference a
+0.1–0.2 km/h calm call. Searchmont's 12 are unchanged, because sunny
+midday and settled dusk are where the rule stands aside. The checks sit
+on flat bog and in light air, so they neither confirm the rule nor argue
+with it. The first checks under a hill on a windy day will.
+
 ### 6. Gusts
 
 - **Gust factor** `gf`: the hour's 10 m gust over its 10 m mean, clamped

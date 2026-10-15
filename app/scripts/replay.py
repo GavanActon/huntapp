@@ -258,6 +258,8 @@ def run(args) -> list[dict]:
                 ctx.close()
                 continue
             page.evaluate(REST_JS)
+            if args.lee:
+                page.evaluate("async (t) => { const m = await import('/src/weather/micro/model.ts'); m.setLeeTune(t) }", json.loads(args.lee))
             print(f"  {day}: ready in {time.time() - t0:.0f} s ({len(todays)} checks)", flush=True)
             if args.loo:
                 objs = [as_check(c, k) for k, c in enumerate(todays)]
@@ -422,6 +424,7 @@ def main() -> int:
     ap.add_argument("--days", help="local days to run, comma separated")
     ap.add_argument("--loo", action="store_true", help="each check judged by the others of its day: raw rules, the local blend, the fit of the air above")
     ap.add_argument("--all-days", action="store_true", help="--loo: the others of every day, not only the check's own (lessons from other days)")
+    ap.add_argument("--lee", help="the lee rule's settings for this pass (model.ts setLeeTune), JSON, e.g. '{\"off\": 1}'; the app's own when left out")
     args = ap.parse_args()
     rows = run(args)
     if not rows:
