@@ -231,6 +231,13 @@ def main() -> int:
     return 0
 
 
+# Since 6ed949f ("HD you install") a dev server treats HD as not installed (grade.ts HD_DEFAULT =
+# !DEV_BUILD) and runs on the SD files; an explicit true per area in huntapp-hd wins, before the page loads.
+# The card scores the HD app: scores before the pin on 6ed949f or later ran SD and do not compare.
+HD_PIN_JS = ("try { localStorage.setItem('huntapp-hd', JSON.stringify(%s)) } catch (e) {}"
+             % json.dumps({json.loads(p.read_text(encoding="utf-8"))["id"]: True for p in (APP / "src" / "areas").glob("*.json")}))
+
+
 def score(jobs, variants, url, band, trace, reach) -> list[dict]:
     results = []
     with sync_playwright() as p:
@@ -238,6 +245,7 @@ def score(jobs, variants, url, band, trace, reach) -> list[dict]:
         for area in dict.fromkeys(j["area"] for j in jobs):
             when = datetime.fromisoformat(f"{DAY}T13:00").replace(tzinfo=TZ)
             ctx = browser.new_context(ignore_https_errors=True, viewport={"width": 430, "height": 900})
+            ctx.add_init_script(HD_PIN_JS)
             page = ctx.new_page()
             page.set_default_timeout(240000)
             page.route("**/api.open-meteo.com/**", lambda route, request: fulfil(route, request, when.date()))
@@ -248,6 +256,9 @@ def score(jobs, variants, url, band, trace, reach) -> list[dict]:
                 page.clock.resume()
             except Exception:
                 pass
+            sd = page.evaluate("async () => { try { return (await import('/src/config.ts')).SD_PREVIEW === true } catch (e) { return false } }")
+            if sd:
+                raise SystemExit(f"{area}: the app is on the SD files (SD_PREVIEW): the HD pin did not take")
             home = page.evaluate("async () => { const a = await import('/src/areas/index.ts'); return a.ACTIVE_AREA.presets[0] }")
             print(area, "ready:", wait_ready(page, int(when.timestamp() * 1000), home), flush=True)
             page.evaluate(REST_JS)
