@@ -6,7 +6,8 @@
 #                                     "host: xonix" (only that machine) and "# why: <test-set cell>"
 #   <queue>/taken/<job>.<host>        claimed by a rename, so two runners never take the same job
 #   <queue>/done/, <queue>/failed/    afterwards; the run's own log is <queue>/log-<job>.txt
-#   <queue>/mode-<host>               off | idle | on (no file: on). idle takes one run at a time, and
+#   <queue>/mode-<host>               off | idle | on | pause (no file: on); pause, a window in
+#                                     <queue>/quiet-<host> or ~/palm/PAUSE also freeze a run going (pause_lib.sh). idle takes one run at a time, and
 #                                     only when Windows' CPU has averaged under PALM_IDLE_CPU % (25)
 #                                     for 15 min on mains power; on takes up to PALM_SLOTS runs
 #   <queue>/status-<host>-<slot>.txt  what this slot is doing, rewritten every minute
@@ -45,8 +46,13 @@ win_ok() {  # idle mode: Windows quiet for 15 min and on mains power
   (( n >= 8 && s / n < ${PALM_IDLE_CPU:-25} )) && [[ "${ac:-1}" == 1 ]]
 }
 
+# pause / quiet windows (pause_lib.sh): no new job while paused; a run going is frozen by run_case.sh
+# shellcheck disable=SC1091
+source "${PALM_BIN:-$KIT/bin}/pause_lib.sh" 2>/dev/null || palm_should_pause() { return 1; }
+
 say "runner up: $CORES cores, slot $SLOT of $SLOTS, queue $Q, kit $KIT"
 while [[ ! -e "$Q/stop-$HOSTID" ]]; do
+  if palm_should_pause "$Q" "$HOSTID"; then status "paused (mode pause, a quiet window or ~/palm/PAUSE)"; CPU=(); sleep 60; continue; fi
   m=$(mode)
   case "$m" in
     off) status "off: takes nothing new"; CPU=(); sleep 120; continue ;;
@@ -73,7 +79,7 @@ while [[ ! -e "$Q/stop-$HOSTID" ]]; do
   say "takes $job: $args"
   log="$HOME/palm/log-${job%.job}.txt"
   # shellcheck disable=SC2086
-  bash "$bin/run_case.sh" $args --cores "$CORES" --here "$KIT" --ship lean > "$log" 2>&1 &
+  PALM_HOST="$HOSTID" bash "$bin/run_case.sh" $args --cores "$CORES" --here "$KIT" --ship lean > "$log" 2>&1 &
   pid=$!
   t0=$(date +%s)
   while kill -0 "$pid" 2>/dev/null; do

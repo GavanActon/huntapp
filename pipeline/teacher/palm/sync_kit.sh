@@ -12,7 +12,7 @@ set -euo pipefail
 R="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 K="${PALM_KIT:-/mnt/c/dev/huntapp/pipeline/raw/windcfd/surrogate/palm}"
 mkdir -p "$K/bin"
-cp "$R/run_case.sh" "$R/ship_run.sh" "$R/palm_runner.sh" "$R/ship_today.sh" "$K/bin/"
+cp "$R/run_case.sh" "$R/ship_run.sh" "$R/palm_runner.sh" "$R/ship_today.sh" "$R/pause_lib.sh" "$K/bin/"
 cp "$R/xonix_start.sh" "$K/xonix-start.sh"
 cp "$R/palm_to_scent.py" "$K/palm_to_scent.py"
 echo "scripts -> $K/bin"

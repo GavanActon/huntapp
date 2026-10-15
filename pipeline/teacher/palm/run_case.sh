@@ -70,8 +70,36 @@ fi
 source "$PREFIX/palm-env.sh"
 cd "$PREFIX"
 echo "== $NAME on $CORES cores, $(date -Is)"
+# pause_lib.sh: a pause or a quiet window holds the start and freezes the run (SIGSTOP to its own process
+# group) until it lifts (SIGCONT); no pause_lib (an older bin/) runs as before
+PALMQ="$(readlink -m "$HERE/../../raw/teacher/palm/queue")"
+PH="${PALM_HOST:-}"
+if [[ -f "$BIN/pause_lib.sh" ]]; then
+  # shellcheck disable=SC1091
+  source "$BIN/pause_lib.sh"
+  PH="${PH:-$(palm_host)}"
+  while palm_should_pause "$PALMQ" "$PH"; do echo "== $(date -Is) $PH paused before the start"; sleep 60; done
+fi
 T0=$(date +%s)
-palmrun -r "$NAME" -c default -a "d3#" -X "$CORES" -T "$CORES" -v -z < /dev/null > "$PREFIX/JOBS/$NAME.palmrun.log" 2>&1 || true
+setsid palmrun -r "$NAME" -c default -a "d3#" -X "$CORES" -T "$CORES" -v -z < /dev/null > "$PREFIX/JOBS/$NAME.palmrun.log" 2>&1 &
+PP=$!
+WP=""
+if declare -F palm_should_pause >/dev/null; then
+  (
+    held=0
+    while kill -0 "$PP" 2>/dev/null; do
+      if palm_should_pause "$PALMQ" "$PH"; then
+        [[ $held == 0 ]] && kill -STOP -- "-$PP" 2>/dev/null && { held=1; echo "== $(date -Is) paused (frozen) for $PH"; }
+      elif [[ $held == 1 ]]; then
+        kill -CONT -- "-$PP" 2>/dev/null; held=0; echo "== $(date -Is) resumed"
+      fi
+      sleep "${PALM_PAUSE_POLL:-30}"
+    done
+  ) &
+  WP=$!
+fi
+wait "$PP" || true
+[[ -n "$WP" ]] && kill "$WP" 2>/dev/null
 T1=$(date +%s)
 MON="$PREFIX/JOBS/$NAME/MONITORING"
 echo "== palmrun finished in $((T1 - T0)) s (log $PREFIX/JOBS/$NAME.palmrun.log)"

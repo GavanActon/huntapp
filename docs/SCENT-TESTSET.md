@@ -51,6 +51,22 @@ xonix does the PALM work. XEVO takes PALM work only when it's idle or when Gavan
   Windows' CPU has averaged under 25% for 15 minutes on mains power, and `on` takes two. XEVO's slots
   start with `xevo_slot.sh 1` and `2` (Start-Process wsl.exe, in its header). The old `xevo-queue.txt`
   and `xevo_runner.sh` are retired: they stopped after their last runs on 2026-10-15.
+- **Pause and quiet windows** (`pause_lib.sh`, 2026-10-15, for Gavan's interview on xonix):
+  - `palm_status.py --xonix pause` freezes PALM on xonix now, and `--xonix on` resumes. The freeze is
+    SIGSTOP to the run's own process group: its CPU comes back, its memory is held, and it carries on
+    where it was.
+  - `--quiet xonix "YYYY-MM-DD HH:MM HH:MM"` sets a window ahead of time. The machine caches its mode
+    and windows from the share each time it reads them, so a window set the night before holds even
+    if XEVO is asleep.
+  - On the machine itself, `touch ~/palm/PAUSE` pauses without the share; delete the file to resume.
+  - Each job's run_case.sh carries the watcher, so even xonix's first-version runner picks it up from
+    its next job. The run going when it was added (bogs nw305) can't be frozen.
+  - Tested with a stand-in run: parent and child froze for the pause and resumed.
+- **XEVO's other tenant** is the national SD wind tile bake (`pipeline/wind_tiles.py bake --queue`,
+  huntapp-88). It uses about 6–8 of the GPU's 8 GB and 2–4 cores, and it's paused by Gavan
+  (`pipeline/raw/windtiles/PAUSE`). In `idle`, PALM yields to it: the bake's cores keep Windows' CPU
+  over the line. In `on`, the bake runs 2–4× slower beside PALM (seen 2026-10-14). So when Gavan
+  resumes the bake, `idle` or `off` is the mode for XEVO.
 - **Edits reach the runners through the share:** after changing the scripts or building a case on
   XEVO, run `bash pipeline/teacher/palm/sync_kit.sh [case ...]`. It never touches the old
   `surrogate/palm/run_case.sh`.
@@ -221,6 +237,12 @@ Each score is saved with the commit it scored, so scores compare over time. The 
 **The bar for a scent change:** the tune-set threat score goes up, misses don't, the held-out score
 doesn't drop, and the checks are no worse (`scripts/replay.py`). Commit and deploy only on Gavan's
 word.
+
+**The bar is the gate to live.** A change that misses it can still go to hunt-dev as a trial on
+Gavan's word. The referee reports which part failed, and the change stays off live until that part
+passes. First case, 2026-10-15: the q2 spread (option 3) passed every part but one. Its misses went
+4 → 5, the new one at P1 am270 toward 090: the app's sunny-morning floor at the slot's west bank runs
+180° wrong, and only the old over-wide spread had covered it by accident.
 
 **Two cards, because the card can't see forecast error** (huntapp-ba's finding, 2026-10-15). PALM's
 air is forced to a perfect forecast. A cone that honestly covers the forecast's own error (the checks

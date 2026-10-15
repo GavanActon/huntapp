@@ -2,7 +2,9 @@
 Gavan asks "what's PALM doing" or "put XEVO on PALM":
 
     py -3.14 pipeline/teacher/palm/palm_status.py                    # queue, each slot, the last results
-    py -3.14 pipeline/teacher/palm/palm_status.py --xevo on          # off | idle | on
+    py -3.14 pipeline/teacher/palm/palm_status.py --xevo on          # off | idle | on | pause
+    py -3.14 pipeline/teacher/palm/palm_status.py --xonix pause      # freeze PALM on xonix now; --xonix on resumes
+    py -3.14 pipeline/teacher/palm/palm_status.py --quiet xonix "2026-10-16 09:00 12:30"   # frozen in that window
     py -3.14 pipeline/teacher/palm/palm_status.py --add "pickle-bogs_nw305_4m --name pickle-bogs_nw305_4m_scent" \
         --why "P8-P10 neutral" [--host xonix] [--order 050]
 
@@ -34,6 +36,9 @@ def show() -> None:
     for host in ("xonix", "xevo"):
         mf = Q / f"mode-{host}"
         print(f"  mode {host}: {mf.read_text().strip() if mf.exists() else 'on (no mode file)'}")
+        qf = Q / f"quiet-{host}"
+        if qf.exists() and qf.read_text().strip():
+            print(f"  quiet {host}: " + "; ".join(ln for ln in qf.read_text().splitlines() if ln.strip()))
     for part in ("taken", "todo"):
         jobs = sorted(p.name for p in (Q / part).glob("*")) if (Q / part).exists() else []
         print(f"  {part}: " + (", ".join(jobs) if jobs else "none"))
@@ -62,8 +67,10 @@ def show() -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--xevo", choices=["off", "idle", "on"], help="XEVO's mode")
-    ap.add_argument("--xonix", choices=["off", "idle", "on"], help="xonix's mode (normally on)")
+    ap.add_argument("--xevo", choices=["off", "idle", "on", "pause"], help="XEVO's mode (pause also freezes a run going)")
+    ap.add_argument("--xonix", choices=["off", "idle", "on", "pause"], help="xonix's mode (normally on; pause freezes a run going)")
+    ap.add_argument("--quiet", nargs=2, metavar=("HOST", "WINDOW"), help='a quiet window: xonix "2026-10-16 09:00 12:30" (the machine\'s clock); PALM is frozen in it')
+    ap.add_argument("--quiet-clear", metavar="HOST", help="drop every quiet window of this host")
     ap.add_argument("--add", help='a job: "<run> [run_case.sh options]"')
     ap.add_argument("--why", help="the test-set cell it fills (or 'explore: ...', with Gavan's OK)")
     ap.add_argument("--host", choices=["xonix", "xevo"], help="only this machine may take it")
@@ -74,6 +81,16 @@ def main() -> int:
         if v:
             (Q / f"mode-{host}").write_text(v + "\n", encoding="utf-8")
             print(f"{host} mode -> {v}")
+    if args.quiet:
+        host, win = args.quiet
+        if not re.fullmatch(r"\d{4}-\d\d-\d\d \d\d:\d\d \d\d:\d\d", win.strip()):
+            raise SystemExit('--quiet: the window is "YYYY-MM-DD HH:MM HH:MM"')
+        with open(Q / f"quiet-{host}", "a", encoding="utf-8") as fh:
+            fh.write(win.strip() + "\n")
+        print(f"{host} quiet {win.strip()}")
+    if args.quiet_clear:
+        (Q / f"quiet-{args.quiet_clear}").unlink(missing_ok=True)
+        print(f"{args.quiet_clear}: no quiet windows")
     if args.add:
         if not args.why:
             raise SystemExit("--why: name the test-set cell this run fills (no cell, no run)")
