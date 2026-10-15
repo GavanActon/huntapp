@@ -395,16 +395,16 @@ function openBox(sel: Selected) {
   useExplore.getState().select(sel)
 }
 
-/** What the tap popup offers on the ground at a point, if anything:
- *  Install where the area's HD is here but not installed; Extend just past
- *  an installed HD box; Get HD here elsewhere in an area. Nothing inside an
- *  installed box, nor outside every area (a tap there puts the box down
- *  itself, explore/index.ts). */
+/** What the tap popup offers on the ground at a point, if anything: Extend
+ *  just past an installed HD box; Get HD here elsewhere in an area. Nothing
+ *  inside an installed box, nor outside every area (a tap there puts the box
+ *  down itself, explore/index.ts). Nor where the area's HD is here but not
+ *  installed: Install is the grade circle's, not every tap's (Gavan,
+ *  2026-10-15). */
 export function hdOffer(lon: number, lat: number): { label: string; run: () => void } | null {
   if (GRADE === 'live' || areaAt(lon, lat)?.id !== ACTIVE_AREA.id) return null
   if (areaGrade() === 'hd') {
-    if (GRADE === 'sd') return { label: 'Install HD', run: () => openGrade() }
-    if (inBox(CORE, lon, lat)) return null
+    if (GRADE === 'sd' || inBox(CORE, lon, lat)) return null
     const core = boxOfBounds(CORE.west, CORE.south, CORE.east, CORE.north)
     const grown = unionBox(core, boxAround(lon, lat, 2.5, 2.5))
     if (kmToBox(CORE, lon, lat) <= EXTEND_KM && hdFits(grown)) {
