@@ -89,23 +89,35 @@
   color: var(--c-hd);
   background: rgba(var(--c-bg-rgb), 0.85);
 }
-/* an action button's dot: its top right, over the rim; gold HD, tan SD */
-.hotbtn > .grade-pip {
+/* an action button's ring, just outside the circle: HD a thin metal gold,
+   lit from the top left like light catching it, with a soft glow; SD a
+   plain tan. Drawn as a gradient masked to its rim. */
+.hotbtn > .grade-ring {
   position: absolute;
-  top: 1px;
-  right: 1px;
-  width: 11px;
-  height: 11px;
+  inset: -3.5px;
   border-radius: 50%;
-  border: 2px solid var(--c-bg);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  padding: 2px;
   pointer-events: none;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
 }
-.grade-pip-hd {
-  background: var(--c-hd);
+.grade-ring-hd {
+  background: conic-gradient(from 200deg, #9c6c14, #e2b24a 18%, #fff1c2 30%, #e7bb55 42%, #a8761c 62%, #d6a33c 80%, #9c6c14);
 }
-.grade-pip-sd {
-  background: var(--c-sd);
+.grade-ring-sd {
+  padding: 1.5px !important;
+  background: linear-gradient(160deg, #cdbd9f, var(--c-sd) 55%, #93826a);
+  opacity: 0.9;
+}
+/* the glow sits on the button: the ring's own shadow would be masked away */
+.hotbtn:has(> .grade-ring-hd) {
+  box-shadow: var(--shadow-fab), 0 0 10px 1px rgba(var(--c-hd-rgb), 0.28);
 }
 /* a button HD would add: the icon quieter, the button still taps (to what HD gives) */
 .hotbtn.grade-want > svg {

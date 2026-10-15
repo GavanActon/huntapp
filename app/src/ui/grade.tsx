@@ -126,9 +126,9 @@ export function offInSd(it: HdItem): boolean {
  *  gives); null for the rest. */
 export type HdMark = 'hd' | 'want' | null
 
-/** An action button's dot: gold where the HD bake powers it, tan where it
- *  runs on SD (Gavan, 2026-10-15: a gold vs tan circle on the action
- *  buttons, not the HD tab). `want` is tan with the icon quieter: HD would
+/** An action button's ring: gold where the HD bake powers it, tan where it
+ *  runs on SD (Gavan, 2026-10-15: an outline round the action buttons,
+ *  "a little fancy, not over the top"; it was a dot, and the HD tab before). `want` is tan with the icon quieter: HD would
  *  add it, and a tap opens what HD gives. */
 export type HotDotMark = 'hd' | 'sd' | 'want' | null
 
@@ -153,10 +153,10 @@ export function hotMark(id: string): HotDotMark {
   return HOT_DOTS.get(id) ?? null
 }
 
-/** The dot on an action button. */
+/** The ring round an action button: gold where HD powers it, tan on SD. */
 export function HotDot({ mark }: { mark: HotDotMark }): JSX.Element | null {
   if (!mark) return null
-  return <span className={`grade-pip grade-pip-${mark === 'hd' ? 'hd' : 'sd'}`} aria-label={mark === 'hd' ? 'HD' : mark === 'want' ? 'Comes with HD' : 'SD'} />
+  return <span className={`grade-ring grade-ring-${mark === 'hd' ? 'hd' : 'sd'}`} aria-label={mark === 'hd' ? 'HD' : mark === 'want' ? 'Comes with HD' : 'SD'} />
 }
 
 /** A layer row's tab (ui/sheets/LayersSheet.tsx): the Hillshade row is HD where the LiDAR shade draws in it. */
