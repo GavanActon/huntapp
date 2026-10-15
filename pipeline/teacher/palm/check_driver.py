@@ -102,8 +102,37 @@ def main() -> None:
               f"terrain periodic: edges at {zt[0, 0]:.1f} m all round (cyclic boundaries)")
         lai = lad[1:].sum(axis=0) * dx
         check(0.0 < lai.mean() < 8.0, f"LAI mean {lai.mean():.2f}, p90 {np.percentile(lai, 90):.2f}, max {lai.max():.2f}")
+        # scent (docs/SCENT-TEACHER.md): the particle block agrees with case.json, every source on
+        # land inside the core, over the local ground, released before the window and alive through it
+        scent = run.get("scent") or []
+        has_block = "&particle_parameters" in text
+        if check(has_block == bool(scent), f"scent: {'a' if has_block else 'no'} particle block, {len(scent)} sources in case.json"):
+            if scent:
+                ng = int(namelist_ints(text, "number_of_particle_groups")[0])
+                check(ng == len(scent) <= 10, f"scent: {ng} groups = {len(scent)} sources, at most 10")
+                end = namelist_ints(text, "end_time")[0]
+                start = namelist_ints(text, "particle_advection_start")[0]
+                skip = namelist_ints(text, "skip_time_data_output_av")[0]
+                age = namelist_ints(text, "particle_maximum_age")[0]
+                check(0 <= start <= skip and start + age >= skip,
+                      f"scent: released from {start:g} s, alive {age:g} s, the window from {skip:g} to {end:g} s")
+                check("seed_follows_topography = .T." in text, "scent: heights over the local ground (seed_follows_topography)")
+                bad = []
+                for i, sv in enumerate(scent, 1):
+                    ux, uy = sv["utm"]
+                    r, c = int((uy - y0) / dx), int((ux - x0) / dx)   # the static driver: row 0 south
+                    inside = abs(ux - cx) <= half and abs(uy - cy) <= half and 0 <= r < zt.shape[0] and 0 <= c < zt.shape[1]
+                    psb = namelist_ints(text, f"psb\\({i}\\)")
+                    ok = inside and psb and abs(psb[0] - sv["h"]) < 1e-6 and (sv["water"] or z0[r, c] > 0.001) and 0.5 <= sv["h"] <= 10
+                    if not ok:
+                        bad.append(sv["name"])
+                check(not bad, f"scent: {len(scent)} sources inside the core at their heights" + (f"; bad: {', '.join(bad)}" if bad else ""))
+                check("'pc_av'" in text and "'pc'" in text, "scent: particle concentration in the averaged output and the gust mask")
         top = info["vertical"]["top"]
-        check(top > zt.max() + 600, f"domain top ~{top} m over the lowest ground, {top - zt.max():.0f} m over the highest")
+        # 600 m of air over the highest ground for the stratified cases; a shallow neutral
+        # case (a `vertical` spec, the Pickle slot) wants five times its relief
+        need = 600.0 if not info.get("shallow") else max(5 * float(zt.max()), 200.0)
+        check(top > zt.max() + need, f"domain top ~{top} m over the lowest ground, {top - zt.max():.0f} m over the highest")
         check(abs(E[0, 0] - (x0 + dx / 2)) < 1e-3 and abs(N[-1, -1] - (y1 - dx / 2)) < 1e-3,
               "E_UTM, N_UTM: row 0 the south edge, as PIDS has it")
         if zt0 is None:

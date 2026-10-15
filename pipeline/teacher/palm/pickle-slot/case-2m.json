@@ -1,0 +1,493 @@
+{
+ "case": "pickle-slot",
+ "tag": "2m",
+ "built": "2026-10-14 19:41",
+ "epsg": 32616,
+ "dx": 2.0,
+ "nx": 512,
+ "ny": 512,
+ "bounds": [
+  603720.0,
+  5421900.0,
+  604744.0,
+  5422924.0
+ ],
+ "gridConvergenceDeg": 1.0735650418972282,
+ "origin_lonlat": [
+  -85.58359007329685,
+  48.94132513181372
+ ],
+ "origin_z": 337.3180236816406,
+ "relief_m": 68.34262084960938,
+ "taper_m": 160.0,
+ "core_m": 700.0,
+ "centre": [
+  604232.0,
+  5422412.0
+ ],
+ "point_xy": [
+  604243.9572335501,
+  5422475.223432499
+ ],
+ "point_latlon": [
+  48.94641,
+  -85.57629
+ ],
+ "vertical": {
+  "dz": [
+   2.0,
+   16.0
+  ],
+  "start": 110.0,
+  "end": 336.0,
+  "nz": 101,
+  "top": 588
+ },
+ "nz_do3d": 69,
+ "canopy_levels": 13,
+ "leaf": 0.5,
+ "terrain": "hrdem",
+ "canopy": "chm",
+ "sources": [
+  "HRDEM 1 m LiDAR (ON-SPL_ON_White_Lake_UTM16_2021-1m-dtm, ON-SPL_ON_White_Lake_UTM16_2021-1m-dsm), NRCan, OGL-Canada",
+  "habitat grid of area pickle-lake (FRI stands, OMNRF, OGL-Ontario)",
+  "1 m lake mask of area pickle-lake (pipeline/lakes.py)"
+ ],
+ "runs": {
+  "pickle-slot_s186_2m": {
+   "direction": 186.0,
+   "speed_kph": 11.5,
+   "stability": "neutral",
+   "hours": 1.0,
+   "average_s": 1200.0,
+   "viz": {
+    "box_m": 480.0,
+    "stride_m": 4.0,
+    "top_m": 48.0,
+    "dt_s": 2.0,
+    "last_s": 120.0
+   },
+   "why": "the case: a southerly 37 deg off the slot; Gavan felt it funnel NE through",
+   "scent": [
+    {
+     "name": "throat west bank 1.5 m",
+     "x": 511.0,
+     "y": 581.0,
+     "h": 1.5,
+     "utm": [
+      604231.0,
+      5422481.0
+     ],
+     "ground_m": 338.8,
+     "canopy_m": 9.5,
+     "water": false
+    },
+    {
+     "name": "throat west bank 5 m",
+     "x": 511.0,
+     "y": 581.0,
+     "h": 5.0,
+     "utm": [
+      604231.0,
+      5422481.0
+     ],
+     "ground_m": 338.8,
+     "canopy_m": 9.5,
+     "water": false
+    },
+    {
+     "name": "the exit 1.5 m",
+     "x": 559.0,
+     "y": 631.0,
+     "h": 1.5,
+     "utm": [
+      604279.0,
+      5422531.0
+     ],
+     "ground_m": 338.8,
+     "canopy_m": 7.7,
+     "water": false
+    },
+    {
+     "name": "bay, over the water 30 m S of the shore 1.5 m",
+     "x": 680.0,
+     "y": 361.0,
+     "h": 1.5,
+     "utm": [
+      604400.0,
+      5422261.0
+     ],
+     "ground_m": 338.2,
+     "canopy_m": 0.0,
+     "water": true
+    },
+    {
+     "name": "ring 000 120 m",
+     "x": 524.0,
+     "y": 695.2,
+     "h": 1.5,
+     "utm": [
+      604244.0,
+      5422595.2
+     ],
+     "ground_m": 343.6,
+     "canopy_m": 6.8,
+     "water": false
+    },
+    {
+     "name": "ring 090 120 m",
+     "x": 644.0,
+     "y": 575.2,
+     "h": 1.5,
+     "utm": [
+      604364.0,
+      5422475.2
+     ],
+     "ground_m": 340.6,
+     "canopy_m": 17.1,
+     "water": false
+    },
+    {
+     "name": "ring 135 120 m",
+     "x": 608.8,
+     "y": 490.4,
+     "h": 1.5,
+     "utm": [
+      604328.8,
+      5422390.4
+     ],
+     "ground_m": 339.9,
+     "canopy_m": 14.1,
+     "water": false
+    },
+    {
+     "name": "ring 225 120 m",
+     "x": 439.1,
+     "y": 490.4,
+     "h": 1.5,
+     "utm": [
+      604159.1,
+      5422390.4
+     ],
+     "ground_m": 338.8,
+     "canopy_m": 6.1,
+     "water": false
+    },
+    {
+     "name": "ring 270 120 m",
+     "x": 404.0,
+     "y": 575.2,
+     "h": 1.5,
+     "utm": [
+      604124.0,
+      5422475.2
+     ],
+     "ground_m": 364.2,
+     "canopy_m": 9.8,
+     "water": false
+    },
+    {
+     "name": "ring 315 120 m",
+     "x": 439.1,
+     "y": 660.1,
+     "h": 1.5,
+     "utm": [
+      604159.1,
+      5422560.1
+     ],
+     "ground_m": 373.2,
+     "canopy_m": 10.9,
+     "water": false
+    }
+   ]
+  },
+  "pickle-slot_s160_2m": {
+   "direction": 160.0,
+   "speed_kph": 11.5,
+   "stability": "neutral",
+   "hours": 1.0,
+   "average_s": 1200.0,
+   "why": "63 deg off the slot: does it still funnel?",
+   "scent": [
+    {
+     "name": "throat west bank 1.5 m",
+     "x": 511.0,
+     "y": 581.0,
+     "h": 1.5,
+     "utm": [
+      604231.0,
+      5422481.0
+     ],
+     "ground_m": 338.8,
+     "canopy_m": 9.5,
+     "water": false
+    },
+    {
+     "name": "throat west bank 5 m",
+     "x": 511.0,
+     "y": 581.0,
+     "h": 5.0,
+     "utm": [
+      604231.0,
+      5422481.0
+     ],
+     "ground_m": 338.8,
+     "canopy_m": 9.5,
+     "water": false
+    },
+    {
+     "name": "the exit 1.5 m",
+     "x": 559.0,
+     "y": 631.0,
+     "h": 1.5,
+     "utm": [
+      604279.0,
+      5422531.0
+     ],
+     "ground_m": 338.8,
+     "canopy_m": 7.7,
+     "water": false
+    },
+    {
+     "name": "bay, over the water 30 m S of the shore 1.5 m",
+     "x": 680.0,
+     "y": 361.0,
+     "h": 1.5,
+     "utm": [
+      604400.0,
+      5422261.0
+     ],
+     "ground_m": 338.2,
+     "canopy_m": 0.0,
+     "water": true
+    },
+    {
+     "name": "ring 000 120 m",
+     "x": 524.0,
+     "y": 695.2,
+     "h": 1.5,
+     "utm": [
+      604244.0,
+      5422595.2
+     ],
+     "ground_m": 343.6,
+     "canopy_m": 6.8,
+     "water": false
+    },
+    {
+     "name": "ring 090 120 m",
+     "x": 644.0,
+     "y": 575.2,
+     "h": 1.5,
+     "utm": [
+      604364.0,
+      5422475.2
+     ],
+     "ground_m": 340.6,
+     "canopy_m": 17.1,
+     "water": false
+    },
+    {
+     "name": "ring 135 120 m",
+     "x": 608.8,
+     "y": 490.4,
+     "h": 1.5,
+     "utm": [
+      604328.8,
+      5422390.4
+     ],
+     "ground_m": 339.9,
+     "canopy_m": 14.1,
+     "water": false
+    },
+    {
+     "name": "ring 225 120 m",
+     "x": 439.1,
+     "y": 490.4,
+     "h": 1.5,
+     "utm": [
+      604159.1,
+      5422390.4
+     ],
+     "ground_m": 338.8,
+     "canopy_m": 6.1,
+     "water": false
+    },
+    {
+     "name": "ring 270 120 m",
+     "x": 404.0,
+     "y": 575.2,
+     "h": 1.5,
+     "utm": [
+      604124.0,
+      5422475.2
+     ],
+     "ground_m": 364.2,
+     "canopy_m": 9.8,
+     "water": false
+    },
+    {
+     "name": "ring 315 120 m",
+     "x": 439.1,
+     "y": 660.1,
+     "h": 1.5,
+     "utm": [
+      604159.1,
+      5422560.1
+     ],
+     "ground_m": 373.2,
+     "canopy_m": 10.9,
+     "water": false
+    }
+   ]
+  },
+  "pickle-slot_s135_2m": {
+   "direction": 135.0,
+   "speed_kph": 11.5,
+   "stability": "neutral",
+   "hours": 1.0,
+   "average_s": 1200.0,
+   "why": "88 deg off, square across from the SE: the return eddy and the drift, not a funnel",
+   "scent": [
+    {
+     "name": "throat west bank 1.5 m",
+     "x": 511.0,
+     "y": 581.0,
+     "h": 1.5,
+     "utm": [
+      604231.0,
+      5422481.0
+     ],
+     "ground_m": 338.8,
+     "canopy_m": 9.5,
+     "water": false
+    },
+    {
+     "name": "throat west bank 5 m",
+     "x": 511.0,
+     "y": 581.0,
+     "h": 5.0,
+     "utm": [
+      604231.0,
+      5422481.0
+     ],
+     "ground_m": 338.8,
+     "canopy_m": 9.5,
+     "water": false
+    },
+    {
+     "name": "the exit 1.5 m",
+     "x": 559.0,
+     "y": 631.0,
+     "h": 1.5,
+     "utm": [
+      604279.0,
+      5422531.0
+     ],
+     "ground_m": 338.8,
+     "canopy_m": 7.7,
+     "water": false
+    },
+    {
+     "name": "bay, over the water 30 m S of the shore 1.5 m",
+     "x": 680.0,
+     "y": 361.0,
+     "h": 1.5,
+     "utm": [
+      604400.0,
+      5422261.0
+     ],
+     "ground_m": 338.2,
+     "canopy_m": 0.0,
+     "water": true
+    },
+    {
+     "name": "ring 000 120 m",
+     "x": 524.0,
+     "y": 695.2,
+     "h": 1.5,
+     "utm": [
+      604244.0,
+      5422595.2
+     ],
+     "ground_m": 343.6,
+     "canopy_m": 6.8,
+     "water": false
+    },
+    {
+     "name": "ring 090 120 m",
+     "x": 644.0,
+     "y": 575.2,
+     "h": 1.5,
+     "utm": [
+      604364.0,
+      5422475.2
+     ],
+     "ground_m": 340.6,
+     "canopy_m": 17.1,
+     "water": false
+    },
+    {
+     "name": "ring 135 120 m",
+     "x": 608.8,
+     "y": 490.4,
+     "h": 1.5,
+     "utm": [
+      604328.8,
+      5422390.4
+     ],
+     "ground_m": 339.9,
+     "canopy_m": 14.1,
+     "water": false
+    },
+    {
+     "name": "ring 225 120 m",
+     "x": 439.1,
+     "y": 490.4,
+     "h": 1.5,
+     "utm": [
+      604159.1,
+      5422390.4
+     ],
+     "ground_m": 338.8,
+     "canopy_m": 6.1,
+     "water": false
+    },
+    {
+     "name": "ring 270 120 m",
+     "x": 404.0,
+     "y": 575.2,
+     "h": 1.5,
+     "utm": [
+      604124.0,
+      5422475.2
+     ],
+     "ground_m": 364.2,
+     "canopy_m": 9.8,
+     "water": false
+    },
+    {
+     "name": "ring 315 120 m",
+     "x": 439.1,
+     "y": 660.1,
+     "h": 1.5,
+     "utm": [
+      604159.1,
+      5422560.1
+     ],
+     "ground_m": 373.2,
+     "canopy_m": 10.9,
+     "water": false
+    }
+   ]
+  }
+ },
+ "canopy_summary": {
+  "cover_mean": 0.7532949447631836,
+  "lai_mean": 2.6896331310272217,
+  "lai_p90": 3.75,
+  "height_p90_mean": 11.114370346069336
+ },
+ "trial_dem": null,
+ "shallow": true
+}

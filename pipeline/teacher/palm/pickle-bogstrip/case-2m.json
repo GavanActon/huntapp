@@ -1,0 +1,206 @@
+{
+ "case": "pickle-bogstrip",
+ "tag": "2m",
+ "built": "2026-10-14 23:18",
+ "epsg": 32616,
+ "dx": 2.0,
+ "nx": 512,
+ "ny": 512,
+ "bounds": [
+  605560.0,
+  5422840.0,
+  606584.0,
+  5423864.0
+ ],
+ "gridConvergenceDeg": 1.0928336228941795,
+ "origin_lonlat": [
+  -85.55822756044238,
+  48.94946716845138
+ ],
+ "origin_z": 337.869384765625,
+ "relief_m": 47.81331253051758,
+ "taper_m": 160.0,
+ "core_m": 700.0,
+ "centre": [
+  606072.0,
+  5423352.0
+ ],
+ "point_xy": [
+  606064.0409790253,
+  5423360.312364095
+ ],
+ "point_latlon": [
+  48.95406,
+  -85.55121
+ ],
+ "vertical": {
+  "dz": [
+   2.0,
+   16.0
+  ],
+  "start": 88.0,
+  "end": 320.0,
+  "nz": 92,
+  "top": 598
+ },
+ "nz_do3d": 59,
+ "canopy_levels": 14,
+ "leaf": 0.5,
+ "terrain": "hrdem",
+ "canopy": "chm",
+ "sources": [
+  "HRDEM 1 m LiDAR (ON-SPL_ON_White_Lake_UTM16_2021-1m-dtm, ON-SPL_ON_White_Lake_UTM16_2021-1m-dsm), NRCan, OGL-Canada",
+  "habitat grid of area pickle-lake (FRI stands, OMNRF, OGL-Ontario)",
+  "1 m lake mask of area pickle-lake (pipeline/lakes.py)"
+ ],
+ "runs": {
+  "pickle-bogstrip_b190_2m": {
+   "direction": 190.0,
+   "speed_kph": 15.1,
+   "stability": "neutral",
+   "hours": 1.0,
+   "average_s": 1200.0,
+   "why": "2026-09-29 22Z (HRDPS 190, 15.1 km/h, 2-80 m near neutral): felt toward W, W, NW",
+   "scent": [
+    {
+     "name": "Gavan's sit 30 Sep, winded, bull S 1.5 m",
+     "x": 551.2,
+     "y": 506.8,
+     "h": 1.5,
+     "utm": [
+      606111.2,
+      5423346.8
+     ],
+     "ground_m": 341.1,
+     "canopy_m": 13.4,
+     "water": false
+    },
+    {
+     "name": "Gavan's sit 30 Sep, winded, bull S 5 m",
+     "x": 551.2,
+     "y": 506.8,
+     "h": 5.0,
+     "utm": [
+      606111.2,
+      5423346.8
+     ],
+     "ground_m": 341.1,
+     "canopy_m": 13.4,
+     "water": false
+    },
+    {
+     "name": "position 2, 30 Sep 1.5 m",
+     "x": 459.0,
+     "y": 501.7,
+     "h": 1.5,
+     "utm": [
+      606019.0,
+      5423341.7
+     ],
+     "ground_m": 341.0,
+     "canopy_m": 12.5,
+     "water": false
+    },
+    {
+     "name": "position 1, 30 Sep 1.5 m",
+     "x": 436.4,
+     "y": 533.5,
+     "h": 1.5,
+     "utm": [
+      605996.4,
+      5423373.5
+     ],
+     "ground_m": 339.5,
+     "canopy_m": 9.7,
+     "water": false
+    },
+    {
+     "name": "the point 1.5 m",
+     "x": 504.0,
+     "y": 520.3,
+     "h": 1.5,
+     "utm": [
+      606064.0,
+      5423360.3
+     ],
+     "ground_m": 341.0,
+     "canopy_m": 0.0,
+     "water": false
+    },
+    {
+     "name": "the point 5 m",
+     "x": 504.0,
+     "y": 520.3,
+     "h": 5.0,
+     "utm": [
+      606064.0,
+      5423360.3
+     ],
+     "ground_m": 341.0,
+     "canopy_m": 0.0,
+     "water": false
+    },
+    {
+     "name": "ring 000 140 m",
+     "x": 504.0,
+     "y": 660.3,
+     "h": 1.5,
+     "utm": [
+      606064.0,
+      5423500.3
+     ],
+     "ground_m": 344.4,
+     "canopy_m": 8.7,
+     "water": false
+    },
+    {
+     "name": "ring 045 140 m",
+     "x": 603.0,
+     "y": 619.3,
+     "h": 1.5,
+     "utm": [
+      606163.0,
+      5423459.3
+     ],
+     "ground_m": 348.3,
+     "canopy_m": 11.0,
+     "water": false
+    },
+    {
+     "name": "ring 090 140 m",
+     "x": 644.0,
+     "y": 520.3,
+     "h": 1.5,
+     "utm": [
+      606204.0,
+      5423360.3
+     ],
+     "ground_m": 345.7,
+     "canopy_m": 16.6,
+     "water": false
+    },
+    {
+     "name": "ring 135 140 m",
+     "x": 603.0,
+     "y": 421.3,
+     "h": 1.5,
+     "utm": [
+      606163.0,
+      5423261.3
+     ],
+     "ground_m": 343.3,
+     "canopy_m": 11.1,
+     "water": false
+    }
+   ]
+  }
+ },
+ "canopy_summary": {
+  "cover_mean": 0.8989238739013672,
+  "lai_mean": 3.317863941192627,
+  "lai_p90": 4.0,
+  "height_p90_mean": 11.902277946472168
+ },
+ "trial_dem": null,
+ "shallow": true
+}

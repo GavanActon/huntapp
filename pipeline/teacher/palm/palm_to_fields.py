@@ -288,6 +288,7 @@ def convert_domain(args, info: dict, dom: dict, f3: Path, fm: Path | None, amb_r
     is not the approach flow."""
     run = args.run
     rinfo = info["runs"][run]
+    out_name = getattr(args, "as_name", None) or run
     R, C, dx, grid, dz0 = dom["R"], dom["C"], dom["dx"], dom["grid"], dom["dz0"]
     f, zu, t_end = read_3d(f3, ["u", "v", "w", "e", "theta"])
     for n in ("u", "v"):
@@ -407,7 +408,7 @@ def convert_domain(args, info: dict, dom: dict, f3: Path, fm: Path | None, amb_r
     )
     arrays["meta"] = np.array(json.dumps(meta))
     OUT.mkdir(parents=True, exist_ok=True)
-    out = OUT / f"{run}{('_' + dom['suffix']) if dom['suffix'] else ''}.npz"
+    out = OUT / f"{out_name}{('_' + dom['suffix']) if dom['suffix'] else ''}.npz"
     np.savez_compressed(out, **arrays)
     al = meta["ambient"]["all"]
     print(f"{out.stem}: ambient ({meta['ambient']['used']}) from {a_from_true:.0f} true at {a_speed * 3.6:.1f} km/h "
@@ -420,23 +421,24 @@ def convert_domain(args, info: dict, dom: dict, f3: Path, fm: Path | None, amb_r
 def convert(args) -> None:
     info, grid = load_case(args.case, args.tag)
     run = args.run
+    pre = getattr(args, "prefix", None) or run    # the files' prefix: palmrun's name, when run_case.sh --name set one
     folder = Path(args.output) if args.output else HERE / args.case / "JOBS" / run / "OUTPUT"
-    f3 = find_one(folder, f"{run}_av_3d.*.nc") or find_one(folder, f"{run}_av_3d.nc")
+    f3 = find_one(folder, f"{pre}_av_3d.*.nc") or find_one(folder, f"{pre}_av_3d.nc")
     if f3 is None:
-        raise SystemExit(f"no {run}_av_3d*.nc in {folder}: has the run finished, and copied its OUTPUT back?")
+        raise SystemExit(f"no {pre}_av_3d*.nc in {folder}: has the run finished, and copied its OUTPUT back?")
     # PALM names masks M001 (three digits); a nested child's files carry N02
-    fm = next((Path(q) for q in sorted(glob.glob(str(folder / f"{run}_masked_M0*.nc"))) if "N02" not in q), None)
+    fm = next((Path(q) for q in sorted(glob.glob(str(folder / f"{pre}_masked_M0*.nc"))) if "N02" not in q), None)
     root = dict(R=info["ny"], C=info["nx"], dx=info["dx"], bounds=info["bounds"], centre=info["centre"],
                 core_m=info["core_m"], ring_m=info["taper_m"], dz0=float(info["vertical"]["dz"][0]), grid=grid, suffix="")
     amb = convert_domain(args, info, root, f3, fm, None)
     nest = info.get("nest")
-    f3c = find_one(folder, f"{run}_av_3d_N02*.nc")
+    f3c = find_one(folder, f"{pre}_av_3d_N02*.nc")
     if nest and f3c is not None:
         sfx = f"-{args.tag}" if args.tag else ""
         child = dict(R=nest["ny"], C=nest["nx"], dx=nest["dx"], bounds=nest["bounds"], centre=nest["centre"],
                      core_m=nest["bounds"][2] - nest["bounds"][0], ring_m=0.0, dz0=float(nest["vertical"]["dz"][0]),
                      grid=dict(np.load(HERE / args.case / f"grid{sfx}-N02.npz")), suffix="N02")
-        convert_domain(args, info, child, f3c, find_one(folder, f"{run}_masked*N02*.nc"), amb)
+        convert_domain(args, info, child, f3c, find_one(folder, f"{pre}_masked*N02*.nc"), amb)
     elif nest:
         print(f"  (no {run}_av_3d_N02 output: the nested child was not converted)")
 
@@ -680,6 +682,8 @@ def main() -> None:
     a.add_argument("--output", help="the run's OUTPUT folder (default the case's JOBS/<run>/OUTPUT)")
     a.add_argument("--ambient", default="domain", help="domain | ring | aloft:<m over the lowest ground>")
     a.add_argument("--tag", default="")
+    a.add_argument("--prefix", help="the output files' name prefix when palmrun ran under another name (run_case.sh --name)")
+    a.add_argument("--as", dest="as_name", help="name the field npz after this instead of the run key")
     b = sub.add_parser("score")
     b.add_argument("case")
     b.add_argument("--windninja", help="a WindNinja run folder (*_u.asc, *_v.asc, run.cfg) on the same ground")

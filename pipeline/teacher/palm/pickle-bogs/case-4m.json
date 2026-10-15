@@ -1,0 +1,518 @@
+{
+ "case": "pickle-bogs",
+ "tag": "4m",
+ "built": "2026-10-14 19:39",
+ "epsg": 32616,
+ "dx": 4.0,
+ "nx": 512,
+ "ny": 512,
+ "bounds": [
+  601940.0,
+  5418760.0,
+  603988.0,
+  5420808.0
+ ],
+ "gridConvergenceDeg": 1.0596287293162894,
+ "origin_lonlat": [
+  -85.60867524975129,
+  48.91338277218509
+ ],
+ "origin_z": 335.5891278328763,
+ "relief_m": 21.43690299987793,
+ "taper_m": 240.0,
+ "core_m": 1500.0,
+ "centre": [
+  602964.0,
+  5419784.0
+ ],
+ "point_xy": [
+  602967.356230443,
+  5419781.591985798
+ ],
+ "point_latlon": [
+  48.9224,
+  -85.5944
+ ],
+ "vertical": {
+  "dz": [
+   4.0,
+   16.0
+  ],
+  "start": 64.0,
+  "end": 256.0,
+  "nz": 70,
+  "top": 788
+ },
+ "nz_do3d": 24,
+ "canopy_levels": 7,
+ "leaf": 0.5,
+ "terrain": "hrdem",
+ "canopy": "chm",
+ "sources": [
+  "HRDEM 1 m LiDAR (ON-SPL_ON_White_Lake_UTM16_2021-1m-dtm, ON-SPL_ON_White_Lake_UTM16_2021-1m-dsm), NRCan, OGL-Canada",
+  "habitat grid of area pickle-lake (FRI stands, OMNRF, OGL-Ontario)",
+  "1 m lake mask of area pickle-lake (pipeline/lakes.py)"
+ ],
+ "runs": {
+  "pickle-bogs_dawn175_4m": {
+   "direction": 175.0,
+   "speed_kph": 19.0,
+   "zref_m": 80.0,
+   "stability": "stable",
+   "hours": 2.0,
+   "average_s": 1800.0,
+   "theta_surface": 284.5,
+   "theta_gradients": [
+    [
+     0.0,
+     4.0
+    ],
+    [
+     80.0,
+     0.5
+    ]
+   ],
+   "surface": "rate",
+   "heating_rate": -0.5,
+   "surface_heatflux": -0.01,
+   "cthf": -0.01,
+   "why": "dawn 2026-09-29 12Z: forecast from 162 (10 m) / 182 (80 m); felt drifting toward SE and SW",
+   "scent": [
+    {
+     "name": "the bog (the checks) 1.5 m",
+     "x": 567.9,
+     "y": 1302.2,
+     "h": 1.5,
+     "utm": [
+      602507.9,
+      5420062.2
+     ],
+     "ground_m": 339.3,
+     "canopy_m": 6.0,
+     "water": false
+    },
+    {
+     "name": "the bog (the checks) 5 m",
+     "x": 567.9,
+     "y": 1302.2,
+     "h": 5.0,
+     "utm": [
+      602507.9,
+      5420062.2
+     ],
+     "ground_m": 339.3,
+     "canopy_m": 6.0,
+     "water": false
+    },
+    {
+     "name": "the pool S of camp 1.5 m",
+     "x": 1492.8,
+     "y": 741.1,
+     "h": 1.5,
+     "utm": [
+      603432.8,
+      5419501.1
+     ],
+     "ground_m": 338.3,
+     "canopy_m": 0.0,
+     "water": false
+    },
+    {
+     "name": "ring 000 210 m",
+     "x": 1027.4,
+     "y": 1231.6,
+     "h": 1.5,
+     "utm": [
+      602967.4,
+      5419991.6
+     ],
+     "ground_m": 339.8,
+     "canopy_m": 16.5,
+     "water": false
+    },
+    {
+     "name": "ring 045 300 m",
+     "x": 1239.5,
+     "y": 1233.7,
+     "h": 1.5,
+     "utm": [
+      603179.5,
+      5419993.7
+     ],
+     "ground_m": 340.5,
+     "canopy_m": 14.3,
+     "water": false
+    },
+    {
+     "name": "ring 090 390 m",
+     "x": 1417.4,
+     "y": 1021.6,
+     "h": 1.5,
+     "utm": [
+      603357.4,
+      5419781.6
+     ],
+     "ground_m": 339.3,
+     "canopy_m": 4.8,
+     "water": false
+    },
+    {
+     "name": "ring 135 300 m",
+     "x": 1239.5,
+     "y": 809.5,
+     "h": 1.5,
+     "utm": [
+      603179.5,
+      5419569.5
+     ],
+     "ground_m": 340.2,
+     "canopy_m": 13.1,
+     "water": false
+    },
+    {
+     "name": "ring 180 300 m",
+     "x": 1027.4,
+     "y": 721.6,
+     "h": 1.5,
+     "utm": [
+      602967.4,
+      5419481.6
+     ],
+     "ground_m": 341.7,
+     "canopy_m": 13.1,
+     "water": false
+    },
+    {
+     "name": "ring 225 300 m",
+     "x": 815.2,
+     "y": 809.5,
+     "h": 1.5,
+     "utm": [
+      602755.2,
+      5419569.5
+     ],
+     "ground_m": 346.1,
+     "canopy_m": 15.7,
+     "water": false
+    },
+    {
+     "name": "ring 270 300 m",
+     "x": 727.4,
+     "y": 1021.6,
+     "h": 1.5,
+     "utm": [
+      602667.4,
+      5419781.6
+     ],
+     "ground_m": 341.1,
+     "canopy_m": 16.7,
+     "water": false
+    }
+   ]
+  },
+  "pickle-bogs_dusk288_4m": {
+   "direction": 288.0,
+   "speed_kph": 11.2,
+   "zref_m": 80.0,
+   "stability": "stable",
+   "hours": 2.0,
+   "average_s": 1800.0,
+   "theta_surface": 293.5,
+   "theta_gradients": [
+    [
+     0.0,
+     1.5
+    ],
+    [
+     80.0,
+     0.5
+    ]
+   ],
+   "surface": "rate",
+   "heating_rate": -1.0,
+   "surface_heatflux": -0.02,
+   "cthf": -0.02,
+   "why": "dusk 2026-09-28 23Z: forecast 282 at 5 km/h (80 m 294, 11 km/h); felt drifts toward S, W, SE, E, then calm",
+   "scent": [
+    {
+     "name": "the bog (the checks) 1.5 m",
+     "x": 567.9,
+     "y": 1302.2,
+     "h": 1.5,
+     "utm": [
+      602507.9,
+      5420062.2
+     ],
+     "ground_m": 339.3,
+     "canopy_m": 6.0,
+     "water": false
+    },
+    {
+     "name": "the bog (the checks) 5 m",
+     "x": 567.9,
+     "y": 1302.2,
+     "h": 5.0,
+     "utm": [
+      602507.9,
+      5420062.2
+     ],
+     "ground_m": 339.3,
+     "canopy_m": 6.0,
+     "water": false
+    },
+    {
+     "name": "the pool S of camp 1.5 m",
+     "x": 1492.8,
+     "y": 741.1,
+     "h": 1.5,
+     "utm": [
+      603432.8,
+      5419501.1
+     ],
+     "ground_m": 338.3,
+     "canopy_m": 0.0,
+     "water": false
+    },
+    {
+     "name": "ring 000 210 m",
+     "x": 1027.4,
+     "y": 1231.6,
+     "h": 1.5,
+     "utm": [
+      602967.4,
+      5419991.6
+     ],
+     "ground_m": 339.8,
+     "canopy_m": 16.5,
+     "water": false
+    },
+    {
+     "name": "ring 045 300 m",
+     "x": 1239.5,
+     "y": 1233.7,
+     "h": 1.5,
+     "utm": [
+      603179.5,
+      5419993.7
+     ],
+     "ground_m": 340.5,
+     "canopy_m": 14.3,
+     "water": false
+    },
+    {
+     "name": "ring 090 390 m",
+     "x": 1417.4,
+     "y": 1021.6,
+     "h": 1.5,
+     "utm": [
+      603357.4,
+      5419781.6
+     ],
+     "ground_m": 339.3,
+     "canopy_m": 4.8,
+     "water": false
+    },
+    {
+     "name": "ring 135 300 m",
+     "x": 1239.5,
+     "y": 809.5,
+     "h": 1.5,
+     "utm": [
+      603179.5,
+      5419569.5
+     ],
+     "ground_m": 340.2,
+     "canopy_m": 13.1,
+     "water": false
+    },
+    {
+     "name": "ring 180 300 m",
+     "x": 1027.4,
+     "y": 721.6,
+     "h": 1.5,
+     "utm": [
+      602967.4,
+      5419481.6
+     ],
+     "ground_m": 341.7,
+     "canopy_m": 13.1,
+     "water": false
+    },
+    {
+     "name": "ring 225 300 m",
+     "x": 815.2,
+     "y": 809.5,
+     "h": 1.5,
+     "utm": [
+      602755.2,
+      5419569.5
+     ],
+     "ground_m": 346.1,
+     "canopy_m": 15.7,
+     "water": false
+    },
+    {
+     "name": "ring 270 300 m",
+     "x": 727.4,
+     "y": 1021.6,
+     "h": 1.5,
+     "utm": [
+      602667.4,
+      5419781.6
+     ],
+     "ground_m": 341.1,
+     "canopy_m": 16.7,
+     "water": false
+    }
+   ]
+  },
+  "pickle-bogs_nw305_4m": {
+   "direction": 305.0,
+   "speed_kph": 7.6,
+   "stability": "neutral",
+   "hours": 1.0,
+   "average_s": 1200.0,
+   "why": "dusk 2026-10-02 22Z, near neutral: forecast 305 at 7.6 km/h; felt drifting toward SE, steady, treetops moving",
+   "scent": [
+    {
+     "name": "the bog (the checks) 1.5 m",
+     "x": 567.9,
+     "y": 1302.2,
+     "h": 1.5,
+     "utm": [
+      602507.9,
+      5420062.2
+     ],
+     "ground_m": 339.3,
+     "canopy_m": 6.0,
+     "water": false
+    },
+    {
+     "name": "the bog (the checks) 5 m",
+     "x": 567.9,
+     "y": 1302.2,
+     "h": 5.0,
+     "utm": [
+      602507.9,
+      5420062.2
+     ],
+     "ground_m": 339.3,
+     "canopy_m": 6.0,
+     "water": false
+    },
+    {
+     "name": "the pool S of camp 1.5 m",
+     "x": 1492.8,
+     "y": 741.1,
+     "h": 1.5,
+     "utm": [
+      603432.8,
+      5419501.1
+     ],
+     "ground_m": 338.3,
+     "canopy_m": 0.0,
+     "water": false
+    },
+    {
+     "name": "ring 000 210 m",
+     "x": 1027.4,
+     "y": 1231.6,
+     "h": 1.5,
+     "utm": [
+      602967.4,
+      5419991.6
+     ],
+     "ground_m": 339.8,
+     "canopy_m": 16.5,
+     "water": false
+    },
+    {
+     "name": "ring 045 300 m",
+     "x": 1239.5,
+     "y": 1233.7,
+     "h": 1.5,
+     "utm": [
+      603179.5,
+      5419993.7
+     ],
+     "ground_m": 340.5,
+     "canopy_m": 14.3,
+     "water": false
+    },
+    {
+     "name": "ring 090 390 m",
+     "x": 1417.4,
+     "y": 1021.6,
+     "h": 1.5,
+     "utm": [
+      603357.4,
+      5419781.6
+     ],
+     "ground_m": 339.3,
+     "canopy_m": 4.8,
+     "water": false
+    },
+    {
+     "name": "ring 135 300 m",
+     "x": 1239.5,
+     "y": 809.5,
+     "h": 1.5,
+     "utm": [
+      603179.5,
+      5419569.5
+     ],
+     "ground_m": 340.2,
+     "canopy_m": 13.1,
+     "water": false
+    },
+    {
+     "name": "ring 180 300 m",
+     "x": 1027.4,
+     "y": 721.6,
+     "h": 1.5,
+     "utm": [
+      602967.4,
+      5419481.6
+     ],
+     "ground_m": 341.7,
+     "canopy_m": 13.1,
+     "water": false
+    },
+    {
+     "name": "ring 225 300 m",
+     "x": 815.2,
+     "y": 809.5,
+     "h": 1.5,
+     "utm": [
+      602755.2,
+      5419569.5
+     ],
+     "ground_m": 346.1,
+     "canopy_m": 15.7,
+     "water": false
+    },
+    {
+     "name": "ring 270 300 m",
+     "x": 727.4,
+     "y": 1021.6,
+     "h": 1.5,
+     "utm": [
+      602667.4,
+      5419781.6
+     ],
+     "ground_m": 341.1,
+     "canopy_m": 16.7,
+     "water": false
+    }
+   ]
+  }
+ },
+ "canopy_summary": {
+  "cover_mean": 0.7901763916015625,
+  "lai_mean": 2.9741573333740234,
+  "lai_p90": 4.0,
+  "height_p90_mean": 11.638982772827148
+ },
+ "trial_dem": null,
+ "shallow": true
+}

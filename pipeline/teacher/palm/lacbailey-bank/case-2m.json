@@ -1,0 +1,206 @@
+{
+ "case": "lacbailey-bank",
+ "tag": "2m",
+ "built": "2026-10-14 19:41",
+ "epsg": 32619,
+ "dx": 2.0,
+ "nx": 512,
+ "ny": 512,
+ "bounds": [
+  459720.0,
+  5472620.0,
+  460744.0,
+  5473644.0
+ ],
+ "gridConvergenceDeg": -0.416309720407368,
+ "origin_lonlat": [
+  -69.55522185117421,
+  49.40493259891563
+ ],
+ "origin_z": 342.69732666015625,
+ "relief_m": 98.40576934814453,
+ "taper_m": 160.0,
+ "core_m": 700.0,
+ "centre": [
+  460232.0,
+  5473132.0
+ ],
+ "point_xy": [
+  460228.2409196605,
+  5473123.523399291
+ ],
+ "point_latlon": [
+  49.409495,
+  -69.548267
+ ],
+ "vertical": {
+  "dz": [
+   2.0,
+   16.0
+  ],
+  "start": 140.0,
+  "end": 368.0,
+  "nz": 121,
+  "top": 698
+ },
+ "nz_do3d": 81,
+ "canopy_levels": 10,
+ "leaf": 0.5,
+ "terrain": "hrdem",
+ "canopy": "chm",
+ "sources": [
+  "HRDEM 1 m LiDAR (QC-600023_29_LacAuBrochet_MTM7_2023-1m-dtm, QC-600023_29_LacAuBrochet_MTM7_2023-1m-dsm), NRCan, OGL-Canada",
+  "habitat grid of area lac-bailey (FRI stands, OMNRF, OGL-Ontario)",
+  "1 m lake mask of area lac-bailey (pipeline/lakes.py)"
+ ],
+ "runs": {
+  "lacbailey-bank_n000_2m": {
+   "direction": 0.0,
+   "speed_kph": 12.0,
+   "stability": "neutral",
+   "hours": 1.0,
+   "average_s": 1200.0,
+   "why": "off the land, over the bank's crest: the lee and the reversal at the shore",
+   "scent": [
+    {
+     "name": "up the bank 150 m 1.5 m",
+     "x": 508.0,
+     "y": 653.0,
+     "h": 1.5,
+     "utm": [
+      460228.0,
+      5473273.0
+     ],
+     "ground_m": 390.8,
+     "canopy_m": 5.1,
+     "water": false
+    },
+    {
+     "name": "up the bank 150 m 5 m",
+     "x": 508.0,
+     "y": 653.0,
+     "h": 5.0,
+     "utm": [
+      460228.0,
+      5473273.0
+     ],
+     "ground_m": 390.8,
+     "canopy_m": 5.1,
+     "water": false
+    },
+    {
+     "name": "the point 1.5 m",
+     "x": 508.2,
+     "y": 503.5,
+     "h": 1.5,
+     "utm": [
+      460228.2,
+      5473123.5
+     ],
+     "ground_m": 352.9,
+     "canopy_m": 0.0,
+     "water": false
+    },
+    {
+     "name": "the point 5 m",
+     "x": 508.2,
+     "y": 503.5,
+     "h": 5.0,
+     "utm": [
+      460228.2,
+      5473123.5
+     ],
+     "ground_m": 352.9,
+     "canopy_m": 0.0,
+     "water": false
+    },
+    {
+     "name": "ring 000 140 m",
+     "x": 508.2,
+     "y": 643.5,
+     "h": 1.5,
+     "utm": [
+      460228.2,
+      5473263.5
+     ],
+     "ground_m": 389.7,
+     "canopy_m": 2.9,
+     "water": false
+    },
+    {
+     "name": "ring 045 140 m",
+     "x": 607.2,
+     "y": 602.5,
+     "h": 1.5,
+     "utm": [
+      460327.2,
+      5473222.5
+     ],
+     "ground_m": 383.4,
+     "canopy_m": 3.0,
+     "water": false
+    },
+    {
+     "name": "ring 090 140 m",
+     "x": 648.2,
+     "y": 503.5,
+     "h": 1.5,
+     "utm": [
+      460368.2,
+      5473123.5
+     ],
+     "ground_m": 379.1,
+     "canopy_m": 5.9,
+     "water": false
+    },
+    {
+     "name": "ring 225 140 m",
+     "x": 409.2,
+     "y": 404.5,
+     "h": 1.5,
+     "utm": [
+      460129.2,
+      5473024.5
+     ],
+     "ground_m": 352.4,
+     "canopy_m": 5.8,
+     "water": false
+    },
+    {
+     "name": "ring 270 140 m",
+     "x": 368.2,
+     "y": 503.5,
+     "h": 1.5,
+     "utm": [
+      460088.2,
+      5473123.5
+     ],
+     "ground_m": 367.6,
+     "canopy_m": 11.5,
+     "water": false
+    },
+    {
+     "name": "ring 315 140 m",
+     "x": 409.2,
+     "y": 602.5,
+     "h": 1.5,
+     "utm": [
+      460129.2,
+      5473222.5
+     ],
+     "ground_m": 378.8,
+     "canopy_m": 8.2,
+     "water": false
+    }
+   ]
+  }
+ },
+ "canopy_summary": {
+  "cover_mean": 0.5203828811645508,
+  "lai_mean": 1.7164831161499023,
+  "lai_p90": 3.5625,
+  "height_p90_mean": 7.213288307189941
+ },
+ "trial_dem": null,
+ "shallow": true
+}

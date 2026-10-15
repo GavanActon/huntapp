@@ -2,3 +2,6 @@
 # failed on a checkout's CRLF copies, 2026-10-09)
 pipeline/bush/model/*.txt eol=lf
 pipeline/bush/local/*.txt eol=lf
+# bash can't run a script with Windows line endings: the PALM runners read these on xonix and XEVO
+# (WSL), and sync_kit.sh copies the working tree's files to the share, 2026-10-15
+*.sh eol=lf

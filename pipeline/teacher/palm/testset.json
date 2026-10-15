@@ -1,0 +1,44 @@
+{
+ "version": 1,
+ "doc": "docs/SCENT-TESTSET.md",
+ "frozen": "2026-10-15",
+ "measure": {
+  "scented": "the 15% band ('some minutes') reaches 40 m or more in a 45-degree sector",
+  "band": "0.15", "trace": "0.03", "reach_m": 40,
+  "hit": "both scented", "miss": "PALM scented, the app not",
+  "false_alarm": "the app scented where PALM's 3% band reaches under 40 m",
+  "threat": "hits / (hits + misses + false alarms)"
+ },
+ "points": {
+  "P1":  {"box": "pickle-slot", "source": "throat west bank 1.5", "h": 1.5, "situation": "slot", "anchor": "the felt funnel, 09-29 midday"},
+  "P2":  {"box": "pickle-slot", "source": "throat west bank 5", "h": 5.0, "situation": "5 m stand", "anchor": ""},
+  "P3":  {"box": "pickle-slot", "source": "bay, over the water", "h": 1.5, "situation": "tree line from water", "anchor": ""},
+  "P4":  {"box": "pickle-slot", "source": "ring 000 120", "h": 1.5, "situation": "lee slope", "anchor": ""},
+  "P5":  {"box": "pickle-bogstrip", "source": "Gavan's sit 30 Sep, winded, bull S 1.5", "h": 1.5, "situation": "strip edge under canopy", "anchor": "winded, 30 Sep"},
+  "P6":  {"box": "pickle-bogstrip", "source": "position 2", "h": 1.5, "situation": "open strip between walls", "anchor": "bull heard S, 30 Sep; logs 29 Sep"},
+  "P7":  {"box": "pickle-bogstrip", "source": "position 1", "h": 1.5, "situation": "bog edge under trees", "anchor": "the one the bull winded"},
+  "P8":  {"box": "pickle-bogs", "source": "the bog (the checks) 1.5", "h": 1.5, "situation": "open bog", "anchor": "26 GPX checks; 6 dusk checks 10-02"},
+  "P9":  {"box": "pickle-bogs", "source": "the bog (the checks) 5", "h": 5.0, "situation": "5 m stand", "anchor": ""},
+  "P10": {"box": "pickle-bogs", "source": "the pool S of camp", "h": 1.5, "situation": "cold-air pool", "anchor": "the 'too much plume' spot, 10-09"},
+  "L1":  {"box": "lacbailey-bank", "source": "the point 1.5", "h": 1.5, "situation": "shore under a bank", "anchor": ""},
+  "L2":  {"box": "lacbailey-bank", "source": "up the bank 150 m 1.5", "h": 1.5, "situation": "bank slope", "anchor": ""},
+  "L3":  {"box": "lacbailey-bank", "source": "up the bank 150 m 5", "h": 5.0, "situation": "5 m stand", "anchor": ""}
+ },
+ "boxes": {
+  "pickle-slot":     {"area": "pickle-lake", "held_out": false,
+                      "runs": ["pickle-slot_s186_4m_scent", "pickle-slot_w270_4m_scent", "pickle-slot_nw315_4m_scent",
+                               "pickle-slot_dusk288_4m_scent", "pickle-slot_am270_4m"]},
+  "pickle-bogstrip": {"area": "pickle-lake", "held_out": false,
+                      "runs": ["pickle-bogstrip_b232_4m_sit2", "pickle-bogstrip_b190_4m_test", "pickle-bogstrip_dusk288_4m_scent"]},
+  "pickle-bogs":     {"area": "pickle-lake", "held_out": false,
+                      "runs": ["pickle-bogs_nw305_4m_scent", "pickle-bogs_dawn175_4m", "pickle-bogs_dusk288_4m"]},
+  "lacbailey-bank":  {"area": "lac-bailey", "held_out": true,
+                      "runs": ["lacbailey-bank_n000_4m_scent", "lacbailey-bank_s180_4m_scent", "lacbailey-bank_dusk000_4m_scent"]}
+ },
+ "notes": [
+  "A run is named as postprocess.py names its products: fields/<run>_scent.json (PALM's bands) and fields/<run>.npz (its wind).",
+  "One run per wind per box, at 4 m (2 m only to confirm a narrow feature). The slot also carries nw315 and am270, run with particles before the set was frozen.",
+  "A run that has not landed is listed as pending and left out of the score. Whitefish joins as W1-W8 (held out) once Gavan has seen its points.",
+  "Changing a point, a run or the measure makes a new version; scores of different versions do not compare."
+ ]
+}

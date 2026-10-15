@@ -9,6 +9,8 @@ per run, laid out as PALM's JOBS folders so palmrun can take them as they are.
     py -3.14 pipeline/teacher/palm/build_case.py searchmont --dx 5       # the 5 m box (185 M cells: too big)
     py -3.14 pipeline/teacher/palm/build_case.py searchmont --dx 20 --tag t20 --hours 0.25
                                                                          # a quick test case
+    py -3.14 pipeline/teacher/palm/build_case.py pickle-slot --dx 2 --tag 2m   # the Pickle slot, 1 km at 2 m
+    py -3.14 pipeline/teacher/palm/build_case.py pickle-slot --dx 4 --tag 4m   # the same box at 4 m, a first look
     py -3.14 pipeline/teacher/palm/check_driver.py searchmont            # validate what it wrote
 
 Out: pipeline/teacher/palm/<case>/JOBS/<case>_<run>[_<tag>]/INPUT/
@@ -37,6 +39,16 @@ the alternative (one driver per direction, rotated grid); see TEACHER.md.
 
 TERRAIN. HRDEM 1 m LiDAR DTM (NRCan, OGL-Canada), averaged to the cell.
 Fallback (--terrain mrdem): the area's 30 m MRDEM, bilinear.
+
+SCENT (docs/SCENT-TEACHER.md). Every run also releases scent: up to ten
+passive particle groups (PALM's Lagrangian particle model), one per source,
+from chest height (1.5 m) or a stand (5 m) over the local ground, for the
+15 minutes before the averaging window and through it, written every 20 s
+with their origin and group (OUTPUT/<run>_prt_bin/). The sources: a case's
+own list (`scent.sources`, lat/lon or UTM xy), then the point at both
+heights, then a ring round the point at `scent.radius_m` (default a fifth of
+the core), on land and inside the core. `scent=False` on a run turns it off.
+palm_to_scent.py reads the particles back into the app's how-often bands.
 
 CANOPY. Leaf area density on PALM's terrain-following levels (zlad):
 - where a tree is, and how tall: HRDEM's 1 m DSM minus DTM (the canopy
@@ -129,6 +141,209 @@ CASES = {
                            why="the other half of the test: a southerly by day must channel along the valley (felt 249), not reverse"),
         },
     ),
+    # The slot at Pickle Lake: a 170 m water channel through a strip of trees,
+    # 26-40 m wide between 8-15 m walls, running 043/223 at the foot of the
+    # north shore's rise (to 406 m, 68 m over the water within 200 m), open
+    # water at its NE end and wetland at its SW. Gavan felt a southerly funnel
+    # NE through it at midday on 2026-09-29 (no check logged); HRDPS had 176-194
+    # deg, 9-16 km/h, sunny. At 10 m the slot is three cells wide and the
+    # Searchmont runs smeared slots like it, so this case is 2 m (4 m to look
+    # first), neutral: the funnelling is the ground's and the trees', and a
+    # 1 km box cannot hold the afternoon's thermals anyway.
+    "pickle-slot": dict(
+        area="pickle-lake",
+        point=(48.94641, -85.57629),  # lat, lon: the middle of the slot
+        epsg=32616,
+        hrdem=["ON-SPL_ON_White_Lake_UTM16_2021-1m"],
+        size_m=1024.0,
+        core_m=700.0,
+        taper_m=160.0,
+        # 60 m toward the wind: the open water and wetland upwind in the box,
+        # the rise's crest (200 m N) still clear of the tapered ring
+        shift=(186.0, 60.0),
+        lattice=(0.0, 0.0),
+        fine_water=True,  # water at 1 m (the area's lake mask), not the habitat's 30 m cells
+        taper_percentile=5.0,  # the ring blended to about the water's level, not the high ground's median
+        # fine cells to 40 m over the highest ground, then to 16 m by about 220 m
+        # more, a 600 m top (eight times the rise): a neutral canopy flow needs
+        # no 1.6 km column, and at 2 m that column would be 300 levels
+        vertical=dict(const_m=40.0, dz_top_m=16.0, top_m=600.0),
+        # scent sources (SCENT-TEACHER.md): the showcase's hunter on the throat's west bank,
+        # the exit, the bay's north shore from over the water; then the point and a ring
+        scent=dict(radius_m=120.0, sources=[
+            dict(name="throat west bank", xy=(604231.6, 5422480.0), heights=[1.5, 5.0]),
+            dict(name="the exit", xy=(604287.0, 5422529.0)),
+            dict(name="bay, over the water 30 m S of the shore", xy=(604400.0, 5422261.0), over_water=True),
+        ]),
+        runs={
+            # 13:00 EDT 2026-09-29 (HRDPS, archived): from 186, 11.5 km/h, 37 deg off the slot
+            "s186": dict(direction=186.0, speed_kph=11.5, stability="neutral", hours=1.0, average_s=1200.0,
+                         # 3D snapshots for the site's pictures: 480 m round the slot at 4 m, to 48 m
+                         # over the water, every 2 s for the last 2 min (about 250 MB at 2 m)
+                         viz=dict(box_m=480.0, stride_m=4.0, top_m=48.0, dt_s=2.0, last_s=120.0),
+                         why="the case: a southerly 37 deg off the slot; Gavan felt it funnel NE through"),
+            # the same wind turned toward square across, to find where the funnel stops
+            "s160": dict(direction=160.0, speed_kph=11.5, stability="neutral", hours=1.0, average_s=1200.0,
+                         why="63 deg off the slot: does it still funnel?"),
+            "s135": dict(direction=135.0, speed_kph=11.5, stability="neutral", hours=1.0, average_s=1200.0,
+                         why="88 deg off, square across from the SE: the return eddy and the drift, not a funnel"),
+            # the rest of the compass (Gavan, 2026-10-13: "from West as well"): W, NW and N bring
+            # the air over the 68 m hill and down into the narrows, where WindNinja drew a lee wake
+            # for W-NW-N (field data, 2026-10-07); SW and NE run straight along it from each end
+            "w270": dict(direction=270.0, speed_kph=11.5, stability="neutral", hours=1.0, average_s=1200.0,
+                         why="47 deg off, over the hill: the lee of the rise, or the slot"),
+            "nw315": dict(direction=315.0, speed_kph=11.5, stability="neutral", hours=1.0, average_s=1200.0,
+                          why="88 deg off, square across from the hill side: the deepest lee"),
+            "n000": dict(direction=0.0, speed_kph=11.5, stability="neutral", hours=1.0, average_s=1200.0,
+                         why="43 deg off from the N, over the hill's shoulder and the NE lake"),
+            "sw225": dict(direction=225.0, speed_kph=11.5, stability="neutral", hours=1.0, average_s=1200.0,
+                          why="straight up the lake arm and through: the funnel at its strongest"),
+            "ne045": dict(direction=45.0, speed_kph=11.5, stability="neutral", hours=1.0, average_s=1200.0,
+                          why="straight along from the NE lake: the same channel the other way"),
+            # the W lee with the air layered (Gavan, 2026-10-14: the backflow up the hill at
+            # other times of day). Dusk: HRDPS 2026-09-28 23Z at Pickle, the bogs' dusk288. A
+            # sunny morning: heated ground; the heating is the same on every surface here (no
+            # radiation model), so the east-facing slope gets no more morning sun than the rest
+            "dusk288": dict(direction=288.0, speed_kph=11.2, zref_m=80.0, stability="stable", hours=2.0, average_s=1800.0,
+                            theta_surface=293.5,
+                            theta_gradients=[(0.0, 1.5), (80.0, 0.5)],  # +1.2 K over 2-80 m
+                            surface="rate", heating_rate=-1.0,
+                            surface_heatflux=-0.02, cthf=-0.02,
+                            why="dusk, 2026-09-28 23Z (282 at 5 km/h, 80 m 294 at 11 km/h): cold air down the lee slope against the backflow"),
+            "am270": dict(direction=270.0, speed_kph=11.5, stability="convective", hours=1.5, average_s=1200.0,
+                          theta_surface=285.0,
+                          theta_gradients=[(0.0, 0.0), (250.0, 1.0)],  # a morning mixed layer, capped at 250 m
+                          surface_heatflux=0.04, cthf=0.05,  # K m/s: about 50 and 60 W/m2
+                          why="a sunny morning under a west wind: heated ground with the lee's backflow"),
+        },
+    ),
+    # The spots for rules (2026-10-13, Gavan: "all those are fine", and Lac Bailey's bank
+    # for its LiDAR): one kind of place each, anchored where he felt or logged the wind. 4 m
+    # first (a few angles), 2 m where the 4 m answer needs checking; boxes cyclic, tapered to
+    # the water's level.
+    #
+    # The bog strip NE of Pickle Lake: a 60 m open strip between 14 m walls running 120/300
+    # (MICRO-WIND.md 5). 2026-09-29 18:00 EDT under 190 at 15 km/h he logged it toward W, W,
+    # NW, breezy (three checks); 2026-09-30 18:00 under 232 at 13 km/h toward SE, E, E: the
+    # same strip both ways along it, each time the way the wind's along-strip part points.
+    "pickle-bogstrip": dict(
+        area="pickle-lake",
+        point=(48.95406, -85.55121),
+        epsg=32616,
+        hrdem=["ON-SPL_ON_White_Lake_UTM16_2021-1m"],
+        size_m=1024.0, core_m=700.0, taper_m=160.0,
+        shift=(0.0, 0.0),
+        lattice=(0.0, 0.0),
+        fine_water=True,
+        taper_percentile=5.0,
+        vertical=dict(const_m=40.0, dz_top_m=16.0, top_m=600.0),
+        # scent (SCENT-TEACHER.md): 30 Sep 2026 18:00, forecast 232 at 13 km/h, Gavan sat here (position 3
+        # of three) and a bull to the south winded them (2026-10-14). The b232 run's floor air at this cell
+        # went E/NE in 93% of its 30 s samples at 2 m, S in 5%: the now-and-then band. Then the point, a ring.
+        scent=dict(radius_m=140.0, sources=[
+            dict(name="Gavan's sit 30 Sep, winded, bull S", latlon=(48.95393, -85.55057), heights=[1.5, 5.0]),
+            # the other two that evening (Gavan's pins at Pickle, 2026-10-14 23:12): 2 at his coordinates, in
+            # 12 m canopy 92 m W of 3; 1 from the picture's geometry, 10 m W and 45 m N of 2, open 2 m scrub at
+            # the lake's edge. They heard the bull to their south. In b232 the floor air at 1 went S in 52%
+            # of the 2 m samples (mean toward 152), at 2 S 18% and W 30%: 1 is the one the bull winded
+            dict(name="position 2, 30 Sep", latlon=(48.95390, -85.55183), heights=[1.5]),
+            dict(name="position 1, 30 Sep", latlon=(48.95419, -85.55213), heights=[1.5]),   # under the trees at the bog's edge (Gavan), 12 m SW of the picture's pin
+        ]),
+        runs={
+            "b190": dict(direction=190.0, speed_kph=15.1, stability="neutral", hours=1.0, average_s=1200.0,
+                         why="2026-09-29 22Z (HRDPS 190, 15.1 km/h, 2-80 m near neutral): felt toward W, W, NW"),
+            "b232": dict(direction=232.0, speed_kph=13.3, stability="neutral", hours=1.0, average_s=1200.0,
+                         why="2026-09-30 22Z (HRDPS 232, 13.3 km/h, overcast): felt toward SE, E, E"),
+            "b150": dict(direction=150.0, speed_kph=13.0, stability="neutral", hours=1.0, average_s=1200.0,
+                         why="30 deg off the strip from the SE side: the along-strip part strong, toward NW"),
+            # the scent test set's stable cell (docs/SCENT-TESTSET.md): the same dusk as the slot's and the
+            # bogs' dusk288, so the three Pickle boxes share one evening
+            "dusk288": dict(direction=288.0, speed_kph=11.2, zref_m=80.0, stability="stable", hours=2.0, average_s=1800.0,
+                            theta_surface=293.5,
+                            theta_gradients=[(0.0, 1.5), (80.0, 0.5)],  # +1.2 K over 2-80 m
+                            surface="rate", heating_rate=-1.0,
+                            surface_heatflux=-0.02, cthf=-0.02,
+                            why="dusk, 2026-09-28 23Z (282 at 5 km/h, 80 m 294 at 11 km/h): does the cooling strip send its scent along the floor and into the walls"),
+        },
+    ),
+    # The bog SW of camp (26 of the GPX checks round 48.9250, -85.6006) and the flat bog
+    # 700 m S of camp (48.9198, -85.5881, a cold-air pool), in one 2 km box at 4 m. The
+    # mornings: under a southerly forecast and a 2-4 K inversion over the lowest 80 m the
+    # floor was calm, then drifted from NW and NE (09-27, 09-29): "a southerly forecast came
+    # as a NE-E drift" (field data). HRDPS's own profile here: the 10 m wind 6-7 km/h, 80 m
+    # 17-20 km/h from 180-190, so these runs hold the wind at 80 m.
+    "pickle-bogs": dict(
+        area="pickle-lake",
+        point=(48.92240, -85.59440),  # between the bog and the pool
+        epsg=32616,
+        hrdem=["ON-SPL_ON_White_Lake_UTM16_2021-1m"],
+        size_m=2048.0, core_m=1500.0, taper_m=240.0,
+        shift=(0.0, 0.0),
+        lattice=(0.0, 0.0),
+        fine_water=True,
+        taper_percentile=5.0,
+        vertical=dict(const_m=40.0, dz_top_m=16.0, top_m=800.0),
+        # scent (SCENT-TEACHER.md): where Gavan stood for his checks, the bog (26 of them, a
+        # stand at 5 m too) and the pool S of camp; then the point and a ring
+        scent=dict(radius_m=300.0, sources=[
+            dict(name="the bog (the checks)", latlon=(48.92500, -85.60060), heights=[1.5, 5.0]),
+            dict(name="the pool S of camp", latlon=(48.91980, -85.58812)),
+        ]),
+        runs={
+            "dawn175": dict(direction=175.0, speed_kph=19.0, zref_m=80.0, stability="stable", hours=2.0, average_s=1800.0,
+                            theta_surface=284.5,  # 8.8 C at 337 m
+                            theta_gradients=[(0.0, 4.0), (80.0, 0.5)],  # HRDPS 2026-09-29 12Z: +3.9 K over 2-80 m
+                            surface="rate", heating_rate=-0.5,  # the last of the night's cooling
+                            surface_heatflux=-0.01, cthf=-0.01,
+                            why="dawn 2026-09-29 12Z: forecast from 162 (10 m) / 182 (80 m); felt drifting toward SE and SW"),
+            "dusk288": dict(direction=288.0, speed_kph=11.2, zref_m=80.0, stability="stable", hours=2.0, average_s=1800.0,
+                            theta_surface=293.5,  # 17.8 C
+                            theta_gradients=[(0.0, 1.5), (80.0, 0.5)],  # HRDPS 2026-09-28 23Z: +1.2 K over 2-80 m
+                            surface="rate", heating_rate=-1.0,
+                            surface_heatflux=-0.02, cthf=-0.02,
+                            why="dusk 2026-09-28 23Z: forecast 282 at 5 km/h (80 m 294, 11 km/h); felt drifts toward S, W, SE, E, then calm"),
+            "nw305": dict(direction=305.0, speed_kph=7.6, stability="neutral", hours=1.0, average_s=1200.0,
+                          why="dusk 2026-10-02 22Z, near neutral: forecast 305 at 7.6 km/h; felt drifting toward SE, steady, treetops moving"),
+        },
+    ),
+    # Lac Bailey's north bank (Quebec): the 1 m LiDAR flown 2024 (QC-600023), a bank rising
+    # 88 m in 300 m from the lake's north shore, 12 m regrowth on the 1991 burn. No checks
+    # here: the rule this teaches is the bank's (lee and reversal over the shore with the
+    # wind off the land, the lift with it off the lake, cold air down the bank at dusk).
+    "lacbailey-bank": dict(
+        area="lac-bailey",
+        point=(49.409495, -69.548267),  # MICRO-WIND-LIDAR.md's bank, at the shore
+        epsg=32619,
+        hrdem=["QC-600023_29_LacAuBrochet_MTM7_2023-1m", "QC-600015_24_LidarDIF_Cote_Nord_MTM7_2015_17-1m"],
+        size_m=1024.0, core_m=700.0, taper_m=160.0,
+        shift=(0.0, 0.0),
+        lattice=(0.0, 0.0),
+        fine_water=True,
+        taper_percentile=5.0,
+        vertical=dict(const_m=40.0, dz_top_m=16.0, top_m=700.0),
+        # scent: the shore (the point, by default) and 150 m up the bank, where the N wind's
+        # lee runs back uphill and the dusk air drains down
+        scent=dict(sources=[
+            dict(name="up the bank 150 m", xy=(460228.0, 5473273.0), heights=[1.5, 5.0]),
+        ]),
+        runs={
+            "n000": dict(direction=0.0, speed_kph=12.0, stability="neutral", hours=1.0, average_s=1200.0,
+                         why="off the land, over the bank's crest: the lee and the reversal at the shore"),
+            "s180": dict(direction=180.0, speed_kph=12.0, stability="neutral", hours=1.0, average_s=1200.0,
+                         why="off the lake, up the bank: the lift and the speed-up over the brow"),
+            "w270": dict(direction=270.0, speed_kph=12.0, stability="neutral", hours=1.0, average_s=1200.0,
+                         why="along the shore: does the bank turn it"),
+            "dusk000": dict(direction=0.0, speed_kph=8.0, zref_m=80.0, stability="stable", hours=2.0, average_s=1800.0,
+                            theta_surface=284.0,
+                            theta_gradients=[(0.0, 0.7), (300.0, 0.5)],  # Searchmont's HRDPS evening start
+                            surface="rate", heating_rate=-1.0,
+                            surface_heatflux=-0.02, cthf=-0.02,
+                            why="a dusk with a light wind off the land: the cold air down the bank and out over the water"),
+        },
+    ),
+    # Not here: Searchmont's climb. A cyclic box small enough for 4 m (1.5 km) holds 194 m
+    # between the valley floor and the plateau, and blending its edges to one height puts a
+    # cliff upwind of the climb. It wants a small box driven by the 10 m run (offline nesting).
 }
 
 # PAI of a closed crown column (leaf + wood per ground area under the crown)
@@ -240,6 +455,35 @@ def sample_habitat(header: dict, bands: dict, lon: np.ndarray, lat: np.ndarray, 
     return {k: bands[k][r, c] for k in names}
 
 
+def water_fraction(case: dict, g: dict) -> tuple:
+    """The share of each cell that is water, from the area's 1 m lake mask
+    (pipeline/raw/lakes-1m-<area>.npz, pipeline/lakes.py) when there is one,
+    else its lake outlines (waterbody-<area>.geojson) burnt in at 1 m."""
+    import rasterio
+    from rasterio.enums import Resampling
+    from rasterio.features import rasterize
+    from rasterio.transform import from_origin
+    from rasterio.warp import reproject, transform_geom
+    dx, nx, ny = g["dx"], g["nx"], g["ny"]
+    npz = PIPE / "raw" / f"lakes-1m-{case['area']}.npz"
+    if npz.exists():
+        z = np.load(npz)
+        wet = np.zeros((ny, nx), np.float32)
+        reproject(z["water"].astype(np.float32), wet, src_transform=rasterio.Affine(*z["transform"]), src_crs=str(z["crs"]),
+                  dst_transform=from_origin(g["x0"], g["y1"], dx, dx), dst_crs=f"EPSG:{case['epsg']}",
+                  resampling=Resampling.average)
+        return wet, f"1 m lake mask of area {case['area']} (pipeline/lakes.py)"
+    a = json.loads((ROOT / "app" / "src" / "areas" / f"{case['area']}.json").read_text(encoding="utf-8"))
+    out_dir = ROOT / (a.get("bake") or {}).get("outDir", f"app/public/data/areas/{case['area']}")
+    fc = json.loads((out_dir / f"waterbody-{case['area']}.geojson").read_text(encoding="utf-8"))
+    geoms = [transform_geom("EPSG:4326", f"EPSG:{case['epsg']}", f["geometry"]) for f in fc["features"] if f.get("geometry")]
+    block = int(round(dx))
+    w1 = rasterize(geoms, out_shape=(ny * block, nx * block), transform=from_origin(g["x0"], g["y1"], 1.0, 1.0),
+                   fill=0, default_value=1, dtype="uint8")
+    wet = w1.reshape(ny, block, nx, block).mean(axis=(1, 3)).astype(np.float32)
+    return wet, f"lake outlines of area {case['area']} (waterbody-{case['area']}.geojson) at 1 m"
+
+
 # ---------------------------------------------------------------- canopy
 
 def beta_cdf(x: np.ndarray, a: float, b: float) -> np.ndarray:
@@ -286,16 +530,27 @@ def lad_from_forest(height: np.ndarray, crown: np.ndarray, pai_crown: np.ndarray
 
 # ---------------------------------------------------------------- the vertical grid
 
-def vertical_grid(dz: float, relief: float) -> dict:
+def vertical_grid(dz: float, relief: float, spec: dict | None = None) -> dict:
     """dz up to the relief plus 270 m (the stable layer, the lee and the wake
     resolved), stretched to 4 dz over the next 500 m (40 dz when coarser, to
     keep PALM's stretch factor under 1.12), 4 dz on to about 1.6 km above the
-    lowest ground. Returns PALM's dz / stretch parameters and nz."""
-    start = dz * math.ceil((relief + 270.0) / dz)
-    # PALM warns past a stretch factor of 1.12: dz to 4 dz needs about 40 dz of height
-    end = start + max(500.0, 40.0 * dz)
-    top = max(1600.0, end + 300.0)
-    dz2 = 4 * dz
+    lowest ground. Returns PALM's dz / stretch parameters and nz.
+
+    A case's `vertical` (const_m, dz_top_m, top_m) sets a shallow column for a
+    fine grid instead: dz to const_m over the highest ground, stretched to
+    dz_top_m over the height a 1.08 stretch needs (and a quarter more), to top_m."""
+    if spec:
+        start = dz * math.ceil((relief + spec["const_m"]) / dz)
+        dz2 = max(dz, spec["dz_top_m"])
+        end = start + 1.25 * dz * (dz2 / dz - 1) / 0.08
+        end = dz2 * math.ceil(end / dz2)
+        top = max(spec["top_m"], end + 3 * dz2)
+    else:
+        start = dz * math.ceil((relief + 270.0) / dz)
+        # PALM warns past a stretch factor of 1.12: dz to 4 dz needs about 40 dz of height
+        end = start + max(500.0, 40.0 * dz)
+        top = max(1600.0, end + 300.0)
+        dz2 = 4 * dz
     # PALM's levels, approximately: constant, then geometric to dz2 by `end`, then constant
     zs, z, d = [], dz / 2, dz
     while z < top:
@@ -348,21 +603,107 @@ def fmt(xs) -> str:
     return ", ".join(f"{x:g}" if isinstance(x, (int, float)) else str(x) for x in xs)
 
 
+SCENT_RELEASE_S = 900.0     # particles alive this long (the cone's own 15 min horizon), released from this long before the window
+SCENT_DT_PREL = 2.0         # a release every 2 s: 3 x 3 particles on a 1 m box per source
+SCENT_DT_WRITE = 20.0       # positions written every 20 s (three samples a minute for the how-often bands)
+
+
+def scent_sources(case: dict, g: dict, f: dict, run: dict) -> list[dict]:
+    """Up to ten scent sources for a run: the case's own list first, then the
+    point at 1.5 and 5 m, then a ring round the point, all on land inside the
+    core. Coordinates in the namelist are metres from the domain's SW corner."""
+    from pyproj import Transformer
+    if run.get("scent") is False:
+        return []
+    spec = dict(case.get("scent") or {})
+    spec.update(run.get("scent") or {})
+    dx, nx, ny = g["dx"], g["nx"], g["ny"]
+    x0, y0, y1 = g["x0"], g["y0"], g["y1"]
+    water, dtm, canopy_h = f["water"], f["dtm"], f["canopy_h"]   # row 0 north
+    to_xy = Transformer.from_crs(4326, case["epsg"], always_xy=True)
+    core = case["core_m"] / 2
+    cx, cy = (g["x0"] + g["x1"]) / 2, (g["y0"] + g["y1"]) / 2
+
+    def cell(x, y):
+        c, r = int((x - x0) / dx), int((y1 - y) / dx)
+        return (r, c) if 0 <= r < ny and 0 <= c < nx else None
+
+    def snap_land(x, y, max_m):
+        """The nearest land cell centre within max_m (a hunter stands on the bank, not in the slot)."""
+        rc = cell(x, y)
+        if rc is None or not water[rc]:
+            return x, y
+        n = int(math.ceil(max_m / dx))
+        best = None
+        for dr in range(-n, n + 1):
+            for dc in range(-n, n + 1):
+                r, c = rc[0] + dr, rc[1] + dc
+                if 0 <= r < ny and 0 <= c < nx and not water[r, c]:
+                    xx, yy = x0 + (c + 0.5) * dx, y1 - (r + 0.5) * dx
+                    d = math.hypot(xx - x, yy - y)
+                    if d <= max_m and (best is None or d < best[0]):
+                        best = (d, xx, yy)
+        return (best[1], best[2]) if best else (None, None)
+
+    def place(name, x, y, h, must_land=True, snap_m=0.0):
+        if must_land and snap_m > 0:
+            x, y = snap_land(x, y, snap_m)
+            if x is None:
+                return None
+        if abs(x - cx) > core or abs(y - cy) > core:
+            return None
+        rc = cell(x, y)
+        if rc is None or (must_land and water[rc]):
+            return None
+        if any(math.hypot(o["utm"][0] - x, o["utm"][1] - y) < 3.0 and abs(o["h"] - h) < 0.1 for o in out):
+            return None  # the same spot twice (the point snapped onto a listed bank)
+        return dict(name=name, x=round(x - x0, 1), y=round(y - y0, 1), h=float(h), utm=[round(x, 1), round(y, 1)],
+                    ground_m=round(float(dtm[rc]), 1), canopy_m=round(float(canopy_h[rc]), 1), water=bool(water[rc]))
+
+    out = []
+    for src in spec.get("sources", []):
+        if "latlon" in src:
+            x, y = to_xy.transform(src["latlon"][1], src["latlon"][0])
+        else:
+            x, y = src["xy"]
+        for h in src.get("heights", [1.5]):
+            sv = place(f"{src['name']} {h:g} m", x, y, h, must_land=not src.get("over_water"), snap_m=max(15.0, 3 * dx))
+            if sv:
+                out.append(sv)
+    px, py = g["point_xy"]
+    for h in (1.5, 5.0):
+        sv = place(f"the point {h:g} m", px, py, h, snap_m=60.0)   # a point in a slot or on a lake: its nearest bank
+        if sv:
+            out.append(sv)
+    radius = float(spec.get("radius_m", case["core_m"] / 5))
+    for k in range(8):
+        if len(out) >= 10:
+            break
+        a = math.radians(k * 45.0)
+        for rr in (radius, radius * 0.7, radius * 1.3):      # slide the point if it lands on water
+            sv = place(f"ring {k * 45:03d} {rr:.0f} m", px + rr * math.sin(a), py + rr * math.cos(a), 1.5, snap_m=2 * dx)
+            if sv:
+                out.append(sv)
+                break
+    return out[:10]
+
+
 def p3d(name: str, case_id: str, run: dict, g: dict, vg: dict, hours: float, nz_do3d: int,
-        nest: dict | None = None, child: bool = False) -> str:
+        nest: dict | None = None, child: bool = False, scent: list[dict] | None = None) -> str:
     """The namelist of the root domain, or with child=True of the nested
     child (<name>_p3d_N02): its own grid, the multigrid solver (no FFT
-    without cyclic boundaries), its boundaries from the root."""
+    without cyclic boundaries), its boundaries from the root. `scent`: the
+    run's particle sources (scent_sources), root only."""
     dx = g["dx"]
     from_grid = run["direction"] - g["gamma"]
-    hs, us, vs = profile(run["speed_kph"] / 3.6, from_grid)
+    hs, us, vs = profile(run["speed_kph"] / 3.6, from_grid, zref=run.get("zref_m", 30.0))
     end = hours * 3600.0
     avg = min(run["average_s"], end / 2)
     st = run["stability"]
     lines = [
         f"! {name}{' (nested child, N02)' if child else ''}: PALM {case_id}, {st}, wind from {run['direction']:g} deg true "
         f"({from_grid:.2f} on the UTM grid),",
-        f"! {run['speed_kph']:g} km/h at 30 m over the lowest ground. Built by pipeline/teacher/palm/build_case.py.",
+        f"! {run['speed_kph']:g} km/h at {run.get('zref_m', 30.0):g} m over the lowest ground. Built by pipeline/teacher/palm/build_case.py.",
         f"! {run['why']}",
     ]
     if nest and not child:
@@ -459,7 +800,7 @@ def p3d(name: str, case_id: str, run: dict, g: dict, vg: dict, hours: float, nz_
         "",
         "    ! the field the teacher gives: the mean over the last stretch, near the ground",
         "    data_output = 'u_av', 'v_av', 'w_av', 'e_av',"
-        + (" 'theta_av'," if st != "neutral" else ""),
+        + (" 'theta_av'," if st != "neutral" else "") + (" 'pc_av'," if scent else ""),
         f"    nz_do3d = {nz_do3d},",
         f"    averaging_interval = {avg:g},",
         f"    dt_data_output_av = {avg:g},",
@@ -467,11 +808,30 @@ def p3d(name: str, case_id: str, run: dict, g: dict, vg: dict, hours: float, nz_
         "    dt_averaging_input = 10.0,",
         "",
         "    ! gusts and lulls: the lowest four levels over the ground, every 30 s over the same stretch",
-        "    data_output_masks(1,:) = 'u', 'v', 'w',",
+        "    data_output_masks(1,:) = 'u', 'v', 'w'," + (" 'pc'," if scent else ""),
         "    mask_k_over_surface(1,:) = 1, 2, 3, 4,",
         "    dt_domask(1) = 30.0,",
         f"    skip_time_domask(1) = {end - avg:g},",
         "",
+    ]
+    viz = run.get("viz")
+    if viz and not child:
+        # snapshots of the whole air round the point, for the pictures: the gusts
+        # themselves, not the mean (a box viz box_m across at stride_m, the ground
+        # to top_m over the lowest ground, every dt_s over the last last_s)
+        cx, cy = g["point_xy"][0] - g["x0"], g["point_xy"][1] - g["y0"]
+        hb = viz["box_m"] / 2
+        lines += [
+            "    ! 3D snapshots round the point for the pictures (pipeline/teacher/palm, viz)",
+            "    data_output_masks(2,:) = 'u', 'v', 'w',",
+            f"    mask_x_loop(2,:) = {cx - hb:.0f}.0, {cx + hb:.0f}.0, {viz['stride_m']:g},",
+            f"    mask_y_loop(2,:) = {cy - hb:.0f}.0, {cy + hb:.0f}.0, {viz['stride_m']:g},",
+            f"    mask_z_loop(2,:) = {dx / 2:g}, {viz['top_m']:g}, {dx:g},",
+            f"    dt_domask(2) = {viz['dt_s']:g},",
+            f"    skip_time_domask(2) = {max(0.0, end - viz['last_s']):g},",
+            "",
+        ]
+    lines += [
         "    data_output_pr = '#u', '#v', 'w', 'e', 'w\"u\"', 'w\"v\"'" + (", '#theta', 'w\"theta\"'" if st != "neutral" else "") + ",",
         "    dt_dopr = 600.0,",
         "    averaging_interval_pr = 600.0,",
@@ -485,6 +845,35 @@ def p3d(name: str, case_id: str, run: dict, g: dict, vg: dict, hours: float, nz_
     if st != "neutral" and run.get("cthf"):
         lines += [f"    cthf = {run['cthf']:g},                    ! K m/s at the canopy top (the code's unit; the docs say W/m2)"]
     lines += ["/", ""]
+    if scent and not child:
+        start = max(0.0, end - avg - SCENT_RELEASE_S)
+        lines += [
+            "&particle_parameters",
+            "    ! scent (docs/SCENT-TEACHER.md): one passive particle group per source, released on a 1 m box",
+            "    ! at its height over the local ground, carried by the resolved flow plus the subgrid walk,",
+            "    ! reflected at the ground, 15 min of life. palm_to_scent.py reads OUTPUT/<run>_prt_bin.",
+            f"    number_of_particle_groups = {len(scent)},",
+        ]
+        for i, sv in enumerate(scent, 1):
+            lines += [
+                f"    ! {i}: {sv['name']} (ground {sv['ground_m']:g} m, canopy {sv['canopy_m']:g} m{', water' if sv['water'] else ''})",
+                f"    psl({i}) = {sv['x'] - 0.5:.1f}, psr({i}) = {sv['x'] + 0.5:.1f}, pss({i}) = {sv['y'] - 0.5:.1f}, psn({i}) = {sv['y'] + 0.5:.1f}, "
+                f"psb({i}) = {sv['h']:g}, pst({i}) = {sv['h']:g}, pdx({i}) = 0.5, pdy({i}) = 0.5, pdz({i}) = 1.0,",
+            ]
+        lines += [
+            "    seed_follows_topography = .T.,        ! psb/pst are heights over the cell's ground",
+            f"    particle_advection_start = {start:g},",
+            f"    end_time_prel = {end:g},",
+            f"    dt_prel = {SCENT_DT_PREL:g},",
+            f"    particle_maximum_age = {SCENT_RELEASE_S:g},",
+            "    use_sgs_for_particles = .T.,",
+            "    density_ratio = 0.0, radius = 0.0,    ! passive: no inertia, no settling",
+            "    bc_par_b = 'reflect', bc_par_t = 'absorb', bc_par_lr = 'absorb', bc_par_ns = 'absorb',   ! a particle that leaves the box is gone: cyclic edges sent them round again (the first run)",
+            f"    dt_write_particle_data = {SCENT_DT_WRITE:g},",
+            "    write_particle_statistics = .F.,",
+            "/",
+            "",
+        ]
     return "\n".join(lines)
 
 
@@ -591,6 +980,14 @@ def cell_fields(case: dict, g: dict, args, one: dict | None, root: dict) -> dict
     pai_crown = (conifer_share * PAI_CONIFER
                  + (1 - conifer_share) * (PAI_HARDWOOD_BARE + args.leaf * PAI_HARDWOOD_LEAVES)).astype(np.float32)
     water = cover == WATER
+    if case.get("fine_water"):
+        # at a few metres the habitat's 30 m water cells would take the trees off a
+        # narrow channel's walls or a lake's bank: water at 1 m, a cell wet when most
+        # of its pixels are
+        wet, how = water_fraction(case, g)
+        water = wet > 0.5
+        cover = np.where(water, WATER, np.where(cover == WATER, OPEN_WET, cover))
+        sources += [how]
 
     if args.canopy == "chm":
         import warnings
@@ -638,7 +1035,7 @@ def save_grid(path: Path, fd: dict, zt: np.ndarray, origin_z: float) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("case", choices=sorted(CASES))
-    ap.add_argument("--dx", type=float, default=10.0, help="grid spacing, m (5, 10 or 20); the root's with --nest")
+    ap.add_argument("--dx", type=float, default=10.0, help="grid spacing, m (5, 10 or 20; 2 or 4 for pickle-slot); the root's with --nest")
     ap.add_argument("--nest", default="", help="dx:size of a nested child over the core, e.g. 10:3000 (with --dx 20)")
     ap.add_argument("--npe", default="8,16", help="MPI ranks for the root and the child with --nest (their sum is palmrun's -X)")
     ap.add_argument("--leaf", type=float, default=0.5, help="share of hardwood leaves still on (0 bare .. 1 full)")
@@ -670,12 +1067,15 @@ def main() -> None:
     # ---- periodic: the outer ring to a constant
     tw = int(round(case["taper_m"] / dx))
     ring = np.ones((ny, nx), bool); ring[tw:-tw, tw:-tw] = False
-    edge = float(np.median(dtm[ring]))
+    # the level the ring is blended to: the ring's median, or a case's percentile
+    # (low at Pickle: the median is the high ground's, and it would raise the
+    # open water upwind into a bank in front of the slot)
+    edge = float(np.percentile(dtm[ring], case.get("taper_percentile", 50.0)))
     dtm_t = taper(dtm, tw, edge)
     origin_z = float(dtm_t.min())
     zt = (dtm_t - origin_z).astype(np.float32)
     relief = float(zt.max())
-    vg = vertical_grid(dx, relief)
+    vg = vertical_grid(dx, relief, case.get("vertical"))
     nlev = f["nlev"]
     # 3d output up to the highest ground + the tallest canopy + 40 m
     nz_do3d = int(math.ceil((relief + nlev * dx + 40.0) / dx)) + 1
@@ -728,11 +1128,13 @@ def main() -> None:
                 run["theta_gradients"] = [tuple(float(x) for x in s.split(":")) for s in args.gradients.split(",")]
         name = f"{args.case}_{r}{tag}"
         inp = out_case / "JOBS" / name / "INPUT"
+        scent = scent_sources(case, g, f, run)
+        run["scent"] = scent
         for old in inp.glob(f"{name}_*_N02"):
             old.unlink()  # a child left from an earlier build would be run
         write_static(inp / f"{name}_static", g, zt[::-1].copy(), lad[:, ::-1].copy(), z0[::-1].copy(), dx, case["epsg"], meta)
         hours = args.hours or run["hours"]
-        (inp / f"{name}_p3d").write_text(p3d(name, args.case, run, g, vg, hours, nz_do3d, nest), encoding="utf-8", newline="\n")
+        (inp / f"{name}_p3d").write_text(p3d(name, args.case, run, g, vg, hours, nz_do3d, nest, scent=scent), encoding="utf-8", newline="\n")
         if nest:
             fc, gc = nest["fields"], nest["grid"]
             write_static(inp / f"{name}_static_N02", gc, nest["zt"][::-1].copy(), fc["lad"][:, ::-1].copy(),
@@ -751,7 +1153,7 @@ def main() -> None:
         core_m=case["core_m"], centre=[(g["x0"] + g["x1"]) / 2, (g["y0"] + g["y1"]) / 2], point_xy=list(g["point_xy"]),
         point_latlon=list(case["point"]), vertical=vg, nz_do3d=nz_do3d, canopy_levels=nlev, leaf=args.leaf,
         terrain=args.terrain, canopy=args.canopy, sources=f["sources"], runs=run_infos,
-        canopy_summary=canopy_summary(f), trial_dem=case.get("trial_dem"),
+        canopy_summary=canopy_summary(f), trial_dem=case.get("trial_dem"), shallow=bool(case.get("vertical")),
     )
     save_grid(out_case / f"grid{sfx}.npz", f, zt, origin_z)
     if nest:
@@ -767,6 +1169,9 @@ def main() -> None:
     print(f"  canopy: cover {cs['cover_mean']:.0%}, LAI mean {cs['lai_mean']:.2f} (p90 {cs['lai_p90']:.2f}), "
           f"{nlev} levels of {dx:g} m; conifer share {f['conifer_share'].mean():.0%}, leaf {args.leaf:g}")
     print(f"  vertical: {vg['nz']} levels, {dx:g} m to {vg['start']:g} m, stretched to {vg['dz'][1]:g} m by {vg['end']:g} m, top ~{vg['top']} m")
+    for name, run in run_infos.items():
+        sc = run.get("scent") or []
+        print(f"  scent {name}: {len(sc)} sources" + (": " + "; ".join(v["name"] for v in sc) if sc else " (off)"))
     print(f"  runs: {', '.join(names)} -> {out_case / 'JOBS'} · {time.time() - t0:.0f} s")
 
 
