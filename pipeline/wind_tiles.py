@@ -181,10 +181,11 @@ def upload() -> tuple[int, int]:
 
     s3 = r2_sync.client()
     prefix = f"data/sd/{VERSION}/"
-    have = {}
+    have, sizes = {}, {}
     for page in s3.get_paginator("list_objects_v2").paginate(Bucket=r2_sync.BUCKET, Prefix=prefix):
         for o in page.get("Contents", []):
             have[o["Key"]] = o["ETag"].strip('"')
+            sizes[o["Key"]] = o["Size"]
     sent = skipped = 0
     for p in sorted(OUT.glob("t-*.hab")):
         key = prefix + p.name
@@ -194,14 +195,55 @@ def upload() -> tuple[int, int]:
             continue
         s3.put_object(Bucket=r2_sync.BUCKET, Key=key, Body=body, ContentType="application/octet-stream", CacheControl="public, max-age=86400")
         sent += 1
-    s3.put_object(Bucket=r2_sync.BUCKET, Key=prefix + "index.json", Body=(OUT / "index.json").read_bytes(), ContentType="application/json", CacheControl="no-cache")
+    # the index names every tile on R2, not just this machine's: with two machines baking
+    # (2026-10-15, xonix beside XEVO) one's index would otherwise drop the other's tiles
+    idx = json.loads((OUT / "index.json").read_text(encoding="utf-8"))
+    for k, size in sizes.items():
+        name = k[len(prefix):]
+        if name.startswith("t-") and name.endswith(".hab"):
+            idx["tiles"].setdefault(name[:-4], size)
+    idx["tiles"] = dict(sorted(idx["tiles"].items()))
+    (OUT / "index.json").write_text(json.dumps(idx), encoding="utf-8")
+    s3.put_object(Bucket=r2_sync.BUCKET, Key=prefix + "index.json", Body=json.dumps(idx).encode(), ContentType="application/json", CacheControl="no-cache")
     return sent, skipped
+
+
+def batches(queue: Path, size: int, dest: Path) -> tuple[int, int]:
+    """The queue cut into files of `size` tiles that neither R2 nor this machine has yet, in the
+    queue's order: each a job any machine can take (`bake --queue <batch file>`; 2026-10-15, the
+    job system for xonix and XEVO). Returns (batches, tiles)."""
+    import urllib.request
+
+    sys.path.insert(0, str(ROOT / "app" / "scripts"))
+    import r2_sync  # noqa: E402  (the public host)
+
+    # a named agent: the host turns away Python's default one (403)
+    req = urllib.request.Request(f"{r2_sync.PUBLIC}data/sd/{VERSION}/index.json?t={time.time():.0f}", headers={"User-Agent": "groundwind-wind-tiles"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        done = set(json.loads(r.read())["tiles"])
+    done |= {p.stem for p in OUT.glob("t-*.json") if "error" not in json.loads(p.read_text())}
+    lines = [ln for ln in queue.read_text(encoding="utf-8").splitlines() if ln.strip() and ln.split("\t")[0].strip() not in done]
+    dest.mkdir(parents=True, exist_ok=True)
+    for old in dest.glob("batch-*.txt"):
+        old.unlink()
+    n = 0
+    for k in range(0, len(lines), size):
+        n += 1
+        (dest / f"batch-{n:04d}.txt").write_text("\n".join(lines[k : k + size]) + "\n", encoding="utf-8")
+    return n, len(lines)
+
+
+RETRIES, RETRY_WAIT = 3, 600  # queue_bake: tries a tile gets, seconds between them
 
 
 def queue_bake(path: Path, jobs: int, upload_every: int) -> None:
     """Tiles from a queue file (hunt_priority.py: one id a line, best first), read again
     before every tile, so the order can be changed while it runs; resumable (a tile done
-    is skipped), the tiles sent to R2 every `upload_every`, and once more at the end."""
+    is skipped), the tiles sent to R2 every `upload_every`, and once more at the end.
+
+    A file named PAUSE beside the queue pauses it (Gavan, 2026-10-14: "I might want to
+    pause it at some point"): each job finishes its tile and waits, the tiles done so far
+    go to R2, and taking the file away carries on."""
     import threading
 
     lock = threading.Lock()
@@ -209,22 +251,64 @@ def queue_bake(path: Path, jobs: int, upload_every: int) -> None:
     done_n = [0]
     t0 = time.time()
 
+    # a tile that fails (a GPU shared with another job, the network gone for a minute: 2026-10-14
+    # and 15) goes back in the queue in its place RETRY_WAIT on, up to RETRIES tries in all
+    tries: dict[str, int] = {}
+    retry_at: dict[str, float] = {}
+
     def next_tile() -> str | None:
-        with lock:
-            for line in path.read_text(encoding="utf-8").splitlines():
-                tid = line.split("\t")[0].strip()
-                if tid and tid not in taken and not (OUT / f"{tid}.json").exists():
+        while True:
+            waiting = False
+            with lock:
+                now = time.time()
+                for line in path.read_text(encoding="utf-8").splitlines():
+                    tid = line.split("\t")[0].strip()
+                    if not tid or tid in taken or (OUT / f"{tid}.json").exists():
+                        continue
+                    if retry_at.get(tid, 0) > now:
+                        waiting = True
+                        continue
                     taken.add(tid)
                     return tid
-        return None
+            if not waiting:
+                return None
+            time.sleep(30)  # only failed tiles left, waiting for their next try
+
+    pause = path.parent / "PAUSE"
+    sent_at_pause = [False]
+
+    def wait_if_paused() -> None:
+        if not pause.exists():
+            return
+        with lock:
+            if not sent_at_pause[0]:
+                sent_at_pause[0] = True
+                print(f"  paused ({pause}): each job stops after its tile", flush=True)
+                try:
+                    index()
+                    print(f"  uploaded {upload()[0]} to R2", flush=True)
+                except Exception as e:  # noqa: BLE001
+                    print(f"  upload failed: {e}", flush=True)
+        while pause.exists():
+            time.sleep(15)
+        with lock:
+            if sent_at_pause[0]:
+                sent_at_pause[0] = False
+                print("  resumed", flush=True)
 
     def worker() -> None:
-        while (tid := next_tile()) is not None:
+        while (wait_if_paused() is None) and (tid := next_tile()) is not None:
             try:
                 info = bake_one(*lattice.parse_id(tid), False)
             except Exception as e:  # noqa: BLE001  one tile's trouble never stops the night
                 info = {"tile": tid, "error": f"{type(e).__name__}: {e}"}
             with lock:
+                if "error" in info and not (OUT / f"{tid}.json").exists():
+                    tries[tid] = tries.get(tid, 0) + 1
+                    if tries[tid] < RETRIES:
+                        taken.discard(tid)
+                        retry_at[tid] = time.time() + RETRY_WAIT
+                        info["error"] += f" (try {tries[tid]} of {RETRIES}: again in {RETRY_WAIT // 60} min)"
                 done_n[0] += 1
                 n = done_n[0]
                 print(f"[{n}] {tid}: {info.get('error') or f'{info['seconds']} s, {info['bytes'] / 1e6:.1f} MB'} · {time.time() - t0:.0f} s in all", flush=True)
@@ -248,12 +332,14 @@ def queue_bake(path: Path, jobs: int, upload_every: int) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("cmd", choices=["plan", "bake", "seams", "index", "upload"])
+    ap.add_argument("cmd", choices=["plan", "bake", "seams", "index", "upload", "batches"])
     ap.add_argument("--box", nargs=4, type=float, metavar=("W", "S", "E", "N"))
     ap.add_argument("--jobs", type=int, default=2)
     ap.add_argument("--keep", action="store_true", help="keep each tile's working folder (with its margin) for the seams check")
     ap.add_argument("--queue", help="bake the tiles of this file in order (hunt_priority.py), read again before each tile")
     ap.add_argument("--upload-every", type=int, default=50)
+    ap.add_argument("--size", type=int, default=50, help="batches: tiles a batch file")
+    ap.add_argument("--out-dir", help="batches: where the batch files go")
     a = ap.parse_args()
     cells = lattice.tiles_in(tuple(a.box)) if a.box else []
     if a.cmd == "plan":
@@ -267,6 +353,10 @@ def main() -> int:
         idx = index()
         sent, skipped = upload()
         print(f"R2 data/sd/{VERSION}/: {sent} tiles sent, {skipped} already there, index of {len(idx['tiles'])}")
+        return 0
+    if a.cmd == "batches":
+        n, k = batches(Path(a.queue), a.size, Path(a.out_dir))
+        print(f"{n} batch files of up to {a.size} tiles in {a.out_dir}: {k} tiles not yet baked")
         return 0
     if a.cmd == "seams":
         import numpy as np

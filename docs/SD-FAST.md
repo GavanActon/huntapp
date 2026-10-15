@@ -370,6 +370,25 @@ numbers. Same with Quebec."
     nothing behind, so they are redone.
   - To carry on: `py -3.14 pipeline/wind_tiles.py bake --queue
     pipeline/raw/windtiles/queue.txt --jobs 2 --upload-every 50`.
+- **Pause:** a file named `PAUSE` beside the queue (`pause-bake.cmd` and
+  `resume-bake.cmd` there make and remove it). Each job finishes its tile
+  and the tiles so far go to R2, then it waits until the file is gone.
+- **Retries (2026-10-15):** a tile that fails goes back in its place 10
+  minutes on, up to 3 tries. The first day lost 10 tiles this way: one to
+  a GPU shared with another job, and nine in one minute when the
+  elevation server's name would not resolve.
+- **More maps staged (2026-10-15):** qc-north (Québec 19, 29, 28, 18:
+  2,674 tiles) and on-farnorth (Ontario 1C, 2: 795 tiles), so only 82
+  scattered tiles still read over the network.
+- **More than one machine (2026-10-15):** the bake moves to xonix as GPU jobs
+  in the shared job system (docs/SCENT-TESTSET.md, the service section).
+  - `wind_tiles.py batches --queue Q --size 50 --out-dir D` cuts the queue
+    into batch files of tiles neither R2 nor this machine has yet.
+  - A batch file is itself a queue: `bake --queue <batch> --jobs 3
+    --upload-every 0`. It exits when the batch is done, and PAUSE beside
+    it freezes it.
+  - `upload` now writes an index of every tile on R2, so one machine's
+    upload doesn't drop another's tiles.
 - **Left:** 9,923 tiles, about 6,400 staged and 3,550 over the network,
   roughly 130 hours on XEVO alone.
 
