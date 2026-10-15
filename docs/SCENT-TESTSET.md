@@ -134,10 +134,22 @@ cyclic boxes can't hold their relief. They wait for a non-cyclic method (SCENT-T
 | L1 | lacbailey-bank | the point 1.5 m | a lake's shore under a bank | |
 | L2 | lacbailey-bank | up the bank 150 m 1.5 m | a bank slope in 12 m regrowth | |
 | L3 | lacbailey-bank | up the bank 150 m 5 m | a 5 m stand on a bank | |
-| W1–W8 | whitefish (new case) | to pick | one per situation in its core: a shore, a bog's edge, a windward tree line, a cut between walls, a lee slope, a drainage floor, a 5 m stand | none yet |
+| W1 | whitefish | W1 lakeshore under the bank | a shore under a 31 m bank | |
+| W2 | whitefish | W2 marsh edge under trees (1.5 m and 5 m) | a marsh edge under trees; a 5 m stand | |
+| W3 | whitefish | W3 the cut, its S tree line | a tree line seen from an open cut | |
+| W4 | whitefish | W4 marsh bay between walls | a 65 m bay between tree walls | |
+| W5 | whitefish | W5 lee slope of the bank | a lee slope (7°, 17 m trees) | |
+| W6 | whitefish | W6 creek trough floor | a drainage floor | |
+| W8 | whitefish | W8 over the water off the S shore | a tree line seen from water | |
+| W9 | whitefish | W9 head of the arm | trees facing the arm's water under the prevailing SSW | Gavan's pick |
+| W10 | whitefish | W10 clearing on the neck | a 20 m clearing on the neck between two waters | Gavan's pick |
 
-The ring sources in each run are scored too, as extras, outside the headline. The owner picks Whitefish's
-points from its 1 m LiDAR and habitat and shows them to Gavan on a map before any Whitefish run.
+The ring sources in each run are scored too, as extras, outside the headline. **Whitefish**
+(approved by Gavan 2026-10-15 with W9 and W10 added): the box is centred on 48.154859, -80.798419,
+around the lake's NE arm, the east pond and the logged cut. It has no bog and no long strip. W7, the S
+pond's marsh basin, was dropped for W9 and W10, since a run carries ten sources at most and the taper
+cut the basin open. The ring tapers to the pond's level (p25). The map is
+`pipeline/raw/teacher/palm/whitefish/whitefish-box-proposed.png`.
 
 ### Winds per box: two neutral and one stable
 
@@ -147,17 +159,15 @@ points from its 1 m LiDAR and habitat and shows them to Gavan on a map before an
 | pickle-bogstrip | b232 ✓ (`_sit2`, true positions) | b190 at 4 m (`_test`, queued) | dusk288 (XEVO, running) | 2 |
 | pickle-bogs | nw305 (xonix, running) | | dawn175 ✓, dusk288 (shipping lean) | 1 |
 | lacbailey-bank | n000 ✓ | s180 (queued) | dusk000 ✓ | 1 |
-| whitefish | the prevailing W | N | dusk | case + 3 |
+| whitefish | s210, the prevailing SSW (queued) | n000 (queued) | dusk210 (queued) | 3 |
 
 Where they run, 2026-10-15 at 15:20:
 - **xonix:** bogs nw305 (since 14:43), then the next job in the queue.
 - **XEVO:** slot w270 and the strip's dusk288 on its last old runners. Its new slots wait in `idle`.
-- **Queued:** Lac Bailey s180 and strip b190 `_test`, taken by whichever machine is free first.
+- **Queued:** Lac Bailey s180, strip b190 `_test`, then Whitefish s210, n000 and dusk210, taken
+  by whichever machine is free first.
 - **The 2 m strip b190 never ran:** the old chain's run script failed to start it, so the 4 m `_test`
   run fills that cell.
-
-Whitefish follows once Gavan has seen its points.
-
 That's **7 new runs**, about one night on xonix and two at most. Of the 7 runs held on 2026-10-15
 (`pipeline/raw/teacher/palm/xevo-queue.held.txt`), only lacbailey-bank s180 fills a cell. The other 6
 are dropped unless Gavan wants them as `explore`.
@@ -226,6 +236,13 @@ spread is two parts: **σ² = σ_place² + σ_forecast²**.
     and never drops.
 
   A PALM-fitted cap on σ alone took the checks from 51% to 43%, so it fails.
+
+**What the cone draws** (Gavan, 2026-10-15: option 3 of three). The tongue is drawn bold: where the
+scent goes if the forecast is right (σ_place and σ_model, the part this card scores). Around it goes a
+faint envelope, the honest spread with σ_forecast added (the part the checks score). Each wind check at
+the sit shrinks the envelope toward the tongue. huntapp-ba builds it. σ_model is the app's own
+direction error by situation (palm_compare's dirApart). It stays under forced air, so the spread is
+σ² = σ_place² + σ_model² + σ_forecast².
 
 ## Order
 

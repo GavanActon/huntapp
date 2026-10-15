@@ -1,0 +1,502 @@
+{
+ "case": "whitefish",
+ "tag": "4m",
+ "built": "2026-10-15 15:32",
+ "epsg": 32617,
+ "dx": 4.0,
+ "nx": 256,
+ "ny": 256,
+ "bounds": [
+  514480.0,
+  5333020.0,
+  515504.0,
+  5334044.0
+ ],
+ "gridConvergenceDeg": 0.15016841391586322,
+ "origin_lonlat": [
+  -80.8053203714808,
+  48.15026410825789
+ ],
+ "origin_z": 313.8918762207031,
+ "relief_m": 41.984405517578125,
+ "taper_m": 160.0,
+ "core_m": 700.0,
+ "centre": [
+  514992.0,
+  5333532.0
+ ],
+ "point_xy": [
+  514991.9756798392,
+  5333532.038654128
+ ],
+ "point_latlon": [
+  48.154859,
+  -80.798419
+ ],
+ "vertical": {
+  "dz": [
+   4.0,
+   16.0
+  ],
+  "start": 84.0,
+  "end": 272.0,
+  "nz": 62,
+  "top": 600
+ },
+ "nz_do3d": 31,
+ "canopy_levels": 9,
+ "leaf": 0.5,
+ "terrain": "hrdem",
+ "canopy": "chm",
+ "sources": [
+  "HRDEM 1 m LiDAR (ON-SPL_ON_Kirkland_Lake_UTM17_2024-1m-dtm, ON-SPL_ON_Kirkland_Lake_UTM17_2024-1m-dsm, ON-SPL_ON_Timmins_UTM17_2023-1m-dtm, ON-SPL_ON_Timmins_UTM17_2023-1m-dsm), NRCan, OGL-Canada",
+  "habitat grid of area whitefish-lake (FRI stands, OMNRF, OGL-Ontario)",
+  "1 m lake mask of area whitefish-lake (pipeline/lakes.py)"
+ ],
+ "runs": {
+  "whitefish_s210_4m": {
+   "direction": 210.0,
+   "speed_kph": 12.0,
+   "stability": "neutral",
+   "hours": 1.0,
+   "average_s": 1200.0,
+   "why": "the prevailing SSW (Matachewan 12 Sep-14 Oct 2026: SSW 16%, SW 12%, the top bins): the bank's lee at W5/W1/W8, up the arm's fetch into W9",
+   "scent": [
+    {
+     "name": "W1 lakeshore under the bank 1.5 m",
+     "x": 220.0,
+     "y": 496.1,
+     "h": 1.5,
+     "utm": [
+      514700.0,
+      5333516.1
+     ],
+     "ground_m": 315.5,
+     "canopy_m": 11.9,
+     "water": false
+    },
+    {
+     "name": "W2 marsh edge under trees 1.5 m",
+     "x": 692.0,
+     "y": 532.0,
+     "h": 1.5,
+     "utm": [
+      515172.0,
+      5333552.0
+     ],
+     "ground_m": 327.1,
+     "canopy_m": 12.2,
+     "water": false
+    },
+    {
+     "name": "W2 marsh edge under trees 5 m",
+     "x": 692.0,
+     "y": 532.0,
+     "h": 5.0,
+     "utm": [
+      515172.0,
+      5333552.0
+     ],
+     "ground_m": 327.1,
+     "canopy_m": 12.2,
+     "water": false
+    },
+    {
+     "name": "W3 the cut, its S tree line 1.5 m",
+     "x": 610.0,
+     "y": 822.0,
+     "h": 1.5,
+     "utm": [
+      515090.0,
+      5333842.0
+     ],
+     "ground_m": 325.2,
+     "canopy_m": 2.9,
+     "water": false
+    },
+    {
+     "name": "W4 marsh bay between walls 1.5 m",
+     "x": 763.0,
+     "y": 535.0,
+     "h": 1.5,
+     "utm": [
+      515243.0,
+      5333555.0
+     ],
+     "ground_m": 326.8,
+     "canopy_m": 0.0,
+     "water": false
+    },
+    {
+     "name": "W5 lee slope of the bank 1.5 m",
+     "x": 420.0,
+     "y": 545.0,
+     "h": 1.5,
+     "utm": [
+      514900.0,
+      5333565.0
+     ],
+     "ground_m": 328.5,
+     "canopy_m": 13.9,
+     "water": false
+    },
+    {
+     "name": "W6 creek trough floor 1.5 m",
+     "x": 698.0,
+     "y": 410.0,
+     "h": 1.5,
+     "utm": [
+      515178.0,
+      5333430.0
+     ],
+     "ground_m": 331.3,
+     "canopy_m": 16.3,
+     "water": false
+    },
+    {
+     "name": "W8 over the water off the S shore 1.5 m",
+     "x": 280.0,
+     "y": 572.0,
+     "h": 1.5,
+     "utm": [
+      514760.0,
+      5333592.0
+     ],
+     "ground_m": 314.6,
+     "canopy_m": 0.0,
+     "water": true
+    },
+    {
+     "name": "W9 head of the arm, trees facing the water 1.5 m",
+     "x": 438.3,
+     "y": 735.0,
+     "h": 1.5,
+     "utm": [
+      514918.3,
+      5333755.0
+     ],
+     "ground_m": 315.2,
+     "canopy_m": 11.4,
+     "water": false
+    },
+    {
+     "name": "W10 clearing on the neck between two waters 1.5 m",
+     "x": 637.4,
+     "y": 694.0,
+     "h": 1.5,
+     "utm": [
+      515117.4,
+      5333714.0
+     ],
+     "ground_m": 324.5,
+     "canopy_m": 0.0,
+     "water": false
+    }
+   ]
+  },
+  "whitefish_n000_4m": {
+   "direction": 0.0,
+   "speed_kph": 12.0,
+   "stability": "neutral",
+   "hours": 1.0,
+   "average_s": 1200.0,
+   "why": "the N: W3's tree line after 240 m of open cut, W8's after 150 m of water; the bank windward (W1, W5), up the trough (W6), across the neck (W10)",
+   "scent": [
+    {
+     "name": "W1 lakeshore under the bank 1.5 m",
+     "x": 220.0,
+     "y": 496.1,
+     "h": 1.5,
+     "utm": [
+      514700.0,
+      5333516.1
+     ],
+     "ground_m": 315.5,
+     "canopy_m": 11.9,
+     "water": false
+    },
+    {
+     "name": "W2 marsh edge under trees 1.5 m",
+     "x": 692.0,
+     "y": 532.0,
+     "h": 1.5,
+     "utm": [
+      515172.0,
+      5333552.0
+     ],
+     "ground_m": 327.1,
+     "canopy_m": 12.2,
+     "water": false
+    },
+    {
+     "name": "W2 marsh edge under trees 5 m",
+     "x": 692.0,
+     "y": 532.0,
+     "h": 5.0,
+     "utm": [
+      515172.0,
+      5333552.0
+     ],
+     "ground_m": 327.1,
+     "canopy_m": 12.2,
+     "water": false
+    },
+    {
+     "name": "W3 the cut, its S tree line 1.5 m",
+     "x": 610.0,
+     "y": 822.0,
+     "h": 1.5,
+     "utm": [
+      515090.0,
+      5333842.0
+     ],
+     "ground_m": 325.2,
+     "canopy_m": 2.9,
+     "water": false
+    },
+    {
+     "name": "W4 marsh bay between walls 1.5 m",
+     "x": 763.0,
+     "y": 535.0,
+     "h": 1.5,
+     "utm": [
+      515243.0,
+      5333555.0
+     ],
+     "ground_m": 326.8,
+     "canopy_m": 0.0,
+     "water": false
+    },
+    {
+     "name": "W5 lee slope of the bank 1.5 m",
+     "x": 420.0,
+     "y": 545.0,
+     "h": 1.5,
+     "utm": [
+      514900.0,
+      5333565.0
+     ],
+     "ground_m": 328.5,
+     "canopy_m": 13.9,
+     "water": false
+    },
+    {
+     "name": "W6 creek trough floor 1.5 m",
+     "x": 698.0,
+     "y": 410.0,
+     "h": 1.5,
+     "utm": [
+      515178.0,
+      5333430.0
+     ],
+     "ground_m": 331.3,
+     "canopy_m": 16.3,
+     "water": false
+    },
+    {
+     "name": "W8 over the water off the S shore 1.5 m",
+     "x": 280.0,
+     "y": 572.0,
+     "h": 1.5,
+     "utm": [
+      514760.0,
+      5333592.0
+     ],
+     "ground_m": 314.6,
+     "canopy_m": 0.0,
+     "water": true
+    },
+    {
+     "name": "W9 head of the arm, trees facing the water 1.5 m",
+     "x": 438.3,
+     "y": 735.0,
+     "h": 1.5,
+     "utm": [
+      514918.3,
+      5333755.0
+     ],
+     "ground_m": 315.2,
+     "canopy_m": 11.4,
+     "water": false
+    },
+    {
+     "name": "W10 clearing on the neck between two waters 1.5 m",
+     "x": 637.4,
+     "y": 694.0,
+     "h": 1.5,
+     "utm": [
+      515117.4,
+      5333714.0
+     ],
+     "ground_m": 324.5,
+     "canopy_m": 0.0,
+     "water": false
+    }
+   ]
+  },
+  "whitefish_dusk210_4m": {
+   "direction": 210.0,
+   "speed_kph": 8.0,
+   "zref_m": 80.0,
+   "stability": "stable",
+   "hours": 2.0,
+   "average_s": 1800.0,
+   "theta_surface": 284.0,
+   "theta_gradients": [
+    [
+     0.0,
+     0.7
+    ],
+    [
+     300.0,
+     0.5
+    ]
+   ],
+   "surface": "rate",
+   "heating_rate": -1.0,
+   "surface_heatflux": -0.02,
+   "cthf": -0.02,
+   "why": "dusk under a light SSW: cold air down the bank (W5, W1, W8) and down the trough (W6) to the east pond's bay (W4, W2)",
+   "scent": [
+    {
+     "name": "W1 lakeshore under the bank 1.5 m",
+     "x": 220.0,
+     "y": 496.1,
+     "h": 1.5,
+     "utm": [
+      514700.0,
+      5333516.1
+     ],
+     "ground_m": 315.5,
+     "canopy_m": 11.9,
+     "water": false
+    },
+    {
+     "name": "W2 marsh edge under trees 1.5 m",
+     "x": 692.0,
+     "y": 532.0,
+     "h": 1.5,
+     "utm": [
+      515172.0,
+      5333552.0
+     ],
+     "ground_m": 327.1,
+     "canopy_m": 12.2,
+     "water": false
+    },
+    {
+     "name": "W2 marsh edge under trees 5 m",
+     "x": 692.0,
+     "y": 532.0,
+     "h": 5.0,
+     "utm": [
+      515172.0,
+      5333552.0
+     ],
+     "ground_m": 327.1,
+     "canopy_m": 12.2,
+     "water": false
+    },
+    {
+     "name": "W3 the cut, its S tree line 1.5 m",
+     "x": 610.0,
+     "y": 822.0,
+     "h": 1.5,
+     "utm": [
+      515090.0,
+      5333842.0
+     ],
+     "ground_m": 325.2,
+     "canopy_m": 2.9,
+     "water": false
+    },
+    {
+     "name": "W4 marsh bay between walls 1.5 m",
+     "x": 763.0,
+     "y": 535.0,
+     "h": 1.5,
+     "utm": [
+      515243.0,
+      5333555.0
+     ],
+     "ground_m": 326.8,
+     "canopy_m": 0.0,
+     "water": false
+    },
+    {
+     "name": "W5 lee slope of the bank 1.5 m",
+     "x": 420.0,
+     "y": 545.0,
+     "h": 1.5,
+     "utm": [
+      514900.0,
+      5333565.0
+     ],
+     "ground_m": 328.5,
+     "canopy_m": 13.9,
+     "water": false
+    },
+    {
+     "name": "W6 creek trough floor 1.5 m",
+     "x": 698.0,
+     "y": 410.0,
+     "h": 1.5,
+     "utm": [
+      515178.0,
+      5333430.0
+     ],
+     "ground_m": 331.3,
+     "canopy_m": 16.3,
+     "water": false
+    },
+    {
+     "name": "W8 over the water off the S shore 1.5 m",
+     "x": 280.0,
+     "y": 572.0,
+     "h": 1.5,
+     "utm": [
+      514760.0,
+      5333592.0
+     ],
+     "ground_m": 314.6,
+     "canopy_m": 0.0,
+     "water": true
+    },
+    {
+     "name": "W9 head of the arm, trees facing the water 1.5 m",
+     "x": 438.3,
+     "y": 735.0,
+     "h": 1.5,
+     "utm": [
+      514918.3,
+      5333755.0
+     ],
+     "ground_m": 315.2,
+     "canopy_m": 11.4,
+     "water": false
+    },
+    {
+     "name": "W10 clearing on the neck between two waters 1.5 m",
+     "x": 637.4,
+     "y": 694.0,
+     "h": 1.5,
+     "utm": [
+      515117.4,
+      5333714.0
+     ],
+     "ground_m": 324.5,
+     "canopy_m": 0.0,
+     "water": false
+    }
+   ]
+  }
+ },
+ "canopy_summary": {
+  "cover_mean": 0.8129253387451172,
+  "lai_mean": 2.9481730461120605,
+  "lai_p90": 4.0,
+  "height_p90_mean": 16.097187042236328
+ },
+ "trial_dem": null,
+ "shallow": true
+}

@@ -341,6 +341,52 @@ CASES = {
                             why="a dusk with a light wind off the land: the cold air down the bank and out over the water"),
         },
     ),
+    # Whitefish Lake (request #7 near Timmins, HD): the scent test set's second held-out box
+    # (docs/SCENT-TESTSET.md), picked 2026-10-15 and approved by Gavan with two points he added (W9,
+    # W10). The NE arm of the lake (314.6 m) under a bank rising 31 m to the S, the east pond (326.6 m)
+    # with its marsh bay, a creek trough from the S pond, and the logged cut to the N (0-3 m in the
+    # 2023-24 LiDAR; the 2011/2014 inventory still calls it hardwood, so only its conifer share is old).
+    # No bog and no long strip here. W7 (the S pond's marsh basin) was dropped for W9/W10: ten sources
+    # at most, and the taper cut its basin open. The ring tapers to the pond's level (p25), not the
+    # lake's: p5 put a 25 m ramp 300 m upwind of W5 under 210.
+    "whitefish": dict(
+        area="whitefish-lake",
+        point=(48.154859, -80.798419),
+        epsg=32617,
+        hrdem=["ON-SPL_ON_Kirkland_Lake_UTM17_2024-1m", "ON-SPL_ON_Timmins_UTM17_2023-1m"],
+        size_m=1024.0, core_m=700.0, taper_m=160.0,
+        shift=(0.0, 0.0),
+        lattice=(0.0, 0.0),
+        fine_water=True,
+        taper_percentile=25.0,
+        vertical=dict(const_m=40.0, dz_top_m=16.0, top_m=600.0),
+        scent=dict(sources=[
+            dict(name="W1 lakeshore under the bank", latlon=(48.154722, -80.802345), heights=[1.5]),
+            dict(name="W2 marsh edge under trees", latlon=(48.155034, -80.795998), heights=[1.5, 5.0]),
+            dict(name="W3 the cut, its S tree line", latlon=(48.157645, -80.797090), heights=[1.5]),
+            dict(name="W4 marsh bay between walls", latlon=(48.155060, -80.795043), heights=[1.5]),
+            dict(name="W5 lee slope of the bank", latlon=(48.155158, -80.799655), heights=[1.5]),
+            dict(name="W6 creek trough floor", latlon=(48.153937, -80.795921), heights=[1.5]),
+            dict(name="W8 over the water off the S shore", latlon=(48.155404, -80.801536), over_water=True),
+            # Gavan's two (2026-10-15): the arm's head in 10-12 m trees, 16 m from the water with the
+            # arm's 150 m of open water to the SW-W (the tree line facing the water under 210); and a
+            # 20 m clearing on the neck between the arm's head and the east pond, 10 m above the lake
+            dict(name="W9 head of the arm, trees facing the water", latlon=(48.156867, -80.799402)),
+            dict(name="W10 clearing on the neck between two waters", latlon=(48.156493, -80.796726)),
+        ]),
+        runs={
+            "s210": dict(direction=210.0, speed_kph=12.0, stability="neutral", hours=1.0, average_s=1200.0,
+                         why="the prevailing SSW (Matachewan 12 Sep-14 Oct 2026: SSW 16%, SW 12%, the top bins): the bank's lee at W5/W1/W8, up the arm's fetch into W9"),
+            "n000": dict(direction=0.0, speed_kph=12.0, stability="neutral", hours=1.0, average_s=1200.0,
+                         why="the N: W3's tree line after 240 m of open cut, W8's after 150 m of water; the bank windward (W1, W5), up the trough (W6), across the neck (W10)"),
+            "dusk210": dict(direction=210.0, speed_kph=8.0, zref_m=80.0, stability="stable", hours=2.0, average_s=1800.0,
+                            theta_surface=284.0,
+                            theta_gradients=[(0.0, 0.7), (300.0, 0.5)],  # Lac Bailey's dusk000 start
+                            surface="rate", heating_rate=-1.0,
+                            surface_heatflux=-0.02, cthf=-0.02,
+                            why="dusk under a light SSW: cold air down the bank (W5, W1, W8) and down the trough (W6) to the east pond's bay (W4, W2)"),
+        },
+    ),
     # Not here: Searchmont's climb. A cyclic box small enough for 4 m (1.5 km) holds 194 m
     # between the valley floor and the plateau, and blending its edges to one height puts a
     # cliff upwind of the climb. It wants a small box driven by the 10 m run (offline nesting).
@@ -429,8 +475,15 @@ def fetch_1m(case_id: str, case: dict, g: dict, refresh: bool = False) -> dict:
                 print(f"  {proj} {kind}: {fill.mean():.1%} of the box filled · {time.time() - t0:.0f} s", flush=True)
                 if fill.any():
                     used.append(f"{proj}-{kind}")
-    if np.isnan(dtm).any():
-        raise SystemExit(f"HRDEM leaves {np.isnan(dtm).mean():.2%} of the box without ground: use --terrain mrdem")
+    gap = np.isnan(dtm)
+    if gap.mean() > 0.001:
+        raise SystemExit(f"HRDEM leaves {gap.mean():.2%} of the box without ground: use --terrain mrdem")
+    if gap.any():
+        # a hairline seam between two surveys (Whitefish: Kirkland Lake 2024 against Timmins 2023): the nearest ground
+        from scipy import ndimage
+        idx = ndimage.distance_transform_edt(gap, return_distances=False, return_indices=True)
+        dtm = dtm[tuple(idx)]
+        print(f"  {int(gap.sum())} cells on a seam between surveys filled from the nearest ground", flush=True)
     chm = np.where(np.isfinite(dsm), np.clip(dsm - dtm, 0, 60), 0).astype(np.float32)
     np.savez_compressed(out, dtm=dtm, chm=np.round(chm * 10).astype(np.uint16), bounds=np.array(bounds), sources=np.array(used))
     return dict(dtm=dtm, chm=chm, sources=used)

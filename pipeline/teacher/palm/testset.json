@@ -22,7 +22,17 @@
   "P10": {"box": "pickle-bogs", "source": "the pool S of camp", "h": 1.5, "situation": "cold-air pool", "anchor": "the 'too much plume' spot, 10-09"},
   "L1":  {"box": "lacbailey-bank", "source": "the point 1.5", "h": 1.5, "situation": "shore under a bank", "anchor": ""},
   "L2":  {"box": "lacbailey-bank", "source": "up the bank 150 m 1.5", "h": 1.5, "situation": "bank slope", "anchor": ""},
-  "L3":  {"box": "lacbailey-bank", "source": "up the bank 150 m 5", "h": 5.0, "situation": "5 m stand", "anchor": ""}
+  "L3":  {"box": "lacbailey-bank", "source": "up the bank 150 m 5", "h": 5.0, "situation": "5 m stand", "anchor": ""},
+  "W1":  {"box": "whitefish", "source": "W1 lakeshore under the bank", "h": 1.5, "situation": "shore under a bank", "anchor": ""},
+  "W2":  {"box": "whitefish", "source": "W2 marsh edge under trees 1.5", "h": 1.5, "situation": "bog edge under trees", "anchor": "a marsh, not a bog: no bog in the box"},
+  "W2s": {"box": "whitefish", "source": "W2 marsh edge under trees 5", "h": 5.0, "situation": "5 m stand", "anchor": ""},
+  "W3":  {"box": "whitefish", "source": "W3 the cut, its S tree line", "h": 1.5, "situation": "tree line from open ground", "anchor": ""},
+  "W4":  {"box": "whitefish", "source": "W4 marsh bay between walls", "h": 1.5, "situation": "open strip between walls", "anchor": "a 65 m bay, not a long strip"},
+  "W5":  {"box": "whitefish", "source": "W5 lee slope of the bank", "h": 1.5, "situation": "lee slope", "anchor": ""},
+  "W6":  {"box": "whitefish", "source": "W6 creek trough floor", "h": 1.5, "situation": "drainage floor", "anchor": ""},
+  "W8":  {"box": "whitefish", "source": "W8 over the water off the S shore", "h": 1.5, "situation": "tree line from water", "anchor": ""},
+  "W9":  {"box": "whitefish", "source": "W9 head of the arm", "h": 1.5, "situation": "tree line facing the water", "anchor": "Gavan's pick, 2026-10-15"},
+  "W10": {"box": "whitefish", "source": "W10 clearing on the neck", "h": 1.5, "situation": "gap between two waters", "anchor": "Gavan's pick, 2026-10-15"}
  },
  "boxes": {
   "pickle-slot":     {"area": "pickle-lake", "held_out": false,
@@ -33,12 +43,15 @@
   "pickle-bogs":     {"area": "pickle-lake", "held_out": false,
                       "runs": ["pickle-bogs_nw305_4m_scent", "pickle-bogs_dawn175_4m", "pickle-bogs_dusk288_4m"]},
   "lacbailey-bank":  {"area": "lac-bailey", "held_out": true,
-                      "runs": ["lacbailey-bank_n000_4m_scent", "lacbailey-bank_s180_4m_scent", "lacbailey-bank_dusk000_4m_scent"]}
+                      "runs": ["lacbailey-bank_n000_4m_scent", "lacbailey-bank_s180_4m_scent", "lacbailey-bank_dusk000_4m_scent"]},
+  "whitefish":       {"area": "whitefish-lake", "held_out": true,
+                      "runs": ["whitefish_s210_4m", "whitefish_n000_4m", "whitefish_dusk210_4m"]}
  },
  "notes": [
   "A run is named as postprocess.py names its products: fields/<run>_scent.json (PALM's bands) and fields/<run>.npz (its wind).",
   "One run per wind per box, at 4 m (2 m only to confirm a narrow feature). The slot also carries nw315 and am270, run with particles before the set was frozen.",
-  "A run that has not landed is listed as pending and left out of the score. Whitefish joins as W1-W8 (held out) once Gavan has seen its points.",
+  "A run that has not landed is listed as pending and left out of the score.",
+  "Whitefish (held out) joined 2026-10-15 with Gavan's OK: W1-W6 and W8 picked from the 1 m LiDAR, W9 and W10 his own; W7 (the S pond's marsh basin) dropped for ten sources. Its points are tested within v1 (pending until their runs land), so v1 scores before its runs land compare only on the other boxes.",
   "Changing a point, a run or the measure makes a new version; scores of different versions do not compare."
  ]
 }
