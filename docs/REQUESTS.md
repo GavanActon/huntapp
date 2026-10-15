@@ -35,6 +35,14 @@ number of runners, and adds accounts and email. The SD bake itself is
    the pictures, reads the grids from R2, and lists the area under the
    account's areas.
 
+**Watching them come in:** groundwind.app/requests (site/requests.html), behind
+the stats key. It lists every request newest first, with a map of the boxes,
+counts by stage, a "new since you last looked" banner and a desktop notice
+for a new one, a finished bake, a failure or one waiting for review. Tap a
+request for its email, ground, bake progress and traceback. The page reads
+`GET /api/requests` (worker.js) and checks again every 30 s while it is on
+screen.
+
 ## Access
 
 - **SD: the link is the key.** A requested area gets an id that can't be

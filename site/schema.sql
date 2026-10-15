@@ -4,6 +4,7 @@
 -- party's sealed mailbox (party_items).
 -- Apply with: npx wrangler d1 execute groundwind --remote --file schema.sql
 -- Read with:  npx wrangler d1 execute groundwind --remote --command "SELECT * FROM requests ORDER BY at DESC"
+--             or on groundwind.app/requests (requests.html, behind STATS_KEY)
 -- A column added here never reaches a table that exists: each change comes
 -- with its ALTER TABLE statements in migrations/, applied by hand (then
 -- check with PRAGMA table_info(<table>) on --remote).

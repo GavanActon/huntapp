@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Groundwind requests</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>
+/* The area requests as they come in (worker.js /api/requests, behind the
+   stats key, kept in this browser like stats.html's). Not linked from the
+   site. Checks again every 30 s while it is on screen. */
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --surface-2: #f0efec;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --ring: rgba(11, 11, 11, 0.10);
+  --series: #2a78d6;
+  --good: #0ca30c;
+  --warning: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+  --off: #898781;
+  --new: #2a78d6;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --surface-2: #262624;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --ring: rgba(255, 255, 255, 0.10);
+    --series: #3987e5;
+    --new: #3987e5;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d;
+  --surface: #1a1a19;
+  --surface-2: #262624;
+  --ink: #ffffff;
+  --ink-2: #c3c2b7;
+  --muted: #898781;
+  --grid: #2c2c2a;
+  --ring: rgba(255, 255, 255, 0.10);
+  --series: #3987e5;
+  --new: #3987e5;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1280px; margin: 0 auto; padding: 20px 16px 64px; }
+h1 { font-size: 1.35rem; font-weight: 600; margin: 0; }
+a { color: var(--series); }
+.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+.stamp { color: var(--muted); font-size: 0.8rem; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--ring); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.seg button { border: 0; background: none; color: var(--ink-2); padding: 6px 11px; font: inherit; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface-2); color: var(--ink); font-weight: 600; }
+input[type="password"] { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--ring); border-radius: 8px; padding: 7px 10px; }
+.btn { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--ring); border-radius: 8px; padding: 6px 12px; cursor: pointer; text-decoration: none; display: inline-block; }
+.btn:hover, .seg button:hover { background: var(--surface-2); }
+.btn-main { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.btn-main:hover { background: var(--ink-2); }
+.btn-small { padding: 3px 9px; font-size: 0.8rem; }
+
+#keybox { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; padding: 16px; margin-bottom: 14px; max-width: 520px; }
+#keybox p { margin: 0 0 10px; color: var(--ink-2); }
+.err { color: var(--critical); }
+
+#fresh { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; background: var(--surface); border: 1px solid var(--ring); border-left: 4px solid var(--new); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; }
+#fresh b { font-weight: 600; }
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.tile { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; padding: 10px 14px; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.tile:hover { background: var(--surface-2); }
+.tile .label { color: var(--ink-2); font-size: 0.8rem; display: flex; gap: 6px; align-items: center; }
+.tile .value { font-size: 1.6rem; font-weight: 600; line-height: 1.2; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.tile .note { color: var(--muted); font-size: 0.75rem; }
+@media (max-width: 600px) {
+  .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .tile { padding: 8px 10px; }
+  .tile .value { font-size: 1.3rem; }
+  .top .btn { padding: 5px 10px; font-size: 0.85rem; }
+}
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 14px; align-items: start; }
+.card { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; min-width: 0; }
+.mapcard { position: sticky; top: 12px; overflow: hidden; }
+#map { height: min(72vh, 640px); background: var(--surface-2); }
+.mapbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--grid); }
+.mapbar .dim { font-size: 0.8rem; }
+.nomap { padding: 18px; color: var(--ink-2); }
+@media (max-width: 860px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .mapcard { position: static; }
+  #map { height: 46vh; }
+}
+
+.listhead { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--grid); }
+.listhead .dim { font-size: 0.8rem; }
+.dim { color: var(--muted); }
+.empty { color: var(--ink-2); padding: 18px 14px; }
+
+.req { border-bottom: 1px solid var(--grid); }
+.req:last-child { border-bottom: 0; }
+.req > button.sum { all: unset; box-sizing: border-box; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 2px 10px; width: 100%; padding: 10px 12px; cursor: pointer; }
+.req > button.sum:hover { background: var(--surface-2); }
+.req > button.sum:focus-visible { outline: 2px solid var(--series); outline-offset: -2px; }
+.req.on > button.sum { background: var(--surface-2); }
+.req .id { font-weight: 600; font-variant-numeric: tabular-nums; grid-row: span 2; padding-top: 1px; min-width: 2.6em; }
+.req .title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.req .ago { color: var(--muted); font-size: 0.8rem; white-space: nowrap; text-align: right; }
+.req .meta { color: var(--ink-2); font-size: 0.8rem; grid-column: 2 / 4; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+.req.cancelled .title, .req.cancelled .id { color: var(--muted); font-weight: 500; }
+.req.flash > button.sum { animation: flash 2.4s ease-out; }
+@keyframes flash { from { background: color-mix(in srgb, var(--new) 22%, transparent); } to { background: transparent; } }
+
+.kind { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em; border: 1px solid var(--ring); border-radius: 4px; padding: 0 5px; color: var(--ink-2); }
+.kind.hd { color: var(--ink); border-color: var(--ink-2); }
+.newtag { font-size: 0.7rem; font-weight: 700; color: #fff; background: var(--new); border-radius: 4px; padding: 0 5px; }
+.stage { display: inline-flex; align-items: center; gap: 5px; font-size: 0.8rem; color: var(--ink); white-space: nowrap; }
+.stage i { font-style: normal; width: 1.2em; height: 1.2em; border-radius: 50%; display: inline-grid; place-items: center; font-size: 0.7rem; line-height: 1; color: #0b0b0b; }
+
+.more { padding: 4px 12px 14px 12px; }
+.more dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; margin: 0 0 10px; font-size: 0.85rem; }
+.more dt { color: var(--muted); }
+.more dd { margin: 0; overflow-wrap: anywhere; }
+.more pre { margin: 0 0 10px; padding: 10px; background: var(--surface-2); border-radius: 8px; font: 12px/1.4 ui-monospace, Consolas, monospace; white-space: pre-wrap; word-break: break-word; max-height: 280px; overflow: auto; }
+.more .row { margin-top: 2px; }
+.mono { font-family: ui-monospace, Consolas, monospace; font-size: 0.8rem; }
+
+/* not `all: unset`: that would take MapLibre's position: absolute off the marker */
+.pin { appearance: none; margin: 0; cursor: pointer; font: 600 11px/1 system-ui, sans-serif; padding: 3px 6px; border-radius: 10px; background: var(--surface); color: var(--ink); border: 2px solid; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3); white-space: nowrap; }
+.pin.on { background: var(--ink); color: var(--surface); }
+.maplibregl-ctrl-attrib { font-size: 10px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div>
+      <h1>Requests</h1>
+      <div class="stamp" id="stamp">Not loaded</div>
+    </div>
+    <div class="row">
+      <button class="btn" id="notify" hidden>Tell me when one comes in</button>
+      <button class="btn" id="reload">Refresh</button>
+      <a class="btn" href="/stats">Usage</a>
+      <button class="btn" id="forget">Forget key</button>
+    </div>
+  </div>
+
+  <div id="keybox" hidden>
+    <p>The stats key (<code>STATS_KEY</code>), the same one the usage page takes. It stays in this browser.</p>
+    <div class="row">
+      <input type="password" id="key" placeholder="Key" autocomplete="off" size="32">
+      <button class="btn btn-main" id="keygo">Open</button>
+    </div>
+    <div class="err" id="keyerr"></div>
+  </div>
+
+  <div id="fresh" hidden></div>
+  <div class="tiles" id="tiles" hidden></div>
+
+  <div class="layout" id="layout" hidden>
+    <section class="card mapcard">
+      <div id="map"></div>
+      <div class="mapbar">
+        <div class="seg" role="group" aria-label="Map" id="base"><button data-b="topo">Map</button><button data-b="photo">Photo</button></div>
+        <button class="btn btn-small" id="fitall">Show all</button>
+      </div>
+    </section>
+    <section class="card">
+      <div class="listhead">
+        <div class="seg" role="group" aria-label="Which requests" id="show">
+          <button data-f="all">All</button><button data-f="open">Open</button><button data-f="done">Done</button><button data-f="cancelled">Cancelled</button>
+        </div>
+        <span class="dim" id="count"></span>
+      </div>
+      <div id="list"></div>
+    </section>
+  </div>
+</main>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+'use strict'
+const $ = (s) => document.querySelector(s)
+const KEY = 'gw-stats-key'
+const SEEN = 'gw-requests-seen'
+const SHOW = 'gw-requests-show'
+const BASE = 'gw-requests-base'
+const EVERY = 30_000
+const APP = 'https://hunt.groundwind.app/'
+const DEV = 'https://hunt-dev.groundwind.app/'
+const store = {
+  get(k) { try { return localStorage.getItem(k) } catch { return null } },
+  set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v) } catch { /* private window */ } },
+}
+
+function h(tag, attrs, ...kids) {
+  const e = document.createElement(tag)
+  for (const [k, v] of Object.entries(attrs ?? {})) {
+    if (v == null || v === false) continue
+    if (k === 'class') e.className = v
+    else if (k === 'style') e.style.cssText = v
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v)
+    else e.setAttribute(k, v === true ? '' : v)
+  }
+  for (const k of kids.flat()) if (k != null && k !== false) e.append(k instanceof Node ? k : document.createTextNode(String(k)))
+  return e
+}
+
+// ------------------------------------------------------------------ a request, read
+
+// the bake loop's stages (schema.sql requests.stage), each with an icon and a
+// word so the colour never carries it alone; NULL is a request from before the
+// loop, or one with no point, left to a person
+const STAGES = {
+  queued: { word: 'Queued', icon: '⋯', color: 'warning', open: true },
+  claimed: { word: 'Claimed', icon: '▸', color: 'series', open: true },
+  baking: { word: 'Baking', icon: '▸', color: 'series', open: true },
+  review: { word: 'Needs a look', icon: '!', color: 'serious', open: true },
+  failed: { word: 'Failed', icon: '✕', color: 'critical', open: true },
+  done: { word: 'Done', icon: '✓', color: 'good', open: false },
+  cancelled: { word: 'Cancelled', icon: '–', color: 'off', open: false },
+  hand: { word: 'By hand', icon: '✎', color: 'off', open: false },
+}
+const stageOf = (r) => (r.stage && STAGES[r.stage] ? r.stage : r.status === 'cancelled' ? 'cancelled' : r.stage ? 'review' : 'hand')
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim()
+const colorOf = (r) => css(STAGES[stageOf(r)].color)
+
+// D1's datetime('now') is UTC without the zone
+const utc = (s) => (s ? new Date(`${s.replace(' ', 'T')}Z`) : null)
+function ago(d) {
+  if (!d) return '–'
+  const s = (Date.now() - d.getTime()) / 1000
+  if (s < 60) return 'just now'
+  if (s < 3600) return `${Math.round(s / 60)} min ago`
+  if (s < 86400) return `${Math.round(s / 3600)} h ago`
+  if (s < 7 * 86400) return `${Math.round(s / 86400)} d ago`
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+const longWhen = (d) => (d ? d.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '–')
+
+function sizeOf(b) {
+  if (!b) return null
+  const lat = (b.south + b.north) / 2
+  const w = (b.east - b.west) * 111.32 * Math.cos((lat * Math.PI) / 180)
+  const hgt = (b.north - b.south) * 110.57
+  return { w, h: hgt, km2: w * hgt }
+}
+const centreOf = (r) => (r.box ? [(r.box.west + r.box.east) / 2, (r.box.south + r.box.north) / 2] : r.lat != null ? [r.lon, r.lat] : null)
+const ll = (lat, lon) => `${lat.toFixed(4)}, ${lon.toFixed(4)}`
+const GAME = { moose: 'Moose', elk: 'Elk', deer: 'Deer', bear: 'Bear', grouse: 'Grouse' }
+const gameOf = (r) => (r.game ? r.game.split(',').map((g) => GAME[g] ?? g).join(', ') : null)
+
+function titleOf(r) {
+  if (r.name) return r.name
+  if (r.area_name) return r.area_name
+  // the site's form: what they typed; the app's ask: its point
+  if (r.source === 'site' || !centreOf(r)) return r.place || 'No place given'
+  const [lon, lat] = centreOf(r)
+  return ll(lat, lon)
+}
+
+// ------------------------------------------------------------------ state
+
+let rows = []
+let byId = new Map()
+let prev = null // id → stage at the last check, to spot what changed
+let selected = null
+let show = ['all', 'open', 'done', 'cancelled'].includes(store.get(SHOW)) ? store.get(SHOW) : 'all'
+let timer = 0
+
+// the newest id you've looked at: anything above it is new (a first visit marks
+// everything there as seen, so the badge means "since you last looked")
+let seen = Number(store.get(SEEN) ?? NaN)
+
+// ------------------------------------------------------------------ loading
+
+async function load() {
+  const key = store.get(KEY)
+  if (!key) return askKey()
+  clearTimeout(timer)
+  try {
+    const r = await fetch('/api/requests', { headers: { Authorization: `Bearer ${key}` }, cache: 'no-store' })
+    if (r.status === 401) return askKey('That key was not taken.')
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    const got = await r.json()
+    // a browser that reads the requests leaves its own visits to the site out (visit.js)
+    store.set('gw-site-off', '1')
+    $('#keybox').hidden = true
+    take(got.requests ?? [])
+    $('#stamp').textContent = `Checked ${new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' })} · again every ${EVERY / 1000} s while this is open`
+  } catch (e) {
+    $('#stamp').textContent = `Could not load: ${e.message} · trying again in ${EVERY / 1000} s`
+  }
+  schedule()
+}
+function schedule() {
+  clearTimeout(timer)
+  if (document.visibilityState === 'visible') timer = setTimeout(load, EVERY)
+}
+document.addEventListener('visibilitychange', () => (document.visibilityState === 'visible' ? load() : clearTimeout(timer)))
+
+function take(list) {
+  const maxId = list.reduce((m, r) => Math.max(m, r.id), 0)
+  if (!Number.isFinite(seen)) {
+    seen = maxId
+    store.set(SEEN, String(seen))
+  }
+  // what came in or moved on since the last check on this page
+  const arrived = prev ? list.filter((r) => !prev.has(r.id)) : []
+  const moved = prev ? list.filter((r) => prev.has(r.id) && prev.get(r.id) !== stageOf(r)) : []
+  prev = new Map(list.map((r) => [r.id, stageOf(r)]))
+  rows = list
+  byId = new Map(list.map((r) => [r.id, r]))
+  if (selected != null && !byId.has(selected)) selected = null
+  render(new Set([...arrived, ...moved].map((r) => r.id)))
+  tell(arrived, moved)
+}
+
+function askKey(err) {
+  $('#keybox').hidden = false
+  for (const id of ['#tiles', '#layout', '#fresh']) $(id).hidden = true
+  $('#keyerr').textContent = err ?? ''
+  $('#key').focus()
+}
+
+// ------------------------------------------------------------------ the page
+
+const isNew = (r) => r.id > seen
+const inShow = (r) => {
+  const st = stageOf(r)
+  if (show === 'open') return STAGES[st].open
+  if (show === 'done') return st === 'done'
+  if (show === 'cancelled') return st === 'cancelled'
+  return true
+}
+
+function render(flash = new Set()) {
+  $('#layout').hidden = false
+  $('#tiles').hidden = false
+  renderFresh()
+  renderTiles()
+  renderList(flash)
+  drawMap()
+  const n = rows.filter(isNew).length
+  document.title = n ? `(${n}) Groundwind requests` : 'Groundwind requests'
+}
+
+function renderFresh() {
+  const fresh = rows.filter(isNew)
+  const box = $('#fresh')
+  box.hidden = fresh.length === 0
+  if (!fresh.length) return
+  const kinds = ['sd', 'hd'].map((k) => [k, fresh.filter((r) => r.kind === k).length]).filter(([, n]) => n)
+  box.replaceChildren(
+    h('div', null, h('b', null, `${fresh.length} new since you last looked`), kinds.length ? ` · ${kinds.map(([k, n]) => `${n} ${k.toUpperCase()}`).join(', ')}` : ''),
+    h('button', { class: 'btn btn-small', onclick: () => { seen = Math.max(...rows.map((r) => r.id)); store.set(SEEN, String(seen)); render() } }, 'Mark seen'),
+  )
+}
+
+function renderTiles() {
+  const by = (pred) => rows.filter(pred).length
+  const week = Date.now() - 7 * 86400_000
+  const st = (r) => stageOf(r)
+  const tiles = [
+    { label: 'Queued', icon: 'queued', value: by((r) => st(r) === 'queued'), note: 'waiting for a PC', f: 'open' },
+    { label: 'Baking', icon: 'baking', value: by((r) => st(r) === 'baking' || st(r) === 'claimed'), note: 'on a PC now', f: 'open' },
+    { label: 'Needs a look', icon: 'review', value: by((r) => st(r) === 'review' || st(r) === 'failed'), note: 'failed or flagged', f: 'open' },
+    { label: 'Done', icon: 'done', value: by((r) => st(r) === 'done'), note: 'baked and up', f: 'done' },
+    { label: 'This week', value: by((r) => utc(r.at) >= week), note: `${rows.length} in all`, f: 'all' },
+  ]
+  $('#tiles').replaceChildren(...tiles.map((t) => h('button', { class: 'tile', title: `Show ${t.f === 'all' ? 'every request' : t.f === 'open' ? 'the open ones' : 'the done ones'}`, onclick: () => setShow(t.f) },
+    h('div', { class: 'label' }, t.icon ? stagePill(t.icon, true) : null, t.label),
+    h('div', { class: 'value' }, String(t.value)),
+    h('div', { class: 'note' }, t.note))))
+}
+
+function stagePill(st, iconOnly = false) {
+  const s = STAGES[st]
+  const color = css(s.color)
+  return h('span', { class: 'stage' }, h('i', { style: `background:${color}`, 'aria-hidden': 'true' }, s.icon), iconOnly ? null : s.word)
+}
+
+function renderList(flash) {
+  const list = rows.filter(inShow)
+  $('#count').textContent = `${list.length} of ${rows.length}`
+  const host = $('#list')
+  if (!list.length) return host.replaceChildren(h('div', { class: 'empty' }, rows.length ? 'None here.' : 'No requests yet.'))
+  // the same email asking again
+  const asks = new Map()
+  for (const r of rows) asks.set(r.email, (asks.get(r.email) ?? 0) + 1)
+  host.replaceChildren(...list.map((r) => item(r, asks.get(r.email) ?? 1, flash.has(r.id))))
+}
+
+function item(r, asks, flash) {
+  const st = stageOf(r)
+  const size = sizeOf(r.box)
+  const at = utc(r.at)
+  const meta = [
+    r.kind ? h('span', { class: `kind ${r.kind}` }, r.kind.toUpperCase()) : null,
+    stagePill(st),
+    r.step && STAGES[st].open ? h('span', null, r.step) : null,
+    size ? h('span', null, `${size.w.toFixed(1)} × ${size.h.toFixed(1)} km`) : null,
+    gameOf(r) ? h('span', null, gameOf(r)) : null,
+    h('span', null, r.source === 'site' ? 'from the site' : 'from the app'),
+    asks > 1 ? h('span', null, `${asks} asks from this email`) : null,
+  ]
+  const on = selected === r.id
+  const el = h('div', { class: `req ${on ? 'on' : ''} ${st === 'cancelled' ? 'cancelled' : ''} ${flash ? 'flash' : ''}`, 'data-id': r.id },
+    h('button', { class: 'sum', 'aria-expanded': String(on), onclick: () => select(on ? null : r.id, 'list') },
+      h('span', { class: 'id' }, `#${r.id}`),
+      h('span', { class: 'title', title: titleOf(r) }, titleOf(r)),
+      h('span', { class: 'ago', title: longWhen(at) }, isNew(r) ? h('span', { class: 'newtag' }, 'NEW') : null, ' ', ago(at)),
+      h('span', { class: 'meta' }, meta)),
+    on ? details(r) : null)
+  return el
+}
+
+function details(r) {
+  const size = sizeOf(r.box)
+  const c = centreOf(r)
+  const dl = h('dl')
+  const add = (k, v) => v != null && v !== '' && dl.append(h('dt', null, k), h('dd', null, v))
+  add('Asked', `${longWhen(utc(r.at))} (${r.at} UTC)`)
+  add('Email', h('a', { href: `mailto:${r.email}` }, r.email))
+  add('Name', r.name)
+  add('They wrote', r.source === 'site' ? r.place : null)
+  add('Kind', r.kind === 'hd' ? 'HD (the full bake)' : r.kind === 'sd' ? 'SD (free, fast)' : null)
+  add('Ground', size ? `${size.w.toFixed(1)} × ${size.h.toFixed(1)} km, ${Math.round(size.km2)} km²` : r.lat == null ? 'No point: a person has to place it' : 'A point, no box')
+  add('Box', r.box ? h('span', { class: 'mono' }, `${r.box.south.toFixed(5)}, ${r.box.west.toFixed(5)} to ${r.box.north.toFixed(5)}, ${r.box.east.toFixed(5)}`) : null)
+  add('Middle', c ? h('span', { class: 'mono' }, ll(c[1], c[0])) : null)
+  add('Tile', r.tile ? h('span', { class: 'mono' }, r.tile) : null)
+  add('Game', gameOf(r))
+  add('From', `${r.source === 'site' ? 'the site' : 'the app'}${r.country ? ` · ${r.country}` : ''}`)
+  add('Phone', r.install ? h('span', { class: 'mono', title: r.install }, r.install.slice(0, 8)) : null)
+  add('Stage', h('span', null, stagePill(stageOf(r)), r.step ? ` · ${r.step}` : ''))
+  add('Baked by', r.agent)
+  add('Claimed', r.claimed_at ? longWhen(utc(r.claimed_at)) : null)
+  add('Finished', r.done_at ? longWhen(utc(r.done_at)) : null)
+  add('Last change', r.updated_at && r.updated_at !== r.at ? `${longWhen(utc(r.updated_at))} (${ago(utc(r.updated_at))})` : null)
+  add('Area', r.area_id ? `${r.area_name ?? r.area_id}${r.area_name ? ` (${r.area_id})` : ''}${r.area_bytes ? ` · ${(r.area_bytes / 1e6).toFixed(0)} MB` : ''}${r.area_stage && r.area_stage !== 'done' ? ` · ${r.area_stage}` : ''}` : null)
+  const links = []
+  if (r.area_id) {
+    links.push(h('a', { class: 'btn btn-small', href: `${APP}?area=${encodeURIComponent(r.area_id)}`, target: '_blank', rel: 'noopener' }, 'Open the area'))
+    links.push(h('a', { class: 'btn btn-small', href: `${DEV}?area=${encodeURIComponent(r.area_id)}`, target: '_blank', rel: 'noopener' }, 'On dev'))
+  } else if (c) {
+    links.push(h('a', { class: 'btn btn-small', href: `${APP}#at=${c[1].toFixed(5)},${c[0].toFixed(5)}`, target: '_blank', rel: 'noopener' }, 'Open in the app'))
+    links.push(h('a', { class: 'btn btn-small', href: `${DEV}#at=${c[1].toFixed(5)},${c[0].toFixed(5)}`, target: '_blank', rel: 'noopener' }, 'On dev'))
+  }
+  if (c) links.push(h('button', { class: 'btn btn-small', onclick: (e) => copy(e.target, `${c[1].toFixed(5)}, ${c[0].toFixed(5)}`) }, 'Copy point'))
+  links.push(h('button', { class: 'btn btn-small', onclick: (e) => copy(e.target, JSON.stringify(r, null, 2)) }, 'Copy row'))
+  return h('div', { class: 'more' }, dl, r.error ? h('pre', null, r.error) : null, h('div', { class: 'row' }, links))
+}
+
+async function copy(btn, text) {
+  try {
+    await navigator.clipboard.writeText(text)
+    const was = btn.textContent
+    btn.textContent = 'Copied'
+    setTimeout(() => (btn.textContent = was), 1200)
+  } catch {
+    prompt('Copy:', text)
+  }
+}
+
+function setShow(f) {
+  show = f
+  store.set(SHOW, f)
+  for (const b of document.querySelectorAll('#show button')) b.setAttribute('aria-pressed', String(b.dataset.f === show))
+  render()
+}
+for (const b of document.querySelectorAll('#show button')) b.addEventListener('click', () => setShow(b.dataset.f))
+
+function select(id, from) {
+  selected = id
+  renderList(new Set())
+  paintSelection()
+  const r = byId.get(id)
+  if (!r) return
+  if (from !== 'map') focusMap(r)
+  else document.querySelector(`.req[data-id="${id}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+}
+
+// ------------------------------------------------------------------ the map
+
+const TOPO = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'
+const PHOTO = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+let base = store.get(BASE) === 'photo' ? 'photo' : 'topo'
+let map = null
+let mapReady = false
+let fitted = false
+const markers = new Map()
+
+function makeMap() {
+  if (!window.maplibregl) {
+    $('#map').replaceChildren(h('div', { class: 'nomap' }, 'The map did not load. The list still works.'))
+    return
+  }
+  map = new maplibregl.Map({
+    container: 'map',
+    style: {
+      version: 8,
+      sources: {
+        topo: { type: 'raster', tiles: [TOPO], tileSize: 256, maxzoom: 19, attribution: 'Esri, HERE, Garmin, USGS, NRCan' },
+        photo: { type: 'raster', tiles: [PHOTO], tileSize: 256, maxzoom: 19, attribution: 'Esri, Maxar, Earthstar Geographics' },
+        req: { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, promoteId: 'id' },
+      },
+      layers: [
+        { id: 'topo', type: 'raster', source: 'topo', layout: { visibility: base === 'topo' ? 'visible' : 'none' } },
+        { id: 'photo', type: 'raster', source: 'photo', layout: { visibility: base === 'photo' ? 'visible' : 'none' } },
+        { id: 'req-fill', type: 'fill', source: 'req', paint: { 'fill-color': ['get', 'color'], 'fill-opacity': ['case', ['boolean', ['feature-state', 'on'], false], 0.32, 0.16] } },
+        { id: 'req-halo', type: 'line', source: 'req', paint: { 'line-color': '#ffffff', 'line-width': ['case', ['boolean', ['feature-state', 'on'], false], 6, 4], 'line-opacity': 0.75 } },
+        { id: 'req-line', type: 'line', source: 'req', paint: { 'line-color': ['get', 'color'], 'line-width': ['case', ['boolean', ['feature-state', 'on'], false], 3, 2] } },
+      ],
+    },
+    center: [-92, 56],
+    zoom: 2.6,
+    attributionControl: { compact: true },
+    dragRotate: false,
+    pitchWithRotate: false,
+  })
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
+  map.touchZoomRotate.disableRotation()
+  map.on('load', () => {
+    mapReady = true
+    drawMap()
+  })
+  map.on('click', 'req-fill', (e) => {
+    const id = e.features?.[0]?.properties?.id
+    if (id != null) select(Number(id), 'map')
+  })
+  map.on('mouseenter', 'req-fill', () => (map.getCanvas().style.cursor = 'pointer'))
+  map.on('mouseleave', 'req-fill', () => (map.getCanvas().style.cursor = ''))
+}
+
+function drawMap() {
+  if (!map || !mapReady) return
+  const list = rows.filter(inShow)
+  const features = list.filter((r) => r.box).map((r) => ({
+    type: 'Feature',
+    id: r.id,
+    properties: { id: r.id, color: colorOf(r) },
+    geometry: { type: 'Polygon', coordinates: [[[r.box.west, r.box.south], [r.box.east, r.box.south], [r.box.east, r.box.north], [r.box.west, r.box.north], [r.box.west, r.box.south]]] },
+  }))
+  map.getSource('req').setData({ type: 'FeatureCollection', features })
+  // a numbered pin at each one's middle: what you see at Canada's scale
+  const keep = new Set()
+  for (const r of list) {
+    const c = centreOf(r)
+    if (!c) continue
+    keep.add(r.id)
+    let m = markers.get(r.id)
+    if (!m) {
+      const el = h('button', { class: 'pin', title: `#${r.id}`, onclick: (e) => { e.stopPropagation(); select(r.id, 'map') } })
+      m = new maplibregl.Marker({ element: el }).setLngLat(c).addTo(map)
+      markers.set(r.id, m)
+    }
+    const el = m.getElement()
+    el.textContent = `#${r.id}`
+    el.style.borderColor = colorOf(r)
+    m.setLngLat(c)
+  }
+  for (const [id, m] of markers) if (!keep.has(id)) { m.remove(); markers.delete(id) }
+  paintSelection()
+  if (!fitted && list.some(centreOf)) {
+    fitted = true
+    fitAll(false)
+  }
+}
+
+function paintSelection() {
+  if (!map || !mapReady) return
+  map.removeFeatureState({ source: 'req' })
+  if (selected != null && rows.find((r) => r.id === selected)?.box) map.setFeatureState({ source: 'req', id: selected }, { on: true })
+  for (const [id, m] of markers) {
+    m.getElement().classList.toggle('on', id === selected)
+    m.getElement().style.zIndex = id === selected ? '2' : ''
+  }
+}
+
+function boundsOf(list) {
+  const b = new maplibregl.LngLatBounds()
+  for (const r of list) {
+    if (r.box) b.extend([r.box.west, r.box.south]).extend([r.box.east, r.box.north])
+    else if (centreOf(r)) b.extend(centreOf(r))
+  }
+  return b.isEmpty() ? null : b
+}
+function fitAll(animate = true) {
+  const b = boundsOf(rows.filter(inShow))
+  if (b) map.fitBounds(b, { padding: 50, maxZoom: 9, animate })
+}
+function focusMap(r) {
+  if (!map) return
+  const b = boundsOf([r])
+  if (b) map.fitBounds(b, { padding: 60, maxZoom: r.box ? 13 : 11, duration: 700 })
+}
+
+$('#fitall').addEventListener('click', () => fitAll())
+for (const b of document.querySelectorAll('#base button')) {
+  b.setAttribute('aria-pressed', String(b.dataset.b === base))
+  b.addEventListener('click', () => {
+    base = b.dataset.b
+    store.set(BASE, base)
+    for (const o of document.querySelectorAll('#base button')) o.setAttribute('aria-pressed', String(o === b))
+    if (mapReady) for (const id of ['topo', 'photo']) map.setLayoutProperty(id, 'visibility', id === base ? 'visible' : 'none')
+  })
+}
+
+// ------------------------------------------------------------------ telling you
+
+// a desktop notice for each new request, and for a bake that finished, failed
+// or wants a look, while this page is open (on a phone: only from the home screen)
+function tell(arrived, moved) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return
+  for (const r of arrived) {
+    const size = sizeOf(r.box)
+    const c = centreOf(r)
+    notice(`New ${r.kind ? r.kind.toUpperCase() + ' ' : ''}request #${r.id}`, [size ? `${size.w.toFixed(0)} × ${size.h.toFixed(0)} km` : null, c ? ll(c[1], c[0]) : r.place, gameOf(r)].filter(Boolean).join(' · '), r.id)
+  }
+  for (const r of moved) {
+    const st = stageOf(r)
+    if (['done', 'failed', 'review'].includes(st)) notice(`#${r.id} ${STAGES[st].word.toLowerCase()}`, titleOf(r), r.id)
+  }
+}
+function notice(title, body, id) {
+  try {
+    const n = new Notification(title, { body, tag: `gw-req-${id}-${title}` })
+    n.onclick = () => { window.focus(); select(id, 'list'); n.close() }
+  } catch { /* Android Chrome wants a service worker for these */ }
+}
+function notifyButton() {
+  const b = $('#notify')
+  if (!('Notification' in window)) return
+  b.hidden = Notification.permission === 'denied'
+  b.textContent = Notification.permission === 'granted' ? 'Telling you when one comes in' : 'Tell me when one comes in'
+  b.disabled = Notification.permission === 'granted'
+}
+$('#notify').addEventListener('click', async () => {
+  await Notification.requestPermission()
+  notifyButton()
+})
+
+// ------------------------------------------------------------------ start
+
+$('#keygo').addEventListener('click', () => {
+  store.set(KEY, $('#key').value.trim())
+  load()
+})
+$('#key').addEventListener('keydown', (e) => e.key === 'Enter' && $('#keygo').click())
+$('#forget').addEventListener('click', () => {
+  store.set(KEY, null)
+  clearTimeout(timer)
+  askKey()
+})
+$('#reload').addEventListener('click', load)
+for (const b of document.querySelectorAll('#show button')) b.setAttribute('aria-pressed', String(b.dataset.f === show))
+// the relative times tick on between checks
+setInterval(() => rows.length && document.visibilityState === 'visible' && renderList(new Set()), 60_000)
+// the theme follows the system: the stage colours are read from it
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => rows.length && render())
+notifyButton()
+makeMap()
+load()
+</script>
+</body>
+</html>

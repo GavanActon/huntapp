@@ -2,8 +2,10 @@
 // keeps area requests (D1, schema.sql) and tells a phone how its own is
 // getting on, /api/bake is the bake agent's queue and /areas/ the areas
 // baked for requests (bake.js), /api/sms and /api/wx answer weather
-// requests sent by satellite text (satbot.js), /api/events takes the app's
-// usage stats and /api/stats and /api/export read them back (stats.js),
+// requests sent by satellite text (satbot.js), /api/requests lists every
+// area request for Gavan's viewer (requests.html, behind STATS_KEY),
+// /api/events takes the app's usage stats and /api/stats and /api/export
+// read them back (stats.js),
 // /api/visits takes the site's own and /api/site-stats and
 // /api/visits/export read them back (sitestats.js),
 // /api/checks takes the wind checks hunters share and /api/checks/export
@@ -18,7 +20,7 @@ import { INDEXNOW_KEY, indexNowKey, indexNowSweep } from './indexnow.js'
 import { partyApi } from './party.js'
 import { smsWebhook, wxQuery } from './satbot.js'
 import { siteStatsQuery, visitsExport, visitsIngest } from './sitestats.js'
-import { eventsExport, eventsIngest, statsQuery } from './stats.js'
+import { authorized, eventsExport, eventsIngest, statsQuery } from './stats.js'
 
 // where the app lives for now: links, the QR code and shares all go through
 // groundwind.app/app, so moving the app is this one line
@@ -47,6 +49,7 @@ export default {
     }
     if (url.pathname === '/app' || url.pathname.startsWith('/app/')) return Response.redirect(APP + url.search, 302)
     if (url.pathname === '/api/request') return areaRequest(request, env)
+    if (url.pathname === '/api/requests') return requestsList(request, env, url)
     if (url.pathname.startsWith('/api/bake/')) return bakeApi(request, env, url)
     if (url.pathname.startsWith('/areas/')) return areasApi(request, env, url, corsFor(request))
     if (url.pathname === '/api/sms') return smsWebhook(request, env)
@@ -234,6 +237,32 @@ async function requestStatus(request, env, cors) {
   const row = await env.DB.prepare('SELECT id, kind, stage, step, area_id, error, IFNULL(updated_at, at) AS updated FROM requests WHERE id = ?').bind(id).first()
   if (!row) return json({ error: 'no such request' }, 404, cors)
   return json({ ...row, error: shortError(row.error) }, 200, { ...cors, 'Cache-Control': 'no-store' })
+}
+
+/** GET /api/requests: every request, newest first, for Gavan's viewer
+ *  (requests.html), behind STATS_KEY like the stats: who asked, what for,
+ *  the ground, how the bake is getting on and the area it became. A row
+ *  from before boxes were sent gets its box from the tile it names. */
+async function requestsList(request, env, url) {
+  if (request.method !== 'GET') return json({ error: 'get' }, 405)
+  if (!authorized(request, env, url)) return json({ error: 'key' }, 401)
+  const { results } = await env.DB.prepare(
+    `SELECT r.id, r.at, r.email, r.place, r.lat, r.lon, r.game, r.source, r.country, r.status, r.tile, r.kind, r.box,
+            r.install, r.name, r.stage, r.step, r.area_id, r.error, r.claimed_at, r.done_at, r.updated_at, r.agent,
+            a.name AS area_name, a.size_bytes AS area_bytes, a.stage AS area_stage
+     FROM requests r LEFT JOIN areas a ON a.id = r.area_id
+     ORDER BY r.id DESC LIMIT 500`,
+  ).all()
+  const requests = results.map((r) => {
+    let box = null
+    try {
+      box = r.box ? JSON.parse(r.box) : null
+    } catch {
+      /* a box that isn't JSON: fall back to the tile */
+    }
+    return { ...r, box: box ?? (r.tile ? boxOfTile(r.tile) : null) }
+  })
+  return json({ now: new Date().toISOString(), requests }, 200, { 'Cache-Control': 'no-store' })
 }
 
 /** A failure's last line, with the PC's paths taken out: the full traceback
