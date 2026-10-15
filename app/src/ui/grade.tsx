@@ -17,6 +17,9 @@ import './grade.css'
  * adds, a reload either way (state/grade.ts).
  */
 
+// the grade on the page's root, for the outlines that say it (the weather strip's: grade.css)
+if (GRADE !== 'live') document.documentElement.dataset.grade = GRADE
+
 /** The switch is offered for testing only: hunt-dev and the dev server. */
 export const GRADE_SWITCH = DEV_SITE || import.meta.env.DEV
 
@@ -127,8 +130,8 @@ export function offInSd(it: HdItem): boolean {
 export type HdMark = 'hd' | 'want' | null
 
 /** An action button's ring: gold where the HD bake powers it, tan where it
- *  runs on SD (Gavan, 2026-10-15: an outline round the action buttons,
- *  "a little fancy, not over the top"; it was a dot, and the HD tab before). `want` is tan with the icon quieter: HD would
+ *  runs on SD (Gavan, 2026-10-15: an outline round the action buttons and
+ *  the weather strip, flat gold, no metal gradient; a dot and the HD tab before). `want` is tan with the icon quieter: HD would
  *  add it, and a tap opens what HD gives. */
 export type HotDotMark = 'hd' | 'sd' | 'want' | null
 
