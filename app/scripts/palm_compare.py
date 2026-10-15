@@ -45,6 +45,9 @@ FIELDS = ROOT / "pipeline" / "raw" / "teacher" / "palm" / "fields"
 CASES = ROOT / "pipeline" / "teacher" / "palm"
 # the case's area in the app (?area=, Pickle Lake's bare)
 AREA = {"pickle-slot": "", "pickle-bogstrip": "", "pickle-bogs": "", "lacbailey-bank": "lac-bailey", "searchmont": "searchmont"}
+# a dev build runs an HD area on its SD files until it is installed (state/grade.ts, 2026-10-15):
+# the scripts score the HD bake, so every area is marked installed before the page loads
+HD_PIN_JS = "localStorage.setItem('huntapp-hd', JSON.stringify(Object.fromEntries(['blanchard-river', 'highland-lake', 'lac-bailey', 'pickle-lake', 'sault-test', 'searchmont', 'whitefish-lake'].map((a) => [a, true]))))"
 # the moment the app is held at (local): the leaves and the sun's path; the air itself is forced
 MOMENT = "2026-09-30T13:00:00"
 # the layering by the run's stability (boundaryLayer.Layering), and the sun's height
@@ -209,6 +212,7 @@ def main() -> None:
         for area, area_runs in by_area.items():
             t0 = time.time()
             ctx = browser.new_context(ignore_https_errors=True, viewport={"width": 430, "height": 900})
+            ctx.add_init_script(HD_PIN_JS)
             page = ctx.new_page()
             page.route("**/ensemble-api.open-meteo.com/**", lambda route, request: route.abort())
             page.goto(args.url + (f"?area={area}" if area else ""), wait_until="load", timeout=240000)

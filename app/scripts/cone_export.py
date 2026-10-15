@@ -25,7 +25,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from replay import READY_JS, REST_JS, TZ, fulfil, wait_ready  # noqa: E402
+from replay import HD_PIN_JS, READY_JS, REST_JS, TZ, fulfil, wait_ready  # noqa: E402
 
 from playwright.sync_api import sync_playwright  # noqa: E402
 
@@ -79,6 +79,7 @@ def main() -> int:
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True, args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"])
         ctx = browser.new_context(ignore_https_errors=True, viewport={"width": 430, "height": 900})
+        ctx.add_init_script(HD_PIN_JS)
         page = ctx.new_page()
         page.route("**/api.open-meteo.com/**", lambda route, request: fulfil(route, request, day))
         page.route("**/ensemble-api.open-meteo.com/**", lambda route, request: route.abort())

@@ -85,6 +85,8 @@ export interface GroundWind {
   dirFrom: number
   /** 1-sigma spread of the direction, degrees */
   sigmaDeg: number
+  /** the scent's spreads apart from the shown one (Spread) */
+  spread: Spread
   regime: Regime
   /** true when the ground air has come loose from the wind above */
   decoupled: boolean
@@ -990,6 +992,15 @@ interface Eval {
   cf: number
   /** degrees of the spread that are the air tumbling (a lee's, a swirl's) with a wind behind it in unsettled air: the part that mixes scent upward too, for the scent column */
   tumbleMix: number
+  /** the scent's spreads, degrees (SPREAD_DEFAULT) */
+  spread: Spread
+}
+
+/** The scent's spreads, degrees: the place's own swing with the forecast right, the model's error for this kind of spot, and the forecast's; checks nearby pull the last two in. */
+export interface Spread {
+  place: number
+  model: number
+  forecast: number
 }
 
 /** How much a felt check's vector can say, by how hard it blew: at drift
@@ -1065,6 +1076,44 @@ let leeRise: Float32Array | null = null
 const FLOOR_DEFAULT = { trees: 1.5, open: 1 }
 /** a stand never lets more through than open ground's log law gives 2 m over 10 m (§4) */
 const FLOOR_OPEN_SHARE = 0.7
+
+/**
+ * The scent's spreads (2026-10-15, MICRO-WIND §7), apart from the shown one:
+ * - place: the air's own swing here with the forecast right. In unsettled air
+ *   with a wind above the trees it tops out near cap (PALM's head-height
+ *   spread; NEON's neutral floor follows the top 94% of the time), coming in
+ *   as the local 10 m wind goes u0 to u1 km/h. A still night keeps its wander.
+ *   The whole plume swings by swing of it (PALM: the wind over 100 m swings
+ *   0.45 of a point's spread, 0.39-0.58 in every box).
+ * - model: how far the model's own way may be off for this kind of spot
+ *   (modelErr, PALM against the app with the air forced to PALM's).
+ * - forecast: the forecast's own error at head height, from the checks; a
+ *   check nearby pulls the model's and the forecast's in (checkPull).
+ * setSpreadTune lets scripts score them; the app never changes it.
+ */
+const SPREAD_DEFAULT = { cap: 65, u0: 2, u1: 6, swing: 0.45, forecast: 60, checkPull: 2, off: 0 }
+let spreadTune = { ...SPREAD_DEFAULT }
+export function setSpreadTune(t: Partial<typeof SPREAD_DEFAULT> | null): void {
+  spreadTune = { ...SPREAD_DEFAULT, ...t }
+  bump()
+}
+
+/**
+ * The model's direction error at head height for the kind of spot, degrees
+ * (the 68th percentile of PALM against the app at 4 m, 14 boxes, the air
+ * forced to PALM's): small on flat ground in a wind, large in a lee, in calm
+ * or pooled air and where the sun's flows decide it.
+ */
+function modelErr(rise: number, regime: Regime, s: number, conv: number): number {
+  if (regime === 'pooled') return 90
+  if (regime === 'calm') return 70
+  if (regime === 'lakeBreeze' || regime === 'landBreeze') return 75
+  if (regime === 'upslope') return 45
+  if (regime === 'drainage') return 30
+  if (!Number.isFinite(rise)) return 45
+  const e = rise < 3 ? 22 + 15 * conv : rise < 6 ? 40 : rise < 10 ? 70 : 55
+  return s > 0.5 ? Math.max(e, 55) : e
+}
 let floorTune = { ...FLOOR_DEFAULT }
 export function setFloorTune(t: Partial<typeof FLOOR_DEFAULT> | null): void {
   floorTune = { ...FLOOR_DEFAULT, ...t }
@@ -1305,7 +1354,8 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     // off the grid: an open-ground profile, nothing local
     const f = 0.7 * (1 - 0.6 * lay.stable)
     const sp = U * f
-    return { e: Ue * f, n: Un * f, sigma: 15 + 60 * Math.exp(-sp / 3.6 / 0.6), regime: sp < 0.8 ? 'calm' : 'wind', swirl: false, gusty: ctx.gf >= 1.8 && U >= 8, parts: [{ key: 'terrain', kmh: sp, toward: (dirFrom + 180) % 360 }], reasons, local10: U, U, dirFrom, forecastU, inGrid: false, slot: false, woods: false, bias: null, fitW, fitWL, e10: Ue, n10: Un, cell: -1, th: 0, cf: f, tumbleMix: 0 }
+    const sigma0 = 15 + 60 * Math.exp(-sp / 3.6 / 0.6)
+    return { e: Ue * f, n: Un * f, sigma: sigma0, regime: sp < 0.8 ? 'calm' : 'wind', swirl: false, gusty: ctx.gf >= 1.8 && U >= 8, parts: [{ key: 'terrain', kmh: sp, toward: (dirFrom + 180) % 360 }], reasons, local10: U, U, dirFrom, forecastU, inGrid: false, slot: false, woods: false, bias: null, fitW, fitWL, e10: Ue, n10: Un, cell: -1, th: 0, cf: f, tumbleMix: 0, spread: { place: sigma0, model: 45, forecast: forcedAir ? 0 : spreadTune.forecast } }
   }
 
   // ---- terrain and roughness: the two lids, blended by stability ----
@@ -1767,6 +1817,16 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   // gusty air swings more: a gust factor of 2.5 means the along-wind
   // fluctuation is about 0.6 of the mean (Wieringa 1973)
   sigma += 12 * clamp(ctx.gf - 1.5, 0, 1) * fracMech
+  // the scent's three spreads (SPREAD_DEFAULT): the place's own before the
+  // forecast's doubt and the checks; the model's for this kind of spot; the
+  // forecast's (none with the air forced to a known truth), both pulled in by
+  // checks nearby unless they disagree
+  const capK = spreadTune.off ? 0 : (1 - s) * clamp((local10 - spreadTune.u0) / (spreadTune.u1 - spreadTune.u0), 0, 1)
+  const sigPlace = clamp(Math.max(Math.min(sigma, 110 - (110 - spreadTune.cap) * capK), swingFloor), 8, 110)
+  const sigModel = modelErr(rise, regime, s, lay.convective)
+  const sigFcst = forcedAir ? 0 : Math.hypot(spreadTune.forecast, lay.ensDirSd != null ? 0.7 * lay.ensDirSd : 0) * (0.3 + 0.7 * fracMech)
+  const pull = 1 + spreadTune.checkPull * wsum
+  const spreadOf = { place: sigPlace, model: Math.max(sigModel / pull, checkFloor), forecast: sigFcst / pull }
   if (lay.ensDirSd != null) sigma = Math.hypot(sigma, fracMech * lay.ensDirSd * 0.7)
   // nearby checks that agree tighten the spread; a swing, or checks that disagree, hold it open
   if (wsum > 0.3 && !swingFloor && checkSpread < 25) sigma *= ctx.tune.checkTighten
@@ -1833,7 +1893,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     if (lay.source === 'estimate') reasons.push('No layering forecast cached: stability estimated from the sky and the wind')
   }
 
-  return { e: E, n: N, sigma, regime, swirl: swirl || tumble >= TUMBLE_SWIRL, gusty, parts, reasons, local10, U, dirFrom, forecastU, inGrid: true, slot: !!slot, woods: th > 0, bias: applied ? lessonBias : null, gustMul, fitW, fitWL, e10, n10, cell: i, th, cf, tumbleMix }
+  return { e: E, n: N, sigma, regime, swirl: swirl || tumble >= TUMBLE_SWIRL, gusty, parts, reasons, local10, U, dirFrom, forecastU, inGrid: true, slot: !!slot, woods: th > 0, bias: applied ? lessonBias : null, gustMul, fitW, fitWL, e10, n10, cell: i, th, cf, tumbleMix, spread: spreadOf }
 }
 
 function headlineOf(ev: Eval, kmh: number, dirFrom: number, gustKmh: number): string {
@@ -1869,6 +1929,7 @@ export function groundWind(lon: number, lat: number, ms: number): GroundWind | n
     kmh,
     dirFrom,
     sigmaDeg: ev.sigma,
+    spread: ev.spread,
     regime: ev.regime,
     decoupled: ctx.lay.stable > 0.5,
     swirl: ev.swirl,
@@ -1971,9 +2032,12 @@ export function groundForScoring(ms: number, lon: number, lat: number, full = fa
  *  head-height fraction now; out[9] the drainage accumulation, cells;
  *  out[10] the micro cell (−1 off the grid); out[11] the degrees of the
  *  spread that are the air tumbling, which mix upward too (Eval.tumbleMix,
- *  2026-10-09). Null when there is no wind at all to start from. */
+ *  2026-10-09); out[12] the whole plume's swing with the forecast right,
+ *  and out[13] the doubt it may swing by as well (the model's and the
+ *  forecast's), degrees (Spread, 2026-10-15). Null when there is no wind at
+ *  all to start from. */
 export type GroundSampler = (lon: number, lat: number, out: Float32Array) => boolean
-export const SAMPLE_N = 12
+export const SAMPLE_N = 14
 export function groundSampler(ms: number): GroundSampler | null {
   const ctx = makeCtx(ms)
   if (!ctx.regional && !ctx.fallback) return null
@@ -1993,6 +2057,8 @@ export function groundSampler(ms: number): GroundSampler | null {
       out[9] = ev.cell >= 0 ? b(K_DRAINACC, ev.cell) : 0
       out[10] = ev.cell
       out[11] = ev.tumbleMix
+      out[12] = ev.spread.place * spreadTune.swing
+      out[13] = Math.hypot(ev.spread.model, ev.spread.forecast)
     }
     return true
   }

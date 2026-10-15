@@ -128,6 +128,8 @@ export interface Plume {
   touchdown: boolean
   /** the sit's checks that drove this cone: how many, their puffs, the share that hung, and how much of the cone is theirs (0 = the model's) */
   checks: { n: number; puffs: number; lulls: number; share: number } | null
+  /** how far the tongue may swing as well, degrees (1 sd): the model's doubt for this kind of spot and the forecast's, which checks nearby pull in (model.ts Spread); the reach, sectors and edge are the tongue's, the wind as forecast */
+  swing: number
   /**
    * Share of the scent that went up over the canopy: in the column model
    * the part of each puff above the stand's top where it is under trees
@@ -803,6 +805,11 @@ export function simulatePlume(
   const out = new Float32Array(SAMPLE_N)
   if (!sample(lon, lat, out)) return null
   const srcSigma = out[2] * SPREAD
+  // the whole plume swings by the place's own swing (the tongue, the forecast
+  // right); the doubt beyond it (the model's, the forecast's) swings the
+  // finished tongue round the sit (swungGrid). A sampler without them: the old swing
+  const srcSwing = out[12] > 0 ? out[12] * SPREAD * (T.meander / 0.8) : srcSigma * T.meander
+  const srcDoubt = out[12] > 0 ? out[13] * SPREAD : 0
   const srcSpeed = Math.hypot(out[0], out[1])
   // the sit's own checks: the drift, its wander and its lulls from the puffs
   const sit = sitAir(lon, lat, ms, ((Math.atan2(out[0], out[1]) * 180) / Math.PI + 360) % 360)
@@ -889,7 +896,7 @@ export function simulatePlume(
     // the odd realisation of each pair takes the even one's wander mirrored
     const byPuff = !!sit && rnd() < sit.share
     const r0 = byPuff ? sit!.pick(rnd) : 0
-    const smModel = ((srcSigma * T.meander) * Math.PI) / 180
+    const smModel = (srcSwing * Math.PI) / 180
     const sm = sit ? smModel * (1 - sit.share) + sit.sm * sit.share : smModel
     if (r % 2 === 0) for (let k = 0; k < steps; k++) noise[k] = gauss(rnd)
     const sign = r % 2 === 0 ? 1 : -1
@@ -1129,13 +1136,15 @@ export function simulatePlume(
   for (let i = 0; i < N * N; i++) mean[i] = ref > 0 ? mean[i] / ref : 0
   // the cone: how often a nose notices it, a minute at a time, against a
   // steady minute at the core (the sit's total there spread over its release)
-  const grid = ref > 0 ? oftenGrid(tracks, laid, raw, aged, (ref * WIN_S) / (REALISATIONS * RELEASE), RELEASE) : new Float32Array(N * N)
+  const tongue = ref > 0 ? oftenGrid(tracks, laid, raw, aged, (ref * WIN_S) / (REALISATIONS * RELEASE), RELEASE) : new Float32Array(N * N)
+  // the cone as it may truly go: the tongue swung round the sit by the doubt
+  const grid = swungGrid(tongue, srcDoubt)
   let reach = 0
   let landing = Infinity
   for (let y = 0; y < N; y++)
     for (let x = 0; x < N; x++) {
       const i = y * N + x
-      if (grid[i] >= NOTICE) {
+      if (tongue[i] >= NOTICE) {
         const d = Math.hypot(x - mid, y - mid) * CELL_M
         reach = Math.max(reach, d)
         landing = Math.min(landing, d)
@@ -1169,12 +1178,68 @@ export function simulatePlume(
       over: wTotal > 0 ? over / wTotal : 0,
       touchdown: down >= TOUCH_CELLS,
       checks: sit ? { n: sit.n, puffs: sit.puffs, lulls: sit.lullShare, share: sit.share } : null,
+      swing: srcDoubt,
     },
     grid,
+    tongue,
     mean,
     tracks,
     relief: walked,
   }
+}
+
+/**
+ * The cone with the doubt in it (2026-10-15): at each cell, the most the
+ * tongue (the share of the minutes a nose notices the sit, the wind as
+ * forecast) gives it swung any way round the sit, times how likely that
+ * swing is, sd degrees being the model's doubt for the spot and the
+ * forecast's (model.ts Spread): 0.37 of it at one sd, 0.02 at two. Not the
+ * average over the swings: that thins a narrow tongue under the noticeable
+ * line everywhere (a 5 m stand at dawn went from 0.35 to 0.15 and its cone
+ * was gone). The weight is the Gaussian's squared: at its own (0.61 at one
+ * sd) the PALM card's false alarms rose 53 -> 61, squared they fell to 47
+ * with the held-out score kept (MICRO-WIND §7). PALM's plumes run
+ * in a tongue where the air is known; the checks put the forecast's
+ * head-height way 75 deg off at the median at Pickle Lake, so the cone a
+ * hunter can trust is the tongue swung that far, and a check at the sit
+ * pulls it back in. Bilinear on the tongue, the angles to ±180.
+ */
+function swungGrid(t: Float32Array, sd: number): Float32Array {
+  if (!(sd >= 3)) return t
+  const span = Math.min(180, 2.5 * sd)
+  const K = Math.min(37, Math.max(5, 2 * Math.ceil(span / 10) + 1))
+  const cs = new Float64Array(K)
+  const sn = new Float64Array(K)
+  const ws = new Float64Array(K)
+  for (let k = 0; k < K; k++) {
+    const a = -span + (2 * span * k) / (K - 1)
+    ws[k] = Math.exp(-((a / sd) ** 2))
+    cs[k] = Math.cos((a * Math.PI) / 180)
+    sn[k] = Math.sin((a * Math.PI) / 180)
+  }
+  const out = new Float32Array(N * N)
+  const mid = (N - 1) / 2
+  for (let y = 0; y < N; y++)
+    for (let x = 0; x < N; x++) {
+      const ex = x - mid
+      const ny = mid - y
+      let best = 0
+      for (let k = 0; k < K; k++) {
+        // the tongue at this cell turned back by the angle
+        const fx = mid + ex * cs[k] + ny * sn[k]
+        const fy = mid - (-ex * sn[k] + ny * cs[k])
+        const x0 = Math.floor(fx)
+        const y0 = Math.floor(fy)
+        if (x0 < 0 || y0 < 0 || x0 >= N - 1 || y0 >= N - 1) continue
+        const ax = fx - x0
+        const ay = fy - y0
+        const i = y0 * N + x0
+        const v = ws[k] * ((t[i] * (1 - ax) + t[i + 1] * ax) * (1 - ay) + (t[i + N] * (1 - ax) + t[i + N + 1] * ax) * ay)
+        if (v > best) best = v
+      }
+      out[y * N + x] = best
+    }
+  return out
 }
 
 /** The average's 3×3 blur as a Gaussian's σ, m: a puff's footprint is never smaller. */
@@ -1458,7 +1523,7 @@ function chaikin(xy: Float32Array, closed: boolean): Float32Array {
   return out
 }
 
-function renderPng(grid: Float32Array, w: number, h: number): string {
+function renderPng(grid: Float32Array, w: number, h: number, doubt: Float32Array | null = null): string {
   const c = document.createElement('canvas')
   c.width = w
   c.height = h
@@ -1469,7 +1534,17 @@ function renderPng(grid: Float32Array, w: number, h: number): string {
   const ls = Math.log(STRONG)
   for (let i = 0; i < grid.length; i++) {
     const g = grid[i]
-    if (g < TRACE) continue
+    if (g < TRACE) {
+      // where it may swing: a pale wash, stronger where more of the doubt carries it
+      const d = doubt ? doubt[i] : 0
+      if (d >= TRACE) {
+        img.data[i * 4] = 255
+        img.data[i * 4 + 1] = 222
+        img.data[i * 4 + 2] = 170
+        img.data[i * 4 + 3] = Math.round(255 * (d >= NOTICE ? 0.26 : 0.1 + (0.16 * (Math.log(d) - lt)) / (ln - lt)))
+      }
+      continue
+    }
     const lg = Math.log(g)
     // log steps from now and then to every minute
     const v = Math.min(1, (lg - lt) / -lt)
@@ -1506,7 +1581,10 @@ interface Frame {
   north: number
   w: number
   h: number
+  /** the cone with the doubt in it, everyone together */
   grid: Float32Array
+  /** the tongues, the wind as forecast */
+  tongue: Float32Array
   /** each person's offset from the first, m east and north */
   off: [number, number][]
   /** where each person's grid sits in the frame, cells from its west and north edges */
@@ -1526,15 +1604,19 @@ function combine(people: { lon: number; lat: number }[], runs: (PlumeRun | null)
   const h = N + r0 - Math.min(...cj)
   const place = off.map((_, p): [number, number] => [ci[p] - c0, r0 - cj[p]])
   const grid = new Float32Array(w * h)
+  const tongue = new Float32Array(w * h)
   runs.forEach((r, p) => {
     if (!r) return
     const [dx, dy] = place[p]
     for (let y = 0; y < N; y++) {
       const row = (y + dy) * w + dx
-      for (let x = 0; x < N; x++) grid[row + x] = 1 - (1 - grid[row + x]) * (1 - r.grid[y * N + x])
+      for (let x = 0; x < N; x++) {
+        grid[row + x] = 1 - (1 - grid[row + x]) * (1 - r.grid[y * N + x])
+        tongue[row + x] = 1 - (1 - tongue[row + x]) * (1 - r.tongue[y * N + x])
+      }
     }
   })
-  return { lon, lat, kx, ky, west: c0 * CELL_M - EXTENT_M, north: r0 * CELL_M + EXTENT_M, w, h, grid, off, place }
+  return { lon, lat, kx, ky, west: c0 * CELL_M - EXTENT_M, north: r0 * CELL_M + EXTENT_M, w, h, grid, tongue, off, place }
 }
 
 function frameCorners(f: Frame): [[number, number], [number, number], [number, number], [number, number]] {
@@ -1832,7 +1914,7 @@ function applyStrength(map: MlMap | null) {
 
 /** Everyone's scent together, shaded; a little fainter under each person's own edge. */
 function drawCloud(map: MlMap, f: Frame, dim: boolean) {
-  const url = renderPng(f.grid, f.w, f.h)
+  const url = renderPng(f.tongue, f.w, f.h, f.grid)
   const coordinates = frameCorners(f)
   const img = map.getSource(SRC) as ImageSource | undefined
   if (img) img.updateImage({ url, coordinates })
@@ -1862,7 +1944,7 @@ function drawEdges(map: MlMap, people: Sitter[], runs: (PlumeRun | null)[]) {
     const c = personColour(k)
     let tip: [number, number] | null = null
     let far = 0
-    for (const o of noticeOutline(r.grid)) {
+    for (const o of noticeOutline(r.tongue)) {
       const coordinates: [number, number][] = []
       for (let n = 0; n < o.xy.length; n += 2) {
         const x = o.xy[n]
@@ -2753,6 +2835,12 @@ function reachText(p: Plume): string {
   return `noticeable to about ${Math.round(p.reach / 10) * 10} m`
 }
 
+/** The pale shade's words: how far the tongue may swing, and that a check pulls it in. */
+function swingText(p: Plume): string {
+  if (p.swing < 20) return ''
+  return p.swing >= 80 ? ' · could go any way: a wind check here tightens it' : ` · could swing ±${Math.round(p.swing / 5) * 5}°: a wind check here tightens it`
+}
+
 /** Share of the scent held up off a drop before the card says so. */
 const LIFTED = 0.15
 
@@ -2773,12 +2861,13 @@ export function reliefReason(p: Plume): string | null {
 /** One line for the card: where most of it goes and how far. */
 export function plumeSummary(p: Plume): string {
   const still = p.stable ? (p.lifted > LIFTED ? ' · still air, it holds its height off the drop' : ' · still air, it hugs the ground') : ''
-  if (p.calm && p.mainShare < 0.35) return `Scent spreads every way, ${reachText(p)}${still}`
+  const swing = swingText(p)
+  if (p.calm && p.mainShare < 0.35) return `Scent spreads every way, ${reachText(p)}${still}${swing}`
   const second = p.sectors
     .map((v, k) => [v, k] as [number, number])
     .sort((a, b) => b[0] - a[0])[1]
   const tail = second && second[0] >= 0.2 ? `, ${Math.round(second[0] * 100)}% ${compass(second[1] * 45)}` : ''
-  return `${Math.round(p.mainShare * 100)}% of your scent goes ${compass(p.mainToward)}${tail} · ${reachText(p)}${still}`
+  return `${Math.round(p.mainShare * 100)}% of your scent goes ${compass(p.mainToward)}${tail} · ${reachText(p)}${still}${swing}`
 }
 
 /** 'Everyone placed is off the map; you stay.' Takes the placed people off and leaves the live one. */

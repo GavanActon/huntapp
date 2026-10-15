@@ -526,6 +526,31 @@ with it. The first checks under a hill on a windy day will.
     20 s, size growing with speed and spread).
   - The mean direction meanders with the source's sigma on a 2.5 minute
     time scale, in six independent realisations.
+  - **The tongue and the pale shade** (2026-10-15; Gavan's call: draw both).
+    - **The problem:** against PALM the old cone was round where PALM's plume is a tongue. At the bog strip (b232) PALM carried scent 478 m north and nothing upwind, while the app gave about 100 m every way. The cause: the whole plume swung by a point's spread, 0.8σ.
+    - **Why it can't simply narrow:** the checks say the round cone is mostly honest doubt.
+      - At Pickle Lake the felt wind was a median 75° off the forecast's way.
+      - The shown σ already holds only 51–53% of the felt directions within 1σ (68% if calibrated).
+      - Narrowing it alone fell to 43%, and on the PALM card it turned a wrong way into misses.
+    - **So the spread is three parts** (model.ts `Spread`, `SPREAD_DEFAULT`). The shown σ, the check fit and the wind card are unchanged; the parts feed only the scent.
+      - **place:** the air's own swing with the forecast right. It's the old σ before the forecast's doubt and the checks, capped at 65° in unsettled air with a wind above the trees, coming in from 2 to 6 km/h of local 10 m wind. Fitted on Pickle's PALM boxes against the point spread, it took held-out Lac Bailey's error 23 → 18° and its bias +12 → 0.
+      - **model:** the app's own direction error for the kind of spot: the 68th percentile of PALM against the app with the air forced (`modelErr`). It's 22° on flat ground in a neutral wind (+15 in sun), 40 with a 3–6° rise upwind, 70 for 6–10°, 55 past 10°, and 30–90 by regime (drainage, upslope, breezes, calm, pooled).
+      - **forecast:** the forecast's head-height error, 60° (with the ensemble's spread in quadrature), on the mechanical share. It's none with the air forced (PALM's air is the truth). Checks nearby pull model and forecast in by 1 + 2 × their weight; checks that disagree hold the model part open.
+    - **The tongue:** the plume simulated with the whole plume swinging by 0.45 of the place's spread. In every PALM box (13, every stability) the head-height wind averaged over 100 m swings 0.39–0.58 of a point's spread. It gives the reach, the sectors, each person's edge, and the strong shading.
+    - **The pale shade:** the tongue swung round the sit by the doubt, hypot(model, forecast) (`swungGrid`). At each cell it's the most any swing gives, times the swing's weight, exp(−(a/sd)²): 0.37 of the tongue at one sd, 0.02 at two. It's drawn as a pale wash where the tongue isn't, and it's the run's `grid`: scentAt (hunting mode's "where he has you"), the group's areas and who scents whom read it.
+      - Averaging over the swings thinned a narrow tongue under the noticeable line everywhere: a 5 m stand at dawn went from 0.35 to 0.15, and its cone was gone.
+      - The Gaussian's own weight (0.61 at one sd) spread too wide; cubed, it lost the lee.
+    - **The card** adds "could swing ±N°: a wind check here tightens it", or "could go any way" past 80°.
+    - **On the checks** (HD; the forecast term fitted on Pickle, Searchmont held out), the honest cone's spread, hypot(place, model, forecast), holds the felt way within 1 sd at Pickle 66% and at Searchmont 71%, against 53% and 50% for the shown σ.
+    - **On the PALM card** (`pipeline/teacher/palm/scorecard.py`, HD pinned, against baseline-hd on 0ef365b):
+
+      | | Tune set (Pickle) | Misses | False alarms | Held out (Lac Bailey) |
+      |---|---|---|---|---|
+      | Before | 0.53 | 4 | 53 | 0.50 (13 false alarms) |
+      | After | 0.54 | 5 | 47 | 0.50 (13 false alarms) |
+
+      - The one miss more is P1 on the sunny west morning at the narrows (PALM 440 m east). There the app's ground air runs back up the lit slope, 180° from PALM's, beyond any doubt's reach; the wind has to be fixed there.
+      - A wider tongue (0.50, 0.55 of the place's spread) lost the held-out score.
   - Each particle is also a puff that mixes upward as it travels
     (particle–puff hybrid, as HYSPLIT does): σz from the Briggs (1973)
     rural curves along the distance travelled, neutral D blended toward
