@@ -158,8 +158,9 @@ export function hotMark(id: string): HotDotMark {
 
 /** The ring round an action button: gold where HD powers it, tan on SD. */
 export function HotDot({ mark }: { mark: HotDotMark }): JSX.Element | null {
-  if (!mark) return null
-  return <span className={`grade-ring grade-ring-${mark === 'hd' ? 'hd' : 'sd'}`} aria-label={mark === 'hd' ? 'HD' : mark === 'want' ? 'Comes with HD' : 'SD'} />
+  // SD shows no upgrade highlights (Gavan, 2026-10-15): only HD's gold
+  if (mark !== 'hd') return null
+  return <span className="grade-ring grade-ring-hd" aria-label="HD" />
 }
 
 /** A layer row's tab (ui/sheets/LayersSheet.tsx): the Hillshade row is HD where the LiDAR shade draws in it. */
@@ -180,7 +181,8 @@ export function layerMark(key: keyof LayerVisibility): HdMark {
 
 /** The tab itself. */
 export function HdTab({ mark, className = '' }: { mark: HdMark; className?: string }): JSX.Element | null {
-  if (!mark) return null
+  // SD shows no upgrade highlights: an HD-only row is dimmed, and its tap still says what HD gives
+  if (mark !== 'hd') return null
   return (
     <span className={`grade-tab grade-tab-${mark} ${className}`} aria-label={mark === 'hd' ? 'HD' : 'Comes with HD'}>
       HD

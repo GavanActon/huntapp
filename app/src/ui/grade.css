@@ -90,7 +90,7 @@
   background: rgba(var(--c-bg-rgb), 0.85);
 }
 /* an action button's ring, just outside the circle: HD flat gold with a
-   soft glow, SD a quieter tan. Drawn as a fill masked to its rim. */
+   soft glow; SD has none. Drawn as a fill masked to its rim. */
 .hotbtn > .grade-ring {
   position: absolute;
   inset: -3.5px;
@@ -109,29 +109,15 @@
 .grade-ring-hd {
   background: var(--c-hd);
 }
-.grade-ring-sd {
-  padding: 1.5px !important;
-  background: var(--c-sd);
-  opacity: 0.85;
-}
 /* the glow sits on the button: the ring's own shadow would be masked away */
 .hotbtn:has(> .grade-ring-hd) {
   box-shadow: var(--shadow-fab), 0 0 10px 1px rgba(var(--c-hd-rgb), 0.24);
 }
 
-/* the weather strip in the same outline: gold HD, tan SD */
+/* the weather strip in the same outline, HD only */
 :root[data-grade='hd'] .wxstrip {
   border-color: var(--c-hd);
   box-shadow: 0 0 0 1px var(--c-hd), var(--shadow-panel), 0 0 14px rgba(var(--c-hd-rgb), 0.2);
-}
-:root[data-grade='sd'] .wxstrip {
-  border-color: rgba(179, 161, 132, 0.85);
-  border-color: color-mix(in srgb, var(--c-sd) 85%, transparent);
-}
-
-/* a button HD would add: the icon quieter, the button still taps (to what HD gives) */
-.hotbtn.grade-want > svg {
-  opacity: 0.5;
 }
 /* a layer row's tab, after its name */
 .layers-name .grade-tab {
