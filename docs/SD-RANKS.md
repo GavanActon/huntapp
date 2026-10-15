@@ -50,7 +50,7 @@ of a harvest index, where the index is deer + 3 × elk + 3 × moose + bear.
 - **The order holds without the 3×:** with every species at 1× the top 15
   are the same.
 - **Top 15:** TX, PA, MI, WI, GA, AL, MO, TN, NC, NY, ME, LA, MN, OH, MS.
-  Maine is moved up to 10th, from 34th (Gavan, 2026-10-16: "whatever you
+  Maine is moved up to right after New York (11th), from 34th (Gavan, 2026-10-16: "whatever you
   suggest is fine for now"): its moose and forest country is like
   Québec's, where the model is strong.
 - **Then:** AR, VA, CO, IL, KY, SC, MT, OR, IN, ID, WV, FL, IA, AZ, UT, KS,
