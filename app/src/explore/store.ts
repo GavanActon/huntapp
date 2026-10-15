@@ -22,6 +22,8 @@ export interface Selected {
   box: Box
   lon: number
   lat: number
+  /** the HD area this box grows (ui/grade.tsx hdOffer): its id, name, and its own ground, km² */
+  extend?: { areaId: string; name: string; baseKm2: number }
 }
 
 export interface Requested {

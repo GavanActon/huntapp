@@ -2,7 +2,7 @@
 // area's (areas/index.ts). A new hunting area = a new app/src/areas/<id>.json
 // plus a pipeline run (docs/AREAS.md).
 import { ACTIVE_AREA, AREA_LIST, DEFAULT_AREA, type AreaDef } from './areas'
-import { gradeChoice } from './state/grade'
+import { hdInstalled } from './state/grade'
 import { terrainWind } from './state/terrainWind'
 
 const AREA = ACTIVE_AREA
@@ -203,16 +203,27 @@ export function areaGrade(a: AreaDef = AREA): AreaGrade {
   return HD_PMTILES.some((k) => a.files.pmtiles.includes(k)) || windSolved(a) ? 'hd' : 'sd'
 }
 
-/** An HD area shown as SD this run (state/grade.ts), to see what HD adds. */
-export const SD_PREVIEW = areaGrade() === 'hd' && gradeChoice() === 'sd'
+/** An HD area whose HD is not installed on this phone (state/grade.ts):
+ *  the map is the area as an SD bake would have it, and Install is offered. */
+export const SD_PREVIEW = areaGrade() === 'hd' && !hdInstalled(AREA.id)
 
 /** The grade the map is drawn at this run. */
 export const GRADE: AreaGrade = SD_PREVIEW ? 'sd' : areaGrade()
 
-/** What the map leaves out while an HD area is shown as SD: HD's own
+/** What the map leaves out while an HD area's HD is not installed: HD's own
  *  PMTiles, and the bush where it was measured (an SD bake's modelled bush
  *  was never made here, so Bush is off rather than better than SD's). */
-export const SD_HIDDEN: readonly string[] = SD_PREVIEW ? [...HD_PMTILES.filter((k) => AREA.files.pmtiles.includes(k)), ...(bushMeasured() ? ['understory'] : [])] : []
+export const hdOnlyKeys = (a: AreaDef = AREA): string[] =>
+  areaGrade(a) === 'hd' ? [...HD_PMTILES.filter((k) => a.files.pmtiles.includes(k)), ...(bushMeasured(a) ? ['understory'] : [])] : []
+export const SD_HIDDEN: readonly string[] = SD_PREVIEW ? hdOnlyKeys() : []
+
+/** An area's HD files by name, what Install fetches: HD's own PMTiles and,
+ *  where an SD wind stands in, the wind solve's grid. */
+export function hdFiles(a: AreaDef = AREA): { key: string; file: string }[] {
+  const keys = hdOnlyKeys(a)
+  const pm = dataFiles(a).filter((d) => keys.includes(d.key)).map((d) => ({ key: d.key, file: d.file }))
+  return [...pm, ...(windSolved(a) && hasSdWind(a) ? [{ key: 'micro', file: `micro-${a.id}.hab` }] : [])]
+}
 
 /** The SD terrain wind is the one in use: chosen on this phone (Settings,
  *  state/terrainWind.ts), or the area shown as SD, and baked for the area.
@@ -252,9 +263,11 @@ export interface BundleDef {
   files: string[]
 }
 
-/** An area's offline bundle: every file of it the app reads, by name. */
+/** An area's offline bundle: every file of it the app reads, by name. HD's
+ *  own files only where HD is installed on this phone: Install fetches them. */
 function bundleOf(a: AreaDef): BundleDef {
-  return {
+  const notHd = areaGrade(a) === 'hd' && !hdInstalled(a.id) ? new Set(hdFiles(a).map((f) => f.file)) : null
+  const b: BundleDef = {
     id: a.id,
     name: a.name,
     description: a.bundle.description,
@@ -265,6 +278,8 @@ function bundleOf(a: AreaDef): BundleDef {
       ...GRIDS.filter((g) => a.files.grids.includes(g)).map((g) => `${g}-${a.id}.hab`),
     ],
   }
+  if (notHd) b.files = b.files.filter((f) => !notHd.has(f))
+  return b
 }
 
 /** One bundle per area, the active area's first. */

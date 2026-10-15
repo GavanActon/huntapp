@@ -170,7 +170,7 @@ export function HotButton({ id, onHold, onTap }: { id: HotId; onHold: () => void
   const d = HOT_DEFS[id]
   const on = d.useActive()
   const labels = useAppStore((s) => s.buttonLabels)
-  // the dot: gold where HD powers it here, tan on SD; HD would add it (want), a tap then saying what HD gives
+  // HD would add it here (want): a tap says what HD gives. The ring (HotDot) is gold while the view is HD
   const hd = hotMark(id)
   const timer = useRef(0)
   const held = useRef(false)
@@ -202,7 +202,7 @@ export function HotButton({ id, onHold, onTap }: { id: HotId; onHold: () => void
       aria-label={d.name}
     >
       <d.Icon />
-      <HotDot mark={hd} />
+      <HotDot id={id} />
       {labels && <span className="hotbtn-label">{d.short}</span>}
     </button>
   )

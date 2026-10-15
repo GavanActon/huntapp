@@ -5,6 +5,8 @@ import { switchArea } from '../areas/switch'
 import { devlog } from '../devlog'
 import { withMap } from '../map/mapController'
 import { usePlacesStore } from '../state/placesStore'
+import { useHdOrders } from '../state/hdOrders'
+import { addedKm2, GRADE_SWITCH } from '../ui/grade'
 import { fitBox } from './boxLayer'
 import { atCap, bounds, boxId, centre, HD_MAX_KM2, HD_MAX_SIDE_KM, hdFits, packMb, sizeKm, tilesUnder } from './box'
 import { tileAt } from './lattice'
@@ -86,10 +88,23 @@ export default function BoxCard() {
   // the baked areas the box reaches into, each opened on the middle of the ground they share
   const baked = AREA_LIST.filter((a) => !a.virtual && a.region.west < b.east && a.region.east > b.west && a.region.south < b.north && a.region.north > b.south)
   const req = requested[id]
-  const hdOk = w.hd && hdFits(box)
+  // an extension grows an HD area: HD unless the grid, once read, says the new ground has no LiDAR
+  const hdOk = (w.hd || (!!sel.extend && read.length === 0)) && hdFits(box)
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 
   async function ask(kind: 'sd' | 'hd') {
+    // the HD order the grade circle follows: an extension of an area, or HD over one
+    const order = () => {
+      const over = sel!.extend?.areaId ?? baked[0]?.id
+      if (kind === 'hd') useHdOrders.getState().add({ boxId: id, areaId: over, name: sel!.extend?.name ?? baked[0]?.name ?? 'this box', kind: sel!.extend ? 'extend' : 'new', at: Date.now(), sim: GRADE_SWITCH })
+    }
+    // a dev build simulates HD: nothing is sent, the stages pass on the grade circle (state/hdOrders.ts)
+    if (kind === 'hd' && GRADE_SWITCH) {
+      markRequested(id, { kind, at: Date.now() })
+      order()
+      devlog('explore', `simulated HD order ${id}${sel!.extend ? ` · extends ${sel!.extend.areaId}` : ''}`)
+      return
+    }
     if (!emailOk) {
       setErr('An email address: the pack is sent there when it is ready.')
       return
@@ -103,7 +118,7 @@ export default function BoxCard() {
         // the box rides in `tile` (b-<x0>-<y0>-<x1>-<y1>, habitat-cell indices: explore/box.ts) and in words in `where`
         body: JSON.stringify({
           email,
-          where: `${id} · ${b.south.toFixed(5)}, ${b.west.toFixed(5)} to ${b.north.toFixed(5)}, ${b.east.toFixed(5)} · ${size.w.toFixed(1)} × ${size.h.toFixed(1)} km`,
+          where: `${sel!.extend ? `extend ${sel!.extend.areaId} · ` : ''}${id} · ${b.south.toFixed(5)}, ${b.west.toFixed(5)} to ${b.north.toFixed(5)}, ${b.east.toFixed(5)} · ${size.w.toFixed(1)} × ${size.h.toFixed(1)} km`,
           lat: clat,
           lon: clon,
           tile: id,
@@ -113,6 +128,7 @@ export default function BoxCard() {
       })
       if (!r.ok) throw new Error(`${r.status}`)
       markRequested(id, { kind, at: Date.now() })
+      order()
       devlog('explore', `asked for ${id} · ${kind} · ${size.w.toFixed(1)}×${size.h.toFixed(1)} km`)
     } catch (e) {
       setErr(navigator.onLine ? `Could not send the request (${(e as Error).message}). Try again with signal.` : 'No signal: the request needs one. Try again later.')
@@ -157,6 +173,11 @@ export default function BoxCard() {
           ×
         </button>
       </div>
+      {sel.extend && (
+        <div className="boxcard-extend">
+          Extend <strong>{sel.extend.name}</strong>'s HD · adds about {Math.round(addedKm2(sel) ?? 0)} km²
+        </div>
+      )}
       <div className="dim boxcard-hint">Drag a corner to size it, the middle to move it.</div>
       <div className="boxcard-lines">
         <div>
@@ -187,7 +208,8 @@ export default function BoxCard() {
         ))}
         {req && (
           <div className="boxcard-req">
-            Requested · {req.kind.toUpperCase()} · {new Date(req.at).toLocaleDateString()} · the email comes when it is ready{' '}
+            Requested · {req.kind.toUpperCase()} · {new Date(req.at).toLocaleDateString()} ·{' '}
+            {GRADE_SWITCH && req.kind === 'hd' ? 'simulated on the dev build, its stages on the grade circle' : 'the email comes when it is ready'}{' '}
             <button className="link" onClick={cancel}>
               Cancel
             </button>
@@ -196,14 +218,17 @@ export default function BoxCard() {
       </div>
       {!req && (
         <div className="boxcard-ask">
-          <input type="email" inputMode="email" placeholder="Your email, for the pack" value={email} onChange={(e) => setEmail(e.target.value)} />
+          {/* a dev build's HD order is simulated: no email to send it to */}
+          {!(GRADE_SWITCH && sel.extend) && <input type="email" inputMode="email" placeholder="Your email, for the pack" value={email} onChange={(e) => setEmail(e.target.value)} />}
           <div className="boxcard-btns">
-            <button className="btn" disabled={busy != null} onClick={() => ask('sd')}>
-              {busy === 'sd' ? 'Sending…' : `Get SD · free · about ${packMb(box, 'sd')} MB`}
-            </button>
+            {!sel.extend && (
+              <button className="btn" disabled={busy != null} onClick={() => ask('sd')}>
+                {busy === 'sd' ? 'Sending…' : `Get SD · free · about ${packMb(box, 'sd')} MB`}
+              </button>
+            )}
             {hdOk && (
               <button className="btn" disabled={busy != null} onClick={() => ask('hd')}>
-                {busy === 'hd' ? 'Sending…' : `Get HD · about ${packMb(box, 'hd')} MB`}
+                {busy === 'hd' ? 'Sending…' : `${sel.extend ? 'Extend HD' : 'Get HD'} · about ${packMb(box, 'hd')} MB`}
               </button>
             )}
           </div>

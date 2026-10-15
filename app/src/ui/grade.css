@@ -10,61 +10,67 @@
   flex-direction: row-reverse;
 }
 
-/* the tile: as tall as the view pill, HD filled gold, SD plain glass */
-.grade-tile,
-.grade-split {
+/* the grade: a circle as tall as the view pill, gold where the view is HD, tan elsewhere */
+.grade-dot {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: calc(40px * var(--ui-scale, 1));
   height: calc(40px * var(--ui-scale, 1));
-  border-radius: var(--r-md);
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
   font: inherit;
-  font-size: calc(13px * var(--ui-scale, 1));
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  font-size: calc(11.5px * var(--ui-scale, 1));
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  box-shadow: var(--shadow-fab);
+  transition: background 0.35s ease, color 0.35s ease, box-shadow 0.35s ease;
 }
-.grade-tile {
-  min-width: 46px;
-  padding: 0 10px;
-  color: var(--c-text-dim);
-  border: 1px solid var(--c-border-strong);
-}
-.grade-tile.grade-hd {
-  background: var(--c-hd);
-  border-color: rgba(255, 255, 255, 0.35);
-  color: var(--c-on-hd);
-  box-shadow: var(--shadow-fab), 0 0 14px rgba(var(--c-hd-rgb), 0.35);
-}
-
-/* the dev switch: both halves, the lit one the map's grade */
-.grade-split {
-  display: flex;
-  padding: 3px;
-  gap: 2px;
-  border: 1px solid var(--c-border-strong);
-}
-.grade-half {
-  min-width: 38px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: calc(var(--r-md) - 3px);
-  background: transparent;
-  color: var(--c-text-faint);
-  font: inherit;
-}
-.grade-half.grade-lit {
-  color: var(--c-text);
-  background: rgba(var(--c-ink-rgb), 0.2);
-}
-.grade-half.grade-lit.grade-hd {
+.grade-dot.grade-hd {
   background: var(--c-hd);
   color: var(--c-on-hd);
-  box-shadow: 0 0 12px rgba(var(--c-hd-rgb), 0.45);
+  box-shadow: var(--shadow-fab), 0 0 14px rgba(var(--c-hd-rgb), 0.4);
 }
-.grade-half.grade-none {
-  opacity: 0.45;
-  text-decoration: line-through;
+.grade-dot.grade-sd {
+  background: var(--c-sd);
+  color: var(--c-on-sd);
 }
-.grade-half:active,
-.grade-tile:active {
-  transform: scale(0.94);
+.grade-dot:active {
+  transform: scale(0.92);
+}
+/* installing, or being built: a gold arc round the circle */
+.grade-arc {
+  position: absolute;
+  inset: -5px;
+  width: calc(100% + 10px);
+  height: calc(100% + 10px);
+  transform: rotate(-90deg);
+  pointer-events: none;
+}
+.grade-arc circle {
+  fill: none;
+  stroke: rgba(10, 20, 12, 0.55);
+  stroke-width: 3;
+}
+.grade-arc .grade-arc-on {
+  stroke: var(--c-hd);
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.4s ease;
+}
+/* built and waiting to install: the circle breathes, once a few seconds */
+.grade-dot.grade-ready {
+  animation: grade-breathe 3.2s ease-in-out infinite;
+}
+@keyframes grade-breathe {
+  0%,
+  100% {
+    box-shadow: var(--shadow-fab), 0 0 0 rgba(var(--c-hd-rgb), 0);
+  }
+  50% {
+    box-shadow: var(--shadow-fab), 0 0 16px rgba(var(--c-hd-rgb), 0.55);
+  }
 }
 
 /* the HD tab: filled where HD powers it here, outlined where HD would add it */
@@ -89,14 +95,18 @@
   color: var(--c-hd);
   background: rgba(var(--c-bg-rgb), 0.85);
 }
-/* an action button's ring, just outside the circle: HD flat gold with a
-   soft glow; SD has none. Drawn as a fill masked to its rim. */
+/* an action button's ring, just outside the circle: flat gold with a soft
+   glow while the view is in HD (or its file has just landed in an install),
+   faded off elsewhere. Drawn as a fill masked to its rim. */
 .hotbtn > .grade-ring {
   position: absolute;
   inset: -3.5px;
   border-radius: 50%;
   padding: 2px;
   pointer-events: none;
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 0.35s ease, transform 0.35s var(--ease-out);
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
     linear-gradient(#000 0 0);
@@ -106,16 +116,23 @@
     linear-gradient(#000 0 0);
   mask-composite: exclude;
 }
+.hotbtn > .grade-ring.on {
+  opacity: 1;
+  transform: none;
+}
 .grade-ring-hd {
   background: var(--c-hd);
 }
 /* the glow sits on the button: the ring's own shadow would be masked away */
-.hotbtn:has(> .grade-ring-hd) {
+.hotbtn:has(> .grade-ring.on) {
   box-shadow: var(--shadow-fab), 0 0 10px 1px rgba(var(--c-hd-rgb), 0.24);
 }
 
-/* the weather strip in the same outline, HD only */
-:root[data-grade='hd'] .wxstrip {
+/* the weather strip in the same outline while the view is HD */
+.wxstrip {
+  transition: border-color 0.35s ease, box-shadow 0.35s ease;
+}
+:root[data-hdview] .wxstrip {
   border-color: var(--c-hd);
   box-shadow: 0 0 0 1px var(--c-hd), var(--shadow-panel), 0 0 14px rgba(var(--c-hd-rgb), 0.2);
 }
@@ -254,8 +271,152 @@
 .grade-show:active {
   transform: scale(0.95);
 }
-/* SD lit in the tan of the SD dot, HD in gold */
-.grade-half.grade-lit.grade-sd {
+
+/* the install: a gold bar, its words under it */
+.grade-install {
+  margin: 4px 0 6px;
+}
+.grade-bar {
+  height: 8px;
+  border-radius: 99px;
+  background: rgba(var(--c-ink-rgb), 0.14);
+  overflow: hidden;
+}
+.grade-bar > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--c-hd);
+  box-shadow: 0 0 10px rgba(var(--c-hd-rgb), 0.5);
+  transition: width 0.3s ease;
+}
+.grade-bar-words {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--c-text-dim);
+}
+.grade-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.grade-coming {
+  background: rgba(var(--c-hd-rgb), 0.08);
+}
+.grade-tab {
+  transition: background 0.35s ease, color 0.35s ease;
+}
+
+/* an order's stages */
+.grade-stages {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--c-text-faint);
+}
+.grade-stages li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.grade-stages li::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  flex: none;
+}
+.grade-stages li.done {
+  color: var(--c-text-dim);
+}
+.grade-stages li.done::before {
+  background: var(--c-hd);
+  border-color: var(--c-hd);
+}
+.grade-stages li.now {
+  color: var(--c-text);
+  font-weight: 650;
+}
+.grade-stages li.now::before {
+  border-color: var(--c-hd);
+  animation: grade-breathe-dot 1.4s ease-in-out infinite;
+}
+@keyframes grade-breathe-dot {
+  50% {
+    background: rgba(var(--c-hd-rgb), 0.6);
+  }
+}
+
+/* every area, with its grade */
+.grade-areas {
+  display: flex;
+  flex-direction: column;
+}
+.grade-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 4px;
+  border-top: 1px solid rgba(var(--c-ink-rgb), 0.1);
+}
+.grade-area .grade-badge {
+  min-width: 30px;
+  height: 22px;
+  font-size: 10.5px;
+}
+.grade-badge.grade-sd {
   background: var(--c-sd);
+  border-color: transparent;
   color: var(--c-on-sd);
+}
+.grade-area-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 15px;
+  color: var(--c-text);
+}
+.grade-area-name small {
+  font-size: 12px;
+}
+.grade-here {
+  font-size: 13px;
+}
+.grade-remove {
+  margin-top: 14px;
+}
+
+/* the tap popup's quiet row past the HD box: Get HD here, Extend */
+.pp-hd {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 7px 2px 1px;
+  border: 0;
+  border-top: 1px solid rgba(var(--c-ink-rgb), 0.12);
+  background: transparent;
+  color: var(--c-text-dim);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  text-align: left;
+}
+.pp-hd:active {
+  color: var(--c-text);
+}
+
+/* the request card on an extension: which area it grows, and by how much */
+.boxcard-extend {
+  margin: 2px 0 4px;
+  padding: 6px 9px;
+  border-radius: var(--r-sm);
+  border-left: 3px solid var(--c-hd);
+  background: rgba(var(--c-hd-rgb), 0.1);
+  font-size: 14px;
 }

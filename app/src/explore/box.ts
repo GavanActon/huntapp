@@ -84,6 +84,16 @@ export function boxAround(lon: number, lat: number, wKm = START_KM, hKm = START_
   return { x0, y0, x1: x0 + nx, y1: y0 + ny }
 }
 
+/** The box on the cells that holds a lon/lat box (an area's core, as a request box). */
+export function boxOfBounds(west: number, south: number, east: number, north: number): Box {
+  return { x0: Math.floor(cellX(west)), y0: Math.floor(cellY(north)), x1: Math.ceil(cellX(east)), y1: Math.ceil(cellY(south)) }
+}
+
+/** The smallest box holding both. */
+export function unionBox(a: Box, b: Box): Box {
+  return { x0: Math.min(a.x0, b.x0), y0: Math.min(a.y0, b.y0), x1: Math.max(a.x1, b.x1), y1: Math.max(a.y1, b.y1) }
+}
+
 /** The same box with its middle on a point. */
 export function moveTo(b: Box, lon: number, lat: number): Box {
   const nx = b.x1 - b.x0

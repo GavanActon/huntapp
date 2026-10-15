@@ -16,6 +16,7 @@ import { useScent } from '../weather/micro/scent'
 import { DROPPED_NAME, openPinSheet } from './placePopup'
 import { closeOnTapOff } from './tapPopup'
 import { attachTapWeather } from './tapWeather'
+import { hdOffer } from '../ui/grade'
 
 /** A spot the popup is about (a link's, a Go to's): its title row, and the
  *  name Pin keeps it under. */
@@ -79,7 +80,10 @@ export function showInfoPopup(m: MlMap, lngLat: { lng: number; lat: number }, he
     '<button class="pp-wind">Wind</button>',
     '<button class="pp-save">Pin</button>',
   ].join('')
-  el.innerHTML = `${titleHtml}<div class="depth-popup-wx"></div>${gameHtml}<div class="pp-acts">${acts}</div>`
+  // past the HD box, or where it is not installed: one quiet row at the foot (ui/grade.tsx hdOffer)
+  const offer = hdOffer(lng, lat)
+  const offerHtml = offer ? `<button class="pp-hd" type="button">${esc(offer.label)} ›</button>` : ''
+  el.innerHTML = `${titleHtml}<div class="depth-popup-wx"></div>${gameHtml}<div class="pp-acts">${acts}</div>${offerHtml}`
   const popup = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, closeOnClick: false, offset: 8, maxWidth: '260px' })
     .setLngLat([lng, lat])
     .setDOMContent(el)
@@ -102,6 +106,10 @@ export function showInfoPopup(m: MlMap, lngLat: { lng: number; lat: number }, he
     popup.remove()
     head?.onPin?.()
     openPinSheet(sp.id)
+  })
+  el.querySelector('.pp-hd')?.addEventListener('click', () => {
+    popup.remove()
+    offer?.run()
   })
   el.querySelector('.pp-digin')?.addEventListener('click', () => {
     popup.remove()
