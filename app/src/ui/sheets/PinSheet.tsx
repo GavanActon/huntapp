@@ -22,11 +22,13 @@ const KINDS: PlaceDef['kind'][] = ['stand', 'trail', 'landing', 'camp', 'lake']
  * row.
  * Adding a pin opens it (Gavan, 2026-10-14: "adding a pin brings up a screen
  * with all the details"), as do the popup's Open and a Pins row's Edit.
+ * Just dropped (fresh), it has a clear Save in its head that closes it, and
+ * no Share or Delete; those come when it is opened again (Gavan, 2026-10-15).
  *
  * Everything saves as it is typed. A note is written the moment its first
  * letter is, so closing the sheet mid-sentence keeps what was there.
  */
-export default function PinSheet({ id }: { id: string }): JSX.Element {
+export default function PinSheet({ id, fresh = false }: { id: string; fresh?: boolean }): JSX.Element {
   const p = usePlacesStore((s) => s.places.find((q) => q.id === id))
   const update = usePlacesStore((s) => s.update)
   const stacked = useAppStore((s) => s.sheets.length > 1)
@@ -85,8 +87,9 @@ export default function PinSheet({ id }: { id: string }): JSX.Element {
           }}
           onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
         />
-        <button className="sheet-done" onClick={close}>
-          Done
+        {/* it is saved already, as typed: Save is the plain way out */}
+        <button className={fresh ? 'sheet-done ps-save' : 'sheet-done'} onClick={close}>
+          {fresh ? 'Save' : 'Done'}
         </button>
       </div>
       {p.note && <div className="ps-about">{p.note}</div>}
@@ -118,14 +121,16 @@ export default function PinSheet({ id }: { id: string }): JSX.Element {
         <br />
         {coordWords(p)}
       </div>
-      <div className="ps-acts">
-        <button className="btn-secondary" onClick={share}>
-          {shared ?? 'Share'}
-        </button>
-        <button className="btn-secondary ps-delete" onClick={del}>
-          Delete pin
-        </button>
-      </div>
+      {!fresh && (
+        <div className="ps-acts">
+          <button className="btn-secondary" onClick={share}>
+            {shared ?? 'Share'}
+          </button>
+          <button className="btn-secondary ps-delete" onClick={del}>
+            Delete pin
+          </button>
+        </div>
+      )}
     </div>
   )
 }

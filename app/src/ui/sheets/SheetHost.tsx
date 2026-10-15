@@ -51,7 +51,7 @@ function panel(s: Sheet): ReactNode {
       return <PinsSheet />
     case 'pin':
       // keyed by the pin: another one opened in its place starts afresh
-      return <PinSheet key={s.id} id={s.id} />
+      return <PinSheet key={s.id} id={s.id} fresh={s.fresh} />
     case 'huntlog':
       return <HuntLogSheet />
     case 'settings':

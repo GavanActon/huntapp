@@ -176,7 +176,7 @@ export default function DigInSheet({ lon, lat }: { lon: number; lat: number }): 
     // nothing selected; its sheet goes over Dig in, ‹ Back to it
     const sp = usePlacesStore.getState().add({ name: DROPPED_NAME, lon, lat, kind: 'stand' })
     closeMenu()
-    openPinSheet(sp.id, { push: true })
+    openPinSheet(sp.id, { push: true, fresh: true })
   }
   /** The row says how it went, then the menu goes: "Copied" only once the clipboard has it. */
   const say = (row: 'share' | 'copy', ok: boolean) => {

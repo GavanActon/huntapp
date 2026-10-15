@@ -82,7 +82,7 @@ export default function PinsSheet(): JSX.Element {
     // unnamed like any new pin: its sheet's name field starts empty
     const p = add({ name: DROPPED_NAME, lon: c.lng, lat: c.lat, kind: 'stand' })
     select(p.id)
-    openPinSheet(p.id, { push: true })
+    openPinSheet(p.id, { push: true, fresh: true })
   }
   // folded under its area's name, a place needs no more than its kind
   const where = (p: SavedPlace, folded: boolean) => (p.id === home.id || folded ? p.kind : `${p.kind} · ${elsewhere(p)?.name ?? fromHome(p.lon, p.lat, home)}`)

@@ -350,6 +350,15 @@
   border-bottom: 1px solid var(--c-accent);
 }
 
+/* a pin just dropped: Save where Done would be, in the accent */
+.pin-sheet .ps-save {
+  padding: 7px 20px;
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+  color: var(--c-on-accent);
+  font-weight: 700;
+}
+
 .pin-sheet .ps-about {
   font-size: calc(12.5px * var(--ui-scale));
   color: var(--c-text-dim);

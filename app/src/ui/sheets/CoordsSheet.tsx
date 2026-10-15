@@ -135,7 +135,7 @@ export default function CoordsSheet({ text: given }: { text?: string }): JSX.Ele
     const sp = usePlacesStore.getState().add({ name: p.name ?? DROPPED_NAME, lon: p.lon, lat: p.lat, kind: 'stand' })
     setPinned(true)
     setNote('Pinned. It is in Pins.')
-    openPinSheet(sp.id, { push: true })
+    openPinSheet(sp.id, { push: true, fresh: true })
   }
 
   const onKey = (e: KeyboardEvent<HTMLInputElement>) => {

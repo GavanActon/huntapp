@@ -105,7 +105,7 @@ export function showInfoPopup(m: MlMap, lngLat: { lng: number; lat: number }, he
     const sp = usePlacesStore.getState().add({ name: head?.name ?? DROPPED_NAME, lon: lng, lat, kind: 'stand' })
     popup.remove()
     head?.onPin?.()
-    openPinSheet(sp.id)
+    openPinSheet(sp.id, { fresh: true })
   })
   el.querySelector('.pp-hd')?.addEventListener('click', () => {
     popup.remove()

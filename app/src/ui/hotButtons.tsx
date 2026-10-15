@@ -57,7 +57,7 @@ function dropPin() {
     lat = c.lat
   }
   const sp = usePlacesStore.getState().add({ name: DROPPED_NAME, lon, lat, kind: 'stand' })
-  openPinSheet(sp.id)
+  openPinSheet(sp.id, { fresh: true })
 }
 
 /** A map layer as a hot button: on when the layer is. */

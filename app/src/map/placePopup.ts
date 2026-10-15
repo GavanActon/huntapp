@@ -68,16 +68,17 @@ function clearStrip(map: MlMap, pop: maplibregl.Popup) {
 /**
  * A pin's sheet (ui/sheets/PinSheet.tsx), the map eased so the pin sits in
  * what the sheet leaves of it, under the strip. push: over the sheet that is
- * up, with ‹ Back to it (Pins, Dig in, Go to coordinates). While the map
- * follows you it stays put: the next fix would take it back.
+ * up, with ‹ Back to it (Pins, Dig in, Go to coordinates). fresh: the pin
+ * was just dropped, and the sheet ends in Save rather than Share and Delete.
+ * While the map follows you it stays put: the next fix would take it back.
  */
-export function openPinSheet(id: string, { push = false }: { push?: boolean } = {}) {
+export function openPinSheet(id: string, { push = false, fresh = false }: { push?: boolean; fresh?: boolean } = {}) {
   const p = usePlacesStore.getState().places.find((q) => q.id === id)
   if (!p) return
   open?.remove()
   const app = useAppStore.getState()
-  if (push) app.pushSheet({ kind: 'pin', id })
-  else app.openSheet({ kind: 'pin', id })
+  if (push) app.pushSheet({ kind: 'pin', id, fresh })
+  else app.openSheet({ kind: 'pin', id, fresh })
   const m = getMap()
   const away = placeArea(p)
   if (!m || app.follow || (away && away.id !== ACTIVE_AREA.id)) return
