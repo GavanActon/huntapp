@@ -82,11 +82,10 @@ async ({ pts, ms, air, variants }) => {
   const all = {}
   for (const [name, tune] of variants) {
     // a variant is {lee: {...}, slot: {...}}, or a bare lee setting
-    const t = tune && (tune.lee || tune.slot || tune.floor || tune.thermal) ? tune : { lee: tune }
+    const t = tune && (tune.lee || tune.slot || tune.floor) ? tune : { lee: tune }
     m.setLeeTune(t.lee ?? null)
     m.setSlotTune(t.slot ?? null)
     m.setFloorTune(t.floor ?? null)
-    m.setThermalTune(t.thermal ?? null)
     const out = []
     for (const [lon, lat] of pts) {
       const g = m.groundWind(lon, lat, ms)
@@ -97,7 +96,6 @@ async ({ pts, ms, air, variants }) => {
   m.setLeeTune(null)
   m.setSlotTune(null)
   m.setFloorTune(null)
-  m.setThermalTune(null)
   m.setForcedAir(null)
   return all
 }

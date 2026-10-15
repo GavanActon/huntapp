@@ -1065,19 +1065,6 @@ let leeRise: Float32Array | null = null
 const FLOOR_DEFAULT = { trees: 1.5, open: 1 }
 /** a stand never lets more through than open ground's log law gives 2 m over 10 m (§4) */
 const FLOOR_OPEN_SHARE = 0.7
-
-/**
- * The sun's flows under a stand: the upslope flow and the lake breeze keep a
- * flat share there (0.5 and 0.6), or with byCanopy 1 the share of open
- * ground's head-height wind the stand lets down, as the wind itself. On
- * trial (setThermalTune, palm_compare.py and replay.py --thermal).
- */
-const THERMAL_DEFAULT = { byCanopy: 0 }
-let thermalTune = { ...THERMAL_DEFAULT }
-export function setThermalTune(t: Partial<typeof THERMAL_DEFAULT> | null): void {
-  thermalTune = { ...THERMAL_DEFAULT, ...t }
-  bump()
-}
 let floorTune = { ...FLOOR_DEFAULT }
 export function setFloorTune(t: Partial<typeof FLOOR_DEFAULT> | null): void {
   floorTune = { ...FLOOR_DEFAULT, ...t }
@@ -1553,7 +1540,6 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   const mixNight = Math.exp(-Math.max(0, mech10 - 5) / 8)
   const mixDay = Math.exp(-Math.max(0, mech10 - 8) / 10)
   const inTrees = th > 0
-  const sunUnder = inTrees && thermalTune.byCanopy ? Math.min(1, gm / FLOOR_OPEN_SHARE) : null
 
   // ---- cold-air drainage ----
   let kat = 0
@@ -1576,7 +1562,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     const cosInc = Math.sin(el) * Math.cos(sl) + Math.cos(el) * Math.sin(sl) * Math.cos((ctx.sunAz - facing) * RAD)
     const heat = (lay.sw * Math.max(0, cosInc)) / Math.max(0.15, Math.sin(el))
     const sAna = clamp(heat / 600, 0, 1.5) * (1 - s) * mixDay
-    ana = 1.4 * Math.sqrt(Math.sin(sl)) * 3.6 * sAna * (inTrees ? sunUnder ?? 0.5 : 1)
+    ana = 1.4 * Math.sqrt(Math.sin(sl)) * 3.6 * sAna * (inTrees ? 0.5 : 1)
     anaTo = (facing + 180) % 360
   }
 
@@ -1590,7 +1576,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     const dT = lay.t2 - ctx.waterC
     if (ctx.sunElev > 10 && dT > 1) {
       const S = clamp((dT - 1) / 6, 0, 1) * clamp(lay.sw / 500, 0, 1) * Math.exp(-d / 500) * Math.exp(-Math.max(0, mech10 - 10) / 10)
-      brz = b(K_BREEZEMAX, i) * 3.6 * S * (inTrees ? sunUnder ?? 0.6 : 1)
+      brz = b(K_BREEZEMAX, i) * 3.6 * S * (inTrees ? 0.6 : 1)
       brzTo = on
       brzKind = 'lake'
     } else if (dT < -1) {
