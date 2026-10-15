@@ -75,7 +75,7 @@ async ({ sits, ms, height, air, floor, tune, thermal, spread, lee, slot }) => {
   for (const p of sits) {
     const g = m.groundWind(p.lon, p.lat, ms)
     const r = s.simulatePlume(p.lon, p.lat, ms, height, sample)
-    out.push(r ? { name: p.name, grid: Array.from(r.grid), sigma: g ? g.sigmaDeg : null, kmh: g ? g.kmh : null, from: g ? g.dirFrom : null } : { name: p.name, grid: null })
+    out.push(r ? { name: p.name, grid: Array.from(r.grid), tongue: r.tongue ? Array.from(r.tongue) : null, sigma: g ? g.sigmaDeg : null, kmh: g ? g.kmh : null, from: g ? g.dirFrom : null } : { name: p.name, grid: null })
   }
   m.setForcedAir(null)
   if (m.setFloorTune) m.setFloorTune(null)
@@ -98,6 +98,23 @@ def mark(palm: dict, app: dict, band: str, trace: str, reach: float) -> str:
 def threat(marks: list[str]) -> tuple[int, int, int, float]:
     h, m, f = marks.count("H"), marks.count("M"), marks.count("F")
     return h, m, f, h / max(1, h + m + f)
+
+
+def mark2(palm: dict, grid: dict, tongue: dict, band: str, trace: str, reach: float) -> str:
+    """Measure v2 (Gavan's option 3: the tongue is drawn as scent, the pale shade round it as doubt):
+    T the tongue covers PALM's scent, S only the shade does, M neither (a miss), F the tongue claims
+    scent where PALM has not even a trace (a false alarm), . neither."""
+    ps, pt = palm[band] >= reach, palm[trace] >= reach
+    g, t = grid[band] >= reach, tongue[band] >= reach
+    if ps:
+        return "T" if t else "S" if g else "M"
+    return "F" if t and not pt else "."
+
+
+def threat2(marks: list[str]) -> tuple[int, int, int, int, float]:
+    """Tongue hits, shade-only, misses, false alarms, and the tongue's threat score: T / (T + S + M + F)."""
+    t, s, m, f = marks.count("T"), marks.count("S"), marks.count("M"), marks.count("F")
+    return t, s, m, f, t / max(1, t + s + m + f)
 
 
 WT = Path("C:/dev/huntapp-score")   # the scoring worktree: outside the repo, its own node_modules, no links
@@ -288,11 +305,17 @@ def score(jobs, variants, url, band, trace, reach) -> list[dict]:
                             rs = reach_by_sector(g.reshape(n, n), 1400.0 / n)
                             sect = sorted(rs, key=int)
                             marks = [mark(s["palm"][k], rs[k], band, trace, reach) for k in sect]
+                            # v2: the tongue alone (a ref before e42e181 has none: the whole cone stands for it)
+                            if r.get("tongue"):
+                                rt = reach_by_sector(np.array(r["tongue"], np.float32).reshape(n, n), 1400.0 / n)
+                            else:
+                                rt = rs
+                            marks2 = [mark2(s["palm"][k], rs[k], rt[k], band, trace, reach) for k in sect]
                             results.append(dict(run=j["run"], box=j["box"], held=j["held"], stab=j["stab"], variant=vname, pid=s["pid"],
-                                                situation=s["situation"], sectors=sect, marks=marks, app=rs, palm=s["palm"],
-                                                sigma=r["sigma"], kmh=r["kmh"], frm=r["from"]))
+                                                situation=s["situation"], sectors=sect, marks=marks, marks2=marks2, app=rs, tongue=rt,
+                                                palm=s["palm"], sigma=r["sigma"], kmh=r["kmh"], frm=r["from"]))
                             sig = f"{r['sigma']:.0f}" if r["sigma"] is not None else "-"
-                            print(f"  {vname:8s} {s['pid']:3s} {' '.join(marks)}  sigma {sig} {r['kmh'] or 0:.1f} km/h from {r['from'] or 0:.0f}", flush=True)
+                            print(f"  {vname:8s} {s['pid']:3s} {' '.join(marks2)}  (v1 {''.join(marks)})  sigma {sig} {r['kmh'] or 0:.1f} km/h from {r['from'] or 0:.0f}", flush=True)
             ctx.close()
         browser.close()
     return results
@@ -304,13 +327,15 @@ def summary(results, variants, st, pending, ts, args) -> None:
     for vname in variants:
         rr = [r for r in results if r["variant"] == vname]
         for held in (False, True):
+            tt_, ss_, mm_, ff_, t2 = threat2([x for r in rr if r["held"] == held for x in r["marks2"]])
             h, m, f, t = threat([x for r in rr if r["held"] == held for x in r["marks"]])
-            lines.append(f"{vname:10s} {'held out' if held else 'tune set':9s} threat {t:.2f}  hits {h:3d} misses {m:3d} false alarms {f:3d}")
+            lines.append(f"{vname:10s} {'held out' if held else 'tune set':9s} v2 tongue threat {t2:.2f}  tongue {tt_:3d} shade only {ss_:3d} "
+                         f"misses {mm_:3d} false alarms (tongue) {ff_:3d}   | v1 threat {t:.2f} (hits {h}, misses {m}, false alarms {f})")
         by_sit = {}
         for r in rr:
-            by_sit.setdefault(r["situation"], []).extend(r["marks"])
-        lines.append(f"{vname:10s} by situation: " + "; ".join(f"{k} {threat(v)[3]:.2f}" for k, v in sorted(by_sit.items())))
-        miss = [f"{r['pid']} {r['run'].split('_', 1)[1]} {s}" for r in rr for s, mk in zip(r["sectors"], r["marks"]) if mk == "M"]
+            by_sit.setdefault(r["situation"], []).extend(r["marks2"])
+        lines.append(f"{vname:10s} by situation (v2): " + "; ".join(f"{k} {threat2(v)[4]:.2f}" for k, v in sorted(by_sit.items())))
+        miss = [f"{r['pid']} {r['run'].split('_', 1)[1]} {s}" for r in rr for s, mk in zip(r["sectors"], r["marks2"]) if mk == "M"]
         lines.append(f"{vname:10s} misses: " + (", ".join(miss) or "none"))
     print()
     print("\n".join(lines))
@@ -320,19 +345,27 @@ def summary(results, variants, st, pending, ts, args) -> None:
     tag = f"{time.strftime('%Y-%m-%d_%H%M')}_{st['commit']}{'-dirty' if st['dirty'] else ''}{'-patched' if st['patches'] else ''}_{args.label}"
     out = SCORES / f"{tag}.json"
     out.write_text(json.dumps(dict(testset=ts["version"], stamp=st, variants=variants, pending=pending, results=results), indent=1), encoding="utf-8")
-    new = not HISTORY.exists()
+    text = HISTORY.read_text(encoding="utf-8") if HISTORY.exists() else ""
     with open(HISTORY, "a", encoding="utf-8") as fh:
-        if new:
+        if not text:
             fh.write("# Scent scorecard history\n\nWritten by scorecard.py (docs/SCENT-TESTSET.md). A dirty score ran on a working tree "
-                     "with uncommitted app/src changes, so it is not a baseline.\n\n"
-                     "| when | commit | label | variant | tune set | held out | misses | false alarms | pending |\n|---|---|---|---|---|---|---|---|---|\n")
+                     "with uncommitted app/src changes, so it is not a baseline.\n")
+        if "## Measure v2" not in text:
+            # from 2026-10-15 every row is v2 (with v1 beside it); the v1 table above stops here
+            fh.write("\n## Measure v2 (from 2026-10-15)\n\nThe tongue is drawn as scent, the pale shade round it as doubt (Gavan's option 3). "
+                     "Misses count where neither covers PALM's scent; false alarms count the tongue only; the tongue's threat is "
+                     "tongue hits / (tongue hits + shade only + misses + false alarms). v1 (the whole cone) is kept beside it.\n\n"
+                     "| when | commit | label | variant | tongue threat, tune | tongue threat, held out | misses | false alarms (tongue) | shade only "
+                     "| v1 tune / held out | pending |\n|---|---|---|---|---|---|---|---|---|---|---|\n")
         for vname in variants:
             rr = [r for r in results if r["variant"] == vname]
-            ht, mt, ft, tt = threat([x for r in rr if not r["held"] for x in r["marks"]])
-            hh, mh, fh_, th = threat([x for r in rr if r["held"] for x in r["marks"]])
+            t2t = threat2([x for r in rr if not r["held"] for x in r["marks2"]])
+            t2h = threat2([x for r in rr if r["held"] for x in r["marks2"]])
+            v1t = threat([x for r in rr if not r["held"] for x in r["marks"]])[3]
+            v1h = threat([x for r in rr if r["held"] for x in r["marks"]])[3]
             ref = st['commit'] + (' dirty' if st['dirty'] else '') + ''.join(f' + {p}' for p in st['patches'])
-            fh.write(f"| {time.strftime('%Y-%m-%d %H:%M')} | {ref} | {args.label} | {vname} | "
-                     f"{tt:.2f} | {th:.2f} | {mt + mh} | {ft + fh_} | {len(pending)} |\n")
+            fh.write(f"| {time.strftime('%Y-%m-%d %H:%M')} | {ref} | {args.label} | {vname} | {t2t[4]:.2f} | {t2h[4]:.2f} | "
+                     f"{t2t[2] + t2h[2]} | {t2t[3] + t2h[3]} | {t2t[1] + t2h[1]} | {v1t:.2f} / {v1h:.2f} | {len(pending)} |\n")
     print(f"\n-> {out}\n-> {HISTORY}")
 
 

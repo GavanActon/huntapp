@@ -1,5 +1,5 @@
 {
- "version": 1,
+ "version": 2,
  "doc": "docs/SCENT-TESTSET.md",
  "frozen": "2026-10-15",
  "measure": {
@@ -7,7 +7,8 @@
   "band": "0.15", "trace": "0.03", "reach_m": 40,
   "hit": "both scented", "miss": "PALM scented, the app not",
   "false_alarm": "the app scented where PALM's 3% band reaches under 40 m",
-  "threat": "hits / (hits + misses + false alarms)"
+  "threat": "hits / (hits + misses + false alarms)",
+  "v2": "from 2026-10-15 (Gavan's option 3: the tongue drawn as scent, the pale shade as doubt): a miss is PALM scented where neither the tongue nor the shade reaches 40 m at 15%; a false alarm is the tongue alone scented where PALM's 3% band is under 40 m; the tongue's threat is tongue hits / (tongue hits + shade only + misses + false alarms). v1 (the whole cone) is reported beside it. The bar: misses do not rise, the tongue's threat rises on the tune set and holds held out, and the checks' spread coverage stays honest (within 1 sd 60-80%)."
  },
  "points": {
   "P1":  {"box": "pickle-slot", "source": "throat west bank 1.5", "h": 1.5, "situation": "slot", "anchor": "the felt funnel, 09-29 midday"},

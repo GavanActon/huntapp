@@ -1,7 +1,7 @@
 {
  "case": "pickle-bogs",
  "tag": "4m",
- "built": "2026-10-14 19:39",
+ "built": "2026-10-15 17:17",
  "epsg": 32616,
  "dx": 4.0,
  "nx": 512,
@@ -373,6 +373,162 @@
    "hours": 1.0,
    "average_s": 1200.0,
    "why": "dusk 2026-10-02 22Z, near neutral: forecast 305 at 7.6 km/h; felt drifting toward SE, steady, treetops moving",
+   "scent": [
+    {
+     "name": "the bog (the checks) 1.5 m",
+     "x": 567.9,
+     "y": 1302.2,
+     "h": 1.5,
+     "utm": [
+      602507.9,
+      5420062.2
+     ],
+     "ground_m": 339.3,
+     "canopy_m": 6.0,
+     "water": false
+    },
+    {
+     "name": "the bog (the checks) 5 m",
+     "x": 567.9,
+     "y": 1302.2,
+     "h": 5.0,
+     "utm": [
+      602507.9,
+      5420062.2
+     ],
+     "ground_m": 339.3,
+     "canopy_m": 6.0,
+     "water": false
+    },
+    {
+     "name": "the pool S of camp 1.5 m",
+     "x": 1492.8,
+     "y": 741.1,
+     "h": 1.5,
+     "utm": [
+      603432.8,
+      5419501.1
+     ],
+     "ground_m": 338.3,
+     "canopy_m": 0.0,
+     "water": false
+    },
+    {
+     "name": "ring 000 210 m",
+     "x": 1027.4,
+     "y": 1231.6,
+     "h": 1.5,
+     "utm": [
+      602967.4,
+      5419991.6
+     ],
+     "ground_m": 339.8,
+     "canopy_m": 16.5,
+     "water": false
+    },
+    {
+     "name": "ring 045 300 m",
+     "x": 1239.5,
+     "y": 1233.7,
+     "h": 1.5,
+     "utm": [
+      603179.5,
+      5419993.7
+     ],
+     "ground_m": 340.5,
+     "canopy_m": 14.3,
+     "water": false
+    },
+    {
+     "name": "ring 090 390 m",
+     "x": 1417.4,
+     "y": 1021.6,
+     "h": 1.5,
+     "utm": [
+      603357.4,
+      5419781.6
+     ],
+     "ground_m": 339.3,
+     "canopy_m": 4.8,
+     "water": false
+    },
+    {
+     "name": "ring 135 300 m",
+     "x": 1239.5,
+     "y": 809.5,
+     "h": 1.5,
+     "utm": [
+      603179.5,
+      5419569.5
+     ],
+     "ground_m": 340.2,
+     "canopy_m": 13.1,
+     "water": false
+    },
+    {
+     "name": "ring 180 300 m",
+     "x": 1027.4,
+     "y": 721.6,
+     "h": 1.5,
+     "utm": [
+      602967.4,
+      5419481.6
+     ],
+     "ground_m": 341.7,
+     "canopy_m": 13.1,
+     "water": false
+    },
+    {
+     "name": "ring 225 300 m",
+     "x": 815.2,
+     "y": 809.5,
+     "h": 1.5,
+     "utm": [
+      602755.2,
+      5419569.5
+     ],
+     "ground_m": 346.1,
+     "canopy_m": 15.7,
+     "water": false
+    },
+    {
+     "name": "ring 270 300 m",
+     "x": 727.4,
+     "y": 1021.6,
+     "h": 1.5,
+     "utm": [
+      602667.4,
+      5419781.6
+     ],
+     "ground_m": 341.1,
+     "canopy_m": 16.7,
+     "water": false
+    }
+   ]
+  },
+  "pickle-bogs_dawn270_4m": {
+   "direction": 270.0,
+   "speed_kph": 19.0,
+   "zref_m": 80.0,
+   "stability": "stable",
+   "hours": 2.0,
+   "average_s": 1800.0,
+   "theta_surface": 284.5,
+   "theta_gradients": [
+    [
+     0.0,
+     4.0
+    ],
+    [
+     80.0,
+     0.5
+    ]
+   ],
+   "surface": "rate",
+   "heating_rate": -0.5,
+   "surface_heatflux": -0.01,
+   "cthf": -0.01,
+   "why": "dawn175's profile with the wind from 270: does the floor's turn follow the drainage or the wind",
    "scent": [
     {
      "name": "the bog (the checks) 1.5 m",

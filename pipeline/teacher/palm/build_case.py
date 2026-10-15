@@ -304,6 +304,15 @@ CASES = {
                             why="dusk 2026-09-28 23Z: forecast 282 at 5 km/h (80 m 294, 11 km/h); felt drifts toward S, W, SE, E, then calm"),
             "nw305": dict(direction=305.0, speed_kph=7.6, stability="neutral", hours=1.0, average_s=1200.0,
                           why="dusk 2026-10-02 22Z, near neutral: forecast 305 at 7.6 km/h; felt drifting toward SE, steady, treetops moving"),
+            # the loop's first question run (docs/SCENT-TESTSET.md, 2026-10-15, huntapp-ba): under dawn175 the
+            # bog's floor came from ~245 while the 10 m wind was 182 and the app kept ~187. The same dawn
+            # with the wind from the W says which turns the floor: the drainage line (still ~245) or the wind
+            "dawn270": dict(direction=270.0, speed_kph=19.0, zref_m=80.0, stability="stable", hours=2.0, average_s=1800.0,
+                            theta_surface=284.5,
+                            theta_gradients=[(0.0, 4.0), (80.0, 0.5)],
+                            surface="rate", heating_rate=-0.5,
+                            surface_heatflux=-0.01, cthf=-0.01,
+                            why="dawn175's profile with the wind from 270: does the floor's turn follow the drainage or the wind"),
         },
     ),
     # Lac Bailey's north bank (Quebec): the 1 m LiDAR flown 2024 (QC-600023), a bank rising

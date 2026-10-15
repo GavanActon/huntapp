@@ -255,6 +255,20 @@ Each score is saved with the commit it scored, so scores compare over time. The 
 doesn't drop, and the checks are no worse (`scripts/replay.py`). Commit and deploy only on Gavan's
 word.
 
+**Measure v2, from 2026-10-15** (testset.json version 2). Gavan, on huntapp-ba's comparison page: on
+the ground he expects PALM-narrow with a clearer error, and the tongue plus pale shade look stays. The
+shade is drawn as doubt, not scent, so:
+- **A miss** is PALM's scent reached by neither the tongue nor the shade. Narrowing can never hide scent.
+- **A false alarm** is the tongue alone claiming scent where PALM has not even a trace.
+- **The tongue's threat score** is tongue hits / (tongue hits + shade only + misses + false alarms),
+  so scent covered only by the shade counts against the tongue.
+- **The bar:** misses don't rise, the tongue's threat rises on the tune set and holds held out, and
+  the checks' coverage within 1 sd stays honest at 60–80%. That keeps the shade from growing to hide
+  misses.
+- v1 (the whole cone) stays in every row beside it.
+- **Baseline v2** on 8d50465 (with q2): tongue threat 0.50 tune and 0.65 held out, 5 misses, 44 tongue
+  false alarms, 10 shade-only.
+
 **The bar is the gate to live.** A change that misses it can still go to hunt-dev as a trial on
 Gavan's word. The referee reports which part failed, and the change stays off live until that part
 passes. First case, 2026-10-15: the q2 spread (option 3) passed every part but one. Its misses went
@@ -282,6 +296,21 @@ faint envelope, the honest spread with σ_forecast added (the part the checks sc
 the sit shrinks the envelope toward the tongue. huntapp-ba builds it. σ_model is the app's own
 direction error by situation (palm_compare's dirApart). It stays under forced air, so the spread is
 σ² = σ_place² + σ_model² + σ_forecast².
+
+## Questions the loop has booked
+
+Runs outside the test set that settle a rule question, booked the way docs/SCENT-TESTSET.md's
+ledger books runs: the question, the number that settles it, and the app change that follows.
+
+| run | question | settles when | app change |
+|---|---|---|---|
+| pickle-bogs dawn270 (queued 2026-10-15, xonix, about 8 h) | Under dawn175 the bog's stable floor came from ~245 while the 10 m wind was 182 and the app kept ~187. Does the floor's turn follow the drainage line or the wind? | the floor's direction at P8–P10 with the wind from 270: still ~245 means drainage, swung by ~90 means the wind | huntapp-ba's stable-floor turning rule: keyed to the drainage line or to the wind (the loop's second direction item) |
+
+The loop's working order (huntapp-ba and huntapp-c4, 2026-10-15): **direction before width**. The
+width knobs (gustSize, meander, spread.swing) trade false alarms for misses one for one, so they hide
+direction error. The loop ranks the head-height direction gap by situation from palm_compare (PALM
+against the app under forced air); ba takes the top one or two each round. In order: the am270 sunny
+floor at the narrows, the stable bog floor's turn (dawn175, then dawn270), then the slot's stable dusk.
 
 ## Order
 
