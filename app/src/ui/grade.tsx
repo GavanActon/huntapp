@@ -126,11 +126,37 @@ export function offInSd(it: HdItem): boolean {
  *  gives); null for the rest. */
 export type HdMark = 'hd' | 'want' | null
 
-const HD_HOT: Set<string> = new Set(GRADE === 'hd' ? hdItems().filter((i) => i.hot && !(i.id === 'wind' && sdWindOn())).map((i) => i.hot!) : [])
-const WANT_HOT: Set<string> = new Set(GRADE === 'sd' ? ['lanes', ...(SD_HIDDEN.includes('understory') ? ['understory'] : [])] : [])
+/** An action button's dot: gold where the HD bake powers it, tan where it
+ *  runs on SD (Gavan, 2026-10-15: a gold vs tan circle on the action
+ *  buttons, not the HD tab). `want` is tan with the icon quieter: HD would
+ *  add it, and a tap opens what HD gives. */
+export type HotDotMark = 'hd' | 'sd' | 'want' | null
 
-export function hotMark(id: string): HdMark {
-  return HD_HOT.has(id) ? 'hd' : WANT_HOT.has(id) ? 'want' : null
+/** The buttons HD sharpens, which wear a dot at either grade. */
+const HD_SHARPENS = ['windflow', 'contours', 'understory', 'lanes']
+
+function hotDotOf(id: string): HotDotMark {
+  if (GRADE === 'live' || !HD_SHARPENS.includes(id)) return null
+  if (GRADE === 'hd') {
+    const it = hdItems().find((i) => i.hot === id)
+    if (!it) return null
+    return it.id === 'wind' && sdWindOn() ? 'sd' : 'hd'
+  }
+  if (id === 'lanes') return 'want'
+  if (id === 'understory' && SD_HIDDEN.includes('understory')) return 'want'
+  return 'sd'
+}
+
+const HOT_DOTS: Map<string, HotDotMark> = new Map(HD_SHARPENS.map((id) => [id, hotDotOf(id)]))
+
+export function hotMark(id: string): HotDotMark {
+  return HOT_DOTS.get(id) ?? null
+}
+
+/** The dot on an action button. */
+export function HotDot({ mark }: { mark: HotDotMark }): JSX.Element | null {
+  if (!mark) return null
+  return <span className={`grade-pip grade-pip-${mark === 'hd' ? 'hd' : 'sd'}`} aria-label={mark === 'hd' ? 'HD' : mark === 'want' ? 'Comes with HD' : 'SD'} />
 }
 
 /** A layer row's tab (ui/sheets/LayersSheet.tsx): the Hillshade row is HD where the LiDAR shade draws in it. */

@@ -42,9 +42,12 @@
   --c-warn: #f2879d;
   --c-danger: #ff6b6b;
   /* HD: the gold of the app's tile, on HD's grade tile and its tabs only */
-  --c-hd: #d6b06a;
-  --c-hd-rgb: 214, 176, 106;
+  --c-hd: #dcaa3c;
+  --c-hd-rgb: 220, 170, 60;
   --c-on-hd: #17240f;
+  /* SD: a dusty tan beside HD's gold, on the grade circle only */
+  --c-sd: #b3a184;
+  --c-on-sd: #1c1a12;
 
   /* depth ramp reference (matches map raster) */
   --c-shallow: #7fd4e8;
@@ -104,9 +107,11 @@
   --c-track: #0f8a6a;
   --c-warn: #a83f73;
   --c-danger: #b8262c;
-  --c-hd: #8a6420;
-  --c-hd-rgb: 138, 100, 32;
+  --c-hd: #9a6e0e;
+  --c-hd-rgb: 154, 110, 14;
   --c-on-hd: #ffffff;
+  --c-sd: #8f7f66;
+  --c-on-sd: #ffffff;
   --glass-filter: none;
   --shadow-panel: 0 4px 16px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(var(--c-ink-rgb), 0.08);
   --shadow-fab: 0 3px 10px rgba(0, 0, 0, 0.28);

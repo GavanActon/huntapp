@@ -89,12 +89,23 @@
   color: var(--c-hd);
   background: rgba(var(--c-bg-rgb), 0.85);
 }
-/* on a round button: its top right, over the rim */
-.hotbtn > .grade-tab {
+/* an action button's dot: its top right, over the rim; gold HD, tan SD */
+.hotbtn > .grade-pip {
   position: absolute;
-  top: -3px;
-  right: -5px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  top: 1px;
+  right: 1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid var(--c-bg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+.grade-pip-hd {
+  background: var(--c-hd);
+}
+.grade-pip-sd {
+  background: var(--c-sd);
 }
 /* a button HD would add: the icon quieter, the button still taps (to what HD gives) */
 .hotbtn.grade-want > svg {
@@ -234,4 +245,9 @@
 }
 .grade-show:active {
   transform: scale(0.95);
+}
+/* SD lit in the tan of the SD dot, HD in gold */
+.grade-half.grade-lit.grade-sd {
+  background: var(--c-sd);
+  color: var(--c-on-sd);
 }

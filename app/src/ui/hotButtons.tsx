@@ -11,7 +11,7 @@ import { useAppStore, type HotId, type LayerVisibility } from '../state/appStore
 import { usePlacesStore } from '../state/placesStore'
 import { useGpsStore } from '../tracking/gpsStore'
 import { useScent } from '../weather/micro/scent'
-import { HdTab, hotMark, openGrade } from './grade'
+import { HotDot, hotMark, openGrade } from './grade'
 import { useHeardForm } from './HeardCard'
 import { useCheckForm } from './WindCheckCard'
 import { IconBush, IconContour, IconDepth, IconEar, IconLanes, IconPath, IconPin, IconPowder, IconRadar, IconRoute, IconRuler, IconScent, IconWind } from './icons'
@@ -170,7 +170,7 @@ export function HotButton({ id, onHold, onTap }: { id: HotId; onHold: () => void
   const d = HOT_DEFS[id]
   const on = d.useActive()
   const labels = useAppStore((s) => s.buttonLabels)
-  // the HD tab: HD powers it here, or (outlined) HD would add it, a tap then saying what HD gives
+  // the dot: gold where HD powers it here, tan on SD; HD would add it (want), a tap then saying what HD gives
   const hd = hotMark(id)
   const timer = useRef(0)
   const held = useRef(false)
@@ -202,7 +202,7 @@ export function HotButton({ id, onHold, onTap }: { id: HotId; onHold: () => void
       aria-label={d.name}
     >
       <d.Icon />
-      <HdTab mark={hd} />
+      <HotDot mark={hd} />
       {labels && <span className="hotbtn-label">{d.short}</span>}
     </button>
   )
