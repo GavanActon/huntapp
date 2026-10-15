@@ -45,6 +45,15 @@ NAME="${NAME:-$RUN}"
 [[ -f "$SRC/${RUN}_p3d" ]] || { echo "no $SRC/${RUN}_p3d: run build_case.py first"; exit 1; }
 
 DST="$PREFIX/JOBS/$NAME/INPUT"
+# A run that finished here but never reached home (its shipping broke off, then its runner was retired:
+# pickle-bogs_nw305_4m_scent, 2026-10-15, ran twice) is shipped, not run again: the wipe below would lose it
+if [[ "$SHIP" == lean ]] && ls "$PREFIX/JOBS/$NAME/MONITORING/"*_cpu* >/dev/null 2>&1 \
+   && [[ ! -e "$(readlink -m "$HERE/../../raw/teacher/palm/runs/$NAME")/DONE" ]]; then
+  echo "== $NAME finished here earlier but is not home: shipping it, not running it again"
+  TAG="${RUN#"$CASE"_}"; TAG="${TAG#*_}"; [[ "$TAG" == "${RUN#"$CASE"_}" ]] && TAG=""
+  bash "$BIN/ship_run.sh" "$NAME" --case "$CASE" --run "$RUN" --tag "$TAG" --here "$HERE" --prefix "$PREFIX"
+  exit $?
+fi
 rm -rf "$PREFIX/JOBS/$NAME"
 mkdir -p "$DST"
 # the root's files and a nested child's (_N02), renamed to the run's name

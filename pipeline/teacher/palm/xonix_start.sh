@@ -55,6 +55,7 @@ nohup bash "$KIT/bin/palm_runner.sh" xonix 22 1 >> "$HOME/palm/runner-xonix-1.ou
 PALM_ONLY=product PALM_PREEMPT=1 nohup bash "$KIT/bin/palm_runner.sh" xonix 22 product >> "$HOME/palm/runner-xonix-product.out" 2>&1 &
 PALM_KIND=gpu nohup bash "$KIT/bin/palm_runner.sh" xonix 4 gpu >> "$HOME/palm/runner-xonix-gpu.out" 2>&1 &
 sleep 3
-echo "== three slots up; leave this tab open. The runners' log:"
-exec tail -n 20 -F "$Q/runner-xonix.log"
+echo "== three slots up; leave this tab open. The runners' log (the runners carry on if this view stops):"
+# the share drops now and then ("Input/output error", 2026-10-15): the view picks up again
+while :; do tail -n 20 -F "$Q/runner-xonix.log" 2>/dev/null; sleep 15; done
 }
