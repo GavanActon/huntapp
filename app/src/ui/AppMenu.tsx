@@ -5,16 +5,32 @@ import { useMapsNudge } from '../offline/mapsNudge'
 import { useMapUpdates } from '../offline/updates'
 import { useAppStore, type Sheet } from '../state/appStore'
 import { usePartyStore } from '../party/party'
-import { IconBook, IconClock, IconCrew, IconDownload, IconGear, IconPin, IconPlaces, IconSatellite } from './icons'
+import { ACTIVE_AREA } from '../areas'
+import { IconBook, IconClock, IconCrew, IconDownload, IconFeedback, IconGear, IconPin, IconPlaces, IconSatellite } from './icons'
 import { useTapOff } from './tapOff'
+
+/** Where Feedback goes: the address on every page of the site. */
+const FEEDBACK_TO = 'hello@groundwind.app'
+
+/**
+ * Feedback as an email, the phone's own mail app open on it: no sign-in,
+ * no server, and it waits in the outbox with no signal. Under the space
+ * for words, which build and which area, so a report can be matched to
+ * what the phone was running; never a position.
+ */
+function feedbackHref(): string {
+  const body = `\n\n\n—\nGroundwind ${__BUILD__.sha} · ${ACTIVE_AREA.name}\n${navigator.userAgent}`
+  return `mailto:${FEEDBACK_TO}?subject=${encodeURIComponent('Groundwind feedback')}&body=${encodeURIComponent(body)}`
+}
 
 /**
  * The ⋯ menu behind the strip: Hunt log, Pins, Party (hunting together:
  * docs/PARTY.md), Locations (the areas, each with its Share), Weather by satellite (the request to text, and the
- * answer pasted back), How we hunt here (the field guide) and Settings, with the
- * new-maps count beside Settings when the server has some. It hangs under
- * the right end of whatever is position: relative around it (the folded
- * line, or the open strip's header); a tap anywhere else closes it.
+ * answer pasted back), How we hunt here (the field guide), Feedback (an email
+ * to us: Gavan, 2026-10-15, "so people can give feedback easily") and
+ * Settings, with the new-maps count beside Settings when the server has some.
+ * It hangs under the right end of whatever is position: relative around it
+ * (the folded line, or the open strip's header); a tap anywhere else closes it.
  *
  * Not here (Gavan, 2026-10-05): Go to coordinates, whose sheet still opens
  * on its own for a shared spot in no area (map/goto.ts), and Map buttons
@@ -80,6 +96,12 @@ export default function AppMenu({ open, onClose }: { open: boolean; onClose: () 
         How we hunt here
         <span className="dim">›</span>
       </button>
+      {/* a link, not a button: iOS opens Mail from a tap on an <a> it might refuse from script */}
+      <a className="wx-menu-row" role="menuitem" href={feedbackHref()} onClick={onClose}>
+        <IconFeedback />
+        Feedback
+        <span className="dim">email us ›</span>
+      </a>
       <button className="wx-menu-row" role="menuitem" onClick={() => go({ kind: 'settings' })}>
         <IconGear />
         Settings

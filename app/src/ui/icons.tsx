@@ -509,6 +509,14 @@ export const IconBook = (p: IconProps) => (
   </svg>
 )
 
+/** Feedback: a speech bubble with a line of words in it. */
+export const IconFeedback = (p: IconProps) => (
+  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4.5 5h15a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3.5V17h-1A1.5 1.5 0 0 1 3 15.5v-9A1.5 1.5 0 0 1 4.5 5Z" />
+    <path d="M7.5 10h9M7.5 13h6" />
+  </svg>
+)
+
 /** Outdoor: a sun, the chrome's light set for daylight. */
 export const IconSun = (p: IconProps) => (
   <svg width={S(p)} height={S(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">

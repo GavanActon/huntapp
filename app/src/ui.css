@@ -1940,6 +1940,8 @@
   color: var(--c-text);
   text-align: left;
   white-space: nowrap;
+  /* Feedback is a mailto link among the buttons */
+  text-decoration: none;
 }
 
 .wx-menu-row svg,
