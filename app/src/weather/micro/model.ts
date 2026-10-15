@@ -1098,6 +1098,27 @@ function leeShare(rise: number): number {
 const SLOT_DIRS = 24
 const SLOT_STEP = 15
 const SLOT_CAP = 300
+/**
+ * The rule's numbers: the cross flow within 3 wall heights of the wall it
+ * comes from (cross, a return eddy when negative), the share of the blocked
+ * cross flow that leaves by the open end (pump), the least of the along flow
+ * kept (along), how wide a slot can be for its walls (widthMul·wall +
+ * widthAdd, m), and the steepest ground it applies on (maxSlope, degrees: on
+ * a hillside the slope steers the air, not the walls). Held here so scripts/palm_compare.py can score settings side
+ * by side (setSlotTune); the app never changes them.
+ */
+// scored against PALM at 2-4 m (scripts/palm_compare.py, 2026-10-15): the pump and the
+// return eddy turned the air in a slot back or out its open end where PALM has it run
+// with the wind's along-slot part (the bog strip, 30 Sep: 54% -> 67% of its cells within
+// 45 deg of PALM; Gavan's checks there 0/4 -> 2/4), and on a hillside strip (Searchmont's
+// ski runs) the slope steers the air, so the rule is for flat ground only
+const SLOT_DEFAULT = { cross: 0, pump: 0, along: 0.6, widthMul: 6, widthAdd: 30, maxSlope: 3, off: 0 }
+let slotTune = { ...SLOT_DEFAULT }
+export function setSlotTune(t: Partial<typeof SLOT_DEFAULT> | null): void {
+  slotTune = { ...SLOT_DEFAULT, ...t }
+  slotAxis = null
+  bump()
+}
 
 // −1 not worked out yet, −2 not a slot, else the long axis in degrees, 0…179
 let slotAxis: Int16Array | null = null
@@ -1173,7 +1194,7 @@ function slotAt(g: Habitat, i: number): Slot | null {
     }
     if (!wall) wall = 13
     // long enough against its width, and narrow enough for the walls to hold the cross flow
-    if (long < 2.5 * across || across * SLOT_STEP >= 6 * wall + 30) {
+    if (long < 2.5 * across || across * SLOT_STEP >= slotTune.widthMul * wall + slotTune.widthAdd) {
       slotAxis[i] = -2
       return null
     }
@@ -1416,10 +1437,11 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   const gm = cf * (th === 0 ? 1 - 0.45 * s : 1 - 0.3 * s)
   let mechE = e10 * gm * shelter
   let mechN = n10 * gm * shelter
-  // a slot in the trees: the along-slot part of the wind runs the length of
-  // it, the cross part is held off by the wall it comes from, and some of
-  // what is blocked leaves by the open end. This takes the place of the
-  // plain shelter behind one tree line.
+  // a slot in the trees, on flat ground: the along-slot part of the wind runs
+  // the length of it and the cross part is held off by the wall it comes
+  // from. This takes the place of the plain shelter behind one tree line.
+  // (The rule once sent a share of the blocked cross flow out the open end
+  // and turned it back near the wall; PALM at 2-4 m has neither: SLOT_DEFAULT.)
   // the lee of the land first (riseUpwind): in the eddy behind a rise a gap
   // in the trees is a pocket, not a funnel (PALM's narrows: a west wind over
   // the hill 41° off the gap's line leaves it reversed half the time at a
@@ -1429,7 +1451,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   // a sunny day's upslope flow (below) already climbs a lit lee slope, so the
   // eddy gives way as the sun stirs the air
   const lee = leeShare(rise) * (1 - s) * (1 - leeTune.conv * lay.convective) * clamp((U - 3) / 6, 0, 1) * (th > 0 ? 1 : leeTune.open)
-  const slot = open && lee < leeTune.back ? slotAt(g, i) : null
+  const slot = open && lee < leeTune.back && !slotTune.off && b(K_THSLOPE, i) < slotTune.maxSlope ? slotAt(g, i) : null
   if (slot) {
     const axE = Math.sin(slot.axis * RAD)
     const axN = Math.cos(slot.axis * RAD)
@@ -1438,14 +1460,14 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     const crossN = n10 - along * axN
     const cross = Math.hypot(crossE, crossN)
     const fCross = slotFetchAt(i, cross > 1e-6 ? towardOf(crossE, crossN) + 180 : 0)
-    // inside three tree heights of the wall it comes from, the cross flow is
-    // a weak return eddy the other way
-    let shCross = fCross < 3 * slot.wall ? -0.1 : shelterOf(fCross, slot.wall)
+    // inside three tree heights of the wall it comes from the cross flow is
+    // held off (slotTune.cross: 0; it was a weak return eddy, -0.1)
+    let shCross = fCross < 3 * slot.wall ? slotTune.cross : shelterOf(fCross, slot.wall)
     if (walls >= 3) shCross = Math.min(shCross, 0.5)
     // the along flow gathers down the slot, so it keeps more than it would
     // behind a plain edge, and never nothing
-    const shAlong = Math.max(0.6, shelterOf(slotFetchAt(i, along < 0 ? slot.axis : slot.axis + 180), slot.wall))
-    const alongH = along * shAlong + slot.openSign * 0.3 * cross
+    const shAlong = Math.max(slotTune.along, shelterOf(slotFetchAt(i, along < 0 ? slot.axis : slot.axis + 180), slot.wall))
+    const alongH = along * shAlong + slot.openSign * slotTune.pump * cross
     mechE = gm * (alongH * axE + crossE * shCross)
     mechN = gm * (alongH * axN + crossN * shCross)
     slotSwirl = slot.width < 5 * slot.wall && Math.abs(along) < cross

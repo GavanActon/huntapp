@@ -71,7 +71,10 @@ async ({ pts, ms, air, variants }) => {
   m.setForcedAir(air)
   const all = {}
   for (const [name, tune] of variants) {
-    m.setLeeTune(tune)
+    // a variant is {lee: {...}, slot: {...}}, or a bare lee setting
+    const t = tune && (tune.lee || tune.slot) ? tune : { lee: tune }
+    m.setLeeTune(t.lee ?? null)
+    m.setSlotTune(t.slot ?? null)
     const out = []
     for (const [lon, lat] of pts) {
       const g = m.groundWind(lon, lat, ms)
@@ -80,6 +83,7 @@ async ({ pts, ms, air, variants }) => {
     all[name] = out
   }
   m.setLeeTune(null)
+  m.setSlotTune(null)
   m.setForcedAir(null)
   return all
 }
@@ -88,6 +92,18 @@ async ({ pts, ms, air, variants }) => {
 
 def wrap(d):
     return (np.asarray(d) + 180.0) % 360.0 - 180.0
+
+
+def evaluate(page, js: str, arg: dict, tries: int = 4):
+    """page.evaluate, again after the app reloads itself under it (an area switch reloads)."""
+    for k in range(tries):
+        try:
+            return page.evaluate(js, arg)
+        except Exception as e:  # playwright's Error: "Execution context was destroyed"
+            if "context was destroyed" not in str(e) or k == tries - 1:
+                raise
+            page.wait_for_load_state("load", timeout=240000)
+            time.sleep(5)
 
 
 def runs_all() -> list[str]:
@@ -166,7 +182,7 @@ def main() -> None:
     ap.add_argument("--step", type=float, default=20.0, help="lattice step, m")
     ap.add_argument("--out", default="", help="CSV of every point")
     ap.add_argument("--variants", default='{"now": {}}',
-                    help='JSON {name: lee tune}: model.ts setLeeTune settings scored side by side on one page load, e.g. {"off": {"off": 1}, "now": {}}')
+                    help='JSON {name: setting}: scored side by side on one page load; a setting is {"lee": {...}, "slot": {...}} (model.ts setLeeTune, setSlotTune) or a bare lee setting, e.g. {"off": {"off": 1}, "now": {}}')
     ap.add_argument("--per-run", action="store_true", help="print every run's table, not only the totals")
     args = ap.parse_args()
     variants = list(json.loads(args.variants).items())
@@ -184,7 +200,7 @@ def main() -> None:
             page = ctx.new_page()
             page.route("**/ensemble-api.open-meteo.com/**", lambda route, request: route.abort())
             page.goto(args.url + (f"?area={area}" if area else ""), wait_until="load", timeout=240000)
-            ready = page.evaluate(READY_JS, {"ms": ms})
+            ready = evaluate(page, READY_JS, {"ms": ms})
             print(f"== area {area or 'pickle-lake'}: {ready} in {time.time() - t0:.0f} s", flush=True)
             for run in area_runs:
                 d = np.load(FIELDS / f"{run}.npz", allow_pickle=True)
@@ -196,7 +212,7 @@ def main() -> None:
                 air = {"kmh": fc["kph"], "dir": fc["fromTrue"], "lay": lay, "sunElev": sun}
                 X, Y = lattice(info, args.step)
                 lon, lat = Transformer.from_crs(info["epsg"], 4326, always_xy=True).transform(X, Y)
-                allres = page.evaluate(ASK_JS, {"pts": [[float(a), float(b)] for a, b in zip(lon, lat)], "ms": ms, "air": air, "variants": variants})
+                allres = evaluate(page, ASK_JS, {"pts": [[float(a), float(b)] for a, b in zip(lon, lat)], "ms": ms, "air": air, "variants": variants})
                 dx, gam = info["dx"], info["gridConvergenceDeg"]
                 x0, y0, x1, y1 = info["bounds"]
                 uH, vH, rv = d["uHead"][0], d["vHead"][0], d["reversedHead"][0]

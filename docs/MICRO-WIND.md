@@ -361,6 +361,27 @@ the geometry of gap and street-canyon flow (Oke 1988).
 This replaces the plain shelter product for a slot cell; every other cell
 keeps the tree-line rule above.
 
+**Reworked 2026-10-15 against PALM** (`scripts/palm_compare.py` and
+`replay.py --slot`; `model.ts` SLOT_DEFAULT):
+- **No pump, no return eddy.** The 30% pump out the open end and the −0.1
+  return eddy both turned slot air back or out the open end, where PALM at
+  2–4 m has it run with the wind's along-slot part.
+  - On the bog strip with the 30 Sep wind (232°), the app reversed two-thirds
+    of the strip; PALM reversed 17%.
+  - The strip's cells within 45° of PALM: 54% → 67%.
+  - Gavan's four checks there that evening: 0 → 2 within 45°. His 29 Sep three
+    stay 3 of 3.
+- **Flat ground only** (the 30 m slope under 3°). On a hillside strip, such as
+  Searchmont's ski runs, the slope steers the air, not the walls. There the
+  rule scored 55% within 45° of PALM against 80% with it off.
+- Across every slot cell at Pickle and Lac Bailey: 71% → 74%, against 71%
+  with the rule off, so the slot rule is worth keeping on flat ground.
+- Pickle's checks overall: 20 → 23 of 53. Searchmont's checks: unchanged.
+- Searchmont's PALM runs are at 10 m and still prefer no slot rule at all.
+  But 10 m smears a 50 m strip (TEACHER.md), so the 4 m runs decide.
+- The speed in a slot is lower without the pump (29 Sep: 3.2 → 1.2 km/h,
+  against "breezy"). Speed is under-called everywhere and is its own problem.
+
 **The case it came from** (2026-09-29, about 18:06 EDT, 48.95406,
 −85.55121). HRDPS: from 191° at 17 km/h, gusts 38–44, 80% cloud, neutral.
 The ground: open wetland, `treeH` 0, canopy 0.72, 80 m off Pickle Lake, and
