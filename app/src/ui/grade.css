@@ -1,0 +1,237 @@
+/* HD and SD on the map (ui/grade.tsx): the grade tile by the view pill,
+   the HD tab on what HD powers, and the grade sheet. Gold is HD's alone. */
+
+.footrow {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.app-lefty .footrow {
+  flex-direction: row-reverse;
+}
+
+/* the tile: as tall as the view pill, HD filled gold, SD plain glass */
+.grade-tile,
+.grade-split {
+  height: calc(40px * var(--ui-scale, 1));
+  border-radius: var(--r-md);
+  font: inherit;
+  font-size: calc(13px * var(--ui-scale, 1));
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.grade-tile {
+  min-width: 46px;
+  padding: 0 10px;
+  color: var(--c-text-dim);
+  border: 1px solid var(--c-border-strong);
+}
+.grade-tile.grade-hd {
+  background: var(--c-hd);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: var(--c-on-hd);
+  box-shadow: var(--shadow-fab), 0 0 14px rgba(var(--c-hd-rgb), 0.35);
+}
+
+/* the dev switch: both halves, the lit one the map's grade */
+.grade-split {
+  display: flex;
+  padding: 3px;
+  gap: 2px;
+  border: 1px solid var(--c-border-strong);
+}
+.grade-half {
+  min-width: 38px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: calc(var(--r-md) - 3px);
+  background: transparent;
+  color: var(--c-text-faint);
+  font: inherit;
+}
+.grade-half.grade-lit {
+  color: var(--c-text);
+  background: rgba(var(--c-ink-rgb), 0.2);
+}
+.grade-half.grade-lit.grade-hd {
+  background: var(--c-hd);
+  color: var(--c-on-hd);
+  box-shadow: 0 0 12px rgba(var(--c-hd-rgb), 0.45);
+}
+.grade-half.grade-none {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+.grade-half:active,
+.grade-tile:active {
+  transform: scale(0.94);
+}
+
+/* the HD tab: filled where HD powers it here, outlined where HD would add it */
+.grade-tab {
+  display: inline-grid;
+  place-items: center;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 8.5px;
+  font-weight: 850;
+  line-height: 1.15;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.grade-tab-hd {
+  background: var(--c-hd);
+  color: var(--c-on-hd);
+}
+.grade-tab-want {
+  border: 1px solid var(--c-hd);
+  color: var(--c-hd);
+  background: rgba(var(--c-bg-rgb), 0.85);
+}
+/* on a round button: its top right, over the rim */
+.hotbtn > .grade-tab {
+  position: absolute;
+  top: -3px;
+  right: -5px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+/* a button HD would add: the icon quieter, the button still taps (to what HD gives) */
+.hotbtn.grade-want > svg {
+  opacity: 0.5;
+}
+/* a layer row's tab, after its name */
+.layers-name .grade-tab {
+  margin-left: 6px;
+  vertical-align: 1px;
+}
+
+/* just switched: what came on or went */
+.grade-chip b {
+  font-weight: 850;
+  letter-spacing: 0.05em;
+}
+.grade-chip-hd {
+  border-color: var(--c-hd) !important;
+}
+.grade-chip-hd b {
+  color: var(--c-hd);
+}
+
+/* the sheet */
+.grade-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 34px;
+  height: 26px;
+  padding: 0 7px;
+  border-radius: var(--r-sm);
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  border: 1px solid var(--c-border-strong);
+  color: var(--c-text-dim);
+}
+.grade-badge.grade-hd {
+  background: var(--c-hd);
+  border-color: transparent;
+  color: var(--c-on-hd);
+}
+.grade-lede {
+  margin: 0 0 10px;
+  color: var(--c-text-dim);
+  font-size: calc(14px * var(--ui-scale, 1));
+  line-height: 1.4;
+}
+.grade-switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(var(--c-ink-rgb), 0.1);
+  color: var(--c-text);
+  font-size: calc(15px * var(--ui-scale, 1));
+}
+.grade-switch > span {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.grade-switch small {
+  font-size: 12px;
+}
+.grade-sec {
+  margin: 12px 0 4px;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-text-faint);
+}
+.grade-list {
+  display: flex;
+  flex-direction: column;
+}
+.grade-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 6px;
+  border-top: 1px solid rgba(var(--c-ink-rgb), 0.1);
+  border-radius: var(--r-sm);
+}
+.grade-row > .grade-tab {
+  margin-top: 3px;
+  font-size: 9.5px;
+}
+.grade-row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: calc(14px * var(--ui-scale, 1));
+  line-height: 1.35;
+  color: var(--c-text-dim);
+}
+.grade-row-text b {
+  color: var(--c-text);
+  font-size: calc(15px * var(--ui-scale, 1));
+}
+.grade-row-text small {
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+.grade-sd-note {
+  color: var(--c-hd);
+  font-weight: 650;
+}
+.grade-off .grade-row-text b {
+  color: var(--c-text-dim);
+}
+.grade-focus {
+  background: rgba(var(--c-hd-rgb), 0.14);
+  box-shadow: inset 3px 0 0 var(--c-hd);
+}
+.grade-show {
+  flex: none;
+  align-self: center;
+  padding: 6px 12px;
+}
+.grade-ask {
+  width: 100%;
+  margin-top: 14px;
+}
+.grade-show {
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--r-sm);
+  background: rgba(var(--c-ink-rgb), 0.08);
+  color: var(--c-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+.grade-show:active {
+  transform: scale(0.95);
+}

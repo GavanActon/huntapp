@@ -11,6 +11,7 @@ import { useAppStore, type HotId, type LayerVisibility } from '../state/appStore
 import { usePlacesStore } from '../state/placesStore'
 import { useGpsStore } from '../tracking/gpsStore'
 import { useScent } from '../weather/micro/scent'
+import { HdTab, hotMark, openGrade } from './grade'
 import { useHeardForm } from './HeardCard'
 import { useCheckForm } from './WindCheckCard'
 import { IconBush, IconContour, IconDepth, IconEar, IconLanes, IconPath, IconPin, IconPowder, IconRadar, IconRoute, IconRuler, IconScent, IconWind } from './icons'
@@ -169,6 +170,8 @@ export function HotButton({ id, onHold, onTap }: { id: HotId; onHold: () => void
   const d = HOT_DEFS[id]
   const on = d.useActive()
   const labels = useAppStore((s) => s.buttonLabels)
+  // the HD tab: HD powers it here, or (outlined) HD would add it, a tap then saying what HD gives
+  const hd = hotMark(id)
   const timer = useRef(0)
   const held = useRef(false)
   const down = () => {
@@ -183,7 +186,7 @@ export function HotButton({ id, onHold, onTap }: { id: HotId; onHold: () => void
   const up = () => window.clearTimeout(timer.current)
   return (
     <button
-      className={`fab hotbtn${on ? ' active' : ''}${labels ? '' : ' no-label'}`}
+      className={`fab hotbtn${on ? ' active' : ''}${labels ? '' : ' no-label'}${hd === 'want' ? ' grade-want' : ''}`}
       data-hot={id}
       onPointerDown={down}
       onPointerUp={up}
@@ -192,12 +195,14 @@ export function HotButton({ id, onHold, onTap }: { id: HotId; onHold: () => void
       onContextMenu={(e) => e.preventDefault()}
       onClick={() => {
         if (held.current) return (held.current = false)
+        if (hd === 'want') return openGrade(id)
         ;(onTap ?? d.onTap)()
       }}
       aria-pressed={on}
       aria-label={d.name}
     >
       <d.Icon />
+      <HdTab mark={hd} />
       {labels && <span className="hotbtn-label">{d.short}</span>}
     </button>
   )

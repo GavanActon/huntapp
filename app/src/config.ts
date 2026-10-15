@@ -2,6 +2,7 @@
 // area's (areas/index.ts). A new hunting area = a new app/src/areas/<id>.json
 // plus a pipeline run (docs/AREAS.md).
 import { ACTIVE_AREA, AREA_LIST, DEFAULT_AREA, type AreaDef } from './areas'
+import { gradeChoice } from './state/grade'
 import { terrainWind } from './state/terrainWind'
 
 const AREA = ACTIVE_AREA
@@ -179,10 +180,44 @@ export const habitatFile = () => `habitat-${REGION.id}.hab`
  *  for the momentum solve, in the same bands. */
 export const hasSdWind = (a: AreaDef = AREA) => a.files.grids.includes('micro-sd')
 
+/** The PMTiles only an HD bake makes: the fine relief's shade and contours
+ *  (1 m LiDAR, or ArcticDEM 2 m in the north) and the shooting lanes. An SD
+ *  bake (Searchmont's) has the 30 m shade, the 30 m contours and the
+ *  modelled bush in their place. */
+export const HD_PMTILES = ['hillshadeLidar', 'contours', 'lanes'] as const
+
+/** The bush thickness was measured (a point cloud, or the area's own
+ *  model trained on its labels), not the national model an SD bake draws. */
+export const bushMeasured = (a: AreaDef = AREA): boolean =>
+  a.files.pmtiles.includes('understory') && !(a.coverage?.pmtiles.understory?.source ?? '').startsWith('Bush model')
+
+/** The wind grid is WindNinja's momentum solve (an SD bake's one grid is the net's). */
+export const windSolved = (a: AreaDef = AREA): boolean => a.files.grids.includes('micro') && (a.bake as { wind?: string } | undefined)?.wind !== 'sd'
+
+export type AreaGrade = 'hd' | 'sd' | 'live'
+
+/** What the area was baked as: HD where any of HD's own layers or the wind
+ *  solve is there, SD for the rest, Live for Explore's stand-in (nothing baked). */
+export function areaGrade(a: AreaDef = AREA): AreaGrade {
+  if (a.virtual) return 'live'
+  return HD_PMTILES.some((k) => a.files.pmtiles.includes(k)) || windSolved(a) ? 'hd' : 'sd'
+}
+
+/** An HD area shown as SD this run (state/grade.ts), to see what HD adds. */
+export const SD_PREVIEW = areaGrade() === 'hd' && gradeChoice() === 'sd'
+
+/** The grade the map is drawn at this run. */
+export const GRADE: AreaGrade = SD_PREVIEW ? 'sd' : areaGrade()
+
+/** What the map leaves out while an HD area is shown as SD: HD's own
+ *  PMTiles, and the bush where it was measured (an SD bake's modelled bush
+ *  was never made here, so Bush is off rather than better than SD's). */
+export const SD_HIDDEN: readonly string[] = SD_PREVIEW ? [...HD_PMTILES.filter((k) => AREA.files.pmtiles.includes(k)), ...(bushMeasured() ? ['understory'] : [])] : []
+
 /** The SD terrain wind is the one in use: chosen on this phone (Settings,
- *  state/terrainWind.ts) and baked for the area. Switching reloads the app,
- *  so a run reads one file. */
-export const sdWindOn = () => terrainWind() === 'sd' && hasSdWind()
+ *  state/terrainWind.ts), or the area shown as SD, and baked for the area.
+ *  Switching reloads the app, so a run reads one file. */
+export const sdWindOn = () => (terrainWind() === 'sd' || SD_PREVIEW) && hasSdWind()
 
 /** The microclimate grid with WindNinja's momentum solve (HD): what terrain,
  *  lakes and trees do to the wind, for the ground-wind model. */

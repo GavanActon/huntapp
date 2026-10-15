@@ -18,6 +18,7 @@ const CoordsSheet = lazy(() => import('./CoordsSheet'))
 const LocationsSheet = lazy(() => import('./LocationsSheet'))
 const SatSheet = lazy(() => import('./SatSheet'))
 const PartySheet = lazy(() => import('./PartySheet'))
+const GradeSheet = lazy(() => import('./GradeSheet'))
 
 /** '' where the panel draws its own `.sheet-head` as the first row of its body. */
 const TITLES: Record<SheetKind, string> = {
@@ -37,6 +38,7 @@ const TITLES: Record<SheetKind, string> = {
   locations: 'Locations',
   sat: 'Weather by satellite',
   party: 'Party',
+  grade: '',
 }
 
 function panel(s: Sheet): ReactNode {
@@ -75,6 +77,8 @@ function panel(s: Sheet): ReactNode {
       return <SatSheet />
     case 'party':
       return <PartySheet />
+    case 'grade':
+      return <GradeSheet focus={s.focus} />
   }
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type JSX } from 'react'
 import { ACTIVE_AREA } from '../../areas'
-import { hasSdWind } from '../../config'
+import { hasSdWind, SD_PREVIEW } from '../../config'
 import { setStatsOn, statsId, statsOn } from '../../analytics'
 import { getMap } from '../../map/mapController'
 import { clearDevlog, devlogCount, devlogOn, lastUpload, onDevlog, setDevlog, shareDevlog, uploadDevlog, uploadSettings } from '../../devlog'
@@ -433,7 +433,8 @@ export default function SettingsSheet(): JSX.Element {
           ))}
         </div>
       </div>
-      {hasSdWind() && (
+      {/* shown as SD (the map's grade tile), the wind is SD's whatever this says */}
+      {hasSdWind() && !SD_PREVIEW && (
         <div className="st-row st-two">
           <span>
             Terrain wind

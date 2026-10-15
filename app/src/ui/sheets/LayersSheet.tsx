@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState, type JSX } from 'react'
-import { FINE_RELIEF_WORD, GEO_THEMES, ZONE } from '../../config'
+import { DATA_FILES, FINE_RELIEF_WORD, GEO_THEMES, GRADE, SD_HIDDEN, ZONE } from '../../config'
 import { sourceModes } from '../../map/pmtilesRegistry'
 import { geoModes } from '../../map/MapView'
 import { LIVE_RASTER, LIVE_VECTOR } from '../../sources'
@@ -7,6 +7,7 @@ import { useAppStore, type LayerOpacity, type LayerVisibility } from '../../stat
 import { useSpotsStore } from '../../state/spotsStore'
 import { baseView, useViews } from '../../state/viewsStore'
 import { TARGET_NAMES } from '../../spots/types'
+import { HdTab, layerMark, openGrade } from '../grade'
 import { IconStar } from '../icons'
 import './layers.css'
 
@@ -38,7 +39,10 @@ const GROUPS: { title: string; defs: LayerDef[] }[] = [
       { key: 'topo', name: 'Topographic', opacity: 'topo', data: 'topo', live: 'topo' },
       { key: 'hillshade', name: 'Hillshade', opacity: 'hillshade', data: 'hillshade', live: 'hillshade' },
       { key: 'relief', name: 'Elevation colours', opacity: 'relief', data: 'dem' },
-      { key: 'contours', name: `${FINE_RELIEF_WORD} contours`, data: 'contours' },
+      // the fine contours where HD baked them and the map shows them; else the 30 m ones, which the same switch draws
+      ...(GRADE === 'hd' && DATA_FILES.some((f) => f.key === 'contours')
+        ? [{ key: 'contours' as const, name: `${FINE_RELIEF_WORD} contours`, data: 'contours' }]
+        : [{ key: 'contours' as const, name: 'Contours', data: 'contoursWide' }]),
       { key: 'satellite', name: 'Imagery', opacity: 'satellite', data: 'satellite', live: 'satellite' },
     ],
   },
@@ -107,6 +111,8 @@ function status(d: LayerDef): string {
   const absent = d.data === 'places' && !(GEO_THEMES as readonly string[]).includes(d.key)
   const pm = d.data && !absent ? sourceModes.get(d.data) : undefined
   const mode = pm && pm !== 'missing' ? pm : geoModes.get(d.key)
+  // an HD area shown as SD: HD's own layers are left out of the map
+  if (d.data && SD_HIDDEN.includes(d.data)) return 'with HD'
   if (mode === 'local') return 'on this phone'
   if (mode === 'network') return 'baked · online'
   if (d.live && (d.live in LIVE_RASTER || d.live in LIVE_VECTOR)) return 'live'
@@ -138,7 +144,7 @@ export default function LayersSheet(): JSX.Element {
 
   const base = useMemo(() => baseView(), [mode, saved, lastViewId])
   const name = base?.name ?? 'Custom'
-  const dead = useMemo(() => new Set(Object.values(DEFS).filter((d) => status(d) === 'not built yet').map((d) => d.key)), [])
+  const dead = useMemo(() => new Set(Object.values(DEFS).filter((d) => status(d) === 'not built yet' || status(d) === 'with HD').map((d) => d.key)), [])
 
   const isOn = (k: keyof LayerVisibility) => layers[k] === true && !dead.has(k)
 
@@ -154,6 +160,7 @@ export default function LayersSheet(): JSX.Element {
   /** A name tap: the strength slider for a layer that has one and is on;
    *  otherwise the switch. */
   function tapName(d: LayerDef) {
+    if (layerMark(d.key) === 'want') return openGrade(d.key, true)
     if (d.opacity && isOn(d.key)) setSlider(slider === d.key ? null : d.key)
     else if (!dead.has(d.key)) setLayer(d.key, !layers[d.key])
   }
@@ -167,8 +174,11 @@ export default function LayersSheet(): JSX.Element {
     return (
       <Fragment key={d.key}>
         <div className={`layers-row${off ? ' layers-dead' : ''}`}>
-          <button className="layers-name" onClick={() => tapName(d)} disabled={off} aria-expanded={d.opacity && on ? open : undefined}>
-            <span>{d.name}</span>
+          <button className="layers-name" onClick={() => tapName(d)} disabled={off && layerMark(d.key) !== 'want'} aria-expanded={d.opacity && on ? open : undefined}>
+            <span>
+              {d.name}
+              <HdTab mark={layerMark(d.key)} />
+            </span>
           </button>
           <button className={`layers-star${star ? ' on' : ''}`} onClick={() => toggleStar(d.key)} aria-pressed={star} aria-label={star ? `Unstar ${d.name}` : `Star ${d.name}`}>
             <IconStar size={16} />

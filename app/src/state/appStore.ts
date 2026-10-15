@@ -25,6 +25,8 @@ export type Sheet =
   /** weather by satellite text: the request, then the paste */
   | { kind: 'sat' }
   | { kind: 'party' }
+  /** the area's grade: what HD gives here, or would (ui/sheets/GradeSheet.tsx); focus, the HD thing tapped */
+  | { kind: 'grade'; focus?: string }
 export type SheetKind = Sheet['kind']
 
 /** Each sheet's half-open height, % of the screen. */
@@ -51,6 +53,8 @@ export const SHEET_HALF_PCT: Record<SheetKind, number> = {
   sat: 62,
   // the invite's QR code and the members under it
   party: 72,
+  // the head and HD's few rows, the map above
+  grade: 64,
 }
 
 /** The sheet showing now: the top of the stack, or null when closed. */

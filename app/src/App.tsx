@@ -56,6 +56,7 @@ import { initStatsWatch } from './stats/watch'
 import BoxCard from './explore/BoxCard'
 import WhereTo from './explore/WhereTo'
 import DevBadge from './ui/DevBadge'
+import { GradeFlipChip, GradeTile } from './ui/grade'
 
 /** What has gone wrong (offline with maps missing, no location), and with
  *  the map turned the way you face, the heading: the way that is up. */
@@ -84,6 +85,8 @@ function TopBar() {
           {compass(heading)} · {heading}°
         </span>
       )}
+      {/* the map just switched between SD and HD: what came on or went */}
+      <GradeFlipChip />
       {/* the fix in another area's box: offered, never switched on a fix alone */}
       <AreaOffer />
       {/* offline with every map saved is the normal state at camp: nothing to say */}
@@ -202,7 +205,11 @@ export default function App() {
           {!viewMenuOpen && !EXPLORE && <HotColumn side="far" />}
           {!measuring && !drawing && (
             <div className="leftfoot">
-              <ViewPill />
+              {/* the view pill and, beside it, the map's grade: HD or SD (ui/grade.tsx) */}
+              <div className="footrow">
+                <ViewPill />
+                <GradeTile />
+              </div>
             </div>
           )}
         </div>

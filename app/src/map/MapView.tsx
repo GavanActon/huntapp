@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { devlog } from '../devlog'
 import { DATA_BASE, fileUrl, loadView, saveView } from '../areas'
 import { peekSwitchThen } from '../areas/handoff'
-import { BASE_GEO, baseGeoFile, DATA_FILES, GEO_THEMES, geoFile, HOME, MAX_BOUNDS } from '../config'
+import { BASE_GEO, baseGeoFile, DATA_FILES, GEO_THEMES, geoFile, HOME, MAX_BOUNDS, SD_HIDDEN, SD_PREVIEW } from '../config'
 import { getStoredFile } from '../offline/fileStore'
 import { bootManifest } from '../offline/updates'
 import { fineDetail, markShown, useAppStore, type LayerOpacity, type LayerVisibility } from '../state/appStore'
@@ -203,6 +203,11 @@ export default function MapView() {
       if (STREAM_PICTURES) {
         for (const k of STREAMED_KEYS) available.delete(k)
         devlog('map', `pictures streamed · Mapterhorn to z${await probeTerrainDepth(HOME.center[0], HOME.center[1])}`)
+      }
+      // an HD area shown as SD (state/grade.ts): HD's own layers left out of the style, as an SD bake has none
+      if (SD_PREVIEW) {
+        for (const k of SD_HIDDEN) available.delete(k)
+        devlog('map', `shown as SD · left out ${SD_HIDDEN.join(', ') || 'nothing'}`)
       }
       // the coverage index's archive, outside every area's folder (explore/coverage.ts)
       const online = useAppStore.getState().online

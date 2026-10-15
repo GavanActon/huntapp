@@ -73,7 +73,8 @@
             // the wind grid: SD's when the phone is set to it and it is baked (state/terrainWind.ts), else the first
             var gs = (area && area.grids) || []
             var sd = false
-            try { sd = localStorage.getItem('huntapp-terrain-wind') === 'sd' } catch (e) {}
+            // or the map shown as SD (state/grade.ts): an HD area's SD grid, where it has one
+            try { sd = localStorage.getItem('huntapp-terrain-wind') === 'sd' || localStorage.getItem('huntapp-grade') === 'sd' } catch (e) {}
             var g = null
             for (var i = 0; i < gs.length; i++) {
               var isSd = /^micro-sd-/.test(gs[i].file)

@@ -25,17 +25,18 @@ export default function DevBadge(): JSX.Element | null {
       title="Switch the map's pictures between streamed and baked"
       style={{
         position: 'fixed',
+        // the top edge, over the strip's rim: the foot holds the view pill and the grade tile
         left: '50%',
-        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
+        top: 'calc(env(safe-area-inset-top, 0px) + 2px)',
         transform: 'translateX(-50%)',
         zIndex: 30,
-        font: '600 11px/1 system-ui, sans-serif',
+        font: '600 10px/1 system-ui, sans-serif',
         letterSpacing: '0.04em',
         color: '#16301f',
         background: 'rgba(210, 168, 92, 0.92)',
         border: 'none',
         borderRadius: 999,
-        padding: '5px 10px',
+        padding: '3px 9px',
         pointerEvents: 'auto',
       }}
     >

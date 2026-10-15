@@ -41,6 +41,10 @@
   /* a warning is rose: never yellow, and never orange, which is scent */
   --c-warn: #f2879d;
   --c-danger: #ff6b6b;
+  /* HD: the gold of the app's tile, on HD's grade tile and its tabs only */
+  --c-hd: #d6b06a;
+  --c-hd-rgb: 214, 176, 106;
+  --c-on-hd: #17240f;
 
   /* depth ramp reference (matches map raster) */
   --c-shallow: #7fd4e8;
@@ -100,6 +104,9 @@
   --c-track: #0f8a6a;
   --c-warn: #a83f73;
   --c-danger: #b8262c;
+  --c-hd: #8a6420;
+  --c-hd-rgb: 138, 100, 32;
+  --c-on-hd: #ffffff;
   --glass-filter: none;
   --shadow-panel: 0 4px 16px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(var(--c-ink-rgb), 0.08);
   --shadow-fab: 0 3px 10px rgba(0, 0, 0, 0.28);
