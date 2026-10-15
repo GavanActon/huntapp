@@ -17,8 +17,9 @@ marked dirty: fine for a quick look, never a baseline.
 The points, the runs and the measure come from testset.json. For each run the app's air is forced
 (model.ts setForcedAir) to PALM's 10 m ambient wind and direction from fields/<run>.npz, layered by the
 run's stability (palm_compare.py AIR), with the clock held on 2026-09-30 at 13:00 (neutral), 12:00
-(convective) or 19:30 (stable). A variant is {floor, thermal, tune}: model.ts setFloorTune/setThermalTune
-and scentTune knobs, all reset after each call.
+(convective) or 19:30 (stable). A variant is {floor, thermal, spread, lee, slot, tune}: model.ts's
+set<Name>Tune for each (skipped where a ref lacks it) and scentTune knobs, all reset after each call.
+knobs.json (huntapp-ba) lists every knob with its default, bounds and variant key, for sweeps.
 
 Writes pipeline/raw/teacher/palm/scores/<when>_<commit>[-dirty]_<label>.json (every sector of every
 cell) and adds the summary to pipeline/teacher/palm/SCORES.md.
@@ -55,7 +56,7 @@ HOUR = {"neutral": "13:00", "convective": "12:00", "stable": "19:30"}
 DAY = "2026-09-30"
 
 CONE_JS = """
-async ({ sits, ms, height, air, floor, tune, thermal }) => {
+async ({ sits, ms, height, air, floor, tune, thermal, spread, lee, slot }) => {
   const s = await import('/src/weather/micro/scent.ts')
   const m = await import('/src/weather/micro/model.ts')
   const st = await import('/src/weather/micro/scentTune.ts')
@@ -64,6 +65,9 @@ async ({ sits, ms, height, air, floor, tune, thermal }) => {
   for (const [k, v] of Object.entries(tune || {})) S.set(k, v)
   if (m.setFloorTune) m.setFloorTune(floor || null)
   if (m.setThermalTune) m.setThermalTune(thermal || null)
+  if (m.setSpreadTune) m.setSpreadTune(spread || null)
+  if (m.setLeeTune) m.setLeeTune(lee || null)
+  if (m.setSlotTune) m.setSlotTune(slot || null)
   m.setForcedAir(air)
   await m.microReadyFor(ms, 20000)
   const sample = s.cellSampler(ms)
@@ -76,6 +80,9 @@ async ({ sits, ms, height, air, floor, tune, thermal }) => {
   m.setForcedAir(null)
   if (m.setFloorTune) m.setFloorTune(null)
   if (m.setThermalTune) m.setThermalTune(null)
+  if (m.setSpreadTune) m.setSpreadTune(null)
+  if (m.setLeeTune) m.setLeeTune(null)
+  if (m.setSlotTune) m.setSlotTune(null)
   S.reset()
   return out
 }
@@ -269,7 +276,8 @@ def score(jobs, variants, url, band, trace, reach) -> list[dict]:
                     for h in sorted({s["h"] for s in j["sits"]}):
                         group = [s for s in j["sits"] if s["h"] == h]
                         res = page.evaluate(CONE_JS, {"sits": [{"name": s["pid"], "lat": s["lat"], "lon": s["lon"]} for s in group], "ms": ms,
-                                                      "height": h, "air": j["air"], "floor": v.get("floor"), "tune": v.get("tune"), "thermal": v.get("thermal")})
+                                                      "height": h, "air": j["air"], "floor": v.get("floor"), "tune": v.get("tune"), "thermal": v.get("thermal"),
+                                                      "spread": v.get("spread"), "lee": v.get("lee"), "slot": v.get("slot")})
                         for r in res:
                             s = next(x for x in group if x["pid"] == r["name"])
                             if r["grid"] is None:

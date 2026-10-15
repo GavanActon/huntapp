@@ -44,13 +44,30 @@ xonix does the PALM work. XEVO takes PALM work only when it's idle or when Gavan
   Its first line is the run_case.sh arguments. An optional `host: xonix` line restricts it to one
   machine, and a `# why:` line names its test cell. A runner claims a job by renaming it into `taken/`,
   then files it in `done/` or `failed/`. The job's log is `log-<job>.txt` next to it.
-- **The runner** is `palm_runner.sh`, in `surrogate/palm/bin/` on the share. There's one per slot:
-  xonix has one (22 cores, always on) and XEVO two (7 cores each). Each job runs from a fresh local
-  copy of bin/ with `--ship lean`. To stop a machine's slots, `touch queue/stop-<host>`.
-- **XEVO's mode** is `queue/mode-xevo`: `off` takes nothing, `idle` (the default) takes one run when
-  Windows' CPU has averaged under 25% for 15 minutes on mains power, and `on` takes two. XEVO's slots
-  start with `xevo_slot.sh 1` and `2` (Start-Process wsl.exe, in its header). The old `xevo-queue.txt`
-  and `xevo_runner.sh` are retired: they stopped after their last runs on 2026-10-15.
+- **The runner** is `palm_runner.sh`, in `surrogate/palm/bin/` on the share, with one process per
+  slot. Each job runs from a fresh local copy of bin/; PALM runs ship lean. To stop a machine's
+  slots, `touch queue/stop-<host>`.
+- **Jobs and priorities** (Gavan's compute plan, 2026-10-15, memory `huntapp-compute-service`):
+  - A job is a PALM run (its first plain line) or `cmd: <bash>`.
+  - Optional lines: `priority: product | validation | backfill | explore` (default validation),
+    `host:`, `needs: gpu` and `pause-file: <path>`. The pause file is for a job that pauses itself,
+    such as the SD bake's `PAUSE`, which a Windows process needs because a freeze can't reach it.
+  - Slots take the best priority first. `palm_status.py --add ... --priority product` queues a job,
+    and `--bump <job> <priority>` re-prioritises one waiting.
+- **The slots:**
+  - **xonix:** `1` (PALM and CPU jobs, 22 cores), `product` (product jobs only; it freezes a
+    lower-priority job there while one runs) and `gpu` (`needs: gpu` jobs). `xonix-start.sh` starts
+    all three and is safe to rerun: it retires an older runner without stopping its job and files that
+    job when it ends.
+  - **XEVO:** one slot, mode `on`, 7 cores, no GPU jobs. Gavan, 2026-10-15: "best if I just tell you
+    to pause as needed", so `--xevo pause` goes on his word. `PALM_MODE` gives one slot its own mode:
+    a GPU slot on XEVO would run `idle` and bake only while XEVO is quiet.
+  - Tested on stubs: priority order, GPU-only claims, a product job freezing a backfill job (a freeze,
+    or its pause file) and letting it go after.
+- **XEVO's modes** (`queue/mode-xevo`): `off` takes nothing new. `idle` takes one run when Windows' CPU
+  has averaged under 25% for 15 minutes on mains power. `on` takes up to its slots. `pause` also
+  freezes what runs. XEVO's slot starts with `xevo_slot.sh 1` (Start-Process wsl.exe, in its header).
+  The old `xevo-queue.txt` and `xevo_runner.sh` are retired.
 - **Pause and quiet windows** (`pause_lib.sh`, 2026-10-15, for Gavan's interview on xonix):
   - `palm_status.py --xonix pause` freezes PALM on xonix now, and `--xonix on` resumes. The freeze is
     SIGSTOP to the run's own process group: its CPU comes back, its memory is held, and it carries on

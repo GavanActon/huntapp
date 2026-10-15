@@ -88,7 +88,8 @@ if declare -F palm_should_pause >/dev/null; then
   (
     held=0
     while kill -0 "$PP" 2>/dev/null; do
-      if palm_should_pause "$PALMQ" "$PH"; then
+      # a pause for the machine, or a hold on this job (a product slot preempting it)
+      if palm_should_pause "$PALMQ" "$PH" || [[ -n "${PALM_JOB:-}" && -e "$PALMQ/hold-$PALM_JOB" ]]; then
         [[ $held == 0 ]] && kill -STOP -- "-$PP" 2>/dev/null && { held=1; echo "== $(date -Is) paused (frozen) for $PH"; }
       elif [[ $held == 1 ]]; then
         kill -CONT -- "-$PP" 2>/dev/null; held=0; echo "== $(date -Is) resumed"
