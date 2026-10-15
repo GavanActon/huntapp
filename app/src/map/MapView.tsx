@@ -353,14 +353,27 @@ export default function MapView() {
         if (!useGpsStore.getState().headingUp) useAppStore.getState().setFollow(false)
       })
 
-      // tap a place: your own pin says what it is, with Delete (placePopup);
+      // a press that began on a scent person was that person's drag (or its
+      // own tap), never a tap on the map: after a short drag the phone can
+      // still send a click where the finger went down, open map by then, and
+      // up came the tap popup (Gavan, 2026-10-15)
+      let fromPerson = false
+      m.getCanvasContainer().addEventListener(
+        'pointerdown',
+        (e) => {
+          fromPerson = !!(e.target as Element | null)?.closest?.('.scent-person')
+        },
+        true,
+      )
+
+      // tap a place: your own pin says what it is, with Open (placePopup);
       // the camp and the lakes are presets and open Dig in on themselves.
       // Tap the map: a three-line popup, Dig in behind it. One plain tap:
       // a wait for a double tap and filters for brushes of the screen were
       // tried on 2026-10-02 and made the popup unreliable in the hand.
       m.on('click', 'pins-pt', (e) => {
         // the ruler, a path being drawn, a person being placed, the route card and the bush labels each own the tap
-        if (useMeasureStore.getState().active || drawingPath() || useScent.getState().adding || useRoutes.getState().open || useBushLabels.getState().active) return
+        if (fromPerson || useMeasureStore.getState().active || drawingPath() || useScent.getState().adding || useRoutes.getState().open || useBushLabels.getState().active) return
         const id = e.features?.[0]?.properties?.id as string | undefined
         const p = id ? usePlacesStore.getState().places.find((q) => q.id === id) : undefined
         if (!p) return
@@ -369,6 +382,7 @@ export default function MapView() {
         useAppStore.getState().openSheet({ kind: 'digin', lon: p.lon, lat: p.lat })
       })
       m.on('click', (e) => {
+        if (fromPerson) return // a scent person's drag let go
         if (useMeasureStore.getState().active) return // the ruler owns the tap
         if (drawingPath()) return // so does a path being drawn (paths/pathLayer)
         if (useBushLabels.getState().active) return // so does the bush-label tool (bushLabels/labelLayer)
@@ -388,7 +402,7 @@ export default function MapView() {
       })
       // a log entry (a moose heard, a sighting): what and when, Delete, and press-and-hold to move it
       m.on('click', 'huntlog-dot', (e) => {
-        if (useMeasureStore.getState().active || drawingPath() || useScent.getState().adding || useRoutes.getState().open || useBushLabels.getState().active) return
+        if (fromPerson || useMeasureStore.getState().active || drawingPath() || useScent.getState().adding || useRoutes.getState().open || useBushLabels.getState().active) return
         const id = e.features?.[0]?.properties?.id as string | undefined
         const entry = id ? useHuntLog.getState().entries.find((x) => x.id === id) : undefined
         if (entry) showLogPopup(m, entry)
