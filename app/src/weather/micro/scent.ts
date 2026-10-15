@@ -768,7 +768,7 @@ export function simulatePlume(
   height = GROUND_H,
   sample: GroundSampler | null = cellSampler(ms),
   gust = groundGust(ms),
-): { plume: Plume; grid: Float32Array; mean: Float32Array; tracks: PlumeTracks; relief: boolean } | null {
+): { plume: Plume; grid: Float32Array; tongue: Float32Array; mean: Float32Array; tracks: PlumeTracks; relief: boolean } | null {
   if (!sample) return null
   // the knobs (scentTune.ts), read once per plume
   const T = tuneValues()
