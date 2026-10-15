@@ -117,6 +117,7 @@ const KEY_PROP = {
   route: 'status',
   download: 'ok',
   sat_paste: 'ok',
+  sat: 'step',
   gps: 'status',
   strip: 'open',
   plan_time: 'ahead_h',
@@ -132,8 +133,29 @@ export async function statsQuery(request, env) {
     .map(([n, p]) => `WHEN '${n}' THEN CAST(json_extract(props, '$.${p}') AS TEXT)`)
     .join(' ')} END`
   const q = (sql, ...extra) => env.DB.prepare(sql).bind(since, x, ...extra)
+  // Weather by satellite, step by step (SatSheet.tsx): its own `sat` events,
+  // and for a build from before them, the sheet's taps by their labels
+  const SAT = `WITH s AS (
+    SELECT install, online,
+      CASE
+        WHEN name = 'sheet' THEN 'open'
+        WHEN name = 'sat' THEN CASE json_extract(props, '$.step') WHEN 'open' THEN 'open_on' ELSE json_extract(props, '$.step') END
+        WHEN name = 'sat_paste' THEN 'paste'
+        WHEN json_extract(props, '$.el') IN ('Text it', 'Copy') THEN 'send'
+        WHEN json_extract(props, '$.el') = 'Done' THEN 'done'
+      END AS step,
+      CASE
+        WHEN name = 'sat' THEN COALESCE(json_extract(props, '$.how'), json_extract(props, '$.on'))
+        WHEN name = 'sat_paste' THEN CASE WHEN json_extract(props, '$.ok') THEN 'updated' ELSE IFNULL(json_extract(props, '$.why'), 'not read') END
+        WHEN name = 'click' THEN CASE json_extract(props, '$.el') WHEN 'Text it' THEN 'text' WHEN 'Copy' THEN 'copy' END
+      END AS detail,
+      CASE WHEN name = 'sat_paste' THEN json_extract(props, '$.via') END AS via
+    FROM events
+    WHERE ${W} AND ((name = 'sheet' AND json_extract(props, '$.sheet') = 'sat') OR name IN ('sat', 'sat_paste')
+      OR (name = 'click' AND json_extract(props, '$.where') = 'sheet:sat' AND build NOT IN (SELECT build FROM events WHERE ${W} AND name = 'sat')))
+  )`
 
-  const [active, daily, features, breakdown, dwell, clicks, phones, builds, areas, countries, hours, perf, errors, offline, sessions, recent, retention, dayRet, total] = await env.DB.batch([
+  const [active, daily, features, breakdown, dwell, clicks, phones, builds, areas, countries, hours, perf, errors, offline, sessions, recent, retention, dayRet, total, satSteps, satHow] = await env.DB.batch([
     // the last 24 h, 7 and 30 days whatever the window, and the window's own
     q(`SELECT COUNT(DISTINCT CASE WHEN ts >= ?3 THEN install END) AS dau, COUNT(DISTINCT CASE WHEN ts >= ?4 THEN install END) AS wau,
               COUNT(DISTINCT CASE WHEN ts >= ?5 THEN install END) AS mau, COUNT(DISTINCT CASE WHEN ts >= ?1 THEN install END) AS users,
@@ -182,6 +204,17 @@ export async function statsQuery(request, env) {
               (SELECT COUNT(*) FROM d JOIN f ON d.install = f.install WHERE d.dn = n.dn AND f.t0 <= ?3 - (n.dn + 1) * ${DAY}) AS back
        FROM (SELECT 1 AS dn UNION ALL SELECT 7 UNION ALL SELECT 14 UNION ALL SELECT 30) n`, now),
     q(`SELECT COUNT(DISTINCT install) AS installs, MIN(ts) AS first FROM events WHERE ${NOT_X} AND ?1 IS NOT NULL`),
+    // phones and times at each step, and those with no signal when they did
+    // it; a paste's row also counts the ones that updated the weather
+    q(`${SAT}
+       SELECT step, COUNT(*) AS n, COUNT(DISTINCT install) AS users, COUNT(DISTINCT CASE WHEN online = 0 THEN install END) AS off_users,
+              SUM(detail = 'updated') AS ok_n, COUNT(DISTINCT CASE WHEN detail = 'updated' THEN install END) AS ok_users,
+              COUNT(DISTINCT CASE WHEN detail = 'updated' AND online = 0 THEN install END) AS ok_off_users
+       FROM s WHERE step IS NOT NULL GROUP BY step`),
+    // how: Text it or Copy, the paste's outcome and whether by the button or into the box, the step it opened on
+    q(`${SAT}
+       SELECT step, detail, via, COUNT(*) AS n, COUNT(DISTINCT install) AS users
+       FROM s WHERE step IN ('send', 'paste', 'open_on') GROUP BY step, detail, via ORDER BY step, n DESC`),
   ])
 
   return json({
@@ -207,6 +240,7 @@ export async function statsQuery(request, env) {
     recent: recent.results,
     retention: retention.results,
     dayRet: dayRet.results,
+    sat: { steps: satSteps.results, how: satHow.results },
   })
 }
 

@@ -398,7 +398,7 @@ function tableView(cols, rows) {
 
 // ------------------------------------------------------------------ the data
 
-const KEYED = { sheet: 'Sheets', card: 'Top cards', tool: 'Tools', form: 'Forms', arm: 'Waiting for a map tap', layer: 'Layers switched', setting: 'Settings changed', view: 'Views', mode: 'Mode', quarry: 'Quarry', heat: 'Heat map', cone: 'Scent cone on you', location: 'Location', heading_up: 'Heading up', share: 'Shares', log_entry: 'Hunt log entries', wind_check: 'Wind checks', route: 'Routes worked out', download: 'Map downloads', sat_paste: 'Satellite pastes', gps: 'GPS trouble', strip: 'Weather strip', plan_time: 'Planning time (h ahead)' }
+const KEYED = { sat: 'Weather by satellite: steps', sheet: 'Sheets', card: 'Top cards', tool: 'Tools', form: 'Forms', arm: 'Waiting for a map tap', layer: 'Layers switched', setting: 'Settings changed', view: 'Views', mode: 'Mode', quarry: 'Quarry', heat: 'Heat map', cone: 'Scent cone on you', location: 'Location', heading_up: 'Heading up', share: 'Shares', log_entry: 'Hunt log entries', wind_check: 'Wind checks', route: 'Routes worked out', download: 'Map downloads', sat_paste: 'Satellite pastes', gps: 'GPS trouble', strip: 'Weather strip', plan_time: 'Planning time (h ahead)' }
 const BOOL = new Set(['heat', 'cone', 'location', 'heading_up', 'strip', 'download', 'sat_paste'])
 
 function features(d) {
@@ -424,11 +424,58 @@ function features(d) {
     ['Planned ahead', u('plan_time')],
     ['Hunt log', key('sheet', 'huntlog')],
     ['Downloaded maps', u('download')],
-    ['Weather by satellite', u('sat_paste')],
+    ['Weather by satellite: opened', key('sheet', 'sat')],
+    ['Weather by satellite: updated', key('sat_paste', '1')],
     ['Shared a spot or area', u('share')],
     ['Settings', key('sheet', 'settings')],
     ['Field guide', key('sheet', 'guide')],
   ].sort((a, b) => b[1] - a[1])
+}
+
+/** Weather by satellite, step by step (stats.js SAT): how far people get,
+ *  and how they went about it. "No signal": the phone was offline when it
+ *  did that step, which is the real use; with signal it is someone trying it. */
+function satCards(d) {
+  const st = Object.fromEntries((d.sat?.steps ?? []).map((r) => [r.step, r]))
+  const opened = st.open?.users ?? 0
+  const steps = [
+    { step: 'Opened it', users: st.open?.users, n: st.open?.n, off: st.open?.off_users },
+    { step: 'Sent a request', users: st.send?.users, n: st.send?.n, off: st.send?.off_users },
+    { step: 'Pasted a reply', users: st.paste?.users, n: st.paste?.n, off: st.paste?.off_users },
+    { step: 'Weather updated', users: st.paste?.ok_users, n: st.paste?.ok_n, off: st.paste?.ok_off_users },
+    { step: 'Tapped Done', users: st.done?.users, n: st.done?.n, off: st.done?.off_users },
+  ].map((r) => ({ step: r.step, users: r.users ?? 0, n: r.n ?? 0, off: r.off ?? 0 }))
+  const c1 = card('Weather by satellite', opened ? `Phones at each step, out of the ${fmt(opened)} that opened it` : 'Nobody opened it in this window')
+  barList(c1, steps.map((r, i) => ({
+    name: r.step, value: r.users, max: Math.max(1, opened), text: `${fmt(r.users)} · ${fmt(r.n)}×`,
+    tip: [['Phones', fmt(r.users), true], ['Times', fmt(r.n)], ['With no signal', `${fmt(r.off)} phones`], ...(i ? [['Of those that opened it', pct(r.users, opened)]] : [])],
+  })))
+  if (opened) c1.append(h('p', { style: 'margin:10px 0 0' }, `With no signal, the real use: ${fmt(steps[0].off)} of them opened it, ${fmt(steps[1].off)} sent a request and ${fmt(steps[3].off)} got the weather updated.`))
+  c1.append(h('p', { class: 'sub', style: 'margin:8px 0 0' }, 'Each bar: phones · times. Sent is Text it or Copy. Done came in with the step-by-step sheet (2026-10-14); a build before it has no Done.'))
+  c1.append(tableView([{ k: 'step', t: 'Step' }, { k: 'users', t: 'Phones', n: 1 }, { k: 'n', t: 'Times', n: 1 }, { k: 'off', t: 'No signal (phones)', n: 1 }], steps))
+
+  const HOW = {
+    send: (r) => (r.detail === 'copy' ? 'Sent with Copy' : 'Sent with Text it'),
+    paste: (r) => (r.detail === 'updated' ? `Weather updated, ${r.via === 'box' ? 'pasted into the box' : r.via === 'button' ? 'with the Paste button' : 'pasted'}` : `Reply not read: ${r.detail}`),
+    open_on: (r) => (r.detail === 'paste' ? 'Opened on Paste (a request was out)' : 'Opened on Send'),
+  }
+  const side = [
+    ['again', 'Tapped Send again'],
+    ['have_reply', 'Already had a reply: went straight to Paste'],
+    ['copy_number', 'Copied the number'],
+    ['clip_fail', 'Paste could not read the clipboard'],
+    ['refresh', 'Had signal: tapped Refresh instead'],
+  ]
+  const rows = [
+    ...(d.sat?.how ?? []).map((r) => ({ what: HOW[r.step]?.(r) ?? r.step, n: r.n, users: r.users })),
+    ...side.filter(([k]) => st[k]).map(([k, what]) => ({ what, n: st[k].n, users: st[k].users })),
+  ]
+  const c2 = card('Weather by satellite: how', 'How they sent and pasted, and the side paths through the sheet')
+  if (rows.length) table(c2, [{ k: 'what', t: 'What', cls: 'wrap' }, { k: 'n', t: 'Times', n: 1 }, { k: 'users', t: 'Phones', n: 1 }], rows)
+  else c2.append(h('p', { class: 'empty' }, 'Nothing yet.'))
+  const g = h('div', { class: 'grid2' })
+  g.append(c1, c2)
+  return g
 }
 
 function filledDays(daily) {
@@ -522,6 +569,7 @@ function render(d) {
   c4.append(heat, h('div', { class: 'scale' }, 'fewer', ...[0.05, 0.3, 0.55, 0.8, 1].map((f) => h('span', { class: 'sw', style: `background:${ramp(f)}` })), 'more', h('span', { class: 'dim' }, ` · busiest hour ${fmt(hmax)}`)))
   g2.append(c3, c4)
   out.append(g2)
+  out.append(satCards(d))
 
   // sessions and retention
   const g3 = h('div', { class: 'grid2' })

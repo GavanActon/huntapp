@@ -1,4 +1,4 @@
-import { useState, type JSX } from 'react'
+import { useEffect, useState, type JSX } from 'react'
 import { SAT_NUMBER } from '../../config'
 import { track } from '../../analytics'
 import { useAppStore } from '../../state/appStore'
@@ -22,6 +22,8 @@ import '../sat.css'
  * SAT_WAIT_MS opens on the paste; a tap that only opened Messages is not
  * proof it went, hence Send again. A reply got some other way can be
  * pasted without sending.
+ * Each step is a `sat` event (docs/ANALYTICS.md), so the stats can say how
+ * far people get: opened, sent, pasted, updated, Done.
  */
 
 /** +18075550100 as a person reads it: +1 807 555 0100. */
@@ -49,10 +51,18 @@ export default function SatSheet(): JSX.Element {
   const waiting = ask.askedAt != null && now - ask.askedAt < SAT_WAIT_MS
   const step = view === 'auto' ? (waiting ? 'paste' : 'ask') : view
 
+  // the sheet opened on the paste: a request was out from this phone
+  useEffect(() => {
+    const a = satAsk()
+    track('sat', { step: 'open', on: a.askedAt != null && Date.now() - a.askedAt < SAT_WAIT_MS ? 'paste' : 'send' })
+  }, [])
+
   const sent = () => {
     setAsk(markAsked(ask))
     setView('auto')
   }
+  // counted in the tap itself: Text it hands the phone to Messages at once
+  const tell = (how: 'text' | 'copy') => track('sat', { step: 'send', how, again: waiting })
   // Text it is a link to Messages: step on after the tap has opened it,
   // not while the link is still being followed
   const sentLater = () => window.setTimeout(sent, 250)
@@ -66,14 +76,14 @@ export default function SatSheet(): JSX.Element {
   }
 
   /** A reply in the box is taken in at once: the paste is the update. */
-  const take = (t: string) => {
+  const take = (t: string, via: 'button' | 'box') => {
     setText(t)
     setNote(null)
     const r = t.trim() ? applySatText(t) : null
     setResult(r)
     // a paste is one change, typing is many: the box as it came to rest
     window.clearTimeout(pasteTimer)
-    if (r) pasteTimer = window.setTimeout(() => track('sat_paste', r.ok ? { ok: true, hours: r.hours, changed: !!r.change } : { ok: false, why: r.why.split(/[.:]/)[0] }), 1500)
+    if (r) pasteTimer = window.setTimeout(() => track('sat_paste', r.ok ? { ok: true, hours: r.hours, changed: !!r.change, via } : { ok: false, why: r.why.split(/[.:]/)[0], via }), 1500)
   }
 
   const paste = () => {
@@ -84,10 +94,17 @@ export default function SatSheet(): JSX.Element {
     } catch {
       read = Promise.reject(new Error('no clipboard'))
     }
-    void read.then(take, () => setNote('Could not read the clipboard. Paste into the box.'))
+    void read.then(
+      (t) => take(t, 'button'),
+      () => {
+        track('sat', { step: 'clip_fail' })
+        setNote('Could not read the clipboard. Paste into the box.')
+      },
+    )
   }
 
   const refresh = () => {
+    track('sat', { step: 'refresh' })
     setRefreshing(true)
     void refreshWeather('sat sheet', true).finally(() => setRefreshing(false))
   }
@@ -110,7 +127,13 @@ export default function SatSheet(): JSX.Element {
             </span>
           )}
         </div>
-        <button className="btn-primary" onClick={closeSheet}>
+        <button
+          className="btn-primary"
+          onClick={() => {
+            track('sat', { step: 'done' })
+            closeSheet()
+          }}
+        >
           Done
         </button>
       </div>
@@ -135,13 +158,21 @@ export default function SatSheet(): JSX.Element {
           <div className="sat-req numeral">{ask.text}</div>
           <div className="coords-acts">
             {SAT_NUMBER && (
-              <a className="btn-primary" href={`sms:${SAT_NUMBER}?&body=${encodeURIComponent(ask.text)}`} onClick={sentLater}>
+              <a
+                className="btn-primary"
+                href={`sms:${SAT_NUMBER}?&body=${encodeURIComponent(ask.text)}`}
+                onClick={() => {
+                  tell('text')
+                  sentLater()
+                }}
+              >
                 Text it
               </a>
             )}
             <button
               className={SAT_NUMBER ? 'btn-secondary' : 'btn-primary'}
               onClick={() => {
+                tell('copy')
                 sent()
                 copy(ask.text, 'Copied. Paste it into a message to the number.')
               }}
@@ -152,7 +183,13 @@ export default function SatSheet(): JSX.Element {
           {SAT_NUMBER ? (
             <div className="coords-help">
               To <span className="numeral">{prettyNumber(SAT_NUMBER)}</span>{' '}
-              <button className="linklike" onClick={() => copy(SAT_NUMBER, 'Number copied')}>
+              <button
+                className="linklike"
+                onClick={() => {
+                  track('sat', { step: 'copy_number' })
+                  copy(SAT_NUMBER, 'Number copied')
+                }}
+              >
                 Copy number
               </button>
               <br />
@@ -163,7 +200,13 @@ export default function SatSheet(): JSX.Element {
           )}
           {note && <div className="coords-help">{note}</div>}
           <div className="sat-step">
-            <button className="linklike" onClick={() => setView('paste')}>
+            <button
+              className="linklike"
+              onClick={() => {
+                track('sat', { step: 'have_reply' })
+                setView('paste')
+              }}
+            >
               Already have a reply? Paste it
             </button>
           </div>
@@ -172,7 +215,13 @@ export default function SatSheet(): JSX.Element {
         <>
           <div className="sat-step">
             <span>{waiting && ask.askedAt != null ? `Sent ${agoLabel(now - ask.askedAt)}` : 'Nothing sent from this phone'}</span>
-            <button className="linklike" onClick={() => setView('ask')}>
+            <button
+              className="linklike"
+              onClick={() => {
+                track('sat', { step: 'again', waiting })
+                setView('ask')
+              }}
+            >
               {waiting ? 'Send again' : 'Send a request'}
             </button>
           </div>
@@ -194,7 +243,7 @@ export default function SatSheet(): JSX.Element {
             autoCorrect="off"
             autoComplete="off"
             spellCheck={false}
-            onChange={(e) => take(e.target.value)}
+            onChange={(e) => take(e.target.value, 'box')}
           />
           {note && <div className="coords-help">{note}</div>}
           {result && !result.ok && <div className="coords-help sat-bad">{result.why}</div>}

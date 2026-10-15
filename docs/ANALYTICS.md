@@ -108,7 +108,8 @@ Every event row has `install`, `session`, `seq`, `ts`, `name`, `area`,
 | `route` / `route_keep` | `status`, `mode`, `dry`, `n`, `one_way` / `mode` |
 | `download_start` / `download` | `area`, `files`, `mb`; done: `done`, `ok`, `skipped` |
 | `share` | `what` (spot, area), `result` (shared, copied, cancelled, failed), `named` / `area` |
-| `sat_paste` | `ok`, `hours`, `changed`; or `why` (first clause of the reason) |
+| `sat_paste` | `ok`, `hours`, `changed`; or `why` (first clause of the reason); `via` (button: the Paste button, box: pasted or typed into the box; from 2026-10-15) |
+| `sat` | Weather by satellite, a step at a time (SatSheet.tsx, from 2026-10-15): `step` = `open` (`on`: send, or paste when a request was out), `send` (`how`: text, copy; `again`: one was still out), `again` (Send again / Send a request, `waiting`), `have_reply` (Already have a reply?), `copy_number`, `clip_fail` (Paste could not read the clipboard), `refresh` (had signal), `done`. The paste itself stays `sat_paste`. |
 
 ### Health
 
@@ -146,6 +147,14 @@ that browser.
   prop with time open for sheets, cards, tools and forms; every tap by
   label and where; phones, areas, builds, countries; load times; errors;
   the latest 60 events.
+- **Weather by satellite**: phones (and times) at each step: opened the
+  sheet, sent a request (Text it or Copy), pasted a reply, weather updated,
+  Done; how many did each with no signal (the real use, against trying it
+  at home); and how they went about it (Text it or Copy, the Paste button
+  or the box, why a paste was not read, Send again, the clipboard failing).
+  It reads the `sat` events, and for a build from before them the sheet's
+  taps by label (Text it, Copy, Done) with the `sheet` and `sat_paste`
+  events, so the live build's use shows too (stats.js `SAT`).
 
 ### SQL
 
