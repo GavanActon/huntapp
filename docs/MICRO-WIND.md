@@ -291,6 +291,20 @@ knows the turbulence. Every area was rerun to keep it:
       says "leaves down" once more than half are down and the bare crowns
       let noticeably more wind through. A micro grid without `canopyBare`
       reads in leaf, as before.
+  - **Under trees the profile runs slow: ×1.5** (2026-10-15, from PALM).
+    - **The evidence:**
+      - PALM at 4 m: 14 runs at Pickle Lake, Lac Bailey and Searchmont, the app's air forced to each run's (`scripts/palm_compare.py`). The app's head-height speed ran at 0.68 of PALM's under trees (neutral 0.67, sunny 0.72), 0.98 on open ground and 0.74 over water.
+      - The flux towers: floor/top 0.19–0.28 ([INVERSE.md](INVERSE.md)), more than the baked 0.05–0.15 of the 10 m wind.
+      - The 60 Pickle checks felt 2.4 times what the app gave.
+    - **The rule:** the share under a stand is ×1.5 (`FLOOR_DEFAULT` in model.ts), never past open ground's 0.7. Open ground and water stay as they are: Searchmont's open checks already ran ×1.2, and ×1.3 on open ground cost both of its calm checks.
+    - **Against PALM:** under trees the app goes 0.68 → 0.95 of PALM's speed, and the log error 0.78 → 0.69. Direction within 45° stays at 74%, reversal recall 54 → 52%, precision 78 → 80%.
+    - **The checks, Pickle:**
+      - Direction within 45°: 43% either way (bog 53 → 58%, dusk 50 → 56%).
+      - Speed within 2×: 45 → 51%. The median goes from ×0.41 to ×0.58 of what was felt.
+      - Every calm check is still called calm. Spots called calm where wind was felt fall from 19 to 9.
+      - Searchmont, all open ground, is unchanged.
+    - **The cone,** in the draft scent test set's v1 measure on the finished PALM scent runs: the tune set goes 0.55 → 0.56. The held-out set goes 0.52 → 0.50: one sector at Lac Bailey whose 15% reach went 38 → 45 m. Misses are unchanged.
+    - **Not fitted: stable air.** There the app runs at 0.4 of PALM under every cover. PALM's 4 m stable boxes are the runs to trust least, so they were left.
 - **Tree-line shelter** (browser): looking upwind from an open cell for the
   first stand over 6 m:
   - Within 3 h: shelter 0.25 and swirl.

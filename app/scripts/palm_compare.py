@@ -65,6 +65,16 @@ async ({ ms }) => {
 }
 """
 
+CELL_JS = """
+async ({ pts, ms }) => {
+  const m = await import('/src/weather/micro/model.ts')
+  return pts.map(([lon, lat]) => {
+    const c = m.microCell(lon, lat, ms)
+    return c ? [c.canopyNow ?? c.canopy ?? null, c.treeH ?? null] : null
+  })
+}
+"""
+
 ASK_JS = """
 async ({ pts, ms, air, variants }) => {
   const m = await import('/src/weather/micro/model.ts')
@@ -72,18 +82,22 @@ async ({ pts, ms, air, variants }) => {
   const all = {}
   for (const [name, tune] of variants) {
     // a variant is {lee: {...}, slot: {...}}, or a bare lee setting
-    const t = tune && (tune.lee || tune.slot) ? tune : { lee: tune }
+    const t = tune && (tune.lee || tune.slot || tune.floor || tune.thermal) ? tune : { lee: tune }
     m.setLeeTune(t.lee ?? null)
     m.setSlotTune(t.slot ?? null)
+    m.setFloorTune(t.floor ?? null)
+    m.setThermalTune(t.thermal ?? null)
     const out = []
     for (const [lon, lat] of pts) {
       const g = m.groundWind(lon, lat, ms)
-      out.push(g ? [g.kmh, g.dirFrom, g.regime, g.inSlot ? 1 : 0, g.swirl ? 1 : 0, g.local10Kmh] : null)
+      out.push(g ? [g.kmh, g.dirFrom, g.regime, g.inSlot ? 1 : 0, g.swirl ? 1 : 0, g.local10Kmh, g.sigmaDeg] : null)
     }
     all[name] = out
   }
   m.setLeeTune(null)
   m.setSlotTune(null)
+  m.setFloorTune(null)
+  m.setThermalTune(null)
   m.setForcedAir(null)
   return all
 }
@@ -212,10 +226,13 @@ def main() -> None:
                 air = {"kmh": fc["kph"], "dir": fc["fromTrue"], "lay": lay, "sunElev": sun}
                 X, Y = lattice(info, args.step)
                 lon, lat = Transformer.from_crs(info["epsg"], 4326, always_xy=True).transform(X, Y)
-                allres = evaluate(page, ASK_JS, {"pts": [[float(a), float(b)] for a, b in zip(lon, lat)], "ms": ms, "air": air, "variants": variants})
+                pts = [[float(a), float(b)] for a, b in zip(lon, lat)]
+                allres = evaluate(page, ASK_JS, {"pts": pts, "ms": ms, "air": air, "variants": variants})
+                cells = evaluate(page, CELL_JS, {"pts": pts, "ms": ms})
                 dx, gam = info["dx"], info["gridConvergenceDeg"]
                 x0, y0, x1, y1 = info["bounds"]
                 uH, vH, rv = d["uHead"][0], d["vHead"][0], d["reversedHead"][0]
+                uT, vT = d["u"][0], d["v"][0]
                 ch, water = grid["canopy_h"], grid["water"]
                 forest = ch > 6
                 n_it = max(1, int(12 / dx))
@@ -228,15 +245,17 @@ def main() -> None:
                     r_, c_ = int((y1 - Y[k]) / dx), int((X[k] - x0) / dx)
                     sl = np.s_[max(r_ - 1, 0):r_ + 2, max(c_ - 1, 0):c_ + 2]
                     uu, vv = float(np.nanmean(uH[sl])), float(np.nanmean(vH[sl]))
-                    palm.append((r_, c_, uu, vv, float(np.nanmean(rv[sl]))))
+                    top = float(np.hypot(np.nanmean(uT[sl]), np.nanmean(vT[sl])))
+                    palm.append((r_, c_, uu, vv, float(np.nanmean(rv[sl])), top))
                 for vname, res in allres.items():
                     rows = []
                     for k, g in enumerate(res):
-                        r_, c_, uu, vv, rvs = palm[k]
+                        r_, c_, uu, vv, rvs, top = palm[k]
+                        cell = cells[k] or [None, None]
                         if g is None or not (np.isfinite(uu) and np.isfinite(vv)):
                             continue
                         p_to = (math.degrees(math.atan2(uu, vv)) + gam) % 360
-                        a_kmh, a_from, regime, a_slot, a_swirl, a_l10 = g
+                        a_kmh, a_from, regime, a_slot, a_swirl, a_l10, a_sigma = g
                         a_to = (a_from + 180) % 360
                         rows.append(dict(run=run, variant=vname, case=case, stability=stab, lon=lon[k], lat=lat[k],
                                          palmTo=round(p_to), appTo=round(a_to), dirApart=abs(float(wrap(a_to - p_to))),
@@ -244,7 +263,9 @@ def main() -> None:
                                          palmRevShare=rvs, palmRatio=math.hypot(uu, vv), appRatio=a_kmh / max(fc["kph"], 0.1),
                                          appKmh=a_kmh, regime=regime, appSlot=bool(a_slot), swirl=bool(a_swirl),
                                          water=bool(water[r_, c_]), open=bool(ch[r_, c_] < 2 and not water[r_, c_]),
-                                         forest=bool(forest[r_, c_]), edge=bool(edge[r_, c_]), sx=float(sx[r_, c_])))
+                                         forest=bool(forest[r_, c_]), edge=bool(edge[r_, c_]), sx=float(sx[r_, c_]),
+                                         palmTop=top, palmCanopyH=float(ch[r_, c_]), appLocal10=a_l10,
+                                         appCanopy=cell[0], appTreeH=cell[1], appSigma=a_sigma))
                     if args.per_run:
                         print(f"\n{run} [{vname}] ({stab}, forecast from {fc['fromTrue']:.0f} at {fc['kph']} km/h):", flush=True)
                         for name, rr in classes(rows).items():

@@ -1050,6 +1050,40 @@ export function setLeeTune(t: Partial<typeof LEE_DEFAULT> | null): void {
 }
 let leeRise: Float32Array | null = null
 
+/**
+ * The head-height share of the local 10 m wind, scaled by the ground's cover:
+ * under trees (trees) and on open ground or water (open), over the baked
+ * canopy fraction. Under trees the baked exponential profile runs slow: PALM
+ * at 4 m (14 runs, Pickle Lake, Lac Bailey, Searchmont) puts the floor at
+ * 1/0.68 of it, the flux towers' floor/top (NEON 0.28, SMEAR II 0.19,
+ * INVERSE.md) higher still, and the 60 Pickle checks felt ×2.4 what it gave.
+ * ×1.5 brings the app to 0.95 of PALM under trees; open ground and water
+ * were right (0.98, and Searchmont's open checks already ran ×1.2), so they
+ * stay. MICRO-WIND.md §4. setFloorTune lets scripts score a scale side by
+ * side (palm_compare.py, replay.py --floor); the app never changes it.
+ */
+const FLOOR_DEFAULT = { trees: 1.5, open: 1 }
+/** a stand never lets more through than open ground's log law gives 2 m over 10 m (§4) */
+const FLOOR_OPEN_SHARE = 0.7
+
+/**
+ * The sun's flows under a stand: the upslope flow and the lake breeze keep a
+ * flat share there (0.5 and 0.6), or with byCanopy 1 the share of open
+ * ground's head-height wind the stand lets down, as the wind itself. On
+ * trial (setThermalTune, palm_compare.py and replay.py --thermal).
+ */
+const THERMAL_DEFAULT = { byCanopy: 0 }
+let thermalTune = { ...THERMAL_DEFAULT }
+export function setThermalTune(t: Partial<typeof THERMAL_DEFAULT> | null): void {
+  thermalTune = { ...THERMAL_DEFAULT, ...t }
+  bump()
+}
+let floorTune = { ...FLOOR_DEFAULT }
+export function setFloorTune(t: Partial<typeof FLOOR_DEFAULT> | null): void {
+  floorTune = { ...FLOOR_DEFAULT, ...t }
+  bump()
+}
+
 /** The steepest rise within LEE_REACH_M upwind of a point, degrees; NaN without the going grid. */
 function riseUpwind(i: number, lon: number, lat: number, fromDeg: number): number {
   const sector = (((Math.round(fromDeg / (360 / LEE_SECTORS)) % LEE_SECTORS) + LEE_SECTORS) % LEE_SECTORS)
@@ -1434,7 +1468,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   // under a canopy too: the AmeriFlux towers (pipeline/towers/fit.py,
   // 2026-10-07) put the floor at about 0.6 of its mixed-air share when the
   // air above is settled (Treehaven mixedwood 0.13 stable / 0.28 unstable)
-  const gm = cf * (th === 0 ? 1 - 0.45 * s : 1 - 0.3 * s)
+  const gm = (th === 0 ? cf * floorTune.open : Math.min(FLOOR_OPEN_SHARE, cf * floorTune.trees)) * (th === 0 ? 1 - 0.45 * s : 1 - 0.3 * s)
   let mechE = e10 * gm * shelter
   let mechN = n10 * gm * shelter
   // a slot in the trees, on flat ground: the along-slot part of the wind runs
@@ -1519,6 +1553,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   const mixNight = Math.exp(-Math.max(0, mech10 - 5) / 8)
   const mixDay = Math.exp(-Math.max(0, mech10 - 8) / 10)
   const inTrees = th > 0
+  const sunUnder = inTrees && thermalTune.byCanopy ? Math.min(1, gm / FLOOR_OPEN_SHARE) : null
 
   // ---- cold-air drainage ----
   let kat = 0
@@ -1541,7 +1576,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     const cosInc = Math.sin(el) * Math.cos(sl) + Math.cos(el) * Math.sin(sl) * Math.cos((ctx.sunAz - facing) * RAD)
     const heat = (lay.sw * Math.max(0, cosInc)) / Math.max(0.15, Math.sin(el))
     const sAna = clamp(heat / 600, 0, 1.5) * (1 - s) * mixDay
-    ana = 1.4 * Math.sqrt(Math.sin(sl)) * 3.6 * sAna * (inTrees ? 0.5 : 1)
+    ana = 1.4 * Math.sqrt(Math.sin(sl)) * 3.6 * sAna * (inTrees ? sunUnder ?? 0.5 : 1)
     anaTo = (facing + 180) % 360
   }
 
@@ -1555,7 +1590,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     const dT = lay.t2 - ctx.waterC
     if (ctx.sunElev > 10 && dT > 1) {
       const S = clamp((dT - 1) / 6, 0, 1) * clamp(lay.sw / 500, 0, 1) * Math.exp(-d / 500) * Math.exp(-Math.max(0, mech10 - 10) / 10)
-      brz = b(K_BREEZEMAX, i) * 3.6 * S * (inTrees ? 0.6 : 1)
+      brz = b(K_BREEZEMAX, i) * 3.6 * S * (inTrees ? sunUnder ?? 0.6 : 1)
       brzTo = on
       brzKind = 'lake'
     } else if (dT < -1) {

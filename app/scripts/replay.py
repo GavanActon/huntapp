@@ -262,6 +262,10 @@ def run(args) -> list[dict]:
                 page.evaluate("async (t) => { const m = await import('/src/weather/micro/model.ts'); m.setLeeTune(t) }", json.loads(args.lee))
             if args.slot:
                 page.evaluate("async (t) => { const m = await import('/src/weather/micro/model.ts'); m.setSlotTune(t) }", json.loads(args.slot))
+            if args.floor:
+                page.evaluate("async (t) => { const m = await import('/src/weather/micro/model.ts'); m.setFloorTune(t) }", json.loads(args.floor))
+            if args.thermal:
+                page.evaluate("async (t) => { const m = await import('/src/weather/micro/model.ts'); m.setThermalTune(t) }", json.loads(args.thermal))
             print(f"  {day}: ready in {time.time() - t0:.0f} s ({len(todays)} checks)", flush=True)
             if args.loo:
                 objs = [as_check(c, k) for k, c in enumerate(todays)]
@@ -428,6 +432,8 @@ def main() -> int:
     ap.add_argument("--all-days", action="store_true", help="--loo: the others of every day, not only the check's own (lessons from other days)")
     ap.add_argument("--lee", help="the lee rule's settings for this pass (model.ts setLeeTune), JSON, e.g. '{\"off\": 1}'; the app's own when left out")
     ap.add_argument("--slot", help="the slot rule's settings for this pass (model.ts setSlotTune), JSON; the app's own when left out")
+    ap.add_argument("--floor", help="the head-height share's scale for this pass (model.ts setFloorTune), JSON e.g. '{\"trees\": 1.4}'; the app's own when left out")
+    ap.add_argument("--thermal", help="the sun's flows under a stand for this pass (model.ts setThermalTune), JSON e.g. '{\"byCanopy\": 1}'; the app's own when left out")
     args = ap.parse_args()
     rows = run(args)
     if not rows:
