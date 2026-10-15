@@ -309,8 +309,20 @@ ledger books runs: the question, the number that settles it, and the app change 
 The loop's working order (huntapp-ba and huntapp-c4, 2026-10-15): **direction before width**. The
 width knobs (gustSize, meander, spread.swing) trade false alarms for misses one for one, so they hide
 direction error. The loop ranks the head-height direction gap by situation from palm_compare (PALM
-against the app under forced air); ba takes the top one or two each round. In order: the am270 sunny
-floor at the narrows, the stable bog floor's turn (dawn175, then dawn270), then the slot's stable dusk.
+against the app under forced air); ba takes the top one or two each round.
+
+The order, revised 2026-10-15 after the narrow-tongue patches:
+1. **The deep lee's return flow** (nw315 at the slot: the app's floor is dead calm while PALM runs the
+   eddy back up the slope at about 0.25 of the wind).
+2. **The am270 sunny floor** at the narrows.
+3. **The slot's stable dusk** (dusk288).
+4. **The bog's stable turn** (dawn175, settled by dawn270).
+
+First pass on v2 (2026-10-15): **narrow-tongue-lee-eddy** (patch B's kicks; the deep lee's gate 2/5 km/h and a return speed of 0.1 of the wind, which is PALM's 0.09-0.125; the scent column following the floor in an eddy; the shade at q=1) took the tongue's threat from 0.50 to 0.53 on tune and 0.65 to 0.72 held out, misses 5 to 5, tongue false alarms 44 to 29, checks coverage 68% / 71%. It passes; live is Gavan's word. Watch: the cold-air pool (P10) fell 0.40 to 0.25. Harness: palm_compare moves to PALM's 10 m ambient, as the card uses.
+
+Before that, a narrow tongue (huntapp-ba's patch B: kicks from the wind above, 0.02 + a·U10·(1 + 0.35·tumbling),
+fitted to PALM's turbulence at ratio 1.0) is ready but fails on misses: 5 → 11, all wind. It goes
+back on the card after each wind fix.
 
 ## Order
 
