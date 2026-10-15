@@ -6,8 +6,12 @@
 
 For each run: its converted field (pipeline/raw/teacher/palm/fields/<run>.npz) and its case
 (pipeline/teacher/palm/<case>/case-<tag>.json and grid-<tag>.npz). The app is opened headless in
-the run's area. The air is forced to the run's forecast wind (model.ts setForcedAir), with a
-layering for the run's stability:
+the run's area. The air is forced to the 10 m wind PALM's box really had (the field's ambient, its
+domain mean over the canopy: model.ts setForcedAir), with a layering for the run's stability. Until
+2026-10-15 it was the run's forcing wind, which a volume-flow box turns into about half that at
+10 m (the narrows under NW: 11.5 km/h forced, 5.8 had): the app then had twice PALM's wind, and its
+lee rule's light-wind gate never bit where the scent card (forced to the ambient) saw it starve the
+eddy. Numbers before and after are not comparable (MICRO-WIND.md section 5b). The layering:
 - neutral: mixed and overcast, no thermals;
 - stable: an inversion just after sunset;
 - convective: sunny, mixed.
@@ -223,7 +227,8 @@ def main() -> None:
                 meta = json.loads(str(d["meta"]))
                 case, tag, info, grid, rinfo = case_of(run)
                 stab = rinfo["stability"]
-                fc = meta["forecast"]
+                # the air PALM's box really had at 10 m, not the forcing it was driven with
+                fc = {"kph": float(d["ambientKph"]), "fromTrue": float(d["directions"][0])}
                 lay, sun = AIR[stab]
                 air = {"kmh": fc["kph"], "dir": fc["fromTrue"], "lay": lay, "sunElev": sun}
                 X, Y = lattice(info, args.step)
@@ -269,7 +274,7 @@ def main() -> None:
                                          palmTop=top, palmCanopyH=float(ch[r_, c_]), appLocal10=a_l10,
                                          appCanopy=cell[0], appTreeH=cell[1], appSigma=a_sigma))
                     if args.per_run:
-                        print(f"\n{run} [{vname}] ({stab}, forecast from {fc['fromTrue']:.0f} at {fc['kph']} km/h):", flush=True)
+                        print(f"\n{run} [{vname}] ({stab}, PALM's 10 m air from {fc['fromTrue']:.0f} at {fc['kph']:.1f} km/h):", flush=True)
                         for name, rr in classes(rows).items():
                             print(score(rr, name))
                     else:

@@ -442,15 +442,22 @@ The rule (`model.ts`, `riseUpwind`, `leeShare`):
   so the drainage below takes the slope. It is cut by sunshine,
   (1 − convective), because a sunny day's upslope flow already climbs a
   lit lee slope and both would count it twice. It is cut by the wind,
-  fading below 9 km/h and gone by 3, because in a near calm the slopes'
-  own flows run the place. Over open ground and water it is 0.6 of
-  that, since nothing holds the wind above off the ground.
+  fading below 5 km/h and gone by 2 (9 and 3 until 2026-10-15: PALM's
+  narrows lee reversed 92–96% of the time with 5.8 km/h at 10 m, where
+  that gate let in 47% of the eddy and the floor sat at the swap, dead
+  still), because in a near calm the slopes' own flows run the place.
+  Over open ground and water it is 0.6 of that, since nothing holds the
+  wind above off the ground.
 - **What it does.** The mean head-height wind is scaled by (1 − share /
   0.5): it slows to nothing at half the eddy. Past that it runs back at up
   to half what it had. It climbs the slope toward the crest where the
   slope is over 2° (the return flow climbs the lee slope), and runs
   straight back where the ground is flat. It swirls (wider spread) past a
   quarter.
+- **The return flow's speed** (2026-10-15, `LEE_DEFAULT.backU`). The eddy is the wind over the rise turning back, so the floor runs back at 0.1 of the forecast wind where the eddy is whole, under trees as in the open.
+  - In PALM's deep lees (a rise over 10°) the reversed floor ran at 0.09–0.125 of the wind.
+  - The old rule took half the floor's own sheltered wind, 0.016–0.035 of it: at the narrows' west bank under NW, 0.07 km/h against PALM's 1.5–1.7.
+  - The cell passes the eddy's strength to the scent (sampler `out[14]`), whose column runs the air below the canopy top back with the floor (§7).
 - **Lee before slot.** Where the eddy holds half the mean or more, a gap in
   the trees is a pocket, not a funnel, and the slot rule (§5) is not
   applied. At the narrows, a west wind over the hill, 41° off the gap's
@@ -460,7 +467,23 @@ The rule (`model.ts`, `riseUpwind`, `leeShare`):
 **How it was scored** (`app/scripts/palm_compare.py`). The app's
 groundWind is run with the air forced to each PALM run's forecast wind and
 layering (`setForcedAir`), on a lattice over the run's box, and scored
-against PALM's head-height wind at the same points. The settings were
+against PALM's head-height wind at the same points.
+
+**Re-baselined 2026-10-15 under PALM's own air.** palm_compare now forces the 10 m wind PALM's box really had: the field's ambient, its domain mean. Until then it forced the run's forcing wind, which a volume-flow box turns into about half that at 10 m (the narrows under NW: 11.5 km/h forced, 5.8 had). So the app had twice PALM's wind, and the lee's light-wind gate never bit where the scent card, forced to the ambient, saw the eddy starve.
+- Numbers in this section before this note are on the old forcing and are not comparable to these.
+- All 15 runs (30,819 points), the lee before 2026-10-15 against the gate at 2–5 km/h with the return flow from the wind over the rise:
+
+  | | Old lee | New lee |
+  |---|---|---|
+  | Within 45° | 72% | 74% |
+  | Over a 10° rise | 50% | 61% |
+  | PALM's reversals found | 38% | 56% |
+  | Precision on reversals | 76% | 74% |
+  | The narrows under NW | 50% | 75% |
+  | Lac Bailey under N | 59% | 63% |
+  | Searchmont neutral | 73% | 76% |
+
+  At the narrows under NW the app went from none of PALM's reversals to 86% of them. The settings were
 chosen side by side (`setLeeTune`) on 18 runs at Pickle and Lac Bailey:
 - every point within 45° of PALM: 68% with the rule off, 72% on;
 - under the trees: 60% → 67%;
@@ -551,6 +574,22 @@ with it. The first checks under a hill on a windy day will.
 
       - The one miss more is P1 on the sunny west morning at the narrows (PALM 440 m east). There the app's ground air runs back up the lit slope, 180° from PALM's, beyond any doubt's reach; the wind has to be fixed there.
       - A wider tongue (0.50, 0.55 of the place's spread) lost the held-out score.
+  - **The narrow tongue** (2026-10-15 evening; Gavan: "on the ground I'd still expect PALM-narrow with a clearer error").
+    - **The puffs' kicks** are PALM's head-height turbulence: 0.02 + a × U × (1 + 0.35 × tumbling) m/s.
+      - a is 0.09 in neutral air, 0.14 in a sunny mix and 0.03 in settled air, fitted on Pickle's turbHead; Lac Bailey came out at 1.0 settled, 0.6 neutral.
+      - U is the local 10 m wind. Where the air tumbles (a lee's eddy, a swirl) it's the wind over the rise: PALM's narrows lee had 0.29 m/s under a local 10 m wind of 0.5.
+      - The old kicks went with the floor's own wind, plus a 0.1 m/s floor. Against PALM they were 2× on open flat ground, 6× on a still night and 0.7× in a lee. They made the tongue a round blob and hid the wind's direction errors.
+    - **In a lee's eddy** the column's air below the canopy top runs back with the floor however slow the floor is. PALM's backflow at the narrows is 10–25 m deep, and puffs mixed up into the stand had gone on downwind.
+    - **The pale shade** goes back to the Gaussian's own weight (0.61 at one sd): it carries the cover the kicks used to.
+    - **Scored on v2** (misses on tongue + shade, false alarms on the tongue: the scent test set's measure since 2026-10-15), against baseline v2 on 8d50465:
+
+      | | Tongue threat (Pickle) | Held out (Lac Bailey) | Misses | Tongue false alarms |
+      |---|---|---|---|---|
+      | Before | 0.50 | 0.65 | 5 | 44 |
+      | After | 0.53 | 0.72 | 5 | 29 |
+
+      - The misses left: dusk at the slot (3), the sunny-morning floor (1) and the narrows lee to the east (1).
+      - The kicks alone, without the eddy, put misses up to 11, the four extra in the lee. The checks' coverage within 1 sd is 68% at Pickle, 71% at Searchmont.
   - Each particle is also a puff that mixes upward as it travels
     (particle–puff hybrid, as HYSPLIT does): σz from the Briggs (1973)
     rural curves along the distance travelled, neutral D blended toward
