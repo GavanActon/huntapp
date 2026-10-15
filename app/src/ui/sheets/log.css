@@ -453,16 +453,23 @@
   user-select: text;
 }
 
+/* Share, and under it Delete, the last thing in the sheet */
 .pin-sheet .ps-acts {
   display: flex;
-  align-items: center;
-  gap: 16px;
+  flex-direction: column;
+  gap: 10px;
   padding-bottom: 6px;
 }
 
-.pin-sheet .ps-acts .linklike {
-  margin-left: auto;
-  font-size: calc(13px * var(--ui-scale));
+.pin-sheet .ps-acts button {
+  flex: none;
+}
+
+.pin-sheet .ps-acts .ps-delete {
+  margin-top: 6px;
+  border-color: rgba(255, 107, 107, 0.55);
+  background: rgba(255, 107, 107, 0.1);
+  color: var(--c-danger);
 }
 
 /* another area's places, folded under its name below this area's and your own */

@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type JSX } from 'react'
 import { ACTIVE_AREA } from '../../areas'
 import type { PinNote, PlaceDef } from '../../config'
-import { DROPPED_NAME, isDroppedPin } from '../../map/placePopup'
+import { DROPPED_NAME } from '../../map/placePopup'
 import { coordWords } from '../../share/link'
 import { shareSpot } from '../../share/share'
 import { fromHome } from '../../spots/scoring'
@@ -16,9 +16,10 @@ const KINDS: PlaceDef['kind'][] = ['stand', 'trail', 'landing', 'camp', 'lake']
 /**
  * One pin, all of it: its name, colour and kind, a box for the next note and
  * the notes before it, newest first, each stamped when it was written; where
- * it is; Share and Delete. No good winds (Gavan, 2026-10-14: "cut the good
- * winds from it"); a stand that has them still says how the next sit reads
- * in its popup and its Pins row.
+ * it is; Share, and Delete last of all, always asking first (Gavan,
+ * 2026-10-15). No good winds (Gavan, 2026-10-14: "cut the good winds from
+ * it"); a stand that has them still says how the next sit reads in its Pins
+ * row.
  * Adding a pin opens it (Gavan, 2026-10-14: "adding a pin brings up a screen
  * with all the details"), as do the popup's Open and a Pins row's Edit.
  *
@@ -48,7 +49,7 @@ export default function PinSheet({ id }: { id: string }): JSX.Element {
     else app.closeSheet()
   }
   const del = () => {
-    if (!isDroppedPin(p) && !confirm(`Delete ${p.name}?`)) return
+    if (!confirm(p.name === DROPPED_NAME ? 'Delete this pin?' : `Delete ${p.name}?`)) return
     close()
     usePlacesStore.getState().remove(p.id)
   }
@@ -121,7 +122,7 @@ export default function PinSheet({ id }: { id: string }): JSX.Element {
         <button className="btn-secondary" onClick={share}>
           {shared ?? 'Share'}
         </button>
-        <button className="linklike danger" onClick={del}>
+        <button className="btn-secondary ps-delete" onClick={del}>
           Delete pin
         </button>
       </div>
