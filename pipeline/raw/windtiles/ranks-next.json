@@ -314,7 +314,7 @@
    "kind": "arcgis",
    "url": "https://services8.arcgis.com/aCyQID5qQcyrJMm2/ArcGIS/rest/services/WLD_BigGameManagementArea/FeatureServer/0",
    "field": "mmu",
-   "note": "moose areas, dissolve on mmu ('39A'); layer 1 caribou, 2 bear",
+   "note": "moose areas, dissolve on mmu ('39A'); layer 1 caribou, 2 bear; ask outSR=4326; non-hunting rows GMNP, TNNP, MMNP, TMNP, NT, 0, 7777, 9998",
    "licence": "OGL-NL"
   },
   "YT": {
@@ -1018,103 +1018,103 @@
  "NL": [
   [
    "6",
-   "moose ~906 est. (2024); quota 1,450 (2026)"
+   "moose ~906 est. (2024); quota 1,450 (2026); 4,606 draw apps (2025)"
   ],
   [
    "5",
-   "moose ~734 est. (2024); quota 1,325"
+   "moose ~734 est. (2024); quota 1,325; 3,556 draw apps (2025)"
   ],
   [
    "15",
-   "moose ~674 est.; quota 1,200"
+   "moose ~674 est.; quota 1,200; 3,565 draw apps (2025)"
   ],
   [
    "14",
-   "moose ~655 est.; quota 900"
+   "moose ~655 est.; quota 900; 2,920 draw apps (2025)"
   ],
   [
    "2",
-   "moose ~626 est.; quota 950"
+   "moose ~626 est.; quota 950; 1,846 draw apps (2025)"
   ],
   [
    "40",
-   "moose ~613 est.; quota 1,000"
+   "moose ~613 est.; quota 1,000; 1,829 draw apps (2025)"
   ],
   [
    "45",
-   "moose ~609 est.; quota 900"
+   "moose ~609 est.; quota 900; 2,184 draw apps (2025)"
   ],
   [
    "22",
-   "moose ~590 est.; quota 850"
+   "moose ~590 est.; quota 850; 3,849 draw apps (2025)"
   ],
   [
    "36",
-   "moose ~568 est.; quota 1,230"
+   "moose ~568 est.; quota 1,230; 3,833 draw apps (2025)"
   ],
   [
    "3",
-   "moose ~539 est.; quota 1,100"
+   "moose ~539 est.; quota 1,100; 1,090 draw apps (2025)"
   ],
   [
    "10",
-   "moose ~532 est.; quota 725"
+   "moose ~532 est.; quota 725; 1,577 draw apps (2025)"
   ],
   [
    "8",
-   "moose ~517 est.; quota 870"
+   "moose ~517 est.; quota 870; 2,253 draw apps (2025)"
   ],
   [
    "17",
-   "moose ~496 est.; quota 650"
+   "moose ~496 est.; quota 650; 1,536 draw apps (2025)"
   ],
   [
    "4",
-   "moose ~491 est.; quota 725"
+   "moose ~491 est.; quota 725; 2,980 draw apps (2025)"
   ],
   [
    "7",
-   "moose ~489 est.; quota 750"
+   "moose ~489 est.; quota 750; 2,909 draw apps (2025)"
   ],
   [
    "23",
-   "moose ~452 est.; quota 700"
+   "moose ~452 est.; quota 700; 3,707 draw apps (2025)"
   ],
   [
    "11",
-   "moose ~448 est.; quota 660"
+   "moose ~448 est.; quota 660; 950 draw apps (2025)"
   ],
   [
    "29",
-   "moose ~444 est.; quota 700"
+   "moose ~444 est.; quota 700; 3,235 draw apps (2025)"
   ],
   [
    "30",
-   "moose ~384 est.; quota 725"
+   "moose ~384 est.; quota 725; 1,940 draw apps (2025)"
   ],
   [
    "25",
-   "moose ~355 est.; quota 525"
+   "moose ~355 est.; quota 525; 1,572 draw apps (2025)"
   ],
   [
    "1",
-   "moose ~348 est.; quota 550"
+   "moose ~348 est.; quota 550; 1,430 draw apps (2025)"
   ],
   [
    "19",
-   "moose ~324 est.; quota 450"
+   "moose ~324 est.; quota 450; 617 draw apps (2025)"
   ],
   [
    "9",
-   "moose ~318 est.; quota 480"
+   "moose ~318 est.; quota 480; 884 draw apps (2025)"
   ],
   [
    "34",
-   "moose ~304 est.; quota 530"
+   "moose ~304 est.; quota 530; 3,083 draw apps (2025)"
   ],
   [
    "38",
-   "moose ~301 est.; quota 350"
+   "moose ~301 est.; quota 350; 1,441 draw apps (2025)"
   ]
  ],
  "YT": [
@@ -1149,6 +1149,18 @@
   [
    "9",
    "proxy: Southern Lakes; moose permit-only 9-01..9-07"
+  ],
+  [
+   "3",
+   "estimate"
+  ],
+  [
+   "6",
+   "estimate: Kluane"
+  ],
+  [
+   "1",
+   "estimate: Old Crow, little road access"
   ]
  ],
  "NT": [
