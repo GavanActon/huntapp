@@ -1,0 +1,2496 @@
+{
+ "_note": "2026-10-15, a first draft; docs/SD-RANKS.md has every source. The order past Ontario and Quebec, by harvest and this fall's hunters (Gavan: 'based on hunting harvest numbers and where hunters will be this fall'). Canada: score = 0.5 harvest share + 0.5 hunter share, against Alberta. US states: 0.5 USFWS licence-holder share + 0.5 a harvest index (deer + 3 elk + 3 moose + bear). Units best first in each. hunt_priority.py reads only ON and QC so far; 'outlines' says where each jurisdiction's units come from. US tiles also need US input adapters before any bake.",
+ "order": {
+  "CA": [
+   "AB",
+   "BC",
+   "SK",
+   "NB",
+   "MB",
+   "NS",
+   "NL",
+   "YT",
+   "NT"
+  ],
+  "US": [
+   "TX",
+   "PA",
+   "MI",
+   "WI",
+   "GA",
+   "AL",
+   "MO",
+   "TN",
+   "NC",
+   "NY",
+   "LA",
+   "MN",
+   "OH",
+   "MS",
+   "OK",
+   "AR",
+   "VA",
+   "CO",
+   "IL",
+   "KY",
+   "SC",
+   "MT",
+   "OR",
+   "IN",
+   "ID",
+   "WV",
+   "FL",
+   "IA",
+   "AZ",
+   "UT",
+   "KS",
+   "WY",
+   "CA",
+   "ME",
+   "SD",
+   "MD",
+   "WA",
+   "NE",
+   "NM",
+   "ND",
+   "AK",
+   "NJ",
+   "NV",
+   "VT",
+   "MA",
+   "NH",
+   "DE",
+   "CT",
+   "RI",
+   "HI"
+  ]
+ },
+ "states": [
+  [
+   "TX",
+   "deer 837k; 1.17M licences"
+  ],
+  [
+   "PA",
+   "deer 477k, bear 2,890; 954k licences"
+  ],
+  [
+   "MI",
+   "deer 373k (DNR est.), bear 1,952; 661k licences"
+  ],
+  [
+   "WI",
+   "deer 328k, bear 3,836; 670k licences"
+  ],
+  [
+   "GA",
+   "deer 274k, bear 490; 769k licences"
+  ],
+  [
+   "AL",
+   "deer 321k; 505k licences"
+  ],
+  [
+   "MO",
+   "deer 276k; 510k licences"
+  ],
+  [
+   "TN",
+   "deer 168k, bear 539; 729k licences"
+  ],
+  [
+   "NC",
+   "deer 189k, bear 4,495; 654k licences"
+  ],
+  [
+   "NY",
+   "deer 223k, bear 1,759; 560k licences"
+  ],
+  [
+   "LA",
+   "deer 239k; 443k licences"
+  ],
+  [
+   "MN",
+   "deer 171k, bear 2,878; 551k licences"
+  ],
+  [
+   "OH",
+   "deer 238k; 360k licences"
+  ],
+  [
+   "MS",
+   "deer 271k; 283k licences"
+  ],
+  [
+   "OK",
+   "deer 128k, elk 844; 499k licences"
+  ],
+  [
+   "AR",
+   "deer 200k, bear 445; 323k licences"
+  ],
+  [
+   "VA",
+   "deer 205k, bear 2,344; 254k licences"
+  ],
+  [
+   "CO",
+   "deer 37k, elk 35k, moose 532, bear 1,471; 371k licences"
+  ],
+  [
+   "IL",
+   "deer 171k; 290k licences"
+  ],
+  [
+   "KY",
+   "deer 150k, bear 205; 321k licences"
+  ],
+  [
+   "SC",
+   "deer 179k, bear 217; 219k licences"
+  ],
+  [
+   "MT",
+   "deer 77k, elk 27k, moose 258, bear 1,654; 231k licences"
+  ],
+  [
+   "OR",
+   "deer 45k, elk 18k, bear 2,781; 331k licences"
+  ],
+  [
+   "IN",
+   "deer 126k; 273k licences"
+  ],
+  [
+   "ID",
+   "deer 44k, elk 22k, moose 435, bear 3,006; 302k licences"
+  ],
+  [
+   "WV",
+   "deer 112k, bear 2,469; 254k licences"
+  ],
+  [
+   "FL",
+   "deer 114k; 217k licences"
+  ],
+  [
+   "IA",
+   "deer 101k; 221k licences"
+  ],
+  [
+   "AZ",
+   "deer 12k, elk 8,233, bear 431; 350k licences"
+  ],
+  [
+   "UT",
+   "deer 25k, elk 14k, moose 189, bear 479; 268k licences"
+  ],
+  [
+   "KS",
+   "deer 75k; 255k licences"
+  ],
+  [
+   "WY",
+   "deer 27k, elk 31k, moose 338, bear 656; 136k licences"
+  ],
+  [
+   "CA",
+   "deer 41k, elk 207, bear 979; 278k licences"
+  ],
+  [
+   "ME",
+   "deer 42k, moose 2,319, bear 3,611; 208k licences"
+  ],
+  [
+   "SD",
+   "deer 41k, elk 1,574; 206k licences"
+  ],
+  [
+   "MD",
+   "deer 79k; 116k licences"
+  ],
+  [
+   "WA",
+   "deer 23k, elk 4,783, moose 82, bear 1,410; 185k licences"
+  ],
+  [
+   "NE",
+   "deer 33k, elk 407; 185k licences"
+  ],
+  [
+   "NM",
+   "deer 9,435, elk 14k, bear 594; 141k licences"
+  ],
+  [
+   "ND",
+   "deer 24k, elk 576, moose 245; 151k licences"
+  ],
+  [
+   "AK",
+   "deer 17k, moose 7,497, bear 1,822; 98k licences"
+  ],
+  [
+   "NJ",
+   "deer 39k, bear 467; 72k licences"
+  ],
+  [
+   "NV",
+   "deer 5,601, elk 1,984; 107k licences"
+  ],
+  [
+   "VT",
+   "deer 17k, moose 68, bear 1,022; 64k licences"
+  ],
+  [
+   "MA",
+   "deer 15k, bear 262; 60k licences"
+  ],
+  [
+   "NH",
+   "deer 12k, moose 25, bear 1,097; 61k licences"
+  ],
+  [
+   "DE",
+   "deer 19k; 17k licences"
+  ],
+  [
+   "CT",
+   "deer 8,514; 31k licences"
+  ],
+  [
+   "RI",
+   "deer 2,843; 7,985 licences"
+  ],
+  [
+   "HI",
+   "no big-game data used; 11k licences"
+  ]
+ ],
+ "outlines": {
+  "AB": {
+   "kind": "arcgis",
+   "url": "https://geospatial.alberta.ca/mimas/rest/services/boundaries/fishwild_wildlife_mgmt_unit_public/MapServer/0",
+   "field": "WMUNIT_CODE",
+   "note": "zero-padded to 5 ('00357'); the harvest reports say '357'",
+   "licence": "OGL-Alberta"
+  },
+  "BC": {
+   "kind": "wfs",
+   "url": "https://openmaps.gov.bc.ca/geo/pub/wfs",
+   "typename": "WHSE_WILDLIFE_MANAGEMENT.WAA_WILDLIFE_MGMT_UNITS_SVW",
+   "field": "WILDLIFE_MGMT_UNIT_ID",
+   "note": "'5-2' unpadded; the harvest CSV writes 502",
+   "licence": "OGL-BC"
+  },
+  "SK": {
+   "kind": "arcgis",
+   "url": "https://gis.saskatchewan.ca/arcgis/rest/services/WildlifeManagement/MapServer/0",
+   "field": "ZONE_NUM",
+   "note": "strings: '39', '45W', 'SWMZ'",
+   "licence": "GOS Standard Unrestricted Use v2.0 (no resale)"
+  },
+  "MB": {
+   "kind": "arcgis",
+   "url": "https://services.arcgis.com/mMUesHYPkXjaFGfS/arcgis/rest/services/Manitoba_Game_Hunting_Areas/FeatureServer/0",
+   "field": "GHA",
+   "note": "'29A'; the null code is Riding Mountain NP",
+   "licence": "Manitoba Open Data Licence"
+  },
+  "NB": {
+   "kind": "geojson",
+   "url": "https://gnb.socrata.com/api/geospatial/5nbi-4ve3?method=export&format=GeoJSON",
+   "field": "wmz",
+   "licence": "NB OGL"
+  },
+  "NS": {
+   "kind": "geojson",
+   "url": "https://data.novascotia.ca/api/geospatial/m6qa-i3w9?method=export&format=GeoJSON",
+   "field": "deer_zone",
+   "note": "'101.0': take the integer; dissolve the 234 pieces by zone",
+   "licence": "NS OGL"
+  },
+  "NL": {
+   "kind": "arcgis",
+   "url": "https://services8.arcgis.com/aCyQID5qQcyrJMm2/ArcGIS/rest/services/WLD_BigGameManagementArea/FeatureServer/0",
+   "field": "mmu",
+   "note": "moose areas, dissolve on mmu ('39A'); layer 1 caribou, 2 bear",
+   "licence": "OGL-NL"
+  },
+  "YT": {
+   "kind": "arcgis",
+   "url": "https://mapservices.gov.yk.ca/arcgis/rest/services/GeoYukon/GY_AdministrativeBoundaries/MapServer/7",
+   "field": "GAME_MGMT_AREA_ID",
+   "note": "zone = id // 100",
+   "licence": "OGL-Yukon"
+  },
+  "NT": {
+   "kind": "arcgis",
+   "url": "https://services.arcgis.com/FsUQjymePMCjUecp/arcgis/rest/services/NWT%20Boundaries/FeatureServer/0",
+   "field": null,
+   "note": "no official zone polygons: regions as a stand-in",
+   "licence": "unstated"
+  },
+  "US-TX": {
+   "kind": "arcgis",
+   "url": "https://tpwd.texas.gov/arcgis/rest/services/Wildlife/TPWD_WL_WTDMU/MapServer/0",
+   "field": "UnitNumber",
+   "note": "no paging: leave out resultRecordCount",
+   "licence": "public domain"
+  },
+  "US-PA": {
+   "kind": "arcgis",
+   "url": "https://pgcportal.pa.gov/arcgis/rest/services/GIS/Lookup/MapServer/302",
+   "field": "wmu_id",
+   "licence": "Public Use"
+  },
+  "US-MI": {
+   "kind": "arcgis",
+   "url": "https://services3.arcgis.com/Jdnp1TjADvSDxMAX/arcgis/rest/services/WILDGameSpeciesManagementUnitsAndZonesOPENDATA/FeatureServer/3",
+   "field": "DeerManagementUnit",
+   "note": "units overlap: 311/312/332 cover county units",
+   "licence": "public record"
+  },
+  "US-WI": {
+   "kind": "arcgis",
+   "url": "https://dnrmaps.wi.gov/arcgis/rest/services/WM_CWD/WM_DMU_WTM_Ext/MapServer/2",
+   "field": "DEER_MGMT_UNIT_ID",
+   "note": "WKID 3071: ask for outSR=4326",
+   "licence": "unstated"
+  },
+  "US-GA": {
+   "kind": "tiger",
+   "url": "https://www2.census.gov/geo/tiger/TIGER2024/COUNTY/tl_2024_us_county.zip",
+   "statefp": "13",
+   "field": "NAME",
+   "licence": "public domain"
+  },
+  "US-AL": {
+   "kind": "tiger",
+   "url": "https://www2.census.gov/geo/tiger/TIGER2024/COUNTY/tl_2024_us_county.zip",
+   "statefp": "01",
+   "field": "NAME",
+   "licence": "public domain"
+  },
+  "US-MO": {
+   "kind": "tiger",
+   "url": "https://www2.census.gov/geo/tiger/TIGER2024/COUNTY/tl_2024_us_county.zip",
+   "statefp": "29",
+   "field": "NAME",
+   "note": "MDC's 'Saint Charles', 'Mcdonald', 'Dekalb' are TIGER's St. Charles, McDonald, DeKalb",
+   "licence": "public domain"
+  },
+  "US-TN": {
+   "kind": "tiger",
+   "url": "https://www2.census.gov/geo/tiger/TIGER2024/COUNTY/tl_2024_us_county.zip",
+   "statefp": "47",
+   "field": "NAME",
+   "licence": "public domain"
+  },
+  "US-NC": {
+   "kind": "tiger",
+   "url": "https://www2.census.gov/geo/tiger/TIGER2024/COUNTY/tl_2024_us_county.zip",
+   "statefp": "37",
+   "field": "NAME",
+   "licence": "public domain"
+  },
+  "US-NY": {
+   "kind": "arcgis",
+   "url": "https://gisservices.dec.ny.gov/arcgis/rest/services/dil/dil_land_activities/MapServer/4",
+   "field": "UNIT",
+   "licence": "unstated"
+  },
+  "US-MN": {
+   "kind": "arcgis",
+   "url": "https://enterprise.gisdata.mn.gov/aghost/rest/services/us_mn_state_dnr/bdry_deer_permit_areas/FeatureServer/0",
+   "field": "dpa",
+   "licence": "MN DNR General Geographic Data License"
+  },
+  "US-CO": {
+   "kind": "arcgis",
+   "url": "https://services5.arcgis.com/ttNGmDvKQA7oeDQ3/ArcGIS/rest/services/CPWAdminData/FeatureServer/6",
+   "field": "GMUID",
+   "licence": "CPW, as is, no open licence"
+  },
+  "US-MT": {
+   "kind": "arcgis",
+   "url": "https://fwp-gis.mt.gov/arcgis/rest/services/admbnd/huntingDistricts/MapServer/11",
+   "field": "DISTRICT",
+   "note": "the deer/elk/lion layer; harvest halves 411E/W etc. are 411",
+   "licence": "as is"
+  },
+  "US-ID": {
+   "kind": "arcgis",
+   "url": "https://services.arcgis.com/FjJI5xHF2dUPVrgK/ArcGIS/rest/services/GameManagementUnits/FeatureServer/0",
+   "field": "NAME",
+   "licence": "no warranty"
+  },
+  "US-WY": {
+   "kind": "arcgis",
+   "url": "https://services6.arcgis.com/cWzdqIyxbijuhPLw/ArcGIS/rest/services/",
+   "field": "HUNTAREA",
+   "layers": {
+    "elk": "ElkHuntAreas/FeatureServer/0",
+    "deer": "DeerHuntAreas/FeatureServer/3",
+    "antelope": "AntelopeHuntAreas/FeatureServer/0",
+    "moose": "2026_Moose_Hunt_Areas/FeatureServer/0",
+    "bear": "BlackBearHuntAreas/FeatureServer/0"
+   },
+   "note": "units are 'layer:HUNTAREA'",
+   "licence": "not for use finer than 1:100,000"
+  },
+  "US-ME": {
+   "kind": "arcgis",
+   "url": "https://services1.arcgis.com/RbMX0mRVOFNTdLzd/ArcGIS/rest/services/WMD/FeatureServer/0",
+   "field": "IDENTIFIER",
+   "note": "40 parts: dissolve by IDENTIFIER",
+   "licence": "no redistribution without written permission: local use only, as Quebec's zones"
+  }
+ },
+ "AB": [
+  [
+   "00357",
+   "wtd 908, elk 633, moose 195, md 95 (2025)"
+  ],
+  [
+   "00332",
+   "wtd 1,471, elk 115, moose 61 (2025)"
+  ],
+  [
+   "00522",
+   "elk 765, wtd 297, moose 159, bear 114 (2025)"
+  ],
+  [
+   "00359",
+   "elk 723, wtd 373, moose 143, bear 128 (2025)"
+  ],
+  [
+   "00350",
+   "wtd 1,286, moose 70, bear 48 (2025)"
+  ],
+  [
+   "00526",
+   "wtd 445, elk 427, moose 210, md 186 (2025)"
+  ],
+  [
+   "00360",
+   "wtd 748, elk 455, moose 65 (2025)"
+  ],
+  [
+   "00348",
+   "wtd 1,004, moose 103, md 57, elk 57 (2025)"
+  ],
+  [
+   "00521",
+   "elk 485, wtd 469, bear 120, moose 105 (2025)"
+  ],
+  [
+   "00304",
+   "wtd 441, elk 263, md 203 (2025); ~4,870 hunters est."
+  ],
+  [
+   "00527",
+   "elk 393, wtd 367, moose 149, md 115 (2025)"
+  ],
+  [
+   "00312",
+   "wtd 661, elk 292, md 89 (2025)"
+  ],
+  [
+   "00353",
+   "wtd 567, moose 156, md 124, bear 82 (2025)"
+  ],
+  [
+   "00523",
+   "wtd 416, elk 405, moose 89 (2025)"
+  ],
+  [
+   "00358",
+   "elk 432, wtd 291, moose 118 (2025)"
+  ],
+  [
+   "00314",
+   "wtd 736, elk 177, md 61 (2025)"
+  ],
+  [
+   "00305",
+   "wtd 300, md 271, elk 249 (2025); ~4,520 hunters est."
+  ],
+  [
+   "00507",
+   "wtd 747, moose 137, elk 58 (2025)"
+  ],
+  [
+   "00510",
+   "wtd 710, moose 83, elk 83 (2025)"
+  ],
+  [
+   "00336",
+   "wtd 677, moose 97, elk 90 (2025)"
+  ],
+  [
+   "00346",
+   "wtd 621, elk 124, bear 56 (2025)"
+  ],
+  [
+   "00220",
+   "wtd 539, md 134, moose 90 (2025)"
+  ],
+  [
+   "00330",
+   "wtd 767, bear 41 (2025)"
+  ],
+  [
+   "00214",
+   "wtd 500, md 145, elk 104 (2025)"
+  ],
+  [
+   "00300",
+   "wtd 651, md 97, elk 74 (2025)"
+  ]
+ ],
+ "BC": [
+  [
+   "5-2",
+   "md 909, bear 318, wtd 173, moose 163; 42,534 days (2024)"
+  ],
+  [
+   "7-33",
+   "wtd 468, elk 342, md 235, moose 77; 28,116 days (2024)"
+  ],
+  [
+   "4-3",
+   "wtd 759, elk 138, md 64; 28,652 days (2024)"
+  ],
+  [
+   "4-22",
+   "wtd 555, elk 164, md 57; 26,095 days (2024)"
+  ],
+  [
+   "4-20",
+   "wtd 449, elk 129, md 64; 31,121 days (2024)"
+  ],
+  [
+   "7-32",
+   "elk 367, wtd 240, md 52; 25,369 days (2024)"
+  ],
+  [
+   "8-12",
+   "wtd 378, md 162, moose 30; 23,915 days (2024)"
+  ],
+  [
+   "8-14",
+   "wtd 447, md 103, bear 39, moose 32 (2024)"
+  ],
+  [
+   "3-30",
+   "md 487, wtd 54, bear 52 (2024)"
+  ],
+  [
+   "3-27",
+   "md 418, wtd 134, bear 59 (2024)"
+  ],
+  [
+   "1-6",
+   "bt deer 575, bear 58 (2024)"
+  ],
+  [
+   "3-26",
+   "md 349, wtd 125, bear 69 (2024)"
+  ],
+  [
+   "5-1",
+   "md 254, bear 99, wtd 77, moose 55 (2024)"
+  ],
+  [
+   "4-23",
+   "elk 139, wtd 125, md 73; 28,992 days (2024)"
+  ],
+  [
+   "5-14",
+   "md 465, wtd 76 (2024)"
+  ],
+  [
+   "1-10",
+   "bt deer 389, bear 106, elk 48 (2024)"
+  ],
+  [
+   "5-13",
+   "md 230, bear 129, wtd 113, moose 66 (2024)"
+  ],
+  [
+   "1-5",
+   "bt deer 462, bear 47 (2024)"
+  ],
+  [
+   "3-19",
+   "md 334, wtd 68; 21,668 days (2024)"
+  ],
+  [
+   "3-29",
+   "md 382, wtd 67, bear 48 (2024)"
+  ],
+  [
+   "8-23",
+   "wtd 348, md 100 (2024)"
+  ],
+  [
+   "5-3",
+   "md 496, bear 27 (2024)"
+  ],
+  [
+   "8-8",
+   "md 364, wtd 52 (2024)"
+  ],
+  [
+   "8-10",
+   "md 200, wtd 137, bear 55 (2024)"
+  ],
+  [
+   "7-35",
+   "elk 229, wtd 119, md 74 (2024)"
+  ]
+ ],
+ "SK": [
+  [
+   "39",
+   "elk 377, moose 83, md 34 (2025 draw+mgmt); 2026 quota 1,015"
+  ],
+  [
+   "48",
+   "elk 294, moose 156 (2025); quota 605"
+  ],
+  [
+   "21",
+   "elk 233, moose 108, md 44 (2025); quota 425"
+  ],
+  [
+   "33",
+   "elk 309, md 37, moose 20 (2025); quota 825"
+  ],
+  [
+   "47",
+   "elk 210, moose 115 (2025); quota 650"
+  ],
+  [
+   "37",
+   "elk 241, moose 88 (2025); quota 1,025"
+  ],
+  [
+   "1",
+   "elk 152, md 146 (2025); quota 365"
+  ],
+  [
+   "41",
+   "elk 156, moose 79, md 53 (2025); quota 530"
+  ],
+  [
+   "54",
+   "elk 147, moose 83, md 37 (2025); quota 625"
+  ],
+  [
+   "45W",
+   "moose 147, elk 106 (2025); quota 370"
+  ],
+  [
+   "42E",
+   "elk 183, moose 80 (2025); quota 360"
+  ],
+  [
+   "42W",
+   "elk 163, moose 78 (2025); quota 465"
+  ],
+  [
+   "22",
+   "elk 121, moose 77 (2025; elk draw covers 22+30); quota 285"
+  ],
+  [
+   "43",
+   "elk 144, moose 62 (2025); quota 455"
+  ],
+  [
+   "40",
+   "moose 91, elk 81, md 34 (2025); quota 260"
+  ],
+  [
+   "38",
+   "elk 85, moose 64, md 52 (2025); quota 265"
+  ],
+  [
+   "34",
+   "moose 84, elk 80 (2025); quota 285"
+  ],
+  [
+   "46",
+   "moose 119, elk 38 (2025); quota 430"
+  ],
+  [
+   "17",
+   "moose 126, md 51 (2025); quota 280"
+  ],
+  [
+   "49",
+   "elk 94, moose 66 (2025); quota 250"
+  ],
+  [
+   "2E",
+   "md 84, elk 55 (2025); quota 280"
+  ],
+  [
+   "8",
+   "pronghorn 172 (2025; draw covers 8-11); quota 290"
+  ],
+  [
+   "6",
+   "elk 55, md 43, moose 42 (2025; draw covers 6+7E); quota 415"
+  ],
+  [
+   "44",
+   "elk 48, moose 47, md 45 (2025); quota 275"
+  ],
+  [
+   "19",
+   "elk 79, md 46 (2025); quota 250"
+  ]
+ ],
+ "NB": [
+  [
+   "22",
+   "deer 2,077, moose 24 (2025); bear 98 (2021)"
+  ],
+  [
+   "20",
+   "deer 1,328, moose 78 (2025); bear 137 (2021)"
+  ],
+  [
+   "23",
+   "deer 1,340, moose 61 (2025); bear 42 (2021)"
+  ],
+  [
+   "16",
+   "deer 1,008, moose 128 (2025); bear 105 (2021)"
+  ],
+  [
+   "10",
+   "deer 808, moose 51 (2025); bear 98 (2021)"
+  ],
+  [
+   "25",
+   "deer 748, moose 45 (2025); bear 42 (2021)"
+  ],
+  [
+   "6",
+   "deer 496, moose 269 (2025); bear 38 (2021)"
+  ],
+  [
+   "7",
+   "moose 382, deer 238 (2025); bear 52 (2021)"
+  ],
+  [
+   "2",
+   "deer 327, moose 268 (2025); bear 61 (2021)"
+  ],
+  [
+   "19",
+   "deer 552, moose 44 (2025); bear 49 (2021)"
+  ],
+  [
+   "21",
+   "deer 498, moose 49 (2025); bear 68 (2021)"
+  ],
+  [
+   "12",
+   "moose 266, deer 251 (2025); bear 59 (2021)"
+  ],
+  [
+   "17",
+   "deer 447, moose 82 (2025); bear 32 (2021)"
+  ],
+  [
+   "11",
+   "deer 269, moose 204 (2025); bear 46 (2021)"
+  ],
+  [
+   "18",
+   "deer 326, moose 103 (2025); bear 46 (2021)"
+  ],
+  [
+   "3",
+   "moose 317, deer 84 (2025); bear 48 (2021)"
+  ],
+  [
+   "8",
+   "moose 204, deer 180 (2025); bear 60 (2021)"
+  ],
+  [
+   "24",
+   "deer 359, moose 21 (2025); bear 36 (2021)"
+  ],
+  [
+   "15",
+   "deer 224, moose 101 (2025); bear 78 (2021)"
+  ],
+  [
+   "4",
+   "moose 325, deer closed (2025); bear 31 (2021)"
+  ],
+  [
+   "14",
+   "deer 162, moose 95 (2025); bear 29 (2021)"
+  ],
+  [
+   "13",
+   "deer 126, moose 113 (2025); bear 34 (2021)"
+  ],
+  [
+   "5",
+   "moose 219, deer closed (2025); bear 41 (2021)"
+  ],
+  [
+   "27",
+   "deer 237 (2025); no moose or bear season"
+  ],
+  [
+   "1",
+   "deer 115, moose 94 (2025); bear 14 (2021)"
+  ],
+  [
+   "26",
+   "deer 90 (2025); no moose or bear season"
+  ],
+  [
+   "9",
+   "moose 43, deer closed (2025); bear 9 (2021)"
+  ]
+ ],
+ "MB": [
+  [
+   "30",
+   "CWD samples 962 (wtd 897) 2024-26; elk draw ~270 (2026)"
+  ],
+  [
+   "22",
+   "CWD 883 (wtd 816); elk draw ~100"
+  ],
+  [
+   "28",
+   "CWD 542; elk draw ~150, moose ~23"
+  ],
+  [
+   "35A",
+   "CWD 653 (wtd 643)"
+  ],
+  [
+   "35",
+   "CWD 462 (wtd)"
+  ],
+  [
+   "31A",
+   "CWD 229; elk draw ~150, moose ~23"
+  ],
+  [
+   "31",
+   "CWD 383 (wtd)"
+  ],
+  [
+   "27",
+   "CWD 333; moose draw ~23"
+  ],
+  [
+   "17A",
+   "moose draw ~350 (2026)"
+  ],
+  [
+   "23",
+   "CWD 235; elk draw ~94"
+  ],
+  [
+   "9A",
+   "moose draw ~214 (2026)"
+  ],
+  [
+   "23A",
+   "CWD 151; elk draw ~62"
+  ],
+  [
+   "18C",
+   "CWD 115; elk draw ~88"
+  ],
+  [
+   "18B",
+   "CWD 126; elk draw ~66"
+  ],
+  [
+   "25",
+   "elk draw ~170; CWD 11"
+  ],
+  [
+   "29",
+   "CWD 105; elk draw ~75"
+  ],
+  [
+   "21",
+   "elk draw ~170 (2026)"
+  ],
+  [
+   "18A",
+   "CWD 101; elk draw ~72"
+  ],
+  [
+   "7",
+   "moose draw ~150 (2026)"
+  ],
+  [
+   "7A",
+   "moose draw ~150 (2026)"
+  ],
+  [
+   "4",
+   "moose draw ~150 (2026)"
+  ],
+  [
+   "13A",
+   "CWD 89; elk draw ~53"
+  ],
+  [
+   "18",
+   "CWD 64; elk draw ~72"
+  ],
+  [
+   "9",
+   "general moose ~128 lic (est., 895 split over 7 areas)"
+  ],
+  [
+   "17",
+   "general moose ~128 lic (est.)"
+  ]
+ ],
+ "NS": [
+  [
+   "107",
+   "deer 2,119 (2025)"
+  ],
+  [
+   "101",
+   "deer 2,108 (2025)"
+  ],
+  [
+   "103",
+   "deer 1,607 (2025); 2026 antlerless stamps 2,200"
+  ],
+  [
+   "102",
+   "deer 964 (2025)"
+  ],
+  [
+   "109",
+   "deer 954 (2025)"
+  ],
+  [
+   "111",
+   "deer 753 (2025)"
+  ],
+  [
+   "106",
+   "deer 683 (2025)"
+  ],
+  [
+   "104",
+   "deer 596 (2025)"
+  ],
+  [
+   "108",
+   "deer 537 (2025)"
+  ],
+  [
+   "110",
+   "deer 495 (2025)"
+  ],
+  [
+   "105",
+   "deer 417 (2025)"
+  ],
+  [
+   "112",
+   "deer 112 (2025)"
+  ]
+ ],
+ "NL": [
+  [
+   "6",
+   "moose ~906 est. (2024); quota 1,450 (2026)"
+  ],
+  [
+   "5",
+   "moose ~734 est. (2024); quota 1,325"
+  ],
+  [
+   "15",
+   "moose ~674 est.; quota 1,200"
+  ],
+  [
+   "14",
+   "moose ~655 est.; quota 900"
+  ],
+  [
+   "2",
+   "moose ~626 est.; quota 950"
+  ],
+  [
+   "40",
+   "moose ~613 est.; quota 1,000"
+  ],
+  [
+   "45",
+   "moose ~609 est.; quota 900"
+  ],
+  [
+   "22",
+   "moose ~590 est.; quota 850"
+  ],
+  [
+   "36",
+   "moose ~568 est.; quota 1,230"
+  ],
+  [
+   "3",
+   "moose ~539 est.; quota 1,100"
+  ],
+  [
+   "10",
+   "moose ~532 est.; quota 725"
+  ],
+  [
+   "8",
+   "moose ~517 est.; quota 870"
+  ],
+  [
+   "17",
+   "moose ~496 est.; quota 650"
+  ],
+  [
+   "4",
+   "moose ~491 est.; quota 725"
+  ],
+  [
+   "7",
+   "moose ~489 est.; quota 750"
+  ],
+  [
+   "23",
+   "moose ~452 est.; quota 700"
+  ],
+  [
+   "11",
+   "moose ~448 est.; quota 660"
+  ],
+  [
+   "29",
+   "moose ~444 est.; quota 700"
+  ],
+  [
+   "30",
+   "moose ~384 est.; quota 725"
+  ],
+  [
+   "25",
+   "moose ~355 est.; quota 525"
+  ],
+  [
+   "1",
+   "moose ~348 est.; quota 550"
+  ],
+  [
+   "19",
+   "moose ~324 est.; quota 450"
+  ],
+  [
+   "9",
+   "moose ~318 est.; quota 480"
+  ],
+  [
+   "34",
+   "moose ~304 est.; quota 530"
+  ],
+  [
+   "38",
+   "moose ~301 est.; quota 350"
+  ]
+ ],
+ "YT": [
+  [
+   "4",
+   "moose ~161 (2022, summed by eye from scanned tables)"
+  ],
+  [
+   "11",
+   "moose ~101 (2022)"
+  ],
+  [
+   "8",
+   "proxy, no data: Whitehorse (813), general moose season"
+  ],
+  [
+   "5",
+   "proxy: Carmacks; 42 moose permits (2026)"
+  ],
+  [
+   "10",
+   "proxy: Teslin"
+  ],
+  [
+   "2",
+   "proxy: Dawson/Dempster"
+  ],
+  [
+   "7",
+   "proxy: moose permit-only 7-01..7-29 (26 permits)"
+  ],
+  [
+   "9",
+   "proxy: Southern Lakes; moose permit-only 9-01..9-07"
+  ]
+ ],
+ "NT": [
+  [
+   "R",
+   "proxy: Yellowknife 5,139 + Tlicho 1,056 hunted/fished (2023)"
+  ],
+  [
+   "I",
+   "proxy: Beaufort Delta 2,636 hunted/fished (2023, shared with G)"
+  ],
+  [
+   "G",
+   "proxy: Beaufort Delta (shared with I); resident caribou G/BC/01, G/BC/03"
+  ],
+  [
+   "D",
+   "proxy: Dehcho 1,262 hunted/fished (2023)"
+  ],
+  [
+   "U",
+   "proxy: ~1,134 hunted/fished (2023); caribou U/BC/01"
+  ],
+  [
+   "S",
+   "proxy: Sahtu 1,053 hunted/fished (2023)"
+  ]
+ ],
+ "US-TX": [
+  [
+   "08 East",
+   "deer 83,981 (2017-18 est.)"
+  ],
+  [
+   "06",
+   "deer 81,813 (2017-18 est.)"
+  ],
+  [
+   "05",
+   "deer 80,367 (2017-18 est.)"
+  ],
+  [
+   "14",
+   "deer 47,411 (2017-18 est.)"
+  ],
+  [
+   "11",
+   "deer 46,544 (2017-18 est.)"
+  ],
+  [
+   "08 West",
+   "deer 41,195 (2017-18 est.)"
+  ],
+  [
+   "23",
+   "deer 40,762 (2017-18 est.)"
+  ],
+  [
+   "07 North",
+   "deer 39,027 (2017-18 est.)"
+  ],
+  [
+   "04",
+   "deer 35,125 (2017-18 est.)"
+  ],
+  [
+   "27",
+   "deer 31,945 (2017-18 est.)"
+  ],
+  [
+   "07 South",
+   "deer 31,511 (2017-18 est.)"
+  ],
+  [
+   "25",
+   "deer 30,065 (2017-18 est.)"
+  ],
+  [
+   "09",
+   "deer 22,983 (2017-18 est.)"
+  ],
+  [
+   "30",
+   "deer 21,393 (2017-18 est.)"
+  ],
+  [
+   "24",
+   "deer 20,525 (2017-18 est.)"
+  ],
+  [
+   "29 South",
+   "deer 20,381 (2017-18 est.)"
+  ],
+  [
+   "25 South",
+   "deer 19,803 (2017-18 est.)"
+  ],
+  [
+   "12",
+   "deer 16,767 (2017-18 est.)"
+  ],
+  [
+   "19 South",
+   "deer 15,611 (2017-18 est.)"
+  ],
+  [
+   "10",
+   "deer 15,466 (2017-18 est.)"
+  ]
+ ],
+ "US-PA": [
+  [
+   "2D",
+   "deer 42,300 (2025-26), bear 175"
+  ],
+  [
+   "2C",
+   "deer 34,400 (2025-26), bear 106"
+  ],
+  [
+   "5B",
+   "deer 30,100 (2025-26)"
+  ],
+  [
+   "1B",
+   "deer 28,700 (2025-26)"
+  ],
+  [
+   "2F",
+   "deer 26,500 (2025-26), bear 228"
+  ],
+  [
+   "5C",
+   "deer 26,100 (2025-26)"
+  ],
+  [
+   "1A",
+   "deer 25,800 (2025-26)"
+  ],
+  [
+   "4E",
+   "deer 25,000 (2025-26)"
+  ],
+  [
+   "4D",
+   "deer 24,800 (2025-26), bear 152"
+  ],
+  [
+   "2B",
+   "deer 24,000 (2025-26)"
+  ],
+  [
+   "4C",
+   "deer 23,300 (2025-26), bear 189"
+  ],
+  [
+   "3C",
+   "deer 22,700 (2025-26), bear 204"
+  ],
+  [
+   "2A",
+   "deer 22,000 (2025-26)"
+  ],
+  [
+   "3B",
+   "deer 22,000 (2025-26), bear 300"
+  ],
+  [
+   "4B",
+   "deer 21,100 (2025-26)"
+  ],
+  [
+   "2E",
+   "deer 20,200 (2025-26)"
+  ],
+  [
+   "2G",
+   "deer 19,900 (2025-26), bear 488 (top)"
+  ],
+  [
+   "3D",
+   "deer 15,600 (2025-26), bear 416"
+  ],
+  [
+   "3A",
+   "deer 14,500 (2025-26), bear 206"
+  ],
+  [
+   "4A",
+   "deer 13,500 (2025-26)"
+  ]
+ ],
+ "US-MI": [
+  [
+   "332",
+   "deer 22,878 (2024 est.; 31,508 hunters)"
+  ],
+  [
+   "312",
+   "deer 11,912 (2024 est.)"
+  ],
+  [
+   "311",
+   "deer 11,779 (2024 est.)"
+  ],
+  [
+   "037",
+   "deer 8,663 (2024 est.)"
+  ],
+  [
+   "062",
+   "deer 8,641 (2024 est.; 15,375 hunters)"
+  ],
+  [
+   "003",
+   "deer 8,568 (2024 est.)"
+  ],
+  [
+   "019",
+   "deer 8,550 (2024 est.)"
+  ],
+  [
+   "038",
+   "deer 8,435 (2024 est.)"
+  ],
+  [
+   "059",
+   "deer 8,422 (2024 est.)"
+  ],
+  [
+   "055",
+   "deer 8,292 (2024 est.)"
+  ],
+  [
+   "034",
+   "deer 7,560 (2024 est.)"
+  ],
+  [
+   "067",
+   "deer 7,514 (2024 est.)"
+  ],
+  [
+   "078",
+   "deer 7,344 (2024 est.)"
+  ],
+  [
+   "053",
+   "deer 7,336 (2024 est.)"
+  ],
+  [
+   "054",
+   "deer 7,323 (2024 est.)"
+  ],
+  [
+   "044",
+   "deer 7,218 (2024 est.)"
+  ],
+  [
+   "030",
+   "deer 7,092 (2024 est.)"
+  ],
+  [
+   "029",
+   "deer 6,761 (2024 est.)"
+  ],
+  [
+   "033",
+   "deer 6,730 (2024 est.)"
+  ],
+  [
+   "041",
+   "deer 6,692 (2024 est.; 12,297 hunters)"
+  ]
+ ],
+ "US-WI": [
+  [
+   "Marathon",
+   "deer 12,041 (2025)"
+  ],
+  [
+   "Waupaca",
+   "deer 10,740 (2025)"
+  ],
+  [
+   "Shawano",
+   "deer 9,880 (2025)"
+  ],
+  [
+   "Vernon",
+   "deer 9,561 (2025)"
+  ],
+  [
+   "Dunn",
+   "deer 9,118 (2025)"
+  ],
+  [
+   "Clark",
+   "deer 8,849 (2025)"
+  ],
+  [
+   "Waushara",
+   "deer 8,678 (2025)"
+  ],
+  [
+   "Portage",
+   "deer 8,384 (2025)"
+  ],
+  [
+   "Monroe",
+   "deer 8,137 (2025)"
+  ],
+  [
+   "Polk",
+   "deer 8,091 (2025)"
+  ],
+  [
+   "Marquette",
+   "deer 7,790 (2025)"
+  ],
+  [
+   "Marinette",
+   "deer 7,552 (2025)"
+  ],
+  [
+   "Oconto",
+   "deer 7,277 (2025)"
+  ],
+  [
+   "Columbia",
+   "deer 7,189 (2025)"
+  ],
+  [
+   "Trempealeau",
+   "deer 7,151 (2025)"
+  ],
+  [
+   "Barron",
+   "deer 6,376 (2025)"
+  ],
+  [
+   "Chippewa",
+   "deer 6,315 (2025)"
+  ],
+  [
+   "Adams",
+   "deer 6,148 (2025)"
+  ],
+  [
+   "Sauk",
+   "deer 6,025 (2025)"
+  ],
+  [
+   "Buffalo",
+   "deer 5,806 (2025)"
+  ]
+ ],
+ "US-GA": [
+  [
+   "Burke",
+   "deer 3,322 checked (2025-26)"
+  ],
+  [
+   "Washington",
+   "deer 3,230 (2025-26)"
+  ],
+  [
+   "Laurens",
+   "deer 3,101 (2025-26)"
+  ],
+  [
+   "Hancock",
+   "deer 3,095 (2025-26)"
+  ],
+  [
+   "Floyd",
+   "deer 2,953 (2025-26)"
+  ],
+  [
+   "Meriwether",
+   "deer 2,942 (2025-26)"
+  ],
+  [
+   "Gordon",
+   "deer 2,894 (2025-26)"
+  ],
+  [
+   "Hall",
+   "deer 2,874 (2025-26)"
+  ],
+  [
+   "Wilkes",
+   "deer 2,775 (2025-26)"
+  ],
+  [
+   "Cherokee",
+   "deer 2,506 (2025-26)"
+  ],
+  [
+   "Bartow",
+   "deer 2,505 (2025-26)"
+  ],
+  [
+   "Oglethorpe",
+   "deer 2,394 (2025-26)"
+  ],
+  [
+   "Carroll",
+   "deer 2,360 (2025-26)"
+  ],
+  [
+   "Stewart",
+   "deer 2,342 (2025-26)"
+  ],
+  [
+   "Coweta",
+   "deer 2,260 (2025-26)"
+  ],
+  [
+   "Jefferson",
+   "deer 2,185 (2025-26)"
+  ],
+  [
+   "Greene",
+   "deer 2,153 (2025-26)"
+  ],
+  [
+   "Jackson",
+   "deer 2,133 (2025-26)"
+  ],
+  [
+   "Walker",
+   "deer 2,098 (2025-26)"
+  ],
+  [
+   "Madison",
+   "deer 2,078 (2025-26)"
+  ]
+ ],
+ "US-AL": [
+  [
+   "Baldwin",
+   "deer 5,891 (~2023-24, unofficial)"
+  ],
+  [
+   "Dallas",
+   "deer 5,629 (~2023-24, unofficial)"
+  ],
+  [
+   "Tuscaloosa",
+   "deer 5,330 (~2023-24)"
+  ],
+  [
+   "Bullock",
+   "deer 4,969 (~2023-24)"
+  ],
+  [
+   "Russell",
+   "deer 4,958 (~2023-24)"
+  ],
+  [
+   "Barbour",
+   "deer 4,773 (~2023-24)"
+  ],
+  [
+   "Clarke",
+   "deer 4,399 (~2023-24)"
+  ],
+  [
+   "Jackson",
+   "deer 4,258 (~2023-24)"
+  ],
+  [
+   "Covington",
+   "deer 4,211 (~2023-24)"
+  ],
+  [
+   "Montgomery",
+   "deer 4,172 (~2023-24)"
+  ],
+  [
+   "Pickens",
+   "deer 3,967 (~2023-24)"
+  ],
+  [
+   "Henry",
+   "deer 3,948 (~2023-24)"
+  ],
+  [
+   "Butler",
+   "deer 3,907 (~2023-24)"
+  ],
+  [
+   "Walker",
+   "deer 3,876 (~2023-24)"
+  ],
+  [
+   "Wilcox",
+   "deer 3,793 (~2023-24)"
+  ],
+  [
+   "Bibb",
+   "deer 3,700 (~2023-24)"
+  ],
+  [
+   "Crenshaw",
+   "deer 3,678 (~2023-24)"
+  ],
+  [
+   "Lamar",
+   "deer 3,592 (~2023-24)"
+  ],
+  [
+   "Pike",
+   "deer 3,445 (~2023-24)"
+  ],
+  [
+   "Monroe",
+   "deer 3,423 (~2023-24)"
+  ]
+ ],
+ "US-MO": [
+  [
+   "Franklin",
+   "deer 6,751 (2025-26)"
+  ],
+  [
+   "Howell",
+   "deer 5,474 (2025-26)"
+  ],
+  [
+   "Callaway",
+   "deer 5,197 (2025-26)"
+  ],
+  [
+   "Jefferson",
+   "deer 5,173 (2025-26)"
+  ],
+  [
+   "Texas",
+   "deer 4,974 (2025-26)"
+  ],
+  [
+   "Pike",
+   "deer 4,848 (2025-26)"
+  ],
+  [
+   "Macon",
+   "deer 4,525 (2025-26)"
+  ],
+  [
+   "Lincoln",
+   "deer 4,503 (2025-26)"
+  ],
+  [
+   "Benton",
+   "deer 4,228 (2025-26)"
+  ],
+  [
+   "Oregon",
+   "deer 4,176 (2025-26)"
+  ],
+  [
+   "Wayne",
+   "deer 4,081 (2025-26)"
+  ],
+  [
+   "Gasconade",
+   "deer 4,073 (2025-26)"
+  ],
+  [
+   "Bollinger",
+   "deer 3,992 (2025-26)"
+  ],
+  [
+   "Morgan",
+   "deer 3,962 (2025-26)"
+  ],
+  [
+   "Monroe",
+   "deer 3,749 (2025-26)"
+  ],
+  [
+   "Osage",
+   "deer 3,740 (2025-26)"
+  ],
+  [
+   "Camden",
+   "deer 3,714 (2025-26)"
+  ],
+  [
+   "Douglas",
+   "deer 3,695 (2025-26)"
+  ],
+  [
+   "Crawford",
+   "deer 3,667 (2025-26)"
+  ],
+  [
+   "Wright",
+   "deer 3,625 (2025-26)"
+  ]
+ ],
+ "US-TN": [
+  [
+   "Sumner",
+   "deer 3,571 (2025-26)"
+  ],
+  [
+   "Giles",
+   "deer 3,377 (2025-26; 4,338 in 2024-25)"
+  ],
+  [
+   "Lawrence",
+   "deer 3,085 (2025-26)"
+  ],
+  [
+   "Henry",
+   "deer 3,049 (2025-26)"
+  ],
+  [
+   "Sullivan",
+   "deer 2,808 (2025-26)"
+  ],
+  [
+   "Weakley",
+   "deer 2,803 (2025-26)"
+  ],
+  [
+   "Wilson",
+   "deer 2,768 (2025-26)"
+  ],
+  [
+   "Lincoln",
+   "deer 2,746 (2025-26)"
+  ],
+  [
+   "Montgomery",
+   "deer 2,694 (2025-26)"
+  ],
+  [
+   "Franklin",
+   "deer 2,549 (2025-26)"
+  ],
+  [
+   "Carroll",
+   "deer 2,537 (2025-26)"
+  ],
+  [
+   "Maury",
+   "deer 2,421 (2025-26)"
+  ],
+  [
+   "Cumberland",
+   "deer 2,400 (2025-26)"
+  ],
+  [
+   "Hawkins",
+   "deer 2,383 (2025-26)"
+  ],
+  [
+   "Robertson",
+   "deer 2,294 (2025-26)"
+  ],
+  [
+   "Fayette",
+   "deer 2,158 (2025-26)"
+  ],
+  [
+   "Dickson",
+   "deer 2,121 (2025-26)"
+  ],
+  [
+   "Smith",
+   "deer 2,102 (2025-26)"
+  ],
+  [
+   "Roane",
+   "deer 2,052 (2025-26)"
+  ],
+  [
+   "Hamilton",
+   "deer 2,013 (2025-26)"
+  ]
+ ],
+ "US-NC": [
+  [
+   "Randolph",
+   "deer 5,349 (2025-26)"
+  ],
+  [
+   "Anson",
+   "deer 4,254 (2025-26)"
+  ],
+  [
+   "Rockingham",
+   "deer 4,033 (2025-26)"
+  ],
+  [
+   "Cleveland",
+   "deer 3,948 (2025-26)"
+  ],
+  [
+   "Rutherford",
+   "deer 3,802 (2025-26)"
+  ],
+  [
+   "Union",
+   "deer 3,783 (2025-26)"
+  ],
+  [
+   "Northampton",
+   "deer 3,683 (2025-26)"
+  ],
+  [
+   "Halifax",
+   "deer 3,657 (2025-26)"
+  ],
+  [
+   "Davidson",
+   "deer 3,527 (2025-26)"
+  ],
+  [
+   "Stanly",
+   "deer 3,371 (2025-26)"
+  ],
+  [
+   "Moore",
+   "deer 3,360 (2025-26)"
+  ],
+  [
+   "Wilkes",
+   "deer 3,328 (2025-26)"
+  ],
+  [
+   "Pender",
+   "deer 3,271 (2025-26)"
+  ],
+  [
+   "Rowan",
+   "deer 3,203 (2025-26)"
+  ],
+  [
+   "Stokes",
+   "deer 3,192 (2025-26)"
+  ],
+  [
+   "Iredell",
+   "deer 3,133 (2025-26)"
+  ],
+  [
+   "Granville",
+   "deer 3,125 (2025-26)"
+  ],
+  [
+   "Surry",
+   "deer 3,094 (2025-26)"
+  ],
+  [
+   "Bertie",
+   "deer 3,085, bear 117 (2025)"
+  ],
+  [
+   "Craven",
+   "deer 3,034 (2025-26)"
+  ]
+ ],
+ "US-NY": [
+  [
+   "9H",
+   "deer 8,177 (2025)"
+  ],
+  [
+   "8G",
+   "deer 7,080 (2025)"
+  ],
+  [
+   "7M",
+   "deer 6,939 (2025)"
+  ],
+  [
+   "9J",
+   "deer 6,909 (2025)"
+  ],
+  [
+   "8F",
+   "deer 5,893 (2025)"
+  ],
+  [
+   "8H",
+   "deer 5,850 (2025)"
+  ],
+  [
+   "6G",
+   "deer 5,715 (2025)"
+  ],
+  [
+   "8X",
+   "deer 5,696 (2025)"
+  ],
+  [
+   "4F",
+   "deer 5,439 (2025)"
+  ],
+  [
+   "7J",
+   "deer 5,438 (2025)"
+  ],
+  [
+   "7R",
+   "deer 5,114 (2025)"
+  ],
+  [
+   "9P",
+   "deer 4,912 (2025)"
+  ],
+  [
+   "8J",
+   "deer 4,910 (2025)"
+  ],
+  [
+   "3M",
+   "deer 4,862 (2025)"
+  ],
+  [
+   "8R",
+   "deer 4,629 (2025)"
+  ],
+  [
+   "7S",
+   "deer 4,611 (2025)"
+  ],
+  [
+   "6A",
+   "deer 4,568 (2025)"
+  ],
+  [
+   "8T",
+   "deer 4,401 (2025)"
+  ],
+  [
+   "6K",
+   "deer 4,282 (2025)"
+  ],
+  [
+   "8N",
+   "deer 4,121 (2025)"
+  ]
+ ],
+ "US-MN": [
+  [
+   "241",
+   "deer 7,163 (2025)"
+  ],
+  [
+   "213",
+   "deer 6,423 (2025)"
+  ],
+  [
+   "225",
+   "deer 5,598 (2025)"
+  ],
+  [
+   "215",
+   "deer 5,267 (2025)"
+  ],
+  [
+   "240",
+   "deer 5,068 (2025)"
+  ],
+  [
+   "221",
+   "deer 4,908 (2025)"
+  ],
+  [
+   "214",
+   "deer 4,781 (2025)"
+  ],
+  [
+   "157",
+   "deer 4,606 (2025)"
+  ],
+  [
+   "277",
+   "deer 4,575 (2025)"
+  ],
+  [
+   "227",
+   "deer 4,198 (2025)"
+  ],
+  [
+   "649",
+   "deer 3,806 (2025)"
+  ],
+  [
+   "218",
+   "deer 3,769 (2025)"
+  ],
+  [
+   "239",
+   "deer 3,595 (2025)"
+  ],
+  [
+   "604",
+   "deer 3,509 (2025)"
+  ],
+  [
+   "643",
+   "deer 3,469 (2025)"
+  ],
+  [
+   "222",
+   "deer 3,420 (2025)"
+  ],
+  [
+   "341",
+   "deer 3,312 (2025)"
+  ],
+  [
+   "684",
+   "deer 3,267 (2025)"
+  ],
+  [
+   "246",
+   "deer 3,143 (2025)"
+  ],
+  [
+   "249",
+   "deer 3,126 (2025)"
+  ]
+ ],
+ "US-CO": [
+  [
+   "70",
+   "elk 1,275, deer 859 (2024)"
+  ],
+  [
+   "62",
+   "elk 1,024, deer 599; 5,669 elk hunters (2024)"
+  ],
+  [
+   "81",
+   "elk 882, deer 295 (2024)"
+  ],
+  [
+   "78",
+   "elk 731, deer 567 (2024)"
+  ],
+  [
+   "77",
+   "elk 683, deer 612 (2024)"
+  ],
+  [
+   "65",
+   "elk 755, deer 270, bear 66 (2024)"
+  ],
+  [
+   "22",
+   "elk 770, deer 293 (2024)"
+  ],
+  [
+   "42",
+   "elk 659, deer 453 (2024)"
+  ],
+  [
+   "421",
+   "elk 657, deer 406, bear 72 (2024)"
+  ],
+  [
+   "12",
+   "elk 755, deer 147 (2024)"
+  ],
+  [
+   "80",
+   "elk 673, deer 304 (2024)"
+  ],
+  [
+   "85",
+   "elk 614, deer 351 (2024)"
+  ],
+  [
+   "61",
+   "elk 727, deer 137 (2024)"
+  ],
+  [
+   "11",
+   "elk 623, deer 288 (2024)"
+  ],
+  [
+   "20",
+   "elk 355, deer 811 (2024)"
+  ],
+  [
+   "18",
+   "elk 662, moose 21; 4,997 elk hunters (2024)"
+  ],
+  [
+   "54",
+   "elk 498, deer 371 (2024)"
+  ],
+  [
+   "66",
+   "elk 503, deer 346 (2024)"
+  ],
+  [
+   "15",
+   "elk 407, deer 502; 3,738 elk hunters (2024)"
+  ],
+  [
+   "82",
+   "elk 521, deer 210 (2024)"
+  ]
+ ],
+ "US-MT": [
+  [
+   "590",
+   "elk 766, deer 1,734 (2025)"
+  ],
+  [
+   "704",
+   "elk 492, deer 2,421 (2025)"
+  ],
+  [
+   "411",
+   "elk 845, deer 1,225 (2025)"
+  ],
+  [
+   "700",
+   "elk 588, deer 1,495 (2025)"
+  ],
+  [
+   "580",
+   "elk 802, deer 727 (2025)"
+  ],
+  [
+   "323",
+   "elk 748, deer 671; 5,015 elk hunters (2025)"
+  ],
+  [
+   "705",
+   "elk 145, deer 2,261 (2025)"
+  ],
+  [
+   "320",
+   "elk 451, deer 1,305 (2025)"
+  ],
+  [
+   "331",
+   "elk 689, deer 576 (2025)"
+  ],
+  [
+   "690",
+   "elk 349, deer 1,544 (2025)"
+  ],
+  [
+   "525",
+   "elk 421, deer 1,198 (2025)"
+  ],
+  [
+   "445",
+   "elk 521, deer 879 (2025)"
+  ],
+  [
+   "413",
+   "elk 374, deer 1,263 (2025)"
+  ],
+  [
+   "360",
+   "elk 629, deer 483 (2025)"
+  ],
+  [
+   "270",
+   "elk 621, deer 395 (2025)"
+  ],
+  [
+   "416",
+   "elk 563, deer 501 (2025)"
+  ],
+  [
+   "103",
+   "elk 154, deer 1,715; 5,147 deer hunters (2025)"
+  ],
+  [
+   "701",
+   "elk 139, deer 1,711 (2025)"
+  ],
+  [
+   "393",
+   "elk 507, deer 598 (2025)"
+  ],
+  [
+   "515",
+   "elk 340, deer 1,095 (2025)"
+  ]
+ ],
+ "US-ID": [
+  [
+   "39",
+   "elk 855, deer 3,060; 5,863 elk hunters (2025)"
+  ],
+  [
+   "1",
+   "elk 454, deer 3,242 (2025)"
+  ],
+  [
+   "10A",
+   "elk 478, deer 2,862 (2025)"
+  ],
+  [
+   "6",
+   "elk 609, deer 1,559 (2025)"
+  ],
+  [
+   "8A",
+   "elk 580, deer 1,548 (2025)"
+  ],
+  [
+   "60",
+   "elk 743, deer 802 (2025)"
+  ],
+  [
+   "22",
+   "elk 662, deer 497 (2025)"
+  ],
+  [
+   "5",
+   "elk 462, deer 1,075 (2025)"
+  ],
+  [
+   "76",
+   "elk 539, deer 716 (2025)"
+  ],
+  [
+   "3",
+   "elk 344, deer 1,294 (2025)"
+  ],
+  [
+   "4",
+   "elk 527, deer 743; 5,174 elk hunters (2025)"
+  ],
+  [
+   "32",
+   "elk 407, deer 916 (2025)"
+  ],
+  [
+   "66",
+   "elk 591, deer 130 (2025)"
+  ],
+  [
+   "23",
+   "elk 490, deer 360 (2025)"
+  ],
+  [
+   "32A",
+   "elk 444, deer 452 (2025)"
+  ],
+  [
+   "69",
+   "elk 425, deer 430, moose 28 (2025)"
+  ],
+  [
+   "2",
+   "elk 85, deer 1,392 (2025)"
+  ],
+  [
+   "36A",
+   "elk 467, deer 239 (2025)"
+  ],
+  [
+   "31",
+   "elk 435, deer 324 (2025)"
+  ],
+  [
+   "49",
+   "elk 296, deer 729 (2025)"
+  ]
+ ],
+ "US-WY": [
+  [
+   "elk:7",
+   "elk 2,386; 5,140 hunters (2025)"
+  ],
+  [
+   "elk:21",
+   "elk 1,400 (2025)"
+  ],
+  [
+   "elk:129",
+   "elk 1,087 (2025)"
+  ],
+  [
+   "elk:67",
+   "elk 953 (2025)"
+  ],
+  [
+   "deer:24",
+   "whitetail 1,428 + mule deer 252 (2025)"
+  ],
+  [
+   "deer:2",
+   "whitetail 1,182 + mule deer 339 (2025)"
+  ],
+  [
+   "elk:117",
+   "elk 664 (2025)"
+  ],
+  [
+   "elk:106",
+   "elk 625 (2025)"
+  ],
+  [
+   "elk:6",
+   "elk 614 (2025)"
+  ],
+  [
+   "elk:110",
+   "elk 596; 2,164 hunters (2025)"
+  ],
+  [
+   "elk:104",
+   "elk 588 (2025)"
+  ],
+  [
+   "elk:16",
+   "elk 562 (2025)"
+  ],
+  [
+   "elk:12",
+   "elk 561 (2025)"
+  ],
+  [
+   "elk:102",
+   "elk 559 (2025)"
+  ],
+  [
+   "deer:15",
+   "mule deer 737 + whitetail 370 (2025)"
+  ],
+  [
+   "elk:94",
+   "elk 548 (2025)"
+  ],
+  [
+   "deer:23",
+   "whitetail 640 + mule deer 441 (2025)"
+  ],
+  [
+   "elk:61",
+   "elk 537 (2025)"
+  ],
+  [
+   "elk:91",
+   "elk 516 (2025)"
+  ],
+  [
+   "antelope:23",
+   "pronghorn 1,992 (2025)"
+  ],
+  [
+   "moose:38",
+   "moose 53 (2025)"
+  ]
+ ],
+ "US-ME": [
+  [
+   "4",
+   "moose 269/500 permits + 4A 140/520, bear 270 (2025)"
+  ],
+  [
+   "1",
+   "moose 382/625 permits, bear 144 (2025)"
+  ],
+  [
+   "2",
+   "moose 342/525, bear 154 (2025)"
+  ],
+  [
+   "8",
+   "moose 223/350, bear 337 (2025)"
+  ],
+  [
+   "17",
+   "deer ~8,025 est., bear 59 (2025)"
+  ],
+  [
+   "5",
+   "moose 251/375, bear 248 (2025)"
+  ],
+  [
+   "6",
+   "moose 181/260, bear 248 (2025)"
+  ],
+  [
+   "3",
+   "moose 184/325, bear 214 (2025)"
+  ],
+  [
+   "23",
+   "deer ~5,108 est. (2025)"
+  ],
+  [
+   "7",
+   "moose 93/125, bear 212, deer ~1,094 est. (2025)"
+  ],
+  [
+   "26",
+   "deer ~4,399 est. (2025)"
+  ],
+  [
+   "16",
+   "deer ~4,395 est. (2025)"
+  ],
+  [
+   "22",
+   "deer ~4,134 est. (2025)"
+  ],
+  [
+   "15",
+   "deer ~3,620 est. (2025)"
+  ],
+  [
+   "11",
+   "moose 36/50, bear 269 (2025)"
+  ],
+  [
+   "25",
+   "deer ~3,853 est. (2025)"
+  ],
+  [
+   "21",
+   "deer ~3,708 est. (2025)"
+  ],
+  [
+   "20",
+   "deer ~3,631 est. (2025)"
+  ],
+  [
+   "9",
+   "moose 82/125, bear 154 (2025)"
+  ],
+  [
+   "12",
+   "deer ~1,470 est., bear 201 (2025)"
+  ]
+ ]
+}
