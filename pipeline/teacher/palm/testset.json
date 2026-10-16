@@ -1,5 +1,5 @@
 {
- "version": 2,
+ "version": 3,
  "doc": "docs/SCENT-TESTSET.md",
  "frozen": "2026-10-15",
  "measure": {
@@ -33,7 +33,9 @@
   "W6":  {"box": "whitefish", "source": "W6 creek trough floor", "h": 1.5, "situation": "drainage floor", "anchor": ""},
   "W8":  {"box": "whitefish", "source": "W8 over the water off the S shore", "h": 1.5, "situation": "tree line from water", "anchor": ""},
   "W9":  {"box": "whitefish", "source": "W9 head of the arm", "h": 1.5, "situation": "tree line facing the water", "anchor": "Gavan's pick, 2026-10-15"},
-  "W10": {"box": "whitefish", "source": "W10 clearing on the neck", "h": 1.5, "situation": "gap between two waters", "anchor": "Gavan's pick, 2026-10-15"}
+  "W10": {"box": "whitefish", "source": "W10 clearing on the neck", "h": 1.5, "situation": "gap between two waters", "anchor": "Gavan's pick, 2026-10-15"},
+  "G1":  {"box": "lacbailey-spot", "source": "Gavan's spot 15 Oct 20:00 1.5", "h": 1.5, "situation": "steep slope, stable, crossing wind", "anchor": "Gavan's ask, 2026-10-15 20:00 (the app 271 m)"},
+  "G1s": {"box": "lacbailey-spot", "source": "Gavan's spot 15 Oct 20:00 5", "h": 5.0, "situation": "5 m stand", "anchor": "Gavan's ask"}
  },
  "boxes": {
   "pickle-slot":     {"area": "pickle-lake", "held_out": false,
@@ -46,13 +48,16 @@
   "lacbailey-bank":  {"area": "lac-bailey", "held_out": true,
                       "runs": ["lacbailey-bank_n000_4m_scent", "lacbailey-bank_s180_4m_scent", "lacbailey-bank_dusk000_4m_scent"]},
   "whitefish":       {"area": "whitefish-lake", "held_out": true,
-                      "runs": ["whitefish_s210_4m", "whitefish_n000_4m", "whitefish_dusk210_4m"]}
+                      "runs": ["whitefish_s210_4m", "whitefish_n000_4m", "whitefish_dusk210_4m"]},
+  "lacbailey-spot":  {"area": "lac-bailey", "held_out": true,
+                      "runs": ["lacbailey-spot_d326_4m_scent"]}
  },
  "notes": [
   "A run is named as postprocess.py names its products: fields/<run>_scent.json (PALM's bands) and fields/<run>.npz (its wind).",
   "One run per wind per box, at 4 m (2 m only to confirm a narrow feature). The slot also carries nw315 and am270, run with particles before the set was frozen.",
   "A run that has not landed is listed as pending and left out of the score.",
   "Whitefish (held out) joined 2026-10-15 with Gavan's OK: W1-W6 and W8 picked from the 1 m LiDAR, W9 and W10 his own; W7 (the S pond's marsh basin) dropped for ten sources. Its points are tested within v1 (pending until their runs land), so v1 scores before its runs land compare only on the other boxes.",
-  "Changing a point, a run or the measure makes a new version; scores of different versions do not compare."
+  "Changing a point, a run or the measure makes a new version; scores of different versions do not compare.",
+  "v3 (2026-10-16): Gavan's Lac Bailey spot joins as G1/G1s (held out): PALM had its floor follow the NW wind (head height from 307, 0.24 m/s; ambient 4.4 km/h from 329) where the app called drainage from 229, and its scent SE to 115 m (some minutes) where the app had NE to 226 m."
  ]
 }

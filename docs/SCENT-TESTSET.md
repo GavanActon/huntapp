@@ -310,7 +310,7 @@ ledger books runs: the question, the number that settles it, and the app change 
 
 | run | question | settles when | app change |
 |---|---|---|---|
-| lacbailey-spot d326 (Gavan's ask, 2026-10-15, `explore`, product priority on xonix) | At 49.39427, -69.55677 under 20:00's NW 10 m wind (326, 8.7 km/h; clear, -1.5 C, +3.8 K over 2–80 m) the app has the ground air from 229 (drainage, about 100° off the wind) and the cone NE, some-minutes reach 226 m (Gavan saw 271 m), now-and-then about 450 m. Does the cold air really drain NE against the wind, and how far does the scent go? | PALM's floor direction and scent reach from the spot (1.5 m and a 5 m stand) against the app's 229 / 226 m / 450 m | the drainage rule on steep ground under a crossing wind, and a candidate picture for the site |
+| lacbailey-spot d326 (Gavan's ask, 2026-10-15, `explore`, product priority on xonix) | At 49.39427, -69.55677 under 20:00's NW 10 m wind (326, 8.7 km/h; clear, -1.5 C, +3.8 K over 2–80 m) the app has the ground air from 229 (drainage, about 100° off the wind) and the cone NE, some-minutes reach 226 m (Gavan saw 271 m), now-and-then about 450 m. Does the cold air really drain NE against the wind, and how far does the scent go? | PALM's floor direction and scent reach from the spot (1.5 m and a 5 m stand) against the app's 229 / 226 m / 450 m | the drainage rule on steep ground under a crossing wind, and a candidate picture for the site. **Answered 2026-10-16 (huntapp-ba):** the floor follows the wind, not drainage. Head height from 307 at 0.24 m/s, 10 m from 311 (ambient 4.4 km/h from 329, half the forecast's 8.7). PALM's pull downslope is about 25°, where the app's is about 100°. Scent at 1.5 m runs toward 117–143: some minutes 115 m, now and then 143 m, above the canopy past 120 m. From the 5 m stand, 350 m toward 122–144. The app had NE at 226 / 450 m, about 90° off and twice as long. The spot joins the test set as G1/G1s (v3) |
 | pickle-bogs dawn270 (queued 2026-10-15, xonix, about 8 h) | Under dawn175 the bog's stable floor came from ~245 while the 10 m wind was 182 and the app kept ~187. Does the floor's turn follow the drainage line or the wind? | the floor's direction at P8–P10 with the wind from 270: still ~245 means drainage, swung by ~90 means the wind | huntapp-ba's stable-floor turning rule: keyed to the drainage line or to the wind (the loop's second direction item) |
 
 The loop's working order (huntapp-ba and huntapp-c4, 2026-10-15): **direction before width**. The
@@ -318,7 +318,13 @@ width knobs (gustSize, meander, spread.swing) trade false alarms for misses one 
 direction error. The loop ranks the head-height direction gap by situation from palm_compare (PALM
 against the app under forced air); ba takes the top one or two each round.
 
-The order, revised 2026-10-15 after the narrow-tongue patches:
+**The order, revised 2026-10-16:** the stable floor's direction (drainage against the wind) moves to
+the top. The app over-calls drainage on slopes under a crossing wind, about 100° of pull where PALM has
+about 25°, at Gavan's Lac Bailey spot. The same error likely sits behind 6 of the card's 9 misses: the
+slot's dusk288 at P2–P4 and the strip's dusk288 at P5. Then the am270 sunny floor. The deep lee shipped
+to dev (narrow-tongue-lee-eddy).
+
+The order before that, 2026-10-15, after the narrow-tongue patches:
 1. **The deep lee's return flow** (nw315 at the slot: the app's floor is dead calm while PALM runs the
    eddy back up the slope at about 0.25 of the wind).
 2. **The am270 sunny floor** at the narrows.
