@@ -53,12 +53,23 @@ REAL = {
 }
 
 
+CACHE = HERE.parents[2] / "pipeline" / "raw" / "archive-cache" / "forcing"
+
+
 def hourly(lat: float, lon: float, start: str, end: str) -> dict:
+    """HRDPS hourly at a point, kept on disk (a past day's forecast does not change; the archive's
+    daily allowance is shared by every script on the machine)."""
     q = f"{API}?latitude={lat:.5f}&longitude={lon:.5f}&start_date={start}&end_date={end}&hourly={VARS}&timezone=GMT&models=gem_hrdps_continental"
+    key = CACHE / f"{lat:.5f}_{lon:.5f}_{start}_{end}.json"
+    if key.exists():
+        return json.loads(key.read_text(encoding="utf-8"))
     for attempt in range(5):
         try:
             with urllib.request.urlopen(q, timeout=60) as r:
-                return json.loads(r.read())["hourly"]
+                h = json.loads(r.read())["hourly"]
+            CACHE.mkdir(parents=True, exist_ok=True)
+            key.write_text(json.dumps(h), encoding="utf-8")
+            return h
         except Exception:  # noqa: BLE001
             time.sleep(10 * (attempt + 1))
     raise SystemExit(f"HRDPS at {lat},{lon} {start}..{end} did not answer")
