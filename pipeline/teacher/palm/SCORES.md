@@ -25,3 +25,13 @@ The tongue is drawn as scent, the pale shade round it as doubt (Gavan's option 3
 | when | commit | label | variant | tongue threat, tune | tongue threat, held out | misses | false alarms (tongue) | shade only | v1 tune / held out | pending |
 |---|---|---|---|---|---|---|---|---|---|---|
 | 2026-10-15 17:16 | 8d50465 | baseline-v2 | base | 0.50 | 0.65 | 5 | 44 | 10 | 0.54 / 0.50 | 9 |
+| 2026-10-15 18:16 | 6fd801b + narrow_lee_final.diff@9425bd0 | narrow-tongue-lee-eddy | base | 0.53 | 0.72 | 5 | 29 | 14 | 0.54 / 0.45 | 9 |
+| 2026-10-15 21:54 | 058c7e1 | nightly | base | 0.51 | 0.64 | 9 | 50 | 19 | 0.50 / 0.47 | 4 |
+| 2026-10-15 22:02 | 058c7e1 | nightly | base | 0.51 | 0.68 | 9 | 50 | 18 | 0.50 / 0.47 | 4 |
+| 2026-10-16 05:33 | a0dae4c | nightly | base | 0.54 | 0.60 | 15 | 87 | 27 | 0.52 / 0.53 | 0 |
+| 2026-10-16 09:10 | b62ffcb + hooks.diff@1173614 | drain-floor | base | 0.54 | 0.58 | 17 | 91 | 27 | 0.52 / 0.51 | 0 |
+| 2026-10-16 09:10 | b62ffcb + hooks.diff@1173614 | drain-floor | d2s2 | 0.54 | 0.60 | 15 | 89 | 27 | 0.51 / 0.53 | 0 |
+| 2026-10-16 09:10 | b62ffcb + hooks.diff@1173614 | drain-floor | d2s1 | 0.54 | 0.59 | 15 | 89 | 28 | 0.51 / 0.52 | 0 |
+| 2026-10-16 09:10 | b62ffcb + hooks.diff@1173614 | drain-floor | d15s1 | 0.54 | 0.59 | 15 | 89 | 28 | 0.51 / 0.52 | 0 |
+| 2026-10-16 09:10 | b62ffcb + hooks.diff@1173614 | drain-floor | floor | 0.54 | 0.59 | 15 | 77 | 35 | 0.53 / 0.53 | 0 |
+| 2026-10-16 09:10 | b62ffcb + hooks.diff@1173614 | drain-floor | floor+d2s1 | 0.54 | 0.60 | 13 | 75 | 36 | 0.53 / 0.54 | 0 |

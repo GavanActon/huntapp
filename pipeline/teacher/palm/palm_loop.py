@@ -46,6 +46,9 @@ BASELINE = "8d50465"          # baseline v2 (docs/SCENT-TESTSET.md)
 CHECKS = ROOT / "app" / "scripts" / "checks_card.py"   # huntapp-ba's checks card (d3c29b5): replay.py per set, JSON out
 TOWERS = ROOT / "pipeline" / "towers" / "towers_card.py"   # huntapp-ba's towers card: forest over open at head height, by pair
 FLOOR = ROOT / "pipeline" / "towers" / "why_floor.py"      # huntapp-ba's floor card: in-stand floor/top at NEON towers (--json)
+# cases whose palm_compare rows look wrong, kept out of the wind ranking until checked: whitefish (2026-10-16,
+# huntapp-ba: the app's speed bimodal 0.46 / 4.9 km/h, speed r 0.00, no reversals; the card's cells there look sound)
+WIND_SUSPECT = {"whitefish"}
 
 
 def landed_since(t0: float) -> list[str]:
@@ -110,6 +113,8 @@ def wind_runs() -> list[str]:
     for f in sorted(sc.FIELDS.glob("*.npz")):
         n = f.stem
         if n.endswith(("_particles", "_appcone")) or "_scent_" in n or n.startswith("searchmont") or n.endswith(("_t20", "_n40", "_N02")):
+            continue
+        if n.split("_")[0] in WIND_SUSPECT:
             continue
         try:
             if "meta" in np.load(f, allow_pickle=True).files:
@@ -205,7 +210,8 @@ def main() -> int:
                   ""]
     if wind:
         lines += ["## The wind against PALM (head height, forced to PALM's 10 m air)", "",
-                  f"- **Overall:** {wind['within45']:.0%} of {wind['points']:,} points within 45°", "",
+                  f"- **Overall:** {wind['within45']:.0%} of {wind['points']:,} points within 45°"
+                  + (f" (left out while their rows are checked: {', '.join(sorted(WIND_SUSPECT))})" if WIND_SUSPECT else ""), "",
                   "| situation | points | within 45° | PALM's reversals found |", "|---|---|---|---|"]
         for w in wind["worst"]:
             rr = "-" if w["reversed_recall"] is None else f"{w['reversed_recall']:.0%}"
