@@ -131,6 +131,23 @@ def wind_runs() -> list[str]:
     return sorted(keep.values())
 
 
+def archive_ok() -> tuple[bool, str]:
+    """One small archive request first: on 2026-10-16 the day's sweeps and bulk pulls used up Open-Meteo's
+    per-IP allowance ("Daily API request limit exceeded") and every replay-based card stalled till it reset."""
+    import urllib.error
+    import urllib.request
+    url = ("https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=48.93&longitude=-85.59"
+           "&start_date=2026-09-30&end_date=2026-09-30&hourly=wind_speed_10m")
+    try:
+        with urllib.request.urlopen(url, timeout=20) as r:
+            return True, f"archive answers ({r.status})"
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", "replace")[:200]
+        return False, f"archive refused: HTTP {e.code} {body.strip()}"
+    except OSError as e:
+        return False, f"archive unreachable: {e}"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--ref", default="origin/main", help="what to score (default: what hunt-dev serves)")
@@ -147,6 +164,9 @@ def main() -> int:
     subprocess.run(["git", "fetch", "-q", "origin"], cwd=ROOT)
 
     landed = landed_since(t_last)
+    ok, why = archive_ok()
+    if not ok:   # the card, the checks and palm_compare all open the app, which asks Open-Meteo
+        args.skip_card = args.skip_wind = args.skip_checks = True
     ts = json.loads((HERE / "testset.json").read_text(encoding="utf-8"))
     m = ts["measure"]
     jobs, pending = sc.jobs_from(ts, None)
@@ -154,7 +174,7 @@ def main() -> int:
     sc.SCORES.mkdir(parents=True, exist_ok=True)
     server = sc.serve()
     url = f"http://localhost:{sc.PORT}/"
-    cardv, wind, checks, notes = None, None, None, []
+    cardv, wind, checks, notes = None, None, None, ([] if ok else [f"skipped the card, the wind and the checks: {why}"])
     try:
         if not args.skip_card:
             results = sc.score(jobs, {"base": {}}, url, m["band"], m["trace"], float(m["reach_m"]))
