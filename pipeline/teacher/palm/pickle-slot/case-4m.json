@@ -1,7 +1,7 @@
 {
  "case": "pickle-slot",
  "tag": "4m",
- "built": "2026-10-14 15:30",
+ "built": "2026-10-16 13:52",
  "epsg": 32616,
  "dx": 4.0,
  "nx": 256,
@@ -208,6 +208,147 @@
    "hours": 1.0,
    "average_s": 1200.0,
    "why": "63 deg off the slot: does it still funnel?",
+   "scent": [
+    {
+     "name": "throat west bank 1.5 m",
+     "x": 510.0,
+     "y": 582.0,
+     "h": 1.5,
+     "utm": [
+      604230.0,
+      5422482.0
+     ],
+     "ground_m": 339.0,
+     "canopy_m": 11.6,
+     "water": false
+    },
+    {
+     "name": "throat west bank 5 m",
+     "x": 510.0,
+     "y": 582.0,
+     "h": 5.0,
+     "utm": [
+      604230.0,
+      5422482.0
+     ],
+     "ground_m": 339.0,
+     "canopy_m": 11.6,
+     "water": false
+    },
+    {
+     "name": "the exit 1.5 m",
+     "x": 562.0,
+     "y": 638.0,
+     "h": 1.5,
+     "utm": [
+      604282.0,
+      5422538.0
+     ],
+     "ground_m": 339.1,
+     "canopy_m": 10.4,
+     "water": false
+    },
+    {
+     "name": "bay, over the water 30 m S of the shore 1.5 m",
+     "x": 680.0,
+     "y": 361.0,
+     "h": 1.5,
+     "utm": [
+      604400.0,
+      5422261.0
+     ],
+     "ground_m": 338.2,
+     "canopy_m": 0.0,
+     "water": true
+    },
+    {
+     "name": "the point 1.5 m",
+     "x": 514.0,
+     "y": 586.0,
+     "h": 1.5,
+     "utm": [
+      604234.0,
+      5422486.0
+     ],
+     "ground_m": 339.1,
+     "canopy_m": 9.8,
+     "water": false
+    },
+    {
+     "name": "the point 5 m",
+     "x": 514.0,
+     "y": 586.0,
+     "h": 5.0,
+     "utm": [
+      604234.0,
+      5422486.0
+     ],
+     "ground_m": 339.1,
+     "canopy_m": 9.8,
+     "water": false
+    },
+    {
+     "name": "ring 000 120 m",
+     "x": 524.0,
+     "y": 695.2,
+     "h": 1.5,
+     "utm": [
+      604244.0,
+      5422595.2
+     ],
+     "ground_m": 343.8,
+     "canopy_m": 7.3,
+     "water": false
+    },
+    {
+     "name": "ring 090 120 m",
+     "x": 644.0,
+     "y": 575.2,
+     "h": 1.5,
+     "utm": [
+      604364.0,
+      5422475.2
+     ],
+     "ground_m": 340.6,
+     "canopy_m": 17.0,
+     "water": false
+    },
+    {
+     "name": "ring 135 120 m",
+     "x": 608.8,
+     "y": 490.4,
+     "h": 1.5,
+     "utm": [
+      604328.8,
+      5422390.4
+     ],
+     "ground_m": 339.8,
+     "canopy_m": 15.5,
+     "water": false
+    },
+    {
+     "name": "ring 180 84 m",
+     "x": 530.0,
+     "y": 494.0,
+     "h": 1.5,
+     "utm": [
+      604250.0,
+      5422394.0
+     ],
+     "ground_m": 338.8,
+     "canopy_m": 8.2,
+     "water": false
+    }
+   ]
+  },
+  "pickle-slot_s186d15_4m": {
+   "direction": 186.0,
+   "speed_kph": 11.5,
+   "stability": "neutral",
+   "hours": 1.0,
+   "average_s": 1200.0,
+   "drag": 0.15,
+   "why": "s186 at canopy drag 0.15 (PALM's default) against 0.2: how much of PALM's slow floor is the drag",
    "scent": [
     {
      "name": "throat west bank 1.5 m",

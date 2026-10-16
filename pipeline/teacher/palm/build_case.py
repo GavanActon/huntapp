@@ -185,6 +185,11 @@ CASES = {
             # the same wind turned toward square across, to find where the funnel stops
             "s160": dict(direction=160.0, speed_kph=11.5, stability="neutral", hours=1.0, average_s=1200.0,
                          why="63 deg off the slot: does it still funnel?"),
+            # the booked drag question (docs/SCENT-TESTSET.md, 2026-10-16): PALM's box comes out at about half
+            # its forcing and its floor slower than the towers' for the same forecast 10 m; s186 again at
+            # PALM's own default drag says how much of that is our 0.2
+            "s186d15": dict(direction=186.0, speed_kph=11.5, stability="neutral", hours=1.0, average_s=1200.0, drag=0.15,
+                            why="s186 at canopy drag 0.15 (PALM's default) against 0.2: how much of PALM's slow floor is the drag"),
             "s135": dict(direction=135.0, speed_kph=11.5, stability="neutral", hours=1.0, average_s=1200.0,
                          why="88 deg off, square across from the SE: the return eddy and the drift, not a funnel"),
             # the rest of the compass (Gavan, 2026-10-13: "from West as well"): W, NW and N bring
@@ -936,7 +941,7 @@ def p3d(name: str, case_id: str, run: dict, g: dict, vg: dict, hours: float, nz_
         "",
         "&plant_canopy_parameters",
         "    canopy_mode = 'read_from_file',",
-        f"    canopy_drag_coeff = {DRAG:g},",
+        f"    canopy_drag_coeff = {run.get('drag', DRAG):g},",
     ]
     if st != "neutral" and run.get("cthf"):
         lines += [f"    cthf = {run['cthf']:g},                    ! K m/s at the canopy top (the code's unit; the docs say W/m2)"]
