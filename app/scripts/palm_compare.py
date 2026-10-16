@@ -6,12 +6,14 @@
 
 For each run: its converted field (pipeline/raw/teacher/palm/fields/<run>.npz) and its case
 (pipeline/teacher/palm/<case>/case-<tag>.json and grid-<tag>.npz). The app is opened headless in
-the run's area. The air is forced to the 10 m wind PALM's box really had (the field's ambient, its
-domain mean over the canopy: model.ts setForcedAir), with a layering for the run's stability. Until
-2026-10-15 it was the run's forcing wind, which a volume-flow box turns into about half that at
-10 m (the narrows under NW: 11.5 km/h forced, 5.8 had): the app then had twice PALM's wind, and its
-lee rule's light-wind gate never bit where the scent card (forced to the ambient) saw it starve the
-eddy. Numbers before and after are not comparable (MICRO-WIND.md section 5b). The layering:
+the run's area. The air is forced (model.ts setForcedAir) to the run's forecast-equivalent 10 m wind,
+the scent test set's "forcing" table (v4, 2026-10-16, pipeline/teacher/palm/forcing_table.py: HRDPS
+at the hour the run stands for, else its 80 m wind x HRDPS's 10/80 for the stability), with a
+layering for the run's stability. From 2026-10-15 to 10-16 it was PALM's own 10 m ambient (its box
+mean, in or near the canopy over 12-15 m stands), which reads about half a forecast's 10 m (G1: 4.4
+against 8.7, dusk288 1.2 against 5), so speed thresholds tuned under it came out about 2x strict in
+the app's units; before 10-15 the run's forcing wind. PALM's ambient direction still sets the box's
+flow for the lee and reversal measures. Numbers across the three do not compare. The layering:
 - neutral: mixed and overcast, no thermals;
 - stable: an inversion just after sunset;
 - convective: sunny, mixed.
@@ -55,6 +57,11 @@ try:
         AREA.setdefault(_box, "" if _b.get("area") == "pickle-lake" else _b.get("area", ""))
 except (OSError, ValueError, KeyError):
     pass
+# the test set's forcing (v4, forcing_table.py): the forecast-equivalent 10 m each run puts the app in
+try:
+    FORCING = json.loads((CASES / "testset.json").read_text(encoding="utf-8")).get("forcing", {})
+except (OSError, ValueError):
+    FORCING = {}
 # a dev build runs an HD area on its SD files until it is installed (state/grade.ts, 2026-10-15):
 # the scripts score the HD bake, so every area is marked installed before the page loads
 HD_PIN_JS = "localStorage.setItem('huntapp-hd', JSON.stringify(Object.fromEntries(['blanchard-river', 'highland-lake', 'lac-bailey', 'pickle-lake', 'sault-test', 'searchmont', 'whitefish-lake'].map((a) => [a, true]))))"
@@ -242,10 +249,14 @@ def main() -> None:
                 meta = json.loads(str(d["meta"]))
                 case, tag, info, grid, rinfo = case_of(run)
                 stab = rinfo["stability"]
-                # the air PALM's box really had at 10 m, not the forcing it was driven with
+                # the app's air: the test set's forecast-equivalent 10 m for the run (v4, forcing_table.py);
+                # PALM's own 10 m ambient (in or near the canopy, about half a forecast's) is kept as the
+                # box's flow for the lee and reversal measures, and used for the app only where a run has
+                # no forcing row
                 fc = {"kph": float(d["ambientKph"]), "fromTrue": float(d["directions"][0])}
+                frow = FORCING.get(run)
                 lay, sun = AIR[stab]
-                air = {"kmh": fc["kph"], "dir": fc["fromTrue"], "lay": lay, "sunElev": sun}
+                air = {"kmh": frow["kph"] if frow else fc["kph"], "dir": frow["from"] if frow else fc["fromTrue"], "lay": lay, "sunElev": sun}
                 X, Y = lattice(info, args.step)
                 lon, lat = Transformer.from_crs(info["epsg"], 4326, always_xy=True).transform(X, Y)
                 pts = [[float(a), float(b)] for a, b in zip(lon, lat)]
@@ -289,7 +300,7 @@ def main() -> None:
                                          palmTop=top, palmCanopyH=float(ch[r_, c_]), appLocal10=a_l10,
                                          appCanopy=cell[0], appTreeH=cell[1], appSigma=a_sigma))
                     if args.per_run:
-                        print(f"\n{run} [{vname}] ({stab}, PALM's 10 m air from {fc['fromTrue']:.0f} at {fc['kph']:.1f} km/h):", flush=True)
+                        print(f"\n{run} [{vname}] ({stab}, the app at {air['kmh']:.1f} km/h from {air['dir']:.0f}{'' if frow else ' (no forcing row: PALM ambient)'}; PALM's 10 m air from {fc['fromTrue']:.0f} at {fc['kph']:.1f} km/h):", flush=True)
                         for name, rr in classes(rows).items():
                             print(score(rr, name))
                     else:
