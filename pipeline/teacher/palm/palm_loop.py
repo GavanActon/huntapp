@@ -48,7 +48,7 @@ TOWERS = ROOT / "pipeline" / "towers" / "towers_card.py"   # huntapp-ba's towers
 FLOOR = ROOT / "pipeline" / "towers" / "why_floor.py"      # huntapp-ba's floor card: in-stand floor/top at NEON towers (--json)
 # cases whose palm_compare rows look wrong, kept out of the wind ranking until checked: whitefish (2026-10-16,
 # huntapp-ba: the app's speed bimodal 0.46 / 4.9 km/h, speed r 0.00, no reversals; the card's cells there look sound)
-WIND_SUSPECT = {"whitefish"}
+WIND_SUSPECT: set[str] = set()   # whitefish back on 2026-10-16: palm_compare had it (and lacbailey-spot) on Pickle's grid, fixed in 1c53f75
 
 
 def landed_since(t0: float) -> list[str]:

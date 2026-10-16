@@ -203,7 +203,16 @@ def jobs_from(ts: dict, only: str | None) -> tuple[list[dict], list[str]]:
             x0, y0 = meta["bounds"][0], meta["bounds"][1]
             stab = meta.get("stability", "neutral")
             lay, sun = AIR[stab]
-            air = {"kmh": float(f["ambientKph"]), "dir": float(f["directions"][0]), "lay": lay, "sunElev": sun}
+            # v4 (2026-10-16): the app is forced with the forecast 10 m of the hour the run stands for, as it is in
+            # use (testset.json "forcing"); PALM's own 10 m ambient sits in or near a 12-15 m canopy and reads about
+            # half that, so thresholds tuned on it came out ~2x strict. A run without an entry falls back to it.
+            fc = (ts.get("forcing") or {}).get(run)
+            if fc:
+                air = {"kmh": float(fc["kph"]), "dir": float(fc["from"]), "lay": lay, "sunElev": sun}
+                forcing = f"forecast ({fc.get('source', '?')})"
+            else:
+                air = {"kmh": float(f["ambientKph"]), "dir": float(f["directions"][0]), "lay": lay, "sunElev": sun}
+                forcing = "PALM ambient"
             sits, missing = [], []
             for pid, p in pts:
                 src = next((s for s in P.values() if s["source"]["name"].startswith(p["source"])), None)
@@ -212,7 +221,8 @@ def jobs_from(ts: dict, only: str | None) -> tuple[list[dict], list[str]]:
                     continue
                 lon, lat = tr.transform(x0 + src["source"]["x"], y0 + src["source"]["y"])
                 sits.append(dict(pid=pid, lat=lat, lon=lon, h=p["h"], situation=p["situation"], palm=src["reach_by_sector"]))
-            jobs.append(dict(run=run, box=box, area=b["area"], held=b["held_out"], stab=stab, air=air, sits=sits, missing=missing))
+            jobs.append(dict(run=run, box=box, area=b["area"], held=b["held_out"], stab=stab, air=air, sits=sits, missing=missing,
+                             forcing=forcing, ambient=float(f["ambientKph"])))
     return jobs, pending
 
 
@@ -288,7 +298,8 @@ def score(jobs, variants, url, band, trace, reach) -> list[dict]:
             page.evaluate(REST_JS)
             for j in (j for j in jobs if j["area"] == area):
                 ms = int(datetime.fromisoformat(f"{DAY}T{HOUR[j['stab']]}").replace(tzinfo=TZ).timestamp() * 1000)
-                print(f"== {j['run']} ({j['stab']}, PALM 10 m from {j['air']['dir']:.0f} at {j['air']['kmh']:.1f} km/h)", flush=True)
+                print(f"== {j['run']} ({j['stab']}, forced from {j['air']['dir']:.0f} at {j['air']['kmh']:.1f} km/h: {j['forcing']}; "
+                      f"PALM's own 10 m {j['ambient']:.1f})", flush=True)
                 for vname, v in variants.items():
                     for h in sorted({s["h"] for s in j["sits"]}):
                         group = [s for s in j["sits"] if s["h"] == h]
