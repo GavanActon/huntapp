@@ -261,13 +261,14 @@ def main() -> int:
     if floor:
         lines += [f"- {floor.get('towers', '?')} towers; the bar for a floor rule: beat the app now and the constant "
                   f"(beats the app now: {floor.get('beatsAppNow')}, beats the constant: {floor.get('beatsConstant')})",
-                  "| rule | within 2× | calm called − measured |", "|---|---|---|"]
+                  "| rule | within 2× | calm called (the towers measure it) |", "|---|---|---|"]
         for k in ("appNow", "appOld", "constant", "candidate"):
             r = floor.get(k) or {}
-            w2 = r.get("within2")
-            cg = r.get("calmGap")
-            lines.append(f"| {k} | {w2:.0%} | {cg:+.2f} |" if isinstance(w2, (int, float)) and isinstance(cg, (int, float))
-                         else f"| {k} | {w2 if w2 is not None else '-'} | {cg if cg is not None else '-'} |")
+            w2, cc, cm = r.get("within2"), r.get("calmCalled"), r.get("calmMeasured")
+            w2s = f"{w2:.0%}" if isinstance(w2, (int, float)) else "-"
+            calm = (f"{cc:.0%} ({cm:.0%})" if isinstance(cc, (int, float)) and isinstance(cm, (int, float))
+                    else f"gap {r['calmGap']:+.2f}" if isinstance(r.get("calmGap"), (int, float)) else "-")
+            lines.append(f"| {k} | {w2s} | {calm} |")
         checked = floor.get("refChecked") or {}
         lines += ["", f"- 'Top' is above the canopy, not a forecast 10 m: {len(checked)} towers checked against HRRR/ERA5 so far.", ""]
     else:
