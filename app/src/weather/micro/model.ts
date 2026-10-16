@@ -1117,12 +1117,14 @@ function towerShare(g: Habitat, i: number, leaves: number): number | null {
 
 /**
  * The cold-air drainage's give to the wind (MICRO-WIND §5): whole in a near
- * calm, fading once the local 10 m wind (after a settled night's decoupling)
- * passes mix0 km/h, by e every mixScale km/h; under trees it runs at trees of
- * its open speed. setThermalTune lets scripts score settings side by side
- * (scorecard.py, palm_compare.py, replay.py --thermal); the app never changes it.
+ * calm, fading once the wind passes mix0 km/h, by e every mixScale km/h; the
+ * wind is the local 10 m one after a settled night's decoupling (ref 0) or
+ * the wind over the place, the forecast's as fitted (ref 1). Under trees it
+ * runs at trees of its open speed. setThermalTune lets scripts score settings
+ * side by side (scorecard.py, palm_compare.py, replay.py --thermal); the app
+ * never changes it.
  */
-const THERMAL_DEFAULT = { mix0: 5, mixScale: 8, trees: 0.7 }
+const THERMAL_DEFAULT = { mix0: 5, mixScale: 8, trees: 0.7, ref: 0 }
 let thermalTune = { ...THERMAL_DEFAULT }
 export function setThermalTune(t: Partial<typeof THERMAL_DEFAULT> | null): void {
   thermalTune = { ...THERMAL_DEFAULT, ...t }
@@ -1655,7 +1657,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   let kat = 0
   let katTo = 0
   const cool = Math.pow(1 - lay.cloud / 100, 1.5) * (ctx.sunElev < 0 ? 1 : ctx.sunElev < 10 ? (10 - ctx.sunElev) / 10 : 0)
-  const mixKat = Math.exp(-Math.max(0, mech10 - thermalTune.mix0) / thermalTune.mixScale)
+  const mixKat = Math.exp(-Math.max(0, (thermalTune.ref ? U : mech10) - thermalTune.mix0) / thermalTune.mixScale)
   const sKat = clamp(Math.max(lay.inversion * s, 0.6 * cool), 0, 1.5) * mixKat
   const kd = bearing(K_KATDIR, i)
   if (sKat > 0.02 && kd != null) {
