@@ -139,8 +139,17 @@ def to_row(f: dict) -> dict:
     xs, ys = Transformer.from_crs("EPSG:4326", crs, always_xy=True).transform([c[0] for c in ring], [c[1] for c in ring])
     bounds = [round(min(xs)), round(min(ys)), round(max(xs)), round(max(ys))]
     m = NAME_RE.match(name)
-    if m and (int(m.group(1)) * 1000, int(m.group(2)) * 1000) != (bounds[0], bounds[1]):
-        raise SystemExit(f"{name}: its footprint's corner {bounds[:2]} is not the one its name gives")
+    if m:
+        # the name gives the tile's kilometre square; a tile at a survey's edge is only part of it
+        # (15_4075112F09_DC at Duhamel starts 508 m into its square, 2026-10-15), so its footprint
+        # has to lie inside the square, not fill it
+        x0, y0 = int(m.group(1)) * 1000, int(m.group(2)) * 1000
+        if not (x0 - 2 <= bounds[0] and bounds[2] <= x0 + 1002 and y0 - 2 <= bounds[1] and bounds[3] <= y0 + 1002):
+            raise SystemExit(f"{name}: its footprint {bounds} is outside the square its name gives ({x0}, {y0})")
+        # build_vegstructure lays every tile on one 10 m grid: a part tile's edges go out to the next 10 m
+        # line inside its square (15_4065109F09_DC began at 406066), which takes in no point and loses none
+        bounds = [max(x0, bounds[0] // 10 * 10), max(y0, bounds[1] // 10 * 10),
+                  min(x0 + 1000, -(-bounds[2] // 10) * 10), min(y0 + 1000, -(-bounds[3] // 10) * 10)]
     days = sorted(d.strip() for d in p["DATE_ACQUISITION"].split(",") if d.strip())
     licence = "CC BY 4.0" if "CC BY 4.0" in (p.get("LICENCE") or "") else p.get("LICENCE")
     nominal = re.match(r"\s*([\d.,]+)", p.get("DENSITE") or "")
