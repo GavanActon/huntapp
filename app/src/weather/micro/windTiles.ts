@@ -6,6 +6,7 @@ import { STREAM_PICTURES } from '../../map/streamPictures'
 import { trackTask } from '../../offline/loadProgress'
 import { Habitat, PREVIEW, type Band, type BandDef, type BandHeader } from '../../spots/habitatGrid'
 import { groundSampler, loadMicro, useAreaGrid, useMosaic } from './model'
+import { drawSdOutline, initSdOutline } from './sdOutline'
 
 /**
  * SD wind for anyone (docs/SD-FAST.md; Gavan, 2026-10-13: "SD wind then
@@ -24,7 +25,7 @@ import { groundSampler, loadMicro, useAreaGrid, useMosaic } from './model'
  */
 const BASE = `${DATA_BASE}sd/v1/`
 
-interface Lattice {
+export interface Lattice {
   lon0: number
   lat0: number
   dLon: number
@@ -32,9 +33,10 @@ interface Lattice {
   cols: number
   rows: number
 }
-interface Index {
+export interface Index {
   version: string
   lattice: Lattice
+  /** tile id → its file's bytes */
   tiles: Record<string, number>
 }
 interface Tile {
@@ -42,11 +44,47 @@ interface Tile {
   data: Map<string, Band>
 }
 
-let indexP: Promise<Index | null> | null = null
-const loadIndex = () =>
-  (indexP ??= fetch(`${BASE}index.json`)
+const fetchIndex = () =>
+  fetch(`${BASE}index.json`)
     .then((r) => (r.ok ? (r.json() as Promise<Index>) : null))
-    .catch(() => null))
+    .catch(() => null)
+
+let indexP: Promise<Index | null> | null = null
+let indexAt = 0
+const loadIndex = () => {
+  if (!indexP) {
+    indexAt = Date.now()
+    indexP = fetchIndex().then((idx) => {
+      if (idx) drawSdOutline(idx)
+      return idx
+    })
+  }
+  return indexP
+}
+
+/** The index read again while the app is looked at: the bake goes on on
+ *  both PCs, each sending its tiles up every 50, so the outline grows and
+ *  the new tiles' wind is used without a reload. */
+const REFRESH_MS = 10 * 60_000
+async function refreshIndex(map: MlMap): Promise<void> {
+  indexAt = Date.now()
+  const prev = await (indexP ?? Promise.resolve(null))
+  const idx = await fetchIndex()
+  if (!idx) return
+  indexP = Promise.resolve(idx)
+  const added = Object.keys(idx.tiles).filter((id) => !prev || !(id in prev.tiles))
+  if (!added.length) return
+  drawSdOutline(idx)
+  devlog('wind', `SD tiles index: ${added.length} new, ${Object.keys(idx.tiles).length} in all`)
+  // a block built while one of its tiles was missing (the plain wind in its place) is built again with it
+  if (block) {
+    const { i0, j0 } = block
+    if (added.some((id) => [0, 1].some((dj) => [0, 1].some((di) => id === `t-${i0 + di}-${j0 + dj}`)))) {
+      block = null
+      void moved(map)
+    }
+  }
+}
 
 // the tiles' files as they came, a few dozen: unpacked again when a block needs them
 const packed = new Map<string, Promise<ArrayBuffer | null>>()
@@ -233,4 +271,12 @@ export function initWindTiles(map: MlMap): void {
   if (!STREAM_PICTURES) return
   map.on('moveend', () => void moved(map))
   void moved(map)
+  // where the tiles are, outlined (sdOutline.ts), and kept up as the bake goes on
+  initSdOutline()
+  void loadIndex()
+  const tick = () => {
+    if (document.visibilityState === 'visible' && indexP && Date.now() - indexAt >= REFRESH_MS) void refreshIndex(map)
+  }
+  window.setInterval(tick, 60_000)
+  document.addEventListener('visibilitychange', tick)
 }
