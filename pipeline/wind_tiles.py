@@ -208,10 +208,8 @@ def upload() -> tuple[int, int]:
     return sent, skipped
 
 
-def batches(queue: Path, size: int, dest: Path) -> tuple[int, int]:
-    """The queue cut into files of `size` tiles that neither R2 nor this machine has yet, in the
-    queue's order: each a job any machine can take (`bake --queue <batch file>`; 2026-10-15, the
-    job system for xonix and XEVO). Returns (batches, tiles)."""
+def r2_tiles() -> set[str]:
+    """The tiles R2's index names: every machine's, as each upload merges them."""
     import urllib.request
 
     sys.path.insert(0, str(ROOT / "app" / "scripts"))
@@ -220,9 +218,20 @@ def batches(queue: Path, size: int, dest: Path) -> tuple[int, int]:
     # a named agent: the host turns away Python's default one (403)
     req = urllib.request.Request(f"{r2_sync.PUBLIC}data/sd/{VERSION}/index.json?t={time.time():.0f}", headers={"User-Agent": "groundwind-wind-tiles"})
     with urllib.request.urlopen(req, timeout=60) as r:
-        done = set(json.loads(r.read())["tiles"])
-    done |= {p.stem for p in OUT.glob("t-*.json") if "error" not in json.loads(p.read_text())}
+        return set(json.loads(r.read())["tiles"])
+
+
+def batches(queue: Path, size: int, dest: Path, reverse: bool = False) -> tuple[int, int]:
+    """The queue cut into files of `size` tiles that neither R2 nor this machine has yet, in the
+    queue's order, or from its end with `reverse`: each a job any machine can take (`bake --queue
+    <batch file>`; 2026-10-15, the job system for xonix and XEVO). A second machine takes batches
+    from the end while the first bakes the queue from the front, as WindNinja's -Reverse runners
+    do; where they meet, each skips what the other has sent (queue_bake reads R2's index).
+    Returns (batches, tiles)."""
+    done = r2_tiles() | {p.stem for p in OUT.glob("t-*.json") if "error" not in json.loads(p.read_text())}
     lines = [ln for ln in queue.read_text(encoding="utf-8").splitlines() if ln.strip() and ln.split("\t")[0].strip() not in done]
+    if reverse:
+        lines.reverse()
     dest.mkdir(parents=True, exist_ok=True)
     for old in dest.glob("batch-*.txt"):
         old.unlink()
@@ -234,6 +243,7 @@ def batches(queue: Path, size: int, dest: Path) -> tuple[int, int]:
 
 
 RETRIES, RETRY_WAIT = 3, 600  # queue_bake: tries a tile gets, seconds between them
+REMOTE_EVERY = 600  # queue_bake: seconds between reads of R2's index
 
 
 def queue_bake(path: Path, jobs: int, upload_every: int) -> None:
@@ -255,15 +265,27 @@ def queue_bake(path: Path, jobs: int, upload_every: int) -> None:
     # and 15) goes back in the queue in its place RETRY_WAIT on, up to RETRIES tries in all
     tries: dict[str, int] = {}
     retry_at: dict[str, float] = {}
+    # tiles another machine has sent (xonix from the queue's end, 2026-10-16): skipped here,
+    # R2's index read again every REMOTE_EVERY seconds
+    remote: set[str] = set()
+    remote_at = [0.0]
 
     def next_tile() -> str | None:
         while True:
             waiting = False
             with lock:
                 now = time.time()
+                if now - remote_at[0] > REMOTE_EVERY:
+                    remote_at[0] = now
+                    try:
+                        got = r2_tiles()
+                        remote.clear()
+                        remote.update(got)
+                    except Exception as e:  # noqa: BLE001  the last list holds until the next read
+                        print(f"  R2 index not read: {e}", flush=True)
                 for line in path.read_text(encoding="utf-8").splitlines():
                     tid = line.split("\t")[0].strip()
-                    if not tid or tid in taken or (OUT / f"{tid}.json").exists():
+                    if not tid or tid in taken or tid in remote or (OUT / f"{tid}.json").exists():
                         continue
                     if retry_at.get(tid, 0) > now:
                         waiting = True
@@ -340,6 +362,7 @@ def main() -> int:
     ap.add_argument("--upload-every", type=int, default=50)
     ap.add_argument("--size", type=int, default=50, help="batches: tiles a batch file")
     ap.add_argument("--out-dir", help="batches: where the batch files go")
+    ap.add_argument("--reverse", action="store_true", help="batches: from the queue's end (a second machine)")
     a = ap.parse_args()
     cells = lattice.tiles_in(tuple(a.box)) if a.box else []
     if a.cmd == "plan":
@@ -355,7 +378,7 @@ def main() -> int:
         print(f"R2 data/sd/{VERSION}/: {sent} tiles sent, {skipped} already there, index of {len(idx['tiles'])}")
         return 0
     if a.cmd == "batches":
-        n, k = batches(Path(a.queue), a.size, Path(a.out_dir))
+        n, k = batches(Path(a.queue), a.size, Path(a.out_dir), a.reverse)
         print(f"{n} batch files of up to {a.size} tiles in {a.out_dir}: {k} tiles not yet baked")
         return 0
     if a.cmd == "seams":
