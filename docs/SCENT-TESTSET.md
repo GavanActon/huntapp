@@ -318,11 +318,19 @@ width knobs (gustSize, meander, spread.swing) trade false alarms for misses one 
 direction error. The loop ranks the head-height direction gap by situation from palm_compare (PALM
 against the app under forced air); ba takes the top one or two each round.
 
-**The order, revised 2026-10-16:** the stable floor's direction (drainage against the wind) moves to
-the top. The app over-calls drainage on slopes under a crossing wind, about 100° of pull where PALM has
-about 25°, at Gavan's Lac Bailey spot. The same error likely sits behind 6 of the card's 9 misses: the
-slot's dusk288 at P2–P4 and the strip's dusk288 at P5. Then the am270 sunny floor. The deep lee shipped
-to dev (narrow-tongue-lee-eddy).
+**The order, revised 2026-10-16 (twice):**
+1. **Drainage against a real wind (one cell: G1).** At Gavan's Lac Bailey spot, mech10 was about
+   3.2 km/h and the app's drainage (1.97 km/h) beat the head-height wind (0.46). PALM's floor follows
+   the wind, but the app's fade only starts at 5 km/h. Scoring is under way (huntapp-ba's drain-floor,
+   with the towers' floor rule, on Gavan's "go with the data").
+2. **The cone at near-calm stable sits** (the dusk288 misses at P2–P5). This is not drainage: there the
+   app's drainage direction is within about 30° of PALM's floor (huntapp-ba's per-point diagnostic). So
+   it's the cone's width or reach. c4 had first put these misses down to drainage, wrongly.
+3. **The am270 sunny floor.**
+4. **Drainage direction at Whitefish** (W3, W10 run opposite to PALM's floor): the baked katDir
+   against PALM's 4 m terrain. A separate item.
+
+The deep lee shipped to dev (narrow-tongue-lee-eddy).
 
 The order before that, 2026-10-15, after the narrow-tongue patches:
 1. **The deep lee's return flow** (nw315 at the slot: the app's floor is dead calm while PALM runs the
