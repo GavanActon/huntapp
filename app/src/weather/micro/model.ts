@@ -573,6 +573,8 @@ interface Ctx {
 interface Applied {
   turn: number
   lnRatio: number
+  /** ln of the weight on the cold air's drainage (ambientFit.ts) */
+  lnDrain: number
   fit: AmbientFit | null
   full: boolean
 }
@@ -796,18 +798,18 @@ function momAllIn(): boolean {
 function probeFor(): ProbeFn {
   const ctxs = new Map<number, Ctx>()
   const lidsOnly = !momAllIn()
-  return (c, turn, lnRatio) => {
+  return (c, turn, lnRatio, lnDrain = 0) => {
     let base = ctxs.get(c.ts)
     if (!base) {
       base = makeCtx(c.ts, false)
       ctxs.set(c.ts, base)
     }
-    const ctx: Ctx = { ...base, checks: [], memory: [], ambient: { turn, lnRatio, fit: null, full: true }, lidsOnly }
+    const ctx: Ctx = { ...base, checks: [], memory: [], ambient: { turn, lnRatio, lnDrain, fit: null, full: true }, lidsOnly }
     const ev = evaluate(ctx, c.lon, c.lat, false)
     if (!ev) return null
     // a look at the treetops is the 10 m wind above the trees, before the land brings it down
     if (c.seen) return { kmh: ev.U, dirFrom: ev.dirFrom, regime: 'aloft', woods: false }
-    return { kmh: Math.hypot(ev.e, ev.n), dirFrom: (towardOf(ev.e, ev.n) + 180) % 360, regime: ev.regime, woods: ev.woods }
+    return { kmh: Math.hypot(ev.e, ev.n), dirFrom: (towardOf(ev.e, ev.n) + 180) % 360, regime: ev.regime, woods: ev.woods, drain: ev.kat }
   }
 }
 
@@ -817,7 +819,7 @@ function probeFor(): ProbeFn {
 function mapProbe(): MapProbeFn {
   return (c, others, fit) => {
     const base = makeCtx(c.ts, false)
-    const ctx: Ctx = { ...base, checks: others, biases: learnBiases(others, c.ts), memory: memoryOf(others, c.ts), ambient: fit ? { turn: fit.turn, lnRatio: fit.lnRatio, fit, full: false } : null }
+    const ctx: Ctx = { ...base, checks: others, biases: learnBiases(others, c.ts), memory: memoryOf(others, c.ts), ambient: fit ? { turn: fit.turn, lnRatio: fit.lnRatio, lnDrain: fit.lnDrain ?? 0, fit, full: false } : null }
     const ev = evaluate(ctx, c.lon, c.lat, false)
     return ev ? { kmh: Math.hypot(ev.e, ev.n), dirFrom: (towardOf(ev.e, ev.n) + 180) % 360, regime: ev.regime, woods: ev.woods } : null
   }
@@ -840,7 +842,7 @@ function ambientFor(ms: number): Applied | null {
   if (!s) return null
   const fit = sessionFit(s)
   if (!fitMatters(fit)) return null
-  return { turn: fit.turn, lnRatio: fit.lnRatio, fit, full: false }
+  return { turn: fit.turn, lnRatio: fit.lnRatio, lnDrain: fit.lnDrain ?? 0, fit, full: false }
 }
 
 /** The sit's fit of the air above the trees that applies at a moment, and
@@ -990,6 +992,8 @@ interface Eval {
   /** stand height, m, and the head-height fraction now */
   th: number
   cf: number
+  /** the cold air's drainage in the call, km/h */
+  kat: number
   /** degrees of the spread that are the air tumbling (a lee's, a swirl's) with a wind behind it in unsettled air: the part that mixes scent upward too, for the scent column */
   tumbleMix: number
   /** the scent's spreads, degrees (SPREAD_DEFAULT) */
@@ -1120,11 +1124,15 @@ function towerShare(g: Habitat, i: number, leaves: number): number | null {
  * calm, fading once the wind passes mix0 km/h, by e every mixScale km/h; the
  * wind is the local 10 m one after a settled night's decoupling (ref 0) or
  * the wind over the place, the forecast's as fitted (ref 1). Under trees it
- * runs at trees of its open speed. setThermalTune lets scripts score settings
- * side by side (scorecard.py, palm_compare.py, replay.py --thermal); the app
- * never changes it.
+ * runs at trees of its open speed. By the place: a slope's thin cold layer
+ * is stirred off by the wind above sooner than low ground's pool, so on
+ * ground steeper than sl1 degrees the fade starts at mixS0 km/h with an
+ * e-fold of mixSScale, blended in from sl0 degrees, and low ground (a
+ * hollow, a pocket under its surroundings) keeps the plain fade.
+ * setThermalTune lets scripts score settings side by side (scorecard.py,
+ * palm_compare.py, replay.py --thermal); the app never changes it.
  */
-const THERMAL_DEFAULT = { mix0: 5, mixScale: 8, trees: 0.7, ref: 0 }
+const THERMAL_DEFAULT = { mix0: 5, mixScale: 8, trees: 0.7, ref: 0, mixS0: 5, mixSScale: 8, sl0: 3, sl1: 8 }
 let thermalTune = { ...THERMAL_DEFAULT }
 export function setThermalTune(t: Partial<typeof THERMAL_DEFAULT> | null): void {
   thermalTune = { ...THERMAL_DEFAULT, ...t }
@@ -1388,13 +1396,16 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   // wind down, so every cell near the checks moves with them, ground never
   // checked included; full among the checks, a Gaussian off them, fading
   // for hours after the last. A probe (fitting) applies a candidate as is.
+  // The drainage's weight is the place's, so it goes as the turn does.
   let fitW = 0
   let fitWL = 0
+  let lnDrainHere = 0
   if (ctx.ambient) {
     const a = ctx.ambient
     const ws = a.full ? { turn: 1, ln: 1 } : a.fit ? fitWeightsAt(a.fit, lon, lat, ctx.ms) : { turn: 0, ln: 0 }
     fitW = ws.turn > 0.02 ? ws.turn : 0
     fitWL = ws.ln > 0.02 ? ws.ln : 0
+    lnDrainHere = (a.lnDrain ?? 0) * fitW
     if (fitW) dirFrom = (((dirFrom + a.turn * fitW) % 360) + 360) % 360
     if (fitWL) U *= Math.exp(a.lnRatio * fitWL)
   }
@@ -1409,7 +1420,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     const f = 0.7 * (1 - 0.6 * lay.stable)
     const sp = U * f
     const sigma0 = 15 + 60 * Math.exp(-sp / 3.6 / 0.6)
-    return { e: Ue * f, n: Un * f, sigma: sigma0, regime: sp < 0.8 ? 'calm' : 'wind', swirl: false, gusty: ctx.gf >= 1.8 && U >= 8, parts: [{ key: 'terrain', kmh: sp, toward: (dirFrom + 180) % 360 }], reasons, local10: U, U, dirFrom, forecastU, inGrid: false, slot: false, woods: false, bias: null, fitW, fitWL, e10: Ue, n10: Un, cell: -1, th: 0, cf: f, tumbleMix: 0, eddy: 0, spread: { place: sigma0, model: 45, forecast: forcedAir ? 0 : spreadTune.forecast } }
+    return { e: Ue * f, n: Un * f, sigma: sigma0, regime: sp < 0.8 ? 'calm' : 'wind', swirl: false, gusty: ctx.gf >= 1.8 && U >= 8, parts: [{ key: 'terrain', kmh: sp, toward: (dirFrom + 180) % 360 }], reasons, local10: U, U, dirFrom, forecastU, inGrid: false, slot: false, woods: false, bias: null, fitW, fitWL, e10: Ue, n10: Un, cell: -1, th: 0, cf: f, kat: 0, tumbleMix: 0, eddy: 0, spread: { place: sigma0, model: 45, forecast: forcedAir ? 0 : spreadTune.forecast } }
   }
 
   // ---- terrain and roughness: the two lids, blended by stability ----
@@ -1657,11 +1668,15 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   let kat = 0
   let katTo = 0
   const cool = Math.pow(1 - lay.cloud / 100, 1.5) * (ctx.sunElev < 0 ? 1 : ctx.sunElev < 10 ? (10 - ctx.sunElev) / 10 : 0)
-  const mixKat = Math.exp(-Math.max(0, (thermalTune.ref ? U : mech10) - thermalTune.mix0) / thermalTune.mixScale)
+  const kWind = thermalTune.ref ? U : mech10
+  const onSlope = clamp((b(K_THSLOPE, i) - thermalTune.sl0) / Math.max(0.1, thermalTune.sl1 - thermalTune.sl0), 0, 1) * (1 - lowness)
+  const mixKat =
+    (1 - onSlope) * Math.exp(-Math.max(0, kWind - thermalTune.mix0) / thermalTune.mixScale) +
+    onSlope * Math.exp(-Math.max(0, kWind - thermalTune.mixS0) / thermalTune.mixSScale)
   const sKat = clamp(Math.max(lay.inversion * s, 0.6 * cool), 0, 1.5) * mixKat
   const kd = bearing(K_KATDIR, i)
   if (sKat > 0.02 && kd != null) {
-    kat = b(K_KATSPD, i) * 3.6 * sKat * (inTrees ? thermalTune.trees : 1)
+    kat = b(K_KATSPD, i) * 3.6 * sKat * (inTrees ? thermalTune.trees : 1) * Math.exp(lnDrainHere)
     katTo = kd
   }
 
@@ -1956,7 +1971,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     if (lay.source === 'estimate') reasons.push('No layering forecast cached: stability estimated from the sky and the wind')
   }
 
-  return { e: E, n: N, sigma, regime, swirl: swirl || tumble >= TUMBLE_SWIRL, gusty, parts, reasons, local10, U, dirFrom, forecastU, inGrid: true, slot: !!slot, woods: th > 0, bias: applied ? lessonBias : null, gustMul, fitW, fitWL, e10, n10, cell: i, th, cf, tumbleMix, spread: spreadOf, eddy }
+  return { e: E, n: N, sigma, regime, swirl: swirl || tumble >= TUMBLE_SWIRL, gusty, parts, reasons, local10, U, dirFrom, forecastU, inGrid: true, slot: !!slot, woods: th > 0, bias: applied ? lessonBias : null, gustMul, fitW, fitWL, e10, n10, cell: i, th, cf, kat, tumbleMix, spread: spreadOf, eddy }
 }
 
 function headlineOf(ev: Eval, kmh: number, dirFrom: number, gustKmh: number): string {

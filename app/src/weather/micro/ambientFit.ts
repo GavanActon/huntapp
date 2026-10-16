@@ -44,6 +44,16 @@ import { angleDiff, judgeCall, puffBoost, STRENGTH_RANGE, type Seen, type Streng
  * the treetops 500 m off showed 180°, a rotor in the valley, not a wrong
  * forecast to turn the whole neighbourhood by.
  *
+ * Where the model has cold air draining at a check, how strong that drainage
+ * is joins the fit too (2026-10-16): the drainage's speed is the least sure
+ * number in an evening's call, and whether it or the wind wins decides the
+ * cone's way (Gavan's Lac Bailey spot: the model drained it NE, PALM and the
+ * forecast's NW wind took it SE). A turn on the forecast cannot say that, so
+ * a weight on the drainage is tried at the best turn and ratio, with a wide
+ * prior about the model's own; a dusk check that feels the wind and not the
+ * slope turns the drainage down round the sit, one that feels the slope
+ * turns it up.
+ *
  * A leave-one-out score says whether it helps: each check scored by the
  * fit made from the others, beside the raw model and the forecast. That is
  * the number the card shows climbing, and it cannot be gamed by fitting a
@@ -57,8 +67,10 @@ export interface Probe {
   regime: string
   /** the cell is in a stand: the speed there is the canopy's share as much as the air's */
   woods: boolean
+  /** the cold air's drainage in the call, km/h (none where it is not draining) */
+  drain?: number
 }
-export type ProbeFn = (c: WindCheck, turn: number, lnRatio: number) => Probe | null
+export type ProbeFn = (c: WindCheck, turn: number, lnRatio: number, lnDrain?: number) => Probe | null
 /** The ground model at a check as the map would read it: the other checks blended in and the fit applied by distance and age. */
 export type MapProbeFn = (c: WindCheck, others: WindCheck[], fit: AmbientFit | null) => Probe | null
 
@@ -67,6 +79,8 @@ export interface AmbientFit {
   turn: number
   /** ln of the ratio on the forecast speed */
   lnRatio: number
+  /** ln of the weight on the cold air's drainage round the sit (0: the model's own) */
+  lnDrain: number
   /** the checks' weighted centre */
   lon: number
   lat: number
@@ -196,6 +210,16 @@ const SEEN_RANGE: Record<Seen, [number, number]> = { still: [0, 6], leaves: [6, 
 /** A look at the treetops sees the air the fit is after, not the ground's answer to it: it counts this much more than a puff. */
 const SEEN_FIT_W = 1.5
 const SPEED_SIGMA = Math.log(2)
+/** The drainage weights tried (x0.1 to x2), the prior's sigma on them (ln), and the drainage at a check, km/h, under which it is not tried. */
+const DRAIN_LNS = [-2.3, -1.4, -0.7, 0, 0.4, 0.7]
+const DRAIN_PRIOR = 1.0
+const DRAIN_MIN_KMH = 0.3
+// off until replay.py --loo scores it on the checks (2026-10-16: the archive's daily allowance ran out first)
+let fitDrainOn = false
+/** Scripts score the fit with and without the drainage's weight (replay.py --loo --fit-drain). */
+export function setFitDrain(on: boolean): void {
+  fitDrainOn = on
+}
 const COARSE_STEP = 15
 const LN_RATIOS = [-0.9, -0.6, -0.3, 0, 0.3, 0.6, 0.9, 1.1]
 const LN_RATIO_RANGE: [number, number] = [-1.0, 1.2]
@@ -210,7 +234,7 @@ const LN_RATIO_RANGE: [number, number] = [-1.0, 1.2]
  *  that bar, 94% without, and a far-off forecast put right in 18% of sits
  *  against 58%). The prior already weighs the forecast against them. */
 export function fitMatters(f: AmbientFit | null): f is AmbientFit {
-  return !!f && f.count >= 2 && (Math.abs(f.turn) >= 8 || Math.abs(f.lnRatio) >= Math.log(1.2))
+  return !!f && f.count >= 2 && (Math.abs(f.turn) >= 8 || Math.abs(f.lnRatio) >= Math.log(1.2) || Math.abs(f.lnDrain) >= Math.log(1.5))
 }
 
 /** A check's say in a sit's fit against the sit's newest check: by age, half again for a swing. */
@@ -359,10 +383,10 @@ export function fitAmbient(checks: WindCheck[], probe: ProbeFn): AmbientFit | nu
   // (half weight on speed) is read at the forecast as it stands
   const woods = use.map((c) => !c.seen && (probe(c, 0, 0)?.woods ?? false))
   let anyProbe = false
-  const score = (turn: number, lnRatio: number): number => {
-    let s = lnPrior(turn, lnRatio, prior)
+  const score = (turn: number, lnRatio: number, lnDrain = 0): number => {
+    let s = lnPrior(turn, lnRatio, prior) - 0.5 * (lnDrain / DRAIN_PRIOR) ** 2
     for (let k = 0; k < use.length; k++) {
-      const p = probe(use[k], turn, lnRatio)
+      const p = probe(use[k], turn, lnRatio, lnDrain)
       if (!p) continue
       anyProbe = true
       // a seen check's probe is the 10 m wind above the trees (model.ts probeFor)
@@ -401,6 +425,34 @@ export function fitAmbient(checks: WindCheck[], probe: ProbeFn): AmbientFit | nu
         bl = l
       }
     }
+  // the drainage's weight, where a check sits in draining air: tried at the
+  // best turn and ratio, then those refined again under the weight chosen
+  let bd = 0
+  if (fitDrainOn && use.some((c) => !c.seen && (probe(c, bt, bl)?.drain ?? 0) >= DRAIN_MIN_KMH)) {
+    for (const d of DRAIN_LNS) {
+      if (d === 0) continue
+      const s = score(bt, bl, d)
+      if (s > best) {
+        best = s
+        bd = d
+      }
+    }
+    if (bd !== 0) {
+      const t1 = bt
+      const l1 = bl
+      for (let dt = -10; dt <= 10; dt += 5)
+        for (let dl = -0.2; dl <= 0.2001; dl += 0.1) {
+          const t = wrap(t1 + dt)
+          const l = Math.max(LN_RATIO_RANGE[0], Math.min(LN_RATIO_RANGE[1], l1 + dl))
+          const s = score(t, l, bd)
+          if (s > best) {
+            best = s
+            bt = t
+            bl = l
+          }
+        }
+    }
+  }
   // how sure: the posterior over the turn (the ratio summed out), its share within ±20° of the best
   const rowMax = Math.max(...grid.flat())
   let total = 0
@@ -422,6 +474,7 @@ export function fitAmbient(checks: WindCheck[], probe: ProbeFn): AmbientFit | nu
   return {
     turn: Math.round(bt * 10) / 10,
     lnRatio: Math.round(bl * 1000) / 1000,
+    lnDrain: Math.round(bd * 1000) / 1000,
     lon: lon / n,
     lat: lat / n,
     n,
@@ -458,7 +511,7 @@ export function sitScore(checks: WindCheck[], probe: ProbeFn, asMap?: MapProbeFn
     const others = sorted.filter((o) => o !== c)
     const f = others.length ? fitAmbient(others, probe) : null
     const fw = fitMatters(f) ? fitWeightsAt(f, c.lon, c.lat, c.ts) : { turn: 0, ln: 0 }
-    const withFit = others.length && asMap ? asMap(c, others, fitMatters(f) ? f : null) : fw.turn > 0 || fw.ln > 0 ? probe(c, f!.turn * fw.turn, f!.lnRatio * fw.ln) : raw
+    const withFit = others.length && asMap ? asMap(c, others, fitMatters(f) ? f : null) : fw.turn > 0 || fw.ln > 0 ? probe(c, f!.turn * fw.turn, f!.lnRatio * fw.ln, f!.lnDrain * fw.turn) : raw
     const vr = judgeCall(c, raw)
     const vf = judgeCall(c, withFit ?? raw)
     if (vr === 'agree') out.raw.agree++
@@ -482,8 +535,10 @@ export function fitWords(f: AmbientFit): string {
   const r = Math.exp(f.lnRatio)
   if (r >= 1.2) bits.push(`${r >= 1.75 ? `about ${r >= 2.5 ? '3' : '2'}×` : `${Math.round((r - 1) * 100)}% over`} its speed`)
   else if (r <= 1 / 1.2) bits.push(`about ${r <= 0.4 ? 'a third' : r <= 0.6 ? 'half' : `${Math.round(r * 100)}%`} of its speed`)
-  if (!bits.length) return 'the air above the trees is about what the forecast says'
-  return `the air above the trees runs ${bits.join(' at ')}`
+  const d = Math.exp(f.lnDrain ?? 0)
+  const drain = d <= 1 / 1.5 ? `the cold air drains ${d <= 0.3 ? 'hardly at all' : 'weaker'} here than the map had: the wind above wins` : d >= 1.5 ? 'the cold air drains stronger here than the map had: the slope wins over the wind' : ''
+  if (!bits.length) return drain || 'the air above the trees is about what the forecast says'
+  return `the air above the trees runs ${bits.join(' at ')}${drain ? `; ${drain}` : ''}`
 }
 
 /** When the turn's quick part has faded to half the fit: the words for "held till". */

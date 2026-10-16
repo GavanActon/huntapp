@@ -40,6 +40,7 @@ import sys
 import time
 from collections import defaultdict
 from datetime import date, datetime, timedelta
+import hashlib
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit
 from zoneinfo import ZoneInfo
@@ -272,6 +273,8 @@ def run(args) -> list[dict]:
                 page.evaluate("async (t) => { const m = await import('/src/weather/micro/model.ts'); m.setFloorTune(t) }", json.loads(args.floor))
             if args.thermal:
                 page.evaluate("async (t) => { const m = await import('/src/weather/micro/model.ts'); m.setThermalTune(t) }", json.loads(args.thermal))
+            if args.fit_drain:
+                page.evaluate("async () => { const f = await import('/src/weather/micro/ambientFit.ts'); if (f.setFitDrain) f.setFitDrain(true) }")
             print(f"  {day}: ready in {time.time() - t0:.0f} s ({len(todays)} checks)", flush=True)
             if args.loo:
                 objs = [as_check(c, k) for k, c in enumerate(todays)]
@@ -383,9 +386,36 @@ def wait_ready(page, ms: int, home: dict, tries: int = 3, each_s: int = 45) -> d
     return ready
 
 
+# the archive's answers, kept on disk by URL: a past day's forecast never
+# changes, and every scorecard, replay and cone export asks the same days
+# again; until 2026-10-16 each run asked afresh and a day of sweeps spent
+# the archive's daily allowance for this machine
+ARCHIVE_CACHE = Path(__file__).resolve().parents[2] / "pipeline" / "raw" / "archive-cache"
+
+
+def settled(url: str) -> bool:
+    """An archive answer that will not change: one that ends two days or more before today (the
+    archive fills its last days in late)."""
+    if not (url.startswith("https://historical-forecast-api.open-meteo.com/") or url.startswith("https://archive-api.open-meteo.com/")):
+        return False
+    end = dict(parse_qsl(urlsplit(url).query)).get("end_date")
+    try:
+        return date.fromisoformat(end) <= date.today() - timedelta(days=2)
+    except (TypeError, ValueError):
+        return False
+
+
 def fulfil(route, request, day: date) -> None:
     try:
         url = rewrite(request.url, day)
+        key = ARCHIVE_CACHE / (hashlib.sha1(url.encode("utf-8")).hexdigest() + ".json")
+        if key.exists():
+            try:
+                hit = json.loads(key.read_text(encoding="utf-8"))
+                route.fulfill(status=200, headers={"content-type": hit.get("type", "application/json"), "access-control-allow-origin": "*"}, body=hit["body"])
+                return
+            except (OSError, ValueError, KeyError):
+                pass
         resp = route.fetch(url=url)
         # the archive allows few requests at once and the app opens with a
         # burst of them: wait and ask again, so no forecast silently misses
@@ -396,6 +426,14 @@ def fulfil(route, request, day: date) -> None:
             resp = route.fetch(url=url)
         if resp.status != 200:
             print(f"  archive {resp.status} for {url[:160]}… · {resp.text()[:200]}", flush=True)
+        elif settled(url):
+            try:
+                ARCHIVE_CACHE.mkdir(parents=True, exist_ok=True)
+                tmp = key.with_suffix(".tmp")
+                tmp.write_text(json.dumps({"url": url, "type": resp.headers.get("content-type", "application/json"), "body": resp.text()}), encoding="utf-8")
+                tmp.replace(key)
+            except OSError:
+                pass
         route.fulfill(response=resp)
     except Exception as e:  # noqa: BLE001
         # a request still out when the day's context closes is not a miss
@@ -442,6 +480,7 @@ def main() -> int:
     ap.add_argument("--lee", help="the lee rule's settings for this pass (model.ts setLeeTune), JSON, e.g. '{\"off\": 1}'; the app's own when left out")
     ap.add_argument("--slot", help="the slot rule's settings for this pass (model.ts setSlotTune), JSON; the app's own when left out")
     ap.add_argument("--floor", help="the head-height share's scale for this pass (model.ts setFloorTune), JSON e.g. '{\"trees\": 1.4}'; the app's own when left out")
+    ap.add_argument("--fit-drain", action="store_true", help="the sit's fit with the drainage's weight (ambientFit.ts setFitDrain, off in the app until scored)")
     ap.add_argument("--thermal", help="the cold-air drainage's settings for this pass (model.ts setThermalTune), JSON e.g. '{\"mix0\": 2, \"mixScale\": 1.5}'; the app's own when left out")
     args = ap.parse_args()
     rows = run(args)
