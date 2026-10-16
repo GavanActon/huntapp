@@ -47,8 +47,14 @@ from scipy import ndimage as ndi
 ROOT = Path(__file__).resolve().parents[2]
 FIELDS = ROOT / "pipeline" / "raw" / "teacher" / "palm" / "fields"
 CASES = ROOT / "pipeline" / "teacher" / "palm"
-# the case's area in the app (?area=, Pickle Lake's bare)
+# the case's area in the app (?area=, Pickle Lake's bare); a box in the scent test set takes its area
+# from there (before 2026-10-16 whitefish and lacbailey-spot fell to Pickle Lake and ran off its grid)
 AREA = {"pickle-slot": "", "pickle-bogstrip": "", "pickle-bogs": "", "lacbailey-bank": "lac-bailey", "searchmont": "searchmont"}
+try:
+    for _box, _b in json.loads((CASES / "testset.json").read_text(encoding="utf-8"))["boxes"].items():
+        AREA.setdefault(_box, "" if _b.get("area") == "pickle-lake" else _b.get("area", ""))
+except (OSError, ValueError, KeyError):
+    pass
 # a dev build runs an HD area on its SD files until it is installed (state/grade.ts, 2026-10-15):
 # the scripts score the HD bake, so every area is marked installed before the page loads
 HD_PIN_JS = "localStorage.setItem('huntapp-hd', JSON.stringify(Object.fromEntries(['blanchard-river', 'highland-lake', 'lac-bailey', 'pickle-lake', 'sault-test', 'searchmont', 'whitefish-lake'].map((a) => [a, true]))))"
