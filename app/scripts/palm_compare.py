@@ -129,7 +129,14 @@ def runs_all() -> list[str]:
     out = []
     for f in sorted(FIELDS.glob("*.npz")):
         n = f.stem
-        if n.endswith("_particles") or "_scent_" in n or n.startswith("searchmont") or n.endswith(("_t20", "_n40", "_N02")):
+        if n.endswith(("_particles", "_appcone")) or "_scent_" in n or n.startswith("searchmont") or n.endswith(("_t20", "_n40", "_N02")):
+            continue
+        # a PALM field carries its meta; anything else in fields/ (the app's own cones) is not a run
+        try:
+            with np.load(f, allow_pickle=True) as z:
+                if "meta" not in z.files:
+                    continue
+        except Exception:
             continue
         out.append(n)
     return out

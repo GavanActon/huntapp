@@ -249,7 +249,8 @@ def run(args) -> list[dict]:
             page.route("**/ensemble-api.open-meteo.com/**", lambda route, request: route.abort())
             first = todays[0]
             page.clock.install(time=first["local"] - timedelta(minutes=30))
-            page.goto(args.url, wait_until="load")
+            # a busy machine (a bake alongside) can take minutes to serve the modules
+            page.goto(args.url, wait_until="load", timeout=240000)
             try:
                 page.clock.resume()
             except Exception:
