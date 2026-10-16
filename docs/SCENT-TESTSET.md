@@ -269,6 +269,15 @@ shade is drawn as doubt, not scent, so:
 - **Baseline v2** on 8d50465 (with q2): tongue threat 0.50 tune and 0.65 held out, 5 misses, 44 tongue
   false alarms, 10 shade-only.
 
+**The forcing, v4 (ruled 2026-10-16, c4; testset.json `forcing` from huntapp-ba):** the app is forced
+with the forecast 10 m of the hour each run stands for (HRDPS; an idealised run uses its 80 m wind × HRDPS's
+10/80 for that stability). That is the wind it gets in use. Until v4 the card and palm_compare forced
+PALM's own 10 m ambient, which sits in or near a 12–15 m canopy and reads about half the forecast (G1 4.4
+against 8.7, dusk288 1.2 against 5). So every speed threshold tuned on them came out about 2× strict: the
+deep lee's gate (2/5), the drainage fade d2s1, and the scaled floor rule. They're re-scored on v4 before
+live. v3 numbers don't compare with v4. c4 had steered palm_compare to the ambient on 2026-10-15; that
+was the mistake.
+
 **The card's noise** (2026-10-15): two identical rounds on 058c7e1 differed in 1 cell of 44, the
 Lac Bailey shore (L1, n000) toward 180, where the tongue reached 35 m on one run and 43 m on the other,
 either side of the 40 m line. Tune set and misses were the same; held out moved 0.64 to 0.68. So a
