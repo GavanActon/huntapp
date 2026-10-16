@@ -1,6 +1,6 @@
 import { microFile, microHdFile, sdWindOn } from '../../config'
 import { devlog } from '../../devlog'
-import { openBandFile, PREVIEW, type Band, type BandFile, type Habitat } from '../../spots/habitatGrid'
+import { habitat, openBandFile, PREVIEW, type Band, type BandFile, type Habitat } from '../../spots/habitatGrid'
 import { useAppStore } from '../../state/appStore'
 import { homePlace } from '../../state/placesStore'
 import { useSpotsStore } from '../../state/spotsStore'
@@ -1078,9 +1078,56 @@ let leeRise: Float32Array | null = null
  * stay. MICRO-WIND.md §4. setFloorTune lets scripts score a scale side by
  * side (palm_compare.py, replay.py --floor); the app never changes it.
  */
-const FLOOR_DEFAULT = { trees: 1.5, open: 1 }
+const FLOOR_DEFAULT = { trees: 1.5, open: 1, rule: 0, c0: 0.21, closure: 1.34, leaf: 0.31 }
 /** a stand never lets more through than open ground's log law gives 2 m over 10 m (§4) */
 const FLOOR_OPEN_SHARE = 0.7
+
+/**
+ * A stand's head-height share of the wind over it by the flux towers'
+ * rule (floorTune.rule 1, a trial): c0 · e^(closure·(1 − C)) · (1 + leaf · D
+ * · off), C the crown closure, D the hardwood share, off the leaves down.
+ * 26 forest towers (NEON, AmeriFlux; pipeline/towers/why_floor.py) measure the
+ * floor at 0.15–0.40 of the top whatever the stand, the leaves down lifting
+ * it ×1.18, not the bake's ×2.4–3.8; held out it lands within 2× on 89% of
+ * half-hours, the baked share ×1.5 on 59%. The habitat grid shares the micro
+ * grid's cells; null where it has no stand (the baked share stands).
+ */
+let habRef: Habitat | null = null
+let habCrown: ArrayLike<number> | null = null
+let habCon: ArrayLike<number> | null = null
+let habHw: ArrayLike<number> | null = null
+function towerShare(g: Habitat, i: number, leaves: number): number | null {
+  const h = habitat()
+  if (h !== habRef || (h && !habCrown)) {
+    habRef = h
+    const ok = !!h && h.has('crown') && h.has('hardwood') && h.has('conifer')
+    habCrown = ok ? h!.raw('crown') : null
+    habCon = ok ? h!.raw('conifer') : null
+    habHw = ok ? h!.raw('hardwood') : null
+  }
+  // the micro grid's coarse copy while the full bands come has other cells
+  if (!h || !habCrown || !habCon || !habHw || h.cols !== g.cols || h.rows !== g.rows) return null
+  const cr = habCrown[i]
+  const C = cr > 0 && cr !== 255 ? Math.min(1, cr / 100) : 0.6
+  const cn = habCon[i]
+  const hw = habHw[i]
+  const D = cn + hw > 0 && cn !== 255 && hw !== 255 ? hw / (cn + hw) : 0.3
+  return Math.min(FLOOR_OPEN_SHARE, floorTune.c0 * Math.exp(floorTune.closure * (1 - C)) * (1 + floorTune.leaf * D * leaves))
+}
+
+/**
+ * The cold-air drainage's give to the wind (MICRO-WIND §5): whole in a near
+ * calm, fading once the local 10 m wind (after a settled night's decoupling)
+ * passes mix0 km/h, by e every mixScale km/h; under trees it runs at trees of
+ * its open speed. setThermalTune lets scripts score settings side by side
+ * (scorecard.py, palm_compare.py, replay.py --thermal); the app never changes it.
+ */
+const THERMAL_DEFAULT = { mix0: 5, mixScale: 8, trees: 0.7 }
+let thermalTune = { ...THERMAL_DEFAULT }
+export function setThermalTune(t: Partial<typeof THERMAL_DEFAULT> | null): void {
+  thermalTune = { ...THERMAL_DEFAULT, ...t }
+  bump()
+}
 
 /**
  * The scent's spreads (2026-10-15, MICRO-WIND §7), apart from the shown one:
@@ -1396,7 +1443,9 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   // ---- canopy and edges ----
   const th = b(K_TREEH, i)
   // the leaves: the point clouds measured the hardwoods in leaf
-  let cf = canopyAt(i, ctx.leaves)
+  // the towers' rule, where it is on and the habitat knows the stand (towerShare)
+  const tower = floorTune.rule > 0 && th >= 2 ? towerShare(g, i, ctx.leaves) : null
+  let cf = tower ?? canopyAt(i, ctx.leaves)
   let shelter = 1
   let swirl = false
   let slotSwirl = false
@@ -1510,7 +1559,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   // under a canopy too: the AmeriFlux towers (pipeline/towers/fit.py,
   // 2026-10-07) put the floor at about 0.6 of its mixed-air share when the
   // air above is settled (Treehaven mixedwood 0.13 stable / 0.28 unstable)
-  const gm = (th === 0 ? cf * floorTune.open : Math.min(FLOOR_OPEN_SHARE, cf * floorTune.trees)) * (th === 0 ? 1 - 0.45 * s : 1 - 0.3 * s)
+  const gm = (th === 0 ? cf * floorTune.open : Math.min(FLOOR_OPEN_SHARE, tower != null ? cf : cf * floorTune.trees)) * (th === 0 ? 1 - 0.45 * s : 1 - 0.3 * s)
   let mechE = e10 * gm * shelter
   let mechN = n10 * gm * shelter
   // a slot in the trees, on flat ground: the along-slot part of the wind runs
@@ -1606,10 +1655,11 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   let kat = 0
   let katTo = 0
   const cool = Math.pow(1 - lay.cloud / 100, 1.5) * (ctx.sunElev < 0 ? 1 : ctx.sunElev < 10 ? (10 - ctx.sunElev) / 10 : 0)
-  const sKat = clamp(Math.max(lay.inversion * s, 0.6 * cool), 0, 1.5) * mixNight
+  const mixKat = Math.exp(-Math.max(0, mech10 - thermalTune.mix0) / thermalTune.mixScale)
+  const sKat = clamp(Math.max(lay.inversion * s, 0.6 * cool), 0, 1.5) * mixKat
   const kd = bearing(K_KATDIR, i)
   if (sKat > 0.02 && kd != null) {
-    kat = b(K_KATSPD, i) * 3.6 * sKat * (inTrees ? 0.7 : 1)
+    kat = b(K_KATSPD, i) * 3.6 * sKat * (inTrees ? thermalTune.trees : 1)
     katTo = kd
   }
 
