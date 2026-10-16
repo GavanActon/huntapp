@@ -123,7 +123,17 @@ def main() -> int:
         for k in (0.5, 0.6, 0.7, 0.8, 0.9, 1.0):
             w = [float((((q := m.app_rule * k / m.floor_u10) >= 0.5) & (q <= 2)).mean()) for _, m in x.groupby("unit")]
             sweep[k] = round(float(np.mean(w)), 3)
+        # the constant baseline in the same terms, held out: the other towers' median floor/U10, x (1 - 0.3 s)
+        # as the rule carries the layering (and without it)
+        med = t.set_index("unit").floor_u10
+        wc, wc0 = [], []
+        for unit, m in x.groupby("unit"):
+            c = float(med.drop(unit).median())
+            for ws, pred in ((wc, c * (1 - 0.3 * m.app_s) / float((1 - 0.3 * x.app_s).median())), (wc0, c)):
+                q = pred / m.floor_u10
+                ws.append(float(((q >= 0.5) & (q <= 2)).mean()))
         summ = dict(towers=len(t), n=int(t.n.sum()), top_u10=round(float(t.top_u10.median()), 2),
+                    within2_constant=round(float(np.mean(wc0)), 3), within2_constant_layered=round(float(np.mean(wc)), 3),
                     floor_u10=round(float(t.floor_u10.median()), 3), floor_top=round(float(t.floor_top.median()), 3),
                     within2_app=round(float(t.w2_app.mean()), 3), within2_rule=round(float(t.w2_rule.mean()), 3),
                     app_over_measured=round(float(t.app_over.median()), 2), rule_over_measured=round(float(t.rule_over.median()), 2),
