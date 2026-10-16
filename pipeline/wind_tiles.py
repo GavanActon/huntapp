@@ -348,7 +348,13 @@ def queue_bake(path: Path, jobs: int, upload_every: int) -> None:
     for t in threads:
         t.join()
     index()
-    sent, _ = upload()
+    # a failed last upload ends the run all the same (2026-10-16, xonix with a wrong R2 key): the
+    # tiles stay in out/ and the next upload that works sends them, as for the periodic ones
+    try:
+        sent, _ = upload()
+    except Exception as e:  # noqa: BLE001
+        print(f"  upload failed: {e} (the tiles stay in {OUT} for the next upload)", flush=True)
+        sent = 0
     print(f"queue empty: {done_n[0]} tiles this run, {sent} sent at the end, {time.time() - t0:.0f} s")
 
 
