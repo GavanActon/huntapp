@@ -2,6 +2,7 @@
 
     py -3.14 pipeline/towers/why_floor.py            # after aop_structure.py features (~15 min, mostly permutations)
     py -3.14 pipeline/towers/why_floor.py --report   # rebuild why_floor.md from the saved outputs
+    py -3.14 pipeline/towers/why_floor.py --json card.json   # the towers' floor card for the nightly loop, from the saved outputs
 
 The rows, stability classes, censoring, site files and the app's canopy rule come from
 floor.py (imported, not changed; its terrain cache is read from a copy). The app is scored
@@ -32,6 +33,13 @@ Sections (all written to raw/towers/why/):
 5. Proxies: how well each point-cloud feature is predicted (leave-one-out) from what the app
    has (CHM height, closure, gap, CHM spread, deciduous share): proxies.csv.
 why_floor.md has the tables and the summary (SUMMARY below, written by hand from a run's numbers).
+
+--json writes the card the nightly loop carries as its "floor against towers" line (docs/SCENT-TESTSET.md):
+the towers, and for the app now, the app before 2026-10-15, the constant (the other towers' median) and the
+candidate rule (CANDIDATE), each held out: within 2x of the measured floor/top (the mean over towers), the
+median |log error|, and the calm share called against measured. The bar for a rule is to beat the app now and
+the constant. "top" is the tower's wind just above the canopy (1.0-1.7 h), not a forecast's 10 m: REF_CHECKED
+lists the towers where that has been checked against a forecast 10 m (HRRR/ERA5), and the card carries it.
 """
 from __future__ import annotations
 
@@ -479,6 +487,8 @@ RULES = [  # (label, terms): log(floor/top at 2 m) = b0 + sum b_k x_k, fitted on
 ]
 RULE_SRC = {"gap50": "chm_gap_r50", "relief": "relief1000", "mid": "b_5_halfh_r100", "cbhrel": "cbh25_rel_r100",
             "trunk": "trunk_open_r100", "bush": "bush_nrd_r100"}
+CANDIDATE = "closure + leaves down + stability"   # the rule offered for model.ts (why_floor.md, "Suggested change")
+REF_CHECKED: dict[str, str] = {}   # tower -> how its top wind compares with a forecast 10 m there (none checked yet)
 
 
 def rule_terms(t: pd.DataFrame, terms: list[str]) -> np.ndarray:
@@ -524,6 +534,7 @@ def rules(d: pd.DataFrame, sf: pd.DataFrame, alpha: float) -> dict:
                                 cc=(pred * x.ws_top < F.CALM).astype(float))).groupby("unit").mean(numeric_only=True)
         err = np.abs(np.log(q)).groupby(x.unit).median()
         return dict(within2=float(per.ok.mean()), mae=float(err.mean()), calm_gap=float((per.cc - per.cm).abs().mean()),
+                    calm_called=float(per.cc.mean()), calm_meas=float(per.cm.mean()),
                     worst=", ".join(f"{u} {v:.0%}" for u, v in per.ok.sort_values().head(3).items()))
     out = {"app old": score(x.app_old), "app new": score(x.app_new)}
     pc, pm = pd.Series(np.nan, index=x.index), pd.Series(np.nan, index=x.index)
@@ -1010,5 +1021,43 @@ def report_only() -> None:
     print(f"wrote {WHY / 'why_floor.md'}")
 
 
+def card(path: Path) -> dict:
+    """The towers' floor card from the saved row_model.json (no rows, no fits; run the script plain to refresh it)."""
+    src = WHY / "row_model.json"
+    res = json.loads(src.read_text())
+    sc = res["rules"]["scores"]
+
+    def one(k: str) -> dict:
+        v = sc[k]
+        out = dict(within2=round(v["within2"], 3), medianAbsLog=round(v["mae"], 3), calmGap=round(v["calm_gap"], 3))
+        if "calm_called" in v:
+            out.update(calmCalled=round(v["calm_called"], 3), calmMeasured=round(v["calm_meas"], 3))
+        return out
+    rules_ = {k.removeprefix("rule: "): v["within2"] for k, v in sc.items() if k.startswith("rule: ")}
+    best = max(rules_, key=rules_.get)
+    c = dict(
+        towers=len(res["rules"]["towers"]),
+        heldOut="leave-one-site-out (a rule's coefficients refitted without the tower scored)",
+        written=time.strftime("%Y-%m-%dT%H:%M", time.localtime(src.stat().st_mtime)),
+        appNow=one("app new"), appOld=one("app old"), constant=one("constant (other towers' median)"),
+        candidate=dict(rule=CANDIDATE, **one(f"rule: {CANDIDATE}"), coefs=res["rules"]["coefs"].get(CANDIDATE)),
+        bestRule=dict(rule=best, within2=round(rules_[best], 3)),
+        beatsAppNow=sc[f"rule: {CANDIDATE}"]["within2"] > sc["app new"]["within2"],
+        beatsConstant=sc[f"rule: {CANDIDATE}"]["within2"] > sc["constant (other towers' median)"]["within2"],
+        reference="top = the tower's wind just above the canopy (1.0-1.7 h), not a forecast's 10 m",
+        refChecked=REF_CHECKED,
+    )
+    text = json.dumps(c, indent=1)
+    path.write_text(text, encoding="utf-8")
+    print(text)
+    return c
+
+
 if __name__ == "__main__":
-    report_only() if "--report" in sys.argv else main()
+    js = sys.argv[sys.argv.index("--json") + 1] if "--json" in sys.argv else None
+    if js:
+        card(Path(js))
+    elif "--report" in sys.argv:
+        report_only()
+    else:
+        main()
