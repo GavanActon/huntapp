@@ -8,15 +8,21 @@
   align-items: flex-start;
   gap: 8px;
 }
+/* the pill: the view, then past a rule the map's grade (ui/grade.css .grade-tag) */
+.viewpill-bar {
+  display: flex;
+  align-items: stretch;
+  /* the strip's own corners (ui.css .wxstrip), not a capsule: the pill and
+     the strip are the same family of control */
+  border-radius: var(--r-md);
+  border: 1px solid var(--c-border-strong);
+}
 .viewpill {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  /* the strip's own corners (ui.css .wxstrip), not a capsule: the pill and
-     the strip are the same family of control */
   border-radius: var(--r-md);
-  border: 1px solid var(--c-border-strong);
   color: var(--c-text);
   font: inherit;
   font-size: calc(13px * var(--ui-scale));

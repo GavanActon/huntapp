@@ -1,75 +1,62 @@
-/* HD and SD on the map (ui/grade.tsx): the grade tile by the view pill,
-   the HD tab on what HD powers, and the grade sheet. Gold is HD's alone. */
+/* HD and SD on the map (ui/grade.tsx): the grade in the view pill, the HD
+   tab on what HD powers, and the grade sheet. Gold is HD's alone. */
 
-.footrow {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-}
-.app-lefty .footrow {
-  flex-direction: row-reverse;
-}
-
-/* the grade: a circle as tall as the view pill, gold where the view is HD, tan elsewhere */
-.grade-dot {
-  position: relative;
+/* the map's grade, the view pill's last word past a thin rule: gold for HD,
+   tan for SD, its own tap (the grade sheet) */
+.viewpill-sep {
   flex: none;
-  display: grid;
-  place-items: center;
-  width: calc(40px * var(--ui-scale, 1));
-  height: calc(40px * var(--ui-scale, 1));
-  padding: 0;
-  border-radius: 50%;
-  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  width: 1px;
+  margin: 9px 0;
+  background: var(--c-border-strong);
+}
+.grade-tag {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 10px 13px 10px 12px;
+  border-radius: 0 var(--r-md) var(--r-md) 0;
   font: inherit;
-  font-size: calc(11.5px * var(--ui-scale, 1));
+  font-size: calc(13px * var(--ui-scale, 1));
   font-weight: 850;
-  letter-spacing: 0.04em;
-  box-shadow: var(--shadow-fab);
-  transition: background 0.35s ease, color 0.35s ease, box-shadow 0.35s ease;
+  letter-spacing: 0.06em;
+  transition: color 0.35s ease;
 }
-.grade-dot.grade-hd {
-  background: var(--c-hd);
-  color: var(--c-on-hd);
-  box-shadow: var(--shadow-fab), 0 0 14px rgba(var(--c-hd-rgb), 0.4);
+.grade-tag.grade-hd {
+  color: var(--c-hd);
 }
-.grade-dot.grade-sd {
-  background: var(--c-sd);
-  color: var(--c-on-sd);
+.grade-tag.grade-sd {
+  color: var(--c-sd);
 }
-.grade-dot:active {
-  transform: scale(0.92);
+.grade-tag:active {
+  background: rgba(var(--c-ink-rgb), 0.1);
 }
-/* installing, or being built: a gold arc round the circle */
-.grade-arc {
-  position: absolute;
-  inset: -5px;
-  width: calc(100% + 10px);
-  height: calc(100% + 10px);
-  transform: rotate(-90deg);
-  pointer-events: none;
+/* installing, or being built: a gold loading ring before the word */
+.grade-spin {
+  flex: none;
+  width: 11px;
+  height: 11px;
+  margin-right: 7px;
+  border-radius: 50%;
+  border: 2px solid rgba(var(--c-hd-rgb), 0.25);
+  border-top-color: var(--c-hd);
+  animation: grade-spin 0.9s linear infinite;
 }
-.grade-arc circle {
-  fill: none;
-  stroke: rgba(10, 20, 12, 0.55);
-  stroke-width: 3;
+@keyframes grade-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
-.grade-arc .grade-arc-on {
-  stroke: var(--c-hd);
-  stroke-linecap: round;
-  transition: stroke-dasharray 0.4s ease;
-}
-/* built and waiting to install: the circle breathes, once a few seconds */
-.grade-dot.grade-ready {
+/* built and waiting to install: the word breathes, once a few seconds */
+.grade-tag.grade-ready {
   animation: grade-breathe 3.2s ease-in-out infinite;
 }
 @keyframes grade-breathe {
   0%,
   100% {
-    box-shadow: var(--shadow-fab), 0 0 0 rgba(var(--c-hd-rgb), 0);
+    text-shadow: 0 0 0 rgba(var(--c-hd-rgb), 0);
   }
   50% {
-    box-shadow: var(--shadow-fab), 0 0 16px rgba(var(--c-hd-rgb), 0.55);
+    text-shadow: 0 0 10px rgba(var(--c-hd-rgb), 0.9);
   }
 }
 

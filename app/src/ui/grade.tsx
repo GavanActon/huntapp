@@ -473,41 +473,41 @@ export function showHdLayer(it: HdItem): void {
   m.easeTo({ center: inCore ? c : [(CORE.west + CORE.east) / 2, (CORE.south + CORE.north) / 2], zoom: Math.max(z, 14.5), duration: 900 })
 }
 
-const R = 18
-const ARC = 2 * Math.PI * R
-
 /**
- * The grade by the view pill: a circle, gold while the view is in HD, tan
- * otherwise. A gold arc runs round it while HD installs (the bytes) or is
- * being built (an order's stages). A tap opens the grade sheet.
+ * The map's grade, the view pill's last word past a thin rule (ViewPill):
+ * "Sat ▾ | HD", one pill, each part its own tap (Gavan, 2026-10-15, after a
+ * round button beside the pill and a tab under the strip: "Integrate into
+ * the pill with a | separator - tap on it and it bring up the goods. You'll
+ * do it once by accident but generally I don't think it will be bad"). The
+ * word is gold while the view is in HD, tan in SD. A gold loading ring turns
+ * before it while HD installs or is being built (Gavan: "Instead of a bar it
+ * should be a loading"); built and waiting to install, the word breathes.
+ * A tap opens the grade sheet.
  */
 export function GradeTile(): JSX.Element | null {
   const explore = useAppStore((s) => s.exploreMode)
   const inView = useHdLive((s) => s.inView)
   const finishing = useHdLive((s) => s.finishing)
   const installing = useHdLive((s) => s.installing)
-  const frac = useHdLive((s) => (s.total ? Math.min(1, s.loaded / s.total) : 0))
   const order = useAreaOrder()
   const now = useOrderTick(order)
   if (GRADE === 'live' || explore) return null
   const gold = (GRADE === 'hd' && inView) || finishing
   const st = order ? orderStage(order, now) : null
-  const arc = installing && !finishing ? Math.max(0.03, frac) : !gold && st ? st.frac : 0
+  const loading = (installing && !finishing) || (!gold && st != null && st.stage !== 'ready')
   return (
-    <button
-      type="button"
-      className={`grade-dot ${gold ? 'grade-hd' : 'grade-sd'}${st?.stage === 'ready' && !gold ? ' grade-ready' : ''}`}
-      onClick={() => openGrade()}
-      aria-label={gold ? 'HD here: what it gives' : installing ? 'Installing HD' : order ? 'HD being built' : 'SD here: what HD adds'}
-    >
-      {arc > 0 && (
-        <svg className="grade-arc" viewBox="0 0 40 40" aria-hidden="true">
-          <circle cx="20" cy="20" r={R} />
-          <circle cx="20" cy="20" r={R} className="grade-arc-on" strokeDasharray={`${arc * ARC} ${ARC}`} />
-        </svg>
-      )}
-      <span>{gold ? 'HD' : 'SD'}</span>
-    </button>
+    <>
+      <span className="viewpill-sep" aria-hidden="true" />
+      <button
+        type="button"
+        className={`grade-tag ${gold ? 'grade-hd' : 'grade-sd'}${st?.stage === 'ready' && !gold ? ' grade-ready' : ''}`}
+        onClick={() => openGrade()}
+        aria-label={gold ? 'HD here: what it gives' : installing ? 'Installing HD' : order ? 'HD being built' : 'SD here: what HD adds'}
+      >
+        {loading && <i className="grade-spin" aria-hidden="true" />}
+        <span>{gold ? 'HD' : 'SD'}</span>
+      </button>
+    </>
   )
 }
 

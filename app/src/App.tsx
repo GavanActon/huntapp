@@ -56,7 +56,7 @@ import { initStatsWatch } from './stats/watch'
 import BoxCard from './explore/BoxCard'
 import WhereTo from './explore/WhereTo'
 import DevBadge from './ui/DevBadge'
-import { GradeFlipChip, GradeTile } from './ui/grade'
+import { GradeFlipChip } from './ui/grade'
 
 /** What has gone wrong (offline with maps missing, no location), and with
  *  the map turned the way you face, the heading: the way that is up. */
@@ -205,11 +205,7 @@ export default function App() {
           {!viewMenuOpen && !EXPLORE && <HotColumn side="far" />}
           {!measuring && !drawing && (
             <div className="leftfoot">
-              {/* the view pill and, beside it, the map's grade: HD or SD (ui/grade.tsx) */}
-              <div className="footrow">
-                <ViewPill />
-                <GradeTile />
-              </div>
+              <ViewPill />
             </div>
           )}
         </div>

@@ -4,11 +4,13 @@ import { currentView, splitViews, useViews, type MapView } from '../state/viewsS
 import { IconCheck, IconChevronDown, IconLayers, IconTrash } from './icons'
 import { useTapOff } from './tapOff'
 import { setExplore } from '../explore'
+import { GradeTile } from './grade'
 import './views.css'
 
 /**
  * The view pill, bottom left: the name of the view the map is showing
- * ("Scout"), and a menu of the mode's views. The pinned views sit at the
+ * ("Scout"), and a menu of the mode's views. Past a rule in the same pill,
+ * the map's grade, HD or SD, which opens the grade sheet. The pinned views sit at the
  * top in the user's order; `More ›` unfolds the rest, then `Edit this
  * view ›` (the layers sheet) and `Arrange views ›` (the Views sheet, which
  * stars and drags the pinned). No modes here: the quarry chip on the strip sets hunting or
@@ -129,13 +131,17 @@ export default function ViewPill() {
           )}
         </div>
       )}
-      <button className="viewpill glass" onClick={() => (open ? close() : setOpen(true))} aria-expanded={open} aria-label="View">
-        <IconLayers size={15} />
-        <span>{on?.name ?? 'Custom'}</span>
-        <span className="dim viewpill-caret">
-          <IconChevronDown size={14} />
-        </span>
-      </button>
+      {/* one pill: the view, a rule, and the map's grade (ui/grade.tsx GradeTile), each its own tap */}
+      <div className="viewpill-bar glass">
+        <button className="viewpill" onClick={() => (open ? close() : setOpen(true))} aria-expanded={open} aria-label="View">
+          <IconLayers size={15} />
+          <span>{on?.name ?? 'Custom'}</span>
+          <span className="dim viewpill-caret">
+            <IconChevronDown size={14} />
+          </span>
+        </button>
+        <GradeTile />
+      </div>
     </div>
   )
 }
