@@ -44,6 +44,7 @@ LOOP = ROOT / "pipeline" / "raw" / "teacher" / "palm" / "loop"
 REPORTS = LOOP / "reports"   # outside the repo tree: a nightly file there would show up in every session's git status
 BASELINE = "8d50465"          # baseline v2 (docs/SCENT-TESTSET.md)
 CHECKS = ROOT / "app" / "scripts" / "checks_card.py"   # huntapp-ba's checks card (d3c29b5): replay.py per set, JSON out
+TOWERS = ROOT / "pipeline" / "towers" / "towers_card.py"   # huntapp-ba's towers card: forest over open at head height, by pair
 
 
 def landed_since(t0: float) -> list[str]:
@@ -223,6 +224,29 @@ def main() -> int:
                 return f" ({s[k] - old:+.0%})" if isinstance(old, (int, float)) and isinstance(s.get(k), (int, float)) else ""
             lines.append(f"| {name} | {s.get('n')} | {s.get('within45', 0):.0%}{cd('within45')} | "
                          f"{s.get('honestWithin1sd', 0):.0%}{cd('honestWithin1sd')} | {s.get('shownWithin1sd', 0):.0%} |")
+        lines.append("")
+    else:
+        lines += ["- not run this round", ""]
+    lines += ["## The towers card (forest over open ground at head height, Sep-Nov)", ""]
+    towers = None
+    if TOWERS.exists():
+        tp = LOOP / f"towers-{now:%Y-%m-%d}.json"
+        p = subprocess.run([sys.executable, str(TOWERS), "--out", str(tp)], cwd=ROOT, capture_output=True, text=True)
+        if p.returncode == 0 and tp.exists():
+            towers = json.loads(tp.read_text(encoding="utf-8"))
+    rows = towers if isinstance(towers, list) else (towers or {}).get("pairs", [])
+    if rows:
+        lines += ["| pair | forest / open | n | Sep / Oct / Nov | the app |", "|---|---|---|---|---|"]
+        for t in rows:
+            bm = t.get("byMonth") or {}
+
+            def month(k, bm=bm):
+                v = bm.get(k)
+                v = v.get("ratio") if isinstance(v, dict) else v   # {"ratio": r, "n": n}
+                return f"{v:.2f}" if isinstance(v, (int, float)) else "-"
+            months = " / ".join(month(k) for k in ("9", "10", "11"))
+            app = f"{t['app_ratio']:.2f}" if isinstance(t.get("app_ratio"), (int, float)) else (t.get("app_note") or "-")
+            lines.append(f"| {t.get('pair')} | {t.get('ratio', 0):.3f} | {t.get('n', 0):,} | {months} | {app} |")
         lines.append("")
     else:
         lines += ["- not run this round", ""]
