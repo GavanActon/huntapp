@@ -278,6 +278,14 @@ deep lee's gate (2/5), the drainage fade d2s1, and the scaled floor rule. They'r
 live. v3 numbers don't compare with v4. c4 had steered palm_compare to the ambient on 2026-10-15; that
 was the mistake.
 
+**Which source rules what (c4, 2026-10-16, on Gavan's "go with the data"):** under-canopy wind speed goes
+with the towers, which are direct measurements (26 NEON towers held out, tied to a forecast U10 by
+huntapp-ba's ref_wind). Head-height direction and the scent's pattern go with PALM. PALM's realised winds
+run low from canopy drag in this setup: its box comes out at about half its forcing, with drag 0.2
+against PALM's default 0.15. So the app running faster than PALM under trees (1.38× at base, 2.05× with the
+towers' floor rule) is a known divergence, not a fail. One PALM run at drag 0.15 would size how much of it
+is drag; it's booked as a later question.
+
 **The card's noise** (2026-10-15): two identical rounds on 058c7e1 differed in 1 cell of 44, the
 Lac Bailey shore (L1, n000) toward 180, where the tongue reached 35 m on one run and 43 m on the other,
 either side of the 40 m line. Tune set and misses were the same; held out moved 0.64 to 0.68. So a
