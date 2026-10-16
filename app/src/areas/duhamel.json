@@ -1,0 +1,196 @@
+{
+  "id": "duhamel",
+  "name": "Duhamel",
+  "jurisdiction": "QC",
+  "centre": [-75.1448, 46.094625],
+  "home": { "center": [-75.1448, 46.094625], "zoom": 13 },
+  "region": { "west": -75.268, "south": 46.025, "east": -75.022, "north": 46.165 },
+  "core": { "west": -75.21, "south": 46.049, "east": -75.08, "north": 46.14, "maxzoom": 16 },
+  "regionMaxzoom": 13,
+  "declination": -13.0,
+  "timezone": "America/Toronto",
+  "zone": { "label": "Zone", "name": "10 Est" },
+  "relief": [211, 454],
+  "base": "areas/duhamel/",
+  "surveyedLakes": [],
+  "live": { "lio": false, "satellite": "qc" },
+  "attribution": { "vectors": "© Gouvernement du Québec", "lakes": "GRHQ © Gouvernement du Québec", "bush": "LiDAR © Gouvernement du Québec (MRNF)" },
+  "presets": [{ "name": "Requested spot", "lon": -75.1448, "lat": 46.094625, "kind": "stand", "note": "Area requested 2026-10-15" }],
+  "bundle": {
+    "description": "Topo, imagery, LiDAR relief and contours, forest stands, water, roads, and the habitat, wind and going grids around Duhamel; full detail within 5 km of the spot."
+  },
+  "files": {
+    "pmtiles": ["topo", "satellite", "hillshadeLidar", "dem", "contours", "contoursWide", "forest", "understory", "lanes", "historical", "places"],
+    "geo": ["parks", "fire", "roads"],
+    "baseGeo": ["waterbody"],
+    "grids": ["habitat", "micro", "micro-sd", "going"]
+  },
+  "bake": {
+    "outDir": "app/public/data/areas/duhamel",
+    "hrdem": [
+      "https://canelevation-dem.s3.ca-central-1.amazonaws.com/hrdem-lidar/NRCAN-FHIMP_PICAI_PetiteNation_LAssomption_2022-1m-dtm.tif",
+      "https://canelevation-dem.s3.ca-central-1.amazonaws.com/hrdem-lidar/QC-600021_46_RiviereGatineauLievre_2021-1m-dtm.tif",
+      "https://canelevation-dem.s3.ca-central-1.amazonaws.com/hrdem-lidar/QC-600018-23_DIF_Grand_Mtl_MTM9_2018-1m-dtm.tif",
+      "https://canelevation-dem.s3.ca-central-1.amazonaws.com/hrdem-lidar/QC-2015_600014-47_MTM09-1m-dtm.tif"
+    ],
+    "vectors": "qc",
+    "forest": { "adapter": "qc.ecoforestier", "vintage": "4th inventory, with cuts, burns and outbreaks to 2025" },
+    "imagery": "qc.imagerie_gq",
+    "pointcloud": { "adapter": "qc.mrnf_laz", "bbox": { "west": -75.184, "south": 46.067, "east": -75.106, "north": 46.122 } },
+    "nts": ["031J03"]
+  },
+  "profile": {
+    "checked": "2026-10-16",
+    "treeline": null,
+    "ecoregion": { "cec1": "5", "cec2": "5.2", "cec3": "5.2.3", "name": "Algonquin/Southern Laurentians", "family": "Mixed Wood Shield" },
+    "north": false,
+    "stands": { "shrubHeight": true, "leadSpecies": true }
+  },
+  "coverage": {
+    "checked": "2026-10-16",
+    "pmtiles": {
+      "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
+      "topo": {
+        "file": "topo-duhamel.pmtiles",
+        "bytes": 9584481,
+        "source": "Toporama hypsography (contours and spot heights), NRCan WMS",
+        "licence": "OGL-Canada"
+      },
+      "satellite": {
+        "file": "satellite-duhamel.pmtiles",
+        "bytes": 19427126,
+        "source": "Imagerie_GQ WMTS, MRNF: the 20 cm ortho",
+        "licence": "CC BY 4.0",
+        "vintage": "flown Aug-Oct 2023"
+      },
+      "hillshade": { "missing": "not baked: the map shades the relief from the DEM" },
+      "hillshadeLidar": {
+        "file": "hillshade-lidar-duhamel.pmtiles",
+        "bytes": 47787003,
+        "source": "HRDEM 1 m LiDAR DTM, NRCan: NRCAN-FHIMP_PICAI_PetiteNation_LAssomption_2022-1m, gaps filled from QC-600021_46_RiviereGatineauLievre_2021-1m, QC-600018-23_DIF_Grand_Mtl_MTM9_2018-1m, QC-2015_600014-47_MTM09-1m",
+        "licence": "OGL-Canada",
+        "vintage": "2022, gaps 2021, 2018",
+        "note": "LiDAR over 100% of the core"
+      },
+      "dem": {
+        "file": "dem-duhamel.pmtiles",
+        "bytes": 16996051,
+        "source": "MRDEM 30 m, with HRDEM 1 m LiDAR over the core (NRCAN-FHIMP_PICAI_PetiteNation_LAssomption_2022-1m, gaps filled from QC-600021_46_RiviereGatineauLievre_2021-1m, QC-600018-23_DIF_Grand_Mtl_MTM9_2018-1m, QC-2015_600014-47_MTM09-1m), NRCan",
+        "licence": "OGL-Canada",
+        "vintage": "2022, gaps 2021, 2018"
+      },
+      "contours": {
+        "file": "contours-duhamel.pmtiles",
+        "bytes": 8859648,
+        "source": "HRDEM 1 m LiDAR DTM, NRCan: NRCAN-FHIMP_PICAI_PetiteNation_LAssomption_2022-1m, gaps filled from QC-600021_46_RiviereGatineauLievre_2021-1m, QC-600018-23_DIF_Grand_Mtl_MTM9_2018-1m, QC-2015_600014-47_MTM09-1m",
+        "licence": "OGL-Canada",
+        "vintage": "2022, gaps 2021, 2018"
+      },
+      "contoursWide": { "file": "contours-wide-duhamel.pmtiles", "bytes": 1090433, "source": "MRDEM 30 m DTM, NRCan", "licence": "OGL-Canada" },
+      "forest": {
+        "file": "forest-duhamel.pmtiles",
+        "bytes": 1632682,
+        "source": "Carte écoforestière (MRNF), with later cuts, burns and outbreaks laid over",
+        "licence": "CC BY 4.0",
+        "vintage": "4th inventory, with cuts, burns and outbreaks to 2025"
+      },
+      "understory": {
+        "file": "understory-duhamel.pmtiles",
+        "bytes": 3540782,
+        "source": "MRNF LiDAR 2014_Outaouais_LiDAR, flown 2015-06-07; MRNF LiDAR 2018_Laurentides_LiDAR, flown 2018-06-11 to 2018-06-25; MRNF LiDAR 2022_OutaouaisLaurentidesLanaudiereEstrie_LiDAR, flown 2022-05-10 to 2022-05-11; heights above the tiles' own ground returns",
+        "licence": "CC BY 4.0",
+        "vintage": "flown 2015-06-07 to 2022-05-11"
+      },
+      "lanes": {
+        "file": "lanes-duhamel.pmtiles",
+        "bytes": 2172912,
+        "source": "MRNF LiDAR 2014_Outaouais_LiDAR, flown 2015-06-07; MRNF LiDAR 2018_Laurentides_LiDAR, flown 2018-06-11 to 2018-06-25; MRNF LiDAR 2022_OutaouaisLaurentidesLanaudiereEstrie_LiDAR, flown 2022-05-10 to 2022-05-11; heights above the tiles' own ground returns",
+        "licence": "CC BY 4.0",
+        "vintage": "flown 2015-06-07 to 2022-05-11"
+      },
+      "bathy": { "missing": "Ontario only: lake depths need the ARA lake facts and the MNR sheets" },
+      "historical": {
+        "file": "historical-duhamel.pmtiles",
+        "bytes": 19143516,
+        "source": "CanMatrix2 1:50 000 NTS scans, NRCan: 031J03",
+        "licence": "OGL-Canada"
+      },
+      "bathySheets": { "missing": "Ontario only: MNR lake survey sheets" },
+      "places": {
+        "file": "places-duhamel.pmtiles",
+        "bytes": 266913,
+        "source": "TRQ territories, the carte écoforestière's burns and AQréseau roads, MRNF",
+        "licence": "CC BY 4.0"
+      }
+    },
+    "geo": {
+      "wmu": { "missing": "not in the maps: the hunting zones' only source (SmartFaune) states no licence, so the area file names the zone instead" },
+      "camps": { "missing": "Ontario only: Crown land camps come from LIO" },
+      "crown": { "missing": "Ontario only: Crown land comes from LIO" },
+      "parks": {
+        "file": "parks-duhamel.geojson",
+        "bytes": 99211,
+        "source": "Territoires récréatifs du Québec (TRQ), MRNF",
+        "licence": "CC BY 4.0",
+        "vintage": "V2026-04"
+      },
+      "bathy": { "missing": "Ontario only: lake bathymetry comes from LIO" },
+      "fire": {
+        "file": "fire-duhamel.geojson",
+        "bytes": 656,
+        "source": "Burns from the carte écoforestière (ca_feu), MRNF",
+        "licence": "CC BY 4.0",
+        "vintage": "burns to 1987"
+      },
+      "roads": {
+        "file": "roads-duhamel.geojson",
+        "bytes": 1134464,
+        "source": "AQréseau (Adresses Québec, MRNF): Collectrice (3), Locale (389), Autre route (1294)",
+        "licence": "CC BY 4.0",
+        "vintage": "release 2026-10-01"
+      },
+      "forest": { "missing": "not in the maps as GeoJSON: the map reads the stands from the forest tiles, and the GeoJSON stays the bake's input" },
+      "depth": { "missing": "Ontario only: lake depths need the ARA lake facts and the MNR sheets" }
+    },
+    "baseGeo": {
+      "waterbody": {
+        "file": "waterbody-duhamel.geojson",
+        "bytes": 828161,
+        "source": "GRHQ water surfaces (MRNF), 1:20 000",
+        "licence": "CC BY 4.0",
+        "vintage": "updated 2016-08-29, some to 2018-01-04"
+      }
+    },
+    "grids": {
+      "habitat": {
+        "file": "habitat-duhamel.hab",
+        "bytes": 2934023,
+        "source": "derived: MRDEM, NRCan 2020 land cover, forest stands, water, wetlands, roads and burns",
+        "licence": "derived from the layers above",
+        "note": "stand height and closure from the LiDAR point cloud over 48% of the core",
+        "vintage": "generated 2026-10-16"
+      },
+      "micro": {
+        "file": "micro-duhamel.hab",
+        "bytes": 9281936,
+        "source": "derived: the habitat grid and the MRDEM",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-16"
+      },
+      "going": {
+        "file": "going-duhamel.hab",
+        "bytes": 2310292,
+        "source": "derived: HRDEM LiDAR, point-cloud bush or the forest-map estimate, water, wetlands and roads",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-16"
+      },
+      "micro-sd": {
+        "file": "micro-sd-duhamel.hab",
+        "bytes": 7453492,
+        "source": "derived: the habitat grid and the MRDEM, with the surrogate net's terrain wind in WindNinja's place (build_windsd.py)",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-16"
+      }
+    }
+  }
+}
