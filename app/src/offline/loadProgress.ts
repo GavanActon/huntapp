@@ -5,7 +5,10 @@
  * out of the phone's own store never shows, it lands in milliseconds, and
  * so the line waits 300 ms before it appears and stays 400 ms after the last
  * byte so it is seen to fill. The map's tiles are open-ended and are not
- * counted: a line that stalls at 80 % is worse than none.
+ * counted: a line that stalls at 80 % is worse than none. The wind for a
+ * view panned to (the lattice over it, the SD tiles under it) is a task
+ * with an end but no byte count: the line slides while it comes (Gavan,
+ * 2026-10-15: "i know it's loading in the wind but I don't see the loading bar").
  */
 import { useSyncExternalStore } from 'react'
 
@@ -95,6 +98,21 @@ function scheduleRecompute() {
     frame = 0
     recompute()
   })
+}
+
+/** Work with no bytes to count (the wind lattice over a view, a block of SD
+ *  wind tiles): the line slides until it settles, if it takes long enough to show. */
+let taskN = 0
+export async function trackTask<T>(name: string, work: Promise<T>): Promise<T> {
+  const key = `${name}#${++taskN}`
+  items.set(key, { loaded: 0, total: 0 })
+  started()
+  try {
+    return await work
+  } finally {
+    items.delete(key)
+    finished()
+  }
 }
 
 /** Read a fetched file's body, counting it on the way, and give its bytes. */

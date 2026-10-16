@@ -3,6 +3,7 @@ import { DATA_BASE } from '../../areas'
 import { REGION } from '../../config'
 import { devlog } from '../../devlog'
 import { STREAM_PICTURES } from '../../map/streamPictures'
+import { trackTask } from '../../offline/loadProgress'
 import { Habitat, PREVIEW, type Band, type BandDef, type BandHeader } from '../../spots/habitatGrid'
 import { groundSampler, loadMicro, useAreaGrid, useMosaic } from './model'
 
@@ -188,14 +189,18 @@ async function moved(map: MlMap): Promise<void> {
     // the area's grid settled first, so nothing of its loading lands in the block's place
     await loadMicro()
     const t = performance.now()
-    const tiles = await Promise.all(
-      ids.map((row) =>
-        Promise.all(
-          row.map(async (id) => {
-            if (!(id in idx.tiles)) return null
-            const buf = await fetchTile(id)
-            return buf ? unpack(buf) : null
-          }),
+    // the strip's line slides while they come (offline/loadProgress.ts)
+    const tiles = await trackTask(
+      'wind-tiles',
+      Promise.all(
+        ids.map((row) =>
+          Promise.all(
+            row.map(async (id) => {
+              if (!(id in idx.tiles)) return null
+              const buf = await fetchTile(id)
+              return buf ? unpack(buf) : null
+            }),
+          ),
         ),
       ),
     )

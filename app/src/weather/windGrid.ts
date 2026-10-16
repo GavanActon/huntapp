@@ -2,6 +2,7 @@ import type { AreaBox, AreaDef } from '../areas'
 import { REGION, TIMEZONE } from '../config'
 import { trackTime } from '../analytics'
 import { devlog } from '../devlog'
+import { trackTask } from '../offline/loadProgress'
 import { fetchTimeout, localStamp } from './openMeteo'
 
 /**
@@ -11,6 +12,16 @@ import { fetchTimeout, localStamp } from './openMeteo'
  * with no signal. The lattice is 5×5 over a 12 km box: more than HRDPS
  * itself resolves, which is the point; a single point would draw one
  * uniform wind and the lakes' lee would be invisible.
+ *
+ * Past the area's box, a second lattice over the view (explore/index.ts
+ * viewMoved), in memory only: up to 9×9 points over whatever is on screen,
+ * fetched again when the view leaves it or zooms well in past it. Before it
+ * (2026-10-15) the one lattice was 22 km round the view's centre, clamped
+ * beyond: zoomed out, a whole province drew one small box's edge wind, and
+ * every pan that moved the centre out of the box turned the lot at once
+ * (Gavan: "once I get outside that range it seems flip and not to match").
+ * The area's own lattice always serves its box, so a cone at camp never
+ * moves because the map was zoomed out.
  */
 
 export interface WindGrid {
@@ -34,36 +45,8 @@ const keyOf = (areaId: string) => `huntapp-wind:${areaId}:v2`
 const KEY = keyOf(REGION.id)
 const MAX_AGE_MS = 60 * 60_000
 
+/** the area's own lattice, kept on the phone for camp */
 let grid: WindGrid | null = null
-/** The box the field is fetched over when the view is away from the area
- *  (explore/index.ts viewMoved): memory only, never the phone's copy, which
- *  stays the area's own for camp with no signal. Null: the area's region. */
-let viewBox: AreaBox | null = null
-export function setWindBox(box: AreaBox | null): void {
-  if (!box) {
-    if (!viewBox) return
-    viewBox = null
-    grid = null
-    try {
-      const raw = localStorage.getItem(KEY)
-      if (raw) grid = JSON.parse(raw) as WindGrid
-    } catch {
-      /* fetched again below */
-    }
-    void ensureWeatherGrid()
-    for (const cb of gridListeners) cb()
-    return
-  }
-  // a new fetch only once the centre has left the box there is
-  if (viewBox) {
-    const cx = (box.west + box.east) / 2
-    const cy = (box.south + box.north) / 2
-    if (cx > viewBox.west && cx < viewBox.east && cy > viewBox.south && cy < viewBox.north) return
-  }
-  viewBox = box
-  grid = null
-  void ensureWeatherGrid()
-}
 let inflight: Promise<WindGrid | null> | null = null
 const gridListeners = new Set<() => void>()
 const tickListeners = new Set<() => void>()
@@ -75,21 +58,103 @@ try {
   /* private mode */
 }
 
-function lattice(box: AreaBox): { lats: number[]; lons: number[] } {
+// ---- the lattice over the view, past the area's box
+
+/** the view's lattice in use, and the last few fetched (panning back costs nothing) */
+let viewGrid: WindGrid | null = null
+const viewKept: WindGrid[] = []
+const VIEW_KEEP = 6
+/** the view as it last settled, outside the area's box; null over the box */
+let viewWanted: AreaBox | null = null
+let viewSeq = 0
+let viewTimer: number | null = null
+/** a pan settling and moving on in under this fetches nothing for the first */
+const VIEW_WAIT_MS = 350
+/** the lattice reaches this far past the view each way, as a share of it, so a short pan stays inside */
+const VIEW_PAD = 0.35
+/** its smallest half-height, degrees of latitude: 11 km, as the one round the view's centre was */
+const VIEW_MIN_HALF = 0.1
+
+const latSpan = (b: AreaBox) => b.north - b.south
+const holds = (b: AreaBox, v: AreaBox) => v.west >= b.west && v.east <= b.east && v.south >= b.south && v.north <= b.north
+const gridBox = (g: WindGrid): AreaBox => ({ west: g.lon0, south: g.lat0, east: g.lon0 + g.dLon * (g.cols - 1), north: g.lat0 + g.dLat * (g.rows - 1) })
+/** A lattice serves a view it holds, fresh, and not so much bigger that its points are coarse there. */
+const serves = (g: WindGrid, v: AreaBox) => Date.now() - g.fetchedAt < MAX_AGE_MS && holds(gridBox(g), v) && latSpan(gridBox(g)) <= Math.max(2 * VIEW_MIN_HALF, 4 * latSpan(v)) * (1 + 2 * VIEW_PAD)
+
+/** The box a view's lattice covers: the view and a margin, never smaller than 22 km tall. */
+function boxFor(v: AreaBox): AreaBox {
+  const cy = (v.south + v.north) / 2
+  const cx = (v.west + v.east) / 2
+  const half = Math.max(VIEW_MIN_HALF, (latSpan(v) / 2) * (1 + 2 * VIEW_PAD))
+  const halfLon = Math.max(VIEW_MIN_HALF * 1.5 / Math.max(0.2, Math.cos((cy * Math.PI) / 180)), ((v.east - v.west) / 2) * (1 + 2 * VIEW_PAD))
+  return { west: cx - halfLon, east: cx + halfLon, south: Math.max(-85, cy - half), north: Math.min(85, cy + half) }
+}
+
+/** Points each way for a box: 5 near, 7 for a district, 9 for a province. */
+const pointsFor = (b: AreaBox) => (latSpan(b) >= 3 ? 9 : latSpan(b) >= 0.6 ? 7 : 5)
+
+/**
+ * The view as it settled (explore/index.ts viewMoved): null while it is
+ * inside the area's box, which its own lattice serves. Elsewhere a kept
+ * lattice that serves it is taken at once, else one is fetched once the
+ * view has stayed put a moment, the strip's line sliding while it comes.
+ */
+export function setWindView(view: AreaBox | null): void {
+  viewWanted = view
+  if (viewTimer != null) {
+    window.clearTimeout(viewTimer)
+    viewTimer = null
+  }
+  if (!view) return
+  if (viewGrid && serves(viewGrid, view)) return
+  const kept = viewKept.find((g) => serves(g, view))
+  if (kept) {
+    viewGrid = kept
+    for (const cb of gridListeners) cb()
+    return
+  }
+  viewTimer = window.setTimeout(() => {
+    viewTimer = null
+    void fetchView(view)
+  }, VIEW_WAIT_MS)
+}
+
+async function fetchView(view: AreaBox): Promise<void> {
+  const seq = ++viewSeq
+  const box = boxFor(view)
+  const n = pointsFor(box)
+  try {
+    // seamless: HRDPS's own numbers wherever it reaches, the coarser GEM past its edge
+    // (one point past it and an HRDPS-only request is refused whole: a view of the Lakes reaching 36° N)
+    const g = await trackTask('wind-view', fetchGrid(box, TIMEZONE, n, 0, 'gem_seamless'))
+    viewKept.unshift(g)
+    if (viewKept.length > VIEW_KEEP) viewKept.pop()
+    // a later view has asked since: kept, but the newer one's lattice is coming
+    if (seq !== viewSeq) return
+    viewGrid = g
+    devlog('wind', `view lattice · ${n}×${n} · ${Math.round(latSpan(box) * 111)} km tall`)
+    for (const cb of gridListeners) cb()
+  } catch (e) {
+    devlog('wind', `view lattice failed · ${(e as Error).message}`)
+  }
+}
+
+function lattice(box: AreaBox, n: number): { lats: number[]; lons: number[] } {
   const lats: number[] = []
   const lons: number[] = []
-  for (let r = 0; r < ROWS; r++)
-    for (let c = 0; c < COLS; c++) {
-      lats.push(box.south + ((box.north - box.south) * r) / (ROWS - 1))
-      lons.push(box.west + ((box.east - box.west) * c) / (COLS - 1))
+  for (let r = 0; r < n; r++)
+    for (let c = 0; c < n; c++) {
+      lats.push(box.south + ((box.north - box.south) * r) / (n - 1))
+      lons.push(box.west + ((box.east - box.west) * c) / (n - 1))
     }
   return { lats, lons }
 }
 
-/** The field over an area's box, in its time zone: the active area's
- *  unless another is named. */
-async function fetchGrid(box: AreaBox = REGION, timezone: string = TIMEZONE): Promise<WindGrid> {
-  const { lats, lons } = lattice(box)
+/** The field over a box, in a time zone: the active area's unless another
+ *  is named; n points each way, and the day before for the area's own
+ *  (wind checks are scored against the hour they were made). */
+async function fetchGrid(box: AreaBox = REGION, timezone: string = TIMEZONE, n = COLS, pastDays = 1, model = 'gem_hrdps_continental'): Promise<WindGrid> {
+  const { lats, lons } = lattice(box, n)
   const q = new URLSearchParams({
     latitude: lats.map((v) => v.toFixed(4)).join(','),
     longitude: lons.map((v) => v.toFixed(4)).join(','),
@@ -97,23 +162,22 @@ async function fetchGrid(box: AreaBox = REGION, timezone: string = TIMEZONE): Pr
     wind_speed_unit: 'kmh',
     timezone,
     forecast_days: '3',
-    // yesterday too: wind checks are scored against the hour they were made
-    past_days: '1',
-    models: 'gem_hrdps_continental',
+    past_days: String(pastDays),
+    models: model,
   })
   const resp = await fetchTimeout(`https://api.open-meteo.com/v1/forecast?${q}`, 15_000)
   if (!resp.ok) throw new Error(`open-meteo grid ${resp.status}`)
   const j = (await resp.json()) as { hourly: { time: string[]; wind_speed_10m: (number | null)[]; wind_direction_10m: (number | null)[] } }[]
   const cells = Array.isArray(j) ? j : [j]
-  if (cells.length !== COLS * ROWS) throw new Error(`open-meteo grid: ${cells.length} cells`)
+  if (cells.length !== n * n) throw new Error(`open-meteo grid: ${cells.length} cells`)
   const g: WindGrid = {
     fetchedAt: Date.now(),
-    cols: COLS,
-    rows: ROWS,
+    cols: n,
+    rows: n,
     lon0: box.west,
     lat0: box.south,
-    dLon: (box.east - box.west) / (COLS - 1),
-    dLat: (box.north - box.south) / (ROWS - 1),
+    dLon: (box.east - box.west) / (n - 1),
+    dLat: (box.north - box.south) / (n - 1),
     time: cells[0].hourly.time,
     windKmh: cells.map((c) => c.hourly.wind_speed_10m.map((v) => v ?? NaN)),
     windDir: cells.map((c) => c.hourly.wind_direction_10m.map((v) => v ?? 0)),
@@ -141,17 +205,14 @@ export async function fetchAreaWindGrid(area: AreaDef): Promise<boolean> {
 export function ensureWeatherGrid(): Promise<WindGrid | null> {
   if (grid && Date.now() - grid.fetchedAt < MAX_AGE_MS) return Promise.resolve(grid)
   if (inflight) return inflight
-  const box = viewBox
-  inflight = fetchGrid(box ?? REGION)
+  inflight = fetchGrid(REGION)
     .then((g) => {
       grid = g
-      // the area's own field is kept for camp; a view's elsewhere is not
-      if (!box) {
-        try {
-          localStorage.setItem(KEY, JSON.stringify(g))
-        } catch {
-          /* ignore */
-        }
+      // kept for camp with no signal
+      try {
+        localStorage.setItem(KEY, JSON.stringify(g))
+      } catch {
+        /* ignore */
       }
       devlog('wind', `grid · ${g.time.length} h`)
       trackTime('wind_grid')
@@ -189,6 +250,8 @@ function armTick() {
     tickTimer = null
     for (const cb of tickListeners) cb()
     void ensureWeatherGrid()
+    // the view's lattice ages too, while the view is still out there
+    if (viewWanted && viewGrid && Date.now() - viewGrid.fetchedAt >= MAX_AGE_MS) void fetchView(viewWanted)
     armTick()
   }, next - now)
 }
@@ -205,12 +268,50 @@ function hourIndexAt(time: string[], ms: number): number {
   return idx
 }
 
-/** Bilinear wind at a moment, blended between the hours either side of
- *  it (each corner's speed linear, its direction by unit vectors, so it
- *  turns the short way): out[0] = km/h, out[1] = direction FROM. */
+/** The share of the area's box, in from its edge, over which its lattice
+ *  hands over to the view's: no seam where the two meet. */
+const HANDOVER = 0.12
+
+/**
+ * The wind at a moment: the area's lattice over its box, the view's past it
+ * (where it reaches), the two blended over a band just inside the box's edge.
+ * Anywhere neither has, the area's lattice held at its edge, as it ever was.
+ * out[0] = km/h, out[1] = direction FROM.
+ */
 export function windSampler(ms: number): WindSample | null {
-  const g = grid
-  if (!g || g.time.length === 0) return null
+  const area = grid && grid.time.length ? latticeSampler(grid, ms) : null
+  const vg = viewGrid
+  const view = vg && vg.time.length ? latticeSampler(vg, ms) : null
+  if (!view || !vg) return area
+  const vb = gridBox(vg)
+  const inView = (lon: number, lat: number) => lon >= vb.west && lon <= vb.east && lat >= vb.south && lat <= vb.north
+  if (!area || !grid) return (lon, lat, out) => inView(lon, lat) && view(lon, lat, out)
+  const ab = gridBox(grid)
+  const mx = (ab.east - ab.west) * HANDOVER
+  const my = (ab.north - ab.south) * HANDOVER
+  const o2 = new Float32Array(2)
+  return (lon, lat, out) => {
+    // how deep inside the area's box, 0 at its edge, 1 past the band
+    const d = Math.min((lon - ab.west) / mx, (ab.east - lon) / mx, (lat - ab.south) / my, (ab.north - lat) / my)
+    if (d >= 1 || !inView(lon, lat)) return area(lon, lat, out)
+    if (d <= 0) return view(lon, lat, out)
+    if (!area(lon, lat, out)) return view(lon, lat, out)
+    if (!view(lon, lat, o2)) return true
+    // speeds linear, directions by unit vectors
+    const a = (out[1] * Math.PI) / 180
+    const b = (o2[1] * Math.PI) / 180
+    const u = d * Math.sin(a) + (1 - d) * Math.sin(b)
+    const v = d * Math.cos(a) + (1 - d) * Math.cos(b)
+    out[0] = d * out[0] + (1 - d) * o2[0]
+    out[1] = ((Math.atan2(u, v) * 180) / Math.PI + 360) % 360
+    return true
+  }
+}
+
+/** One lattice's bilinear wind at a moment, blended between the hours
+ *  either side of it (each corner's speed linear, its direction by unit
+ *  vectors, so it turns the short way); held at its edge beyond it. */
+function latticeSampler(g: WindGrid, ms: number): WindSample {
   const i = hourIndexAt(g.time, ms)
   const j = Math.min(g.time.length - 1, i + 1)
   const t0 = Date.parse(g.time[i])
