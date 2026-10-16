@@ -269,6 +269,12 @@ shade is drawn as doubt, not scent, so:
 - **Baseline v2** on 8d50465 (with q2): tongue threat 0.50 tune and 0.65 held out, 5 misses, 44 tongue
   false alarms, 10 shade-only.
 
+**The card's noise** (2026-10-15): two identical rounds on 058c7e1 differed in 1 cell of 44, the
+Lac Bailey shore (L1, n000) toward 180, where the tongue reached 35 m on one run and 43 m on the other,
+either side of the 40 m line. Tune set and misses were the same; held out moved 0.64 to 0.68. So a
+held-out change of one sector (about ±0.04) is noise, and a ruling looks at which sectors moved, not
+the second decimal.
+
 **The bar is the gate to live.** A change that misses it can still go to hunt-dev as a trial on
 Gavan's word. The referee reports which part failed, and the change stays off live until that part
 passes. First case, 2026-10-15: the q2 spread (option 3) passed every part but one. Its misses went
