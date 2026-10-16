@@ -222,7 +222,9 @@ def main() -> int:
         pc = state.get("checks") or {}
         lines += ["| set | checks | within 45° | honest spread within 1 sd (bar 60-80%) | shown within 1 sd |", "|---|---|---|---|---|"]
         for name, s in checks.items():
-            if not isinstance(s, dict) or "skipped" in s:
+            if not isinstance(s, dict):   # the card's own fields (its url), not a check set
+                continue
+            if "skipped" in s:
                 lines.append(f"| {name} | skipped: {s.get('skipped') if isinstance(s, dict) else s} | | | |")
                 continue
 
