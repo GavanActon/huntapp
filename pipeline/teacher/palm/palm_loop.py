@@ -45,6 +45,7 @@ REPORTS = LOOP / "reports"   # outside the repo tree: a nightly file there would
 BASELINE = "8d50465"          # baseline v2 (docs/SCENT-TESTSET.md)
 CHECKS = ROOT / "app" / "scripts" / "checks_card.py"   # huntapp-ba's checks card (d3c29b5): replay.py per set, JSON out
 TOWERS = ROOT / "pipeline" / "towers" / "towers_card.py"   # huntapp-ba's towers card: forest over open at head height, by pair
+FLOOR = ROOT / "pipeline" / "towers" / "why_floor.py"      # huntapp-ba's floor card: in-stand floor/top at NEON towers (--json)
 
 
 def landed_since(t0: float) -> list[str]:
@@ -248,6 +249,27 @@ def main() -> int:
             app = f"{t['app_ratio']:.2f}" if isinstance(t.get("app_ratio"), (int, float)) else (t.get("app_note") or "-")
             lines.append(f"| {t.get('pair')} | {t.get('ratio', 0):.3f} | {t.get('n', 0):,} | {months} | {app} |")
         lines.append("")
+    else:
+        lines += ["- not run this round", ""]
+    lines += ["## The floor against the towers (in-stand floor over canopy top, held out)", ""]
+    floor = None
+    if FLOOR.exists():
+        fp = LOOP / f"floor-{now:%Y-%m-%d}.json"
+        p = subprocess.run([sys.executable, str(FLOOR), "--json", str(fp)], cwd=ROOT, capture_output=True, text=True)
+        if p.returncode == 0 and fp.exists():
+            floor = json.loads(fp.read_text(encoding="utf-8"))
+    if floor:
+        lines += [f"- {floor.get('towers', '?')} towers; the bar for a floor rule: beat the app now and the constant "
+                  f"(beats the app now: {floor.get('beatsAppNow')}, beats the constant: {floor.get('beatsConstant')})",
+                  "| rule | within 2× | calm called − measured |", "|---|---|---|"]
+        for k in ("appNow", "appOld", "constant", "candidate"):
+            r = floor.get(k) or {}
+            w2 = r.get("within2")
+            cg = r.get("calmGap")
+            lines.append(f"| {k} | {w2:.0%} | {cg:+.2f} |" if isinstance(w2, (int, float)) and isinstance(cg, (int, float))
+                         else f"| {k} | {w2 if w2 is not None else '-'} | {cg if cg is not None else '-'} |")
+        checked = floor.get("refChecked") or {}
+        lines += ["", f"- 'Top' is above the canopy, not a forecast 10 m: {len(checked)} towers checked against HRRR/ERA5 so far.", ""]
     else:
         lines += ["- not run this round", ""]
     lines += ["## Proposals (nothing is queued or shipped by the loop)", ""]
