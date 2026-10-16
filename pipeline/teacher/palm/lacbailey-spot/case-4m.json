@@ -1,0 +1,222 @@
+{
+ "case": "lacbailey-spot",
+ "tag": "4m",
+ "built": "2026-10-15 20:09",
+ "epsg": 32619,
+ "dx": 4.0,
+ "nx": 256,
+ "ny": 256,
+ "bounds": [
+  459300.0,
+  5471140.0,
+  460324.0,
+  5472164.0
+ ],
+ "gridConvergenceDeg": -0.4205087453836954,
+ "origin_lonlat": [
+  -69.56085924822577,
+  49.39159270489067
+ ],
+ "origin_z": 361.0397644042969,
+ "relief_m": 140.13571166992188,
+ "taper_m": 160.0,
+ "core_m": 700.0,
+ "centre": [
+  459812.0,
+  5471652.0
+ ],
+ "point_xy": [
+  459598.9398674796,
+  5471435.443147004
+ ],
+ "point_latlon": [
+  49.39427,
+  -69.55677
+ ],
+ "vertical": {
+  "dz": [
+   4.0,
+   16.0
+  ],
+  "start": 184.0,
+  "end": 384.0,
+  "nz": 99,
+  "top": 892
+ },
+ "nz_do3d": 52,
+ "canopy_levels": 5,
+ "leaf": 0.5,
+ "terrain": "hrdem",
+ "canopy": "chm",
+ "sources": [
+  "HRDEM 1 m LiDAR (QC-600023_29_LacAuBrochet_MTM7_2023-1m-dtm, QC-600023_29_LacAuBrochet_MTM7_2023-1m-dsm), NRCan, OGL-Canada",
+  "habitat grid of area lac-bailey (FRI stands, OMNRF, OGL-Ontario)",
+  "1 m lake mask of area lac-bailey (pipeline/lakes.py)"
+ ],
+ "runs": {
+  "lacbailey-spot_d326_4m": {
+   "direction": 326.0,
+   "speed_kph": 20.0,
+   "zref_m": 80.0,
+   "stability": "stable",
+   "hours": 2.0,
+   "average_s": 1800.0,
+   "theta_surface": 271.0,
+   "theta_gradients": [
+    [
+     0.0,
+     4.75
+    ],
+    [
+     80.0,
+     0.5
+    ]
+   ],
+   "surface": "rate",
+   "heating_rate": -1.0,
+   "surface_heatflux": -0.02,
+   "cthf": -0.02,
+   "why": "20:00 EDT 2026-10-15 (00Z 16th), the app's forecast at the spot: NW 8.7 km/h at 10 m, ~20 at 80 m, clear, -1.5 C",
+   "scent": [
+    {
+     "name": "Gavan's spot 15 Oct 20:00 1.5 m",
+     "x": 298.9,
+     "y": 295.4,
+     "h": 1.5,
+     "utm": [
+      459598.9,
+      5471435.4
+     ],
+     "ground_m": 447.5,
+     "canopy_m": 5.1,
+     "water": false
+    },
+    {
+     "name": "Gavan's spot 15 Oct 20:00 5 m",
+     "x": 298.9,
+     "y": 295.4,
+     "h": 5.0,
+     "utm": [
+      459598.9,
+      5471435.4
+     ],
+     "ground_m": 447.5,
+     "canopy_m": 5.1,
+     "water": false
+    },
+    {
+     "name": "ring 000 140 m",
+     "x": 298.9,
+     "y": 435.4,
+     "h": 1.5,
+     "utm": [
+      459598.9,
+      5471575.4
+     ],
+     "ground_m": 412.3,
+     "canopy_m": 12.6,
+     "water": false
+    },
+    {
+     "name": "ring 045 140 m",
+     "x": 397.9,
+     "y": 394.4,
+     "h": 1.5,
+     "utm": [
+      459697.9,
+      5471534.4
+     ],
+     "ground_m": 408.8,
+     "canopy_m": 5.6,
+     "water": false
+    },
+    {
+     "name": "ring 090 140 m",
+     "x": 438.9,
+     "y": 295.4,
+     "h": 1.5,
+     "utm": [
+      459738.9,
+      5471435.4
+     ],
+     "ground_m": 405.8,
+     "canopy_m": 10.9,
+     "water": false
+    },
+    {
+     "name": "ring 135 140 m",
+     "x": 397.9,
+     "y": 196.4,
+     "h": 1.5,
+     "utm": [
+      459697.9,
+      5471336.4
+     ],
+     "ground_m": 454.9,
+     "canopy_m": 4.2,
+     "water": false
+    },
+    {
+     "name": "ring 180 98 m",
+     "x": 298.9,
+     "y": 197.4,
+     "h": 1.5,
+     "utm": [
+      459598.9,
+      5471337.4
+     ],
+     "ground_m": 471.7,
+     "canopy_m": 8.0,
+     "water": false
+    },
+    {
+     "name": "ring 225 140 m",
+     "x": 199.9,
+     "y": 196.4,
+     "h": 1.5,
+     "utm": [
+      459499.9,
+      5471336.4
+     ],
+     "ground_m": 495.2,
+     "canopy_m": 5.3,
+     "water": false
+    },
+    {
+     "name": "ring 270 98 m",
+     "x": 200.9,
+     "y": 295.4,
+     "h": 1.5,
+     "utm": [
+      459500.9,
+      5471435.4
+     ],
+     "ground_m": 467.3,
+     "canopy_m": 3.4,
+     "water": false
+    },
+    {
+     "name": "ring 315 140 m",
+     "x": 199.9,
+     "y": 394.4,
+     "h": 1.5,
+     "utm": [
+      459499.9,
+      5471534.4
+     ],
+     "ground_m": 430.5,
+     "canopy_m": 11.3,
+     "water": false
+    }
+   ]
+  }
+ },
+ "canopy_summary": {
+  "cover_mean": 0.8613624572753906,
+  "lai_mean": 2.781521797180176,
+  "lai_p90": 3.875,
+  "height_p90_mean": 8.659452438354492
+ },
+ "trial_dem": null,
+ "shallow": true
+}

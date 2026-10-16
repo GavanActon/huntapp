@@ -57,7 +57,7 @@ mode() {  # the machine's mode, or this slot's own (PALM_MODE) unless the machin
   [[ -n "${PALM_MODE:-}" && "$m" != off && "$m" != pause ]] && m="$PALM_MODE"
   echo "$m"
 }
-prio() { local p; p=$(grep -m1 -E '^priority:' "$1" 2>/dev/null | awk '{print $2}'); echo "${p:-validation}"; }
+prio() { local p; p=$(tr -d '\r' < "$1" 2>/dev/null | grep -m1 -E '^priority:' | awk '{print $2}'); echo "${p:-validation}"; }
 rank() { case "$1" in product) echo 0 ;; validation) echo 1 ;; backfill) echo 2 ;; explore) echo 3 ;; *) echo 1 ;; esac; }
 
 CPU=()   # Windows' CPU %, one sample a loop (2 min): the last 8 make the 15-min average
@@ -84,12 +84,12 @@ claim() {
     Q="$1"; H="$2"; max="$3"
     if [[ "$KIND" == cpu && "$PREEMPT" != 1 ]]; then (( $(pgrep -fc "$BUSY_PAT") < max )) || exit 0; fi
     for f in $(ls "$Q/todo" 2>/dev/null | grep "\.job$"); do
-      p=$(grep -m1 -E "^priority:" "$Q/todo/$f" 2>/dev/null | awk "{print \$2}"); p=${p:-validation}
+      p=$(tr -d "\r" < "$Q/todo/$f" 2>/dev/null | grep -m1 -E "^priority:" | awk "{print \$2}"); p=${p:-validation}
       case "$p" in product) r=0 ;; validation) r=1 ;; backfill) r=2 ;; explore) r=3 ;; *) r=1 ;; esac
       echo "$r $p $f"
     done | sort -k1,1n -k3,3 | while read -r r p f; do
       [[ -z "$ONLY" || "$p" == "$ONLY" ]] || continue
-      h=$(grep -m1 -E "^host:" "$Q/todo/$f" 2>/dev/null | awk "{print \$2}")
+      h=$(tr -d "\r" < "$Q/todo/$f" 2>/dev/null | grep -m1 -E "^host:" | awk "{print \$2}")
       [[ -z "$h" || "$h" == "$H" ]] || continue
       if grep -q -E "^needs:.*gpu" "$Q/todo/$f" 2>/dev/null; then [[ "$KIND" == gpu ]] || continue; else [[ "$KIND" == cpu ]] || continue; fi
       mv "$Q/todo/$f" "$Q/taken/$f.$H" 2>/dev/null && { echo "$f"; exit 0; }
@@ -142,18 +142,18 @@ while [[ ! -e "$Q/stop-$HOSTID" ]]; do
     done
   fi
   log="$HOME/palm/log-$stem.txt"
-  cmd=$(grep -m1 -E '^cmd:' "$jf" | sed -E 's/^cmd:[[:space:]]*//')
+  cmd=$(tr -d '\r' < "$jf" | grep -m1 -E '^cmd:' | sed -E 's/^cmd:[[:space:]]*//')   # a CR from Windows would break the job
   if [[ -n "$cmd" ]]; then
     say "takes $job ($pr): cmd: $cmd"
     mkdir -p "$HOME/palm/work/$stem"
     ( cd "$HOME/palm/work/$stem" && PALM_JOB="$stem" PALM_HOST="$HOSTID" PALM_SHARE="$SHARE" PALM_CORES="$CORES" \
         exec setsid bash -c "$cmd" ) > "$log" 2>&1 &
     pid=$!
-    pfile=$(grep -m1 -E '^pause-file:' "$jf" | sed -E 's/^pause-file:[[:space:]]*//')
+    pfile=$(tr -d '\r' < "$jf" | grep -m1 -E '^pause-file:' | sed -E 's/^pause-file:[[:space:]]*//')
     watch_cmd "$pid" "$stem" "$pfile" &
     wpid=$!
   else
-    args=$(grep -v -E '^[[:space:]]*(#|[a-z]+:|$)' "$jf" | head -1)
+    args=$(tr -d '\r' < "$jf" | grep -v -E '^[[:space:]]*(#|[a-z]+:|$)' | head -1)
     say "takes $job ($pr): $args"
     # shellcheck disable=SC2086
     PALM_HOST="$HOSTID" PALM_JOB="$stem" bash "$bin/run_case.sh" $args --cores "$CORES" --here "$KIT" --ship lean > "$log" 2>&1 &

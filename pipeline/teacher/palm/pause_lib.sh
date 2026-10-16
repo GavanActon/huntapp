@@ -31,6 +31,6 @@ palm_should_pause() {  # $1 the queue folder, $2 the host; status 0 = pause now
     [[ "$d" == "$today" && -n "$a" && -n "$b" ]] || continue
     a=${a/:/}; b=${b/:/}
     (( 10#$now >= 10#$a && 10#$now < 10#$b )) && return 0
-  done < <(grep -v -E '^[[:space:]]*(#|$)' "$HOME/palm/.quiet-$h" 2>/dev/null)
+  done < <(tr -d '\r' 2>/dev/null < "$HOME/palm/.quiet-$h" | grep -v -E '^[[:space:]]*(#|$)')   # a CR from Windows breaks the times
   return 1
 }

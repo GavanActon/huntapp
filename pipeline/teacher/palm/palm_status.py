@@ -85,13 +85,13 @@ def main() -> int:
     for host in ("xevo", "xonix"):
         v = getattr(args, host)
         if v:
-            (Q / f"mode-{host}").write_text(v + "\n", encoding="utf-8")
+            (Q / f"mode-{host}").write_text(v + "\n", encoding="utf-8", newline="\n")
             print(f"{host} mode -> {v}")
     if args.quiet:
         host, win = args.quiet
         if not re.fullmatch(r"\d{4}-\d\d-\d\d \d\d:\d\d \d\d:\d\d", win.strip()):
             raise SystemExit('--quiet: the window is "YYYY-MM-DD HH:MM HH:MM"')
-        with open(Q / f"quiet-{host}", "a", encoding="utf-8") as fh:
+        with open(Q / f"quiet-{host}", "a", encoding="utf-8", newline="\n") as fh:  # LF: bash reads it (a CR broke the window, 2026-10-15)
             fh.write(win.strip() + "\n")
         print(f"{host} quiet {win.strip()}")
     if args.quiet_clear:
@@ -107,7 +107,7 @@ def main() -> int:
         order = args.order or f"{(max(nums, default=0) // 10 + 1) * 10:03d}"
         body = args.add + "\n" + f"priority: {args.priority}\n" + (f"host: {args.host}\n" if args.host else "") + f"# why: {args.why}\n"
         (Q / "todo").mkdir(parents=True, exist_ok=True)
-        (Q / "todo" / f"{order}-{name}.job").write_text(body, encoding="utf-8")
+        (Q / "todo" / f"{order}-{name}.job").write_text(body, encoding="utf-8", newline="\n")  # LF: the runners are bash
         print(f"queued {order}-{name}.job")
     if args.bump:
         part, pr = args.bump
@@ -117,7 +117,7 @@ def main() -> int:
         if len(hits) != 1:
             raise SystemExit(f"--bump: {len(hits)} waiting jobs match {part!r}")
         lines = [ln for ln in hits[0].read_text(encoding="utf-8").splitlines() if not ln.startswith("priority:")]
-        hits[0].write_text("\n".join(lines[:1] + [f"priority: {pr}"] + lines[1:]) + "\n", encoding="utf-8")
+        hits[0].write_text("\n".join(lines[:1] + [f"priority: {pr}"] + lines[1:]) + "\n", encoding="utf-8", newline="\n")
         print(f"{hits[0].name} -> {pr}")
     show()
     return 0

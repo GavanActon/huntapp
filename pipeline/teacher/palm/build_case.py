@@ -282,7 +282,7 @@ CASES = {
         lattice=(0.0, 0.0),
         fine_water=True,
         taper_percentile=5.0,
-        vertical=dict(const_m=40.0, dz_top_m=16.0, top_m=800.0),
+        vertical=dict(const_m=40.0, dz_top_m=16.0, top_m=900.0),
         # scent (SCENT-TEACHER.md): where Gavan stood for his checks, the bog (26 of them, a
         # stand at 5 m too) and the pool S of camp; then the point and a ring
         scent=dict(radius_m=300.0, sources=[
@@ -394,6 +394,40 @@ CASES = {
                             surface="rate", heating_rate=-1.0,
                             surface_heatflux=-0.02, cthf=-0.02,
                             why="dusk under a light SSW: cold air down the bank (W5, W1, W8) and down the trough (W6) to the east pond's bay (W4, W2)"),
+        },
+    ),
+    # Gavan's spot at Lac Bailey, 2026-10-15 (via huntapp-ba): "add to your palm validation for 8pm today.
+    # 4m is fine. Scent runs 271 meters - am curious." 1.7 km S of the bank box. At 20:00 EDT the app has
+    # a NW 10 m wind (326 at 8.7 km/h, 80 m ~20 km/h), clear, -1.5 C, +3.8 K over 2-80 m; its ground air
+    # from 229 at ~4 km/h (drainage, +-38 deg, ~100 deg off the wind) and the cone NE (66%), some-minutes
+    # reach 226 m, now-and-then ~450 m. The question: does the cold air really drain NE against the NW
+    # wind, and how far does the scent go. The box's centre sits 300 m NE of the spot so the core holds
+    # ~650 m toward the NE. An explore run (Gavan's ask), and a candidate for the site's visuals.
+    "lacbailey-spot": dict(
+        area="lac-bailey",
+        point=(49.39427, -69.55677),
+        epsg=32619,
+        hrdem=["QC-600023_29_LacAuBrochet_MTM7_2023-1m", "QC-600015_24_LidarDIF_Cote_Nord_MTM7_2015_17-1m"],
+        size_m=1024.0, core_m=700.0, taper_m=160.0,
+        shift=(45.0, 300.0),
+        lattice=(0.0, 0.0),
+        fine_water=True,
+        # 140 m of relief in the box, the high ground W and S and the spot itself 86 m over the lake:
+        # tapered to the lake (p5) the ring would be a moat the night's cold air drains into; at the
+        # middle height (p50) the real lake stays the lowest ground
+        taper_percentile=50.0,
+        # check_driver: a case with a vertical spec wants five times its relief over the highest ground
+        vertical=dict(const_m=40.0, dz_top_m=16.0, top_m=900.0),
+        scent=dict(sources=[
+            dict(name="Gavan's spot 15 Oct 20:00", latlon=(49.39427, -69.55677), heights=[1.5, 5.0]),
+        ]),
+        runs={
+            "d326": dict(direction=326.0, speed_kph=20.0, zref_m=80.0, stability="stable", hours=2.0, average_s=1800.0,
+                         theta_surface=271.0,  # at the box's floor (361 m): with +3.8 K up to the spot's 447 m, -1.5 C there (274.8 K pot.)
+                         theta_gradients=[(0.0, 4.75), (80.0, 0.5)],  # +3.8 K over 2-80 m, then a stable free air
+                         surface="rate", heating_rate=-1.0,
+                         surface_heatflux=-0.02, cthf=-0.02,
+                         why="20:00 EDT 2026-10-15 (00Z 16th), the app's forecast at the spot: NW 8.7 km/h at 10 m, ~20 at 80 m, clear, -1.5 C"),
         },
     ),
     # Not here: Searchmont's climb. A cyclic box small enough for 4 m (1.5 km) holds 194 m

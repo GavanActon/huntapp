@@ -304,6 +304,7 @@ ledger books runs: the question, the number that settles it, and the app change 
 
 | run | question | settles when | app change |
 |---|---|---|---|
+| lacbailey-spot d326 (Gavan's ask, 2026-10-15, `explore`, product priority on xonix) | At 49.39427, -69.55677 under 20:00's NW 10 m wind (326, 8.7 km/h; clear, -1.5 C, +3.8 K over 2–80 m) the app has the ground air from 229 (drainage, about 100° off the wind) and the cone NE, some-minutes reach 226 m (Gavan saw 271 m), now-and-then about 450 m. Does the cold air really drain NE against the wind, and how far does the scent go? | PALM's floor direction and scent reach from the spot (1.5 m and a 5 m stand) against the app's 229 / 226 m / 450 m | the drainage rule on steep ground under a crossing wind, and a candidate picture for the site |
 | pickle-bogs dawn270 (queued 2026-10-15, xonix, about 8 h) | Under dawn175 the bog's stable floor came from ~245 while the 10 m wind was 182 and the app kept ~187. Does the floor's turn follow the drainage line or the wind? | the floor's direction at P8–P10 with the wind from 270: still ~245 means drainage, swung by ~90 means the wind | huntapp-ba's stable-floor turning rule: keyed to the drainage line or to the wind (the loop's second direction item) |
 
 The loop's working order (huntapp-ba and huntapp-c4, 2026-10-15): **direction before width**. The
