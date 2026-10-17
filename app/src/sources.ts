@@ -111,6 +111,26 @@ export const SHARP: Record<'esri', LiveRaster> = {
 }
 export const SHARP_IMAGERY: LiveRaster | undefined = LIVE.sharp ? SHARP[LIVE.sharp] : undefined
 
+/**
+ * The far band (pipeline/far_imagery.py): the country zoomed out, one
+ * Sentinel-2 archive for every area, read from R2 under data/far/ wherever
+ * the map is, tiles z0 to FAR_MAXZOOM (a z11 pixel is 50 m on the ground at
+ * 49° N, where 10 m pictures look the same as anyone's). Under the photo
+ * stack on the photo's switch and slider; past its deepest tile the map
+ * stretches it under the province's photo while that comes, so a zoom out
+ * is never the dark ground waiting on a slow service (Quebec's answered a
+ * tile in half a second to a second, six at a time; Gavan, 2026-10-17). The
+ * province's live layer starts at FAR_HANDOFF, so below it nothing is asked
+ * of the province at all. Not in an area's pack: with no signal the baked
+ * imagery is what there is, as before.
+ */
+export const FAR_KEY = 'far'
+export const FAR_FILE = 'far-imagery-ca.pmtiles'
+export const FAR_MAXZOOM = 11
+/** the map zoom the province's live imagery takes over at (its tiles z12 and deeper) */
+export const FAR_HANDOFF = 11
+export const FAR_ATTRIBUTION = 'Contains modified Copernicus Sentinel data 2023-2025'
+
 export const LIVE_RASTER: Partial<Record<'base' | 'labels' | 'toposheet' | 'satellite' | 'topo' | 'hillshade' | 'historical' | 'forest' | 'radar', LiveRaster>> = {
   // Base map when no basemap PMTiles is on hand: NRCan's Canada Base Map
   // (transportation), a cached Web Mercator tile service.

@@ -2,7 +2,7 @@ import type { FeatureCollection } from 'geojson'
 import type { ExpressionSpecification, FilterSpecification, GeoJSONSource, LayerSpecification, Map as MlMap, SourceSpecification, StyleSpecification } from 'maplibre-gl'
 import { ACTIVE_AREA, AREA_LIST } from '../areas'
 import { ATTRIBUTION, CONTOUR_FINE_FROM, CORE, DATA_FILES, FINE_RELIEF, LIVE, REGION, REGION_MAXZOOM, RELIEF, ZONE } from '../config'
-import { LIVE_RASTER, LIVE_VECTOR, SHARP_IMAGERY } from '../sources'
+import { FAR_ATTRIBUTION, FAR_HANDOFF, FAR_KEY, FAR_MAXZOOM, LIVE_RASTER, LIVE_VECTOR, SHARP_IMAGERY } from '../sources'
 import type { ContourInterval, LayerOpacity, LayerVisibility } from '../state/appStore'
 import { COVERAGE_KEY, COVERAGE_SOURCE, coverageLayers, coverageSource } from '../explore/coverage'
 import { STREAM_PICTURES, STREAMED_LABEL_MAX_ANGLE, streamedContours, streamedDem, streamedImagery, viewLit } from './streamPictures'
@@ -407,8 +407,22 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   const firstSymbol = base.findIndex((l) => l.type === 'symbol')
   const underLabels = firstSymbol === -1 ? base.length : firstSymbol
 
-  // ---- raster stack (bottom to top): satellite, hillshade, topo, historical ----
+  // ---- raster stack (bottom to top): far band, satellite, hillshade, topo, historical ----
   const rasters: LayerSpecification[] = []
+  // the far band under everything (sources.ts FAR_KEY): the country zoomed
+  // out from one archive, on the photo's switch and slider; past its deepest
+  // tile the map stretches it under the province's photo while that comes
+  const far = has(FAR_KEY)
+  if (far) {
+    sources[FAR_KEY] = { type: 'raster', tiles: [`pmtiles://${FAR_KEY}/{z}/{x}/{y}`], tileSize: 256, minzoom: 0, maxzoom: FAR_MAXZOOM, attribution: FAR_ATTRIBUTION }
+    rasters.push(
+      tag(
+        { id: 'satellite-far', type: 'raster', source: FAR_KEY, layout: vis(o.layers.satellite), paint: { 'raster-opacity': o.opacity.satellite, 'raster-resampling': 'linear', 'raster-saturation': -0.3 } },
+        'satellite',
+        'satellite',
+      ),
+    )
+  }
   const addRaster = (key: 'satellite' | 'hillshade' | 'topo' | 'historical', extraPaint: Record<string, unknown> = {}) => {
     if (has(key)) {
       sources[key] = archive(key, { type: 'raster', tileSize: 256 })
@@ -427,7 +441,15 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
         }
         rasters.push(
           tag(
-            { id: `${key}-live`, type: 'raster', source: `${key}-live`, layout: vis(o.layers[key]), paint: { 'raster-opacity': o.opacity[key], 'raster-resampling': 'linear', ...extraPaint } },
+            {
+              id: `${key}-live`,
+              type: 'raster',
+              source: `${key}-live`,
+              // with the far band under it the province's photo is asked for only from the hand-off zoom
+              ...(key === 'satellite' && far ? { minzoom: FAR_HANDOFF } : {}),
+              layout: vis(o.layers[key]),
+              paint: { 'raster-opacity': o.opacity[key], 'raster-resampling': 'linear', ...extraPaint },
+            },
             key,
             key,
           ),

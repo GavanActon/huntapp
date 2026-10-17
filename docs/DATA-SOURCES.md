@@ -25,6 +25,7 @@ Licence – Ontario. NRCan services are OGL-Canada, Open-Meteo CC-BY 4.0.
 | Topographic | NRCan Toporama WMS (CanTopo look) | `maps.geogratis.gc.ca/wms/toporama_en`, layer `hypsography` (contours and spot elevations only; the full `WMS-Toporama` render hides the hillshade), EPSG:3857 |
 | Hillshade (30 m) | NRCan MRDEM WMS | `datacube.services.geo.ca/ows/mrdem`, layer `dtm-hillshade` |
 | Imagery | Ontario Imagery Web Map Service (OIWMS) | `…/LIO_Imagery/Ontario_Imagery_Web_Map_Service/MapServer/tile/{z}/{y}/{x}` |
+| Imagery, zoomed out (the far band, 2026-10-17) | Sentinel-2 L2A leaf-on composite, baked by `pipeline/far_imagery.py` from Earth Search (AWS) for the whole country, tiles z0–z11, and read from R2 under every area until map zoom 11, where the province's service takes over (`sources.ts FAR_HANDOFF`). Copernicus Sentinel data: free and open, credit required | `data.groundwind.app/data/far/far-imagery-ca.pmtiles` |
 | Lake depths | LIO Bathymetry Line (MNR lake surveys) | `LIO_Open01/MapServer/30`, field `DEPTH`. None of the camp lakes have digitised lines (see historic lake sheets below); White Lake to the south does (1972) |
 | Camps | LIO Crown Land – MNR Non-Freehold Dispositions | `LIO_Open08/MapServer/33`, `PURPOSE_OF_DISPOSITION LIKE '%Camp%'`. 40 in the region: commercial outpost camps, private recreation camps, cottages |
 | WMU | LIO Wildlife Management Unit | `LIO_Open05/MapServer/5`, field `OFFICIAL_NAME` |

@@ -2,6 +2,7 @@ import maplibregl from 'maplibre-gl'
 import { useEffect, useRef, useState } from 'react'
 import { devlog } from '../devlog'
 import { DATA_BASE, fileUrl, loadView, saveView } from '../areas'
+import { FAR_FILE, FAR_KEY } from '../sources'
 import { peekSwitchThen } from '../areas/handoff'
 import { BASE_GEO, baseGeoFile, DATA_FILES, GEO_THEMES, geoFile, HOME, MAX_BOUNDS, SD_HIDDEN, SD_PREVIEW } from '../config'
 import { getStoredFile } from '../offline/fileStore'
@@ -213,6 +214,8 @@ export default function MapView() {
       // the coverage index's archive, outside every area's folder (explore/coverage.ts)
       const online = useAppStore.getState().online
       if (online && (await registerDataFile(COVERAGE_KEY, COVERAGE_FILE, null, `${DATA_BASE}explore/${COVERAGE_FILE}`)) !== 'missing') available.add(COVERAGE_KEY)
+      // the far band's archive, the country zoomed out (sources.ts FAR_KEY), the same way
+      if (online && (await registerDataFile(FAR_KEY, FAR_FILE, null, `${DATA_BASE}far/${FAR_FILE}`)) !== 'missing') available.add(FAR_KEY)
       if (cancelled) return
       geoUrls.clear()
       for (const [k, v] of geo) geoUrls.set(k, v)

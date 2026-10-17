@@ -5,6 +5,8 @@ dev-dist/
 __pycache__/
 pipeline/raw/
 pipeline/tools/
+# the far band (pipeline/far_imagery.py) lives on R2 under data/far/; a copy here is for a dev server only
+app/public/data/far/
 *.log
 # Raw CHS NONNA bathymetry (login-gated download, non-navigational license — keep out of the public repo)
 external/
