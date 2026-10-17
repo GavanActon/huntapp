@@ -2,7 +2,7 @@ import { readAreaItem, writeAreaItem, type AreaDef } from '../areas'
 import { TIMEZONE } from '../config'
 import { devlog } from '../devlog'
 import { homePlace } from '../state/placesStore'
-import { fetchTimeout, localStamp, turnHour } from './openMeteo'
+import { fetchTimeout, lastStampAt, localStamp, stampsMs, turnHour } from './openMeteo'
 
 /**
  * The air's layering over camp, hour by hour: what decides whether the
@@ -352,16 +352,15 @@ export function onProfile(cb: () => void): () => void {
 }
 
 function lerpAt(time: string[], arr: number[], ms: number): number {
-  // hourly values; linear between hours so a 15-minute timeline is smooth
-  let i = -1
-  for (let k = 0; k < time.length; k++) {
-    if (Date.parse(time[k]) <= ms) i = k
-    else break
-  }
+  // hourly values; linear between hours so a 15-minute timeline is smooth.
+  // The stamps parsed once (openMeteo stampsMs): this ran for every cell the
+  // ground model evaluated, parsing all 190 stamps seven times each
+  const st = stampsMs(time)
+  const i = lastStampAt(st, ms)
   if (i < 0) return arr[0]
   if (i >= time.length - 1) return arr[time.length - 1]
-  const t0 = Date.parse(time[i])
-  const t1 = Date.parse(time[i + 1])
+  const t0 = st[i]
+  const t1 = st[i + 1]
   const f = (ms - t0) / (t1 - t0)
   const a = arr[i]
   const b = arr[i + 1]
@@ -380,8 +379,9 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
  */
 export function layeringAt(ms: number, fallback: { cloud: number; w10: number; t2: number; sunElev: number }): Layering {
   const p = profile
-  const inRange = p && p.time.length && ms >= Date.parse(p.time[0]) && ms <= Date.parse(p.time[p.time.length - 1]) + 3600_000
-  if (p && inRange) {
+  const st = p ? stampsMs(p.time) : null
+  const inRange = p && st && st.length && ms >= st[0] && ms <= st[st.length - 1] + 3600_000
+  if (p && st && inRange) {
     const t2 = lerpAt(p.time, p.t2, ms)
     const t80 = lerpAt(p.time, p.t80, ms)
     const w10 = lerpAt(p.time, p.w10, ms)
@@ -395,12 +395,11 @@ export function layeringAt(ms: number, fallback: { cloud: number; w10: number; t
       // in near calm Ri is all noise: it takes a real inversion to count
       const stable = dTheta > 0 ? clamp((ri - 0.1) / 0.9, 0, 1) * clamp(dTheta / 0.8, 0, 1) : 0
       const convective = dTheta < -0.2 ? clamp((-dTheta - 0.2) / 1.5, 0, 1) * clamp(sw / 400, 0, 1) : 0
-      let hourIdx = -1
-      for (let k = 0; k < p.time.length; k++) if (Date.parse(p.time[k]) <= ms) hourIdx = k
+      const hourIdx = lastStampAt(st, ms)
       const h0 = Math.max(0, hourIdx)
       const h1 = Math.min(p.time.length - 1, h0 + 1)
-      const t0 = Date.parse(p.time[h0])
-      const d10 = h1 > h0 ? turnHour(p.d10[h0], p.d10[h1], clamp((ms - t0) / (Date.parse(p.time[h1]) - t0), 0, 1)) : p.d10[h0]
+      const t0 = st[h0]
+      const d10 = h1 > h0 ? turnHour(p.d10[h0], p.d10[h1], clamp((ms - t0) / (st[h1] - t0), 0, 1)) : p.d10[h0]
       let ensDirSd: number | null = null
       if (p.ens) {
         const v = lerpAt(p.ens.time, p.ens.dirSd, ms)

@@ -346,17 +346,38 @@ export async function pointForecast(lon: number, lat: number): Promise<{ forecas
 // every hour the strip scores), and reading the stamps from the first on
 // every ask froze the phone for a fifth of a second each scoring pass.
 // Keyed on the array, checked by its length and last stamp: hours appended
-// in place (the satellite's) read again.
+// in place (the satellite's) read again. The wind field's and the air
+// profile's stamps go through here too (windGrid.ts, boundaryLayer.ts): the
+// ground model asked both for every cell, parsing every stamp each time.
 const stampMs = new WeakMap<string[], { n: number; last: string; ms: Float64Array }>()
 
-function hourTimes(f: PointForecast): Float64Array {
-  const times = f.hourly.time
+/** The stamps as ms, parsed once per array. */
+export function stampsMs(times: string[]): Float64Array {
   const last = times[times.length - 1]
   const hit = stampMs.get(times)
   if (hit && hit.n === times.length && hit.last === last) return hit.ms
   const ms = Float64Array.from(times, (t) => Date.parse(t))
   stampMs.set(times, { n: times.length, last, ms })
   return ms
+}
+
+/** The index of the last stamp at or before the moment; -1 before the first. */
+export function lastStampAt(stamps: Float64Array, ms: number): number {
+  let idx = -1
+  let lo = 0
+  let hi = stamps.length - 1
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    if (stamps[mid] <= ms) {
+      idx = mid
+      lo = mid + 1
+    } else hi = mid - 1
+  }
+  return idx
+}
+
+function hourTimes(f: PointForecast): Float64Array {
+  return stampsMs(f.hourly.time)
 }
 
 export function hourRow(f: PointForecast, i: number): HourRow {
@@ -409,16 +430,7 @@ export function turnHour(a: number, b: number, t: number): number {
 export function hourAt(f: PointForecast, ms: number): HourRow | null {
   const times = hourTimes(f)
   // the last stamp at or before the moment
-  let idx = -1
-  let lo = 0
-  let hi = times.length - 1
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1
-    if (times[mid] <= ms) {
-      idx = mid
-      lo = mid + 1
-    } else hi = mid - 1
-  }
+  const idx = lastStampAt(times, ms)
   if (idx < 0) return null
   const a = hourRow(f, idx)
   const t0 = a.time.getTime()

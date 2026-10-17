@@ -3,7 +3,7 @@ import { REGION, TIMEZONE } from '../config'
 import { trackTime } from '../analytics'
 import { devlog } from '../devlog'
 import { trackTask } from '../offline/loadProgress'
-import { fetchTimeout, localStamp } from './openMeteo'
+import { fetchTimeout, lastStampAt, localStamp, stampsMs } from './openMeteo'
 
 /**
  * The wind field over the region: a small lattice of Open-Meteo points
@@ -259,13 +259,9 @@ armTick()
 
 export type WindSample = (lon: number, lat: number, out: Float32Array) => boolean
 
+/** The field's hour at or before the moment (its first before the first): the stamps parsed once (openMeteo stampsMs). */
 function hourIndexAt(time: string[], ms: number): number {
-  let idx = 0
-  for (let i = 0; i < time.length; i++) {
-    if (Date.parse(time[i]) <= ms) idx = i
-    else break
-  }
-  return idx
+  return Math.max(0, lastStampAt(stampsMs(time), ms))
 }
 
 /** The share of the area's box, in from its edge, over which its lattice
@@ -312,10 +308,11 @@ export function windSampler(ms: number): WindSample | null {
  *  either side of it (each corner's speed linear, its direction by unit
  *  vectors, so it turns the short way); held at its edge beyond it. */
 function latticeSampler(g: WindGrid, ms: number): WindSample {
+  const st = stampsMs(g.time)
   const i = hourIndexAt(g.time, ms)
   const j = Math.min(g.time.length - 1, i + 1)
-  const t0 = Date.parse(g.time[i])
-  const tf = j > i ? Math.min(1, Math.max(0, (ms - t0) / (Date.parse(g.time[j]) - t0))) : 0
+  const t0 = st[i]
+  const tf = j > i ? Math.min(1, Math.max(0, (ms - t0) / (st[j] - t0))) : 0
   return (lon, lat, out) => {
     const fx = (lon - g.lon0) / g.dLon
     const fy = (lat - g.lat0) / g.dLat
@@ -355,7 +352,7 @@ function latticeSampler(g: WindGrid, ms: number): WindSample {
 /** When the field was fetched, its hours, and the end of its last hour. */
 export function windGridInfo(): { fetchedAt: number; hours: number; endMs: number } | null {
   if (!grid || !grid.time.length) return null
-  return { fetchedAt: grid.fetchedAt, hours: grid.time.length, endMs: Date.parse(grid.time[grid.time.length - 1]) + 3600_000 }
+  return { fetchedAt: grid.fetchedAt, hours: grid.time.length, endMs: stampsMs(grid.time)[grid.time.length - 1] + 3600_000 }
 }
 
 /** The field has this moment's hour. Past its last hour windSampler holds
@@ -365,7 +362,8 @@ export function windGridInfo(): { fetchedAt: number; hours: number; endMs: numbe
 export function windGridCovers(ms: number): boolean {
   const g = grid
   if (!g || !g.time.length) return false
-  return ms >= Date.parse(g.time[0]) && ms <= Date.parse(g.time[g.time.length - 1]) + 3600_000
+  const st = stampsMs(g.time)
+  return ms >= st[0] && ms <= st[st.length - 1] + 3600_000
 }
 
 /** One hour of the field at a point, bilinear (the sampler's corners). */
