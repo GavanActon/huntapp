@@ -261,14 +261,32 @@ def upload() -> tuple[int, int]:
             have[o["Key"]] = o["ETag"].strip('"')
             sizes[o["Key"]] = o["Size"]
     sent = skipped = 0
+    # what was compared before (name: size, mtime, md5), so a tile unchanged since and still the
+    # same on R2 isn't read and hashed again: every upload read every tile, 180 GB in a day by
+    # 2026-10-16. A lost entry (two processes writing it) only costs one hash.
+    seen_path = OUT / "sent.json"
+    try:
+        seen = json.loads(seen_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        seen = {}
     for p in sorted(OUT.glob("t-*.hab")):
         key = prefix + p.name
-        body = p.read_bytes()
-        if have.get(key) == hashlib.md5(body).hexdigest():
+        st = p.stat()
+        rec = seen.get(p.name)
+        if rec and rec[0] == st.st_size and rec[1] == st.st_mtime_ns and have.get(key) == rec[2]:
             skipped += 1
             continue
-        s3.put_object(Bucket=r2_sync.BUCKET, Key=key, Body=body, ContentType="application/octet-stream", CacheControl="public, max-age=86400")
-        sent += 1
+        body = p.read_bytes()
+        md5 = hashlib.md5(body).hexdigest()
+        if have.get(key) != md5:
+            s3.put_object(Bucket=r2_sync.BUCKET, Key=key, Body=body, ContentType="application/octet-stream", CacheControl="public, max-age=86400")
+            sent += 1
+        else:
+            skipped += 1
+        seen[p.name] = [st.st_size, st.st_mtime_ns, md5]
+    tmp = seen_path.with_suffix(f".{os.getpid()}.tmp")
+    tmp.write_text(json.dumps(seen), encoding="utf-8")
+    os.replace(tmp, seen_path)
     # the index names every tile on R2, not just this machine's: with two machines baking
     # (2026-10-15, xonix beside XEVO) one's index would otherwise drop the other's tiles
     idx = json.loads((OUT / "index.json").read_text(encoding="utf-8"))
