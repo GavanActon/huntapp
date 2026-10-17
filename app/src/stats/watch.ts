@@ -27,6 +27,7 @@ import { useGpsStore } from '../tracking/gpsStore'
 import { useTrackStore } from '../tracking/trackStore'
 import { useHeardForm } from '../ui/HeardCard'
 import { useLogForm } from '../ui/LogCard'
+import { toolNow } from '../ui/tools'
 import { useCheckForm } from '../ui/WindCheckCard'
 import { useScent } from '../weather/micro/scent'
 import { useWindChecks } from '../weather/micro/windChecks'
@@ -156,7 +157,6 @@ function watchTools() {
   const tool = span('tool')
   const form = span('form')
   let measured = 0
-  const toolNow = () => (useMeasureStore.getState().active ? 'measure' : usePaths.getState().drawing ? 'path' : useRoutes.getState().open ? 'routes' : null)
   useMeasureStore.subscribe((s, p) => {
     if (s.active !== p.active) tool(toolNow(), p.active ? { pts: measured } : undefined)
     measured = s.points.length

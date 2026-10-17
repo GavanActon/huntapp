@@ -8,6 +8,7 @@ import { closeRoutes, useRoutes } from '../routes/routeStore'
 import { markShown, useAppStore } from '../state/appStore'
 import { PIN_COLOURS } from '../state/pinColours'
 import { agoLabel, durationLabel } from '../time'
+import { toolNow } from '../ui/tools'
 import { nextColour, usePaths, type PlannedPath } from './pathStore'
 import '../ui/minipop.css'
 
@@ -442,7 +443,8 @@ export function initPathLayer() {
       // drawing, the bare map's taps never get here (wireFreehand), and your dot's is nothing
       if (st.drawing) return
       // a kept path: only while no tool has the tap, and a kept route under it wins (routeLayer)
-      if (useMeasureStore.getState().active || useRoutes.getState().open) return
+      const tool = toolNow()
+      if (tool === 'measure' || tool === 'routes') return
       const hit = map.queryRenderedFeatures(e.point, { layers: ['paths-hit', 'routes-hit'].filter((id) => map.getLayer(id)) })
       if (!hit.length || hit.some((f) => f.layer.id === 'routes-hit')) return
       const p = st.paths.find((x) => x.id === hit[0].properties?.id)

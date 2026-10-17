@@ -14,9 +14,6 @@ import { trackTime } from '../analytics'
 import { devlog } from '../devlog'
 import { initDigInMarker } from '../map/diginMarker'
 import { getMap, onEachMap, onFirstIdle, withMap } from '../map/mapController'
-import { useMeasureStore } from '../measure/measureStore'
-import { drawingPath } from '../paths/pathStore'
-import { useRoutes } from '../routes/routeStore'
 import { useAppStore } from '../state/appStore'
 import { areaPlaces, homePlace, selectedPlace, usePlacesStore } from '../state/placesStore'
 import { useSpotsStore } from '../state/spotsStore'
@@ -28,7 +25,7 @@ import { cachedRecentDaily, deriveConditions, recentDailyMeans } from './conditi
 import { habitat, loadHabitat, onHabitat, COVER, type Habitat } from './habitatGrid'
 import { huntPass, huntResult, huntRows, scoreTarget, warmHuntBands, type HuntPass, type ScoreResult } from './scoring'
 import { loadMicro, loadRestOfMicro, microBaseReady, microReadyFor, onMicro } from '../weather/micro/model'
-import { useScent } from '../weather/micro/scent'
+import { armedNow, toolNow } from '../ui/tools'
 import { currentProfile, ensureProfile, onProfile } from '../weather/boundaryLayer'
 import { useWindChecks } from '../weather/micro/windChecks'
 import { isFish, type HuntTarget } from './types'
@@ -151,7 +148,9 @@ function ensureSources(m: MlMap) {
   // a numbered pin: Dig in on it (MapView keeps its popup off the pin)
   m.on('click', 'spots-pin', (e) => {
     // the ruler, a path being drawn, a person being placed and the route card each own the tap
-    if (useMeasureStore.getState().active || drawingPath() || useScent.getState().adding || useRoutes.getState().open) return
+    // a tool (but the bush labels) or a person being placed owns the tap (ui/tools.ts)
+    const tool = toolNow()
+    if ((tool && tool !== 'labels') || armedNow() === 'scent') return
     const n = e.features?.[0]?.properties?.n as number | undefined
     if (n == null) return
     const sp = useSpotsStore.getState().result?.spots[n - 1]

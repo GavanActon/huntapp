@@ -7,7 +7,7 @@ import { useGpsStore } from './tracking/gpsStore'
 import { compass } from './weather/openMeteo'
 import { initTextScale } from './ui/textScale'
 import { initTheme } from './ui/theme'
-import { releaseArmed } from './ui/tools'
+import { releaseArmed, useTool } from './ui/tools'
 import WeatherStrip from './ui/WeatherStrip'
 import LiveCard from './ui/LiveCard'
 import TopCardHost from './ui/TopCardHost'
@@ -17,7 +17,7 @@ import SheetHost from './ui/sheets/SheetHost'
 import MeasureCard from './ui/MeasureCard'
 import PathCard from './ui/PathCard'
 import RouteCard from './ui/RouteCard'
-import { initRoutes, useRoutes } from './routes/routeStore'
+import { initRoutes } from './routes/routeStore'
 import { initRouteLayer } from './routes/routeLayer'
 import { initScentLayer } from './weather/micro/scent'
 import { initCheckLayer } from './weather/micro/checkLayer'
@@ -32,11 +32,8 @@ import HeardCard, { useHeardForm } from './ui/HeardCard'
 import WindCheckCard, { useCheckForm } from './ui/WindCheckCard'
 import { initMeasureLayer } from './measure/measureLayer'
 import { initPathLayer } from './paths/pathLayer'
-import { usePaths } from './paths/pathStore'
 import { initBushLabels } from './bushLabels/labelLayer'
-import { useBushLabels } from './bushLabels/labelStore'
 import BushLabelCard from './ui/BushLabelCard'
-import { useMeasureStore } from './measure/measureStore'
 import { initWindFlow } from './weather/windFlow'
 import { initWeatherRefresh } from './weather/refresh'
 import { initPositionLayer } from './tracking/positionLayer'
@@ -109,11 +106,9 @@ export default function App() {
   const sheetOpen = useAppStore((s) => s.sheets.length > 0)
   const topCard = useAppStore((s) => s.topCard != null)
   const viewMenuOpen = useAppStore((s) => s.viewMenuOpen)
-  const measuring = useMeasureStore((s) => s.active)
-  const drawing = usePaths((s) => s.drawing)
-  // the bush-label tool (a link with ?label=bush): its card in the bar, the map's tap its own
-  const labelling = useBushLabels((s) => s.active)
-  const routing = useRoutes((s) => s.open)
+  // the tool with the map's taps and the bar (ui/tools.ts): the ruler, a path being drawn,
+  // the route card, or the bush-label tool (a link with ?label=bush)
+  const tool = useTool()
   const logging = useLogForm((s) => s.at != null)
   const hearing = useHeardForm((s) => s.open)
   const checking = useCheckForm((s) => s.at != null)
@@ -144,11 +139,11 @@ export default function App() {
     if (sheetOpen) releaseArmed()
   }, [sheetOpen])
 
-  // a tool taking the map's taps (the ruler, a path, the route card, the labels) the same:
-  // Game pressed and then the ruler opened stayed armed under it and fired on the first tap after Done
+  // a tool taking the map's taps the same: Game pressed and then the ruler opened stayed
+  // armed under it and fired on the first tap after Done
   useEffect(() => {
-    if (measuring || drawing || routing || labelling) releaseArmed()
-  }, [measuring, drawing, routing, labelling])
+    if (tool) releaseArmed()
+  }, [tool])
 
   useEffect(() => {
     // the grids and the weather first: nothing of the first view waits for the map
@@ -215,7 +210,7 @@ export default function App() {
       {!sheetOpen && !formUp && (
         <div className="leftstack">
           {!viewMenuOpen && !EXPLORE && <HotColumn side="far" />}
-          {!measuring && !drawing && (
+          {tool !== 'measure' && tool !== 'path' && (
             <div className="leftfoot">
               <ViewPill />
             </div>
@@ -224,13 +219,14 @@ export default function App() {
       )}
       {!sheetOpen && !formUp && <ToolColumn />}
       <div className="bottombar" ref={barRef}>
-        {labelling && <BushLabelCard />}
-        {!labelling && measuring && <MeasureCard />}
-        {!labelling && !measuring && drawing && <PathCard />}
-        {!labelling && !measuring && !drawing && routing && <RouteCard />}
-        {!labelling && !measuring && !drawing && !routing && logging && <LogCard />}
-        {!labelling && !measuring && !drawing && !routing && !logging && hearing && <HeardCard />}
-        {!labelling && !measuring && !drawing && !routing && !logging && !hearing && checking && <WindCheckCard />}
+        {/* the tool's card, else the form that is up: an entry, a moose heard, a wind check */}
+        {tool === 'labels' && <BushLabelCard />}
+        {tool === 'measure' && <MeasureCard />}
+        {tool === 'path' && <PathCard />}
+        {tool === 'routes' && <RouteCard />}
+        {!tool && logging && <LogCard />}
+        {!tool && !logging && hearing && <HeardCard />}
+        {!tool && !logging && !hearing && checking && <WindCheckCard />}
       </div>
       <SheetHost />
       <DevBadge />

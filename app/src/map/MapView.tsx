@@ -10,9 +10,6 @@ import { fineDetail, markShown, useAppStore, type LayerOpacity, type LayerVisibi
 import { placeColour } from '../state/pinColours'
 import { usePlacesStore } from '../state/placesStore'
 import { geoUrls, holdOpening, onFirstIdle, setMap, withMap } from './mapController'
-import { useMeasureStore } from '../measure/measureStore'
-import { drawingPath } from '../paths/pathStore'
-import { useBushLabels } from '../bushLabels/labelStore'
 import { baseTone, BOG_TUFT, bogTuftImage, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour, lidarShadeShown, openLanesOut, type ArchiveRange, reliefShadePaint, standIn, syncUnderlays } from './mapStyle'
 import { offlineComplete, registerAllDataFiles, registerDataFile, sourceModes } from './pmtilesRegistry'
 import { loadStreamLib, probeTerrainDepth, STREAM_PICTURES, STREAMED_KEYS, streamedContourTiles } from './streamPictures'
@@ -23,8 +20,8 @@ import { initWindTiles } from '../weather/micro/windTiles'
 import { showInfoPopup } from './infoPopup'
 import { showPlacePopup } from './placePopup'
 import { useScent } from '../weather/micro/scent'
-import { useRoutes } from '../routes/routeStore'
 import { useHeardForm } from '../ui/HeardCard'
+import { armedNow, toolNow } from '../ui/tools'
 import { showLogPopup } from '../log/logLayer'
 import { useHuntLog } from '../log/huntLog'
 
@@ -376,8 +373,8 @@ export default function MapView() {
       // a wait for a double tap and filters for brushes of the screen were
       // tried on 2026-10-02 and made the popup unreliable in the hand.
       m.on('click', 'pins-pt', (e) => {
-        // the ruler, a path being drawn, a person being placed, the route card and the bush labels each own the tap
-        if (fromPerson || useMeasureStore.getState().active || drawingPath() || useScent.getState().adding || useRoutes.getState().open || useBushLabels.getState().active) return
+        // a tool (the ruler, a path being drawn, the route card, the bush labels) or a person being placed owns the tap (ui/tools.ts)
+        if (fromPerson || toolNow() || armedNow() === 'scent') return
         const id = e.features?.[0]?.properties?.id as string | undefined
         const p = id ? usePlacesStore.getState().places.find((q) => q.id === id) : undefined
         if (!p) return
@@ -387,15 +384,13 @@ export default function MapView() {
       })
       m.on('click', (e) => {
         if (fromPerson) return // a scent person's drag let go
-        if (useMeasureStore.getState().active) return // the ruler owns the tap
-        if (drawingPath()) return // so does a path being drawn (paths/pathLayer)
-        if (useBushLabels.getState().active) return // so does the bush-label tool (bushLabels/labelLayer)
-        if (useRoutes.getState().open) return // so does the route card (routes/routeLayer)
-        const scent = useScent.getState()
+        // the tool with the map's taps (the ruler, a path being drawn, the bush labels, the route card) has its own handler (ui/tools.ts)
+        if (toolNow()) return
+        const armed = armedNow()
         // placing another person: the tap is where they sit
-        if (scent.adding) return scent.add(e.lngLat.lng, e.lngLat.lat)
+        if (armed === 'scent') return useScent.getState().add(e.lngLat.lng, e.lngLat.lat)
         // Heard pressed: the tap is where it was; what it was comes next
-        if (useHeardForm.getState().placing) return useHeardForm.getState().show({ lon: e.lngLat.lng, lat: e.lngLat.lat })
+        if (armed === 'heard') return useHeardForm.getState().show({ lon: e.lngLat.lng, lat: e.lngLat.lat })
         // outside every baked box the tap picks the cell under it for the card (explore/index.ts)
         if (exploreTap(m, e)) return
         // a place, a numbered pin, a wind check, a kept route or a path has its own tap
@@ -406,7 +401,7 @@ export default function MapView() {
       })
       // a log entry (a moose heard, a sighting): what and when, Delete, and press-and-hold to move it
       m.on('click', 'huntlog-dot', (e) => {
-        if (fromPerson || useMeasureStore.getState().active || drawingPath() || useScent.getState().adding || useRoutes.getState().open || useBushLabels.getState().active) return
+        if (fromPerson || toolNow() || armedNow() === 'scent') return
         const id = e.features?.[0]?.properties?.id as string | undefined
         const entry = id ? useHuntLog.getState().entries.find((x) => x.id === id) : undefined
         if (entry) showLogPopup(m, entry)

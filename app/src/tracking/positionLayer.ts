@@ -3,9 +3,7 @@ import type { Map as MlMap } from 'maplibre-gl'
 import { onEachMap } from '../map/mapController'
 import { useAppStore } from '../state/appStore'
 import { followCenter } from '../config'
-import { useMeasureStore } from '../measure/measureStore'
-import { drawingPath } from '../paths/pathStore'
-import { useRoutes } from '../routes/routeStore'
+import { toolNow } from '../ui/tools'
 import { useScent } from '../weather/micro/scent'
 import { useGpsStore, type Fix } from './gpsStore'
 import { useCompass } from './compass'
@@ -52,7 +50,9 @@ function dotElement(): HTMLDivElement {
   el.addEventListener('click', (e) => {
     const f = useGpsStore.getState().fix
     if (!f) return
-    if (useMeasureStore.getState().active || drawingPath() || useRoutes.getState().open) return
+    // (the bush-label tool does not take the dot: a tap on it still logs a check where you stand)
+    const tool = toolNow()
+    if (tool && tool !== 'labels') return
     // a check already being logged: the dot does not start another under it
     if (useCheckForm.getState().at) return e.stopPropagation()
     // a moose being placed: a tap on you is nothing, he is not where you stand
