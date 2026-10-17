@@ -81,9 +81,26 @@ function addLayers(m: MlMap) {
 }
 
 function render() {
+  if (soon != null) {
+    window.clearTimeout(soon)
+    soon = null
+  }
   const m = layersOn
   if (!m) return
   ;(m.getSource(SRC) as GeoJSONSource | undefined)?.setData(fc())
+}
+
+/** A point kept on a walk redraws the trail a moment later, the fixes between
+ *  folded in: each draw sends the whole outing's line to the map's worker, and
+ *  a fix came every few seconds all day. */
+let soon: number | null = null
+const WALK_MS = 3000
+function renderSoon() {
+  if (soon != null) return
+  soon = window.setTimeout(() => {
+    soon = null
+    render()
+  }, WALK_MS)
 }
 
 /** An outing from the Hunt log on the map: the points of every track inside the slice; null puts the live track back. */
@@ -104,7 +121,11 @@ export function initTrackLayer() {
     })
   })
   useTrackStore.subscribe((s, prev) => {
-    if (s.tracks !== prev.tracks || s.recordingId !== prev.recordingId) render()
+    if (s.recordingId !== prev.recordingId) return render()
+    if (s.tracks === prev.tracks) return
+    // a point kept on the walk: soon; a track taken away or added: now
+    if (s.recordingId != null && s.tracks.length === prev.tracks.length) renderSoon()
+    else render()
   })
   useAppStore.subscribe((s, prev) => {
     const on = markShown(s, 'tracks')

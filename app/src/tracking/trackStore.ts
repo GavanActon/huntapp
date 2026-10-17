@@ -10,8 +10,11 @@ import { useGpsStore, type Fix } from './gpsStore'
  * does not fill the log), and a silence longer than GAP_MS starts a new
  * segment. Location switched back on within OUTING_GAP_MS picks the last
  * track up again; longer than that starts a new one. Every track is kept in
- * localStorage so a day's walk survives a reload. The Hunt log cuts the
- * tracks into outings by time (log/outings.ts) and exports them as GPX.
+ * localStorage so a day's walk survives a reload: each under its own key,
+ * with the ids in an index, so a walk writes its own track and not every
+ * track ever (they were one value, rewritten whole every two seconds of a
+ * walk, a megabyte by the end of a week). The Hunt log cuts the tracks into
+ * outings by time (log/outings.ts) and exports them as GPX.
  */
 
 export interface TrackPoint {
@@ -32,7 +35,11 @@ export interface Track {
   distanceM: number
 }
 
-const KEY = 'huntapp-tracks'
+/** every track in one value, as they were kept to 2026-10-17: read once and split (load) */
+const LEGACY_KEY = 'huntapp-tracks'
+/** the tracks' ids, oldest first; each track under its own key */
+const INDEX_KEY = 'huntapp-tracks:index'
+const trackKey = (id: string) => `huntapp-track:${id}`
 const MIN_STEP_M = 6
 /** the filtered fix's spread above which nothing is recorded, metres */
 const MAX_SIGMA_M = 25
@@ -68,29 +75,74 @@ function distanceOf(points: TrackPoint[]): number {
 
 function load(): Track[] {
   try {
-    const raw = localStorage.getItem(KEY)
-    return raw ? (JSON.parse(raw) as Track[]) : []
+    const ids = JSON.parse(localStorage.getItem(INDEX_KEY) ?? 'null') as unknown
+    if (Array.isArray(ids)) {
+      const out: Track[] = []
+      for (const id of ids) {
+        const raw = typeof id === 'string' ? localStorage.getItem(trackKey(id)) : null
+        if (raw) out.push(JSON.parse(raw) as Track)
+      }
+      return out
+    }
+    // the one value they were all kept in: split into their own keys, once
+    const raw = localStorage.getItem(LEGACY_KEY)
+    const tracks = raw ? (JSON.parse(raw) as Track[]) : []
+    if (raw) {
+      try {
+        for (const t of tracks) localStorage.setItem(trackKey(t.id), JSON.stringify(t))
+        localStorage.setItem(INDEX_KEY, JSON.stringify(tracks.map((t) => t.id)))
+        localStorage.removeItem(LEGACY_KEY)
+      } catch {
+        /* full: kept as they were, split on the next open */
+      }
+    }
+    return tracks
   } catch {
     return []
   }
 }
 
+/** The tracks whose stored copy is behind, by id; '*' for the index (a track added or taken away). */
+const dirty = new Set<string>()
+
 function write() {
+  const s = useTrackStore.getState()
   try {
-    localStorage.setItem(KEY, JSON.stringify(useTrackStore.getState().tracks))
+    if (dirty.has('*')) {
+      localStorage.setItem(INDEX_KEY, JSON.stringify(s.tracks.map((t) => t.id)))
+      dirty.delete('*')
+    }
+    for (const id of [...dirty]) {
+      const t = s.tracks.find((x) => x.id === id)
+      if (t) localStorage.setItem(trackKey(id), JSON.stringify(t))
+      else localStorage.removeItem(trackKey(id))
+      dirty.delete(id)
+    }
   } catch {
     /* full: the track lives in memory until something is deleted */
   }
 }
 
-/** Written a couple of seconds after the last change, whatever the store holds by then. */
+/** How long a walk's points wait to be written: each write is the whole track, and a
+ *  point comes every few seconds; the pocket, a reload and an area switch flush it. */
+const WALK_MS = 20_000
 let saveTimer: number | null = null
-function save() {
-  if (saveTimer != null) return
-  saveTimer = window.setTimeout(() => {
-    saveTimer = null
-    write()
-  }, 2000)
+/** Note what changed and write it soon: a couple of seconds for a track started, stopped,
+ *  renamed or taken away (`index`), a while for a point kept on a walk. */
+function save(ids: string[], index = false) {
+  for (const id of ids) dirty.add(id)
+  if (index) dirty.add('*')
+  if (saveTimer != null) {
+    if (!index) return
+    window.clearTimeout(saveTimer)
+  }
+  saveTimer = window.setTimeout(
+    () => {
+      saveTimer = null
+      write()
+    },
+    index ? 2000 : WALK_MS,
+  )
 }
 
 /** A save still waiting is written now: the page is about to reload (an
@@ -142,7 +194,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
     const t: Track = { id: `t-${Date.now().toString(36)}`, name: dayName(Date.now()), startedAt: Date.now(), endedAt: null, points: [], distanceM: 0 }
     const tracks = [...get().tracks, t]
     set({ tracks, recordingId: t.id })
-    save()
+    save([t.id], true)
     const fix = useGpsStore.getState().fix
     if (fix) get().push(fix)
   },
@@ -157,7 +209,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
     }
     const tracks = get().tracks.map((x) => (x.id === id ? { ...x, endedAt: null } : x))
     set({ tracks, recordingId: id })
-    save()
+    save([id], true)
     return true
   },
   stop: () => {
@@ -168,7 +220,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
     // an empty track is nothing to keep
     const kept = tracks.filter((t) => t.id !== id || t.points.length >= 2)
     set({ tracks: kept, recordingId: null })
-    save()
+    save([id], true)
   },
   push: (fix) => {
     const id = get().recordingId
@@ -193,17 +245,17 @@ export const useTrackStore = create<TrackState>((set, get) => ({
       return { ...t, points: [{ lon: fix.lon, lat: fix.lat, ts: fix.ts }] }
     })
     set({ tracks })
-    save()
+    save([id])
   },
   rename: (id, name) => {
     const tracks = get().tracks.map((t) => (t.id === id ? { ...t, name } : t))
     set({ tracks })
-    save()
+    save([id], true)
   },
   remove: (id) => {
     const tracks = get().tracks.filter((t) => t.id !== id)
     set({ tracks, recordingId: get().recordingId === id ? null : get().recordingId })
-    save()
+    save([id], true)
   },
 }))
 
@@ -215,6 +267,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
 export function removeRange(t0: number, t1: number): void {
   const s = useTrackStore.getState()
   let changed = false
+  const touched: string[] = []
   const tracks: Track[] = []
   for (const t of s.tracks) {
     if (!t.points.some((p) => p.ts >= t0 && p.ts <= t1)) {
@@ -222,6 +275,7 @@ export function removeRange(t0: number, t1: number): void {
       continue
     }
     changed = true
+    touched.push(t.id)
     const kept: TrackPoint[] = []
     let cut = false
     for (const p of t.points) {
@@ -238,7 +292,7 @@ export function removeRange(t0: number, t1: number): void {
   if (!changed) return
   const recordingId = s.recordingId != null && tracks.some((t) => t.id === s.recordingId) ? s.recordingId : null
   useTrackStore.setState({ tracks, recordingId })
-  save()
+  save(touched, true)
 }
 
 /**
@@ -255,6 +309,7 @@ export function initTrackRecording() {
   const now = Date.now()
   const s = useTrackStore.getState()
   let changed = false
+  const touched: string[] = []
   const closed: Track[] = []
   for (const t of s.tracks) {
     if (t.endedAt != null || now - lastTs(t) <= OUTING_GAP_MS) {
@@ -262,12 +317,18 @@ export function initTrackRecording() {
       continue
     }
     changed = true
+    touched.push(t.id)
     if (t.points.length >= 2) closed.push({ ...t, endedAt: lastTs(t) })
   }
   if (changed) {
     useTrackStore.setState({ tracks: closed })
-    save()
+    save(touched, true)
   }
+  // the phone pocketed (its screen off) or the page going: what a walk has kept since the last write
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushTrackSave()
+  })
+  window.addEventListener('pagehide', flushTrackSave)
   useGpsStore.subscribe((g, prev) => {
     if (g.locating !== prev.locating && !g.locating) useTrackStore.getState().stop()
     if (!g.fix || g.fix === prev.fix) return
