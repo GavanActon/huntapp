@@ -1170,7 +1170,10 @@ function towerShare(g: Habitat, i: number, leaves: number): number | null {
 // 6.1-6.5, pipeline/teacher/palm/drain_read.py); before, 5 km/h of the decoupled local wind by e every 8
 // waterAna: the sun's upslope flow over open water (1 as before; water does not heat as the shore
 // does, and PALM's floor over a lee's water under a sunny N wind follows the wind above, am000)
-const THERMAL_DEFAULT = { mix0: 5, mixScale: 1, trees: 0.7, ref: 1, mixS0: 5, mixSScale: 1, sl0: 3, sl1: 8, waterAna: 0 }
+// inv0, inv1: the forecast's inversion (dTheta, 80 m less 2 m, K) under which the drainage is nothing
+// and over which it is whole (inv1 0: no gate, as before). PALM's dusk series at Whitefish, under the
+// wind fade from the start, drained only once about 1 K had built (Hunter-Jay, 2026-10-17)
+const THERMAL_DEFAULT = { mix0: 5, mixScale: 1, trees: 0.7, ref: 1, mixS0: 5, mixSScale: 1, sl0: 3, sl1: 8, waterAna: 0, inv0: 0, inv1: 0 }
 let thermalTune = { ...THERMAL_DEFAULT }
 export function setThermalTune(t: Partial<typeof THERMAL_DEFAULT> | null): void {
   thermalTune = { ...THERMAL_DEFAULT, ...t }
@@ -1719,7 +1722,8 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   const mixKat =
     (1 - onSlope) * Math.exp(-Math.max(0, kWind - thermalTune.mix0) / thermalTune.mixScale) +
     onSlope * Math.exp(-Math.max(0, kWind - thermalTune.mixS0) / thermalTune.mixSScale)
-  const sKat = clamp(Math.max(lay.inversion * s, 0.6 * cool), 0, 1.5) * mixKat
+  const invGate = thermalTune.inv1 > thermalTune.inv0 ? clamp((lay.dTheta - thermalTune.inv0) / (thermalTune.inv1 - thermalTune.inv0), 0, 1) : 1
+  const sKat = clamp(Math.max(lay.inversion * s, 0.6 * cool), 0, 1.5) * mixKat * invGate
   const kd = bearing(K_KATDIR, i)
   if (sKat > 0.02 && kd != null) {
     kat = b(K_KATSPD, i) * 3.6 * sKat * (inTrees ? thermalTune.trees : 1) * Math.exp(lnDrainHere)
