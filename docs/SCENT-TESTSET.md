@@ -16,7 +16,7 @@ map UI thread the next day).
 
 | role | held by (2026-10-15) | does | does not |
 |---|---|---|---|
-| **PALM owner** (the referee) | huntapp-c4, named by Gavan | the service, the cases, `pipeline/teacher/palm/`, the queue, the test set, the scorecard | change app rules |
+| **PALM owner** (the referee) | huntapp-jay (session address huntapp-0a), named by Gavan 2026-10-17 ~00:20; huntapp-c4 until then | the service, the cases, `pipeline/teacher/palm/`, the queue, the test set, the scorecard | change app rules |
 | **Rule builder** | huntapp-ba | the app's wind (`model.ts`) and scent (`scent.ts`) changes, each scored on the card as a `--patch`; from 2026-10-16 also the wind data around them: the station collector (`pipeline/stations/collect.py`, daily 07:00 on XEVO) and the tower work (`pipeline/towers/`) | edit the PALM kit, the queue or the card |
 
 **Handover:** only Gavan names the PALM owner. The outgoing owner updates the table above and the
@@ -344,6 +344,8 @@ ledger books runs: the question, the number that settles it, and the app change 
 | pickle-bogs dawn270 (queued 2026-10-15, xonix, about 8 h; landed 2026-10-16, processed). **Answered (huntapp-ba):** the floor swings with the wind, not along a drainage line. A ~76° swing of the 10 m wind moved the head-height air ~45° at P8–P10 (dawn175 from 241–259; dawn270 from 285–306). What's left is a clockwise offset from the 10 m wind: +49 to +106° under 175, +17 to +39° under 270. That's the box's own terrain and canopy steering (PALM has no Coriolis), so it's a place's turn, which the checks and place memory learn. **No new rule.** At the dawn bog the app already follows the wind and misses only that offset. | Under dawn175 the bog's stable floor came from ~245 while the 10 m wind was 182 and the app kept ~187. Does the floor's turn follow the drainage line or the wind? | the floor's direction at P8–P10 with the wind from 270: still ~245 means drainage, swung by ~90 means the wind | huntapp-ba's stable-floor turning rule: keyed to the drainage line or to the wind (the loop's second direction item) |
 | the drainage fade: lacbailey-spot d326u06 and d326u12 (steep ground), pickle-bogs dawn175u06 (flat bog). Gavan, 2026-10-16: "Yes" to accuracy that scales; `validation`, xonix, ~4.5 h, 4.5 h, ~9 h, queued 190–210 | d326 (6.5 km/h forecast 10 m) and dawn175 (6.1) both said the stable floor follows the wind, not the slope. The app's drainage fade only starts at 5 km/h, so it let drainage win at G1. At what forecast wind does the cold air take over, on steep ground and on flat? The same nights at a third and two thirds of the wind (80 m 6 and 12 km/h at the spot, about 2 and 4 km/h at 10 m; 6.5 at the bog, about 2) | PALM's head-height direction at the spot and the bog points: downslope (katDir) or with the wind, and the share of each, at 2 / 4 / 6.5 km/h, plus where the scent goes | one fade curve (thermalTune mix0/mixScale, the slope and the flat) fitted to PALM. It applies in every tile, SD and HD alike, and goes on the four-card bar |
 | the surrogate set: whitefish and lacbailey-bank ne045, e090, se135, nw315, plus whitefish w270 and lacbailey-bank sw225 (Gavan, 2026-10-16: "yea - queue"; `explore`, xonix's CPU slot, about 1 h each, queued 090–180) | Not a rule question. These are the wind surrogate's first PALM training cases (the self-improving plan's checkpoint, memory huntapp-compute-service), filling in the rest of the compass at the two held-out boxes: neutral, 12 km/h, the boxes' own scent sources | 10 runs landed and processed | the prototype re-trains the SD U-Net on PALM's head-height wind and is scored held out against the rules. The runs can also join the card as held-out cells once ba's forcing table covers them (forcing = the run's own 12 km/h at 10 m) |
+| lacbailey-bank am000 (booked 2026-10-17 by huntapp-jay, Gavan: "Go"; `validation`, xonix, ~40 min) | The nightly loop's own ask, twice (10-15, 10-16): "convective, water in a lee >10°" is the app's worst class against PALM (27% within 45°, 108 points, all from the slot's am270, where the app's sunny upslope floor runs 180° off PALM). Is that the slot or the convective rule? A sunny morning off the land at the bank (N, 12 km/h, am270's mixed layer and fluxes) puts the lake in a 50-90 m bank's lee, a different place and wind | palm_compare's within-45° and reversal recall for "convective, water in a lee >10°" and "convective, forest" on am000 beside am270: the same miss (the app's upslope/thermal floor against PALM's lee return) means the rule; a pass means the slot. Read it fairly: PALM heats the water like the land (no land-surface model), so the app's lakeBreeze cells (73 of am270's 108 water-in-a-lee points) are not a miss PALM can judge; score the cells where the app's regime is wind, calm or upslope | the convective floor rule in model.ts (the upslope share under a wind, its gate) if both runs miss the same way; otherwise the slot's lee only. **Answered 2026-10-17 05:45 (Hunter-Jay): the rule.** PALM's floor over the lee water follows the wind above at the bank too: am000 94% within 45° of the wind 10 m up, reversed 0.16, head/top 1.0 (am270 98% / 0.23; the neutral n000 88% / 0.26); under forest in the same lee it reverses (0.75 / 0.64 / 0.73). The app with water 0.2 (0271e10): am000 water-in-a-lee 62% (regimes wind 47, upslope 16), n000 47% (wind 51, calm 19), am270 43% (lakeBreeze 54, wind 51: PALM cannot judge the breeze). So three mechanisms put the app's floor off over water in a lee: the lee eddy (now 0.2), the convective upslope share and the lee's calm. Next gate for ba: over open water the floor is the wind above; no upslope, no calm, no eddy there |
+| pickle-slot dusk288t and whitefish dusk210t (booked 2026-10-17 by Hunter-Jay; Gavan: accuracy first, the machines are the seat's; `validation`; the slot on xonix ~3 h as 203, Whitefish on XEVO's slot ~7 h as 220, its W6/W9/W10 the held-out half of the dusk misses) | Nine of the card's ten misses are stable dusk (P2-P5 dusk288, W6/W9/W10 dusk210), and floor_learn.py found the stable floor's turn is not in the geometry (stable 53 → 56% with a fall-line feature). The app's fade is keyed to wind speed alone. The missing axis is the clock: how long the ground has been cooling. The same evening as dusk288, started an hour before the inversion with a neutral low layer, cooling 1 K/h for 3.5 h, the averaged field every 10 min from 20 min in (build_case.py `series`) | at P2-P5 (and every window), the time and the surface cooling at which the head-height direction leaves the wind above by more than 45°, and at which the still share passes 0.5; read with `palm_to_fields.py --slice` (to build) and floor_learn.py on the slices | the drainage fade keyed to time-since-sunset × forecast wind (thermalTune), replacing the speed-only fade; scored on the four cards; if the turn comes at a cooling the forecast's 2 m / 80 m profile shows, the app reads it from HRDPS, which every SD tile has. **First read, dusk288t (landed 07:26, 19 windows, `series_read.py`):** the box's own 10 m wind dies with the cooling (3.2 → 0.9 km/h over 3 h under an 11.2 km/h forcing at 80 m) and the floor changes with it, not by a step in time: on the slopes where the fall line parts from the wind, the moving floor drains 13% at 30 min, 25% at 60, 37% at 100, 49% at 210, while the share with the wind falls 53 → 39% and the still share rises 45 → 71%; drainage overtakes the wind at ~100-120 min (PALM ambient ~1.4 km/h, about a forecast-equivalent 5 by the stable ratio). At the points: P1/P2 (the bank) go still (0.3-0.5 km/h) by 40 min and drift from ~330, 40-50° right of the forcing, for the rest of the evening; P3 (the bay) runs with the wind at 2.9 km/h at 30 min, reverses by 50 min to come off the land (from ~60-75, 1 km/h) and stays reversed; P4 (120 m N) is still throughout. Reading: in this box time and local wind speed are one axis, so a fade keyed to the local 10 m wind (HRDPS hour by hour) carries the clock, and the soft rise in time (e-fold over ~1 h of cooling) is consistent with r51all's e-fold where u12's step in speed is what a fast-dying wind looks like. Caveat: PALM's cooled cyclic box over-stills the low layer (the Searchmont lesson), so the timing is a lower bound. **The condition checked by ba (08:20) at 130 open ECCC stations, 924k station-hours, falls 2023-26:** in the fade window (forecast 4-6 km/h) the evening forecast is honest on average (obs/fcst 1.02 at dusk and dawn, 0.93 at night, 1.16 → 0.82 as the 80-2 m inversion goes from under 0 to over 3 K), with a third of the '5 km/h' nights calm at 10 m: the U-keyed fade carries the clock, the scatter is the case for the soft e-fold, and a stability shift of the fade's start (+0.5-1 km/h under strong inversions) is parked unless dawn175u06 or Whitefish's series move the crossover off 5. Whitefish's series (XEVO) is the held-out check |
 
 The loop's working order (huntapp-ba and huntapp-c4, 2026-10-15): **direction before width**. The
 width knobs (gustSize, meander, spread.swing) trade false alarms for misses one for one, so they hide
@@ -390,6 +392,185 @@ First pass on v2 (2026-10-15): **narrow-tongue-lee-eddy** (patch B's kicks; the 
 Before that, a narrow tongue (huntapp-ba's patch B: kicks from the wind above, 0.02 + a·U10·(1 + 0.35·tumbling),
 fitted to PALM's turbulence at ratio 1.0) is ready but fails on misses: 5 → 11, all wind. It goes
 back on the card after each wind fix.
+
+## The seat's night of 2026-10-17 (huntapp-jay)
+
+**SD v2 trial, scored 00:26-00:49 by c4's score_trials.ps1, provisional.** Two faults in the chain: HEAD moved under it
+(v1 on 19443bf, v2t on b4f7b5d, v2t2 on f264cc8; model.ts and scent.ts changed between), and the 12-tile list
+had no bogstrip tiles (t-630-410/411), so v2t and v2t2 scored 15 runs where v1 scored 18. On the same 15 runs
+(from the saved score JSONs):
+
+| SD version | tune | held out | misses | false alarms |
+|---|---|---|---|---|
+| v1 | 0.52 | 0.59 | 11 | 73 |
+| v2t (lee3 retrain) | 0.52 | 0.56 | 14 | 75 |
+| v2t2 (lee3 + provincial wetlands) | 0.53 | 0.56 | 11 | 77 |
+| HD, same runs | 0.53 | 0.62 | 7 | 79 |
+
+v2t's misses rise (11 → 14, the 5 m stand 2 → 4 and the bog edge 0 → 1), so the lee retrain alone fails the
+bar; its expected gain at the bank (bank slope 0.50, shore under a bank 0.65) does not show. v2t2 holds the
+misses, lifts the cold-air pool 0.33 → 0.43 (88's read: the wetland opens the bog cells, crown 41 → 0, share
+0.12 → 0.24 against HD's 0.72) and loses the bog edge under trees 0.55 → 0.38 and the open strip 0.70 → 0.58.
+**Like for like, 02:07-02:18** (the bogstrip tiles baked into both trial folders by the seat with v1 paused; all three
+scored on f264cc8, 18 runs):
+
+| SD version | tune | held out | misses | false alarms |
+|---|---|---|---|---|
+| v1 | 0.50 | 0.59 | 16 | 79 |
+| v2t (lee3 retrain) | 0.50 | 0.56 | 19 | 81 |
+| v2t2 (lee3 + provincial wetlands) | 0.51 | 0.56 | 17 | 83 |
+| HD, same runs | 0.53 | 0.62 | 10 | 82 |
+
+**Neither trial passes the bar**: misses rise (16 → 19, 16 → 17) and held out falls 0.59 → 0.56 on both. v2t2's one
+gain is the cold-air pool (0.33 → 0.43, the wetland opening the bog cells) against the bog edge under trees (0.47 →
+0.38) and a new miss at P2 am270. The lee retrain's expected gain at the bank does not show (bank slope 0.50, shore
+under a bank 0.65 → 0.61). **The seat's recommendation to Gavan: no national v2 re-bake; v1 stays.** What the pool
+still lacks is the stand round it (SCANFI 9 m / 41% against the FRI's 6 m / 18%), a stand-attribute source question
+for the bake seat (provincial FRI where it is open, as the wetlands were), not a net retrain.
+
+**A PALM-taught floor, first pass** (`pipeline/teacher/palm/floor_learn.py`; Gavan: "Yes"). Every 4 m run
+(33, one per case and wind) pooled to 20 m windows; targets the head-height turn from PALM's own wind 10 m
+over the canopy, the head/top share and the still share; features an SD tile has (canopy height, cover, LAI,
+water, slope and its parts along and across the wind, Winstral shelter at 100 and 300 m, relief, edge
+distance, upwind fetch, the top wind's own share and turn, stability, forcing); LightGBM, leave one box out.
+Windows where the floor is mostly still (head under 0.5 km/h; 52% of them) are left out: there is no
+direction to learn.
+
+- **It does not beat the rules.** At the loop's points, moving windows: app 78% within 45°, follow-the-wind-above
+  76%, learned 74%. The app is strongest in stable forest (61–88%), where the learned floor is 30–40%: the
+  drainage work carries there and the features do not.
+- **It wins in the lees, and the reason is a rule:** over open water in a lee (Sx ≥ 10°) PALM's floor follows the
+  wind above (|turn| median 9–23°, 88–100% within 45° on the neutral runs, reversed 0.01–0.5), where the app
+  reverses it (slot w270: app 145° off the forecast, appRev 0.80, PALM 68° and 0.06; nw315 0.65 vs 0.47; the
+  bank's n000 0.60 vs 0.13). Under forest in the same lees PALM does reverse (0.4–0.9). So the deep-lee return
+  flow is right under trees and wrong over water. Sent to ba as a rule fix (gate the return flow off over
+  water, or scale it by canopy), not as a model. Caveat: am270's water-in-a-lee miss is the app's lakeBreeze
+  regime, which PALM cannot judge (the water is heated like the land).
+- **Speed:** the learned head/top share is within 2× on 89% of windows against 38% for a constant, with
+  ambient speed, the top wind's share and shelter as the drivers. That is the towers' story again from PALM
+  (and PALM's floor runs slow, so the level is not to be trusted; the pattern is).
+
+**ba's lee-over-water knob, eff536b (setLeeTune `water`, open's 0.6 by default), refereed 01:42.** Four cards:
+PALM HD base 0.53 / 0.62, misses 10, FA 82 → water 0.2: 0.59 / 0.61, misses 10, FA 80 (the 5 m stand 0.60 → 0.69,
+lee slope 0.55 → 0.59); water 0: 0.59 / 0.61, 10, 79. SD 0.50 / 0.59, 16 → 0.52 / 0.59, 17 (the new miss is P2 am270's
+lakeBreeze cell, which PALM cannot judge) → water 0: 0.49 / 0.57, 17. Checks card: direction unchanged, honest 1 sd
+64.2 → 62.3% Pickle (in band), Searchmont 71.4%. palm_compare (ba): water in a deep lee 42.8 → 46%, reversals 0.42 →
+0.12, land and trees unmoved. Towers untouched. **Passes at water 0.2** (tie-break the gentler; water 0 loses on SD);
+ba sets the default and pushes to hunt-dev. Watch P2 am270 on SD when am000 lands.
+
+**The drainage fade at u12 (02:44) and ba's slope-only variants, refereed 03:29-03:50.** drain_read: the slope drains
+0.42 at a forecast 2.7, 0.47 at 5.5, 0.22 at 6.5 (G1 from 211 / 236 / 307): a step between 5.5 and 6.5, where the
+shipped r51all fades from 5 (0.61 at 5.5). Variants at 0271e10, slope only (the flat waits for dawn175u06): s55_1
+(mixS0 5.5, scale 1), s55_05 (scale 0.5), s6_05. PALM card HD base 0.59 / 0.61, misses 10 → s55_1 0.59 / 0.62, 10 →
+s55_05 0.59 / 0.61, 10 → s6_05 0.59 / 0.62, 10; SD 0.52 / 0.59, 17 → 0.52 / 0.58, 17 → 0.52 / 0.59, **18** → 0.52 /
+0.58, 17. s55_05 fails on the SD miss; s55_1 takes the tie-break. palm_compare 63.8 → 63.7 (the spot runs −2..3, all
+else unchanged); checks unchanged. **Passes, with no measurable gain**: the only slope point at 5-6 km/h is G1, already
+fixed. Recommended to ba as the physics-backed default; **ba held it** (03:55): palm_compare falls on exactly the two runs
+it touches (d326 53 → 50, u12 49 → 47), so with no card gain the shipped 5 / 1 stays. Slope and flat get fitted together
+once dawn175u06 and the two dusk series are in, and the question becomes whether the step moves with the clock.
+
+**The card scored a load state (found 03:40-04:10, Optimus's behaviour-neutral hour-stamp commit a225e55 moved the HD
+row).** scorecard.py's CONE_JS awaited microReadyFor only, which loads the two momentum directions of the hour's
+*forecast* wind; the card forces another direction, so momentumAt asked for its own two and the lids stood in until they
+landed mid-run, and ensureRelief (the going grid: riseUpwind, waterAt) is only asked by loadRestOfMicro, which the card
+never awaited (palm_compare and replay always did). The HD rows varied run to run with the main thread's speed (0271e10:
+10 misses at 03:29, 11 at 03:52, Whitefish sit speeds halving between runs); the SD column, without momentum, did not.
+Fixed by 04:30 in two steps: loadRestOfMicro resolves at once when a prior call started it, so the card now also awaits
+the going grid (routes/goingGrid.ts loadGoing) and the habitat (spots/habitatGrid.ts loadHabitat) by name, and reads the
+first sit until two reads 1 s apart agree; it prints "waits: going habitat settled" per evaluate. **Deterministic from 04:33:
+0271e10 scored twice, 0 of 79 sits differ.** Every HD row before that is a load-state row (per commit they agreed in total
+and differed by up to 12 sits); the night's verdicts (lee-water, a225e55's neutrality) are re-scored on the settled card.
+The nightly loop runs the same scorecard.py, so its 10-17 round is the new reference and does not compare with 10-16.
+**Re-scored on the settled card, 04:52-05:45:** a225e55 identical to 0271e10 on all 79 sits (Optimus's hold lifted); the
+lee-water rows reproduce exactly (base 0.53 / 0.62, 10, 82, 34 → water 0.2: 0.59 / 0.61, 10, 80, 28; SD 0.50 / 0.59, 16 →
+0.52 / 0.59, 17), so the night's shipped change stands as scored.
+
+**ba's two water gates, 98293b1 (thermal.waterAna: the sun's upslope over open water; floor.waterShelter: the least
+shelter a tree line leaves over open water), refereed 07:08-07:35 on the settled card.** HD base 0.59 / 0.61, misses
+10, FA 80, shade 28 → wa0 same → ws05 0.59 / 0.62, 10, 79, 27 → **wa0ws05 0.61 / 0.62, 10, 79, 24** → wa0ws1 0.58 /
+0.61, 10, 81 → ws1 0.59 / 0.62, **11**. SD base 0.52 / 0.59, 17 → wa0 16 → ws05 16 → wa0ws05 17 → wa0ws1 **19**. Checks:
+ws05 honest 66.0%, wa0ws05 62.3%, direction unchanged. palm_compare (ba, 84k points): water in a deep lee 46.4 → ws05 47.4
+/ wa0ws05 48.4 / ws1 49.6; convective water 84.4 → 88.3 / 90.8 / 93.4; land 59.6 unmoved; calm share over lee water 0.27 →
+0.17 (ws05) / 0.08 (ws1); app head/10 m 0.31 → 0.43 (ws1) against PALM's 0.46. **Verdict: wa0ws05 passes all four cards;
+ws1 fails on misses (HD 11, with wa0 SD 19).** ws05 alone also passes; ba chooses, sets, pushes to hunt-dev. **Shipped 07:50: wa0ws05 is the default, 67c59f8 on hunt-dev**
+(the push carried Optimus's 13 simplification commits on Gavan's OK). ws1's 07:29 row was scored on a half-installed
+worktree (the loop's 07:11 re-run broke it: npm ci EPERM on a native binary the previous card still held; prepare()
+now retries) and is re-scored. hunt-dev's base is now f08 + r51all + lee water 0.2 + waterAna 0 + waterShelter 0.5. **ws1's true row (08:14, sound
+worktree): HD 0.59 / 0.61, misses 9 (one fewer); SD 0.54 / 0.58, misses 19 (two more): fails on SD.** hunt-dev's HEAD
+67c59f8 scored as base: HD identical to the wa0ws05 variant on all 79 sits; SD misses 19, with Whitefish W2/W2s shade →
+miss (2.64 → 2.86 km/h) against the variant's 17. **22a12d3 cleared** (identical to its parent 67c59f8 on all 158 sits);
+the tiles on R2 are unchanged since 10-16 21:23; so the 17 is the variant scored fourth in a five-variant card and the
+19 the same values scored alone as defaults. ba's discriminating test (09:17, 67c59f8, SD only, the same defaults as three variants a/b/c): all three 0.53 / 0.58,
+misses 17, identical on every sit. So the shipped defaults read SD 17 (= the variant, = base): wa0ws05 holds the SD bar.
+The two 19 readings were both `--grid both` cards, where the SD pass follows the HD pass in one browser; every SD-only
+card reads 17. **Pinned down 09:40:** windTiles.ts fetchTile cached a failed tile fetch as a blank tile for the page's
+life (one transient R2 failure → a block tile on default stands for a whole card). Optimus's 2e4ff4b drops the null from
+the cache; the card records each block tile's fetch status and reloads when one is not 200. **hunt-dev's reference row
+(67c59f8, a browser per grid): HD 0.61 / 0.62, misses 10, FA 79, shade 24; SD 0.53 / 0.58, misses 17, FA 77, shade 35.**
+But two later `both` cards at 67c59f8 and at Optimus's 2e4ff4b (the tile-cache fix, HD identical to its parent) read SD
+19 with every block tile fetched 200, so the two-state is not a failed fetch: it is an ordering inside the page (the
+area grid's late loads against the mosaic's adoption), now awaited uncapped before the jump and logged (block, centre)
+per run. Four Whitefish-only SD cards (10:19-10:25, 67c59f8, the same block 660/418, the same centre, every tile 200,
+with and without the area's loads awaited) read Whitefish's misses 5, 7, 7, 5: W2 in the two states (2.64 km/h / σ 41.2 and 2.86 / 39.2), so the cause is inside the
+page and unseen from outside; the shape (σ and speed at a stand under trees) says the momentum/turbulence source at that
+cell differs at sampling time. ba's dev handle (233dbaf, window.__micro) is logged per sit; twelve Whitefish s210 SD cards (microA-L) show both
+states (eight "17", four "19") with __micro identical at W2 every time (mosaic in, momentum and turbulence 16/16, the
+forced direction's pair in, turbAt 14.5, stand from the grid, going grid in, relief readable, W2 not water). What is
+left was a cached derived value, and ba's fuller handle (40c8c6c: the call taken apart) named it (callA-F, 2:4):
+**at.leeRiseCached 6.18 against 4.72 m at W2's cell and sector**, with spread.model 70 → 40 (the lee class), kmh 2.64 →
+2.86 and sigma following, every other field equal. The lee's rise is cached by cell and sector, so whichever bearing
+first fills the slot (the page's own forecast wind in the load-time heat pass, or the card's forced 210) sets it.
+ba's reading: not the bearing but the scan's origin, the exact point that first asked for the cell and sector (a heat-pass
+sample a few metres off scans a different line on the 10 m going grid). First fix 4b2731c (scan from the 30 m cell's centre)
+failed card 2 (deep lee 55.3 → 48.8: the going grid's detail lost); **2a30c8e keys the lee's rise by the going grid's
+10 m cell** and passes all four: HD 0.61 / 0.62, misses 10, FA 79 → 77, shade 26; SD 0.54 / 0.57, misses 19 (W2/W2s now
+deterministically the fresh-rise state, 2.86 km/h / σ 39.2, twice identical), FA 79; checks Pickle 43.4% / honest 66.0%,
+Searchmont unchanged; palm_compare deep lee 55.3 → 56.6, all 63.8. **The SD column is deterministic sit by sit from here;
+hunt-dev's reference after ba's push: HD 0.61 / 0.62, 10, 77, 26; SD 0.54 / 0.57, 19, 79, 32.**
+
+**Booked:** lacbailey-bank am000 (the loop's convective water-in-a-lee ask), queue 202, validation; pickle-slot
+dusk288t (the dusk as a cooling series), queue 203, validation; whitefish dusk210t, the same at the held-out box, queue 220
+on XEVO's slot. Order on xonix: 200 → 202 → 203 → 210 → 212 → sdst → explore; XEVO: 140 → 220 → explore.
+
+**WindNinja at 10 m on the slot's LiDAR DTM (212 wntest, landed 11:55; `wn_fine.py score`, against PALM's 10 m wind
+over the box's core, 8 neutral directions):** the 10 m solve beats the 30 m HD solve a little in every direction
+(median |turn − PALM's| 6.5–17.3° against 6.8–18.2°; within 10°: +1 to +7 points; within 20°: +1 to +5), but the
+lee directions stay where they were (w270 17.0°, nw315 17.3°, 27–33% within 10°, against 6.5° / 69% along the
+channel). Finer terrain is not the lee's problem; a steady neutral RANS solve is. **Verdict: not worth moving HD's
+bake to 10 m for this; the gain is a degree.** The lee needs stability and a return flow, which the rules carry.
+
+**The fade, closed by ba 14:30:** dawn175u06 (flat, forecast-equivalent 2.6) follows neither the wind (within 45°
+0.52 → 0.33) nor a fall line: near-still and wandering, as the slot series' bank points; the app already calls that
+pooled or calm with a wide spread. r51all stands as shipped (mix0 / mixS0 5, e-fold 1); reopened only if Whitefish's
+series puts its crossover well off a forecast-equivalent 5.
+
+**The decisive test, 14:50 (Gavan 13:30: no sunk cost, incremental against holistic, decided by test): a floor learned
+from PALM on HD's own inputs.** floor_learn.py with the LiDAR leaf-area profile by layer (the PALM static drivers'
+LAD: 0-2, 2-6, 6-14, 14+ m), 1 m water, shelter at 100 and 300 m, edge distance, upwind fetch, the fall line, stability,
+and the clock (the slot's 19 cooling windows as rows with t_cool); 90k windows from 57 runs, 51k moving; LightGBM,
+leave one box out; against the rules at the loop's points (wind-2026-10-17.csv, c54733f):
+
+| within 45° of PALM's floor | app (rules) | follow the wind above | learned |
+|---|---|---|---|
+| all points | 76% | 74% | **78%** |
+| neutral | 90-96% in forest/tree line/water | 92-98% | 91-99% |
+| convective | 66-100% | 80-100% | 80-100% |
+| stable forest | **59%** | 37% | 46% |
+| stable forest in a lee >10° | **68%** | 35% | 34% |
+| stable tree line in a lee | **75-77%** | 46-53% | 50-58% |
+| neutral tree line in a lee >10° | 54% | 52% | **70%** |
+| neutral water in a lee >10° | 46% (before the water gates) | 91% | **98%** |
+
+Last night's SD-grade version read app 78 / learned 74; the canopy profile and the clock moved the learned floor +4,
+and it now edges the rules by two points overall. **But it loses where the misses are**: in stable air the rules beat
+it by 10-30 points in forest, in lees and at tree lines (the drainage and lee work), and it wins only the geometric
+classes the rules have just fixed or can fix (lees in neutral air, water). By stability it beats follow-the-top
+everywhere (stable 42 → 48%), so there is signal; what it lacks on the stable floor is data with the clock: only the
+slot has cooling windows, and held out, the slot's are not in its training. **Verdict: no clear win for the holistic
+path at this data; the rules keep the stable floor; the learned floor is not wired in.** The holistic path is not
+dead: it needs stable series across boxes (Whitefish's lands today; a second box's clock is the next data point) and,
+at scale, the run program of "more compute". Score to beat for it: the rules at 2a30c8e on the four cards, held out
+by box, with stable dusk the class that decides.
 
 ## Order
 

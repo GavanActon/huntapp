@@ -296,11 +296,33 @@ def slot_row(s: dict) -> str:
             f"<div class='d'>{d}</div></div></div>")
 
 
+def objectives() -> str:
+    """OBJECTIVES.md as HTML paragraphs: escaped, **bold** kept, paragraphs split on blank lines."""
+    try:
+        t = (HERE / "OBJECTIVES.md").read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+    if not t:
+        return ""
+    paras = []
+    for para in re.split(r"\n\s*\n", t):
+        h = html.escape(para.strip())
+        h = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", h)
+        paras.append(f"<p>{h}</p>")
+    return "".join(paras)
+
+
+
 def render(g: dict) -> str:
     q, x = g["queue"], g["xevo"]
     out = [f"<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
            f"<meta name=robots content=noindex><meta http-equiv=refresh content=60><title>Groundwind ops</title><style>{CSS}</style></head><body><main>",
            f"<h1>What's running</h1><div class=sub>Written by XEVO <span id=ago data-t='{g['t']:.0f}'>{ago_s(g['t'])}</span>; refreshes every minute</div>"]
+    # the seat's objectives and why, one paragraph the PALM owner keeps current (Gavan, 2026-10-17: "add one paragraph at
+    # the top with your current objectives and rationale, and keep that updated"): pipeline/teacher/palm/OBJECTIVES.md
+    obj = objectives()
+    if obj:
+        out.append(f"<div class=card style='margin-bottom:14px'>{obj}</div>")
 
     # machines
     out.append("<h2>Machines</h2>")

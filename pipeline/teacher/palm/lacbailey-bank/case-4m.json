@@ -1,7 +1,7 @@
 {
  "case": "lacbailey-bank",
  "tag": "4m",
- "built": "2026-10-16 15:02",
+ "built": "2026-10-17 00:39",
  "epsg": 32619,
  "dx": 4.0,
  "nx": 256,
@@ -1041,6 +1041,159 @@
    "hours": 1.0,
    "average_s": 1200.0,
    "why": "surrogate set: quartering off the land from the NW, the lee at an angle",
+   "scent": [
+    {
+     "name": "up the bank 150 m 1.5 m",
+     "x": 508.0,
+     "y": 653.0,
+     "h": 1.5,
+     "utm": [
+      460228.0,
+      5473273.0
+     ],
+     "ground_m": 390.6,
+     "canopy_m": 5.0,
+     "water": false
+    },
+    {
+     "name": "up the bank 150 m 5 m",
+     "x": 508.0,
+     "y": 653.0,
+     "h": 5.0,
+     "utm": [
+      460228.0,
+      5473273.0
+     ],
+     "ground_m": 390.6,
+     "canopy_m": 5.0,
+     "water": false
+    },
+    {
+     "name": "the point 1.5 m",
+     "x": 508.2,
+     "y": 503.5,
+     "h": 1.5,
+     "utm": [
+      460228.2,
+      5473123.5
+     ],
+     "ground_m": 352.3,
+     "canopy_m": 2.2,
+     "water": false
+    },
+    {
+     "name": "the point 5 m",
+     "x": 508.2,
+     "y": 503.5,
+     "h": 5.0,
+     "utm": [
+      460228.2,
+      5473123.5
+     ],
+     "ground_m": 352.3,
+     "canopy_m": 2.2,
+     "water": false
+    },
+    {
+     "name": "ring 000 140 m",
+     "x": 508.2,
+     "y": 643.5,
+     "h": 1.5,
+     "utm": [
+      460228.2,
+      5473263.5
+     ],
+     "ground_m": 389.2,
+     "canopy_m": 3.1,
+     "water": false
+    },
+    {
+     "name": "ring 045 140 m",
+     "x": 607.2,
+     "y": 602.5,
+     "h": 1.5,
+     "utm": [
+      460327.2,
+      5473222.5
+     ],
+     "ground_m": 382.9,
+     "canopy_m": 2.9,
+     "water": false
+    },
+    {
+     "name": "ring 090 140 m",
+     "x": 648.2,
+     "y": 503.5,
+     "h": 1.5,
+     "utm": [
+      460368.2,
+      5473123.5
+     ],
+     "ground_m": 378.2,
+     "canopy_m": 7.1,
+     "water": false
+    },
+    {
+     "name": "ring 135 98 m",
+     "x": 582.0,
+     "y": 438.0,
+     "h": 1.5,
+     "utm": [
+      460302.0,
+      5473058.0
+     ],
+     "ground_m": 343.4,
+     "canopy_m": 4.9,
+     "water": false
+    },
+    {
+     "name": "ring 225 140 m",
+     "x": 409.2,
+     "y": 404.5,
+     "h": 1.5,
+     "utm": [
+      460129.2,
+      5473024.5
+     ],
+     "ground_m": 352.5,
+     "canopy_m": 5.8,
+     "water": false
+    },
+    {
+     "name": "ring 270 140 m",
+     "x": 368.2,
+     "y": 503.5,
+     "h": 1.5,
+     "utm": [
+      460088.2,
+      5473123.5
+     ],
+     "ground_m": 366.9,
+     "canopy_m": 11.6,
+     "water": false
+    }
+   ]
+  },
+  "lacbailey-bank_am000_4m": {
+   "direction": 0.0,
+   "speed_kph": 12.0,
+   "stability": "convective",
+   "hours": 1.5,
+   "average_s": 1200.0,
+   "theta_surface": 285.0,
+   "theta_gradients": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     250.0,
+     1.0
+    ]
+   ],
+   "surface_heatflux": 0.04,
+   "cthf": 0.05,
+   "why": "a sunny morning off the land: the water in the bank's lee under convective air (the loop's ask; Gavan 2026-10-17: Go)",
    "scent": [
     {
      "name": "up the bank 150 m 1.5 m",

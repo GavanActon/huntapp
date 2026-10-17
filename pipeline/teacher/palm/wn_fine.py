@@ -168,6 +168,8 @@ def grids(name: str, d: float):
     """u, v and the ascii header for a direction: the test's own run, or HD's two nearest blended."""
     def one(root: Path, dd: float):
         f = root / f"d{dd:05.1f}"
+        if not f.exists():
+            f = root / f"t{dd:05.1f}"   # the kit's run.ps1 names a direction's folder t<deg> (2026-10-17: the test ran that way)
         uf, vf = sorted(f.glob("*_u.asc")), sorted(f.glob("*_v.asc"))
         if not uf or not vf:
             return None

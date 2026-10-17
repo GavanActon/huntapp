@@ -170,9 +170,16 @@ def main() -> int:
     ts = json.loads((HERE / "testset.json").read_text(encoding="utf-8"))
     m = ts["measure"]
     jobs, pending = sc.jobs_from(ts, None)
-    st = sc.prepare(args.ref, [])
+    # the scoring worktree and its port are one card's at a time (scorecard.py take_worktree); the loop held neither
+    # until 2026-10-17, so its checkout and its server collided with every card run beside it
     sc.SCORES.mkdir(parents=True, exist_ok=True)
-    server = sc.serve()
+    sc.take_worktree()
+    try:
+        st = sc.prepare(args.ref, [])
+        server = sc.serve()
+    except BaseException:
+        sc.free_worktree()
+        raise
     url = f"http://localhost:{sc.PORT}/"
     cardv, wind, checks, notes = None, None, None, ([] if ok else [f"skipped the card, the wind and the checks: {why}"])
     try:
@@ -201,6 +208,7 @@ def main() -> int:
                 notes.append("checks_card failed: " + (tail[-1] if tail else f"exit {p.returncode}"))
     finally:
         server.kill()
+        sc.free_worktree()
 
     # a round compares with the last one only on the same runs: a run landing changes the card by itself
     scored = sorted(j["run"] for j in jobs)

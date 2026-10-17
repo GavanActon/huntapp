@@ -1,7 +1,7 @@
 {
  "case": "whitefish",
  "tag": "4m",
- "built": "2026-10-16 15:02",
+ "built": "2026-10-17 01:48",
  "epsg": 32617,
  "dx": 4.0,
  "nx": 256,
@@ -1057,6 +1057,167 @@
    "surface_heatflux": -0.02,
    "cthf": -0.02,
    "why": "dusk under a light SSW: cold air down the bank (W5, W1, W8) and down the trough (W6) to the east pond's bay (W4, W2)",
+   "scent": [
+    {
+     "name": "W1 lakeshore under the bank 1.5 m",
+     "x": 220.0,
+     "y": 496.1,
+     "h": 1.5,
+     "utm": [
+      514700.0,
+      5333516.1
+     ],
+     "ground_m": 315.5,
+     "canopy_m": 11.9,
+     "water": false
+    },
+    {
+     "name": "W2 marsh edge under trees 1.5 m",
+     "x": 692.0,
+     "y": 532.0,
+     "h": 1.5,
+     "utm": [
+      515172.0,
+      5333552.0
+     ],
+     "ground_m": 327.1,
+     "canopy_m": 12.2,
+     "water": false
+    },
+    {
+     "name": "W2 marsh edge under trees 5 m",
+     "x": 692.0,
+     "y": 532.0,
+     "h": 5.0,
+     "utm": [
+      515172.0,
+      5333552.0
+     ],
+     "ground_m": 327.1,
+     "canopy_m": 12.2,
+     "water": false
+    },
+    {
+     "name": "W3 the cut, its S tree line 1.5 m",
+     "x": 610.0,
+     "y": 822.0,
+     "h": 1.5,
+     "utm": [
+      515090.0,
+      5333842.0
+     ],
+     "ground_m": 325.2,
+     "canopy_m": 2.9,
+     "water": false
+    },
+    {
+     "name": "W4 marsh bay between walls 1.5 m",
+     "x": 763.0,
+     "y": 535.0,
+     "h": 1.5,
+     "utm": [
+      515243.0,
+      5333555.0
+     ],
+     "ground_m": 326.8,
+     "canopy_m": 0.0,
+     "water": false
+    },
+    {
+     "name": "W5 lee slope of the bank 1.5 m",
+     "x": 420.0,
+     "y": 545.0,
+     "h": 1.5,
+     "utm": [
+      514900.0,
+      5333565.0
+     ],
+     "ground_m": 328.5,
+     "canopy_m": 13.9,
+     "water": false
+    },
+    {
+     "name": "W6 creek trough floor 1.5 m",
+     "x": 698.0,
+     "y": 410.0,
+     "h": 1.5,
+     "utm": [
+      515178.0,
+      5333430.0
+     ],
+     "ground_m": 331.3,
+     "canopy_m": 16.4,
+     "water": false
+    },
+    {
+     "name": "W8 over the water off the S shore 1.5 m",
+     "x": 280.0,
+     "y": 572.0,
+     "h": 1.5,
+     "utm": [
+      514760.0,
+      5333592.0
+     ],
+     "ground_m": 314.6,
+     "canopy_m": 0.0,
+     "water": true
+    },
+    {
+     "name": "W9 head of the arm, trees facing the water 1.5 m",
+     "x": 438.3,
+     "y": 735.0,
+     "h": 1.5,
+     "utm": [
+      514918.3,
+      5333755.0
+     ],
+     "ground_m": 315.2,
+     "canopy_m": 11.4,
+     "water": false
+    },
+    {
+     "name": "W10 clearing on the neck between two waters 1.5 m",
+     "x": 637.4,
+     "y": 694.0,
+     "h": 1.5,
+     "utm": [
+      515117.4,
+      5333714.0
+     ],
+     "ground_m": 324.5,
+     "canopy_m": 0.0,
+     "water": false
+    }
+   ]
+  },
+  "whitefish_dusk210t_4m": {
+   "direction": 210.0,
+   "speed_kph": 8.0,
+   "zref_m": 80.0,
+   "stability": "stable",
+   "hours": 3.5,
+   "average_s": 600.0,
+   "theta_surface": 285.2,
+   "theta_gradients": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     300.0,
+     0.5
+    ]
+   ],
+   "surface": "rate",
+   "heating_rate": -1.0,
+   "surface_heatflux": -0.02,
+   "cthf": -0.02,
+   "series": {
+    "avg_s": 600.0,
+    "from_s": 1200.0,
+    "mask_dt": 120.0
+   },
+   "why": "the dusk as a series at the held-out box: a neutral floor an hour before the inversion, 1 K/h of cooling for 3.5 h under the 210 evening wind; when W6, W9 and W10 leave the wind and still",
    "scent": [
     {
      "name": "W1 lakeshore under the bank 1.5 m",

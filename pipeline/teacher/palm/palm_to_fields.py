@@ -208,20 +208,24 @@ def find_one(folder: Path, pattern: str) -> Path | None:
 
 # ---------------------------------------------------------------- convert
 
-def read_3d(path: Path, names: list[str]) -> tuple[dict, np.ndarray, float]:
-    """The last averaged output: {name: (Z, R, C) row 0 SOUTH as PALM writes,
-    NaN in the ground}, zu, and the time it ends."""
+def read_3d(path: Path, names: list[str], slice_idx: int = -1) -> tuple[dict, np.ndarray, float]:
+    """One averaged output, the last by default (`slice_idx`: a series run writes one every
+    avg_s, build_case.py `series`): {name: (Z, R, C) row 0 SOUTH as PALM writes, NaN in the
+    ground}, zu, and the time it ends."""
     from netCDF4 import Dataset
     out = {}
     with Dataset(path) as nc:
         nc.set_auto_mask(False)
-        t = float(nc["time"][-1])
+        nt = int(nc["time"].shape[0])
+        if slice_idx >= nt or slice_idx < -nt:
+            raise SystemExit(f"{path.name}: slice {slice_idx} of {nt} written")
+        t = float(nc["time"][slice_idx])
         zu = np.asarray(nc["zu_3d"][:], np.float64)
         for n in names:
             key = n if n in nc.variables else f"{n}_av" if f"{n}_av" in nc.variables else None
             if key is None:
                 continue
-            a = np.asarray(nc[key][-1], np.float64)
+            a = np.asarray(nc[key][slice_idx], np.float64)
             a[(a < FILL) | ~np.isfinite(a)] = np.nan
             if a.shape[0] != zu.size:  # w on zw_3d: onto zu by the mean of the faces above and below
                 a = 0.5 * (a[:-1] + a[1:]) if a.shape[0] == zu.size + 1 else a[: zu.size]
@@ -290,7 +294,12 @@ def convert_domain(args, info: dict, dom: dict, f3: Path, fm: Path | None, amb_r
     rinfo = info["runs"][run]
     out_name = getattr(args, "as_name", None) or run
     R, C, dx, grid, dz0 = dom["R"], dom["C"], dom["dx"], dom["grid"], dom["dz0"]
-    f, zu, t_end = read_3d(f3, ["u", "v", "w", "e", "theta"])
+    slice_idx = getattr(args, "slice", None)
+    f, zu, t_end = read_3d(f3, ["u", "v", "w", "e", "theta"], -1 if slice_idx is None else slice_idx)
+    series = rinfo.get("series")
+    avg_s = float(series["avg_s"]) if series else min(rinfo["average_s"], t_end / 2)
+    if slice_idx is not None and not getattr(args, "as_name", None):
+        out_name = f"{run}_{int(round(t_end / 60)):03d}min"
     for n in ("u", "v"):
         if f[n].shape[1:] != (R, C):
             raise SystemExit(f"{f3.name}: {n} is {f[n].shape[1:]}, the case is {(R, C)}: built with another dx?")
@@ -351,6 +360,11 @@ def convert_domain(args, info: dict, dom: dict, f3: Path, fm: Path | None, amb_r
     mask_note = "none"
     if fm is not None:
         m, times, dropped = read_mask(fm)
+        # the samples of this window only (a series run masks the whole run)
+        keep = (times > t_end - avg_s - 1e-6) & (times <= t_end + 1e-6)
+        if series and keep.any():
+            m = {k: v[keep] for k, v in m.items()}
+            times = times[keep]
         mu, mv = m["u"][:, 0, ::-1, :], m["v"][:, 0, ::-1, :]  # k = 1: the first level over the ground
         if mu.shape[1:] == (R, C):
             mu, mv = mu * to2, mv * to2
@@ -404,11 +418,14 @@ def convert_domain(args, info: dict, dom: dict, f3: Path, fm: Path | None, amb_r
                 "u10,v10": "10 m over the ground",
                 "uHead,vHead": f"first level over the ground ({dz0 / 2:g} m), to 2 m by the log law in the open"},
         # the averaging build_case.py set: the run's, or half a short test
-        averaged_until_s=t_end, average_s=min(rinfo["average_s"], t_end / 2), files=dict(av3d=f3.name, mask=mask_note),
+        averaged_until_s=t_end, average_s=avg_s, files=dict(av3d=f3.name, mask=mask_note),
+        slice=slice_idx,
     )
     arrays["meta"] = np.array(json.dumps(meta))
-    OUT.mkdir(parents=True, exist_ok=True)
-    out = OUT / f"{out_name}{('_' + dom['suffix']) if dom['suffix'] else ''}.npz"
+    # a slice of a series goes under series/: the cards and the loop enumerate FIELDS and must not take each window as a run
+    out_dir = OUT / "series" if slice_idx is not None else OUT
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out = out_dir / f"{out_name}{('_' + dom['suffix']) if dom['suffix'] else ''}.npz"
     np.savez_compressed(out, **arrays)
     al = meta["ambient"]["all"]
     print(f"{out.stem}: ambient ({meta['ambient']['used']}) from {a_from_true:.0f} true at {a_speed * 3.6:.1f} km/h "
@@ -684,6 +701,7 @@ def main() -> None:
     a.add_argument("--tag", default="")
     a.add_argument("--prefix", help="the output files' name prefix when palmrun ran under another name (run_case.sh --name)")
     a.add_argument("--as", dest="as_name", help="name the field npz after this instead of the run key")
+    a.add_argument("--slice", type=int, help="a series run (build_case.py series): which averaged window, 0.. or -1 the last; written to fields/series/<run>_<min>min.npz")
     b = sub.add_parser("score")
     b.add_argument("case")
     b.add_argument("--windninja", help="a WindNinja run folder (*_u.asc, *_v.asc, run.cfg) on the same ground")

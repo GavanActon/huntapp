@@ -77,12 +77,52 @@ async ({ sits, ms, height, air, floor, tune, thermal, spread, lee, slot }) => {
   if (m.setSlotTune) m.setSlotTune(slot || null)
   m.setForcedAir(air)
   await m.microReadyFor(ms, 20000)
+  // every momentum direction and the going grid before a sit is scored (2026-10-17): microReadyFor loads the two
+  // directions of the hour's FORECAST wind, not the forced one, so momentumAt asked for its own and the lids stood in
+  // until they landed; and the relief (the lee's riseUpwind, the water under the lee) only comes with the rest. What was
+  // in at sampling time varied with the main thread's speed, so the HD rows moved run to run and a behaviour-neutral
+  // commit moved them too (found by Optimus)
+  await Promise.race([m.loadRestOfMicro(), new Promise((r) => setTimeout(r, 60000))])
+  // loadRestOfMicro resolves at once when a prior call started it (restDone), so the rest can still be on its way:
+  // the going grid and the habitat are awaited by name, and the first sit is read until two reads 1 s apart agree
+  const waits = { going: false, habitat: false, settled: 0 }
+  try {
+    const gg = await import('/src/routes/goingGrid.ts')
+    await Promise.race([gg.loadGoing(), new Promise((r) => setTimeout(r, 30000))])
+    waits.going = !!gg.going()
+  } catch (e) { console.warn('going grid not awaited', e) }
+  try {
+    const hg = await import('/src/spots/habitatGrid.ts')
+    await Promise.race([hg.loadHabitat(), new Promise((r) => setTimeout(r, 30000))])
+    waits.habitat = !!hg.habitat()
+  } catch (e) { console.warn('habitat not awaited', e) }
+  const p0 = sits[0]
+  if (p0) {
+    const key = () => { const g = m.groundWind(p0.lon, p0.lat, ms); return g ? `${g.dirFrom.toFixed(1)}|${g.kmh.toFixed(3)}|${g.sigmaDeg.toFixed(2)}` : 'none' }
+    let last = key()
+    for (let i = 0; i < 60; i++) {
+      await new Promise((r) => setTimeout(r, 1000))
+      const now = key()
+      waits.settled = i + 1
+      if (now === last) break
+      last = now
+    }
+  }
   const sample = s.cellSampler(ms)
   const out = []
+  const rl = await import('/src/weather/micro/relief.ts')
+  const gg = await import('/src/routes/goingGrid.ts')
+  const mic = (p) => {
+    let o = null
+    try { o = window.__micro ? window.__micro(p.lon, p.lat, air.dir, ms) : {} } catch (e) { o = { err: String(e) } }
+    try { o = { ...(o || {}), going: !!gg.going(), water: rl.waterAt(p.lon, p.lat), relief: !!rl.reliefNear(p.lon, p.lat, 1, 1) } } catch (e) { o = { ...(o || {}), reliefErr: String(e) } }
+    return o
+  }
   for (const p of sits) {
     const g = m.groundWind(p.lon, p.lat, ms)
+    p.micro = mic(p)
     const r = s.simulatePlume(p.lon, p.lat, ms, height, sample)
-    out.push(r ? { name: p.name, grid: Array.from(r.grid), tongue: r.tongue ? Array.from(r.tongue) : null, sigma: g ? g.sigmaDeg : null, kmh: g ? g.kmh : null, from: g ? g.dirFrom : null } : { name: p.name, grid: null })
+    out.push(r ? { name: p.name, grid: Array.from(r.grid), tongue: r.tongue ? Array.from(r.tongue) : null, sigma: g ? g.sigmaDeg : null, kmh: g ? g.kmh : null, from: g ? g.dirFrom : null, waits, micro: p.micro } : { name: p.name, grid: null, waits, micro: p.micro })
   }
   m.setForcedAir(null)
   if (m.setFloorTune) m.setFloorTune(null)
@@ -215,7 +255,16 @@ def prepare(ref: str, patches: list[str]) -> dict:
     h = hashlib.sha1(lock).hexdigest()
     if not stamp_file.exists() or stamp_file.read_text() != h:
         print("npm ci in the scoring worktree ...", flush=True)
-        subprocess.run("npm ci --no-audit --no-fund", cwd=app, shell=True, check=True)
+        # the card just finished on this tree may still hold a native binary for a few seconds after its server is
+        # killed (2026-10-17 07:11: EPERM unlinking rolldown's .node, and the next card ran on a half-installed tree)
+        for attempt in range(5):
+            p = subprocess.run("npm ci --no-audit --no-fund", cwd=app, shell=True)
+            if p.returncode == 0:
+                break
+            if attempt == 4:
+                raise SystemExit(f"npm ci failed {attempt + 1} times in the scoring worktree (exit {p.returncode})")
+            print(f"  npm ci failed (exit {p.returncode}); again in 20 s", flush=True)
+            time.sleep(20)
         stamp_file.write_text(h)
     pub = (APP / "public").as_posix()
     (app / "vite.score.config.ts").write_text(
@@ -389,19 +438,51 @@ def box_point(box: str) -> tuple[float, float]:
     return tuple(c["point_latlon"])
 
 
+SD_FETCHED: dict[str, int] = {}   # tile id -> the last status R2 gave this card for it (the page caches a failed tile as blank)
+
+
 def sd_route(route, request) -> None:
     """The app's sd/v1/ requests on the scoring server, answered from R2 (the tiles are not in public/)."""
     tail = request.url.split("/sd/v1/", 1)[1]
-    route.fulfill(response=route.fetch(url=SD_BASE + tail))
+    try:
+        resp = route.fetch(url=SD_BASE + tail)
+    except Exception as e:  # noqa: BLE001  a failed fetch is a blank tile for the page's life (windTiles fetchTile caches null)
+        if tail.startswith("t-"):
+            SD_FETCHED[tail.split(".", 1)[0]] = -1
+        print(f"  sd tile fetch failed: {tail}: {e}", flush=True)
+        route.abort()
+        return
+    if tail.startswith("t-"):
+        SD_FETCHED[tail.split(".", 1)[0]] = resp.status
+    route.fulfill(response=resp)
+
+
+def sd_block_tiles(idx: dict, i0: int, j0: int) -> list[str]:
+    """The 2 x 2 block's tile ids (the ones the index has)."""
+    sys.path.insert(0, str(ROOT / "pipeline"))
+    import tiles as lattice  # noqa: E402  (the national lattice, as wind_tiles.py imports it)
+    out = []
+    for dj in (0, 1):
+        for di in (0, 1):
+            tid = lattice.tile_id(i0 + di, j0 + dj)
+            if tid in idx["tiles"]:
+                out.append(tid)
+    return out
 
 
 def score(jobs, variants, url, band, trace, reach, grids=("hd",)) -> list[dict]:
     results = []
     idx = sd_index() if "sd" in grids else None
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True, args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"])
+        launch = lambda: p.chromium.launch(headless=True, args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"])  # noqa: E731
+        browser, browser_grid = launch(), grids[0]
         for grid, area in ((g, a) for g in grids for a in dict.fromkeys(j["area"] for j in jobs)):
             sd = grid == "sd"
+            if grid != browser_grid:
+                # each grid in its own browser (2026-10-17): the SD pass after the HD pass in one browser read two
+                # Whitefish sits differently from an SD-only card (19 misses against 17), and nothing inside a card did
+                browser.close()
+                browser, browser_grid = launch(), grid
             when = datetime.fromisoformat(f"{DAY}T13:00").replace(tzinfo=TZ)
             ctx = browser.new_context(ignore_https_errors=True, viewport={"width": 430, "height": 900})
             ctx.add_init_script(HD_PIN_JS)
@@ -430,13 +511,49 @@ def score(jobs, variants, url, band, trace, reach, grids=("hd",)) -> list[dict]:
                     if not have:
                         print(f"== {j['run']}: SD tiles not on R2 yet round {j['box']} ({tid}): left out of SD", flush=True)
                         continue
+                    # the area grid's late loads land before the mosaic is adopted (2026-10-17): REST_JS races
+                    # loadRestOfMicro against 30 s, and the mosaic (useMosaic) waits for loadMicro only, so the area's
+                    # remaining directions could land in the block's place after the jump; here they are awaited uncapped
+                    page.evaluate("""async () => {
+  const m = await import('/src/weather/micro/model.ts')
+  await m.microBaseReady()
+  await m.loadRestOfMicro()
+  const gg = await import('/src/routes/goingGrid.ts')
+  await gg.loadGoing()
+  const hg = await import('/src/spots/habitatGrid.ts')
+  await hg.loadHabitat()
+}""")
                     got = page.evaluate(TILES_JS, {"lat": lat, "lon": lon, "i0": i0, "j0": j0})
                     if got != "ok":
                         print(f"== {j['run']}: the SD tiles did not come in ({got}): left out of SD", flush=True)
                         continue
+                    # every tile of the block fetched OK: a failed one is blank for the page's life (windTiles fetchTile
+                    # caches null), which read two Whitefish sits differently card to card (2026-10-17); a reload clears it
+                    try:
+                        want = sd_block_tiles(idx, i0, j0)
+                    except Exception as e:  # noqa: BLE001
+                        want = []
+                        print(f"  (block tiles not listed: {e})", flush=True)
+                    bad = [t for t in want if SD_FETCHED.get(t, 0) != 200]
+                    tries = 0
+                    while bad and tries < 3:
+                        tries += 1
+                        print(f"  SD block {i0}/{j0}: {', '.join(f'{t}={SD_FETCHED.get(t, 'not asked')}' for t in bad)}: reloading the page ({tries})", flush=True)
+                        page.reload(wait_until="load")
+                        wait_ready(page, int(when.timestamp() * 1000), home)
+                        page.evaluate(REST_JS)
+                        got = page.evaluate(TILES_JS, {"lat": lat, "lon": lon, "i0": i0, "j0": j0})
+                        bad = [t for t in want if SD_FETCHED.get(t, 0) != 200] if got == "ok" else want
+                    if bad:
+                        print(f"== {j['run']}: SD block tiles still missing ({', '.join(bad)}): left out of SD", flush=True)
+                        continue
+                    state = page.evaluate("() => ({ block: window.__windTiles && window.__windTiles.block, c: window.__map ? window.__map.getCenter() : null, z: window.__map ? window.__map.getZoom() : null })")
+                    print(f"  SD block {i0}/{j0}: {len(want)} tiles fetched 200; the page's block {state.get('block')} at centre {state.get('c')} z {state.get('z')}", flush=True)
                 ms = int(datetime.fromisoformat(f"{DAY}T{HOUR[j['stab']]}").replace(tzinfo=TZ).timestamp() * 1000)
                 print(f"== {j['run']}{' SD' if sd else ''} ({j['stab']}, forced from {j['air']['dir']:.0f} at {j['air']['kmh']:.1f} km/h: {j['forcing']}; "
                       f"PALM's own 10 m {j['ambient']:.1f})", flush=True)
+                if sd:
+                    page.once("console", lambda msg: None)
                 for vname0, v in variants.items():
                     vname = (f"{vname0} SD" + ("" if SD_BASE.endswith("/sd/v1/") else " " + SD_BASE.rstrip("/").rsplit("/", 1)[1])) if sd else vname0
                     for h in sorted({s["h"] for s in j["sits"]}):
@@ -444,6 +561,9 @@ def score(jobs, variants, url, band, trace, reach, grids=("hd",)) -> list[dict]:
                         res = page.evaluate(CONE_JS, {"sits": [{"name": s["pid"], "lat": s["lat"], "lon": s["lon"]} for s in group], "ms": ms,
                                                       "height": h, "air": j["air"], "floor": v.get("floor"), "tune": v.get("tune"), "thermal": v.get("thermal"),
                                                       "spread": v.get("spread"), "lee": v.get("lee"), "slot": v.get("slot")})
+                        if res and res[0].get("waits"):
+                            w = res[0]["waits"]
+                            print(f"  waits: going {w.get('going')} habitat {w.get('habitat')} settled after {w.get('settled')} s", flush=True)
                         for r in res:
                             s = next(x for x in group if x["pid"] == r["name"])
                             if r["grid"] is None:
@@ -462,9 +582,19 @@ def score(jobs, variants, url, band, trace, reach, grids=("hd",)) -> list[dict]:
                             marks2 = [mark2(s["palm"][k], rs[k], rt[k], band, trace, reach) for k in sect]
                             results.append(dict(run=j["run"], box=j["box"], held=j["held"], stab=j["stab"], variant=vname, grid=grid, pid=s["pid"],
                                                 situation=s["situation"], sectors=sect, marks=marks, marks2=marks2, app=rs, tongue=rt,
-                                                palm=s["palm"], sigma=r["sigma"], kmh=r["kmh"], frm=r["from"]))
+                                                palm=s["palm"], sigma=r["sigma"], kmh=r["kmh"], frm=r["from"], micro=r.get("micro")))
                             sig = f"{r['sigma']:.0f}" if r["sigma"] is not None else "-"
-                            print(f"  {vname:8s} {s['pid']:3s} {' '.join(marks2)}  (v1 {''.join(marks)})  sigma {sig} {r['kmh'] or 0:.1f} km/h from {r['from'] or 0:.0f}", flush=True)
+                            mic = r.get("micro")
+                            micro = ""
+                            if isinstance(mic, dict):
+                                at = mic.get("at") or {}
+                                micro = (f"  [micro: file {mic.get('file')} areaGrid {mic.get('areaGrid')} mom {sum(1 for x in mic.get('momIn') or [] if x)}/16 "
+                                         f"turb {sum(1 for x in mic.get('momTIn') or [] if x)}/16 at k{at.get('k0')}/{at.get('k1')} mom {at.get('mom')} turb {at.get('turb')} stand {at.get('stand')}"
+                                         f" | going {mic.get('going')} water {mic.get('water')} relief {mic.get('relief')}{(' ' + mic['reliefErr']) if mic.get('reliefErr') else ''}"
+                                         + (f" | rise {at.get('leeRiseCached')} call " + json.dumps({k: (round(v, 3) if isinstance(v, float) else v) for k, v in (mic.get('call') or {}).items() if k not in ('parts', 'reasons')})[:400] if mic.get('call') else "") + "]")
+                            elif mic:
+                                micro = f"  [micro: {str(mic)[:80]}]"
+                            print(f"  {vname:8s} {s['pid']:3s} {' '.join(marks2)}  (v1 {''.join(marks)})  sigma {sig} {r['kmh'] or 0:.1f} km/h from {r['from'] or 0:.0f}{micro}", flush=True)
             ctx.close()
         browser.close()
     return results

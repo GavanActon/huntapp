@@ -220,6 +220,18 @@ CASES = {
                           theta_gradients=[(0.0, 0.0), (250.0, 1.0)],  # a morning mixed layer, capped at 250 m
                           surface_heatflux=0.04, cthf=0.05,  # K m/s: about 50 and 60 W/m2
                           why="a sunny morning under a west wind: heated ground with the lee's backflow"),
+            # the dusk as a clock (Hunter-Jay, 2026-10-17; Gavan: accuracy first, the machines are the seat's). 9 of the
+            # card's 10 misses are stable dusk (P2-P5 dusk288, W6/W9/W10 dusk210), and the floor model found the stable
+            # floor's turn is not in the geometry: it is in the cooling. So the same evening as dusk288, but started
+            # an hour before the inversion with a near-neutral low layer, cooling at 1 K/h for 3.5 h, the averaged
+            # field every 10 min from 20 min in: when does each point's floor leave the wind and drain, and still
+            "dusk288t": dict(direction=288.0, speed_kph=11.2, zref_m=80.0, stability="stable", hours=3.5, average_s=600.0,
+                             theta_surface=294.7,
+                             theta_gradients=[(0.0, 0.0), (80.0, 0.5)],  # before sunset: neutral to 80 m, 0.5 K/100 m above
+                             surface="rate", heating_rate=-1.0,
+                             surface_heatflux=-0.02, cthf=-0.02,
+                             series=dict(avg_s=600.0, from_s=1200.0, mask_dt=120.0),
+                             why="the dusk as a series: from a neutral floor an hour before the inversion, 1 K/h of cooling for 3.5 h under the 288 evening wind; the time and the cooling at which P2-P5 turn from the wind and still (the fade keyed to the clock, not the wind alone)"),
         },
     ),
     # The spots for rules (2026-10-13, Gavan: "all those are fine", and Lac Bailey's bank
@@ -366,6 +378,16 @@ CASES = {
                           why="surrogate set: quartering off the lake from the SW"),
             "nw315": dict(direction=315.0, speed_kph=12.0, stability="neutral", hours=1.0, average_s=1200.0,
                           why="surrogate set: quartering off the land from the NW, the lee at an angle"),
+            # the run the nightly loop asked for twice (reports 10-15 and 10-16): "convective, water in a lee >10 deg"
+            # is the app's worst class against PALM (27% within 45, all from the slot's am270), so a second
+            # convective run with water in a different lee says whether it's the slot or the rule. The bank
+            # under a N wind is the deepest water-in-a-lee in the set. Same morning mixed layer as am270 (the
+            # heating is the same on every surface: no radiation model, so the water heats like the land)
+            "am000": dict(direction=0.0, speed_kph=12.0, stability="convective", hours=1.5, average_s=1200.0,
+                          theta_surface=285.0,
+                          theta_gradients=[(0.0, 0.0), (250.0, 1.0)],
+                          surface_heatflux=0.04, cthf=0.05,
+                          why="a sunny morning off the land: the water in the bank's lee under convective air (the loop's ask; Gavan 2026-10-17: Go)"),
             "dusk000": dict(direction=0.0, speed_kph=8.0, zref_m=80.0, stability="stable", hours=2.0, average_s=1800.0,
                             theta_surface=284.0,
                             theta_gradients=[(0.0, 0.7), (300.0, 0.5)],  # Searchmont's HRDPS evening start
@@ -430,6 +452,15 @@ CASES = {
                             surface="rate", heating_rate=-1.0,
                             surface_heatflux=-0.02, cthf=-0.02,
                             why="dusk under a light SSW: cold air down the bank (W5, W1, W8) and down the trough (W6) to the east pond's bay (W4, W2)"),
+            # the dusk as a clock at the held-out box (Hunter-Jay, 2026-10-17; as pickle-slot's dusk288t): W6, W9 and W10
+            # are three of the card's ten misses, all dusk210. XEVO's slot runs it (~7 h on 7 cores)
+            "dusk210t": dict(direction=210.0, speed_kph=8.0, zref_m=80.0, stability="stable", hours=3.5, average_s=600.0,
+                             theta_surface=285.2,
+                             theta_gradients=[(0.0, 0.0), (300.0, 0.5)],  # before sunset: neutral to 300 m, then 0.5 K/100 m
+                             surface="rate", heating_rate=-1.0,
+                             surface_heatflux=-0.02, cthf=-0.02,
+                             series=dict(avg_s=600.0, from_s=1200.0, mask_dt=120.0),
+                             why="the dusk as a series at the held-out box: a neutral floor an hour before the inversion, 1 K/h of cooling for 3.5 h under the 210 evening wind; when W6, W9 and W10 leave the wind and still"),
         },
     ),
     # Gavan's spot at Lac Bailey, 2026-10-15 (via huntapp-ba): "add to your palm validation for 8pm today.
@@ -946,6 +977,27 @@ def p3d(name: str, case_id: str, run: dict, g: dict, vg: dict, hours: float, nz_
         "    data_output = 'u_av', 'v_av', 'w_av', 'e_av',"
         + (" 'theta_av'," if st != "neutral" else "") + (" 'pc_av'," if scent else ""),
         f"    nz_do3d = {nz_do3d},",
+    ]
+    series = run.get("series")
+    if series:
+        # a transition run (2026-10-17, the dusk series): the averaged field every avg_s from from_s on, not
+        # only the last stretch, so the floor's turn and its stilling can be read against the cooling clock;
+        # the masks thinner (mask_dt) so the file stays in bounds. palm_to_fields --slice reads one window
+        lines += [
+            f"    averaging_interval = {series['avg_s']:g},",
+            f"    dt_data_output_av = {series['avg_s']:g},",
+            f"    skip_time_data_output_av = {series['from_s']:g},",
+            "    dt_averaging_input = 10.0,",
+            "",
+            "    ! gusts and lulls: the lowest four levels over the ground, through the whole series",
+            "    data_output_masks(1,:) = 'u', 'v', 'w'," + (" 'pc'," if scent else ""),
+            "    mask_k_over_surface(1,:) = 1, 2, 3, 4,",
+            f"    dt_domask(1) = {series['mask_dt']:g},",
+            f"    skip_time_domask(1) = {series['from_s']:g},",
+            "",
+        ]
+    else:
+        lines += [
         f"    averaging_interval = {avg:g},",
         f"    dt_data_output_av = {avg:g},",
         f"    skip_time_data_output_av = {end - avg:g},",
