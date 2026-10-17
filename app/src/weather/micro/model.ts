@@ -1521,7 +1521,9 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
           const cfEdge = 0.5 * canopyAt(j, ctx.leaves)
           if (cfEdge > cf) {
             cf = cfEdge + (cf - cfEdge) * (rel / 5)
-            edgeNote = `${distWords(x, { step: 1 })} inside the stand's edge: the wind off the open ground upwind gets in here`
+            // the notes are worded only for the reasons: the plume, the streaks and the routes
+            // sample thousands of cells with none wanted
+            if (reasons) edgeNote = `${distWords(x, { step: 1 })} inside the stand's edge: the wind off the open ground upwind gets in here`
           }
         }
         if (rel >= 3 && rel < 8) gustMul = 1.3
@@ -1563,7 +1565,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
           wallE = Math.sin(brg * RAD)
           wallN = Math.cos(brg * RAD)
           if (rel < 1) swirl = true
-          edgeNote = `a ${heightWords(hj)} tree line ${distWords(x, { step: 1 })} ahead: the wind slows${aheadN < 1 ? ' and runs along it' : ' as it lifts over'}${rel < 1 ? ', eddying against it' : ''}`
+          if (reasons) edgeNote = `a ${heightWords(hj)} tree line ${distWords(x, { step: 1 })} ahead: the wind slows${aheadN < 1 ? ' and runs along it' : ' as it lifts over'}${rel < 1 ? ', eddying against it' : ''}`
         }
         break
       }
@@ -1584,7 +1586,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
           shelter = 0.25 + (0.75 * (rel - 3)) / 7
           swirl = rel < 5
         }
-        if (rel < 10) edgeNote = `${distWords(x, { step: 1 })} downwind of a ${heightWords(hj)} tree line: sheltered${swirl ? ', and the air eddies and swaps direction' : ''}`
+        if (reasons && rel < 10) edgeNote = `${distWords(x, { step: 1 })} downwind of a ${heightWords(hj)} tree line: sheltered${swirl ? ', and the air eddies and swaps direction' : ''}`
         break
       }
     }
