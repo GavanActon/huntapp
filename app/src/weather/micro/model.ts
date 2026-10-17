@@ -317,6 +317,15 @@ export function microGrid(): Habitat | null {
   return grid
 }
 
+/** The habitat grid shares the micro grid's cells: the same lattice in the same place. Not under
+ *  the national tiles (useMosaic: the sampler's index is the mosaic's) nor the micro grid's coarse
+ *  copy while its full bands come; there a stand's bands are not the cell's (2026-10-16: at Whitefish
+ *  on the tiles the index ran past the habitat's end and every scent puff went NaN). */
+export function habitatAligned(h: Habitat | null): h is Habitat {
+  const g = grid
+  return !!h && !!g && !areaGrid && h.cols === g.cols && h.rows === g.rows && Math.abs(h.west - g.west) < 0.25 * Math.abs(g.dLon) && Math.abs(h.north - g.north) < 0.25 * Math.abs(g.dLat)
+}
+
 const planMs = () => useAppStore.getState().planTimeMs ?? Date.now()
 
 /** The two baked directions either side of a wind from dirFrom. */
@@ -1113,8 +1122,8 @@ function towerShare(g: Habitat, i: number, leaves: number): number | null {
     habCon = ok ? h!.raw('conifer') : null
     habHw = ok ? h!.raw('hardwood') : null
   }
-  // the micro grid's coarse copy while the full bands come has other cells
-  if (!h || !habCrown || !habCon || !habHw || h.cols !== g.cols || h.rows !== g.rows) return null
+  // the micro grid's coarse copy while the full bands come, or the national tiles, have other cells
+  if (!habCrown || !habCon || !habHw || !habitatAligned(h) || g !== grid) return null
   const cr = habCrown[i]
   const C = cr > 0 && cr !== 255 ? Math.min(1, cr / 100) : 0.6
   const cn = habCon[i]

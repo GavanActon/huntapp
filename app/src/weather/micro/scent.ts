@@ -12,7 +12,7 @@ import { useAppStore } from '../../state/appStore'
 import { compass } from '../openMeteo'
 import { onProfile } from '../boundaryLayer'
 import { onWeatherGrid } from '../windGrid'
-import { groundGust, groundSampler, groundStability, groundWind, loadMicro, microGrid, onMicro, SAMPLE_N, type GroundSampler } from './model'
+import { groundGust, groundSampler, groundStability, groundWind, habitatAligned, loadMicro, microGrid, onMicro, SAMPLE_N, type GroundSampler } from './model'
 import { ensureRelief, onRelief, reliefCell, reliefNear, WATER } from './relief'
 import { habitat } from '../../spots/habitatGrid'
 import { leavesDown } from './leaves'
@@ -456,6 +456,9 @@ interface HabBands {
 function habBands(): HabBands | null {
   const h = habitat()
   if (!h || !h.has('crown') || !h.has('thick')) return null
+  // the habitat's cells are the sampler's only on the area's own grid (model.ts habitatAligned):
+  // under the national tiles the index is the mosaic's, and the stand's defaults stand
+  if (!habitatAligned(h)) return null
   return { crown: h.raw('crown'), conifer: h.raw('conifer'), hardwood: h.raw('hardwood'), thick: h.raw('thick'), thickS: h.scale('thick') }
 }
 
