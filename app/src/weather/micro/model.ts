@@ -2375,10 +2375,11 @@ export function microCell(lon: number, lat: number, ms?: number): Record<string,
 
 // dev builds only: what the micro grid's solve stands on at sampling time, for the scorecard's SD
 // column to log (Hunter-Jay, 2026-10-17: W2 read in two states across cards); with a point and a wind,
-// whether its two momentum directions and their turbulence are in and where the stand is read.
-// Reads only: it never asks for a direction (momentumAt would)
+// whether its two momentum directions and their turbulence are in and where the stand is read;
+// with a moment too, the call there taken apart (the lee's cached rise read before it). The first
+// part reads only; the call is evaluate's own, which may ask for a direction as any call does
 if (import.meta.env.DEV || import.meta.env.VITE_DEV_SITE) {
-  ;(window as unknown as { __micro?: unknown }).__micro = (lon?: number, lat?: number, dirFrom?: number) => {
+  ;(window as unknown as { __micro?: unknown }).__micro = (lon?: number, lat?: number, dirFrom?: number, ms?: number) => {
     const out: Record<string, unknown> = {
       file: !!file,
       areaGrid: !!areaGrid,
@@ -2399,7 +2400,18 @@ if (import.meta.env.DEV || import.meta.env.VITE_DEV_SITE) {
       const k0 = Math.floor(x) % MOM_N
       const k1 = (k0 + 1) % MOM_N
       const sb = standBands()
-      out.at = { i, k0, k1, mom: !!momU[k0] && !!momU[k1], turb: i >= 0 ? turbAt(i, dirFrom) : null, stand: sb === grid ? 'grid' : sb ? 'habitat' : null }
+      const sector = (((Math.round(dirFrom / (360 / LEE_SECTORS)) % LEE_SECTORS) + LEE_SECTORS) % LEE_SECTORS)
+      const cached = leeRise && i >= 0 ? leeRise[i * LEE_SECTORS + sector] : null
+      out.at = { i, k0, k1, mom: !!momU[k0] && !!momU[k1], turb: i >= 0 ? turbAt(i, dirFrom) : null, stand: sb === grid ? 'grid' : sb ? 'habitat' : null, leeRiseCached: cached != null && Number.isFinite(cached) ? cached : null }
+      if (ms != null) {
+        const ev = evaluate(makeCtx(ms), lon, lat, true)
+        if (ev)
+          out.call = {
+            kmh: Math.hypot(ev.e, ev.n), from: (towardOf(ev.e, ev.n) + 180) % 360, sigma: ev.sigma, regime: ev.regime, swirl: ev.swirl,
+            U: ev.U, dirFrom: ev.dirFrom, local10: ev.local10, th: ev.th, cf: ev.cf, kat: ev.kat, tumbleMix: ev.tumbleMix, eddy: ev.eddy,
+            gustMul: ev.gustMul, slot: ev.slot, spread: ev.spread, parts: ev.parts, reasons: ev.reasons,
+          }
+      }
     }
     return out
   }
