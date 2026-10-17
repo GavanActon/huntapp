@@ -439,6 +439,82 @@ Set-up:
 Pickup: swipe the magnet and download, or take the cap off indoors and pull
 the card. The files go in `field-data/stations/S1/`.
 
+## A corridor pair: does the air follow the slot?
+
+Added 2026-10-12. The app turns the head-height wind along a slot in the
+trees, a long narrow opening between tree walls (`slotAt` in
+`app/src/weather/micro/model.ts`, MICRO-WIND.md §5). Nothing else in the
+stack does: WindNinja, the surrogate and the wind atlas see terrain only. At
+Whitefish Lake (48.1675, −80.8334) the app runs the wind down a 30–60 m river
+channel between 11–23 m trees, while every terrain layer there crosses it
+within 5°. The rule rests on one check (2026-09-29). Public stations can't
+test it: they stand in the open by design, and towers stand in even stands
+(WIND-LEARNING.md). A pair can: one station in a corridor and one in the open
+nearby, logging together.
+
+**Where:** Pickle Lake's bog corridor, 48.95406, −85.55121: open bog 60 m
+wide between 14 m tree walls, running 120°/300°, 80 m off the lake. On
+2026-09-29 HRDPS said from 191° at 17 km/h gusting 44, and the wind there
+went toward 306°, along the corridor; the slot rule now says toward 288°.
+- **A, in the corridor:** mid-width, at least 3 wall heights (45 m) from
+  either end of the straight part, sensor at 2 m.
+- **B, in the open:** the same height, on open ground with at least 10 wall
+  heights (150 m) of open fetch toward the usual winds (the lake shore or a
+  wide part of the bog), within about 300 m of A so both see one weather.
+  Not the camp WS90: it is 4 km off.
+
+**What it answers**, every logging interval:
+- A's direction against B's, binned by B's angle to the axis. The rule says
+  A follows the axis whatever B does; channelling that holds only within
+  some angle of the axis would change the rule.
+- The speed ratio A/B by angle, against the rule's (the tree-line ramp from
+  Flesch & Wilson's cutblocks: 0.25 within 3 wall heights, recovered by 10).
+- When it breaks: light air, the dusk settle, gusts from aloft (the 09-29
+  wind was gusting 44).
+
+A fortnight in October sees several wind directions; a season sees most.
+
+**Hardware:** two of the recommended no-solder kits (WS90 + GW3000, US$205
+each on 2026-10-08).
+- The GW3000 logs to its SD card at a set interval (5 min in the manual),
+  draws up to about 0.2 A and is rated to −10 °C. A Voltaic V50 runs it 2–3
+  days, so a week in the bog wants a bigger battery or a small solar panel.
+- Ask Ecowitt before buying whether one GW3000 takes two WS90 arrays. One
+  gateway for the pair would halve the power; if not, two gateways.
+- The WS90 starts at 0.3 m/s: fine in the open, marginal in a sheltered
+  corridor in light air. Count readings at that floor as their own bin, not
+  as calm.
+
+**Scoring:** the station reader in "Not in v1" (`app/scripts/replay.py
+--stations`) joins each interval to the model at A's and B's cells, and
+scores the slot rule's direction and the shelter ratio beside the checks.
+
+**Other data, checked 2026-10-12:**
+- **Bayatvarkeski 2025** (University of Waterloo thesis, "Hydroclimatic
+  influence of seismic line disturbances based on field measurements and
+  modelling across Alberta").
+  - Set-up: paired stations on two seismic lines 40 km south of Fort
+    McMurray and 25 m into the stand beside them (5 m spruce and tamarack
+    peatland). Wind speed and direction at 1.5–2 m, hourly, October 2022 to
+    April 2023.
+  - Result: speeds on the lines 7–8× the stand's.
+  - Its monthly wind roses don't show the lines turning the wind: Maqua's
+    east–west line took southerly winds across it, and Tamarack's
+    north–south line had its strongest month along it. Monthly means can't
+    settle it either way.
+  - The hourly data aren't published: worth a request.
+  - Those lines (7 m wide, 5 m walls) are narrower and lower than anything
+    the slot rule counts (walls of 6 m and up, found in 15 m steps).
+- **Stern, Riva & Nielsen 2018** (Forests 9: 486): seismic lines in north-east
+  Alberta; average wind on the lines 4× the forest's; line width,
+  orientation and canopy height interact. The full text wasn't reachable
+  from here, so whether direction was logged is unchecked.
+- **Flesch & Wilson 1999** (Alberta lodgepole cutblocks): best shelter
+  within 3 tree heights of the upwind edge, about 20% of a clearing's
+  speed. The tree-line ramp comes from it.
+- **Brosofske et al. 1997:** no wind gradient along 2–4 m streams under a
+  closed canopy. A slot needs an opening.
+
 ## Cost and weight, one station
 
 Canadian prices from the buying list below, 2026-10-08.
@@ -561,6 +637,8 @@ from the search page, not the product page.
   through an M12 IP68 panel connector.
 - Where the first one goes: the bog edge, where the speed under-call is
   biggest.
+- Which pair first: the bog corridor (above) for the slot rule, or the
+  Searchmont valley floor and ridge (WIND-LEARNING.md) for the rotor?
 
 ## Sources
 
@@ -573,3 +651,7 @@ from the search page, not the product page.
 - SUCH-WS-CSM: https://www.such.com/miniature-wind-speed-direction-sensor
 - RS485 anemometer on an ESP32: https://forum.arduino.cc/t/rs485-anemometer-connected-to-an-esp32/1264203
 - Ultrasonic anemometer with Arduino (wiring, Modbus): https://how2electronics.com/measure-wind-speed-direction-with-ultrasonic-anemometer-arduino/
+- Bayatvarkeski 2025, seismic line hydroclimate thesis (University of Waterloo): https://uwspace.uwaterloo.ca/items/cf1240bd-e69d-4db7-a062-c97fe9389a1d
+- Stern, Riva & Nielsen 2018, narrow linear disturbances, light and wind: https://doi.org/10.3390/f9080486
+- Flesch & Wilson 1999, wind and turbulence in forest cutblocks: https://faculty.eas.ualberta.ca/jdwilson/jdw32.html
+- Brosofske et al. 1997, microclimatic gradients from small streams to uplands: https://coast.noaa.gov/data/czm/pollutioncontrol/media/Technical/D50%20-%20Brosofske%20et%20al.%201997.%20Harvesting%20Effects%20on%20Microclimatic%20Gradients.pdf

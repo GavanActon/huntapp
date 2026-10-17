@@ -1398,8 +1398,16 @@ guesses that want a season of checks.
    done 2026-10-04, and the day layer is now WindNinja's momentum solve
    (§2). Next for it:
    - score it against the wind checks, old and new side by side;
-   - feed WindNinja the habitat grid's roughness (an .lcp of stand height and
-     cover) in place of one class.
+   - ~~feed WindNinja the habitat grid's roughness (an .lcp of stand height
+     and cover) in place of one class~~: the momentum solver can't use it.
+     `ninjafoam.cpp` writes one z0 for the whole ground, the grid's mean
+     (`Roughness.get_meanValue()`); an .lcp changes only the log-law read-out
+     at the output height, cell by cell, not the flow (checked 2026-10-12).
+     Varied roughness comes with the physics teacher (TEACHER.md: canopy drag
+     and z0 per cell). Gaff Topsails (`seed-topsails-nl`) is its test case:
+     a flat barrens plateau where terrain-only WindNinja is near uniform
+     (0.87–1.22× the input, no turning), so anything a cover run adds is the
+     cover's.
 2. One or two stations (a Tempest or an ESP32 with a sonic anemometer over
    LoRa) at camp and a stand. Bias-correct HRDPS and fit the thermal
    constants.

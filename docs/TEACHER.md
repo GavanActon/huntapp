@@ -436,6 +436,159 @@ decoupled floor drifts. That question is probably below 10 m resolution
 and below the scale a one-hunter check set can settle, which makes the
 valley-floor datasets (Kettle Ponds, i-Box, METCRAX) the next judge.
 
+### Funnelling, and the spots for rules: 2 and 4 m boxes, 2026-10-13/14
+
+**What the 10 m runs said about funnelling.** Read for channelling
+(2026-10-13), the Searchmont runs do not funnel along the Goulais valley.
+The valley is broad (axis 65/245), the dusk wind was 88° across it, and a
+cyclic 5 km box with no Coriolis can make neither pressure-driven
+channelling nor valley winds. The stable floor drifts in patches: its
+alignment with the axis is no better than random directions, and its
+steadiness is 0.08. The river channel does act as a slot: a reach across
+the wind turns the head-height air from 73° off it to 37° off it, and
+WindNinja shows none of this. Slots came out weaker than the app's slot
+rule (`micro/model.ts`), but a 30–60 m slot is three to six cells at 10 m.
+Lee reversal follows the upwind shelter angle (Winstral Sx, 300 m). In
+neutral air at head height it is 4% of cells under 3°, 15% at 3–6°, 24% at
+6–10° and 74% over 10°. In stable air it is about 45% everywhere.
+
+**The fine boxes.** `build_case.py` now builds small cyclic boxes at 2 and
+4 m (README, The spot cases): Pickle Lake's narrows, the bog strip, the bogs
+SW of camp, and Lac Bailey's north bank. They use 1 m water, a shallow
+column, and edges blended to the water's level. A 4 m run of a 1 km box
+takes about 25 min on xonix and 70 min on XEVO's 8 ranks; a 2 m run takes
+about 5 h on xonix. Searchmont's climb is not one of them: a 1.5 km cyclic
+box cannot hold its 194 m of relief without a cliff at the edges, so it
+waits for offline nesting.
+
+**Pickle Lake's narrows (48.94641, -85.57629).** A lake arm runs up from
+the SW into a 30 m channel through 8–15 m trees, with a 68 m hill on its
+west side, and opens onto the lake to the NE. Gavan felt a southerly
+funnel NE through it at midday on 2026-09-29. The run used HRDPS for 13:00
+(186°, 11.5 km/h, neutral). The box's own wind came out at 5.6–6.6 km/h:
+the forcing again.
+
+- **It funnels.** At 4 m, head height in the throat runs toward 049°, 8°
+  off the channel's line. All of the throat runs NE, none of it reversed,
+  and the gusts come from 231°. The lake arm has already swung the air to
+  036° before the trees do.
+- **2 m agrees on direction and moves the speed-up above head height.**
+  Throat over arm is 0.88 at 2 m over the water, 1.26 at 5 m, 1.35 at
+  10 m and 1.56 at 20 m. The turn is tightest at the bottom (toward 053°
+  at 2 m, 026° at 20 m). At 4 m the lowest cell averages the bottom 4 m
+  and called head height 1.26×.
+- **How much 4 m loses against 2 m, over the whole core.** The 2 m run is
+  averaged to 4 m cells. Speeds are shares of each run's own box wind; the
+  2 m run's box wind is 0.85 of the 4 m run's (finer crowns, more drag).
+
+  | level | ground | directions apart, median | within 22.5° | within 45° | speed r | reversed, 4 m vs 2 m |
+  |---|---|---|---|---|---|---|
+  | head height | all | 8° | 86% | 97% | 0.90 | 11% vs 14% |
+  | head height | open water | 6° | 94% | 99% | 0.60 | 2% vs 4% |
+  | head height | under the trees | 9° | 84% | 97% | 0.82 | 16% vs 19% |
+  | head height | tree lines (within 12 m) | 10° | 81% | 96% | 0.87 | 14% vs 20% |
+  | 10 m over the ground | all | 4° | 98% | 100% | 0.90 | |
+  | 10 m over the trees | all | 3° | 99% | 100% | 0.93 | |
+
+  So 4 m is enough for directions and for which places reverse: 97% of
+  head-height cells are within 45° of the 2 m run, and above the trees the
+  two are nearly the same. 2 m adds three things:
+  - head-height speeds in narrow gaps (the jet above head height);
+  - over the water, partly because the two runs define head height
+    differently (a 0–4 m cell against 1 m taken to 2 m);
+  - a quarter more reversal at tree lines.
+
+  At 25 min against 5 h, 4 m is the tool for sweeps and 2 m for checking
+  places a few cells wide and the scent near the ground. This is one case
+  (a 30 m gap, 10–15 m trees). The 2 m bog strip and the 2 m Lac Bailey
+  bank, queued against their 4 m runs, make it three.
+- **By wind direction (4 m, eight runs, 2026-10-14).** The table is head
+  height in the throat. "Off line" is how far the throat's air is from the
+  channel's line; "reversed" is the share of the 30 s samples turned more
+  than 90° from the box's wind.
+
+  | wind from | wind off the line | what the air crosses to reach the gap | throat runs toward | off line | reversed | speed / wind |
+  |---|---|---|---|---|---|---|
+  | 224 | 1 | the SW lake arm | 042 (NE) | 4 | 0% | 1.02 |
+  | 44 | 1 | the NE lake | 221 (SW) | 4 | 0% | 1.22 |
+  | 192 | 31 | the SW lake arm | 049 (NE) | 8 | 0% | 1.03 |
+  | 6 | 37 | the NE lake, the hill alongside | 233 (SW) | 10 | 0% | 1.37 |
+  | 264 | 41 | the 68 m hill | 345 | 60 | 56% | 0.25 |
+  | 167 | 56 | forest, then the arm | 060 (NE) | 19 | 19% | 0.72 |
+  | 318 | 85 | the hill, square across it | 293 (back) | 67 | 87% | 0.27 |
+  | 137 | 86 | the forest block, square across | 122 | 52 | 73% | 0.16 |
+
+  The rule it gives depends less on the angle to the channel than on what
+  the air crosses to get there. Where the air reaches the gap across open
+  water, the gap funnels toward whichever end the along-gap part points, out
+  to at least 56° off its line, and never reverses. N at 37° off is the
+  fastest of all. Where the air comes over the hill (W, NW) or square across
+  a forest block (SE), the gap is a slow pocket that runs backwards half the
+  time or more. W at 41° off does not funnel at all. So the ground layer
+  should decide the lee first and the slot second. For a gap with an open
+  approach the app's slot rule is about right, and the 10 m "weaker" read
+  was resolution.
+- **Backflow up the hill (W and NW).** With the wind over the hill, the
+  air in the trees on its lee slope runs back up toward the crest.
+  - W: from about 90 m below the crest down to the water, the bottom
+    10–14 m (to the tree tops) runs back 70–95% of the time at head height,
+    at 0.3–1.2 km/h. Above about 15 m the air goes with the wind.
+  - NW, square to the hill's long axis: it starts 60–90 m below the crest
+    and is 20–25 m deep at the slope's foot, above the trees, running back
+    80–90% of the time.
+  - The dusk and sunny-morning versions from the W are queued on XEVO.
+- **The air lifts before a tree line.** This is the median over 215
+  windward edges on flat ground with open water or ground upwind, trees
+  about 10 m, at 2 m. It starts rising 30–40 m out. The rise is 2% of the
+  approach speed 20 m out, 10% at the edge and 15% 12 m in. At head
+  height the air slows mostly inside the trees: 0.93 of the approach 8 m
+  out, 0.83 at the edge, 0.46 12 m in and 0.23 40 m in.
+- **3D snapshots.** The 2 m run's mask 2 holds every 2 s of the last
+  2 minutes, 480 m around the narrows, to 48 m. Their use for the site is
+  briefed in [PALM-3D.md](PALM-3D.md).
+
+**The bog strip NE of Pickle Lake (4 m), against the GPX checks.** The
+strip is 60 m wide between 14 m walls, running 120/300. On 09-29 18:00
+(forecast 190°) PALM turns head height toward 332–338° where Gavan felt W,
+W and NW. That is the right way along the strip but half as far: 1 of 3
+within 45°, against the forecast's 0. On 09-30 18:00 (forecast 232°) PALM
+stays near the forecast (toward 049–074°) where he felt SE, SE, E, NW, E
+and SW: 2 of 6 for both. Head-height speeds are low (the box's wind was
+8 km/h against 15). The 2 m run and stability are the next questions.
+
+**Lac Bailey's north bank, wind from the north (4 m).** The bank falls
+about 50 m over 300 m to the lake.
+
+- **At head height there is a lee eddy.** Down the lee slope the air is
+  nearly calm (0.2–1.3 km/h) and runs back uphill 60–90% of the time. From
+  the shore to about 60 m out it runs back toward the bank 70–80% of the
+  time. It turns over between 60 and 140 m out. Past 140 m it runs down
+  the lake, turned 22–38° from the forecast and rising to the ambient
+  speed by 300 m.
+- **At 10 m over the trees, WindNinja's height, there is no reversal.**
+  The wind slows at the shore (PALM 0.19×, WindNinja momentum 0.40×) and
+  turns about 20° down the lake further out, in both models.
+- **So the eddy is a thin layer under the main flow,** which WindNinja
+  does not resolve. It belongs in the ground layer's lee rule: below a
+  bank, with the wind off the land, the air at the shore at head height
+  comes off the water.
+
+**Next.** On xonix: the narrows from W, NW, N and along the slot from each
+end; the bogs box at dawn and dusk under HRDPS's inversions (the
+"southerly comes as a NE drift" mornings); then the 2 m bog strip and the
+2 m Lac Bailey bank. On XEVO: Lac Bailey from S and W, and at dusk. After
+that, a box over SMEAR II (Hyytiälä) to test PALM's floor coupling against
+the tower's autumns (84/54/18% coupled by stability). The open NLS 2013
+laser tile N4131A1 and the 2 m DEM are on the Funet mirror with no key.
+
+### Scent rides every run, 2026-10-14
+
+Each run now releases scent as well ([SCENT-TEACHER.md](SCENT-TEACHER.md)): up to ten passive
+particle groups from chest or stand height, written every 20 s, read back by `palm_to_scent.py` into
+the app's how-often bands. The same hour of model time teaches the wind surrogate and the scent
+cone, and running the cone on PALM's own field separates field error from cone error. Runs before
+this date have no particles.
+
 ## Track B: GPU engine
 
 Status 2026-10-12, early hours. Step 1 of [GPU-SOLVER.md](GPU-SOLVER.md)'s

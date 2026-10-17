@@ -365,6 +365,22 @@ Stability exists only in the mass solver.
 **So a sharper hill alone doesn't make the rotor: it is stability.** That
 matches the Salmon River canyon above.
 
+**First PALM run, 2026-10-12** (the surrogate thread, TEACHER.md Track A;
+10 m, stable, 3.3 h on xonix; `pipeline/raw/teacher/palm/`). It is a
+diagnostic, not a verdict:
+- **Reversal appears.** Over the last half hour the floor under the 17:33
+  check turns 118° from the ambient at 0.19 of its speed, and is
+  reversed 43% of the time. A reversed patch of 810 ha spans the valley.
+  The treetops come out from 138° (felt: 180°).
+- **But the floor reads 36°, not 308°,** and the run fails its own gate.
+  The low layer collapsed to 1.6 km/h against the forecast's 16, with
+  27 km/h left at 600 m.
+- **Why:** the cooling (1 K an hour for 2.5 h) made an inversion far
+  stronger than a windy dusk does. Decoupling and reversal are in the
+  physics; the dose is wrong.
+- **Next:** the neutral run as a baseline, then stable again with milder
+  cooling.
+
 By the rule fixed above, nothing here passes. That points the night
 cases at the other routes:
 - PALM or the GPU engine, with stability resolved rather than
@@ -703,6 +719,37 @@ each check's place and minute:
 
 The Searchmont floor checks (17:33 and 18:24 EDT on 10 Oct, sun 13° and
 5° up, sunset about 19:00) were inside legal light.
+
+**Quiet dusk on flat ground: lean back toward the air above? Tried, not
+shipped (2026-10-13).** huntapp-1f's lead from the PALM work: on Gavan's 11
+quiet dusk and night checks (powder calm, drift or light; the sun under 5°
+or within an hour of sunset; all Pickle), the forecast's own direction is
+within 45° on 6. Today's model gets 4 alone and 5 with the day's other
+checks. On the other 55 the model leads (24–27 against 19).
+
+The test, gated in the model and scored by `replay.py --ab` (every check
+under each setting in one page load, today's rules beside it): the model's
+own way pulled toward the air above, wholly or half way.
+- **Gated by the forecast and the sun** (under 10 km/h, sun under 9°,
+  slope under 1°): it moved 5 calls.
+- **Gated by the model's regime** (draining, pooled or calm): it moved
+  9–14 calls, mostly near-calm middays.
+
+Neither gate is worth shipping:
+- **Quiet checks:** 4 → 5 of 11 alone, still 5 with the day's checks.
+- **All 66:** 32 → 33 at best, inside the replay's noise.
+
+The forecast's lead is two checks, and they differ:
+- **28 Sept 19:06 at the bog:** still air at 5 km/h, stable. The model's
+  calm rules turned 43° and the forecast was 6° off. Leaning fixes it
+  (49° → 5°) but costs a dawn check.
+- **30 Sept 18:27–18:56 on the lake strip:** a 13 km/h forecast that the
+  model reads as wind, not stable. It turns about 100° along the shore
+  while the powder swings every way. No quiet-air gate reaches it; it is
+  a question for the shore rules at sunset (SHORE-WIND.md).
+
+The knobs went back out of the model; `replay.py --ab` stays for the next
+small rule. Gavan's next dusk sits are the test that can settle either case.
 
 ### The first step needs no bake
 
