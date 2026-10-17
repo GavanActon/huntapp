@@ -10,7 +10,7 @@ import { DEFAULT_WEIGHTS, weigh, type Weights } from './weights'
  *    it, points and bays, inlets, and which shore the wind is working
  *  - fishVerdict: the day's odds and the boat call, the same for a lake
  */
-import { COVER, type Habitat, type LakeFacts } from './habitatGrid'
+import type { Habitat, LakeFacts } from './habitatGrid'
 import type { Conditions } from './conditions'
 import { compass8 } from './conditions'
 import type { Factor, FishTarget, Verdict } from './types'
@@ -388,5 +388,3 @@ export function describeFishCell(t: FishTarget, b: FishBands, h: Habitat, i: num
   out.push(`${PERIOD_NAMES[ctx.period]}: ${depthRange(lo, hi)} band`)
   return out
 }
-
-export { COVER }

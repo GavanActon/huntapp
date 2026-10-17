@@ -26,9 +26,6 @@ export const useLogForm = create<LogForm>((set) => ({
   close: () => set({ at: null }),
 }))
 
-// the snapshot lives in log/snapshot.ts now; kept here for any old import
-export { snapshot }
-
 const SPECIES: LogSpecies[] = ['moose', 'deer', 'bear', 'grouse', 'wolf', 'other']
 const WHATS: LogWhat[] = ['seen', 'heard', 'sign', 'called', 'nothing']
 const KINDS: MooseKind[] = ['bull', 'cow', 'calf']

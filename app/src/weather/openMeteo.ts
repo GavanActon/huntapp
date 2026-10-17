@@ -381,16 +381,6 @@ export function hourRow(f: PointForecast, i: number): HourRow {
   }
 }
 
-/** All hours of the local day that starts at dayStartMs. */
-export function dayHours(f: PointForecast, dayStartMs: number): HourRow[] {
-  const end = dayStartMs + 24 * 3600_000
-  const out: HourRow[] = []
-  hourTimes(f).forEach((ms, i) => {
-    if (ms >= dayStartMs && ms < end) out.push(hourRow(f, i))
-  })
-  return out
-}
-
 /** Linear between two hourly values; either one alone if the other is missing. */
 export function lerpHour(a: number, b: number, t: number): number {
   if (!Number.isFinite(a)) return b

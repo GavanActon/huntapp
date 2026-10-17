@@ -24,10 +24,6 @@ import { devlog } from '../devlog'
 export interface QualityProfile {
   /** share of the wind particle count Settings asks for */
   particles: number
-  /** share of the near-field sea crests drawn */
-  near: number
-  /** share of the FAR-field sea crests drawn (pitched chart) */
-  far: number
   /** device pixels per css px for the wind's trail canvas */
   trailDpr: number
   /** the wind draws every other frame when the chart is still */
@@ -35,10 +31,10 @@ export interface QualityProfile {
 }
 
 export const PROFILES: readonly QualityProfile[] = [
-  { particles: 1, near: 1, far: 1, trailDpr: 2, wind30: false },
-  { particles: 0.75, near: 1, far: 0.6, trailDpr: 2, wind30: false },
-  { particles: 0.55, near: 0.85, far: 0.4, trailDpr: 1.5, wind30: true },
-  { particles: 0.4, near: 0.7, far: 0.25, trailDpr: 1, wind30: true },
+  { particles: 1, trailDpr: 2, wind30: false },
+  { particles: 0.75, trailDpr: 2, wind30: false },
+  { particles: 0.55, trailDpr: 1.5, wind30: true },
+  { particles: 0.4, trailDpr: 1, wind30: true },
 ]
 
 // Frames on a 60 Hz phone are 16.7 ms. Sustained past SLOW the phone is
@@ -71,10 +67,6 @@ let slowAt = 0
 let lastUp = false
 let upHold = FAST_HOLD_MS
 const listeners = new Set<(level: number) => void>()
-
-export function qualityLevel(): number {
-  return level
-}
 
 export function qualityProfile(): QualityProfile {
   return PROFILES[level]
@@ -122,11 +114,6 @@ export function reportFrame(dtMs: number, now: number) {
   slowSince = 0
   if (level > 0 && ema < FAST_MS && now - slowAt > upHold) setLevel(level - 1, now)
   else if (lastUp && upHold !== FAST_HOLD_MS && now - slowAt > STOOD_MS) upHold = FAST_HOLD_MS
-}
-
-/** Smoothed frame interval, for the report. */
-export function frameMs(): number {
-  return ema
 }
 
 /**

@@ -272,26 +272,6 @@
   font-size: calc(12.5px * var(--ui-scale));
 }
 
-.pins .pe-name {
-  font-size: calc(14px * var(--ui-scale));
-}
-
-.pins .pe-note {
-  font-size: calc(12px * var(--ui-scale));
-  white-space: normal;
-}
-
-.pins .pe-fields select {
-  font: inherit;
-  font-size: calc(13px * var(--ui-scale));
-  color: var(--c-text);
-  background: rgba(var(--c-ink-rgb), 0.1);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-md);
-  padding: 4px 8px;
-  align-self: flex-start;
-}
-
 /* a stand's good winds and the verdict for the next sit */
 .pins .pw-verdict {
   font-size: calc(12px * var(--ui-scale));

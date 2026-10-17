@@ -22,10 +22,6 @@ import { useExplore } from './store'
 /** the coverage grid's layers, shown while Explore is on */
 export const EXPLORE_LAYERS = ['coverage-blocks', COVERAGE_TILES_LAYER, 'coverage-lines']
 
-export function isExplore(): boolean {
-  return useAppStore.getState().exploreMode
-}
-
 export function setExplore(on: boolean): void {
   useAppStore.getState().setExploreMode(on)
   if (!on) useExplore.getState().select(null)

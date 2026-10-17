@@ -31,7 +31,6 @@
 
 export const GROUND = { upland: 0, water: 1, marsh: 2, openPeat: 3, swamp: 4, road: 5, stream: 6 } as const
 export type GroundClass = (typeof GROUND)[keyof typeof GROUND]
-export const GROUND_LABEL = ['upland', 'water', 'marsh', 'open fen or bog', 'swamp', 'road', 'creek'] as const
 
 // Lorentz slope-rate curve, v = c / (πb (1 + ((θ - a) / b)²)) + d + eθ, θ in degrees, v in m/s
 // Sullivan, Campbell, Dennison, Brewer & Butler 2020 (Fire 3:52), Table 2, moderate tertile

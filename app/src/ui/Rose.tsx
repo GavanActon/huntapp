@@ -6,9 +6,7 @@ import { compass } from '../weather/openMeteo'
  * check, a moose's in HeardCard. It turns by `turn`: the map's bearing in
  * the wind check, so it reads against the map as turned (the live compass
  * heading moved the arrows under a finger and taps went missing,
- * 2026-10-08); the phone's heading where a card still passes that. A picked bearing lights its nearest arrow, and a second
- * one (a wind that swings) lights too, with the shorter arc between them
- * faintly shaded.
+ * 2026-10-08); the phone's heading where a card still passes that. A picked bearing lights its nearest arrow.
  *
  * The turn is unwrapped as it comes in — each reading moves the ring the
  * shorter way round — so passing north is two degrees on, not 358 back the
@@ -33,21 +31,12 @@ const delta = (a: number, b: number) => (((b - a + 540) % 360) - 180)
 export default function Rose({
   turn,
   value,
-  lit,
-  inward = false,
-  swing = null,
   onPick,
   label,
   children,
 }: {
   turn: number
   value: number | null
-  /** several arrows lit at once (a stand's good winds), besides `value` */
-  lit?: number[]
-  /** arrows point in at the middle: a wind blowing FROM each point, not a way to go */
-  inward?: boolean
-  /** the other end of a swinging wind, lit with the first */
-  swing?: number | null
   onPick: (deg: number) => void
   label: (b: number) => string
   children: ReactNode
@@ -60,12 +49,9 @@ export default function Rose({
   }
   const t = un.current
   const on = value == null ? null : sector(value)
-  const swung = swing == null ? null : sector(swing)
-  const isOn = (b: number) => on === b || swung === b || (lit?.some((d) => sector(d) === b) ?? false)
-  const arc = on == null || swung == null || swung === on ? null : { from: (delta(on, swung) >= 0 ? on : swung) - t, sweep: Math.abs(delta(on, swung)) }
+  const isOn = (b: number) => on === b
   return (
     <div className="gc-rose">
-      {arc && <div className="gc-arc" style={{ ['--from' as string]: `${arc.from}deg`, ['--sweep' as string]: `${arc.sweep}deg` }} aria-hidden />}
       {ROSE.map((b) => (
         <button
           key={b}
@@ -86,7 +72,7 @@ export default function Rose({
           aria-label={label(b)}
           aria-pressed={isOn(b)}
         >
-          <Arrow toward={b - t + (inward ? 180 : 0)} size={16} />
+          <Arrow toward={b - t} size={16} />
           <span>{compass(b)}</span>
         </button>
       ))}

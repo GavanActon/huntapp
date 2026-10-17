@@ -160,24 +160,6 @@
   background: rgba(var(--c-ink-rgb), 0.16);
 }
 
-/* best Tue morning › — lit while the planning time sits in that window */
-.wx-best {
-  flex: 0 1 auto;
-  min-width: 0;
-  padding: 3px 8px;
-  margin-left: -4px;
-  border-radius: var(--r-sm);
-  font-size: calc(12px * var(--ui-scale));
-  font-weight: 650;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.wx-best.on {
-  background: var(--c-accent-dim);
-}
-
 /* the chevron that opens the strip, folded */
 .wx-open {
   flex: none;
@@ -249,40 +231,4 @@
 
 .wxdetail-more .linklike:disabled {
   opacity: 0.5;
-}
-
-/* folded: today in one line over the hours; the ⋯ menu hangs under its right end */
-.wx-today {
-  padding: 1px 4px 0;
-}
-
-.wx-todaybtn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  height: 32px;
-  padding: 0 4px;
-  color: inherit;
-  text-align: left;
-  white-space: nowrap;
-  overflow: hidden;
-  font-size: calc(14px * var(--ui-scale));
-}
-
-.wx-todaybtn b {
-  font-weight: 700;
-}
-
-.wx-todaybtn > svg:last-child {
-  margin-left: auto;
-  flex: none;
-  color: var(--c-text-dim);
-}
-
-/* the folded line's empty text when nothing is cached */
-.wx-todaybtn .wxfold-empty {
-  color: var(--c-text-dim);
-  font-weight: 500;
 }

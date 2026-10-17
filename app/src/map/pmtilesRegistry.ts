@@ -278,10 +278,6 @@ export async function registerAllDataFiles(known: Set<string> | null = null): Pr
   return available
 }
 
-export function allDataLocal(): boolean {
-  return DATA_FILES.every((d) => sourceModes.get(d.key) === 'local')
-}
-
 /** Every map the area's offline bundle can hold is on the phone: its
  *  archives, its GeoJSON and its grids (offline/updates.ts offlineReady).
  *  Files the server itself does not have (never baked) cannot be saved, so
@@ -290,12 +286,4 @@ export function allDataLocal(): boolean {
 export function offlineComplete(): boolean {
   if (navigator.onLine) noteAbsent(DATA_FILES.filter((d) => sourceModes.get(d.key) === 'missing').map((d) => d.file))
   return offlineReady()
-}
-
-/** Look up the depth (metres, positive down) at a lon/lat from the contour tiles' bathy grid.
- *  Placeholder for now — implemented via querying the depth raster is not possible client-side,
- *  so depth readout uses the contour vector features near the point instead (see MapView).
- */
-export function getProtocol(): Protocol {
-  return protocol
 }

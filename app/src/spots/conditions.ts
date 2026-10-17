@@ -13,8 +13,6 @@ import { startOfDayMs } from '../time'
 
 export interface Conditions {
   timeMs: number
-  lon: number
-  lat: number
   windKmh: number
   gustKmh: number
   /** blowing FROM, degrees */
@@ -28,13 +26,10 @@ export interface Conditions {
   snowDepthCm: number | null
   cloudPct: number
   precipMmH: number
-  weatherCode: number
   /** surface pressure change over the last 6 h, hPa (+ rising) */
   pressureTrend6h: number
   /** how much colder it is than 24 h ago, °C (+ = colder now) */
   tempDrop24h: number
-  sunriseMs: number | null
-  sunsetMs: number | null
   /** hours since sunrise (negative before), hours until sunset (negative after) */
   sinceSunriseH: number
   toSunsetH: number
@@ -249,8 +244,6 @@ export function deriveConditions(f: PointForecast, timeMs: number, recent: Recen
   const wt = estimateWaterTemp(doy, recent, d)
   return {
     timeMs,
-    lon: f.lon,
-    lat: f.lat,
     windKmh: now.windKmh,
     gustKmh: now.gustKmh,
     windDir: now.windDir,
@@ -260,11 +253,8 @@ export function deriveConditions(f: PointForecast, timeMs: number, recent: Recen
     snowDepthCm: now.snowDepthCm,
     cloudPct: now.cloudPct,
     precipMmH: now.precipMm,
-    weatherCode: now.weatherCode,
     pressureTrend6h: h6 && h6.time.getTime() < now.time.getTime() ? now.pressureHpa - h6.pressureHpa : 0,
     tempDrop24h: h24 && h24.time.getTime() < now.time.getTime() ? h24.tempC - now.tempC : 0,
-    sunriseMs: sun.sunriseMs,
-    sunsetMs: sun.sunsetMs,
     sinceSunriseH: since,
     toSunsetH: to,
     isDay: since > 0 && to > 0,

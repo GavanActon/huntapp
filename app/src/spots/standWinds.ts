@@ -1,9 +1,7 @@
-import { habitat } from './habitatGrid'
 import { compass8 } from './conditions'
-import { useHuntLog } from '../log/huntLog'
 import type { SavedPlace } from '../state/placesStore'
 import { groundWind, type Regime } from '../weather/micro/model'
-import { angleDiff, metresBetween } from '../weather/micro/windChecks'
+import { angleDiff } from '../weather/micro/windChecks'
 import { sunTimes } from '../weather/sun'
 
 /**
@@ -11,14 +9,10 @@ import { sunTimes } from '../weather/sun'
  * stand still hunts, as the hunter declares them on the pin (Pins › edit).
  * Eight sectors, 0 = N … 7 = NW, kept on the place as `winds`.
  *
- * Three things are built on that:
- *   - a suggestion, from the habitat bake's feeding side at the pin: the
- *     winds that carry scent away from where the animal is expected;
- *   - the verdict for the next sit: the GROUND wind at the stand at dawn or
- *     dusk (model.ts, with any powder checks blended in) against the arc,
- *     so the Pins list says good / edge / wrong / calm at a glance;
- *   - the tally from the hunt log: the winds this stand has already been
- *     sat on, and whether anything came.
+ * On that is built the verdict for the next sit: the GROUND wind at the
+ * stand at dawn or dusk (model.ts, with any powder checks blended in)
+ * against the arc, so the Pins list says good / edge / wrong / calm at a
+ * glance.
  *
  * The forecast says nothing about a stand; the hunter's arc and the ground
  * model together do.
@@ -44,22 +38,6 @@ export function windsLabel(winds: number[]): string {
     else runs.push([k])
   }
   return runs.map((r) => (r.length === 1 ? compass8(sectorDeg(r[0])) : `${compass8(sectorDeg(r[0]))}–${compass8(sectorDeg(r[r.length - 1]))}`)).join(', ')
-}
-
-/** The winds the bake would pick at a point: those within 90° of blowing
- *  from the feeding side, so scent goes away from it. Null off the grid or
- *  where the bake has no feeding side. */
-export function suggestWinds(lon: number, lat: number): number[] | null {
-  const h = habitat()
-  if (!h) return null
-  const i = h.index(lon, lat)
-  if (i < 0) return null
-  const bear = (h.raw('bearBrowse') as Uint8Array)[i]
-  if (bear === 255) return null
-  const approach = bear * (360 / 250)
-  const out: number[] = []
-  for (let k = 0; k < 8; k++) if (angleDiff(sectorDeg(k), approach) <= 90) out.push(k)
-  return out
 }
 
 export type Slot = 'dawn' | 'dusk'
@@ -127,43 +105,4 @@ export function windVerdict(p: SavedPlace, now = Date.now()): WindVerdict | null
   }
   const near = (has(k - 1) && angleDiff(g.dirFrom, sectorDeg(k - 1)) <= sd) || (has(k + 1) && angleDiff(g.dirFrom, sectorDeg(k + 1)) <= sd)
   return near ? { ...base, grade: 'edge', text: `${from} at ${when}: just off your winds, swings ±${Math.round(g.sigmaDeg)}°` } : { ...base, grade: 'wrong', text: `${from} at ${when}: wrong wind` }
-}
-
-export interface HuntedWind {
-  sector: number
-  /** days with something logged here on this wind */
-  sits: number
-  /** of those, days when something was seen, heard, called in or found */
-  came: number
-}
-
-/** how near a pin a log entry counts as a sit there, m */
-const AT_STAND_M = 150
-
-/** The winds this stand has been sat on, from the log's weather at the
- *  time, most sat first. */
-export function huntedWinds(p: SavedPlace): HuntedWind[] {
-  const days = new Map<number, Map<string, boolean>>()
-  for (const e of useHuntLog.getState().entries) {
-    if (!e.wx || metresBetween(e.lon, e.lat, p.lon, p.lat) > AT_STAND_M) continue
-    const k = sectorOf(e.wx.windDir)
-    const d = new Date(e.ts)
-    const day = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours() < 12 ? 'am' : 'pm'}`
-    const m = days.get(k) ?? new Map<string, boolean>()
-    m.set(day, (m.get(day) ?? false) || e.what !== 'nothing')
-    days.set(k, m)
-  }
-  return [...days]
-    .map(([sector, m]) => ({ sector, sits: m.size, came: [...m.values()].filter(Boolean).length }))
-    .sort((a, b) => b.sits - a.sits)
-}
-
-/** "Sat on NW ×2 (something came once), S ×1 (nothing)". */
-export function huntedLine(hw: HuntedWind[]): string {
-  if (!hw.length) return ''
-  const part = (h: HuntedWind) => {
-    const came = h.came === 0 ? 'nothing' : h.came === h.sits ? (h.sits === 1 ? 'something came' : 'something came each time') : `something came ${h.came === 1 ? 'once' : `${h.came} of ${h.sits}`}`
-    return `${compass8(sectorDeg(h.sector))} ×${h.sits} (${came})`
-  }
-  return `Sat on ${hw.map(part).join(', ')}`
 }

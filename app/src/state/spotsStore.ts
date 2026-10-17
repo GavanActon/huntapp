@@ -7,11 +7,7 @@ import type { Conditions } from '../spots/conditions'
 import type { DayPlan, HourActivity } from '../spots/dayPlan'
 import { DEFAULT_WEIGHTS, type WeightKey, type Weights } from '../spots/weights'
 
-/** How much of the reasoning to show: the verdict alone, the short case,
- *  or every factor, reason and note. */
-export type SpotsDetail = 'brief' | 'normal' | 'full'
 export type HeatScale = 'day' | 'fixed'
-export const DETAIL_NAMES: Record<SpotsDetail, string> = { brief: 'Brief', normal: 'Normal', full: 'Full' }
 
 /** A fresh phone's knobs: the model's rule (DEFAULT_WEIGHTS, which Reset
  *  puts back) with roads and landings off, as Gavan has it (2026-10-03). */
@@ -32,11 +28,6 @@ interface SpotsState {
   /** how boldly the heat is painted, 0.5 … 1.5 */
   heatStrength: number
   setHeatStrength: (v: number) => void
-  /** the old wedge cone at the pin: retired, always false (the live scent cone took its place) */
-  scent: boolean
-  /** how much of the reasoning to show */
-  detail: SpotsDetail
-  setDetail: (d: SpotsDetail) => void
   /** the knobs on the scorer (spots/weights.ts); persisted */
   weights: Weights
   setWeight: (k: WeightKey, v: number) => void
@@ -62,16 +53,13 @@ export const useSpotsStore = create<SpotsState>()(
       target: 'moose',
       setTarget: (target) => set({ target }),
       // a fresh phone's are Gavan's (2026-10-03): the heat off (the Bow view has none),
-      // the full detail, and roads and landings not counted
+      // and roads and landings not counted
       heat: false,
       setHeat: (heat) => set({ heat }),
       heatScale: 'day',
       setHeatScale: (heatScale) => set({ heatScale }),
       heatStrength: 1,
       setHeatStrength: (v) => set({ heatStrength: Math.max(0.5, Math.min(1.5, v)) }),
-      scent: false,
-      detail: 'full',
-      setDetail: (detail) => set({ detail }),
       weights: START_WEIGHTS,
       setWeight: (k, v) => set((s) => ({ weights: { ...s.weights, [k]: Math.max(0, Math.min(2, v)) } })),
       resetWeights: () => set({ weights: DEFAULT_WEIGHTS }),
@@ -87,12 +75,12 @@ export const useSpotsStore = create<SpotsState>()(
     }),
     {
       name: 'huntapp-spots',
-      partialize: (s) => ({ target: s.target, heat: s.heat, heatScale: s.heatScale, heatStrength: s.heatStrength, detail: s.detail, weights: s.weights }),
+      partialize: (s) => ({ target: s.target, heat: s.heat, heatScale: s.heatScale, heatStrength: s.heatStrength, weights: s.weights }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<SpotsState>
         // a quarry saved elsewhere that is not here (deer in the Yukon mountains) comes back as moose
         const target = p.target && !isFish(p.target) && !targetStanding(p.target).show ? 'moose' : p.target
-        return { ...current, ...p, target: target ?? current.target, weights: { ...START_WEIGHTS, ...(p.weights ?? {}) }, scent: false }
+        return { ...current, ...p, target: target ?? current.target, weights: { ...START_WEIGHTS, ...(p.weights ?? {}) } }
       },
     },
   ),

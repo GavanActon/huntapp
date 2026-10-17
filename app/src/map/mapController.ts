@@ -126,22 +126,6 @@ export function onEachMap(fn: MapReadyFn) {
   if (map && ready) run(fn, map)
 }
 
-const LAYER_IDS: Record<string, string[]> = {
-  depth: ['depth-shade'],
-  contours: ['contour-lines', 'contour-labels', 'soundings'],
-  seamarks: ['seamarks'],
-  satellite: ['satellite'],
-}
-
-export function applyLayerVisibility(key: string, visible: boolean) {
-  if (!map) return
-  for (const id of LAYER_IDS[key] ?? []) {
-    if (map.getLayer(id)) {
-      map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none')
-    }
-  }
-}
-
 /** Where each baked GeoJSON theme was found (a blob URL for the phone's
  *  copy, else the server path), for layers added outside the style, like
  *  the lake depth bands. Filled by MapView before the map is made. */

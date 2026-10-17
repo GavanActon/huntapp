@@ -13,12 +13,6 @@ export function startOfDayMs(ms: number): number {
   return d.getTime()
 }
 
-/** Local midnight `days` days after today (DST-safe). */
-export function dayStartAfter(days: number): number {
-  const t = new Date()
-  return new Date(t.getFullYear(), t.getMonth(), t.getDate() + days).getTime()
-}
-
 export function isToday(ms: number): boolean {
   return startOfDayMs(ms) === startOfDayMs(Date.now())
 }
@@ -97,11 +91,6 @@ export function floorHourMs(ms = Date.now()): number {
   const d = new Date(ms)
   d.setMinutes(0, 0, 0)
   return d.getTime()
-}
-
-/** Hour-of-day label: 17 → "5 PM", 12 → "12 PM". */
-export function hourOfDayLabel(h: number): string {
-  return `${h % 12 || 12} ${h < 12 ? 'AM' : 'PM'}`
 }
 
 /** Compact duration: "30 min", "1 h", "1½ h", "2 h". Never "30m": it sits beside distances,

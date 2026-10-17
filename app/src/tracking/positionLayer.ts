@@ -57,11 +57,6 @@ function dotElement(): HTMLDivElement {
     if (useCheckForm.getState().at) return e.stopPropagation()
     // a moose being placed: a tap on you is nothing, he is not where you stand
     if (useHeardForm.getState().open) return e.stopPropagation()
-    // the Sharpen button waiting for a spot: you are the spot
-    if (useCheckForm.getState().arming) {
-      e.stopPropagation()
-      return useCheckForm.getState().open(f.lon, f.lat, 'where you stand')
-    }
     const scent = useScent.getState()
     if (scent.moving != null) {
       e.stopPropagation()

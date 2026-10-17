@@ -134,7 +134,6 @@ function watchModes() {
     if (s.heat !== p.heat) track('heat', { on: s.heat, target: s.target })
     if (s.heatScale !== p.heatScale) setting('spots.heatScale', () => useSpotsStore.getState().heatScale)
     if (s.heatStrength !== p.heatStrength) setting('spots.heatStrength', () => useSpotsStore.getState().heatStrength)
-    if (s.detail !== p.detail) setting('spots.detail', () => useSpotsStore.getState().detail)
     if (s.weights !== p.weights) for (const k of changed(s.weights, p.weights)) setting(`spots.weight.${String(k)}`, () => useSpotsStore.getState().weights[k])
   })
   useHunting.subscribe((s, p) => {
@@ -178,10 +177,7 @@ function watchTools() {
     if (s.placing && !p.placing) track('arm', { what: 'heard' })
     form(formNow())
   })
-  useCheckForm.subscribe((s, p) => {
-    if (s.arming && !p.arming) track('arm', { what: 'check' })
-    form(formNow())
-  })
+  useCheckForm.subscribe(() => form(formNow()))
   useScent.subscribe((s, p) => {
     if (s.adding && !p.adding) track('arm', { what: 'scent' })
   })

@@ -166,24 +166,6 @@
   font-size: calc(14px * var(--ui-scale, 1));
   line-height: 1.4;
 }
-.grade-switch {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 0;
-  border-top: 1px solid rgba(var(--c-ink-rgb), 0.1);
-  color: var(--c-text);
-  font-size: calc(15px * var(--ui-scale, 1));
-}
-.grade-switch > span {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.grade-switch small {
-  font-size: 12px;
-}
 .grade-sec {
   margin: 12px 0 4px;
   font-size: 12px;
@@ -229,9 +211,6 @@
 .grade-sd-note {
   color: var(--c-hd);
   font-weight: 650;
-}
-.grade-off .grade-row-text b {
-  color: var(--c-text-dim);
 }
 .grade-focus {
   background: rgba(var(--c-hd-rgb), 0.14);

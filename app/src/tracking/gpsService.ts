@@ -45,12 +45,9 @@ export function startGps(why = 'location on') {
         ts: p.timestamp,
       }
       const gps = useGpsStore.getState()
-      const { fix, why } = filter.push(raw)
+      const { fix } = filter.push(raw)
       gpsLogFix(raw, fix, filter)
-      if (!fix) {
-        gps.setDropped({ ...gps.dropped, [why]: gps.dropped[why] + 1 })
-        return
-      }
+      if (!fix) return
       // the map follows in positionLayer, which knows where on the screen you are kept
       gps.setFix(fix)
       gps.setStatus('on')

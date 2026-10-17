@@ -95,12 +95,6 @@ export function markAsked(a: SatAsk): SatAsk {
 /** How long a request counts as out: a run lands every 6 h, so an older ask wants sending again. */
 export const SAT_WAIT_MS = 6 * HOUR_MS
 
-/** A request is out, from this area, and not yet stale. */
-export function satWaiting(): SatAsk | null {
-  const a = readAsk()
-  return a && a.askedAt && a.areaId === ACTIVE_AREA.id && Date.now() - a.askedAt < SAT_WAIT_MS ? a : null
-}
-
 // ---------------------------------------------------------------- taking a reply in
 
 export type SatResult =

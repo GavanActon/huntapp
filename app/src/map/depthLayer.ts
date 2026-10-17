@@ -183,8 +183,3 @@ export function initDepthLayer() {
     ;(m.getSource(`${SRC}-labels`) as GeoJSONSource | undefined)?.setData(labelsFc())
   })
 }
-
-/** True when the estimate is what the Lake depths switch draws here. */
-export function depthIsEstimated(): boolean {
-  return !!habitat()?.has('depthEst')
-}

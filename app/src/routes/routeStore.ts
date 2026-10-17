@@ -186,11 +186,6 @@ export function campEnd(): RouteEnd {
   return { lon: camp.lon, lat: camp.lat, kind: 'camp', name: camp.name }
 }
 
-/** Where a route starts with nothing better: you, with location on; else camp. */
-export function defaultFrom(): RouteEnd {
-  return youEnd() ?? campEnd()
-}
-
 /** Open the card; with a point, that is where you are going. */
 export function openRoutes(to?: { lon: number; lat: number; name?: string; kind?: RouteEnd['kind'] }) {
   useMeasureStore.getState().stop()

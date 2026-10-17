@@ -37,7 +37,6 @@ export const REGION = {
   east: AREA.region.east,
   north: AREA.region.north,
 }
-export const REGION_BBOX = REGION
 
 /** True when a point is in the region (with a small margin). A GPS fix
  *  outside it is the phone at home, not the hunter in the bush: nothing
@@ -342,13 +341,6 @@ export interface PlaceDef {
   winds?: number[]
 }
 
-/** The area's preset places. The first is the camp: at Pickle Lake on the
- *  peninsula on the west shore (Gavan, 2026-09-25), not the map-link pin
- *  ~600 m north-east of it; its lake pins are OSM lake centres
- *  (2026-09-25), not guesses. Presets are refreshed from the area files on
- *  load (see placesStore). */
-export const PLACES: PlaceDef[] = AREA.presets.map((p) => ({ ...p }))
-
 /** The area's home (its first preset) as a chip names it: Camp at Pickle
  *  Lake, Shared spot at Lac Bailey. The area file's name, not the pin's:
  *  presets go back to the file on every load anyway. */
@@ -378,9 +370,6 @@ export const RELIEF = AREA.relief
  *  (the area file's contours.fineFrom); null, as at Pickle Lake, for every
  *  line at every zoom. */
 export const CONTOUR_FINE_FROM: number | null = AREA.contours?.fineFrom ?? null
-
-/** The province ('ON', 'QC'). */
-export const JURISDICTION = AREA.jurisdiction
 
 /** Which live services may stand in for a layer that is not baked: LIO's
  *  queries only in Ontario, and the province's own imagery (sources.ts). */

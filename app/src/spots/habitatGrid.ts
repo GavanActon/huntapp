@@ -136,13 +136,6 @@ export class Habitat {
     this.generated = h.generated
   }
 
-  /** Every band of a v1 payload, as views on its buffer. */
-  static fromPayload(h: BandHeader, buf: ArrayBuffer, base: number): Habitat {
-    const g = new Habitat(h)
-    for (const b of h.bands) g.attach(b, buf, base + b.offset)
-    return g
-  }
-
   /** A band's values, as they land: a view on the buffer where it is aligned, a copy where not. */
   attach(def: BandDef, buf: ArrayBuffer, at = 0): void {
     const n = this.cols * this.rows

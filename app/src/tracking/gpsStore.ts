@@ -16,21 +16,12 @@ export interface Fix {
 // granting permission changes that
 export type GpsStatus = 'off' | 'acquiring' | 'on' | 'denied' | 'error' | 'insecure'
 
-/** Whether the screen is being kept on. 'refused' is what Low Power Mode
- *  does; 'unsupported' is an iOS before 16.4. */
-export type WakeState = 'off' | 'on' | 'refused' | 'unsupported'
-
 interface GpsState {
   status: GpsStatus
   fix: Fix | null
   /** Why the last attempt failed, in the browser's own words. "No GPS fix"
    *  is not a diagnosis; "location services are off" is. */
   lastError: string | null
-  /** Fixes the gate refused this session — for the diagnostics report. */
-  dropped: { coarse: number; stale: number; jump: number }
-  setDropped: (d: { coarse: number; stale: number; jump: number }) => void
-  wake: WakeState
-  setWake: (w: WakeState) => void
   /** The locate button is on: the watch runs (and the track records) until it is tapped off. */
   locating: boolean
   setLocating: (v: boolean) => void
@@ -50,10 +41,6 @@ export const useGpsStore = create<GpsState>((set) => ({
   status: 'off',
   fix: null,
   lastError: null,
-  dropped: { coarse: 0, stale: 0, jump: 0 },
-  setDropped: (dropped) => set({ dropped: { ...dropped } }),
-  wake: 'off',
-  setWake: (wake) => set({ wake }),
   locating: false,
   setLocating: (locating) => set({ locating }),
   headingUp: false,

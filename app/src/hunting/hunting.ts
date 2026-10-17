@@ -48,11 +48,6 @@ export function toggleCone(): void {
   sc.setAdding(true)
 }
 
-/** The Scent button's lit state: the cone on you, or a tap being waited for. */
-export function coneLit(): boolean {
-  return useHunting.getState().cone || useScent.getState().adding
-}
-
 function metres(a: { lon: number; lat: number }, b: { lon: number; lat: number }): number {
   return Math.hypot((a.lon - b.lon) * 111_320 * Math.cos((a.lat * Math.PI) / 180), (a.lat - b.lat) * 110_574)
 }

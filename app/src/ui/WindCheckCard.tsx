@@ -78,25 +78,17 @@ interface CheckAt {
 
 interface CheckForm {
   at: CheckAt | null
-  /** the Sharpen button with no fix to stand on: the next tap on the map is where the check is made */
-  arming: boolean
   open: (lon: number, lat: number, label: string, seen?: { from: { lon: number; lat: number } | null }) => void
-  arm: () => void
   close: () => void
 }
 export const useCheckForm = create<CheckForm>((set) => ({
   at: null,
-  arming: false,
   open: (lon, lat, label, seen) => {
     // from the tap that opened the form: iOS only grants the compass from one
     void requestCompass()
-    set({ at: { lon, lat, label, ...(seen ? { seen: true, from: seen.from } : {}) }, arming: false })
+    set({ at: { lon, lat, label, ...(seen ? { seen: true, from: seen.from } : {}) } })
   },
-  arm: () => {
-    void requestCompass()
-    set({ at: null, arming: true })
-  },
-  close: () => set({ at: null, arming: false }),
+  close: () => set({ at: null }),
 }))
 
 /** The forecast wind at a place and minute as the map draws it: the HRDPS

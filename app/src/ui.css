@@ -426,15 +426,6 @@
   pointer-events: auto;
 }
 
-.inst {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0;
-  min-width: 0;
-}
-
 /* a slow fade in and out: the locate button while the GPS is still looking */
 @keyframes pulse {
   0%,
@@ -913,36 +904,9 @@
 
 /* ---------- the live leg: time left, arrival, the far end ---------- */
 
-/* ---------- swipe up for more, with a real button for everyone else ---------- */
-
-.grab {
-  display: block;
-  width: 100%;
-  padding: 3px 0 5px;
-}
-
-.grab i {
-  display: block;
-  width: 32px;
-  height: 3px;
-  border-radius: 2px;
-  margin: 0 auto;
-  background: var(--c-border-strong);
-}
-
-.grab:active i {
-  background: var(--c-accent);
-}
-
 /* ---------- one dock surface, two detents (§2.3) ---------- */
 
 /* ---------- saved-trip admin: the tail of the raised list ---------- */
-
-.saved-actions {
-  display: inline-flex;
-  gap: 14px;
-  font-size: 12px;
-}
 
 .linklike.danger {
   color: var(--c-danger);
@@ -1121,22 +1085,6 @@
   padding: 4px 6px;
 }
 
-.place-row-edit {
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-sm);
-  background: rgba(var(--c-bg-rgb), 0.45);
-  padding: 6px 8px 6px 10px;
-}
-
-.pe-fields {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 1px;
-}
-
 /* a pin's colour: a row of swatches in its popup and in the Pins editor, its dot in the list */
 .pin-swatches {
   display: flex;
@@ -1167,28 +1115,6 @@
   margin-right: 6px;
   border-radius: 50%;
   box-shadow: 0 0 0 1.5px rgba(var(--c-bg-rgb), 0.9);
-}
-
-.pe-name {
-  text-align: left;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--c-text);
-  padding: 2px 0;
-}
-
-.pe-note {
-  text-align: left;
-  font-size: 10.5px;
-  color: var(--c-text-dim);
-  padding: 1px 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.place-row-edit .trip-name-input {
-  width: 100%;
 }
 
 /* ---------- the sentence: from -> to, the trip's headline ---------- */

@@ -34,12 +34,3 @@ export function tileOf(i: number, j: number): Tile {
 export function tileAt(lon: number, lat: number): Tile {
   return tileOf(Math.floor((lon - LON0) / TILE_W), Math.floor((LAT0 - lat) / TILE_H))
 }
-
-export function parseTileId(id: string): Tile | null {
-  const m = /^t-(\d+)-(\d+)$/.exec(id)
-  return m ? tileOf(Number(m[1]), Number(m[2])) : null
-}
-
-export function tileCentre(t: Tile): [number, number] {
-  return [(t.west + t.east) / 2, (t.south + t.north) / 2]
-}

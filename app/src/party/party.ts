@@ -511,7 +511,3 @@ export function initParty(): void {
 export function membersList(): Member[] {
   return Object.values(get().members).sort((a, b) => a.who.localeCompare(b.who))
 }
-
-export function outboxCount(): number {
-  return get().outbox.length
-}

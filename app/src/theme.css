@@ -195,8 +195,7 @@ button:disabled {
 /* digits that change in place must not jitter the layout */
 .numeral,
 .wxcell b,
-.tb-facts,
-.inst {
+.tb-facts {
   font-variant-numeric: tabular-nums;
 }
 

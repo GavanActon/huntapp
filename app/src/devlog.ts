@@ -69,10 +69,6 @@ export function devlogCount(): number {
   return lines.length
 }
 
-export function devlogLines(): string[] {
-  return lines.slice()
-}
-
 export function onDevlog(cb: () => void): () => void {
   listeners.add(cb)
   return () => listeners.delete(cb)

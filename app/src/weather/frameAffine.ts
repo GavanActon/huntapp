@@ -58,14 +58,6 @@ export class FrameAnchor {
   }
 }
 
-export function applyX(m: Affine, x: number, y: number): number {
-  return m.a * x + m.c * y + m.e
-}
-
-export function applyY(m: Affine, x: number, y: number): number {
-  return m.b * x + m.d * y + m.f
-}
-
 export function invert(m: Affine): Affine {
   const det = m.a * m.d - m.b * m.c || 1e-9
   const a = m.d / det
@@ -85,11 +77,6 @@ export function compose(m: Affine, n: Affine): Affine {
     e: m.a * n.e + m.c * n.f + m.e,
     f: m.b * n.e + m.d * n.f + m.f,
   }
-}
-
-/** Uniform scale factor (√|det|). */
-export function scaleOf(m: Affine): number {
-  return Math.sqrt(Math.abs(m.a * m.d - m.b * m.c))
 }
 
 /** Same transform to within a hundredth of a pixel at the origin and in the linear part. */
