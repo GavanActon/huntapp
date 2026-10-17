@@ -44,6 +44,8 @@ AREAS, WORK, OUT = BASE / "areas", BASE / "work", BASE / "out"
 CACHE = HERE / "raw"
 WIND_MARGIN = 150  # cells each way: about 4.4 km east-west, 4 km north-south at 49 N
 VERSION = "v1"
+# the surrogate run a tile's wind comes from (pipeline/raw/surrogate/runs/<run>); --run for a trial
+SD_RUN = "all"
 
 
 def area_file(i: int, j: int) -> dict:
@@ -69,7 +71,7 @@ def area_file(i: int, j: int) -> dict:
         "live": {"lio": False},
         "presets": [],
         "files": {"pmtiles": [], "geo": [], "grids": ["micro"]},
-        "bake": {"outDir": str((WORK / tid).relative_to(ROOT)).replace("\\", "/"), "lidar": "none", "pointcloud": None, "wind": "sd", "sdRun": "all",
+        "bake": {"outDir": str((WORK / tid).relative_to(ROOT)).replace("\\", "/"), "lidar": "none", "pointcloud": None, "wind": "sd", "sdRun": SD_RUN,
                  "forest": {"adapter": "ca.scanfi", "vintage": "SCANFI 2025; CanLaD 1985-2025"}, "vectors": None, "imagery": None, "hrdem": [], "nts": []},
     }
 
@@ -518,7 +520,16 @@ def main() -> int:
     ap.add_argument("--out-dir", help="batches: where the batch files go")
     ap.add_argument("--reverse", action="store_true", help="batches: from the queue's end (a second machine)")
     ap.add_argument("--stands", action="store_true", help="batches: the baked tiles still without their stand bands")
+    ap.add_argument("--version", default=None, help="a trial version: out-<version>/ and data/sd/<version>/ on R2 (default v1)")
+    ap.add_argument("--run", default=None, help="the surrogate run for the wind (default all)")
     a = ap.parse_args()
+    # a trial version (2026-10-17, SD v2: "trial, then decide"): its own out-<version> folder, its own
+    # R2 prefix data/sd/<version>/ and index, never v1's; --run names the net its wind comes from
+    global VERSION, OUT, SD_RUN
+    if a.version and a.version != VERSION:
+        VERSION, OUT = a.version, BASE / f"out-{a.version}"
+    if a.run:
+        SD_RUN = a.run
     cells = lattice.tiles_in(tuple(a.box)) if a.box else []
     if a.cmd == "plan":
         print(f"{len(cells)} tiles: {lattice.tile_id(*cells[0])} .. {lattice.tile_id(*cells[-1])}")
