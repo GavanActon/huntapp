@@ -447,7 +447,8 @@ export function useAreaOrder(): HdOrder | null {
 export function useOrderTick(o: HdOrder | null): number {
   const [now, setNow] = useState(Date.now)
   useEffect(() => {
-    if (!o || orderStage(o).stage === 'ready') return
+    // a real order's stage never moves on the phone (hdOrders.ts): no clock for it
+    if (!o || !o.sim || orderStage(o).stage === 'ready') return
     const t = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(t)
   }, [o])
@@ -498,7 +499,9 @@ export function GradeTile(): JSX.Element | null {
   if (GRADE === 'live' || explore) return null
   const gold = (GRADE === 'hd' && inView) || finishing
   const st = order ? orderStage(order, now) : null
-  const loading = (installing && !finishing) || (!gold && st != null && st.stage !== 'ready')
+  // the ring turns only for what moves on the phone: an install, or a dev build's simulated
+  // order. A real order sat at its first stage for good, and the ring turned for the app's life
+  const loading = (installing && !finishing) || (!gold && order?.sim === true && st != null && st.stage !== 'ready')
   return (
     <>
       <span className="viewpill-sep" aria-hidden="true" />
@@ -506,7 +509,7 @@ export function GradeTile(): JSX.Element | null {
         type="button"
         className={`grade-tag ${gold ? 'grade-hd' : 'grade-sd'}${st?.stage === 'ready' && !gold ? ' grade-ready' : ''}`}
         onClick={() => openGrade()}
-        aria-label={gold ? 'HD here: what it gives' : installing ? 'Installing HD' : order ? 'HD being built' : 'SD here: what HD adds'}
+        aria-label={gold ? 'HD here: what it gives' : installing ? 'Installing HD' : order ? (order.sim ? 'HD being built' : 'HD ordered') : 'SD here: what HD adds'}
       >
         {loading && <i className="grade-spin" aria-hidden="true" />}
         <span>{gold ? 'HD' : 'SD'}</span>

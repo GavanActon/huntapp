@@ -125,12 +125,11 @@ export default function GradeSheet({ focus }: { focus?: string }): JSX.Element {
             ))}
           </ol>
           {order.sim && <div className="dim grade-note">Simulated on the dev build: no request was sent and nothing new is baked.</div>}
-          {!order.sim && st.stage !== 'ready' && <div className="dim grade-note">The email comes when it is built.</div>}
-          {(st.stage === 'ready' || order.sim) && (
-            <button type="button" className="layers-link" onClick={() => removeOrder(order.boxId)}>
-              {st.stage === 'ready' ? 'Done with it' : 'Cancel'}
-            </button>
-          )}
+          {!order.sim && st.stage !== 'ready' && <div className="dim grade-note">The email comes when it is built; the phone cannot follow it.</div>}
+          {/* a real order could not be put away: it sat on the circle for good */}
+          <button type="button" className="layers-link" onClick={() => removeOrder(order.boxId)}>
+            {st.stage === 'ready' ? 'Done with it' : order.sim ? 'Cancel' : 'Forget it here'}
+          </button>
         </div>
       )}
 
