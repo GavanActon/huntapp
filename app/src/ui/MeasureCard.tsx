@@ -1,15 +1,21 @@
 import { useEffect, useState } from 'react'
 import { formatBearing, formatDistance, legsOf, totalM } from '../measure/measureMath'
 import { useMeasureStore } from '../measure/measureStore'
+import { useMeasureProfile } from '../measure/profile'
 import { useAppStore } from '../state/appStore'
 import { durationLabel } from '../time'
 import { IconMinus, IconPlus, IconUndo } from './icons'
+import MeasureProfile from './MeasureProfile'
 
 /**
  * The measuring tool's readout, in the bottom bar: the total, and the last
  * leg's range and bearing. How long that is on foot sits one tap deeper
  * (pace ›), with the pace nudges. The legs label themselves on the map;
  * this is the sum. Done leaves the tool; so does Escape.
+ *
+ * Walking (the Measure button's drawer) reads the distance over the
+ * ground's ups and downs, with the climb, and the time at the slope's pace;
+ * the elevation trace sits under it when on (measure/profile.ts).
  */
 export default function MeasureCard() {
   const points = useMeasureStore((s) => s.points)
@@ -21,6 +27,10 @@ export default function MeasureCard() {
   const paceKmh = useAppStore((s) => s.paceKmh)
   const setPaceKmh = useAppStore((s) => s.setPaceKmh)
   const [showPace, setShowPace] = useState(false)
+  const line = useMeasureStore((s) => s.line)
+  const trace = useMeasureStore((s) => s.trace)
+  const profile = useMeasureProfile((s) => s.profile)
+  const walking = line === 'walking' && profile != null
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -32,7 +42,10 @@ export default function MeasureCard() {
 
   const legs = legsOf(points)
   const last = legs[legs.length - 1]
-  const total = totalM(points)
+  const straight = totalM(points)
+  const total = walking ? profile.groundM : straight
+  const elev = (m: number) => (units === 'imperial' ? `${Math.round(m * 3.28084)} ft` : `${Math.round(m)} m`)
+  const minutes = walking ? Math.max(1, Math.round(profile.timeS / 60)) : Math.max(1, Math.round((total / 1000 / paceKmh) * 60))
   const pace = units === 'imperial' ? `${(paceKmh * 0.621371).toFixed(1)} mph` : `${paceKmh.toFixed(1)} km/h`
 
   return (
@@ -57,8 +70,15 @@ export default function MeasureCard() {
         ) : (
           <span className="numeral">
             {from === 'you' && <span className="dim">from you · </span>}
+            {walking && <span className="dim">walking </span>}
             <b className="measure-total">{formatDistance(total, units)}</b>
             {legs.length > 1 ? ` total · ${legs.length} legs` : ' total'}
+            {walking && <span className="dim"> · straight {formatDistance(straight, units)}</span>}
+          </span>
+        )}
+        {walking && !trace && (
+          <span className="numeral">
+            ↑ <b>{elev(profile.climbM)}</b> ↓ <b>{elev(profile.descentM)}</b>
           </span>
         )}
         {last && (
@@ -74,7 +94,7 @@ export default function MeasureCard() {
         )}
         {total > 0 && showPace && (
           <span className="numeral speed-step">
-            about <b>{durationLabel(Math.max(1, Math.round((total / 1000 / paceKmh) * 60)))}</b> on foot at
+            about <b>{durationLabel(minutes)}</b> on foot{walking ? ', the slopes counted,' : ''} at
             <button className="nudge" onClick={() => setPaceKmh(Math.max(1, Math.round((paceKmh - 0.5) * 2) / 2))} aria-label="Slower">
               <IconMinus size={11} />
             </button>
@@ -85,6 +105,7 @@ export default function MeasureCard() {
           </span>
         )}
       </div>
+      {trace && points.length >= 2 && <MeasureProfile />}
     </div>
   )
 }

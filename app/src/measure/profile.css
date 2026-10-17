@@ -1,0 +1,86 @@
+/* The elevation trace under the Measure card (ui/MeasureProfile.tsx).
+   The ground wears the measure line's amber, so the trace reads as that
+   line; the trees a quiet green over it; the sight line the ink, dashed. */
+:root {
+  --mp-ground: #ffb454;
+  --mp-trees: rgba(111, 160, 96, 0.42);
+}
+:root[data-theme='outdoor'] {
+  --mp-ground: #a8640f;
+  --mp-trees: rgba(64, 116, 56, 0.32);
+}
+
+.mprof {
+  margin-top: 6px;
+  width: 100%;
+}
+.mprof-read {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  min-height: 17px;
+  font-size: 12px;
+  color: var(--c-text-dim);
+}
+.mprof-read b {
+  color: var(--c-text);
+  font-weight: 600;
+}
+.mprof svg {
+  display: block;
+  touch-action: none;
+  user-select: none;
+  cursor: crosshair;
+}
+.mprof .g-line {
+  fill: none;
+  stroke: var(--mp-ground);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.mprof .g-area {
+  fill: var(--mp-ground);
+  opacity: 0.16;
+}
+.mprof .t-band {
+  fill: var(--mp-trees);
+}
+.mprof .s-line {
+  stroke: var(--c-text);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  opacity: 0.85;
+}
+.mprof .s-block {
+  fill: var(--c-warn);
+  stroke: var(--c-surface-heavy);
+  stroke-width: 2;
+}
+.mprof .tick {
+  stroke: var(--c-border-strong);
+  stroke-width: 1;
+}
+.mprof .ylab {
+  fill: var(--c-text-faint);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.mprof .cross {
+  stroke: var(--c-text);
+  stroke-width: 1;
+  opacity: 0.6;
+}
+.mprof .cross-dot {
+  fill: var(--mp-ground);
+  stroke: var(--c-surface-heavy);
+  stroke-width: 2;
+}
+.mprof-sight {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--c-text-dim);
+}

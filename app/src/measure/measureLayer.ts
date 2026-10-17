@@ -10,13 +10,17 @@ import { getMap, onEachMap, withMap } from '../map/mapController'
 import { useAppStore } from '../state/appStore'
 import { formatBearing, formatDistance, legsOf } from './measureMath'
 import { useMeasureStore } from './measureStore'
+import { initMeasureProfile, useMeasureProfile } from './profile'
 
 /**
  * The measuring tool on the map: tap to drop points, and every leg
  * carries its range and bearing. Points are draggable, and a tap on one
  * removes it — the same gestures the route already teaches.
  *
- * Straight-line ranges, the way a map ruler works.
+ * Straight-line ranges, the way a map ruler works; walking (the drawer's
+ * Straight | Walking), each leg reads the distance over the ground's ups
+ * and downs instead (measure/profile.ts). A finger along the elevation
+ * trace marks its place on the line.
  */
 
 const COLOR = '#ffb454' // amber — never mistakable for the blue route line
@@ -80,6 +84,19 @@ function addLayers(map: MlMap) {
       'text-halo-width': 1.6,
     },
   })
+  // where a finger is along the elevation trace (ui/MeasureProfile.tsx)
+  map.addLayer({
+    id: 'measure-scrub',
+    type: 'circle',
+    source: 'measure',
+    filter: ['==', ['get', 'kind'], 'scrub'],
+    paint: {
+      'circle-radius': 6,
+      'circle-color': COLOR,
+      'circle-stroke-color': 'rgba(8, 20, 34, 0.9)',
+      'circle-stroke-width': 2.5,
+    },
+  })
   map.addLayer({
     id: 'measure-points',
     type: 'circle',
@@ -97,8 +114,10 @@ function addLayers(map: MlMap) {
 }
 
 function buildFc(): FeatureCollection {
-  const { active, points } = useMeasureStore.getState()
+  const { active, points, line, scrub } = useMeasureStore.getState()
   if (!active) return emptyFc()
+  // walking: the ground's distance per leg, once worked out and only while no point is being dragged
+  const walked = line === 'walking' && !drag ? useMeasureProfile.getState().profile?.legs : undefined
 
   const pts = points.map((p, i) => (drag && drag.idx === i ? drag.lngLat : p))
   const features: Feature[] = []
@@ -119,7 +138,7 @@ function buildFc(): FeatureCollection {
         geometry: { type: 'LineString', coordinates: [pts[i], pts[i + 1]] },
         properties: {
           kind: 'leg',
-          label: `${formatDistance(legs[i].m, units)} · ${formatBearing(legs[i].deg)}`,
+          label: `${formatDistance(walked?.[i]?.groundM ?? legs[i].m, units)} · ${formatBearing(legs[i].deg)}`,
         },
       })
     }
@@ -131,6 +150,7 @@ function buildFc(): FeatureCollection {
       properties: { kind: 'point', idx: i },
     })
   }
+  if (scrub) features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: scrub }, properties: { kind: 'scrub' } })
   return { type: 'FeatureCollection', features }
 }
 
@@ -219,6 +239,7 @@ let inited = false
 export function initMeasureLayer() {
   if (inited) return // React StrictMode mounts twice in dev
   inited = true
+  initMeasureProfile()
 
   onEachMap((map) => {
     addLayers(map)
@@ -248,10 +269,16 @@ export function initMeasureLayer() {
   })
 
   useMeasureStore.subscribe((s, prev) => {
-    if (s.points === prev.points && s.active === prev.active) return
+    if (s.points === prev.points && s.active === prev.active && s.line === prev.line && s.scrub === prev.scrub) return
     const live = getMap()
     if (live && layersOn === live) render(live)
     else withMap(render)
+  })
+
+  // the walking distances landing relabel the legs
+  useMeasureProfile.subscribe(() => {
+    const live = getMap()
+    if (live && layersOn === live && useMeasureStore.getState().active) render(live)
   })
 
   // leg labels are written in the user's units — redraw when those change

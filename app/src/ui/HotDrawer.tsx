@@ -303,6 +303,11 @@ function RoutesRows({ go }: RowsProps) {
   )
 }
 
+const MEASURE_LINES = [
+  ['straight', 'Straight'],
+  ['walking', 'Walking'],
+] as const
+
 function MeasureRows({ go }: RowsProps) {
   const pace = useAppStore((s) => s.paceKmh)
   const setPace = useAppStore((s) => s.setPaceKmh)
@@ -314,12 +319,20 @@ function MeasureRows({ go }: RowsProps) {
     useMeasureStore.getState().start(p, p ? 'you' : undefined)
   }
   const paceText = units === 'imperial' ? `${(pace * 0.621371).toFixed(1)} mph` : `${pace.toFixed(1)} km/h`
+  // how the line reads (measure/profile.ts): straight, or walked over the ups and downs; the trace under the card, and on it the trees and the sight line
+  const line = useMeasureStore((s) => s.line)
+  const trace = useMeasureStore((s) => s.trace)
+  const sight = useMeasureStore((s) => s.sight)
+  const m = useMeasureStore.getState()
   return (
     <>
       <Act disabled={!you} onTap={go(start(you ? [you.lon, you.lat] : undefined))}>
         From you
       </Act>
       <Act onTap={go(start())}>From a tap</Act>
+      <Seg label="Line" value={line} options={MEASURE_LINES} onPick={m.setLine} />
+      <Switch label="Elevation trace" on={trace} onChange={m.setTrace} />
+      {trace && <Switch label="Trees & sight line" on={sight} onChange={m.setSight} />}
       <div className="hd-row">
         <span>
           Pace <span className="numeral dim">· {paceText}</span>
