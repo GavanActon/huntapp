@@ -15,7 +15,7 @@ import { drawingPath } from '../paths/pathStore'
 import { useBushLabels } from '../bushLabels/labelStore'
 import { baseTone, BOG_TUFT, bogTuftImage, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour, lidarShadeShown, openLanesOut, type ArchiveRange, reliefShadePaint, standIn, syncUnderlays } from './mapStyle'
 import { offlineComplete, registerAllDataFiles, registerDataFile, sourceModes } from './pmtilesRegistry'
-import { probeTerrainDepth, STREAM_PICTURES, STREAMED_KEYS, streamedContourTiles } from './streamPictures'
+import { loadStreamLib, probeTerrainDepth, STREAM_PICTURES, STREAMED_KEYS, streamedContourTiles } from './streamPictures'
 // the contours' and lake depths' numbers in the phone's units
 import './unitLabels'
 import { initViewLook } from './viewLook'
@@ -204,6 +204,8 @@ export default function MapView() {
       // and how deep the streamed heights go here asked before the style is made
       if (STREAM_PICTURES) {
         for (const k of STREAMED_KEYS) available.delete(k)
+        // the contour library comes in only for this trial, before the style asks it for sources
+        await loadStreamLib()
         devlog('map', `pictures streamed · Mapterhorn to z${await probeTerrainDepth(HOME.center[0], HOME.center[1])}`)
       }
       // an HD area shown as SD (state/grade.ts): HD's own layers left out of the style, as an SD bake has none

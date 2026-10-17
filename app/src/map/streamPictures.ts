@@ -1,5 +1,7 @@
 import maplibregl, { type SourceSpecification } from 'maplibre-gl'
-import mlcontour from 'maplibre-contour'
+
+/** The contour library's default export: the DEM source that cuts lines and shade from terrain tiles. */
+type MlContour = typeof import('maplibre-contour').default
 import { LIVE_RASTER, SHARP_IMAGERY, type LiveRaster } from '../sources'
 import type { ContourInterval } from '../state/appStore'
 
@@ -86,12 +88,21 @@ export async function probeTerrainDepth(lon: number, lat: number): Promise<numbe
   return depth
 }
 
+/** maplibre-contour (29 KB and a worker of its own), loaded only when the pictures
+ *  stream: MapView awaits this before the style is built, and every use of the
+ *  library below sits behind STREAM_PICTURES. Off the start bundle otherwise. */
+let lib: MlContour | null = null
+export async function loadStreamLib(): Promise<void> {
+  if (!lib) lib = (await import('maplibre-contour')).default
+}
+
 // one source of tiles for the shade and the contours both, fetched once
 // and decoded in a worker
-let dem: InstanceType<typeof mlcontour.DemSource> | null = null
+let dem: InstanceType<MlContour['DemSource']> | null = null
 function demSource() {
   if (!dem) {
-    dem = new mlcontour.DemSource({ url: TILES, encoding: 'terrarium', maxzoom: depth, worker: true, cacheSize: 120 })
+    if (!lib) throw new Error('the contour library is not loaded: loadStreamLib first')
+    dem = new lib.DemSource({ url: TILES, encoding: 'terrarium', maxzoom: depth, worker: true, cacheSize: 120 })
     dem.setupMaplibre(maplibregl)
   }
   return dem
