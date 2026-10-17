@@ -47,3 +47,7 @@ app/public/data/areas/sault-test/trapline-sault-test.geojson
 app/public/data/areas/highland-lake/forest-highland-lake.geojson
 app/public/data/areas/highland-lake/watercourse-highland-lake.geojson
 app/public/data/areas/highland-lake/wetland-highland-lake.geojson
+
+# PALM run inputs and outputs (gigabytes; the share holds the runs, fields/ holds the reads)
+pipeline/teacher/palm/*/JOBS/
+pipeline/teacher/palm/*/viz/
