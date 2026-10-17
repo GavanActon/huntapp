@@ -597,10 +597,12 @@ async function recompute() {
   void loadRestOfMicro()
   const mm = getMap()
   if (!mm || !mm.getSource(HEAT_SRC)) return
-  // the numbered pins follow the heat map
-  const visible = s.heat ? 'visible' : 'none'
+  // the numbered pins follow the heat map: the switch as it is now, not as the pass began
+  // (a toggle during the pass is showHeat's, and the pass's end must not undo it)
+  const heat = useSpotsStore.getState().heat
+  const visible = heat ? 'visible' : 'none'
   for (const id of ['spots-heat', 'spots-pin', 'spots-pin-glow', 'spots-pin-score']) mm.setLayoutProperty(id, 'visibility', visible)
-  paint(s.heat ? res?.scores ?? null : null, isFish(s.target), subj)
+  paint(heat ? res?.scores ?? null : null, isFish(s.target), subj)
   pins(mm)
 }
 
