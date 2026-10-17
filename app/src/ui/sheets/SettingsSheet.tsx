@@ -297,10 +297,10 @@ function SendSettingsRow({ online }: { online: boolean }): JSX.Element {
  * 2026-10-05: categorical, but don't hide): On this phone (the maps, the
  * weather), Map (Map buttons and Views, which left the ⋯ menu for here, past
  * hunts), Display (units, the hand, text and buttons; Outdoor is the strip's
- * own button), Sharing (your initials, the checks, the stats), Something
- * wrong? (the dev log, the credits, the build), and Dev mode, a switch that
- * shows the rows for building the app: the terrain wind's HD/SD, the scent
- * knobs, sending these settings (Gavan, 2026-10-17). The download runs in
+ * own button), Sharing (your initials, the checks, the stats), About (the
+ * credits, the build), and Dev mode, a switch that shows the rows for
+ * building the app: the terrain wind's HD/SD, the scent knobs, sending these
+ * settings, the dev log (Gavan, 2026-10-17). The download runs in
  * offline/downloads.ts, so closing the sheet does not stop it. The host draws
  * the title row.
  */
@@ -441,8 +441,7 @@ export default function SettingsSheet(): JSX.Element {
       <CheckShareRow online={online} />
       <StatsRow />
 
-      <div className="st-sec">Something wrong?</div>
-      <DevlogRows />
+      <div className="st-sec">About</div>
       <details className="st-credits">
         <summary className="st-row">
           <span>Map credits</span>
@@ -462,7 +461,7 @@ export default function SettingsSheet(): JSX.Element {
       <label className="st-row st-two">
         <span>
           Dev mode
-          <small className="dim">the rows for building the app: the terrain wind, the scent knobs, sending these settings</small>
+          <small className="dim">the rows for building the app: the terrain wind, the scent knobs, sending these settings, the dev log</small>
         </span>
         <input type="checkbox" className="switch" checked={devMode} onChange={(e) => setDevMode(e.target.checked)} />
       </label>
@@ -492,6 +491,7 @@ export default function SettingsSheet(): JSX.Element {
             <span className="dim">›</span>
           </button>
           <SendSettingsRow online={online} />
+          <DevlogRows />
         </>
       )}
     </div>
