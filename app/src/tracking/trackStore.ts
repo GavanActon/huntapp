@@ -112,7 +112,7 @@ function write() {
       localStorage.setItem(INDEX_KEY, JSON.stringify(s.tracks.map((t) => t.id)))
       dirty.delete('*')
     }
-    for (const id of [...dirty]) {
+    for (const id of dirty) {
       const t = s.tracks.find((x) => x.id === id)
       if (t) localStorage.setItem(trackKey(id), JSON.stringify(t))
       else localStorage.removeItem(trackKey(id))
