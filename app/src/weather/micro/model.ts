@@ -16,7 +16,7 @@ import { biasFor, biasMatters, biasWords, learnBiases, type Bias, type Lesson } 
 import { fitAmbient, fitHoldsUntil, fitMatters, fitWeightAt, fitWeightsAt, fitWords, sessionAt, sessionsOf, sitScore as scoreSit, type AmbientFit, type MapProbeFn, type ProbeFn, type SitScore } from './ambientFit'
 import { tuneValues, useScentTune, type TuneValues } from './scentTune'
 import { leavesDown, leavesNote } from './leaves'
-import { elevAt, ensureRelief, onRelief } from './relief'
+import { elevAt, ensureRelief, onRelief, waterAt } from './relief'
 import { dist as distWords, height as heightWords } from '../../lengths'
 
 /**
@@ -1071,7 +1071,10 @@ const LEE_REACH_M = 300
  * The rule's numbers: the rise where the eddy starts (rise0) and where it is
  * full (rise1), degrees; its share of the mean past which the head-height air
  * runs back (back); its share over open ground and water, where nothing holds
- * the wind above off the ground (open); and whether the air that runs back
+ * the wind above off the ground (open), and over open water on its own (water:
+ * PALM's head height over water in a lee follows the wind above it, a median
+ * 9-23° off, where under the trees of the same lees it runs back; Hunter-Jay's
+ * floor_learn.py, 2026-10-17); and whether the air that runs back
  * climbs the slope (uphill) or runs straight against the wind. Held here so
  * scripts/palm_compare.py can score settings side by side (setLeeTune); the
  * app never changes them.
@@ -1082,7 +1085,7 @@ const LEE_REACH_M = 300
 // u0, u1: the forecast wind (km/h) over which the eddy comes in; backU: the
 // return flow's speed as a share of that wind where the eddy is whole (0: a
 // share of the floor's own sheltered wind, as before 2026-10-15)
-const LEE_DEFAULT = { rise0: 5, rise1: 15, back: 0.5, open: 0.6, uphill: 1, conv: 1, u0: 2, u1: 5, backU: 0.1, off: 0 }
+const LEE_DEFAULT = { rise0: 5, rise1: 15, back: 0.5, open: 0.6, water: 0.6, uphill: 1, conv: 1, u0: 2, u1: 5, backU: 0.1, off: 0 }
 let leeTune = { ...LEE_DEFAULT }
 export function setLeeTune(t: Partial<typeof LEE_DEFAULT> | null): void {
   leeTune = { ...LEE_DEFAULT, ...t }
@@ -1616,7 +1619,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   const rise = shoreRules && edges ? riseUpwind(i, lon, lat, dirFrom) : NaN
   // a sunny day's upslope flow (below) already climbs a lit lee slope, so the
   // eddy gives way as the sun stirs the air
-  const lee = leeShare(rise) * (1 - s) * (1 - leeTune.conv * lay.convective) * clamp((U - leeTune.u0) / (leeTune.u1 - leeTune.u0), 0, 1) * (th > 0 ? 1 : leeTune.open)
+  const lee = leeShare(rise) * (1 - s) * (1 - leeTune.conv * lay.convective) * clamp((U - leeTune.u0) / (leeTune.u1 - leeTune.u0), 0, 1) * (th > 0 ? 1 : Number.isFinite(rise) && waterAt(lon, lat) ? leeTune.water : leeTune.open)
   const slot = open && lee < leeTune.back && !slotTune.off && b(K_THSLOPE, i) < slotTune.maxSlope ? slotAt(g, i) : null
   if (slot) {
     const axE = Math.sin(slot.axis * RAD)

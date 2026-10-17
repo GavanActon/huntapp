@@ -26,6 +26,14 @@ export function elevAt(lon: number, lat: number): number {
   return i < 0 ? NaN : g.data.elev[i]
 }
 
+/** The point is open water by the going grid's ground class; false outside it or before it is loaded. */
+export function waterAt(lon: number, lat: number): boolean {
+  const g = going()
+  if (!g) return false
+  const i = g.grid.index(lon, lat)
+  return i >= 0 && g.data.ground[i] === WATER
+}
+
 /**
  * The going grid's ground for a plume's particle walk (reliefNear): where
  * the plume's source sits in the grid, and the bands. Plain numbers and
