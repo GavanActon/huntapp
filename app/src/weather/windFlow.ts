@@ -947,7 +947,9 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
     if (!isIdentity(M)) {
       if ((!moved && now - movedAt > SETTLED_MS) || now - movingSince > LONG_MOVE_MS) rebase()
     }
-    if (q.wind30 && !moved && now - drawnAt < 28) {
+    // at most 60 frames a second (30 at the dial's wind30): a 120 Hz screen (an iPhone's
+    // ProMotion) ran the whole frame twice as often, for trails half as long
+    if (!moved && now - drawnAt < (q.wind30 ? 28 : 12)) {
       raf = requestAnimationFrame(frame)
       return
     }
@@ -960,7 +962,9 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.globalCompositeOperation = 'destination-in'
-    ctx.fillStyle = `rgba(0, 0, 0, ${tune.windTrail})`
+    // the trail's fade by time, not by frame: windTrail is the share kept over a 60 Hz frame,
+    // so a frame that took longer (a phone down at 30) fades the same per second
+    ctx.fillStyle = `rgba(0, 0, 0, ${Math.pow(tune.windTrail, dt * 60)})`
     ctx.fillRect(0, 0, w, h)
     ctx.globalCompositeOperation = 'source-over'
     ctx.setTransform(dpr * M.a, dpr * M.b, dpr * M.c, dpr * M.d, dpr * M.e, dpr * M.f)
