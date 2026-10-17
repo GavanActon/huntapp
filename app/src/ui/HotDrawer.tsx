@@ -58,10 +58,11 @@ function Seg<T extends string | number>({ label, note, value, options, onPick, o
   )
 }
 
-/** `text`: the value worded another way than a percentage (a count, a share to two places). */
-function Slider({ label, value, min, max, step, onChange, text }: { label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void; text?: string }) {
+/** `text`: the value worded another way than a percentage (a count, a share to two places).
+ *  `wide`: the slider the full width of the drawer under its label (Gavan, 2026-10-17: "Strength full width"). */
+function Slider({ label, value, min, max, step, onChange, text, wide }: { label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void; text?: string; wide?: boolean }) {
   return (
-    <div className="hd-row">
+    <div className={`hd-row${wide ? ' hd-wide' : ''}`}>
       <span>
         {label} <span className="numeral dim">· {text ?? `${value}%`}</span>
       </span>
@@ -133,10 +134,6 @@ function WindFlowRows() {
         }}
       />
       <Switch label="Turbulence" on={swirl} onChange={(v) => setFlowTuning({ windSwirl: v })} />
-      <Slider label="Strength" value={Math.round(op * 100)} min={10} max={100} step={5} onChange={(v) => setOp(v / 100)} />
-      {/* the two that stayed behind in Settings when the rest moved here (2026-10-03) */}
-      <Slider label="Particles" value={density} min={200} max={2500} step={100} text={String(density)} onChange={(v) => setFlowTuning({ windDensity: v })} />
-      <Slider label="Trail" value={Math.round(trail * 100)} min={86} max={97} step={1} text={trail.toFixed(2)} onChange={(v) => setFlowTuning({ windTrail: v / 100 })} />
       <div className="hd-row">
         <span>Line thickness</span>
         <div className="seg" role="radiogroup" aria-label="Line thickness">
@@ -154,6 +151,10 @@ function WindFlowRows() {
         </div>
       </div>
       <LeavesRow />
+      {/* the sliders at the foot, in this order, Strength the full width (Gavan, 2026-10-17) */}
+      <Slider label="Particles" value={density} min={200} max={2500} step={100} text={String(density)} onChange={(v) => setFlowTuning({ windDensity: v })} />
+      <Slider label="Strength" value={Math.round(op * 100)} min={10} max={100} step={5} onChange={(v) => setOp(v / 100)} wide />
+      <Slider label="Trail" value={Math.round(trail * 100)} min={86} max={97} step={1} text={trail.toFixed(2)} onChange={(v) => setFlowTuning({ windTrail: v / 100 })} />
     </>
   )
 }

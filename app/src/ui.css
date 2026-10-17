@@ -1488,6 +1488,17 @@
   width: 100%;
 }
 
+/* a slider the drawer's full width, its label above (the wind's Strength) */
+.hd-row.hd-wide {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  padding-bottom: 4px;
+}
+.hotdrawer .hd-row.hd-wide input[type='range'] {
+  width: 100%;
+}
+
 .hd-ends {
   display: flex;
   justify-content: space-between;
