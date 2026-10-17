@@ -235,7 +235,9 @@ knows the turbulence. Every area was rerun to keep it:
 - **Upslope flow**: the sun's radiation on the smoothed slope (incidence from
   the sun's elevation and azimuth against the slope's aspect).
   `1.4·√(sin slope)·(heating/600 W m⁻²)` m/s, × (1 − stable), × 0.5 under
-  trees.
+  trees. None over open water (2026-10-17, `THERMAL_DEFAULT.waterAna` 0):
+  water does not heat as the shore does, and PALM's floor over a lee's
+  water under a sunny N wind follows the wind above (lacbailey-bank am000).
 - **Lake and land breezes**:
   - Driven by the land–lake temperature difference. The lake is the Spots
     estimate from recent air temperatures, or seasonal.
@@ -360,6 +362,14 @@ knows the turbulence. Every area was rerun to keep it:
   - 3–10 h: a linear recovery, swirl inside 5 h.
   - Windbreak and edge studies put recirculation at a few tree heights and
     recovery by ~10 h (Cleugh 1998; Dupont & Brunet 2008).
+  - Over open water the shelter never goes under 0.5 (2026-10-17,
+    `FLOOR_DEFAULT.waterShelter`). PALM's floor over water in a lee runs
+    0.35–0.56 of the 10 m wind and follows the wind above, where the land's
+    0.25 had the app at 0.12–0.21 and calling half of it calm. With the
+    upslope gone over water, on test set v4: water in a lee over 10°
+    46 → 48% within 45° of PALM, sunny water 84 → 91%, land unmoved; the
+    scent card's tuned tongue 0.59 → 0.61, misses held, SD held; the checks
+    unchanged. No shelter at all over water (1) cost a miss on the card.
 - **Small openings**: trees within 45 m on three sides or more means the
   air swirls.
 - **A tree line ahead** (2026-10-07, [SHORE-WIND.md](SHORE-WIND.md) rule

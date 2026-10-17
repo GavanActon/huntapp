@@ -1112,7 +1112,7 @@ let leeRise: Float32Array | null = null
 // waterShelter: the least of the wind a tree line upwind leaves over open water (0: the land's
 // shelter, 0.25 within 3 tree heights, as before; PALM's floor over a lee's water runs 0.35-0.56 of
 // the 10 m wind where the app's sheltered call was 0.12-0.21)
-const FLOOR_DEFAULT = { trees: 1.5, open: 1, rule: 1, c0: 0.168, closure: 1.34, leaf: 0.31, waterShelter: 0 }
+const FLOOR_DEFAULT = { trees: 1.5, open: 1, rule: 1, c0: 0.168, closure: 1.34, leaf: 0.31, waterShelter: 0.5 }
 /** a stand never lets more through than open ground's log law gives 2 m over 10 m (§4) */
 const FLOOR_OPEN_SHARE = 0.7
 
@@ -1169,7 +1169,7 @@ function towerShare(g: Habitat, i: number, leaves: number): number | null {
 // 6.1-6.5, pipeline/teacher/palm/drain_read.py); before, 5 km/h of the decoupled local wind by e every 8
 // waterAna: the sun's upslope flow over open water (1 as before; water does not heat as the shore
 // does, and PALM's floor over a lee's water under a sunny N wind follows the wind above, am000)
-const THERMAL_DEFAULT = { mix0: 5, mixScale: 1, trees: 0.7, ref: 1, mixS0: 5, mixSScale: 1, sl0: 3, sl1: 8, waterAna: 1 }
+const THERMAL_DEFAULT = { mix0: 5, mixScale: 1, trees: 0.7, ref: 1, mixS0: 5, mixSScale: 1, sl0: 3, sl1: 8, waterAna: 0 }
 let thermalTune = { ...THERMAL_DEFAULT }
 export function setThermalTune(t: Partial<typeof THERMAL_DEFAULT> | null): void {
   thermalTune = { ...THERMAL_DEFAULT, ...t }
