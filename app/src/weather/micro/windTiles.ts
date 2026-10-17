@@ -95,7 +95,7 @@ function fetchTile(id: string, bytes: number): Promise<ArrayBuffer | null> {
   const key = `${id}?b=${bytes}`
   let p = packed.get(key)
   if (!p) {
-    p = fetch(`${BASE}${key}`)
+    p = fetch(`${BASE}${id}.hab?b=${bytes}`)
       .then((r) => (r.ok ? r.arrayBuffer() : null))
       .catch(() => null)
     packed.set(key, p)
