@@ -15,7 +15,7 @@ import { drawingPath } from '../paths/pathStore'
 import { useBushLabels } from '../bushLabels/labelStore'
 import { baseTone, BOG_TUFT, bogTuftImage, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour, lidarShadeShown, openLanesOut, type ArchiveRange, reliefShadePaint, standIn, syncUnderlays } from './mapStyle'
 import { offlineComplete, registerAllDataFiles, registerDataFile, sourceModes } from './pmtilesRegistry'
-import { probeTerrainDepth, STREAM_PICTURES, STREAMED_KEYS } from './streamPictures'
+import { probeTerrainDepth, STREAM_PICTURES, STREAMED_KEYS, streamedContourTiles } from './streamPictures'
 // the contours' and lake depths' numbers in the phone's units
 import './unitLabels'
 import { initViewLook } from './viewLook'
@@ -425,9 +425,13 @@ export default function MapView() {
       const src = map?.getSource('pins')
       if (src && 'setData' in src) (src as maplibregl.GeoJSONSource).setData(placesGeoJson())
     })
-    // the contour interval is a filter on the three contour layers
+    // the contour interval is a filter on the three contour layers; streamed,
+    // the lines are cut on the phone at the interval, so their source gets the new spacing
     const unsubContours = useAppStore.subscribe((s, prev) => {
-      if (!map || s.contourInterval === prev.contourInterval || !map.getLayer('contour-line')) return
+      if (!map || s.contourInterval === prev.contourInterval) return
+      const wide = STREAM_PICTURES ? (map.getSource('contoursWide') as maplibregl.VectorTileSource | undefined) : undefined
+      wide?.setTiles([streamedContourTiles(s.contourInterval)])
+      if (!map.getLayer('contour-line')) return
       const [keep, index, labelled] = contourFilters(s.contourInterval)
       map.setFilter('contour-line', keep)
       map.setFilter('contour-index', index)

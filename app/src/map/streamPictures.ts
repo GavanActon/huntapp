@@ -121,14 +121,21 @@ export function streamedDem(): SourceSpecification {
  *  Settings interval from z14 as the LiDAR lines are. `level` 1 is an index
  *  line (every 50 m, then every fifth), `elev` its height. */
 export function streamedContours(interval: ContourInterval): SourceSpecification {
-  const url = demSource().contourProtocolUrl({
+  return { type: 'vector', tiles: [streamedContourTiles(interval)], minzoom: 8, maxzoom: LINES_MAXZOOM, attribution: ATTRIBUTION }
+}
+
+/** The streamed lines' tile address for an interval: a new one when Settings
+ *  changes it, which MapView gives the source (setTiles), so the lines are
+ *  cut again at the new spacing (Gavan, 2026-10-17: the interval "stuck at
+ *  whitefish", since the source kept the one it was built with). */
+export function streamedContourTiles(interval: ContourInterval): string {
+  return demSource().contourProtocolUrl({
     thresholds: { 8: [50, 50], 10: [20, 100], 12: [10, 50], 14: [interval, interval * 5] },
     elevationKey: 'elev',
     levelKey: 'level',
     contourLayer: 'contours',
     overzoom: 1,
   })
-  return { type: 'vector', tiles: [url], minzoom: 8, maxzoom: LINES_MAXZOOM, attribution: ATTRIBUTION }
 }
 
 /** Lines cut straight from the LiDAR's heights wander with every hummock,
