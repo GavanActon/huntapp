@@ -1,0 +1,244 @@
+{
+ "brush / alder (BSH)": {
+  "cells": 509,
+  "stands": 4,
+  "canopy_height": {
+   "p25": 0.0,
+   "median": 3.15,
+   "p75": 6.509
+  },
+  "canopy_cover": {
+   "p25": 0.0,
+   "median": 0.025,
+   "p75": 0.25
+  },
+  "understory": {
+   "p25": 0.036,
+   "median": 0.176,
+   "p75": 0.338
+  },
+  "understory_pad": {
+   "p25": 0.029,
+   "median": 0.155,
+   "p75": 0.331
+  },
+  "density": {
+   "p25": 12.85,
+   "median": 19.12,
+   "p75": 27.69
+  }
+ },
+ "mature closed conifer (origin <=1945, cc>=70)": {
+  "cells": 12750,
+  "stands": 34,
+  "canopy_height": {
+   "p25": 15.705,
+   "median": 18.369,
+   "p75": 20.892
+  },
+  "canopy_cover": {
+   "p25": 0.773,
+   "median": 0.83,
+   "p75": 0.874
+  },
+  "understory": {
+   "p25": 0.152,
+   "median": 0.244,
+   "p75": 0.354
+  },
+  "understory_pad": {
+   "p25": 0.132,
+   "median": 0.223,
+   "p75": 0.35
+  },
+  "density": {
+   "p25": 36.362,
+   "median": 44.75,
+   "p75": 54.36
+  }
+ },
+ "mature hardwood-leading (origin <=1960)": {
+  "cells": 140144,
+  "stands": 328,
+  "canopy_height": {
+   "p25": 16.955,
+   "median": 19.394,
+   "p75": 21.628
+  },
+  "canopy_cover": {
+   "p25": 0.694,
+   "median": 0.742,
+   "p75": 0.821
+  },
+  "understory": {
+   "p25": 0.112,
+   "median": 0.186,
+   "p75": 0.287
+  },
+  "understory_pad": {
+   "p25": 0.095,
+   "median": 0.165,
+   "p75": 0.271
+  },
+  "density": {
+   "p25": 31.35,
+   "median": 43.52,
+   "p75": 54.82
+  }
+ },
+ "mature open conifer (origin <=1945, cc<60)": {
+  "cells": 261,
+  "stands": 2,
+  "canopy_height": {
+   "p25": 8.145,
+   "median": 9.441,
+   "p75": 12.346
+  },
+  "canopy_cover": {
+   "p25": 0.467,
+   "median": 0.589,
+   "p75": 0.735
+  },
+  "understory": {
+   "p25": 0.308,
+   "median": 0.365,
+   "p75": 0.429
+  },
+  "understory_pad": {
+   "p25": 0.295,
+   "median": 0.363,
+   "p75": 0.449
+  },
+  "density": {
+   "p25": 32.19,
+   "median": 38.73,
+   "p75": 45.69
+  }
+ },
+ "open muskeg (OMS)": {
+  "cells": 3403,
+  "stands": 46,
+  "canopy_height": {
+   "p25": 0.0,
+   "median": 4.575,
+   "p75": 8.768
+  },
+  "canopy_cover": {
+   "p25": 0.0,
+   "median": 0.041,
+   "p75": 0.263
+  },
+  "understory": {
+   "p25": 0.004,
+   "median": 0.062,
+   "p75": 0.235
+  },
+  "understory_pad": {
+   "p25": 0.003,
+   "median": 0.051,
+   "p75": 0.214
+  },
+  "density": {
+   "p25": 11.969,
+   "median": 16.82,
+   "p75": 24.78
+  }
+ },
+ "treed muskeg (TMS)": {
+  "cells": 2803,
+  "stands": 13,
+  "canopy_height": {
+   "p25": 9.955,
+   "median": 12.237,
+   "p75": 15.552
+  },
+  "canopy_cover": {
+   "p25": 0.611,
+   "median": 0.725,
+   "p75": 0.798
+  },
+  "understory": {
+   "p25": 0.319,
+   "median": 0.411,
+   "p75": 0.5
+  },
+  "understory_pad": {
+   "p25": 0.307,
+   "median": 0.424,
+   "p75": 0.555
+  },
+  "density": {
+   "p25": 40.18,
+   "median": 48.62,
+   "p75": 57.42
+  }
+ },
+ "water (FRI WAT)": {
+  "cells": 682,
+  "stands": 16,
+  "canopy_height": {
+   "p25": 0.0,
+   "median": 0.0,
+   "p75": 0.0
+  },
+  "canopy_cover": {
+   "p25": 0.0,
+   "median": 0.0,
+   "p75": 0.0
+  },
+  "understory": {
+   "p25": 0.0,
+   "median": 0.0,
+   "p75": 0.002
+  },
+  "understory_pad": {
+   "p25": 0.0,
+   "median": 0.0,
+   "p75": 0.002
+  },
+  "density": {
+   "p25": 5.01,
+   "median": 10.777,
+   "p75": 15.887
+  }
+ },
+ "young forest, origin 1985+ or cut/burn": {
+  "cells": 27274,
+  "stands": 58,
+  "canopy_height": {
+   "p25": 10.494,
+   "median": 14.22,
+   "p75": 17.092
+  },
+  "canopy_cover": {
+   "p25": 0.675,
+   "median": 0.726,
+   "p75": 0.767
+  },
+  "understory": {
+   "p25": 0.126,
+   "median": 0.23,
+   "p75": 0.343
+  },
+  "understory_pad": {
+   "p25": 0.108,
+   "median": 0.209,
+   "p75": 0.336
+  },
+  "density": {
+   "p25": 35.75,
+   "median": 45.23,
+   "p75": 56.85
+  }
+ },
+ "water (lidar)": {
+  "cells": 160146,
+  "share_with_any_value": 0.0112
+ },
+ "_fri_vs_lidar": {
+  "stands": 418,
+  "height_r": 0.697,
+  "height_median_diff_m (lidar - forest map)": -0.4,
+  "closure_vs_cover_r": 0.109
+ }
+}

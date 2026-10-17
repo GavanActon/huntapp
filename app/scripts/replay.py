@@ -192,6 +192,34 @@ async ({ me, others }) => {
 }
 """
 
+# --ab: the same check under several knob settings (scentTune.ts) in one page
+# load, so a variant is judged against its baseline on the very same inputs
+# (the archived forecast and the ensemble's grace can differ between runs)
+LOO_AB_JS = """
+async ({ me, others, variants }) => {
+  const m = await import('/src/weather/micro/model.ts')
+  const w = await import('/src/weather/micro/windChecks.ts')
+  const t = await import('/src/weather/micro/scentTune.ts')
+  await m.microReadyFor(me.ts, 20000)
+  const call = (g) => (g ? { kmh: g.kmh, dirFrom: g.dirFrom, regime: g.regime } : null)
+  const out = {}
+  for (const [name, values] of variants) {
+    t.useScentTune.setState({ values })
+    w.useWindChecks.setState({ checks: [] })
+    const raw = call(m.groundWind(me.lon, me.lat, me.ts))
+    w.useWindChecks.setState({ checks: others })
+    m.setAmbientFit(false)
+    const blend = call(m.groundWind(me.lon, me.lat, me.ts))
+    m.setAmbientFit(true)
+    const fit = call(m.groundWind(me.lon, me.lat, me.ts))
+    out[name] = { raw, blend, fit }
+  }
+  t.useScentTune.setState({ values: {} })
+  w.useWindChecks.setState({ checks: [] })
+  return out
+}
+"""
+
 # every momentum direction in before the day's checks, so a direction
 # landing late never changes a sample between runs
 REST_JS = """
@@ -285,6 +313,20 @@ def run(args) -> list[dict]:
                     me = objs[n]
                     pool = all_objs if args.all_days else objs
                     others = [o for o in pool if o["id"] != me["id"]]
+                    if args.ab:
+                        ab = page.evaluate(LOO_AB_JS, {"me": me, "others": others, "variants": list(json.loads(args.ab).items())})
+                        row = {k: v for k, v in c.items() if k != "local"}
+                        row["timeLocal"] = c["local"].strftime("%Y-%m-%d %H:%M")
+                        row["place"] = place_of(c["lat"], c["lon"])
+                        row["hourBand"] = hour_band(c["local"])
+                        for vname, res in ab.items():
+                            for name in ("raw", "blend", "fit"):
+                                g = res.get(name)
+                                if g:
+                                    row[f"{vname}_{name}Dir"] = round(g["dirFrom"])
+                                    row[f"{vname}_{name}Kmh"] = round(g["kmh"], 2)
+                        rows.append(row)
+                        continue
                     r = page.evaluate(LOO_JS, {"me": me, "others": others})
                     if time.time() - t1 > 5:
                         print(f"    check {n + 1}/{len(todays)} took {time.time() - t1:.0f} s", flush=True)
@@ -476,6 +518,7 @@ def main() -> int:
     ap.add_argument("--out")
     ap.add_argument("--days", help="local days to run, comma separated")
     ap.add_argument("--loo", action="store_true", help="each check judged by the others of its day: raw rules, the local blend, the fit of the air above")
+    ap.add_argument("--ab", help='--loo: knob settings to score side by side in one page load, JSON {"name": {knob: value}}; writes the CSV only')
     ap.add_argument("--all-days", action="store_true", help="--loo: the others of every day, not only the check's own (lessons from other days)")
     ap.add_argument("--lee", help="the lee rule's settings for this pass (model.ts setLeeTune), JSON, e.g. '{\"off\": 1}'; the app's own when left out")
     ap.add_argument("--slot", help="the slot rule's settings for this pass (model.ts setSlotTune), JSON; the app's own when left out")
@@ -494,6 +537,8 @@ def main() -> int:
         w.writeheader()
         w.writerows(rows)
     print(f"wrote {out} ({len(rows)} rows)")
+    if args.ab:
+        return 0
 
     if args.loo:
         print("\nEach check judged by the others of its day (leave one out):")
