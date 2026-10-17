@@ -1082,14 +1082,18 @@ let leeRise: Float32Array | null = null
  * stay. MICRO-WIND.md §4. setFloorTune lets scripts score a scale side by
  * side (palm_compare.py, replay.py --floor); the app never changes it.
  */
-const FLOOR_DEFAULT = { trees: 1.5, open: 1, rule: 0, c0: 0.21, closure: 1.34, leaf: 0.31 }
+// rule 1 since 2026-10-16: the towers' share at 0.8 of its floor/top level (c0 0.168), the level a
+// forecast's 10 m carries (ref_wind.py: the over-canopy top runs 0.71-0.82 of U10); trees x1.5 is the
+// old rule's, kept where the habitat has no stand
+const FLOOR_DEFAULT = { trees: 1.5, open: 1, rule: 1, c0: 0.168, closure: 1.34, leaf: 0.31 }
 /** a stand never lets more through than open ground's log law gives 2 m over 10 m (§4) */
 const FLOOR_OPEN_SHARE = 0.7
 
 /**
- * A stand's head-height share of the wind over it by the flux towers'
- * rule (floorTune.rule 1, a trial): c0 · e^(closure·(1 − C)) · (1 + leaf · D
- * · off), C the crown closure, D the hardwood share, off the leaves down.
+ * A stand's head-height share of the local 10 m wind by the flux towers'
+ * rule (floorTune.rule 1, the app's since 2026-10-16): c0 · e^(closure·(1 −
+ * C)) · (1 + leaf · D · off), C the crown closure, D the hardwood share, off
+ * the leaves down.
  * 26 forest towers (NEON, AmeriFlux; pipeline/towers/why_floor.py) measure the
  * floor at 0.15–0.40 of the top whatever the stand, the leaves down lifting
  * it ×1.18, not the bake's ×2.4–3.8; held out it lands within 2× on 89% of
@@ -1132,7 +1136,10 @@ function towerShare(g: Habitat, i: number, leaves: number): number | null {
  * setThermalTune lets scripts score settings side by side (scorecard.py,
  * palm_compare.py, replay.py --thermal); the app never changes it.
  */
-const THERMAL_DEFAULT = { mix0: 5, mixScale: 8, trees: 0.7, ref: 0, mixS0: 5, mixSScale: 8, sl0: 3, sl1: 8 }
+// since 2026-10-16: the fade keyed to the wind over the place, from 5 km/h by e every 1 km/h, on
+// slopes and flats alike (PALM's floor drains to ~5.4 km/h of forecast 10 m and follows the wind by
+// 6.1-6.5, pipeline/teacher/palm/drain_read.py); before, 5 km/h of the decoupled local wind by e every 8
+const THERMAL_DEFAULT = { mix0: 5, mixScale: 1, trees: 0.7, ref: 1, mixS0: 5, mixSScale: 1, sl0: 3, sl1: 8 }
 let thermalTune = { ...THERMAL_DEFAULT }
 export function setThermalTune(t: Partial<typeof THERMAL_DEFAULT> | null): void {
   thermalTune = { ...THERMAL_DEFAULT, ...t }

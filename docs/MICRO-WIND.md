@@ -195,8 +195,40 @@ knows the turbulence. Every area was rerun to keep it:
   - Closed depressions are found by priority-flood filling (Barnes et al.
     2014).
   - In the browser: × strength = max(inversion·stable, 0.6·clear-sky
-    cooling after the sun is under 10°), × a mixing cut-off above ~5 km/h
-    of local wind, × 0.7 under trees.
+    cooling after the sun is under 10°), × a fade with the wind over the
+    place, × 0.7 under trees.
+  - **The fade** (2026-10-16, `THERMAL_DEFAULT` in model.ts): whole up to
+    5 km/h of the forecast's 10 m wind (as the sit's checks have fitted
+    it), then down by e every 1 km/h, on slopes and flats alike.
+    Provisional on the fade sweep: PALM runs at about 2 and 4 km/h on
+    Gavan's slope and the Pickle bog (d326u06, d326u12, dawn175u06) say
+    whether the slope's turn sits lower; if it does, the slope's fade
+    (mixS0, mixSScale) moves and goes back to the card. Until
+    then it was 5 km/h of the local wind after a settled night's
+    decoupling, by e every 8, which kept a slope draining under a forecast
+    of 8–9 km/h: Gavan's Lac Bailey spot at 8 pm on 15 Oct, where the app
+    sent the scent NE downhill 226 m and PALM took it SE with the NW wind
+    (head height from 307°).
+    - **PALM** (`pipeline/teacher/palm/drain_read.py`, the stable runs, the
+      share of slope cells whose head-height way is nearer the fall line
+      than the wind, about 0.5 at random and 0 following the wind): 0.43–0.62
+      at a forecast-equivalent 3.5–5.4 km/h (Lac Bailey bank, Whitefish,
+      the Pickle bogs and strip at dusk), 0.31 at 6.1 (the bog at dawn),
+      0.22 at 6.5 (Gavan's spot). Flat ground shows the same turn, so one
+      fade does both. The 80 m wind splits them more cleanly (8–11 km/h
+      drains, 17–20 does not); keying to it is held in reserve.
+    - **Scored** (test set v4, with the floor rule below): the scent card's
+      misses 12 → 10, false alarms 86 → 82, the held-out tongue 0.58 →
+      0.62; PALM direction 64.5 → 64.3% (Gavan's box 31 → 53%, the dawn bog
+      50 → 44%, its clockwise offset being the place's own, not drainage);
+      the checks unchanged (within 45° 43% Pickle, 57% Searchmont; the
+      honest spread 64%). A 0.5 km/h fade scored the same and was passed
+      over: a forecast near 5 km/h moves by that much hour to hour.
+    - **The checks carry it further:** with the old drainage, eight
+      virtual checks from PALM's head height on Gavan's slope took the
+      held-out calls from 2 to 6 of 8 within 45° through the sit's fit
+      alone (its speed ratio, ×1.8, lets the wind win). A weight on the
+      drainage in the fit added nothing and stays off (`setFitDrain`).
 - **Settled cold air**: on a settling night, low flat ground (a hollow or a
   bog) is labelled "cold air settled" rather than calm. It is a frost
   pocket, and scent sits in it and creeps toward the outlet.
@@ -305,6 +337,23 @@ knows the turbulence. Every area was rerun to keep it:
       - Searchmont, all open ground, is unchanged.
     - **The cone,** in the draft scent test set's v1 measure on the finished PALM scent runs: the tune set goes 0.55 → 0.56. The held-out set goes 0.52 → 0.50: one sector at Lac Bailey whose 15% reach went 38 → 45 m. Misses are unchanged.
     - **Not fitted: stable air.** There the app runs at 0.4 of PALM under every cover. PALM's 4 m stable boxes are the runs to trust least, so they were left.
+  - **The flux towers' rule** (2026-10-16, `FLOOR_DEFAULT.rule` 1, `towerShare` in model.ts): a stand's share is
+    `min(0.7, 0.168 · e^(1.34·(1 − C)) · (1 + 0.31·D·off)) · (1 − 0.3 s)`, C the habitat's crown closure, D its
+    hardwood share, off the leaves down; the ×1.5 above stays where the habitat has no stand.
+    - **Why:** 26 forest towers (NEON, AmeriFlux; `pipeline/towers/why_floor.py`) measure the floor at 0.15–0.40 of
+      the wind over the canopy whatever the stand. The baked share swung with conifer share, stand height and the
+      leaves for no measured reason: too slow under conifers and hardwoods in leaf (about 2×), too fast under tall
+      bare hardwoods, and it called the floor calm 44% of the time against 18% measured. Leaves down lift the floor
+      ×1.18 at the towers, not the bake's ×2.4–3.8.
+    - **The level:** the towers' top is the wind just over the canopy, which runs 0.71 (ERA5, 29 towers) and 0.82
+      (HRDPS, 15) of a forecast's 10 m (`pipeline/towers/ref_wind.py`), so the floor/top rule is taken at 0.8
+      (c0 0.168 for 0.21). Against the measured floor over HRDPS's 10 m it lands within 2× on 82% of half-hours,
+      the old share on 66%, a single constant on 79%.
+    - **Against PALM:** PALM's floor under trees runs about 2.3× slower than the towers' for the same wind, and its
+      canopy drag is only part of it (0.15 for 0.2 lifts it ×1.2, pickle-slot s186d15). Speed under trees goes with
+      the towers; direction and the scent's pattern with PALM. On the scent card (v4) the rule took misses 16 → 11
+      and false alarms 95 → 87; PALM direction 65.1 → 64.5% (the stable runs); the checks' direction unchanged,
+      the honest spread 68 → 64%.
 - **Tree-line shelter** (browser): looking upwind from an open cell for the
   first stand over 6 m:
   - Within 3 h: shelter 0.25 and swirl.
