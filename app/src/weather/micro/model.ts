@@ -1219,21 +1219,25 @@ export function setFloorTune(t: Partial<typeof FLOOR_DEFAULT> | null): void {
   bump()
 }
 
-/** The steepest rise within LEE_REACH_M upwind of a point, degrees; NaN without the going grid. */
+/** The steepest rise within LEE_REACH_M upwind of a point, degrees; NaN without the going grid.
+ *  Scanned from the micro cell's centre, the cache's own key: from the point asked, the first point
+ *  to ask in a cell set its rise for every later one (10 m ground under a 30 m cell), so the same
+ *  sit read two rises across page loads (Whitefish W2 on SD, 6.2° or 4.7°, Hunter-Jay 2026-10-17). */
 function riseUpwind(i: number, lon: number, lat: number, fromDeg: number): number {
   const sector = (((Math.round(fromDeg / (360 / LEE_SECTORS)) % LEE_SECTORS) + LEE_SECTORS) % LEE_SECTORS)
   if (leeRise) {
     const hit = leeRise[i * LEE_SECTORS + sector]
     if (!Number.isNaN(hit)) return hit
   }
-  const z0 = elevAt(lon, lat)
+  const [ox, oy] = grid && i >= 0 ? grid.center(i) : [lon, lat]
+  const z0 = elevAt(ox, oy)
   if (!Number.isFinite(z0)) return NaN
   const brg = sector * (360 / LEE_SECTORS) * RAD
-  const kx = 111320 * Math.cos(lat * RAD)
+  const kx = 111320 * Math.cos(oy * RAD)
   const ky = 110540
   let best = -90
   for (let x = LEE_STEP_M; x <= LEE_REACH_M; x += LEE_STEP_M) {
-    const z = elevAt(lon + (Math.sin(brg) * x) / kx, lat + (Math.cos(brg) * x) / ky)
+    const z = elevAt(ox + (Math.sin(brg) * x) / kx, oy + (Math.cos(brg) * x) / ky)
     if (!Number.isFinite(z)) break
     best = Math.max(best, Math.atan2(z - z0, x) / RAD)
   }
