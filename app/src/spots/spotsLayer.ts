@@ -280,6 +280,17 @@ function repaint() {
   if (lastPaint) paint(lastPaint.scores, lastPaint.water, lastPaint.near)
 }
 
+/** The heat switched on or off: the pass's scores shown or hidden, the pins
+ *  with them. It was a whole pass again, though the scores do not depend on it. */
+function showHeat(on: boolean) {
+  const m = getMap()
+  if (!m || !m.getSource(HEAT_SRC)) return
+  const visible = on ? 'visible' : 'none'
+  for (const id of ['spots-heat', 'spots-pin', 'spots-pin-glow', 'spots-pin-score']) m.setLayoutProperty(id, 'visibility', visible)
+  const s = useSpotsStore.getState()
+  paint(on ? (s.result?.scores ?? null) : null, isFish(s.target), subject())
+}
+
 /** The wash line and the ramp over it for this paint: the fixed scale, or
  *  the day's own among the cells that will show. */
 function heatRange(scores: Float32Array, cells: number[]): { lo: number; span: number } {
@@ -695,7 +706,9 @@ export function initSpotsLayer() {
       }
     })
     useSpotsStore.subscribe((s, prev) => {
-      if (s.target !== prev.target || s.heat !== prev.heat || s.weights !== prev.weights) schedule()
+      if (s.target !== prev.target || s.weights !== prev.weights) schedule()
+      // the heat toggled: the same scores, shown or hidden
+      else if (s.heat !== prev.heat) showHeat(s.heat)
       // the colouring alone changed: the same scores, painted again
       else if (s.heatScale !== prev.heatScale || s.heatStrength !== prev.heatStrength) repaint()
     })
