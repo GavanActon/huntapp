@@ -7,7 +7,8 @@ import { TARGET_NAMES } from '../spots/types'
 import { formatDistance } from '../measure/measureMath'
 import { campEnd, clearRoutes, closeRoutes, huntBlocked, ROUTE_COLOURS, ROUTE_LETTERS, useRoutes, youEnd, type RouteMode } from '../routes/routeStore'
 import { approachText, endName, height, lidarText, routeFacts, routeLine, routeTag, routeTime, timeParts } from '../routes/routeText'
-import { IconMinus, IconPlus, IconSwap } from './icons'
+import { IconSwap } from './icons'
+import { PaceNudge } from './PaceNudge'
 import { km as kmWords } from '../lengths'
 
 /**
@@ -41,8 +42,6 @@ export default function RouteCard() {
   useGpsStore((s) => (s.fix ? `${s.fix.lon.toFixed(4)},${s.fix.lat.toFixed(4)},${(s.fix.sigma ?? s.fix.accuracy) <= 150}` : null))
   const you = youEnd()
   const units = useAppStore((s) => s.units)
-  const paceKmh = useAppStore((s) => s.paceKmh)
-  const setPaceKmh = useAppStore((s) => s.setPaceKmh)
   const target = useSpotsStore((s) => s.target)
   // what the hunt route waits on
   useSpotsStore((s) => s.status)
@@ -59,7 +58,6 @@ export default function RouteCard() {
   const blocked = mode === 'hunt' ? huntBlocked() : null
   const r = routes[pick]
   const toName = to ? endName(from, to, units) : ''
-  const pace = units === 'imperial' ? `${(paceKmh * 0.621371).toFixed(1)} mph` : `${paceKmh.toFixed(1)} km/h`
   // grouse do not wind you: the way the wind sits coming in is for big game
   const approach = r && !(mode === 'hunt' && target === 'grouse') ? approachText(r.approach) : null
   const game = TARGET_NAMES[target].toLowerCase()
@@ -161,13 +159,7 @@ export default function RouteCard() {
         <div className="rt-knobs">
           <span className="numeral speed-step">
             pace on the flat
-            <button className="nudge" onClick={() => setPaceKmh(Math.max(1, Math.round((paceKmh - 0.5) * 2) / 2))} aria-label="Slower">
-              <IconMinus size={11} />
-            </button>
-            <b>{pace}</b>
-            <button className="nudge" onClick={() => setPaceKmh(Math.min(8, Math.round((paceKmh + 0.5) * 2) / 2))} aria-label="Faster">
-              <IconPlus size={11} />
-            </button>
+            <PaceNudge />
           </span>
           <button className={`chip chip-pick${stayDry ? ' chip-on' : ''}`} onClick={() => setStayDry(!stayDry)} aria-pressed={stayDry}>
             Stay dry

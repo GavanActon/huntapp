@@ -17,6 +17,7 @@ import { leavesWord } from '../weather/micro/leaves'
 import { coneSizeWord, drawnView, SCENT_HEIGHTS, useScent, type ScentView } from '../weather/micro/scent'
 import { useWindChecks } from '../weather/micro/windChecks'
 import { HOT_DEFS } from './hotButtons'
+import { faster, paceText, slower } from './PaceNudge'
 import { useTapOff } from './tapOff'
 import { height } from '../lengths'
 
@@ -57,11 +58,12 @@ function Seg<T extends string | number>({ label, note, value, options, onPick, o
   )
 }
 
-function Slider({ label, value, min, max, step, onChange }: { label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void }) {
+/** `text`: the value worded another way than a percentage (a count, a share to two places). */
+function Slider({ label, value, min, max, step, onChange, text }: { label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void; text?: string }) {
   return (
     <div className="hd-row">
       <span>
-        {label} <span className="numeral dim">· {value}%</span>
+        {label} <span className="numeral dim">· {text ?? `${value}%`}</span>
       </span>
       <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} aria-label={label} />
     </div>
@@ -115,6 +117,8 @@ function WindFlowRows() {
   const swirl = useAppStore((s) => s.flowTuning.windSwirl)
   const size = useAppStore((s) => s.flowTuning.windSize)
   const style = useAppStore((s) => s.flowTuning.windStyle)
+  const density = useAppStore((s) => s.flowTuning.windDensity)
+  const trail = useAppStore((s) => s.flowTuning.windTrail)
   const setFlowTuning = useAppStore((s) => s.setFlowTuning)
   return (
     <>
@@ -130,6 +134,9 @@ function WindFlowRows() {
       />
       <Switch label="Turbulence" on={swirl} onChange={(v) => setFlowTuning({ windSwirl: v })} />
       <Slider label="Strength" value={Math.round(op * 100)} min={10} max={100} step={5} onChange={(v) => setOp(v / 100)} />
+      {/* the two that stayed behind in Settings when the rest moved here (2026-10-03) */}
+      <Slider label="Particles" value={density} min={200} max={2500} step={100} text={String(density)} onChange={(v) => setFlowTuning({ windDensity: v })} />
+      <Slider label="Trail" value={Math.round(trail * 100)} min={86} max={97} step={1} text={trail.toFixed(2)} onChange={(v) => setFlowTuning({ windTrail: v / 100 })} />
       <div className="hd-row">
         <span>Line thickness</span>
         <div className="seg" role="radiogroup" aria-label="Line thickness">
@@ -321,7 +328,6 @@ function MeasureRows({ go }: RowsProps) {
     useAppStore.getState().closeSheet()
     useMeasureStore.getState().start(p, p ? 'you' : undefined)
   }
-  const paceText = units === 'imperial' ? `${(pace * 0.621371).toFixed(1)} mph` : `${pace.toFixed(1)} km/h`
   // how the line reads (measure/profile.ts): straight, or walked over the ups and downs; the trace under the card, and on it the trees and the sight line
   const line = useMeasureStore((s) => s.line)
   const trace = useMeasureStore((s) => s.trace)
@@ -338,13 +344,13 @@ function MeasureRows({ go }: RowsProps) {
       {trace && <Switch label="Trees & sight line" on={sight} onChange={m.setSight} />}
       <div className="hd-row">
         <span>
-          Pace <span className="numeral dim">· {paceText}</span>
+          Pace <span className="numeral dim">· {paceText(pace, units)}</span>
         </span>
         <div className="hd-step">
-          <button onClick={() => setPace(Math.max(1, Math.round((pace - 0.5) * 2) / 2))} aria-label="Slower">
+          <button onClick={() => setPace(slower(pace))} aria-label="Slower">
             −
           </button>
-          <button onClick={() => setPace(Math.min(8, Math.round((pace + 0.5) * 2) / 2))} aria-label="Faster">
+          <button onClick={() => setPace(faster(pace))} aria-label="Faster">
             +
           </button>
         </div>

@@ -4,8 +4,9 @@ import { useMeasureStore } from '../measure/measureStore'
 import { useMeasureProfile } from '../measure/profile'
 import { useAppStore } from '../state/appStore'
 import { durationLabel } from '../time'
-import { IconMinus, IconPlus, IconUndo } from './icons'
+import { IconUndo } from './icons'
 import MeasureProfile from './MeasureProfile'
+import { PaceNudge } from './PaceNudge'
 
 /**
  * The measuring tool's readout, in the bottom bar: the total, and the last
@@ -25,7 +26,6 @@ export default function MeasureCard() {
   const stop = useMeasureStore((s) => s.stop)
   const units = useAppStore((s) => s.units)
   const paceKmh = useAppStore((s) => s.paceKmh)
-  const setPaceKmh = useAppStore((s) => s.setPaceKmh)
   const [showPace, setShowPace] = useState(false)
   const line = useMeasureStore((s) => s.line)
   const trace = useMeasureStore((s) => s.trace)
@@ -46,7 +46,6 @@ export default function MeasureCard() {
   const total = walking ? profile.groundM : straight
   const elev = (m: number) => (units === 'imperial' ? `${Math.round(m * 3.28084)} ft` : `${Math.round(m)} m`)
   const minutes = walking ? Math.max(1, Math.round(profile.timeS / 60)) : Math.max(1, Math.round((total / 1000 / paceKmh) * 60))
-  const pace = units === 'imperial' ? `${(paceKmh * 0.621371).toFixed(1)} mph` : `${paceKmh.toFixed(1)} km/h`
 
   return (
     <div className="tripbuilder glass measure-card">
@@ -95,13 +94,7 @@ export default function MeasureCard() {
         {total > 0 && showPace && (
           <span className="numeral speed-step">
             about <b>{durationLabel(minutes)}</b> on foot{walking ? ', the slopes counted,' : ''} at
-            <button className="nudge" onClick={() => setPaceKmh(Math.max(1, Math.round((paceKmh - 0.5) * 2) / 2))} aria-label="Slower">
-              <IconMinus size={11} />
-            </button>
-            <b>{pace}</b>
-            <button className="nudge" onClick={() => setPaceKmh(Math.min(8, Math.round((paceKmh + 0.5) * 2) / 2))} aria-label="Faster">
-              <IconPlus size={11} />
-            </button>
+            <PaceNudge />
           </span>
         )}
       </div>

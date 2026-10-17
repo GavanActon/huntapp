@@ -8,7 +8,7 @@ import { BUILD } from '../../diagnostics'
 import { checkAppUpdate, reloadApp, useAppUpdate } from '../../offline/appUpdate'
 import { mapsStatus, runMaps, useDownloads } from '../../offline/downloads'
 import { checkMapUpdates, useMapUpdates } from '../../offline/updates'
-import { CONTOUR_INTERVALS, useAppStore } from '../../state/appStore'
+import { useAppStore } from '../../state/appStore'
 import { setTerrainWind, terrainWind, type TerrainWind } from '../../state/terrainWind'
 import { flushTrackSave } from '../../tracking/trackStore'
 import { agoLabel, dayTimeLabel } from '../../time'
@@ -316,14 +316,6 @@ export default function SettingsSheet(): JSX.Element {
   const setButtonLabels = useAppStore((s) => s.setButtonLabels)
   const pastHunts = useAppStore((s) => s.pastHunts)
   const setPastHunts = useAppStore((s) => s.setPastHunts)
-  const contourInterval = useAppStore((s) => s.contourInterval)
-  const setContourInterval = useAppStore((s) => s.setContourInterval)
-  const windFlowOpacity = useAppStore((s) => s.windFlowOpacity)
-  const setWindFlowOpacity = useAppStore((s) => s.setWindFlowOpacity)
-  const tune = useAppStore((s) => s.flowTuning)
-  const setFlowTuning = useAppStore((s) => s.setFlowTuning)
-  const windLevel = useAppStore((s) => s.windLevel)
-  const setWindLevel = useAppStore((s) => s.setWindLevel)
   // the one in use this run: a switch reloads the app
   const terrain = terrainWind()
   const who = useAppStore((s) => s.who)
@@ -377,16 +369,7 @@ export default function SettingsSheet(): JSX.Element {
         <span>Views</span>
         <span className="dim">›</span>
       </button>
-      <div className="st-row">
-        <span>Contour interval</span>
-        <div className="seg" role="radiogroup" aria-label="Contour interval">
-          {CONTOUR_INTERVALS.map((m) => (
-            <button key={m} className={contourInterval === m ? 'seg-on' : ''} role="radio" aria-checked={contourInterval === m} onClick={() => setContourInterval(m)}>
-              {m} m
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* the contour interval and the wind's knobs are the Contours and Wind flow buttons' own (a press and hold, HotDrawer), not here as well */}
       <div className="st-row">
         <span>Past hunts on the map</span>
         <div className="seg" role="radiogroup" aria-label="Past hunts on the map">
@@ -398,41 +381,7 @@ export default function SettingsSheet(): JSX.Element {
         </div>
       </div>
 
-      <div className="st-sec">Wind flow</div>
-      <div className="st-row st-slider">
-        <span>
-          Strength <span className="numeral">· {Math.round(windFlowOpacity * 100)}%</span>
-        </span>
-        <input type="range" min={10} max={100} step={5} value={Math.round(windFlowOpacity * 100)} onChange={(e) => setWindFlowOpacity(Number(e.target.value) / 100)} aria-label="Strength" />
-      </div>
-      <div className="st-row st-slider">
-        <span>
-          Particles <span className="numeral">· {tune.windDensity}</span>
-        </span>
-        <input type="range" min={200} max={2500} step={100} value={tune.windDensity} onChange={(e) => setFlowTuning({ windDensity: Number(e.target.value) })} aria-label="Particles" />
-      </div>
-      <div className="st-row st-slider">
-        <span>
-          Trail <span className="numeral">· {tune.windTrail.toFixed(2)}</span>
-        </span>
-        <input type="range" min={86} max={97} step={1} value={Math.round(tune.windTrail * 100)} onChange={(e) => setFlowTuning({ windTrail: Number(e.target.value) / 100 })} aria-label="Trail" />
-      </div>
-      <label className="st-row">
-        <span>
-          Turbulence <span className="dim">· the swirl behind tree lines, in openings and in the lee of hills</span>
-        </span>
-        <input type="checkbox" className="switch" checked={tune.windSwirl} onChange={(e) => setFlowTuning({ windSwirl: e.target.checked })} />
-      </label>
-      <div className="st-row">
-        <span>Wind flow at</span>
-        <div className="seg" role="radiogroup" aria-label="Wind flow at">
-          {(['ground', 'forecast'] as const).map((v) => (
-            <button key={v} className={windLevel === v ? 'seg-on' : ''} role="radio" aria-checked={windLevel === v} onClick={() => setWindLevel(v)}>
-              {v === 'ground' ? 'Ground' : 'Forecast'}
-            </button>
-          ))}
-        </div>
-      </div>
+      <div className="st-sec">Wind</div>
       {/* shown as SD (the map's grade tile), the wind is SD's whatever this says */}
       {hasSdWind() && !SD_PREVIEW && (
         <div className="st-row st-two">
