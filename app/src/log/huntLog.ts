@@ -207,6 +207,29 @@ export function logBoostGrid(h: Habitat, target: HuntTarget, atMs: number): Floa
   return out
 }
 
+/** The log's multiplier at one cell, as logBoostGrid would have it there:
+ *  for a point's case (Dig in, the live card), which allocated and filled
+ *  the whole grid to read one cell. 1 with nothing bearing on it. */
+export function logBoostAt(h: Habitat, target: HuntTarget, atMs: number, i: number): number {
+  const es = relevant(target, atMs)
+  if (!es.length) return 1
+  const [cw, ch] = h.cellM
+  const [r, c] = h.rc(i)
+  let v = 1
+  for (const e of es) {
+    const p = e.what === 'nothing' ? BLANK : SEEN
+    const ageD = Math.max(0, (atMs - e.ts) / DAY)
+    if (ageD > p.maxD) continue
+    const i0 = h.index(e.lon, e.lat)
+    if (i0 < 0) continue
+    const [r0, c0] = h.rc(i0)
+    const d = Math.hypot((r - r0) * ch, (c - c0) * cw)
+    if (d > p.maxM) continue
+    v += p.gain * Math.exp(-ageD / p.tD) * Math.exp(-d / p.rM)
+  }
+  return Math.max(0.5, Math.min(1.6, v))
+}
+
 /** The one line for a point's reasons: the nearest entry pulling on it. */
 export function logNote(target: HuntTarget, lon: number, lat: number, atMs: number): string | null {
   const kx = 111_320 * Math.cos((lat * Math.PI) / 180)

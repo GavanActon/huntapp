@@ -11,7 +11,7 @@ import { huntCtx, type HuntCtx } from './placeRules'
 import { cellScore, describeFishCell, fishBands, fishContext, fishVerdict, seasonOpen, type FishBands } from './fishRules'
 import { isFish, type Spot, type Target, type Verdict } from './types'
 import { DEFAULT_WEIGHTS, weigh, type Part, type PointCase, type Weights } from './weights'
-import { logBoostGrid, logNote } from '../log/huntLog'
+import { logBoostAt, logBoostGrid, logNote } from '../log/huntLog'
 import type { DayPlan, WindowScore } from './dayPlan'
 import { dist } from '../lengths'
 
@@ -315,12 +315,13 @@ export function pointCase(target: Target, lon: number, lat: number, c: Condition
   const hs = habitatScore(target, b, i, huntCtx(target, c), w, habitatParts)
   let sm = siteFactor(target, b, h, i, c, undefined, w, siteParts)
   const reasons = describeCell(target, b, h, i, c)
-  const log = w.log > 0 ? logBoostGrid(h, target, c.timeMs) : null
-  if (log && log[i] !== 1) {
+  // the log's pull at this one cell (not the whole grid filled to read it)
+  const boost = w.log > 0 ? logBoostAt(h, target, c.timeMs, i) : 1
+  if (boost !== 1) {
     const note = logNote(target, lon, lat, c.timeMs)
-    siteParts.push({ key: 'log', label: note ? `near ${note}` : 'your log', value: log[i], kind: 'mult' })
-    sm *= weigh(log[i], w.log)
-    if (note) reasons.unshift(`${log[i] > 1 ? 'Near' : 'Close to'} ${note}`)
+    siteParts.push({ key: 'log', label: note ? `near ${note}` : 'your log', value: boost, kind: 'mult' })
+    sm *= weigh(boost, w.log)
+    if (note) reasons.unshift(`${boost > 1 ? 'Near' : 'Close to'} ${note}`)
   }
   const v = activityVerdict(target, c, w)
   const day: Part[] = v.factors.map((f) => ({ key: f.key ?? 'light', label: f.label, value: f.mult, kind: 'mult', note: f.note }))
