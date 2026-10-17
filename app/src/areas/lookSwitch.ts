@@ -5,8 +5,6 @@ import { onEachMap } from '../map/mapController'
 import { useDownloads } from '../offline/downloads'
 import { offlineReady } from '../offline/updates'
 import { useAppStore } from '../state/appStore'
-import { useTrackStore } from '../tracking/trackStore'
-import { useScent } from '../weather/micro/scent'
 import { ACTIVE_AREA, otherAreaAt, type AreaDef } from './index'
 import { switchArea } from './switch'
 
@@ -20,9 +18,13 @@ import { switchArea } from './switch'
  *
  * When the view settles inside another area's box after a move by hand,
  * close enough in to mean that place, the app goes there on the same view
- * (a look: follow stays off, so the fix does not take the map back). Not
- * when that would lose something or leave a blank map: then a chip offers
- * it (ui/AreaLook.tsx), and its tap is the ordinary switch, which asks.
+ * (a look: follow stays off, so the fix does not take the map back). The
+ * people placed for the scent go over with it, and the walk being recorded
+ * picks up again with the first fix there (tracking/trackStore.ts), so
+ * neither holds it back (Gavan, 2026-10-17, given the chip every time with
+ * location on: "Why do I need to change locations"). Not when it would
+ * lose something or leave a blank map: then a chip offers it
+ * (ui/AreaLook.tsx), and its tap is the switch, which asks.
  * Never on a fix or a move the app made itself: a fix in another box only
  * offers (ui/AreaOffer.tsx), the phone being glanced at and pocketed.
  */
@@ -47,8 +49,6 @@ export const useAreaLook = create<AreaLookState>(() => ({ offer: null, waved: nu
 
 /** Why not by itself, or null when nothing is lost by going. */
 function holdBack(target: AreaDef): string | null {
-  if (useScent.getState().people.some((p) => !p.live)) return 'people placed for the scent'
-  if (useTrackStore.getState().recordingId) return 'a walk recording'
   if (useDownloads.getState().active) return 'a download running'
   const app = useAppStore.getState()
   if (app.sheets.length || app.topCard) return 'a sheet or card open'
@@ -65,7 +65,7 @@ export function goLook(m: MlMap, target: AreaDef): boolean {
   } catch {
     /* private mode: no streaming chip there */
   }
-  const went = switchArea(target.id, { center: [c.lng, c.lat], zoom: m.getZoom() }, { kind: 'look' })
+  const went = switchArea(target.id, { center: [c.lng, c.lat], zoom: m.getZoom() }, { kind: 'look' }, true)
   if (!went) {
     try {
       sessionStorage.removeItem(CAME_KEY)

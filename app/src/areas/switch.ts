@@ -3,7 +3,7 @@ import { useDownloads } from '../offline/downloads'
 import { offlineReady } from '../offline/updates'
 import { useGpsStore } from '../tracking/gpsStore'
 import { flushTrackSave } from '../tracking/trackStore'
-import { useScent } from '../weather/micro/scent'
+import { carryPlaced, useScent } from '../weather/micro/scent'
 import { cachedPointForecast } from '../weather/openMeteo'
 import { forgetLinkDone, leaveHandoff, type SwitchThen } from './handoff'
 import { ACTIVE_AREA, areaById, areaHref, saveView, setActiveArea, type AreaDef } from './index'
@@ -52,21 +52,25 @@ let switching = false
 
 /**
  * Switch the app to another area, opening on `view` (north up) and doing
- * `then` once it is there. Only ever from a tap, and it asks first: when a
- * download is running (the switch stops it), when people are placed for
- * the scent (a setup placed by hand is never saved; the live cone comes
- * back with the first fix), and when there is no signal and the area's
- * maps or its forecast are not on the phone. False when it does not go.
+ * `then` once it is there. From a tap, or a look (areas/lookSwitch.ts), and
+ * it asks first: when a download is running (the switch stops it), when
+ * people are placed for the scent (a setup placed by hand is never saved;
+ * the live cone comes back with the first fix), and when there is no
+ * signal and the area's maps or its forecast are not on the phone. With
+ * `carry` the people placed go over the reload instead, kept as the app
+ * keeps them over its own reloads (scent.ts carryPlaced), and it does not
+ * ask about them. False when it does not go.
  */
-export function switchArea(id: string, view?: { center: [number, number]; zoom: number }, then?: SwitchThen): boolean {
+export function switchArea(id: string, view?: { center: [number, number]; zoom: number }, then?: SwitchThen, carry = false): boolean {
   const area = areaById(id)
   if (switching || !area || area.id === ACTIVE_AREA.id) return false
   // the reload drops the run: a file still coming is not marked saved (offline/fileStore), the ones done stay
   if (useDownloads.getState().active && !confirm(`Maps are downloading. Going to ${area.name} stops the download: the files it has finished stay on the phone, the rest can be downloaded later. Go anyway?`)) return false
-  if (useScent.getState().people.some((p) => !p.live) && !confirm(`Going to ${area.name} reloads the app, and the people placed for the scent go with it. Go anyway?`)) return false
+  if (!carry && useScent.getState().people.some((p) => !p.live) && !confirm(`Going to ${area.name} reloads the app, and the people placed for the scent go with it. Go anyway?`)) return false
   const gaps = navigator.onLine ? null : offlineGaps(area)
   if (gaps && !confirm(`No signal, and ${gaps}. Go anyway?`)) return false
   switching = true
+  if (carry) carryPlaced()
   flushTrackSave()
   if (view) saveView({ center: view.center, zoom: view.zoom, bearing: 0 }, area.id)
   // location on: follow comes back with it only when the switch is to where
