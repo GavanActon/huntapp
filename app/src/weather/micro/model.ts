@@ -1085,7 +1085,8 @@ const LEE_REACH_M = 300
 // u0, u1: the forecast wind (km/h) over which the eddy comes in; backU: the
 // return flow's speed as a share of that wind where the eddy is whole (0: a
 // share of the floor's own sheltered wind, as before 2026-10-15)
-const LEE_DEFAULT = { rise0: 5, rise1: 15, back: 0.5, open: 0.6, water: 0.6, uphill: 1, conv: 1, u0: 2, u1: 5, backU: 0.1, off: 0 }
+// water 0.2 since 2026-10-17 (scent card, test set v4: tune 0.53 -> 0.59, misses held, the checks unchanged)
+const LEE_DEFAULT = { rise0: 5, rise1: 15, back: 0.5, open: 0.6, water: 0.2, uphill: 1, conv: 1, u0: 2, u1: 5, backU: 0.1, off: 0 }
 let leeTune = { ...LEE_DEFAULT }
 export function setLeeTune(t: Partial<typeof LEE_DEFAULT> | null): void {
   leeTune = { ...LEE_DEFAULT, ...t }

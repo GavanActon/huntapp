@@ -495,8 +495,17 @@ The rule (`model.ts`, `riseUpwind`, `leeShare`):
   narrows lee reversed 92–96% of the time with 5.8 km/h at 10 m, where
   that gate let in 47% of the eddy and the floor sat at the swap, dead
   still), because in a near calm the slopes' own flows run the place.
-  Over open ground and water it is 0.6 of that, since nothing holds the
-  wind above off the ground.
+  Over open ground it is 0.6 of that, since nothing holds the wind above
+  off the ground; over open water 0.2 (2026-10-17, `LEE_DEFAULT.water`,
+  the going grid's ground class). PALM's head height over water in a lee
+  follows the wind above it, a median 9–23° off, where under the trees of
+  the same lees it runs back (Hunter-Jay's `floor_learn.py`, every 4 m
+  run): water in a lee over 10° went from 43% to 46% within 45° of PALM
+  and the app's reversals there from 42% to 12% (PALM's 29%), land and
+  trees unmoved; the scent card's tuned tongue 0.53 → 0.59 with the misses
+  held, the 5 m stand 0.60 → 0.69; the checks unchanged. The deepest lee
+  (the narrows under NW) does run back over its near water about a fifth of
+  the time, so not nothing.
 - **What it does.** The mean head-height wind is scaled by (1 − share /
   0.5): it slows to nothing at half the eddy. Past that it runs back at up
   to half what it had. It climbs the slope toward the crest where the
