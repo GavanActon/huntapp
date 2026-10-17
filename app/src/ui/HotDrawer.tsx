@@ -1,4 +1,4 @@
-import { useEffect, type JSX, type ReactNode, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useState, type JSX, type ReactNode, type RefObject } from 'react'
 import { HOME_NAME, inRegion } from '../config'
 import { heardThisHunt } from '../hunting/moveLayer'
 import { useHuntLog, type LogSpecies } from '../log/huntLog'
@@ -429,13 +429,28 @@ function rows(id: HotId, go: RowsProps['go']): JSX.Element | null {
  *  is the element a tap must land outside of to close it (the button and the drawer). */
 export default function HotDrawer({ id, within, onClose }: { id: HotId; within: RefObject<HTMLElement | null>; onClose: () => void }): JSX.Element {
   useTapOff(within, true, onClose)
+  // the drawer grows up from its button's foot: no taller than the room from there to
+  // the bottom of the strip and the cards under it, measured as it opens and on a turn
+  // of the phone, and a tall one (the wind's) scrolls inside that. A cap from the
+  // viewport alone (ui.css, the fallback) was 34 px too generous on a small phone
+  const [maxH, setMaxH] = useState<number | undefined>(undefined)
+  useLayoutEffect(() => {
+    const fit = () => {
+      const foot = within.current?.getBoundingClientRect().bottom ?? window.innerHeight
+      const top = document.querySelector('.toparea')?.getBoundingClientRect().bottom ?? 0
+      setMaxH(Math.max(120, Math.floor(foot - top - 8)))
+    }
+    fit()
+    window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  }, [within])
   const go = (f: () => void) => () => {
     onClose()
     f()
   }
   const d = HOT_DEFS[id]
   return (
-    <div className="hotdrawer" role="menu" aria-label={d.name}>
+    <div className="hotdrawer" role="menu" aria-label={d.name} style={maxH != null ? { maxHeight: maxH } : undefined}>
       <div className="hd-title">
         <d.Icon size={16} />
         {d.name}
