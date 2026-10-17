@@ -4,6 +4,7 @@ import { devlog } from '../devlog'
 import { onEachMap } from '../map/mapController'
 import { useDownloads } from '../offline/downloads'
 import { useAppStore } from '../state/appStore'
+import { useGpsStore } from '../tracking/gpsStore'
 import { ACTIVE_AREA, otherAreaAt, type AreaDef } from './index'
 import { switchArea } from './switch'
 
@@ -31,8 +32,32 @@ const MIN_ZOOM = 11
 /** How long the view stays put before it counts as settled there. */
 const SETTLE_MS = 1200
 
-/** The area the view is in, waiting on a download before the switch goes. */
-export const useAreaLook = create<{ waiting: AreaDef | null }>(() => ({ waiting: null }))
+/** `waiting`: the area the view is in, waiting on a download before the switch
+ *  goes. `offer`: the area the fix is in while the map is looked at somewhere
+ *  else and not following it: offered on the chip (ui/AreaLook.tsx), never
+ *  taken on a fix alone, since the phone is glanced at and pocketed and a
+ *  reload nobody asked for would drop the people placed and the card left
+ *  open mid-sit. Following, the view goes into the box with the fix and the
+ *  switch below goes by itself. */
+export const useAreaLook = create<{ waiting: AreaDef | null; offer: AreaDef | null }>(() => ({ waiting: null, offer: null }))
+
+function offerFromFix() {
+  const f = useGpsStore.getState().fix
+  const a = f && !useAppStore.getState().follow ? otherAreaAt(f.lon, f.lat) : null
+  if ((a?.id ?? null) !== (useAreaLook.getState().offer?.id ?? null)) useAreaLook.setState({ offer: a })
+}
+useGpsStore.subscribe((s, prev) => {
+  if (s.fix !== prev.fix) offerFromFix()
+})
+useAppStore.subscribe((s, prev) => {
+  if (s.follow !== prev.follow) offerFromFix()
+})
+
+/** Take the offer: to where you are, with nothing to do on arrival (follow comes back with location). */
+export function takeOffer(area: AreaDef): void {
+  const f = useGpsStore.getState().fix
+  if (f) switchArea(area.id, { center: [f.lon, f.lat], zoom: 14 })
+}
 
 /** Go to the area on this view, carrying what is placed: following, follow
  *  carries on there; a look keeps follow off, so the fix does not take the

@@ -52,7 +52,6 @@ import { initTilePrefetch } from './map/prefetch'
 import { initSpotsLayer } from './spots/spotsLayer'
 import { initAreaArrival } from './areas/arrive'
 import AreaLook from './ui/AreaLook'
-import AreaOffer from './ui/AreaOffer'
 import { initStatsWatch } from './stats/watch'
 import BoxCard from './explore/BoxCard'
 import WhereTo from './explore/WhereTo'
@@ -88,9 +87,7 @@ function TopBar() {
       )}
       {/* the map just switched between SD and HD: what came on or went */}
       <GradeFlipChip />
-      {/* the fix in another area's box: offered, never switched on a fix alone */}
-      <AreaOffer />
-      {/* the view in another area's box: gone to by itself, or offered; on arrival, streaming and the download */}
+      {/* another area: the view in its box waiting on a download, or the fix in it while the map is looked at elsewhere (offered, never switched on a fix alone) */}
       <AreaLook />
       {/* offline with every map saved is the normal state at camp: nothing to say */}
       {!online && !offlineReady && <span className="chip chip-warn">Offline · some maps not saved</span>}
