@@ -99,7 +99,7 @@ export default function BoxCard() {
       const over = sel!.extend?.areaId ?? baked[0]?.id
       if (kind === 'hd') useHdOrders.getState().add({ boxId: id, areaId: over, name: sel!.extend?.name ?? baked[0]?.name ?? 'this box', kind: sel!.extend ? 'extend' : 'new', at: Date.now(), sim: GRADE_SWITCH })
     }
-    // a dev build simulates HD: nothing is sent, the stages pass on the grade circle (state/hdOrders.ts)
+    // a dev build simulates HD: nothing is sent; the order shows in the grade sheet (state/hdOrders.ts)
     if (kind === 'hd' && GRADE_SWITCH) {
       markRequested(id, { kind, at: Date.now() })
       order()
@@ -210,7 +210,7 @@ export default function BoxCard() {
         {req && (
           <div className="boxcard-req">
             Requested · {req.kind.toUpperCase()} · {new Date(req.at).toLocaleDateString()} ·{' '}
-            {GRADE_SWITCH && req.kind === 'hd' ? 'simulated on the dev build, its stages on the grade circle' : 'the email comes when it is ready'}{' '}
+            {GRADE_SWITCH && req.kind === 'hd' ? 'simulated on the dev build, nothing sent' : 'the email comes when it is ready'}{' '}
             <button className="link" onClick={cancel}>
               Cancel
             </button>

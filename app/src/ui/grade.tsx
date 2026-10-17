@@ -1,19 +1,17 @@
-import { useEffect, useState, type JSX } from 'react'
+import type { JSX } from 'react'
 import type { Map as MlMap } from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
 import { create } from 'zustand'
-import { ACTIVE_AREA, AREA_LIST, areaAt, fileUrl, type AreaDef } from '../areas'
+import { ACTIVE_AREA, AREA_LIST, areaAt, type AreaDef } from '../areas'
 import { bushMeasured, CORE, FINE_RELIEF, GRADE, hasSdWind, hdFiles, SD_HIDDEN, SD_OFFLINE, SD_PREVIEW, windSolved, areaGrade } from '../config'
-import { devlog } from '../devlog'
 import { setExplore } from '../explore'
 import { boxAround, boxOfBounds, hdFits, parseBoxId, sizeKm, unionBox } from '../explore/box'
 import { useExplore, type Selected } from '../explore/store'
 import { getMap, onEachMap } from '../map/mapController'
-import { deleteStoredFile, downloadToStore, listStored, requestPersistence } from '../offline/fileStore'
-import { serverManifest } from '../offline/updates'
+import { deleteStoredFile } from '../offline/fileStore'
 import { useAppStore, type LayerVisibility } from '../state/appStore'
-import { hdInstalled, markFlip, setHdInstalled, takeFlipped } from '../state/grade'
-import { orderStage, useHdOrders, type HdOrder } from '../state/hdOrders'
+import { hdInstalled, setHdInstalled } from '../state/grade'
+import { useHdOrders, type HdOrder } from '../state/hdOrders'
 import { terrainWind } from '../state/terrainWind'
 import { flushTrackSave } from '../tracking/trackStore'
 import { carryPlaced } from '../weather/micro/scent'
@@ -26,14 +24,14 @@ import './grade.css'
  * gold ring and the weather strip a gold outline while the middle of the
  * view is inside an HD box, and fade off outside it; each HD box on the
  * phone is edged in gold on the map. SD shows no upgrade highlights.
- * Every HD area is yours for now (state/grade.ts), so its HD streams in.
- * The grade circle by the view pill is gold or tan to match and opens the
- * grade sheet: what HD gives here, Install where the dev builds' Remove put
- * an HD area back to SD (the files really download, a ring lighting as
- * each lands, then one reload), what HD adds
- * and Get HD for an SD one, an order's stages, and every area. A tap on
- * ground outside the HD box offers Get HD here, or Extend next to the box
- * (hdOffer).
+ * Every HD area is yours for now (state/grade.ts), so its HD streams in;
+ * the install that downloaded it first, with its rings and progress, went
+ * with that (2026-10-17). The grade word in the view pill is gold or tan to
+ * match and opens the grade sheet: what HD gives here, what HD adds and Get
+ * HD for an SD one, an order made from this phone, and every area; the dev
+ * builds can take an HD area's HD off and put it back, to see it as SD side
+ * by side. A tap on ground outside the HD box offers Get HD here, or Extend
+ * next to the box (hdOffer).
  */
 
 /** Dev builds: hunt-dev and the dev server (orders are simulated there, Remove HD is offered). */
@@ -65,7 +63,7 @@ const sourceOf = (key: string) => {
 const ARCTIC = ACTIVE_AREA.fineRelief != null
 const has = (k: string) => ACTIVE_AREA.files.pmtiles.includes(k)
 /** How an HD item stands while the map is SD: taken off (the dev builds' Remove), or not here with no signal. */
-const OFF = SD_OFFLINE ? 'Not on this phone' : 'Not installed'
+const OFF = SD_OFFLINE ? 'Not on this phone' : 'Taken off (dev)'
 
 /** What the HD bake gave this area, or, for an SD area, what HD adds where it is baked. */
 export function hdItems(): HdItem[] {
@@ -155,7 +153,6 @@ const HD_HOT: Map<string, HdItem> = new Map(areaGrade() === 'hd' ? hdItems().fil
  *  powers it here; `want`, HD would add it and a tap opens what HD gives
  *  (no mark shows for it: SD has no upgrade highlights). */
 export type HdMark = 'hd' | 'want' | null
-export type HotDotMark = HdMark
 
 export function hotMark(id: string): HdMark {
   if (GRADE === 'hd') return HD_HOT.has(id) ? 'hd' : null
@@ -192,31 +189,16 @@ export function HdTab({ mark, className = '' }: { mark: HdMark; className?: stri
   )
 }
 
-// ---- what is live: the view in HD or not, an install running ------------
+// ---- what is live: the view in HD or not ----------------------------------
 
-interface HdLive {
-  /** the middle of the view is inside this area's HD box, and it is installed */
-  inView: boolean
-  installing: boolean
-  /** the items whose files have landed in this install */
-  done: HdItem['id'][]
-  /** the item whose file is coming now */
-  now: HdItem['id'] | null
-  /** bytes of the whole install, landed and in all */
-  loaded: number
-  total: number
-  /** everything in: gold all round for a moment, then the reload */
-  finishing: boolean
-  error: string | null
-}
-
-export const useHdLive = create<HdLive>(() => ({ inView: false, installing: false, done: [], now: null, loaded: 0, total: 0, finishing: false, error: null }))
+/** The middle of the view is inside this area's HD box, drawn at HD. */
+export const useHdLive = create<{ inView: boolean }>(() => ({ inView: false }))
 
 const inBox = (b: { west: number; south: number; east: number; north: number }, lon: number, lat: number) => lon >= b.west && lon <= b.east && lat >= b.south && lat <= b.north
 
 // the page's root says it, for the weather strip's outline (grade.css)
 useHdLive.subscribe((s) => {
-  if ((GRADE === 'hd' && s.inView) || s.finishing) document.documentElement.dataset.hdview = '1'
+  if (GRADE === 'hd' && s.inView) document.documentElement.dataset.hdview = '1'
   else delete document.documentElement.dataset.hdview
 })
 
@@ -291,88 +273,35 @@ onEachMap((m) => {
 // ---- the ring on an action button ----------------------------------------
 
 /** The ring round an action button HD powers here: gold while the view is
- *  in the HD box, and as its file lands during an install; nothing in SD. */
+ *  in the HD box; nothing in SD. */
 export function HotDot({ id }: { id: string }): JSX.Element | null {
   const it = HD_HOT.get(id)
-  const lit = useHdLive((s) => {
-    if (!it) return false
-    if (s.finishing || s.done.includes(it.id)) return true
-    // the wind's ring stays off while Settings runs the SD wind by choice
-    return GRADE === 'hd' && s.inView && !(it.id === 'wind' && terrainWind() === 'sd')
-  })
+  // the wind's ring stays off while Settings runs the SD wind by choice
+  const lit = useHdLive((s) => !!it && GRADE === 'hd' && s.inView && !(it.id === 'wind' && terrainWind() === 'sd'))
   if (!it) return null
   return <span className={`grade-ring grade-ring-hd${lit ? ' on' : ''}`} aria-label={lit ? 'HD' : undefined} />
 }
 
-// ---- install and remove ---------------------------------------------------
+// ---- the dev builds' compare: HD off, and back on --------------------------
 
-const wait = (ms: number) => new Promise<void>((r) => window.setTimeout(r, ms))
-
-/** About how much an install fetches, bytes: the bake's own count of each file. */
-export function installBytes(a: AreaDef = ACTIVE_AREA): number {
-  const cov = a.coverage
-  return hdFiles(a).reduce((n, f) => n + (f.key === 'micro' ? (cov?.grids.micro?.bytes ?? 0) : (cov?.pmtiles[f.key]?.bytes ?? 0)), 0)
-}
-
-const ITEM_OF: Record<string, HdItem['id']> = { micro: 'wind', hillshadeLidar: 'shade', contours: 'contours', lanes: 'lanes', understory: 'bush' }
-
-/** The reload that brings the new grade in, with the placed people and the walk kept (offline/downloads.ts afterChange). */
-function restart(f: 'installed' | 'removed') {
-  markFlip(f)
+/** The reload that brings the other grade in, with the placed people and the walk kept (offline/downloads.ts afterChange). */
+function restart() {
   carryPlaced()
   flushTrackSave()
   window.location.reload()
-}
-
-/** Install HD here: each HD file downloaded to the phone (one already on it
- *  counts at once), its ring lit as it lands, then gold all round and the
- *  reload that draws it. */
-export async function installHd(): Promise<void> {
-  const live = useHdLive
-  if (live.getState().installing || !SD_PREVIEW) return
-  if (!window.isSecureContext) {
-    live.setState({ error: 'Installing needs a secure page: open the app over https.' })
-    return
-  }
-  live.setState({ installing: true, done: [], now: null, loaded: 0, total: 0, finishing: false, error: null })
-  try {
-    await requestPersistence()
-    const files = hdFiles()
-    const stored = new Set(listStored().map((x) => x.name))
-    const manifest = await serverManifest(ACTIVE_AREA.id)
-    const size = (file: string) => manifest?.files[file]?.size ?? 0
-    const total = files.reduce((n, f) => n + (stored.has(f.file) ? 0 : size(f.file)), 0) || installBytes()
-    live.setState({ total })
-    let before = 0
-    for (const f of files) {
-      const item = ITEM_OF[f.key]
-      live.setState({ now: item })
-      if (stored.has(f.file)) {
-        await wait(450)
-      } else if (manifest && !manifest.files[f.file]) {
-        devlog('hd', `install: ${f.file} not on the server, skipped`)
-        await wait(300)
-      } else {
-        await downloadToStore(fileUrl(f.file), f.file, (loaded) => live.setState({ loaded: before + loaded }), undefined, manifest?.files[f.file]?.hash)
-        before += size(f.file)
-      }
-      live.setState({ done: [...live.getState().done, item], loaded: Math.max(before, live.getState().loaded) })
-    }
-    setHdInstalled(ACTIVE_AREA.id, true)
-    live.setState({ finishing: true, now: null })
-    devlog('hd', `installed for ${ACTIVE_AREA.id} · ${files.length} files`)
-    await wait(1800)
-    restart('installed')
-  } catch (e) {
-    live.setState({ installing: false, now: null, error: `The install stopped${e instanceof Error && e.message ? ` (${e.message})` : ''}. Try again with signal.` })
-  }
 }
 
 /** Take HD off the phone for this area (dev builds): its files go, and the map is SD again. */
 export async function removeHd(): Promise<void> {
   for (const f of hdFiles()) await deleteStoredFile(f.file)
   setHdInstalled(ACTIVE_AREA.id, false)
-  restart('removed')
+  restart()
+}
+
+/** Put it back (dev builds): HD streams in again with signal, as for everyone. */
+export function showHdAgain(): void {
+  setHdInstalled(ACTIVE_AREA.id, true)
+  restart()
 }
 
 // ---- Get HD here: a tap on the ground outside the HD box ------------------
@@ -431,9 +360,9 @@ export function askHdForArea(): void {
   openBox({ box: askedBox() ?? boxOfBounds(CORE.west, CORE.south, CORE.east, CORE.north), lon, lat })
 }
 
-// ---- orders on the grade circle ------------------------------------------
+// ---- orders in the grade sheet -------------------------------------------
 
-/** The order the grade circle shows: this area's newest (an extension of it, or HD asked for over it). */
+/** The order the grade sheet shows: this area's newest (an extension of it, or HD asked for over it). */
 export function useAreaOrder(): HdOrder | null {
   const orders = useHdOrders((s) => s.orders)
   return (
@@ -443,19 +372,7 @@ export function useAreaOrder(): HdOrder | null {
   )
 }
 
-/** A clock for an order's stages: a tick a second while one is being built. */
-export function useOrderTick(o: HdOrder | null): number {
-  const [now, setNow] = useState(Date.now)
-  useEffect(() => {
-    // a real order's stage never moves on the phone (hdOrders.ts): no clock for it
-    if (!o || !o.sim || orderStage(o).stage === 'ready') return
-    const t = window.setInterval(() => setNow(Date.now()), 1000)
-    return () => window.clearInterval(t)
-  }, [o])
-  return now
-}
-
-// ---- the sheet, the circle, the chip -------------------------------------
+// ---- the sheet and the pill's word ---------------------------------------
 
 /** What HD gives here, on top of whatever sheet is up (a layer row's tab), or alone. */
 export function openGrade(focus?: string, over = false): void {
@@ -484,59 +401,24 @@ export function showHdLayer(it: HdItem): void {
  * round button beside the pill and a tab under the strip: "Integrate into
  * the pill with a | separator - tap on it and it bring up the goods. You'll
  * do it once by accident but generally I don't think it will be bad"). The
- * word is gold while the view is in HD, tan in SD. A gold loading ring turns
- * before it while HD installs or is being built (Gavan: "Instead of a bar it
- * should be a loading"); built and waiting to install, the word breathes.
- * A tap opens the grade sheet.
+ * word is gold while the view is in HD, tan in SD. A tap opens the grade
+ * sheet. (The loading ring that turned before it for an install or an
+ * order's stages went with the install, 2026-10-17: an order's stages were
+ * never readable from the phone, and the ring turned for the app's life.)
  */
 export function GradeTile(): JSX.Element | null {
   const explore = useAppStore((s) => s.exploreMode)
   const inView = useHdLive((s) => s.inView)
-  const finishing = useHdLive((s) => s.finishing)
-  const installing = useHdLive((s) => s.installing)
   const order = useAreaOrder()
-  const now = useOrderTick(order)
   if (GRADE === 'live' || explore) return null
-  const gold = (GRADE === 'hd' && inView) || finishing
-  const st = order ? orderStage(order, now) : null
-  // the ring turns only for what moves on the phone: an install, or a dev build's simulated
-  // order. A real order sat at its first stage for good, and the ring turned for the app's life
-  const loading = (installing && !finishing) || (!gold && order?.sim === true && st != null && st.stage !== 'ready')
+  const gold = GRADE === 'hd' && inView
   return (
     <>
       <span className="viewpill-sep" aria-hidden="true" />
-      <button
-        type="button"
-        className={`grade-tag ${gold ? 'grade-hd' : 'grade-sd'}${st?.stage === 'ready' && !gold ? ' grade-ready' : ''}`}
-        onClick={() => openGrade()}
-        aria-label={gold ? 'HD here: what it gives' : installing ? 'Installing HD' : order ? (order.sim ? 'HD being built' : 'HD ordered') : 'SD here: what HD adds'}
-      >
-        {loading && <i className="grade-spin" aria-hidden="true" />}
+      <button type="button" className={`grade-tag ${gold ? 'grade-hd' : 'grade-sd'}`} onClick={() => openGrade()} aria-label={gold ? 'HD here: what it gives' : order ? 'HD ordered' : 'SD here: what HD adds'}>
         <span>{gold ? 'HD' : 'SD'}</span>
       </button>
     </>
-  )
-}
-
-/** Just installed or removed: a few seconds of what came on or went, in the top bar. */
-export function GradeFlipChip(): JSX.Element | null {
-  const [f] = useState(takeFlipped)
-  const [up, setUp] = useState(f != null)
-  useEffect(() => {
-    if (!up) return
-    const t = window.setTimeout(() => setUp(false), 8000)
-    return () => window.clearTimeout(t)
-  }, [up])
-  if (!up || !f) return null
-  const names: Record<HdItem['id'], string> = { wind: 'wind solve', shade: ARCTIC ? '2 m shade' : 'LiDAR shade', contours: '1 m contours', lanes: 'lanes', bush: 'bush' }
-  const list = hdItems()
-    .map((i) => names[i.id])
-    .join(', ')
-  return (
-    <button type="button" className={`chip grade-chip grade-chip-${f === 'installed' ? 'hd' : 'sd'}`} onClick={() => openGrade()}>
-      <b>{f === 'installed' ? 'HD installed' : 'HD removed'}</b>
-      {list ? ` · ${list}` : ''}
-    </button>
   )
 }
 

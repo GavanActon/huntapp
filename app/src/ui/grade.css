@@ -30,35 +30,6 @@
 .grade-tag:active {
   background: rgba(var(--c-ink-rgb), 0.1);
 }
-/* installing, or being built: a gold loading ring before the word */
-.grade-spin {
-  flex: none;
-  width: 11px;
-  height: 11px;
-  margin-right: 7px;
-  border-radius: 50%;
-  border: 2px solid rgba(var(--c-hd-rgb), 0.25);
-  border-top-color: var(--c-hd);
-  animation: grade-spin 0.9s linear infinite;
-}
-@keyframes grade-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-/* built and waiting to install: the word breathes, once a few seconds */
-.grade-tag.grade-ready {
-  animation: grade-breathe 3.2s ease-in-out infinite;
-}
-@keyframes grade-breathe {
-  0%,
-  100% {
-    text-shadow: 0 0 0 rgba(var(--c-hd-rgb), 0);
-  }
-  50% {
-    text-shadow: 0 0 10px rgba(var(--c-hd-rgb), 0.9);
-  }
-}
 
 /* the HD tab: filled where HD powers it here, outlined where HD would add it */
 .grade-tab {
@@ -83,8 +54,8 @@
   background: rgba(var(--c-bg-rgb), 0.85);
 }
 /* an action button's ring, just outside the circle: flat gold with a soft
-   glow while the view is in HD (or its file has just landed in an install),
-   faded off elsewhere. Drawn as a fill masked to its rim. */
+   glow while the view is in HD, faded off elsewhere. Drawn as a fill masked
+   to its rim. */
 .hotbtn > .grade-ring {
   position: absolute;
   inset: -3.5px;
@@ -127,18 +98,6 @@
 .layers-name .grade-tab {
   margin-left: 6px;
   vertical-align: 1px;
-}
-
-/* just switched: what came on or went */
-.grade-chip b {
-  font-weight: 850;
-  letter-spacing: 0.05em;
-}
-.grade-chip-hd {
-  border-color: var(--c-hd) !important;
-}
-.grade-chip-hd b {
-  color: var(--c-hd);
 }
 
 /* the sheet */
@@ -238,84 +197,13 @@
   transform: scale(0.95);
 }
 
-/* the install: a gold bar, its words under it */
-.grade-install {
-  margin: 4px 0 6px;
-}
-.grade-bar {
-  height: 8px;
-  border-radius: 99px;
-  background: rgba(var(--c-ink-rgb), 0.14);
-  overflow: hidden;
-}
-.grade-bar > i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--c-hd);
-  box-shadow: 0 0 10px rgba(var(--c-hd-rgb), 0.5);
-  transition: width 0.3s ease;
-}
-.grade-bar-words {
-  margin-top: 6px;
-  font-size: 13px;
-  color: var(--c-text-dim);
-}
 .grade-note {
   margin: 8px 0 0;
   font-size: 12px;
   line-height: 1.35;
 }
-.grade-coming {
-  background: rgba(var(--c-hd-rgb), 0.08);
-}
 .grade-tab {
   transition: background 0.35s ease, color 0.35s ease;
-}
-
-/* an order's stages */
-.grade-stages {
-  margin: 4px 0 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 14px;
-  color: var(--c-text-faint);
-}
-.grade-stages li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.grade-stages li::before {
-  content: '';
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  border: 1.5px solid currentColor;
-  flex: none;
-}
-.grade-stages li.done {
-  color: var(--c-text-dim);
-}
-.grade-stages li.done::before {
-  background: var(--c-hd);
-  border-color: var(--c-hd);
-}
-.grade-stages li.now {
-  color: var(--c-text);
-  font-weight: 650;
-}
-.grade-stages li.now::before {
-  border-color: var(--c-hd);
-  animation: grade-breathe-dot 1.4s ease-in-out infinite;
-}
-@keyframes grade-breathe-dot {
-  50% {
-    background: rgba(var(--c-hd-rgb), 0.6);
-  }
 }
 
 /* every area, with its grade */

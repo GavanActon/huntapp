@@ -56,7 +56,6 @@ import { initStatsWatch } from './stats/watch'
 import BoxCard from './explore/BoxCard'
 import WhereTo from './explore/WhereTo'
 import DevBadge from './ui/DevBadge'
-import { GradeFlipChip } from './ui/grade'
 
 /** What has gone wrong (offline with maps missing, no location), and with
  *  the map turned the way you face, the heading: the way that is up. */
@@ -85,8 +84,6 @@ function TopBar() {
           {compass(heading)} · {heading}°
         </span>
       )}
-      {/* the map just switched between SD and HD: what came on or went */}
-      <GradeFlipChip />
       {/* another area: the view in its box waiting on a download, or the fix in it while the map is looked at elsewhere (offered, never switched on a fix alone) */}
       <AreaLook />
       {/* offline with every map saved is the normal state at camp: nothing to say */}
