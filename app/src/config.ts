@@ -83,7 +83,6 @@ export interface DataFileDef {
  *  (<stem>-<area>.pmtiles) and what it is. An area bakes some of them, its
  *  files.pmtiles. */
 const PMTILES: (Omit<DataFileDef, 'file'> & { stem: string })[] = [
-  { key: 'basemap', stem: 'basemap', kind: 'vector', label: 'Base map' },
   { key: 'topo', stem: 'topo', kind: 'raster', label: 'Topographic map' },
   { key: 'satellite', stem: 'satellite', kind: 'raster', label: 'Imagery' },
   { key: 'hillshade', stem: 'hillshade', kind: 'raster', label: 'Hillshade (30 m)' },

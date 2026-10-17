@@ -1,4 +1,3 @@
-import { DARK, layers as basemapLayers } from '@protomaps/basemaps'
 import type { FeatureCollection } from 'geojson'
 import type { ExpressionSpecification, FilterSpecification, GeoJSONSource, LayerSpecification, Map as MlMap, SourceSpecification, StyleSpecification } from 'maplibre-gl'
 import { ACTIVE_AREA, AREA_LIST } from '../areas'
@@ -8,21 +7,10 @@ import type { ContourInterval, LayerOpacity, LayerVisibility } from '../state/ap
 import { COVERAGE_KEY, COVERAGE_SOURCE, coverageLayers, coverageSource } from '../explore/coverage'
 import { STREAM_PICTURES, STREAMED_LABEL_MAX_ANGLE, streamedContours, streamedDem, streamedImagery, viewLit } from './streamPictures'
 
-/** Bush-tuned flavour of the Protomaps dark basemap: dark green land, navy
- *  water, so the topo, hillshade and forest layers carry the contrast. */
-const BUSH = {
-  ...DARK,
-  background: '#0f1a12',
-  earth: '#1a2a1c',
-  water: '#0b2033',
-  wood_a: '#16301b',
-  wood_b: '#16301b',
-  park_a: '#17311c',
-  park_b: '#17311c',
-  sand: '#2a3527',
-  beach: '#2a3527',
-  glacier: '#223040',
-}
+/** The ground under everything: the bush, dark green. (A baked vector base map
+ *  in a Protomaps style was planned and never built; its styling and the
+ *  library went with it, 2026-10-17. The live Canada Base Map is the base.) */
+const BUSH_BACKGROUND = '#0f1a12'
 
 /** A streamed archive's zoom range and bounds (offline/updates.ts DataManifest) */
 export type ArchiveRange = { z: [number, number]; bounds: [number, number, number, number] }
@@ -235,7 +223,7 @@ export function baseTone(layers: LayerVisibility): BaseTone {
  *  2026-10-02: zoomed out, the Terrain view was black). */
 const SHADE_GROUND = '#8a8f88'
 export function groundColour(layers: LayerVisibility): string {
-  return baseTone(layers) === 'shade' ? SHADE_GROUND : BUSH.background
+  return baseTone(layers) === 'shade' ? SHADE_GROUND : BUSH_BACKGROUND
 }
 
 export interface ContourInk {
@@ -386,41 +374,35 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
     return EMPTY_FC
   }
 
-  // ---- base ----
-  let base: LayerSpecification[]
-  if (has('basemap')) {
-    sources.basemap = archive('basemap', { type: 'vector', attribution: '© OpenStreetMap' })
-    base = basemapLayers('basemap', BUSH, { lang: 'en' })
-  } else {
-    const b = LIVE_RASTER.base!
-    // the quiet base inside the baked box only when there is signal (bounds):
-    // beyond it the country shows as itself, the Toporama sheet from z7 and
-    // the geometry map with its names below that
-    const box: [number, number, number, number] = [REGION.west, REGION.south, REGION.east, REGION.north]
-    sources.base = { type: 'raster', tiles: b.tiles, tileSize: b.tileSize, attribution: b.attribution, maxzoom: b.maxzoom, ...(o.online ? { bounds: box } : {}) }
-    base = [{ id: 'background', type: 'background', paint: { 'background-color': BUSH.background } }]
-    if (o.online) {
-      sources.country = { type: 'raster', tiles: b.tiles, tileSize: b.tileSize, attribution: b.attribution, maxzoom: 7 }
-      base.push({ id: 'country', type: 'raster', source: 'country', maxzoom: 7, paint: { 'raster-saturation': -0.3, 'raster-brightness-max': 0.8, 'raster-resampling': 'linear' } })
-      if (LIVE_RASTER.labels) {
-        const lb = LIVE_RASTER.labels
-        sources.labels = { type: 'raster', tiles: lb.tiles, tileSize: lb.tileSize, attribution: lb.attribution, maxzoom: lb.maxzoom }
-        base.push({ id: 'country-labels', type: 'raster', source: 'labels', maxzoom: 7, paint: { 'raster-opacity': 0.95, 'raster-resampling': 'linear' } })
-      }
-      if (LIVE_RASTER.toposheet) {
-        const ts = LIVE_RASTER.toposheet
-        sources.toposheet = { type: 'raster', tiles: ts.tiles, tileSize: ts.tileSize, attribution: ts.attribution, minzoom: ts.minzoom, maxzoom: ts.maxzoom }
-        base.push({ id: 'toposheet', type: 'raster', source: 'toposheet', minzoom: ts.minzoom, paint: { 'raster-opacity': 0.92, 'raster-resampling': 'linear' } })
-      }
+  // ---- base: the live Canada Base Map ----
+  const b = LIVE_RASTER.base!
+  // the quiet base inside the baked box only when there is signal (bounds):
+  // beyond it the country shows as itself, the Toporama sheet from z7 and
+  // the geometry map with its names below that
+  const box: [number, number, number, number] = [REGION.west, REGION.south, REGION.east, REGION.north]
+  sources.base = { type: 'raster', tiles: b.tiles, tileSize: b.tileSize, attribution: b.attribution, maxzoom: b.maxzoom, ...(o.online ? { bounds: box } : {}) }
+  let base: LayerSpecification[] = [{ id: 'background', type: 'background', paint: { 'background-color': BUSH_BACKGROUND } }]
+  if (o.online) {
+    sources.country = { type: 'raster', tiles: b.tiles, tileSize: b.tileSize, attribution: b.attribution, maxzoom: 7 }
+    base.push({ id: 'country', type: 'raster', source: 'country', maxzoom: 7, paint: { 'raster-saturation': -0.3, 'raster-brightness-max': 0.8, 'raster-resampling': 'linear' } })
+    if (LIVE_RASTER.labels) {
+      const lb = LIVE_RASTER.labels
+      sources.labels = { type: 'raster', tiles: lb.tiles, tileSize: lb.tileSize, attribution: lb.attribution, maxzoom: lb.maxzoom }
+      base.push({ id: 'country-labels', type: 'raster', source: 'labels', maxzoom: 7, paint: { 'raster-opacity': 0.95, 'raster-resampling': 'linear' } })
     }
-    base.push({
-      id: 'base',
-      type: 'raster',
-      source: 'base',
-      // quiet: the base is furniture, the data layers own the contrast
-      paint: { 'raster-saturation': -0.7, 'raster-brightness-max': 0.45, 'raster-contrast': 0.1 },
-    })
+    if (LIVE_RASTER.toposheet) {
+      const ts = LIVE_RASTER.toposheet
+      sources.toposheet = { type: 'raster', tiles: ts.tiles, tileSize: ts.tileSize, attribution: ts.attribution, minzoom: ts.minzoom, maxzoom: ts.maxzoom }
+      base.push({ id: 'toposheet', type: 'raster', source: 'toposheet', minzoom: ts.minzoom, paint: { 'raster-opacity': 0.92, 'raster-resampling': 'linear' } })
+    }
   }
+  base.push({
+    id: 'base',
+    type: 'raster',
+    source: 'base',
+    // quiet: the base is furniture, the data layers own the contrast
+    paint: { 'raster-saturation': -0.7, 'raster-brightness-max': 0.45, 'raster-contrast': 0.1 },
+  })
   base = base.map((l) => (l.type === 'background' ? { ...l, paint: { ...l.paint, 'background-color': groundColour(o.layers) } } : l))
   const firstSymbol = base.findIndex((l) => l.type === 'symbol')
   const underLabels = firstSymbol === -1 ? base.length : firstSymbol

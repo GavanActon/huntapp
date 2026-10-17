@@ -32,7 +32,7 @@
     "description": "Topo, imagery, hillshade, forest stands, lake depths, historical topo, camps, WMU lines and the habitat grid the Spots tab scores and the going grid routes are found on, for Pickle, McGill, Ketchup and Line Lakes; full detail within 2 km of the camp."
   },
   "files": {
-    "pmtiles": ["basemap", "topo", "satellite", "hillshade", "hillshadeLidar", "dem", "contours", "contoursWide", "forest", "understory", "lanes", "bathy", "historical", "bathySheets", "places"],
+    "pmtiles": ["topo", "satellite", "hillshade", "hillshadeLidar", "dem", "contours", "contoursWide", "forest", "understory", "lanes", "bathy", "historical", "bathySheets", "places"],
     "geo": ["wmu", "camps", "crown", "parks", "bathy", "fire", "roads", "forest", "depth"],
     "baseGeo": ["waterbody"],
     "grids": ["habitat", "micro", "micro-sd", "going"]

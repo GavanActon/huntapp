@@ -54,7 +54,7 @@ export function streamedImagery(): LiveRaster | undefined {
 
 /** The archives a streamed SD area would not have: the base map, every
  *  relief and contour bake, the topo sheet, the imagery and the old sheets. */
-export const STREAMED_KEYS = ['basemap', 'dem', 'hillshade', 'hillshadeLidar', 'topo', 'satellite', 'historical', 'contours', 'contoursWide']
+export const STREAMED_KEYS = ['dem', 'hillshade', 'hillshadeLidar', 'topo', 'satellite', 'historical', 'contours', 'contoursWide']
 
 const TILES = 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp'
 const LINES_MAXZOOM = 15
