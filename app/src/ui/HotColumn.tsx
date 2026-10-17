@@ -15,7 +15,9 @@ export default function HotColumn({ side }: { side: HotSide }): JSX.Element | nu
   const hidden = useAppStore((s) => s.hotHidden)
   const [open, setOpen] = useState<HotId | null>(null)
   const ref = useRef<HTMLDivElement>(null)
-  const rows = useRowsThatFit(ref, ids.length, labels, hidden)
+  // two columns at most: past that a short room took them across the map one by one (Gavan, 2026-10-17, the Measure card up:
+  // "Action buttons end up in weird place"); a column too tall for two grows up instead, and folding the strip gives it the room
+  const rows = Math.max(useRowsThatFit(ref, ids.length, labels, hidden), Math.ceil(ids.length / MAX_COLS))
   useEffect(() => {
     if (open && !ids.includes(open)) setOpen(null)
   }, [ids, open])
@@ -36,6 +38,8 @@ export default function HotColumn({ side }: { side: HotSide }): JSX.Element | nu
 }
 
 const GAP = 10 // .hotcol-col's gap
+/** Columns a side at most. */
+const MAX_COLS = 2
 
 /** How far the column's stack has still to slide down (up, if less than 0)
  *  to where it comes to rest: it rides the bar's card (bottom: --barh, a

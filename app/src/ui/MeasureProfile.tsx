@@ -13,11 +13,19 @@ import '../measure/profile.css'
  * place on the map.
  */
 
-const H = 96
+const H = 76
 const PAD = { l: 44, r: 4, t: 6, b: 4 }
 
 const elevText = (m: number, units: Units) => (units === 'imperial' ? `${Math.round(m * 3.28084)} ft` : `${Math.round(m)} m`)
 const pct = (g: number) => `${Math.round(Math.abs(g) * 100)}%`
+
+/** A leg's sight line in a few words, for the one line under the trace when there are several. */
+function sightShort(leg: LegProfile, units: Units): string {
+  if (leg.sight === 'rise') return `ground at ${formatDistance((leg.blockD ?? leg.startD) - leg.startD, units)}`
+  if (leg.sight === 'trees') return `trees ${formatDistance(leg.treesM, units)}`
+  if (leg.sight === 'clear') return 'clear'
+  return '–'
+}
 
 /** One leg's sight line in words. */
 function sightWords(leg: LegProfile, units: Units): string {
@@ -187,11 +195,7 @@ export default function MeasureProfile(): JSX.Element | null {
           {p.legs.length === 1 ? (
             <span>Sight line: {sightWords(p.legs[0], units)}</span>
           ) : (
-            p.legs.slice(-3).map((l, i, arr) => (
-              <span key={i}>
-                Leg {p.legs.length - arr.length + i + 1}: {sightWords(l, units)}
-              </span>
-            ))
+            <span>Sight lines · {p.legs.map((l, i) => `${i + 1} ${sightShort(l, units)}`).join(' · ')}</span>
           )}
         </div>
       )}

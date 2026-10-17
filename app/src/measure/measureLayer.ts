@@ -15,7 +15,10 @@ import { initMeasureProfile, useMeasureProfile } from './profile'
 /**
  * The measuring tool on the map: tap to drop points, and every leg
  * carries its range and bearing. Points are draggable, and a tap on one
- * removes it — the same gestures the route already teaches.
+ * removes it — the same gestures the route already teaches. A tap on the
+ * first point, with three or more down, closes the shape back to it
+ * (Gavan, 2026-10-17: "making a full triangle killed the start point"); a
+ * tap on that shared corner opens it again, and a drag moves both ends.
  *
  * Straight-line ranges, the way a map ruler works; walking (the drawer's
  * Straight | Walking), each leg reads the distance over the ground's ups
@@ -35,6 +38,18 @@ let lastEditMs = 0
 // after a touch gesture the browser replays it as mouse events; those must not
 // start a second drag on top of the one the finger just finished
 let lastTouchMs = 0
+
+/** The shape is closed: its last point is its first, put there by a tap on the first. */
+function closedLoop(points: [number, number][]): boolean {
+  const n = points.length
+  return n >= 4 && points[0][0] === points[n - 1][0] && points[0][1] === points[n - 1][1]
+}
+
+/** The points a drag of `idx` moves: both ends of a closed shape go together. */
+function dragged(points: [number, number][], idx: number): number[] {
+  const last = points.length - 1
+  return closedLoop(points) && (idx === 0 || idx === last) ? [0, last] : [idx]
+}
 
 function emptyFc(): FeatureCollection {
   return { type: 'FeatureCollection', features: [] }
@@ -119,7 +134,8 @@ function buildFc(): FeatureCollection {
   // walking: the ground's distance per leg, once worked out and only while no point is being dragged
   const walked = line === 'walking' && !drag ? useMeasureProfile.getState().profile?.legs : undefined
 
-  const pts = points.map((p, i) => (drag && drag.idx === i ? drag.lngLat : p))
+  const moving = drag ? dragged(points, drag.idx) : []
+  const pts = points.map((p, i) => (drag && moving.includes(i) ? drag.lngLat : p))
   const features: Feature[] = []
 
   if (pts.length >= 2) {
@@ -215,9 +231,19 @@ function beginDrag(map: MlMap, idx: number, e: MapLayerMouseEvent | MapLayerTouc
     if (touch) lastTouchMs = Date.now()
     lastEditMs = Date.now()
     const st = useMeasureStore.getState()
-    // a tap that went nowhere means "I'm done with this point"
-    if (done.moved) st.movePoint(done.idx, done.lngLat)
-    else st.removePoint(done.idx)
+    const pts = st.points
+    if (done.moved) {
+      for (const i of dragged(pts, done.idx)) st.movePoint(i, done.lngLat)
+    } else if (closedLoop(pts) && (done.idx === 0 || done.idx === pts.length - 1)) {
+      // the shared corner tapped: the shape opens again
+      st.removePoint(pts.length - 1)
+    } else if (done.idx === 0 && pts.length >= 3) {
+      // the first point tapped with a shape drawn: it closes back to it
+      st.addPoint(pts[0])
+    } else {
+      // a tap that went nowhere means "I'm done with this point"
+      st.removePoint(done.idx)
+    }
   }
   abandonDrag = () => {
     detach()
