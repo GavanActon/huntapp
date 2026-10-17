@@ -1109,7 +1109,10 @@ let leeRise: Float32Array | null = null
 // rule 1 since 2026-10-16: the towers' share at 0.8 of its floor/top level (c0 0.168), the level a
 // forecast's 10 m carries (ref_wind.py: the over-canopy top runs 0.71-0.82 of U10); trees x1.5 is the
 // old rule's, kept where the habitat has no stand
-const FLOOR_DEFAULT = { trees: 1.5, open: 1, rule: 1, c0: 0.168, closure: 1.34, leaf: 0.31 }
+// waterShelter: the least of the wind a tree line upwind leaves over open water (0: the land's
+// shelter, 0.25 within 3 tree heights, as before; PALM's floor over a lee's water runs 0.35-0.56 of
+// the 10 m wind where the app's sheltered call was 0.12-0.21)
+const FLOOR_DEFAULT = { trees: 1.5, open: 1, rule: 1, c0: 0.168, closure: 1.34, leaf: 0.31, waterShelter: 0 }
 /** a stand never lets more through than open ground's log law gives 2 m over 10 m (§4) */
 const FLOOR_OPEN_SHARE = 0.7
 
@@ -1164,7 +1167,9 @@ function towerShare(g: Habitat, i: number, leaves: number): number | null {
 // since 2026-10-16: the fade keyed to the wind over the place, from 5 km/h by e every 1 km/h, on
 // slopes and flats alike (PALM's floor drains to ~5.4 km/h of forecast 10 m and follows the wind by
 // 6.1-6.5, pipeline/teacher/palm/drain_read.py); before, 5 km/h of the decoupled local wind by e every 8
-const THERMAL_DEFAULT = { mix0: 5, mixScale: 1, trees: 0.7, ref: 1, mixS0: 5, mixSScale: 1, sl0: 3, sl1: 8 }
+// waterAna: the sun's upslope flow over open water (1 as before; water does not heat as the shore
+// does, and PALM's floor over a lee's water under a sunny N wind follows the wind above, am000)
+const THERMAL_DEFAULT = { mix0: 5, mixScale: 1, trees: 0.7, ref: 1, mixS0: 5, mixSScale: 1, sl0: 3, sl1: 8, waterAna: 1 }
 let thermalTune = { ...THERMAL_DEFAULT }
 export function setThermalTune(t: Partial<typeof THERMAL_DEFAULT> | null): void {
   thermalTune = { ...THERMAL_DEFAULT, ...t }
@@ -1598,6 +1603,8 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
       shelter = Math.min(shelter, 0.5)
       edgeNote ??= 'a small opening in the trees: the wind swirls in it'
     }
+    // over open water the wind above comes down past a tree line upwind sooner than on land
+    if (shelter < floorTune.waterShelter && waterAt(lon, lat)) shelter = floorTune.waterShelter
   }
   // a stable surface layer thins the wind toward the ground well below
   // the neutral log law (Monin–Obukhov: u2/u10 ≈ 0.4–0.5 on a clear calm night)
@@ -1723,6 +1730,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     const heat = (lay.sw * Math.max(0, cosInc)) / Math.max(0.15, Math.sin(el))
     const sAna = clamp(heat / 600, 0, 1.5) * (1 - s) * mixDay
     ana = 1.4 * Math.sqrt(Math.sin(sl)) * 3.6 * sAna * (inTrees ? 0.5 : 1)
+    if (ana > 0 && thermalTune.waterAna < 1 && waterAt(lon, lat)) ana *= thermalTune.waterAna
     anaTo = (facing + 180) % 360
   }
 
