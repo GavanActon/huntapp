@@ -49,6 +49,72 @@ def path() -> Path:
     return CACHE_DIR / f"habitat-lite-{REGION['id']}.hab"
 
 
+# the province's own wetlands, when the area asks for them (bake.wetlands; 2026-10-17, the SD v2t2
+# trial; Gavan chose provincial layers over a national map or a terrain rule): Ontario's are LIO's
+# wetland units (OGL-Ontario, the province's package staged whole in raw/stage/lio/WETLAND), the
+# layer HD reads. Their type says open (marsh, fen, bog) or swamp (docs/SD-RANKS.md, wetlands)
+OPEN_TYPES = {"Marsh", "Fen", "Bog"}
+# Quebec's: the potential wetlands map (CMHPQ 2023, MELCCFP, CC-BY 4.0; from the IEQM, HD's own
+# source at Lac Bailey), province-wide, from its service for now (a province's bake would stage
+# the 1.7 GB FGDB, as LIO's). CLASSE open: marsh, open bogs and fens, shallow water; the swamps and
+# treed bogs as LIO's swamps
+QC_WETLANDS = "https://geo.environnement.gouv.qc.ca/donnees/rest/services/Biodiversite/MH_potentiels/MapServer/0/query"
+QC_OPEN = ("Marais", "Tourbière ouverte", "Eau peu profonde")
+
+
+def lio_wetlands() -> list:
+    import shapely
+    import on_vectors_local as ovl
+
+    if not ovl.have("wetland"):
+        print("  wetlands: LIO's package is not staged (raw/stage/lio/WETLAND)")
+        return []
+    feats = ovl.read("wetland")["features"]
+    return [(shapely.geometry.shape(f["geometry"]), 1 if f["properties"].get("WETLAND_TYPE") in OPEN_TYPES else 2) for f in feats if f.get("geometry")]
+
+
+def qc_wetlands() -> list:
+    import json
+    import urllib.parse
+    import urllib.request
+
+    import shapely
+
+    box = f"{REGION['west']},{REGION['south']},{REGION['east']},{REGION['north']}"
+    feats, off, page = [], 0, 2000
+    while True:
+        q = {"where": "1=1", "geometry": box, "geometryType": "esriGeometryEnvelope", "inSR": 4326, "spatialRel": "esriSpatialRelIntersects",
+             "outFields": "CLASSE", "returnGeometry": "true", "outSR": 4326, "f": "geojson", "resultOffset": off, "resultRecordCount": page}
+        req = urllib.request.Request(f"{QC_WETLANDS}?{urllib.parse.urlencode(q)}", headers={"User-Agent": "groundwind-habitat-lite"})
+        with urllib.request.urlopen(req, timeout=180) as r:
+            got = json.loads(r.read()).get("features", [])
+        feats += got
+        if len(got) < page:
+            break
+        off += page
+    return [(shapely.geometry.shape(f["geometry"]), 1 if (f["properties"].get("CLASSE") or "").startswith(QC_OPEN) else 2) for f in feats if f.get("geometry")]
+
+
+def wetland_grid() -> np.ndarray | None:
+    """1 where the province maps an open wetland, 2 a swamp or one of no type, 0 elsewhere; None when
+    the area doesn't ask. Each province's map is empty outside it, so both are read."""
+    from area import BAKE
+
+    if not BAKE.get("wetlands"):
+        return None
+    on, qc = lio_wetlands(), qc_wetlands()
+    shapes = on + qc
+    grid = np.zeros((hb.ROWS, hb.COLS), np.uint8)
+    swamps = [s for s in shapes if s[1] == 2]
+    opens = [s for s in shapes if s[1] == 1]
+    if swamps:
+        grid = hb.burn(swamps)
+    if opens:
+        grid[hb.burn(opens) == 1] = 1  # an open one wins where the two meet
+    print(f"  wetlands: {len(on)} of LIO's units, {len(qc)} of Quebec's; open {(grid == 1).mean():.3f} of the grid, swamp {(grid == 2).mean():.3f}")
+    return grid
+
+
 def on_lattice(a: np.ndarray, tr, crs: str, resampling: Resampling, dtype) -> np.ndarray:
     return hb.to_grid({"data": a, "transform": np.array(tuple(tr)[:6]), "crs": crs, "nodata": -1}, resampling, dtype)
 
@@ -109,6 +175,16 @@ def main() -> int:
     cover[(cover == 0) & np.isin(lc, hb.LC_BARREN)] = hb.BARREN
     cover[(cover == 0) & (lc == hb.LC_GRASS)] = hb.SHRUB
     cover[dist_age <= 5] = hb.REGEN
+    wet = wetland_grid()
+    if wet is not None:
+        # open wetland where the province maps a marsh, fen or bog, whatever SCANFI's 30 m pixels
+        # make of its scattered spruce (P10, the Pickle pool: SCANFI crown 41% at 9 m where HD's open
+        # wetland lets 0.72 of the wind to head height); a swamp only where SCANFI has no stand, as
+        # HD's own rule has it (build_habitat: wetland & ~is_for). The stand there is cleared
+        open_wet = (wet == 1) | ((wet == 2) & ~is_for)
+        cover[open_wet] = hb.OPEN_WET
+        for a in (f_ht, f_cc, f_conif, f_hard, f_lead):
+            a[open_wet] = 0
     water = (lc == hb.LC_WATER) | s_water
     cover[water] = hb.WATER
 

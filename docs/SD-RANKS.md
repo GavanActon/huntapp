@@ -124,3 +124,41 @@ everywhere.
 - **Nov 21–28:** WI, TN and the NY Southern Zone (Nov 21), PA (Nov 28).
 
 If tiles are timed to the season, that's the order.
+
+## Wetlands in habitat-lite (2026-10-17)
+
+Gavan chose provincial wetland layers over a national map or a terrain rule
+for the SD v2 trial.
+
+**Why:** at P10, the Pickle cold pool, neither national layer sees the bog.
+- Canada's 2020 land cover calls it needleleaf forest, and SCANFI's land
+  cover has no wetland class.
+- So habitat-lite made it a stand (crown 41%, 9 m), letting 0.12 of the wind
+  to head height. HD has open wetland there (crown 18%, 6 m) and lets 0.72
+  through.
+
+**How it's read:** `habitat_lite.wetland_grid`, used only when the area's
+bake asks for it (`wind_tiles.py --wetlands`).
+- **Open types** (marsh, fen, open bog, shallow water) become open wetland,
+  with the cell's stand cleared.
+- **Swamps and treed bogs** become open wetland only where SCANFI has no
+  stand. That's HD's own rule.
+
+**Sources, best first, in the order of the ranks:**
+
+| | Source | Licence | Read from |
+|---|---|---|---|
+| ON | LIO Wetland Unit (`WETLAND`, field `WETLAND_TYPE`: Marsh, Fen, Bog, Swamp), the layer HD uses | OGL-Ontario | the province's package, staged whole in `pipeline/raw/stage/lio/WETLAND` (2.9 GB) |
+| QC | Milieux humides potentiels (CMHPQ 2023, MELCCFP), province-wide, from the IEQM (HD's Québec source). `CLASSE`: Marais, Tourbière ouverte ombrotrophe or minérotrophe, Marécage, Tourbière boisée, Eau peu profonde | CC-BY 4.0 | its MapServer for now (`geo.environnement.gouv.qc.ca/donnees/rest/services/Biodiversite/MH_potentiels/MapServer/0`); a province's bake would stage the 1.7 GB FGDB |
+| QC, finer | Milieux humides, cartographie détaillée (Ducks Unlimited Canada with the MELCCFP), photo-interpreted | CC-BY 4.0 | southern, settled Québec only, so not wired; it would go over the potential map where it exists |
+
+The other provinces' layers get listed when the ranks reach them.
+
+At P10 with the Ontario layer, the 7×7 window reads like HD's: open wetland
+19 cells, dense conifer 15, water 5, open conifer 5, mixedwood 5 (HD: open
+wetland 22, dense conifer 16, water 11).
+
+**The trials:**
+- **v2t** is the lee-weighted net alone.
+- **v2t2** is the same net plus the wetlands, so each fix reads cleanly on
+  the scent card.
