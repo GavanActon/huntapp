@@ -318,6 +318,12 @@ CASES = {
                             surface="rate", heating_rate=-0.5,
                             surface_heatflux=-0.01, cthf=-0.01,
                             why="dawn175's profile with the wind from 270: does the floor's turn follow the drainage or the wind"),
+            # the drainage fade on flat ground (booked 2026-10-16 with lacbailey-spot d326u06/u12): dawn175 at a
+            # third of its wind (~2 km/h forecast 10 m), where the bog's cold air should pool and drift on its own
+            "dawn175u06": dict(direction=175.0, speed_kph=6.5, zref_m=80.0, stability="stable", hours=2.0, average_s=1800.0,
+                               theta_surface=284.5, theta_gradients=[(0.0, 4.0), (80.0, 0.5)],
+                               surface="rate", heating_rate=-0.5, surface_heatflux=-0.01, cthf=-0.01,
+                               why="drainage fade, flat ground: dawn175 at 6.5 km/h at 80 m (~2 km/h forecast 10 m): pooling and drift or the wind"),
         },
     ),
     # Lac Bailey's north bank (Quebec): the 1 m LiDAR flown 2024 (QC-600023), a bank rising
@@ -347,6 +353,19 @@ CASES = {
                          why="off the lake, up the bank: the lift and the speed-up over the brow"),
             "w270": dict(direction=270.0, speed_kph=12.0, stability="neutral", hours=1.0, average_s=1200.0,
                          why="along the shore: does the bank turn it"),
+            # the rest of the compass (Gavan, 2026-10-16: "yea - queue"): the wind surrogate's first PALM
+            # training cases (the self-improving plan's checkpoint, memory huntapp-compute-service) and held-out
+            # cells the card can take on later; explore priority, xonix's CPU slot when nothing else wants it
+            "ne045": dict(direction=45.0, speed_kph=12.0, stability="neutral", hours=1.0, average_s=1200.0,
+                          why="surrogate set: quartering off the land from the NE, over the crest at an angle"),
+            "e090": dict(direction=90.0, speed_kph=12.0, stability="neutral", hours=1.0, average_s=1200.0,
+                         why="surrogate set: along the shore from the E (w270 the other way)"),
+            "se135": dict(direction=135.0, speed_kph=12.0, stability="neutral", hours=1.0, average_s=1200.0,
+                          why="surrogate set: quartering off the lake from the SE, up the bank at an angle"),
+            "sw225": dict(direction=225.0, speed_kph=12.0, stability="neutral", hours=1.0, average_s=1200.0,
+                          why="surrogate set: quartering off the lake from the SW"),
+            "nw315": dict(direction=315.0, speed_kph=12.0, stability="neutral", hours=1.0, average_s=1200.0,
+                          why="surrogate set: quartering off the land from the NW, the lee at an angle"),
             "dusk000": dict(direction=0.0, speed_kph=8.0, zref_m=80.0, stability="stable", hours=2.0, average_s=1800.0,
                             theta_surface=284.0,
                             theta_gradients=[(0.0, 0.7), (300.0, 0.5)],  # Searchmont's HRDPS evening start
@@ -393,6 +412,18 @@ CASES = {
                          why="the prevailing SSW (Matachewan 12 Sep-14 Oct 2026: SSW 16%, SW 12%, the top bins): the bank's lee at W5/W1/W8, up the arm's fetch into W9"),
             "n000": dict(direction=0.0, speed_kph=12.0, stability="neutral", hours=1.0, average_s=1200.0,
                          why="the N: W3's tree line after 240 m of open cut, W8's after 150 m of water; the bank windward (W1, W5), up the trough (W6), across the neck (W10)"),
+            # the rest of the compass (Gavan, 2026-10-16: "yea - queue"): the wind surrogate's first PALM
+            # training cases and held-out cells the card can take on later; explore priority
+            "ne045": dict(direction=45.0, speed_kph=12.0, stability="neutral", hours=1.0, average_s=1200.0,
+                          why="surrogate set: from the NE down the arm's long axis, over the neck (W10) and the pond's bay"),
+            "e090": dict(direction=90.0, speed_kph=12.0, stability="neutral", hours=1.0, average_s=1200.0,
+                         why="surrogate set: from the E across the east pond onto the marsh edge (W2, W4)"),
+            "se135": dict(direction=135.0, speed_kph=12.0, stability="neutral", hours=1.0, average_s=1200.0,
+                          why="surrogate set: from the SE over the bank's shoulder and down the trough (W6)"),
+            "w270": dict(direction=270.0, speed_kph=12.0, stability="neutral", hours=1.0, average_s=1200.0,
+                         why="surrogate set: from the W along the arm's open water into its head (W9)"),
+            "nw315": dict(direction=315.0, speed_kph=12.0, stability="neutral", hours=1.0, average_s=1200.0,
+                          why="surrogate set: from the NW across the cut (W3) and the arm"),
             "dusk210": dict(direction=210.0, speed_kph=8.0, zref_m=80.0, stability="stable", hours=2.0, average_s=1800.0,
                             theta_surface=284.0,
                             theta_gradients=[(0.0, 0.7), (300.0, 0.5)],  # Lac Bailey's dusk000 start
@@ -433,6 +464,18 @@ CASES = {
                          surface="rate", heating_rate=-1.0,
                          surface_heatflux=-0.02, cthf=-0.02,
                          why="20:00 EDT 2026-10-15 (00Z 16th), the app's forecast at the spot: NW 8.7 km/h at 10 m, ~20 at 80 m, clear, -1.5 C"),
+            # the drainage fade (docs/SCENT-TESTSET.md, booked 2026-10-16, Gavan: "Yes" to accuracy that scales):
+            # d326 said the floor follows a 6.5 km/h forecast wind (10 m equivalent), not the slope. The same night
+            # at a third and two thirds of the wind brackets where the cold air takes over on steep ground: one
+            # threshold for every tile, not a place's fix
+            "d326u06": dict(direction=326.0, speed_kph=6.0, zref_m=80.0, stability="stable", hours=2.0, average_s=1800.0,
+                            theta_surface=271.0, theta_gradients=[(0.0, 4.75), (80.0, 0.5)],
+                            surface="rate", heating_rate=-1.0, surface_heatflux=-0.02, cthf=-0.02,
+                            why="drainage fade: d326's night at 6 km/h at 80 m (~2 km/h forecast 10 m): does the cold air drain down the slope"),
+            "d326u12": dict(direction=326.0, speed_kph=12.0, zref_m=80.0, stability="stable", hours=2.0, average_s=1800.0,
+                            theta_surface=271.0, theta_gradients=[(0.0, 4.75), (80.0, 0.5)],
+                            surface="rate", heating_rate=-1.0, surface_heatflux=-0.02, cthf=-0.02,
+                            why="drainage fade: d326's night at 12 km/h at 80 m (~4 km/h forecast 10 m): drainage or the wind"),
         },
     ),
     # Not here: Searchmont's climb. A cyclic box small enough for 4 m (1.5 km) holds 194 m

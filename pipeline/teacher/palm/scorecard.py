@@ -21,6 +21,13 @@ run's stability (palm_compare.py AIR), with the clock held on 2026-09-30 at 13:0
 set<Name>Tune for each (skipped where a ref lacks it) and scentTune knobs, all reset after each call.
 knobs.json (huntapp-ba) lists every knob with its default, bounds and variant key, for sweeps.
 
+--grid sd scores the national SD tile at the same points instead of the area's own grid (Gavan,
+2026-10-16: accuracy, "but scalable"): the app opens with ?tiles=force (windTiles.ts, dev builds), the
+map goes to each box and the 2 x 2 tiles round it stand in for the area's grid, read from R2 through the
+page's routes. The area's sun, lakes and clock stay, so HD against SD is the grid alone: LiDAR and FRI
+against SCANFI and land cover, WindNinja against the net. --grid both scores the two, SD's variants
+named "<variant> SD". A box whose tile isn't on R2 yet is left out of SD, never scored on plain wind.
+
 Writes pipeline/raw/teacher/palm/scores/<when>_<commit>[-dirty]_<label>.json (every sector of every
 cell) and adds the summary to pipeline/teacher/palm/SCORES.md.
 """
@@ -133,6 +140,59 @@ def stamp_tree() -> dict:
     return dict(commit=git("rev-parse", "--short", "HEAD"), dirty=dirty, patches=[])
 
 
+LOCK = SCORES / "worktree.lock"
+
+
+def pid_alive(pid: int) -> bool:
+    """Windows: the process is there and has not exited (never os.kill(pid, 0): on Windows that kills it)."""
+    import ctypes
+
+    h = ctypes.windll.kernel32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+    if not h:
+        return False
+    code = ctypes.c_ulong()
+    ok = ctypes.windll.kernel32.GetExitCodeProcess(h, ctypes.byref(code))
+    ctypes.windll.kernel32.CloseHandle(h)
+    return bool(ok) and code.value == 259  # STILL_ACTIVE
+
+
+def take_worktree(wait_min: float = 240.0) -> None:
+    """One scorecard at a time in the scoring worktree and on its port (2026-10-16: c4's SD trial and ba's
+    chain shared both): a second run waits for the first, and a lock left by a dead run is taken over."""
+    import os
+
+    SCORES.mkdir(parents=True, exist_ok=True)
+    t0, said = time.time(), False
+    while True:
+        try:
+            fd = os.open(LOCK, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(fd, f"{os.getpid()} {time.strftime('%Y-%m-%d %H:%M')} {' '.join(sys.argv[1:])[:300]}".encode("utf-8"))
+            os.close(fd)
+            return
+        except FileExistsError:
+            held = LOCK.read_text(encoding="utf-8", errors="replace").split(maxsplit=3)
+            pid = int(held[0]) if held and held[0].isdigit() else 0
+            if not pid_alive(pid):
+                LOCK.unlink(missing_ok=True)
+                continue
+            if time.time() - t0 > wait_min * 60:
+                raise SystemExit(f"the scoring worktree is still busy after {wait_min:.0f} min: {' '.join(held)}")
+            if not said:
+                print(f"waiting for the scoring worktree: {' '.join(held)}", flush=True)
+                said = True
+            time.sleep(30)
+
+
+def free_worktree() -> None:
+    import os
+
+    try:
+        if LOCK.read_text(encoding="utf-8", errors="replace").split(maxsplit=1)[0] == str(os.getpid()):
+            LOCK.unlink()
+    except (OSError, IndexError):
+        pass
+
+
 def prepare(ref: str, patches: list[str]) -> dict:
     """The scoring worktree at ref (+ patches), node_modules current, a score config reading the main public/."""
     sha = git("rev-parse", "--verify", f"{ref}^{{commit}}", check=True)
@@ -237,7 +297,12 @@ def main() -> int:
     ap.add_argument("--only", help="score only runs whose name contains this")
     ap.add_argument("--testset", default=str(HERE / "testset.json"))
     ap.add_argument("--no-save", action="store_true", help="print only: no scores/ file, no SCORES.md line")
+    ap.add_argument("--grid", choices=["hd", "sd", "both"], default="hd",
+                    help="hd: the area's own grid (the card as it was); sd: the national SD tiles at the same points; both")
+    ap.add_argument("--sd-version", default="v1", help="with --grid sd/both: the tiles' version on R2 (v1, or a trial bake such as v2t)")
     args = ap.parse_args()
+    global SD_BASE
+    SD_BASE = f"https://data.groundwind.app/data/sd/{args.sd_version}/"
     ts = json.loads(Path(args.testset).read_text(encoding="utf-8"))
     ms_ = ts["measure"]
     band, trace, reach = ms_["band"], ms_["trace"], float(ms_["reach_m"])
@@ -248,8 +313,13 @@ def main() -> int:
     if args.tree:
         st, url = stamp_tree(), args.url
     else:
-        st = prepare(args.ref, args.patch)
-        server, url = serve(), f"http://localhost:{PORT}/"
+        take_worktree()
+        try:
+            st = prepare(args.ref, args.patch)
+            server, url = serve(), f"http://localhost:{PORT}/"
+        except BaseException:
+            free_worktree()
+            raise
     print(f"testset v{ts['version']}, commit {st['commit']}{' + ' + ', '.join(st['patches']) if st['patches'] else ''}"
           f"{' DIRTY (' + str(len(st['dirty'])) + ' files in app/src)' if st['dirty'] else ''}; "
           f"{len(jobs)} runs, pending: {', '.join(pending) or 'none'}", flush=True)
@@ -257,10 +327,12 @@ def main() -> int:
         if j["missing"]:
             print(f"  {j['run']}: no source for {', '.join(j['missing'])} (left out)")
     try:
-        results = score(jobs, variants, url, band, trace, reach)
+        results = score(jobs, variants, url, band, trace, reach, ["hd", "sd"] if args.grid == "both" else [args.grid])
     finally:
         if server:
             server.kill()
+        if not args.tree:
+            free_worktree()
     summary(results, variants, st, pending, ts, args)
     return 0
 
@@ -272,11 +344,64 @@ HD_PIN_JS = ("try { localStorage.setItem('huntapp-hd', JSON.stringify(%s)) } cat
              % json.dumps({json.loads(p.read_text(encoding="utf-8"))["id"]: True for p in (APP / "src" / "areas").glob("*.json")}))
 
 
-def score(jobs, variants, url, band, trace, reach) -> list[dict]:
+SD_BASE = "https://data.groundwind.app/data/sd/v1/"  # --sd-version swaps the version (a trial bake, e.g. v2t)
+# the map to a box and the national tiles' 2 x 2 block round it in the area grid's place (windTiles.ts with
+# ?tiles=force): done when the block the app built is the one asked for
+TILES_JS = """
+async ({ lat, lon, i0, j0 }) => {
+  const m = await import('/src/weather/micro/model.ts')
+  const map = window.__map
+  if (!map) return 'no map (window.__map is a dev hook)'
+  map.jumpTo({ center: [lon, lat], zoom: 12 })
+  const t0 = Date.now()
+  while (Date.now() - t0 < 90000) {
+    const b = window.__windTiles && window.__windTiles.block
+    if (m.onTiles() && b && b.i0 === i0 && b.j0 === j0) return 'ok'
+    await new Promise((r) => setTimeout(r, 250))
+  }
+  return 'timeout: ' + JSON.stringify(window.__windTiles || null)
+}
+"""
+
+
+def sd_index() -> dict:
+    import urllib.request
+
+    req = urllib.request.Request(f"{SD_BASE}index.json?t={time.time():.0f}", headers={"User-Agent": "groundwind-scorecard"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return json.loads(r.read())
+
+
+def sd_block(idx: dict, lat: float, lon: float) -> tuple[int, int, str, bool]:
+    """windTiles.ts's block for a view centred here, the tiles R2 lacks in it, and whether all four are there.
+    All four, not just the tile under the point: a missing one is stitched in as plain wind and blank cover,
+    and Whitefish's first SD score (2026-10-16, one tile of four) lost nearly every cone that way."""
+    L = idx["lattice"]
+    fx = (lon - L["lon0"]) / (L["cols"] * L["dLon"])
+    fy = (L["lat0"] - lat) / (L["rows"] * L["dLat"])
+    i0, j0 = round(fx) - 1, round(fy) - 1
+    lack = [f"t-{i0 + di}-{j0 + dj}" for dj in (0, 1) for di in (0, 1) if f"t-{i0 + di}-{j0 + dj}" not in idx["tiles"]]
+    return i0, j0, ", ".join(lack) or "-", not lack
+
+
+def box_point(box: str) -> tuple[float, float]:
+    c = json.loads((HERE / box / "case-4m.json").read_text(encoding="utf-8"))
+    return tuple(c["point_latlon"])
+
+
+def sd_route(route, request) -> None:
+    """The app's sd/v1/ requests on the scoring server, answered from R2 (the tiles are not in public/)."""
+    tail = request.url.split("/sd/v1/", 1)[1]
+    route.fulfill(response=route.fetch(url=SD_BASE + tail))
+
+
+def score(jobs, variants, url, band, trace, reach, grids=("hd",)) -> list[dict]:
     results = []
+    idx = sd_index() if "sd" in grids else None
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True, args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"])
-        for area in dict.fromkeys(j["area"] for j in jobs):
+        for grid, area in ((g, a) for g in grids for a in dict.fromkeys(j["area"] for j in jobs)):
+            sd = grid == "sd"
             when = datetime.fromisoformat(f"{DAY}T13:00").replace(tzinfo=TZ)
             ctx = browser.new_context(ignore_https_errors=True, viewport={"width": 430, "height": 900})
             ctx.add_init_script(HD_PIN_JS)
@@ -284,23 +409,36 @@ def score(jobs, variants, url, band, trace, reach) -> list[dict]:
             page.set_default_timeout(240000)
             page.route("**/api.open-meteo.com/**", lambda route, request: fulfil(route, request, when.date()))
             page.route("**/ensemble-api.open-meteo.com/**", lambda route, request: route.abort())
+            if sd:
+                page.route("**/sd/v1/**", sd_route)
             page.clock.install(time=when - timedelta(minutes=5))
-            page.goto(f"{url}?area={area}", wait_until="load", timeout=240000)
+            page.goto(f"{url}?area={area}{'&tiles=force' if sd else ''}", wait_until="load", timeout=240000)
             try:
                 page.clock.resume()
             except Exception:
                 pass
-            sd = page.evaluate("async () => { try { return (await import('/src/config.ts')).SD_PREVIEW === true } catch (e) { return false } }")
-            if sd:
+            preview = page.evaluate("async () => { try { return (await import('/src/config.ts')).SD_PREVIEW === true } catch (e) { return false } }")
+            if preview:
                 raise SystemExit(f"{area}: the app is on the SD files (SD_PREVIEW): the HD pin did not take")
             home = page.evaluate("async () => { const a = await import('/src/areas/index.ts'); return a.ACTIVE_AREA.presets[0] }")
-            print(area, "ready:", wait_ready(page, int(when.timestamp() * 1000), home), flush=True)
+            print(f"{area}{' (SD tiles)' if sd else ''}", "ready:", wait_ready(page, int(when.timestamp() * 1000), home), flush=True)
             page.evaluate(REST_JS)
             for j in (j for j in jobs if j["area"] == area):
+                if sd:
+                    lat, lon = box_point(j["box"])
+                    i0, j0, tid, have = sd_block(idx, lat, lon)
+                    if not have:
+                        print(f"== {j['run']}: SD tiles not on R2 yet round {j['box']} ({tid}): left out of SD", flush=True)
+                        continue
+                    got = page.evaluate(TILES_JS, {"lat": lat, "lon": lon, "i0": i0, "j0": j0})
+                    if got != "ok":
+                        print(f"== {j['run']}: the SD tiles did not come in ({got}): left out of SD", flush=True)
+                        continue
                 ms = int(datetime.fromisoformat(f"{DAY}T{HOUR[j['stab']]}").replace(tzinfo=TZ).timestamp() * 1000)
-                print(f"== {j['run']} ({j['stab']}, forced from {j['air']['dir']:.0f} at {j['air']['kmh']:.1f} km/h: {j['forcing']}; "
+                print(f"== {j['run']}{' SD' if sd else ''} ({j['stab']}, forced from {j['air']['dir']:.0f} at {j['air']['kmh']:.1f} km/h: {j['forcing']}; "
                       f"PALM's own 10 m {j['ambient']:.1f})", flush=True)
-                for vname, v in variants.items():
+                for vname0, v in variants.items():
+                    vname = (f"{vname0} SD" + ("" if SD_BASE.endswith("/sd/v1/") else " " + SD_BASE.rstrip("/").rsplit("/", 1)[1])) if sd else vname0
                     for h in sorted({s["h"] for s in j["sits"]}):
                         group = [s for s in j["sits"] if s["h"] == h]
                         res = page.evaluate(CONE_JS, {"sits": [{"name": s["pid"], "lat": s["lat"], "lon": s["lon"]} for s in group], "ms": ms,
@@ -322,7 +460,7 @@ def score(jobs, variants, url, band, trace, reach) -> list[dict]:
                             else:
                                 rt = rs
                             marks2 = [mark2(s["palm"][k], rs[k], rt[k], band, trace, reach) for k in sect]
-                            results.append(dict(run=j["run"], box=j["box"], held=j["held"], stab=j["stab"], variant=vname, pid=s["pid"],
+                            results.append(dict(run=j["run"], box=j["box"], held=j["held"], stab=j["stab"], variant=vname, grid=grid, pid=s["pid"],
                                                 situation=s["situation"], sectors=sect, marks=marks, marks2=marks2, app=rs, tongue=rt,
                                                 palm=s["palm"], sigma=r["sigma"], kmh=r["kmh"], frm=r["from"]))
                             sig = f"{r['sigma']:.0f}" if r["sigma"] is not None else "-"
@@ -335,6 +473,13 @@ def score(jobs, variants, url, band, trace, reach) -> list[dict]:
 def summary(results, variants, st, pending, ts, args) -> None:
     """Tune set and held out, per situation, the misses by name; saved unless --no-save."""
     lines = []
+    variants = list(dict.fromkeys(r["variant"] for r in results)) or list(variants)  # with --grid sd/both: "<variant> SD" too
+    sd_left = sorted({j for j in variants if j.endswith(" SD")})
+    if sd_left:
+        hd_cells = {(r["run"], r["pid"]) for r in results if r.get("grid", "hd") == "hd"}
+        sd_cells = {(r["run"], r["pid"]) for r in results if r.get("grid") == "sd"}
+        if hd_cells and hd_cells - sd_cells:
+            lines.append(f"(SD scores {len(sd_cells)} cells against HD's {len(hd_cells)}: the boxes without an SD tile yet are left out, so compare like with like)")
     for vname in variants:
         rr = [r for r in results if r["variant"] == vname]
         for held in (False, True):

@@ -1,0 +1,46 @@
+diff --git a/app/src/weather/micro/windTiles.ts b/app/src/weather/micro/windTiles.ts
+index 4931147..4eb5fa8 100644
+--- a/app/src/weather/micro/windTiles.ts
++++ b/app/src/weather/micro/windTiles.ts
+@@ -25,6 +25,14 @@ import { drawSdOutline, initSdOutline } from './sdOutline'
+  */
+ const BASE = `${DATA_BASE}sd/v1/`
+ 
++/**
++ * The scorecard's SD column (pipeline/teacher/palm/scorecard.py --sd; Gavan, 2026-10-16: accuracy, "but
++ * scalable"): the national tiles under the view even inside the area's box, in place of the area's own
++ * grid, so the card scores what SD gives anywhere at the same points, the area's sun and lakes kept.
++ * Dev builds only: `?tiles=force`.
++ */
++const FORCE_TILES = (import.meta.env.DEV || !!import.meta.env.VITE_DEV_SITE) && new URLSearchParams(location.search).get('tiles') === 'force'
++
+ export interface Lattice {
+   lon0: number
+   lat0: number
+@@ -95,7 +103,7 @@ function fetchTile(id: string, bytes: number): Promise<ArrayBuffer | null> {
+   const key = `${id}?b=${bytes}`
+   let p = packed.get(key)
+   if (!p) {
+-    p = fetch(`${BASE}${key}`)
++    p = fetch(`${BASE}${id}.hab?b=${bytes}`)
+       .then((r) => (r.ok ? r.arrayBuffer() : null))
+       .catch(() => null)
+     packed.set(key, p)
+@@ -208,7 +216,7 @@ async function moved(map: MlMap): Promise<void> {
+     return
+   }
+   const c = map.getCenter()
+-  const inArea = c.lng > REGION.west && c.lng < REGION.east && c.lat > REGION.south && c.lat < REGION.north
++  const inArea = !FORCE_TILES && c.lng > REGION.west && c.lng < REGION.east && c.lat > REGION.south && c.lat < REGION.north
+   if (inArea || map.getZoom() < 9) {
+     if (block) {
+       useAreaGrid()
+@@ -280,7 +288,7 @@ export function initWindTiles(map: MlMap): void {
+       const out = new Float32Array(12)
+       return s && s(lon, lat, out) ? [out[0], out[1], out[2]] : null
+     }
+-  if (!STREAM_PICTURES) return
++  if (!STREAM_PICTURES && !FORCE_TILES) return
+   map.on('moveend', () => void moved(map))
+   void moved(map)
+   // where the tiles are, outlined (sdOutline.ts), and kept up as the bake goes on

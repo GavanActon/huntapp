@@ -1,7 +1,7 @@
 {
  "case": "lacbailey-spot",
  "tag": "4m",
- "built": "2026-10-15 20:09",
+ "built": "2026-10-16 19:36",
  "epsg": 32619,
  "dx": 4.0,
  "nx": 256,
@@ -77,6 +77,318 @@
    "surface_heatflux": -0.02,
    "cthf": -0.02,
    "why": "20:00 EDT 2026-10-15 (00Z 16th), the app's forecast at the spot: NW 8.7 km/h at 10 m, ~20 at 80 m, clear, -1.5 C",
+   "scent": [
+    {
+     "name": "Gavan's spot 15 Oct 20:00 1.5 m",
+     "x": 298.9,
+     "y": 295.4,
+     "h": 1.5,
+     "utm": [
+      459598.9,
+      5471435.4
+     ],
+     "ground_m": 447.5,
+     "canopy_m": 5.1,
+     "water": false
+    },
+    {
+     "name": "Gavan's spot 15 Oct 20:00 5 m",
+     "x": 298.9,
+     "y": 295.4,
+     "h": 5.0,
+     "utm": [
+      459598.9,
+      5471435.4
+     ],
+     "ground_m": 447.5,
+     "canopy_m": 5.1,
+     "water": false
+    },
+    {
+     "name": "ring 000 140 m",
+     "x": 298.9,
+     "y": 435.4,
+     "h": 1.5,
+     "utm": [
+      459598.9,
+      5471575.4
+     ],
+     "ground_m": 412.3,
+     "canopy_m": 12.6,
+     "water": false
+    },
+    {
+     "name": "ring 045 140 m",
+     "x": 397.9,
+     "y": 394.4,
+     "h": 1.5,
+     "utm": [
+      459697.9,
+      5471534.4
+     ],
+     "ground_m": 408.8,
+     "canopy_m": 5.6,
+     "water": false
+    },
+    {
+     "name": "ring 090 140 m",
+     "x": 438.9,
+     "y": 295.4,
+     "h": 1.5,
+     "utm": [
+      459738.9,
+      5471435.4
+     ],
+     "ground_m": 405.8,
+     "canopy_m": 10.9,
+     "water": false
+    },
+    {
+     "name": "ring 135 140 m",
+     "x": 397.9,
+     "y": 196.4,
+     "h": 1.5,
+     "utm": [
+      459697.9,
+      5471336.4
+     ],
+     "ground_m": 454.9,
+     "canopy_m": 4.2,
+     "water": false
+    },
+    {
+     "name": "ring 180 98 m",
+     "x": 298.9,
+     "y": 197.4,
+     "h": 1.5,
+     "utm": [
+      459598.9,
+      5471337.4
+     ],
+     "ground_m": 471.7,
+     "canopy_m": 8.0,
+     "water": false
+    },
+    {
+     "name": "ring 225 140 m",
+     "x": 199.9,
+     "y": 196.4,
+     "h": 1.5,
+     "utm": [
+      459499.9,
+      5471336.4
+     ],
+     "ground_m": 495.2,
+     "canopy_m": 5.3,
+     "water": false
+    },
+    {
+     "name": "ring 270 98 m",
+     "x": 200.9,
+     "y": 295.4,
+     "h": 1.5,
+     "utm": [
+      459500.9,
+      5471435.4
+     ],
+     "ground_m": 467.3,
+     "canopy_m": 3.4,
+     "water": false
+    },
+    {
+     "name": "ring 315 140 m",
+     "x": 199.9,
+     "y": 394.4,
+     "h": 1.5,
+     "utm": [
+      459499.9,
+      5471534.4
+     ],
+     "ground_m": 430.5,
+     "canopy_m": 11.3,
+     "water": false
+    }
+   ]
+  },
+  "lacbailey-spot_d326u06_4m": {
+   "direction": 326.0,
+   "speed_kph": 6.0,
+   "zref_m": 80.0,
+   "stability": "stable",
+   "hours": 2.0,
+   "average_s": 1800.0,
+   "theta_surface": 271.0,
+   "theta_gradients": [
+    [
+     0.0,
+     4.75
+    ],
+    [
+     80.0,
+     0.5
+    ]
+   ],
+   "surface": "rate",
+   "heating_rate": -1.0,
+   "surface_heatflux": -0.02,
+   "cthf": -0.02,
+   "why": "drainage fade: d326's night at 6 km/h at 80 m (~2 km/h forecast 10 m): does the cold air drain down the slope",
+   "scent": [
+    {
+     "name": "Gavan's spot 15 Oct 20:00 1.5 m",
+     "x": 298.9,
+     "y": 295.4,
+     "h": 1.5,
+     "utm": [
+      459598.9,
+      5471435.4
+     ],
+     "ground_m": 447.5,
+     "canopy_m": 5.1,
+     "water": false
+    },
+    {
+     "name": "Gavan's spot 15 Oct 20:00 5 m",
+     "x": 298.9,
+     "y": 295.4,
+     "h": 5.0,
+     "utm": [
+      459598.9,
+      5471435.4
+     ],
+     "ground_m": 447.5,
+     "canopy_m": 5.1,
+     "water": false
+    },
+    {
+     "name": "ring 000 140 m",
+     "x": 298.9,
+     "y": 435.4,
+     "h": 1.5,
+     "utm": [
+      459598.9,
+      5471575.4
+     ],
+     "ground_m": 412.3,
+     "canopy_m": 12.6,
+     "water": false
+    },
+    {
+     "name": "ring 045 140 m",
+     "x": 397.9,
+     "y": 394.4,
+     "h": 1.5,
+     "utm": [
+      459697.9,
+      5471534.4
+     ],
+     "ground_m": 408.8,
+     "canopy_m": 5.6,
+     "water": false
+    },
+    {
+     "name": "ring 090 140 m",
+     "x": 438.9,
+     "y": 295.4,
+     "h": 1.5,
+     "utm": [
+      459738.9,
+      5471435.4
+     ],
+     "ground_m": 405.8,
+     "canopy_m": 10.9,
+     "water": false
+    },
+    {
+     "name": "ring 135 140 m",
+     "x": 397.9,
+     "y": 196.4,
+     "h": 1.5,
+     "utm": [
+      459697.9,
+      5471336.4
+     ],
+     "ground_m": 454.9,
+     "canopy_m": 4.2,
+     "water": false
+    },
+    {
+     "name": "ring 180 98 m",
+     "x": 298.9,
+     "y": 197.4,
+     "h": 1.5,
+     "utm": [
+      459598.9,
+      5471337.4
+     ],
+     "ground_m": 471.7,
+     "canopy_m": 8.0,
+     "water": false
+    },
+    {
+     "name": "ring 225 140 m",
+     "x": 199.9,
+     "y": 196.4,
+     "h": 1.5,
+     "utm": [
+      459499.9,
+      5471336.4
+     ],
+     "ground_m": 495.2,
+     "canopy_m": 5.3,
+     "water": false
+    },
+    {
+     "name": "ring 270 98 m",
+     "x": 200.9,
+     "y": 295.4,
+     "h": 1.5,
+     "utm": [
+      459500.9,
+      5471435.4
+     ],
+     "ground_m": 467.3,
+     "canopy_m": 3.4,
+     "water": false
+    },
+    {
+     "name": "ring 315 140 m",
+     "x": 199.9,
+     "y": 394.4,
+     "h": 1.5,
+     "utm": [
+      459499.9,
+      5471534.4
+     ],
+     "ground_m": 430.5,
+     "canopy_m": 11.3,
+     "water": false
+    }
+   ]
+  },
+  "lacbailey-spot_d326u12_4m": {
+   "direction": 326.0,
+   "speed_kph": 12.0,
+   "zref_m": 80.0,
+   "stability": "stable",
+   "hours": 2.0,
+   "average_s": 1800.0,
+   "theta_surface": 271.0,
+   "theta_gradients": [
+    [
+     0.0,
+     4.75
+    ],
+    [
+     80.0,
+     0.5
+    ]
+   ],
+   "surface": "rate",
+   "heating_rate": -1.0,
+   "surface_heatflux": -0.02,
+   "cthf": -0.02,
+   "why": "drainage fade: d326's night at 12 km/h at 80 m (~4 km/h forecast 10 m): drainage or the wind",
    "scent": [
     {
      "name": "Gavan's spot 15 Oct 20:00 1.5 m",

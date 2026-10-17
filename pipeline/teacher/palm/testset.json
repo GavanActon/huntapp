@@ -64,13 +64,16 @@
  "forcing": {
   "lacbailey-bank_dusk000_4m": {"kph": 3.9, "from": 0, "source": "80 m x ratio (stable 0.484, n 286)", "kph80": 8.0, "palmAmbientKph": 0.9},
   "lacbailey-bank_dusk000_4m_scent": {"kph": 3.9, "from": 0, "source": "80 m x ratio (stable 0.484, n 286)", "kph80": 8.0, "palmAmbientKph": 0.8},
+  "lacbailey-bank_e090_4m": {"kph": 9.6, "from": 90, "source": "80 m x ratio (neutral 0.624, n 343)", "kph80": 15.4, "palmAmbientKph": 6.8},
   "lacbailey-bank_n000_4m": {"kph": 9.6, "from": 0, "source": "80 m x ratio (neutral 0.624, n 343)", "kph80": 15.4, "palmAmbientKph": 6.7},
   "lacbailey-bank_n000_4m_scent": {"kph": 9.6, "from": 0, "source": "80 m x ratio (neutral 0.624, n 343)", "kph80": 15.4, "palmAmbientKph": 7.0},
+  "lacbailey-bank_ne045_4m": {"kph": 9.6, "from": 45, "source": "80 m x ratio (neutral 0.624, n 343)", "kph80": 15.4, "palmAmbientKph": 7.4},
   "lacbailey-bank_s180_4m": {"kph": 9.6, "from": 180, "source": "80 m x ratio (neutral 0.624, n 343)", "kph80": 15.4, "palmAmbientKph": 6.6},
   "lacbailey-bank_s180_4m_scent": {"kph": 9.6, "from": 180, "source": "80 m x ratio (neutral 0.624, n 343)", "kph80": 15.4, "palmAmbientKph": 6.9},
   "lacbailey-bank_w270_4m": {"kph": 9.6, "from": 270, "source": "80 m x ratio (neutral 0.624, n 343)", "kph80": 15.4, "palmAmbientKph": 7.6},
   "lacbailey-spot_d326_4m_scent": {"kph": 6.5, "from": 322, "source": "HRDPS 2026-10-16 00Z", "kph80": 16.9, "palmAmbientKph": 4.4},
   "pickle-bogs_dawn175_4m": {"kph": 6.1, "from": 163, "source": "HRDPS 2026-09-29 12Z", "kph80": 19.8, "palmAmbientKph": 4.0},
+  "pickle-bogs_dawn270_4m_scent": {"kph": 7.5, "from": 270, "source": "80 m x ratio (stable 0.397, n 296)", "kph80": 19.0, "palmAmbientKph": 4.1},
   "pickle-bogs_dusk288_4m": {"kph": 4.7, "from": 274, "source": "HRDPS 2026-09-28 23Z", "kph80": 10.4, "palmAmbientKph": 2.1},
   "pickle-bogs_nw305_4m": {"kph": 7.9, "from": 296, "source": "HRDPS 2026-10-02 22Z", "kph80": 14.0, "palmAmbientKph": 4.6},
   "pickle-bogs_nw305_4m_scent": {"kph": 7.9, "from": 296, "source": "HRDPS 2026-10-02 22Z", "kph80": 14.0, "palmAmbientKph": 4.6},
@@ -97,11 +100,14 @@
   "pickle-slot_s186_2m_scent": {"kph": 7.2, "from": 186, "source": "80 m x ratio (neutral 0.489, n 277)", "kph80": 14.7, "palmAmbientKph": 5.6},
   "pickle-slot_s186_4m": {"kph": 7.2, "from": 186, "source": "80 m x ratio (neutral 0.489, n 277)", "kph80": 14.7, "palmAmbientKph": 6.6},
   "pickle-slot_s186_4m_scent": {"kph": 7.2, "from": 186, "source": "80 m x ratio (neutral 0.489, n 277)", "kph80": 14.7, "palmAmbientKph": 6.5},
+  "pickle-slot_s186d15_4m_scent": {"kph": 7.2, "from": 186, "source": "80 m x ratio (neutral 0.489, n 277)", "kph80": 14.7, "palmAmbientKph": 6.6},
   "pickle-slot_sw225_4m": {"kph": 7.2, "from": 225, "source": "80 m x ratio (neutral 0.489, n 277)", "kph80": 14.7, "palmAmbientKph": 6.6},
   "pickle-slot_w270_4m": {"kph": 7.2, "from": 270, "source": "80 m x ratio (neutral 0.489, n 277)", "kph80": 14.7, "palmAmbientKph": 6.5},
   "pickle-slot_w270_4m_scent": {"kph": 7.2, "from": 270, "source": "80 m x ratio (neutral 0.489, n 277)", "kph80": 14.7, "palmAmbientKph": 6.4},
   "whitefish_dusk210_4m": {"kph": 3.5, "from": 210, "source": "80 m x ratio (stable 0.441, n 321)", "kph80": 8.0, "palmAmbientKph": 1.3},
+  "whitefish_e090_4m": {"kph": 8.5, "from": 90, "source": "80 m x ratio (neutral 0.556, n 272)", "kph80": 15.4, "palmAmbientKph": 7.2},
   "whitefish_n000_4m": {"kph": 8.5, "from": 0, "source": "80 m x ratio (neutral 0.556, n 272)", "kph80": 15.4, "palmAmbientKph": 6.9},
+  "whitefish_ne045_4m": {"kph": 8.5, "from": 45, "source": "80 m x ratio (neutral 0.556, n 272)", "kph80": 15.4, "palmAmbientKph": 7.3},
   "whitefish_s210_4m": {"kph": 8.5, "from": 210, "source": "80 m x ratio (neutral 0.556, n 272)", "kph80": 15.4, "palmAmbientKph": 7.1}
  }
 }
