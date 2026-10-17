@@ -103,9 +103,16 @@ function fetchTile(id: string, bytes: number): Promise<ArrayBuffer | null> {
   const key = `${id}?b=${bytes}`
   let p = packed.get(key)
   if (!p) {
-    p = fetch(`${BASE}${id}.hab?b=${bytes}`)
+    const fetched: Promise<ArrayBuffer | null> = fetch(`${BASE}${id}.hab?b=${bytes}`)
       .then((r) => (r.ok ? r.arrayBuffer() : null))
       .catch(() => null)
+    // a miss (a 5xx or a timeout from the edge) is not kept: the next block that needs the
+    // tile asks again. Kept, one bad answer left the tile blank for the page's life, the
+    // mosaic reading default stands there until a reload (Jay, 2026-10-17, the SD card)
+    p = fetched.then((buf) => {
+      if (buf == null && packed.get(key) === p) packed.delete(key)
+      return buf
+    })
     packed.set(key, p)
     if (packed.size > KEEP) packed.delete(packed.keys().next().value!)
   }
