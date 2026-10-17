@@ -22,6 +22,7 @@ import {
   dzOf,
   forestGrouseBand,
   grizzly,
+  hideM,
   mooseBand,
   northBlackBear,
   northRegrowth,
@@ -157,15 +158,6 @@ function stepsFor(h: Habitat, bearing: number): { st: Int32Array; d: Float32Arra
  *  in open woods, 5 m in a thicket (docs/HUNT-FISH-SCIENCE.md). */
 export function sightM(t: number): number {
   return 5 + 75 * Math.pow(1 - t, 1.5)
-}
-
-/** Distance to hiding cover, m: the nearer of dense conifer and any thick
- *  bush; `thick` says which one it was. */
-function hidingCover(b: HuntBands, i: number): { m: number; thick: boolean } {
-  const conifer = b.distCover[i] * 10
-  if (!b.distThick) return { m: conifer, thick: false }
-  const t = b.distThick[i] * 10
-  return t < conifer ? { m: t, thick: true } : { m: conifer, thick: false }
 }
 
 /** The hunter's eye over the ground, and the height of what you look for
@@ -324,21 +316,38 @@ export function habitatScore(t: HuntTarget, b: HuntBands, i: number, ctx: HuntCt
   return parts ? quarryScore(who, t, b, i, ctx, w, parts) : best
 }
 
+/** The plain tally, for the pass over every cell: the weights it weighs by, set per call. */
+let plainW: Weights = DEFAULT_WEIGHTS
+const PLAIN: Tally = {
+  add: (key, _label, v) => v * plainW[key],
+  times: (key, _label, m) => weigh(m, plainW[key]),
+}
+
 /** One species' habitat value of a land cell, 0..1: the place's own rules
  *  (placeRules.ts) for grizzly, ptarmigan and the north's black bear, the
  *  Ontario rules with the place's changes for the rest. */
 function quarryScore(q: Quarry, t: HuntTarget, b: HuntBands, i: number, ctx: HuntCtx, w: Weights, parts?: Part[]): number {
-  // with two species in the running, each line says whose it is
-  const tag = parts && ctx.members.length > 1 ? `${QUARRY_NAMES[q]}: ` : ''
-  const add = (key: Part['key'], label: string, v: number) => {
-    parts?.push({ key, label: tag + label, value: v, kind: 'bonus' })
-    return v * w[key]
+  // the tally: with the parts asked for, closures that write each line (with two species
+  // in the running, each says whose it is); the pass over every cell takes the plain one,
+  // not two closures and an object a cell. The labels below are built only for the parts
+  let x: Tally
+  if (parts) {
+    const tag = ctx.members.length > 1 ? `${QUARRY_NAMES[q]}: ` : ''
+    x = {
+      add: (key, label, v) => {
+        parts.push({ key, label: tag + label, value: v, kind: 'bonus' })
+        return v * w[key]
+      },
+      times: (key, label, m) => {
+        parts.push({ key, label: tag + label, value: m, kind: 'mult' })
+        return weigh(m, w[key])
+      },
+    }
+  } else {
+    plainW = w
+    x = PLAIN
   }
-  const times = (key: Part['key'], label: string, m: number) => {
-    parts?.push({ key, label: tag + label, value: m, kind: 'mult' })
-    return weigh(m, w[key])
-  }
-  const x: Tally = { add, times }
+  const { add, times } = x
   const { warm, lateFall } = ctx
   const cover = b.cover[i]
   const dist = b.disturb[i]
@@ -397,10 +406,11 @@ function quarryScore(q: Quarry, t: HuntTarget, b: HuntBands, i: number, ctx: Hun
     // value is one part, the edge bonus another, so each has its knob.
     // hiding cover is any thick bush, not only tall dense conifer: a moose
     // beds in a young thicket or an alder run as readily
-    const hide = hidingCover(b, i)
+    const hideDist = hideM(b, i)
+    const hideThick = hideDist < b.distCover[i] * 10
     const base = isCover ? browse * 0.3 : browse * 0.45
-    const edge = isCover ? 0.35 * edgeFromBrowse(dBrowse) : browse * 0.55 * (open ? openEdge(hide.m) : edgeFromCover(hide.m))
-    s = add('browse', isCover ? 'conifer cover' : 'browse value', base) + add('edge', isCover ? 'browse within reach' : hide.thick ? 'near thick cover' : 'near the conifer edge', edge)
+    const edge = isCover ? 0.35 * edgeFromBrowse(dBrowse) : browse * 0.55 * (open ? openEdge(hideDist) : edgeFromCover(hideDist))
+    s = add('browse', isCover ? 'conifer cover' : 'browse value', base) + add('edge', isCover ? 'browse within reach' : hideThick ? 'near thick cover' : 'near the conifer edge', edge)
     // water: cows and calves on shores and beaver meadows; bulls come to them in the rut
     // lakes are few at the treeline, and Denali's moose ate next to no water plants; the willow is on the creeks
     if (dLake <= 200 || dWet <= 100) s += add('shore', 'shore or beaver meadow', open ? 0.05 : 0.15)
@@ -427,12 +437,12 @@ function quarryScore(q: Quarry, t: HuntTarget, b: HuntBands, i: number, ctx: Hun
         const deg = (asp * (360 / 250) + 180) % 360
         if (deg >= 135 && deg <= 225 && b.slope[i] >= 3) s += add('funnel', 'a south slope', 0.3)
       }
-      if (hidingCover(b, i).m <= 500) s += add('edge', `cover within ${distWords(500)}`, 0.15)
+      if (hideM(b, i) <= 500) s += add('edge', parts ? `cover within ${distWords(500)}` : '', 0.15)
     }
     // the treeline band (with the snow), and steep ground (placeRules.ts)
-    const band = mooseBand(b, i, ctx)
+    const band = mooseBand(b, i, ctx, parts != null)
     if (band.f !== 1) s *= times('terrain', band.label, band.f)
-    if (b.slope[i] >= 12) s *= times('terrain', `steep ground (${b.slope[i]}°)`, slopeFactor(b.slope[i]))
+    if (b.slope[i] >= 12) s *= times('terrain', parts ? `steep ground (${b.slope[i]}°)` : '', slopeFactor(b.slope[i]))
   } else if (t === 'grouse') {
     const age = b.age[i]
     const conif = b.conifer[i]
@@ -467,7 +477,7 @@ function quarryScore(q: Quarry, t: HuntTarget, b: HuntBands, i: number, ctx: Hun
         s = 0.1
     }
     s = add('browse', 'the stand for grouse', s)
-    if (b.distWater[i] * 10 <= 50 && (cover === COVER.shrub || cover === COVER.mixed || cover === COVER.hardwood)) s += add('shore', `water within ${distWords(50)}`, 0.2)
+    if (b.distWater[i] * 10 <= 50 && (cover === COVER.shrub || cover === COVER.mixed || cover === COVER.hardwood)) s += add('shore', parts ? `water within ${distWords(50)}` : '', 0.2)
     if (b.distRoad[i] * 20 <= 40) s += add('access', 'roadside grit and clover', 0.25)
     if (dCover <= 60 && (cover === COVER.hardwood || cover === COVER.mixed)) s += add('edge', 'hardwood–conifer edge', 0.1)
     const gb = forestGrouseBand(b, i)
@@ -486,8 +496,8 @@ function quarryScore(q: Quarry, t: HuntTarget, b: HuntBands, i: number, ctx: Hun
     else if (cover === COVER.coniferOpen) s = 0.3
     else s = 0.1
     s = add('browse', 'berries and cover for bear', s)
-    if (hidingCover(b, i).m <= 300) s += add('edge', `cover within ${distWords(300)}`, 0.2)
-    if (dLake <= 150 && s >= 0.5) s += add('shore', `a shore within ${distWords(150)}`, 0.15)
+    if (hideM(b, i) <= 300) s += add('edge', parts ? `cover within ${distWords(300)}` : '', 0.2)
+    if (dLake <= 150 && s >= 0.5) s += add('shore', parts ? `a shore within ${distWords(150)}` : '', 0.15)
     if (lf === LANDFORM.ridge && b.lead[i] === 2) s += add('funnel', 'a jack pine ridge', 0.1)
     if (lateFall) {
       // berries gone: uplands and thick conifer toward denning
@@ -787,9 +797,9 @@ function siteCore(t: HuntTarget, b: HuntBands, h: Habitat, i: number, c: Conditi
   if (dLake <= 120) access = Math.max(access, 0.95) // by boat
   if (t === 'grouse') access = dRoad <= 60 ? 1 : dRoad <= 800 ? 0.9 : 0.6
   // the carry out where the grid has it (placeRules.ts), and the traffic apart from it
-  const carry = packOutAccess(t, b, i)
+  const carry = packOutAccess(t, b, i, labels != null)
   if (carry) access = carry.access
-  const press = roadPressure(t, b, i)
+  const press = roadPressure(t, b, i, labels != null)
   SITE[0] = g
   SITE[1] = vis
   SITE[2] = access
@@ -821,11 +831,12 @@ export function describeCell(t: HuntTarget, b: HuntBands, h: Habitat, i: number,
     if (tt >= 0.75) out.push(`thick bush: about ${distWords(see, { step: 5 })} of sight, slow and loud to walk`)
     else if (tt <= 0.35 && cover !== COVER.openWet) out.push(`open underfoot: about ${distWords(see, { step: 5 })} of sight`)
   }
-  const hide = hidingCover(b, i)
+  const hideDist = hideM(b, i)
+  const hideThick = hideDist < b.distCover[i] * 10
   const dBrowse = b.distBrowse[i] * 10
   if (cover === COVER.coniferDense || cover === COVER.treedWet) {
     if (dBrowse <= 250) out.push(`cover ${distWords(dBrowse)} from browse`)
-  } else if (hide.m <= 200 && !(b.thick && b.thick[i] / 250 >= 0.7)) out.push(`${hide.m <= 30 ? 'right on' : `${distWords(hide.m)} from`} ${hide.thick ? 'thick cover' : 'the conifer edge'}`)
+  } else if (hideDist <= 200 && !(b.thick && b.thick[i] / 250 >= 0.7)) out.push(`${hideDist <= 30 ? 'right on' : `${distWords(hideDist)} from`} ${hideThick ? 'thick cover' : 'the conifer edge'}`)
   const dLake = b.distLake[i] * 10
   const dWet = b.distWetland[i] * 10
   if (dLake <= 200) out.push(`${dLake <= 40 ? 'on' : `${distWords(dLake)} from`} a lake shore`)

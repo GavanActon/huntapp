@@ -105,15 +105,22 @@ export function slopeFactor(deg: number): number {
   return 0.25
 }
 
+/** mooseBand's answer: one object, written for every cell the pass asks about and read
+ *  before the next asks (the heat map's pass, every cell: no object a cell). */
+const BAND = { f: 1, label: '' }
+
 /** The moose's treeline band (fix 2, with fix 15's snow): through the rut
  *  full from 250 m below the treeline to 50 m above it, after mid-October
  *  from 200 below to 100 above; a taper to 0.6 by 500 m below (willow
  *  along a creek exempt) and to 0.4 at 150 m over the band's top, 0.2
  *  beyond. With 40 cm of snow and more, the high ground empties and the
- *  valleys are fine. */
-export function mooseBand(b: HuntBands, i: number, ctx: HuntCtx): { f: number; label: string } {
+ *  valleys are fine. `words`: the label too (a tapped cell, the breakdown);
+ *  the pass over every cell wants the factor alone. */
+export function mooseBand(b: HuntBands, i: number, ctx: HuntCtx, words = true): { f: number; label: string } {
   const dz = dzOf(b, i)
-  if (!(dz === dz)) return { f: 1, label: '' }
+  BAND.f = 1
+  BAND.label = ''
+  if (!(dz === dz)) return BAND
   const post = ctx.dayOfYear > 288
   const lo = post ? -200 : -250
   const hi = post ? 100 : 50
@@ -121,19 +128,21 @@ export function mooseBand(b: HuntBands, i: number, ctx: HuntCtx): { f: number; l
   const cover = b.cover[i]
   const riparian = (cover === COVER.shrub || cover === COVER.hardwood || cover === COVER.mixed) && b.distStream != null && b.distStream[i] * 10 <= 100
   let f = 1
-  let label = 'in the treeline willow band'
+  let label = words ? 'in the treeline willow band' : ''
   if (dz > hi) {
     f = dz <= hi + 150 ? 1 - (0.6 * (dz - hi)) / 150 : dz <= hi + 250 ? 0.4 - (0.2 * (dz - hi - 150)) / 100 : 0.2
-    label = 'above the treeline band'
+    if (words) label = 'above the treeline band'
   } else if (dz < lo && !riparian && snow < 40) {
     f = dz >= -500 ? 1 - (0.4 * (lo - dz)) / (lo + 500) : 0.6
-    label = 'below the treeline band'
+    if (words) label = 'below the treeline band'
   }
   if (snow >= 40 && dz > -200) {
     f *= snow >= 70 ? 0.2 : snow >= 60 ? 0.4 : 0.7
-    label = `${Math.round(snow)} cm of snow: moose leaving the high ground`
+    if (words) label = `${Math.round(snow)} cm of snow: moose leaving the high ground`
   }
-  return { f, label }
+  BAND.f = f
+  BAND.label = label
+  return BAND
 }
 
 /** Forest grouse thin out toward the treeline (fix 12). */
@@ -155,7 +164,9 @@ export function berryBurn(age: number, crown: number): number {
   return 0
 }
 
-function hideM(b: HuntBands, i: number): number {
+/** Distance to hiding cover, m: the nearer of dense conifer and any thick
+ *  bush (a moose beds in a young thicket or an alder run as readily). */
+export function hideM(b: HuntBands, i: number): number {
   const conifer = b.distCover[i] * 10
   return b.distThick ? Math.min(conifer, b.distThick[i] * 10) : conifer
 }
@@ -394,30 +405,41 @@ export function ptarmigan(b: HuntBands, i: number, ctx: HuntCtx, x: Tally): numb
  *  camp, on the flat with every 100 m of climb counted as a km. A moose
  *  1.6 km out is a day's work; past 5 km a trip of several. Grouse weigh
  *  nothing. Null with a grid baked before the band. */
-export function packOutAccess(t: HuntTarget, b: HuntBands, i: number): { access: number; label: string } | null {
+/** packOutAccess's and roadPressure's answers: one object each, written per cell and
+ *  read before the next (the pass over every cell wants the numbers, not the words). */
+const PACK = { access: 1, label: '' }
+const PRESS = { f: 1, label: '' }
+
+export function packOutAccess(t: HuntTarget, b: HuntBands, i: number, words = true): { access: number; label: string } | null {
   if (!b.packOut) return null
   const v = b.packOut[i]
   const km = (v * 50) / 1000
-  const access =
+  PACK.access =
     t === 'grouse' ? (km <= 3 ? 1 : km <= 6 ? 0.85 : 0.6) : km <= 1.6 ? 1 : km <= 3.2 ? 1 - (0.4 * (km - 1.6)) / 1.6 : km <= 5 ? 0.6 - (0.3 * (km - 3.2)) / 1.8 : 0.3
-  const label = v >= 255 ? `a carry out of over ${dist(12000)}` : km < 1 ? `a ${dist(Math.max(50, km * 1000), { step: 50 })} carry out` : `a ${dist(km * 1000)} carry out, the climb counted`
-  return { access, label }
+  PACK.label = !words ? '' : v >= 255 ? `a carry out of over ${dist(12000)}` : km < 1 ? `a ${dist(Math.max(50, km * 1000), { step: 50 })} carry out` : `a ${dist(km * 1000)} carry out, the climb counted`
+  return PACK
 }
 
 /** Traffic (fix 16): moose and bear shy from a busy highway out to about
  *  a kilometre (Québec 100-250 m from roads, Yakutat about 1 km from busy
  *  routes), less from a bush road. 1 for grouse, and where the grid has no
  *  highway band (the old access rule counts the road there). */
-export function roadPressure(t: HuntTarget, b: HuntBands, i: number): { f: number; label: string } {
-  if (t === 'grouse' || !b.distHighway) return { f: 1, label: 'quiet' }
+export function roadPressure(t: HuntTarget, b: HuntBands, i: number, words = true): { f: number; label: string } {
+  if (t === 'grouse' || !b.distHighway) {
+    PRESS.f = 1
+    PRESS.label = words ? 'quiet' : ''
+    return PRESS
+  }
   const dh = b.distHighway[i] * 20
   let f = dh <= 250 ? 0.6 : dh < 1000 ? 0.6 + (0.4 * (dh - 250)) / 750 : 1
-  let label = f < 1 ? `${dist(Math.min(dh, 1000), { step: 50 })} from the highway` : 'quiet'
+  let label = !words ? '' : f < 1 ? `${dist(Math.min(dh, 1000), { step: 50 })} from the highway` : 'quiet'
   if (b.distRoad[i] * 20 <= 150 && f > 0.85) {
     f = 0.85
-    label = 'on a road or trail'
+    if (words) label = 'on a road or trail'
   }
-  return { f, label }
+  PRESS.f = f
+  PRESS.label = label
+  return PRESS
 }
 
 /** The moose rut in the north (fix 14): the same peak (Denali matings 24
