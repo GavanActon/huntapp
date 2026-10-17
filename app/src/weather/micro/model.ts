@@ -2372,3 +2372,35 @@ export function microCell(lon: number, lat: number, ms?: number): Record<string,
   }
   return out
 }
+
+// dev builds only: what the micro grid's solve stands on at sampling time, for the scorecard's SD
+// column to log (Hunter-Jay, 2026-10-17: W2 read in two states across cards); with a point and a wind,
+// whether its two momentum directions and their turbulence are in and where the stand is read.
+// Reads only: it never asks for a direction (momentumAt would)
+if (import.meta.env.DEV || import.meta.env.VITE_DEV_SITE) {
+  ;(window as unknown as { __micro?: unknown }).__micro = (lon?: number, lat?: number, dirFrom?: number) => {
+    const out: Record<string, unknown> = {
+      file: !!file,
+      areaGrid: !!areaGrid,
+      fullIn,
+      hasMom,
+      hasTurb,
+      momRef,
+      momScale,
+      momTScale,
+      momIn: momU.map(Boolean),
+      momTIn: momT.map(Boolean),
+      cols: grid?.cols ?? null,
+      rows: grid?.rows ?? null,
+    }
+    if (grid && lon != null && lat != null && dirFrom != null) {
+      const i = grid.index(lon, lat)
+      const x = (((dirFrom % 360) + 360) % 360) / MOM_STEP
+      const k0 = Math.floor(x) % MOM_N
+      const k1 = (k0 + 1) % MOM_N
+      const sb = standBands()
+      out.at = { i, k0, k1, mom: !!momU[k0] && !!momU[k1], turb: i >= 0 ? turbAt(i, dirFrom) : null, stand: sb === grid ? 'grid' : sb ? 'habitat' : null }
+    }
+    return out
+  }
+}
