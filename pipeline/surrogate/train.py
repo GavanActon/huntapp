@@ -66,8 +66,9 @@ class Sampler:
     """Random (area, direction, patch, D4 element) samples, built on the
     CPU in a background thread while the GPU trains on the last batch."""
 
-    def __init__(self, areas: list[Area], patch: int, batch: int, seed: int, pin: bool = True):
+    def __init__(self, areas: list[Area], patch: int, batch: int, seed: int, pin: bool = True, lee_weight: float = 1.0, lee_below: float = 0.8):
         self.areas, self.patch, self.batch, self.pin = areas, patch, batch, pin
+        self.lee_weight, self.lee_below = lee_weight, lee_below
         self.rng = np.random.default_rng(seed)
         for a in areas:
             if min(a.shape) < patch:
@@ -102,12 +103,17 @@ class Sampler:
         tok = ok & np.isfinite(turb)
         y[2] = np.where(tok, turb, 0.0)
         m[0], m[1] = ok, tok
+        # the lee's weight: where WindNinja slows the air below lee_below of the ambient (u, v are
+        # in the ambient's units, so their length is the speed ratio) its cells count lee_weight
+        # times in the (du, dv) loss (2026-10-17: the net ran 30-55% fast in Lac Bailey's lee)
+        slow = ok & (np.hypot(u, v) < self.lee_below)
+        m[2] = np.where(slow, self.lee_weight, 1.0)
 
     def _make(self):
         B, P = self.batch, self.patch
         x = np.empty((B, N_IN, P, P), np.float32)
         y = np.empty((B, 3, P, P), np.float32)
-        m = np.empty((B, 2, P, P), np.float32)
+        m = np.empty((B, 3, P, P), np.float32)  # valid (du, dv), valid turbulence, the lee's weight
         for b in range(B):
             self.sample(x[b], y[b], m[b])
         out = (torch.from_numpy(x), torch.from_numpy(y), torch.from_numpy(m))
@@ -126,7 +132,10 @@ class Sampler:
 
 def masked_loss(pred: torch.Tensor, y: torch.Tensor, m: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     pred = pred.float()
-    m_uv, m_t = m[:, 0:1], m[:, 1:2]
+    m_t = m[:, 1:2]
+    # the (du, dv) cells weighted (the lee's, Sampler.sample; 1 everywhere unless --lee-weight),
+    # normalised by the weights so the loss keeps its scale and only the lee's share grows
+    m_uv = m[:, 0:1] * (m[:, 2:3] if m.shape[1] > 2 else 1.0)
     se_uv = ((pred[:, :2] - y[:, :2]) ** 2 * m_uv).sum() / (2 * m_uv.sum()).clamp(min=1)
     se_t = ((pred[:, 2:3] - y[:, 2:3]) ** 2 * m_t).sum() / m_t.sum().clamp(min=1)
     return se_uv + TURB_WEIGHT * se_t, se_uv, se_t
@@ -173,6 +182,8 @@ def main() -> None:
     ap.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--data", type=Path, default=DATA)
+    ap.add_argument("--lee-weight", type=float, default=1.0, help="weight of the cells WindNinja slows below --lee-below of the ambient (1: off)")
+    ap.add_argument("--lee-below", type=float, default=0.8, help="the speed ratio under which a cell is the lee's")
     ap.add_argument("--remote", action="store_true",
                     help="train on xonix through the kit (remote.py; SURROGATE_KIT names it)")
     args = ap.parse_args()
@@ -203,12 +214,12 @@ def main() -> None:
         "widths": list(args.widths), "rel_window": REL_WINDOW, "rel_scale_m": REL_SCALE_M,
         "train_areas": names, "holdout": args.holdout, "patch": args.patch, "batch": args.batch,
         "seed": args.seed, "params": n_params(model), "lr": [LR, LR_END], "ema": EMA_DECAY,
-        "turb_weight": TURB_WEIGHT, "ambient_axes": "grid",
+        "turb_weight": TURB_WEIGHT, "ambient_axes": "grid", "lee_weight": args.lee_weight, "lee_below": args.lee_below,
         "convergence": {a.name: a.conv for a in areas + ([hold] if hold else [])},
     }
     print(f"{n_params(model) / 1e6:.2f} M parameters on {args.device}; run {run}")
     opt = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=1e-4)
-    sampler = Sampler(areas, args.patch, args.batch, args.seed, pin=cuda)
+    sampler = Sampler(areas, args.patch, args.batch, args.seed, pin=cuda, lee_weight=args.lee_weight, lee_below=args.lee_below)
     log = open(run / "log.jsonl", "a", encoding="utf-8")
 
     total = args.steps
