@@ -3,9 +3,10 @@ import { useHeardForm } from './HeardCard'
 
 /**
  * A button that waits for a map tap (Person, Scent with no fix, Heard)
- * owns the next tap. A sheet opening over the map takes the map away, so
- * whatever was waiting stops waiting: its bar would otherwise sit armed
- * over the sheet and fire on the first tap after it closes.
+ * owns the next tap. A sheet opening over the map takes the map away, and
+ * so does a tool taking its taps (the ruler, a path, routes, the labels;
+ * App), so whatever was waiting stops waiting: its bar would otherwise sit
+ * armed underneath and fire on the first tap after it closes.
  */
 export function releaseArmed(): void {
   const sc = useScent.getState()

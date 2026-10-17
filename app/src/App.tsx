@@ -143,13 +143,18 @@ export default function App() {
     if (sheetOpen) releaseArmed()
   }, [sheetOpen])
 
+  // a tool taking the map's taps (the ruler, a path, the route card, the labels) the same:
+  // Game pressed and then the ruler opened stayed armed under it and fired on the first tap after Done
+  useEffect(() => {
+    if (measuring || drawing || routing || labelling) releaseArmed()
+  }, [measuring, drawing, routing, labelling])
+
   useEffect(() => {
     // the grids and the weather first: nothing of the first view waits for the map
     warmStart()
     initTheme()
     initTextScale()
     initPathLayer()
-    initMeasureLayer()
     initBushLabels()
     initWindFlow()
     initScentLayer()
@@ -172,6 +177,9 @@ export default function App() {
     initLive()
     initRoutes()
     initRouteLayer()
+    // after the route layer, so the ruler draws over a kept route (measure/measureLayer.ts says so;
+    // the layers go on the map in the order they are wired)
+    initMeasureLayer()
     initPlanTime()
     // what an area switch asked for once the app is there: a pin, a place, an outing
     initAreaArrival()
