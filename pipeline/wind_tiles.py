@@ -537,7 +537,7 @@ def main() -> int:
         return 0
     if a.cmd == "batches":
         n, k = batches(Path(a.queue), a.size, Path(a.out_dir), a.reverse, a.stands)
-        print(f"{n} batch files of up to {a.size} tiles in {a.out_dir}: {k} tiles not yet baked")
+        print(f"{n} batch files of up to {a.size} tiles in {a.out_dir}: {k} tiles {'without their stand' if a.stands else 'not yet baked'}")
         return 0
     if a.cmd == "seams":
         import numpy as np
