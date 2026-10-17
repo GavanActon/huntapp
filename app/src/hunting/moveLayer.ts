@@ -13,6 +13,7 @@ import { compass } from '../weather/openMeteo'
 import { groundWind } from '../weather/micro/model'
 import { scentAt, scentNotice, useScent } from '../weather/micro/scent'
 import { SWING, type SwingRequest } from './swing'
+import { dist } from '../lengths'
 
 /**
  * The moose you hear out there, on the map: each sound where it came
@@ -173,7 +174,7 @@ function who(e: LogEntry): string {
   if (e.kind === 'bull' || e.kind === 'cow') return e.kind === 'bull' ? 'Bull' : 'Cow'
   return e.what === 'seen' ? 'Seen' : 'Moose'
 }
-const tens = (m: number) => `${Math.round(m / 10) * 10} m`
+const tens = (m: number) => dist(m)
 const mins = (n: number) => (n < 1 ? 'now' : `${n} min`)
 
 /** Where he is likely to swing to, or that he has your wind already; null with no scent to go on. */

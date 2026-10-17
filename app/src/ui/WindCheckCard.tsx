@@ -15,6 +15,7 @@ import Rose, { Arrow } from './Rose'
 import ShareChecksAsk from './ShareChecksAsk'
 import { useTapOff } from './tapOff'
 import './ground.css'
+import { km as kmWords } from '../lengths'
 
 /**
  * Sharpening the wind: a check of what the air really does, in the bottom
@@ -331,7 +332,7 @@ export default function WindCheckCard() {
           )}
         </div>
         <div className="gc-line">
-          Leads the wind above the trees here <b>{pull}%</b> now, out to ~{km.toFixed(1)} km · fades by ~{clockShort(checkSpentAt(saved))}
+          Leads the wind above the trees here <b>{pull}%</b> now, out to ~{kmWords(km)} · fades by ~{clockShort(checkSpentAt(saved))}
         </div>
         <div className="gc-note">Look again in about 40 min, or the moment it shifts.</div>
         <ShareChecksAsk />

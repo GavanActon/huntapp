@@ -17,6 +17,7 @@ import { fitAmbient, fitHoldsUntil, fitMatters, fitWeightAt, fitWeightsAt, fitWo
 import { tuneValues, useScentTune, type TuneValues } from './scentTune'
 import { leavesDown, leavesNote } from './leaves'
 import { elevAt, ensureRelief, onRelief } from './relief'
+import { dist as distWords, height as heightWords } from '../../lengths'
 
 /**
  * The ground wind: the air a hunter feels at head height, at a point and a
@@ -1511,7 +1512,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
           const cfEdge = 0.5 * canopyAt(j, ctx.leaves)
           if (cfEdge > cf) {
             cf = cfEdge + (cf - cfEdge) * (rel / 5)
-            edgeNote = `${x} m inside the stand's edge: the wind off the open ground upwind gets in here`
+            edgeNote = `${distWords(x, { step: 1 })} inside the stand's edge: the wind off the open ground upwind gets in here`
           }
         }
         if (rel >= 3 && rel < 8) gustMul = 1.3
@@ -1553,7 +1554,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
           wallE = Math.sin(brg * RAD)
           wallN = Math.cos(brg * RAD)
           if (rel < 1) swirl = true
-          edgeNote = `a ${Math.round(hj)} m tree line ${x} m ahead: the wind slows${aheadN < 1 ? ' and runs along it' : ' as it lifts over'}${rel < 1 ? ', eddying against it' : ''}`
+          edgeNote = `a ${heightWords(hj)} tree line ${distWords(x, { step: 1 })} ahead: the wind slows${aheadN < 1 ? ' and runs along it' : ' as it lifts over'}${rel < 1 ? ', eddying against it' : ''}`
         }
         break
       }
@@ -1574,7 +1575,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
           shelter = 0.25 + (0.75 * (rel - 3)) / 7
           swirl = rel < 5
         }
-        if (rel < 10) edgeNote = `${x} m downwind of a ${Math.round(hj)} m tree line: sheltered${swirl ? ', and the air eddies and swaps direction' : ''}`
+        if (rel < 10) edgeNote = `${distWords(x, { step: 1 })} downwind of a ${heightWords(hj)} tree line: sheltered${swirl ? ', and the air eddies and swaps direction' : ''}`
         break
       }
     }
@@ -1641,7 +1642,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     // the slot leaves only the return eddy and the pump, an unsteady drift
     if (reasons) {
       const funnels = Math.abs(alongH) >= 2 * cross * Math.abs(shCross)
-      edgeNote = `a ${Math.round(slot.width / 10) * 10} m slot in the trees running ${slotLine(slot.axis)}: ${funnels ? 'the wind funnels along it toward the' : 'the wind across it swirls, drifting toward the'} ${compass(towardOf(mechE, mechN))}`
+      edgeNote = `a ${distWords(slot.width)} slot in the trees running ${slotLine(slot.axis)}: ${funnels ? 'the wind funnels along it toward the' : 'the wind across it swirls, drifting toward the'} ${compass(towardOf(mechE, mechN))}`
     }
   }
   // only on a clean approach: a cell already sheltered by a wall upwind, or
@@ -1962,31 +1963,31 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     if (inTrees) {
       // the leaves get a word where the bare canopy lets through noticeably more, once they are mostly down
       const note = ctx.leaves > 0.5 && leavesMatter(i) ? leavesNote(ctx.ms) : null
-      reasons.push(`In ${Math.round(th)} m trees: head-height wind about ${Math.round(cf * 100)}% of the wind over them${note ? `, ${note}` : ''}`)
+      reasons.push(`In ${heightWords(th)} trees: head-height wind about ${Math.round(cf * 100)}% of the wind over them${note ? `, ${note}` : ''}`)
     }
     if (edgeNote) reasons.push(edgeNote[0].toUpperCase() + edgeNote.slice(1))
     if (applied) reasons.push(biasWords(lessonBias, lesson))
     if (lay.ensDirSd != null && lay.ensDirSd > 35 && fracMech > 0.4) reasons.push(`Forecast models disagree on the direction (±${Math.round(lay.ensDirSd)}°)`)
-    if (nearest && nChecks === 1) reasons.push(`Blended with ${who.has('you') ? 'your' : `${[...who][0]}'s`} wind check ${nearest.m < 20 ? 'here' : `${nearest.m} m away`}, ${nearest.min} min ${nearest.ago ? 'before' : 'after'} this time`)
+    if (nearest && nChecks === 1) reasons.push(`Blended with ${who.has('you') ? 'your' : `${[...who][0]}'s`} wind check ${nearest.m < 20 ? 'here' : `${distWords(nearest.m)} away`}, ${nearest.min} min ${nearest.ago ? 'before' : 'after'} this time`)
     else if (nearest) {
       const people = who.size > 1 ? ` from ${who.size} people (${[...who].join(', ')})` : ''
       reasons.push(
         checkSpread >= 25
           ? `Blended with ${nChecks} wind checks nearby${people}, which disagree by about ±${Math.round(checkSpread)}°: the spread is held open that wide, and the side with more checks carries the direction`
-          : `Blended with ${nChecks} wind checks nearby${people}, agreeing within about ±${Math.round(Math.max(checkSpread, 5))}°; the nearest ${nearest.m < 20 ? 'here' : `${nearest.m} m away`}, ${nearest.min} min ${nearest.ago ? 'before' : 'after'} this time`,
+          : `Blended with ${nChecks} wind checks nearby${people}, agreeing within about ±${Math.round(Math.max(checkSpread, 5))}°; the nearest ${nearest.m < 20 ? 'here' : `${distWords(nearest.m)} away`}, ${nearest.min} min ${nearest.ago ? 'before' : 'after'} this time`,
       )
     }
     if (memBest && memW / (1 + wsum) >= 0.15) {
       const c = memBest.r.c
       const day = new Date(c.ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-      const where = metresBetween(lon, lat, c.lon, c.lat) < 20 ? 'here' : `${Math.round(metresBetween(lon, lat, c.lon, c.lat) / 10) * 10} m away`
+      const where = metresBetween(lon, lat, c.lon, c.lat) < 20 ? 'here' : `${distWords(metresBetween(lon, lat, c.lon, c.lat))} away`
       reasons.push(
         `Remembered from ${day} ${DAY_PART_WORD[memBest.r.part]}, with the forecast from the ${compass(memBest.r.fDir)} as now: the air ${where} ran from the ${compass(c.dirFrom!)}; it counts for ${Math.round((100 * memW) / (1 + wsum))}% of the wind here`,
       )
     }
     if (seenNear && seenW >= 0.1) {
       const k = Math.round((U / Math.max(0.1, forecastU) - 1) * 100)
-      const where = seenNear.m < 100 ? 'here' : seenNear.m < 1000 ? `${Math.round(seenNear.m / 10) * 10} m away` : `${(seenNear.m / 1000).toFixed(1)} km away`
+      const where = seenNear.m < 100 ? 'here' : `${distWords(seenNear.m)} away`
       const turned = angleDiff(dirFrom, forecastDir) >= 10 ? `from the ${compass(dirFrom)} (the forecast had ${compass(forecastDir)})` : 'from where the forecast had it'
       reasons.push(`Treetops seen ${where}, ${seenNear.min} min ${seenNear.ago ? 'before' : 'after'} this time: the wind above is ${turned}${Math.abs(k) >= 10 ? `, ${Math.abs(k)}% ${k > 0 ? 'stronger' : 'lighter'}` : ''}`)
     }

@@ -12,6 +12,7 @@ import { clockShort } from '../time'
 import Rose, { Arrow } from './Rose'
 import { useTapOff } from './tapOff'
 import './ground.css'
+import { dist as distWords } from '../lengths'
 
 /**
  * Game: an animal heard or seen out there (Gavan, 2026-10-08: "Heard" said
@@ -224,7 +225,7 @@ export default function HeardCard() {
             }}
             aria-pressed={dist === d}
           >
-            {d === 400 ? '400+ m' : `${d} m`}
+            {d === 400 ? `${distWords(400)}+` : distWords(d)}
           </button>
         ))}
       </div>

@@ -36,6 +36,7 @@ import {
   type HuntCtx,
   type Tally,
 } from './placeRules'
+import { dist as distWords, distRange, height } from '../lengths'
 
 // ---- lookups shared by the scorer, read once per pass ----
 export interface HuntBands {
@@ -426,7 +427,7 @@ function quarryScore(q: Quarry, t: HuntTarget, b: HuntBands, i: number, ctx: Hun
         const deg = (asp * (360 / 250) + 180) % 360
         if (deg >= 135 && deg <= 225 && b.slope[i] >= 3) s += add('funnel', 'a south slope', 0.3)
       }
-      if (hidingCover(b, i).m <= 500) s += add('edge', 'cover within 500 m', 0.15)
+      if (hidingCover(b, i).m <= 500) s += add('edge', `cover within ${distWords(500)}`, 0.15)
     }
     // the treeline band (with the snow), and steep ground (placeRules.ts)
     const band = mooseBand(b, i, ctx)
@@ -466,7 +467,7 @@ function quarryScore(q: Quarry, t: HuntTarget, b: HuntBands, i: number, ctx: Hun
         s = 0.1
     }
     s = add('browse', 'the stand for grouse', s)
-    if (b.distWater[i] * 10 <= 50 && (cover === COVER.shrub || cover === COVER.mixed || cover === COVER.hardwood)) s += add('shore', 'water within 50 m', 0.2)
+    if (b.distWater[i] * 10 <= 50 && (cover === COVER.shrub || cover === COVER.mixed || cover === COVER.hardwood)) s += add('shore', `water within ${distWords(50)}`, 0.2)
     if (b.distRoad[i] * 20 <= 40) s += add('access', 'roadside grit and clover', 0.25)
     if (dCover <= 60 && (cover === COVER.hardwood || cover === COVER.mixed)) s += add('edge', 'hardwood–conifer edge', 0.1)
     const gb = forestGrouseBand(b, i)
@@ -485,8 +486,8 @@ function quarryScore(q: Quarry, t: HuntTarget, b: HuntBands, i: number, ctx: Hun
     else if (cover === COVER.coniferOpen) s = 0.3
     else s = 0.1
     s = add('browse', 'berries and cover for bear', s)
-    if (hidingCover(b, i).m <= 300) s += add('edge', 'cover within 300 m', 0.2)
-    if (dLake <= 150 && s >= 0.5) s += add('shore', 'a shore within 150 m', 0.15)
+    if (hidingCover(b, i).m <= 300) s += add('edge', `cover within ${distWords(300)}`, 0.2)
+    if (dLake <= 150 && s >= 0.5) s += add('shore', `a shore within ${distWords(150)}`, 0.15)
     if (lf === LANDFORM.ridge && b.lead[i] === 2) s += add('funnel', 'a jack pine ridge', 0.1)
     if (lateFall) {
       // berries gone: uplands and thick conifer toward denning
@@ -588,7 +589,7 @@ export function activityVerdict(t: HuntTarget, c: Conditions, w: Weights = DEFAU
 
   if (t === 'moose') {
     factors.push({ label: rut.phase, mult: 0.6 + 0.4 * rut.f, key: 'rut' })
-    if (rut.f >= 0.7) notes.push('Cow calls 30–60 s every 15–20 min; put the call 40–50 m upwind of the shooter; a bull circles downwind.')
+    if (rut.f >= 0.7) notes.push(`Cow calls 30–60 s every 15–20 min; put the call ${distRange(40, 50)} upwind of the shooter; a bull circles downwind.`)
     if (c.windKmh <= 8 && c.cloudPct < 40) notes.push(c.toSunsetH <= 1.5 || c.sinceSunriseH < 0.7 ? 'Thermals: air sinks downslope now; scent pools in hollows and drains to the lakes. Sit below or level with the animal, never above it.' : 'Thermals: air rises up slopes the sun is on (in shade it still drains); there, sit level with or above where the animal is.')
   }
   if (t === 'grouse' && c.tempDrop24h >= 5 && c.tempC <= 2) notes.push('After a hard frost birds move to edges and roadside gravel.')
@@ -761,8 +762,8 @@ function siteCore(t: HuntTarget, b: HuntBands, h: Habitat, i: number, c: Conditi
     const where = t === 'grouse' ? 'round you' : 'downwind'
     if (labels) visLabel = range >= 80 ? `open ${where}` : range >= 35 ? `partly open ${where}` : `thick ${where}`
     if (range >= 80 && t !== 'grouse') reasons?.push('open ground downwind: a circling animal shows itself')
-    else if (range < 35) reasons?.push(`thick ${where}: about ${Math.max(5, Math.round(range / 5) * 5)} m of view`)
-    else reasons?.push(`about ${Math.round(range / 5) * 5} m of view ${where}`)
+    else if (range < 35) reasons?.push(`thick ${where}: about ${distWords(Math.max(5, range), { step: 5 })} of view`)
+    else reasons?.push(`about ${distWords(range, { step: 5 })} of view ${where}`)
   } else {
     let open = 0
     let n = 0
@@ -797,7 +798,7 @@ function siteCore(t: HuntTarget, b: HuntBands, h: Habitat, i: number, c: Conditi
   labels[0] = calm ? (gw ? 'still air at ground' : 'thermals') : gw ? 'ground air against the feeding side' : 'wind against the feeding side'
   labels[1] = visLabel
   labels[3] = press.label
-  labels[2] = carry ? carry.label : dLake <= 120 && dRoad > 150 ? 'reachable by boat' : dRoad <= 150 ? 'right by a road' : dRoad <= 2500 ? `${dRoad < 1000 ? `${dRoad} m` : `${(dRoad / 1000).toFixed(1)} km`} from a road` : 'a long walk in'
+  labels[2] = carry ? carry.label : dLake <= 120 && dRoad > 150 ? 'reachable by boat' : dRoad <= 150 ? 'right by a road' : dRoad <= 2500 ? `${distWords(dRoad)} from a road` : 'a long walk in'
 }
 
 /** Words for a cell: what it is and why it scores. */
@@ -817,17 +818,17 @@ export function describeCell(t: HuntTarget, b: HuntBands, h: Habitat, i: number,
   if (b.thick && cover !== COVER.water && cover !== COVER.road) {
     const tt = b.thick[i] / 250
     const see = Math.round(sightM(tt) / 5) * 5
-    if (tt >= 0.75) out.push(`thick bush: about ${see} m of sight, slow and loud to walk`)
-    else if (tt <= 0.35 && cover !== COVER.openWet) out.push(`open underfoot: about ${see} m of sight`)
+    if (tt >= 0.75) out.push(`thick bush: about ${distWords(see, { step: 5 })} of sight, slow and loud to walk`)
+    else if (tt <= 0.35 && cover !== COVER.openWet) out.push(`open underfoot: about ${distWords(see, { step: 5 })} of sight`)
   }
   const hide = hidingCover(b, i)
   const dBrowse = b.distBrowse[i] * 10
   if (cover === COVER.coniferDense || cover === COVER.treedWet) {
-    if (dBrowse <= 250) out.push(`cover ${dBrowse} m from browse`)
-  } else if (hide.m <= 200 && !(b.thick && b.thick[i] / 250 >= 0.7)) out.push(`${hide.m <= 30 ? 'right on' : `${hide.m} m from`} ${hide.thick ? 'thick cover' : 'the conifer edge'}`)
+    if (dBrowse <= 250) out.push(`cover ${distWords(dBrowse)} from browse`)
+  } else if (hide.m <= 200 && !(b.thick && b.thick[i] / 250 >= 0.7)) out.push(`${hide.m <= 30 ? 'right on' : `${distWords(hide.m)} from`} ${hide.thick ? 'thick cover' : 'the conifer edge'}`)
   const dLake = b.distLake[i] * 10
   const dWet = b.distWetland[i] * 10
-  if (dLake <= 200) out.push(`${dLake <= 40 ? 'on' : `${dLake} m from`} a lake shore`)
+  if (dLake <= 200) out.push(`${dLake <= 40 ? 'on' : `${distWords(dLake)} from`} a lake shore`)
   else if (dWet <= 100) out.push('beside a wetland')
   const lf = b.landform[i]
   if (lf === LANDFORM.saddle) out.push('a saddle: a travel funnel')
@@ -836,12 +837,12 @@ export function describeCell(t: HuntTarget, b: HuntBands, h: Habitat, i: number,
   else if (lf === LANDFORM.valley) out.push('a drainage: scent runs down it at dusk')
   if (b.landFrac[i] / 255 < 0.5) out.push('a neck of land between waters')
   const dz = dzOf(b, i)
-  if (dz === dz) out.push(Math.abs(dz) < 25 ? 'at the treeline' : `${Math.round(Math.abs(dz) / 10) * 10} m ${dz < 0 ? 'below' : 'above'} the treeline`)
+  if (dz === dz) out.push(Math.abs(dz) < 25 ? 'at the treeline' : `${height(Math.abs(dz), { step: 10 })} ${dz < 0 ? 'below' : 'above'} the treeline`)
   const carry = packOutAccess(t, b, i)
   if (carry) out.push(carry.label)
   const dRoad = b.distRoad[i] * 20
   if (dRoad <= 60) out.push('on a bush road')
-  else if (dRoad < 5000) out.push(`${dRoad < 1000 ? `${dRoad} m` : `${(dRoad / 1000).toFixed(1)} km`} from a road`)
+  else if (dRoad < 5000) out.push(`${distWords(dRoad)} from a road`)
   siteFactor(t, b, h, i, c, out)
   return out
 }

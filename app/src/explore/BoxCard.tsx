@@ -12,6 +12,7 @@ import { atCap, bounds, boxId, centre, HD_MAX_KM2, HD_MAX_SIDE_KM, hdFits, packM
 import { tileAt } from './lattice'
 import { useExplore, type CoverageProps } from './store'
 import './explore.css'
+import { dist, km2, kmIn, kmUnit } from '../lengths'
 
 /**
  * The box card (docs/EXPLORE.md): the box's size, what the ground under it
@@ -163,10 +164,10 @@ export default function BoxCard() {
       <div className="boxcard-head">
         <div>
           <strong className={cap ? 'boxcard-cap' : undefined}>
-            {size.w.toFixed(1)} × {size.h.toFixed(1)} km
+            {kmIn(size.w).toFixed(1)} × {kmIn(size.h).toFixed(1)} {kmUnit()}
           </strong>{' '}
           <span className="dim">
-            · {Math.round(size.km2)} km²{cap ? ' · the most for one ask' : ''}
+            · {km2(size.km2)}{cap ? ' · the most for one ask' : ''}
           </span>
         </div>
         <button className="icon-btn" aria-label="Close" onClick={() => select(null)}>
@@ -175,7 +176,7 @@ export default function BoxCard() {
       </div>
       {sel.extend && (
         <div className="boxcard-extend">
-          Extend <strong>{sel.extend.name}</strong>'s HD · adds about {Math.round(addedKm2(sel) ?? 0)} km²
+          Extend <strong>{sel.extend.name}</strong>'s HD · adds about {km2(addedKm2(sel) ?? 0)}
         </div>
       )}
       <div className="dim boxcard-hint">Drag a corner to size it, the middle to move it.</div>
@@ -234,7 +235,7 @@ export default function BoxCard() {
           </div>
           {w.hd && !hdOk && (
             <div className="dim boxcard-note">
-              HD up to {HD_MAX_KM2} km² and {HD_MAX_SIDE_KM} km a side: a smaller box for HD
+              HD up to {km2(HD_MAX_KM2)} and {dist(HD_MAX_SIDE_KM * 1000)} a side: a smaller box for HD
             </div>
           )}
           {err && <div className="boxcard-err">{err}</div>}

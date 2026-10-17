@@ -13,6 +13,7 @@ import { isFish, type Spot, type Target, type Verdict } from './types'
 import { DEFAULT_WEIGHTS, weigh, type Part, type PointCase, type Weights } from './weights'
 import { logBoostGrid, logNote } from '../log/huntLog'
 import type { DayPlan, WindowScore } from './dayPlan'
+import { dist } from '../lengths'
 
 export interface ScoreResult {
   target: Target
@@ -41,7 +42,7 @@ const PTS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 export function fromHome(lon: number, lat: number, home: { lon: number; lat: number; name: string }): string {
   const d = distM(home.lon, home.lat, lon, lat)
   const b = PTS[Math.round(bearingBetween(home.lon, home.lat, lon, lat) / 45) % 8]
-  return `${d < 950 ? `${Math.round(d / 50) * 50} m` : `${(d / 1000).toFixed(1)} km`} ${b} of ${home.name}`
+  return `${dist(d, { step: 50 })} ${b} of ${home.name}`
 }
 
 /** Local maxima at least `sepM` apart, best first, within SPOTS_RADIUS_M

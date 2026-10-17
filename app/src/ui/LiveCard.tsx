@@ -19,6 +19,7 @@ import { useTapOff } from './tapOff'
 import { useLookTick } from './useLookTick'
 import { compass } from '../weather/openMeteo'
 import './live.css'
+import { dist } from '../lengths'
 
 /**
  * The live card, under the strip, only while something is live: your scent
@@ -72,7 +73,7 @@ function Row({ text, amber, onTap }: { text: string; amber?: boolean; onTap?: ()
 
 /** The cone in a few words: `Scent → SE · 180 m`, or `Scent spreads · 70 m` in near calm. */
 function briefScent(p: Plume): string {
-  const reach = p.beyond ? '700+ m' : `${Math.round(p.reach / 10) * 10} m`
+  const reach = p.beyond ? `${dist(700)}+` : dist(p.reach)
   if (p.calm && p.mainShare < 0.35) return `Scent spreads · ${reach}`
   return `Scent → ${compass(p.mainToward)} · ${reach}`
 }
@@ -188,7 +189,7 @@ export default function LiveCard(): JSX.Element | null {
   } else if (live) scentText = 'Scent · working out…'
   else if (cone) {
     const spread = fix ? (fix.sigma ?? fix.accuracy) : null
-    scentText = spread != null && spread > 40 ? `Scent · fix ±${Math.round(spread)} m` : 'Scent · waiting for a fix'
+    scentText = spread != null && spread > 40 ? `Scent · fix ±${dist(spread, { step: 1 })}` : 'Scent · waiting for a fix'
   }
 
   // ---- line 2: the bull, or the spot's score at the planning time

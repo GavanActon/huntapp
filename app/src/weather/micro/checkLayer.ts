@@ -7,6 +7,7 @@ import { markShown, useAppStore } from '../../state/appStore'
 import { timeLabel } from '../../time'
 import { compass } from '../openMeteo'
 import { aloftVerdict, checkFelt, checkPull, checkRadiusM, checkReachM, checkSpentAt, forecastVerdict, steadiness, useWindChecks, verdict, type WindCheck } from './windChecks'
+import { dist as distWords } from '../../lengths'
 
 /**
  * The wind checks still in effect, on the map. Each is an arrow where it
@@ -248,7 +249,7 @@ function popupHtml(c: WindCheck, at: number): string {
     ? `<li>The model had ${c.model.kmh < 1 ? 'near calm' : `toward ${compass((c.model.dirFrom + 180) % 360)}`}${v ? ` · <b class="gc-verdict gc-${v}">${v === 'agree' ? 'agreed' : v === 'close' ? 'close' : 'missed'}</b>` : ''}${av ? `; the air ${c.model.decoupled ? 'come loose from the wind above' : 'mixed with the wind above'} · <b class="gc-verdict gc-${av}">${av === 'agree' ? 'agreed' : 'missed'}</b>` : ''}</li>`
     : ''
   const pull = Math.round(checkPull(c, c.lon, c.lat, at) * 100)
-  const dist = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m / 10) * 10} m`)
+  const dist = (m: number) => distWords(m)
   const reach = dist(checkReachM(c, at))
   const half = c.seen ? checkRadiusM(c, at, 0.5) : 0
   const spent = checkSpentAt(c)

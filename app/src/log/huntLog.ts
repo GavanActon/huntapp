@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import type { Habitat } from '../spots/habitatGrid'
 import type { HuntTarget } from '../spots/types'
 import { revealMark } from '../state/appStore'
+import { dist as distWords } from '../lengths'
 
 /**
  * The hunt log: what the hunter actually saw, heard or found, and the
@@ -218,7 +219,7 @@ export function logNote(target: HuntTarget, lon: number, lat: number, atMs: numb
   if (!best) return null
   const days = Math.round((atMs - best.e.ts) / DAY)
   const when = days <= 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`
-  const dist = best.d < 40 ? 'here' : `${Math.round(best.d / 10) * 10} m away`
+  const dist = best.d < 40 ? 'here' : `${distWords(best.d)} away`
   return best.e.what === 'nothing' ? `your blank sit ${dist}, ${when}` : `your ${SPECIES_NAMES[best.e.species].toLowerCase()} ${WHAT_NAMES[best.e.what].toLowerCase()} ${dist}, ${when}`
 }
 

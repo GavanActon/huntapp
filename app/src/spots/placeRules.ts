@@ -16,6 +16,7 @@ import { heatOnsetC, PROFILE, scoredMembers } from './profile'
 import type { Quarry } from './regs'
 import type { HuntTarget } from './types'
 import type { Part } from './weights'
+import { dist } from '../lengths'
 
 /** What a scoring pass knows of the day that the rules read cell by cell:
  *  worked out once per pass (huntRules.huntCtx), not per cell. */
@@ -263,8 +264,8 @@ export function northBlackBear(b: HuntBands, i: number, ctx: HuntCtx, x: Tally, 
     }
   }
   s = x.add('browse', label, s)
-  if (hideM(b, i) <= 300) s += x.add('edge', 'cover within 300 m', 0.2)
-  if (b.distLake[i] * 10 <= 150 && s >= 0.5) s += x.add('shore', 'a shore within 150 m', 0.15)
+  if (hideM(b, i) <= 300) s += x.add('edge', `cover within ${dist(300)}`, 0.2)
+  if (b.distLake[i] * 10 <= 150 && s >= 0.5) s += x.add('shore', `a shore within ${dist(150)}`, 0.15)
   if (grizzlies && doy < 274 && dz > -100) s *= x.times('terrain', 'grizzly ground: black bears give way', 0.7)
   return s
 }
@@ -399,7 +400,7 @@ export function packOutAccess(t: HuntTarget, b: HuntBands, i: number): { access:
   const km = (v * 50) / 1000
   const access =
     t === 'grouse' ? (km <= 3 ? 1 : km <= 6 ? 0.85 : 0.6) : km <= 1.6 ? 1 : km <= 3.2 ? 1 - (0.4 * (km - 1.6)) / 1.6 : km <= 5 ? 0.6 - (0.3 * (km - 3.2)) / 1.8 : 0.3
-  const label = v >= 255 ? 'a carry out of over 12 km' : km < 1 ? `a ${Math.max(50, Math.round(km * 20) * 50)} m carry out` : `a ${km.toFixed(1)} km carry out, the climb counted`
+  const label = v >= 255 ? `a carry out of over ${dist(12000)}` : km < 1 ? `a ${dist(Math.max(50, km * 1000), { step: 50 })} carry out` : `a ${dist(km * 1000)} carry out, the climb counted`
   return { access, label }
 }
 
@@ -411,7 +412,7 @@ export function roadPressure(t: HuntTarget, b: HuntBands, i: number): { f: numbe
   if (t === 'grouse' || !b.distHighway) return { f: 1, label: 'quiet' }
   const dh = b.distHighway[i] * 20
   let f = dh <= 250 ? 0.6 : dh < 1000 ? 0.6 + (0.4 * (dh - 250)) / 750 : 1
-  let label = f < 1 ? `${dh < 1000 ? `${Math.round(dh / 50) * 50} m` : '1 km'} from the highway` : 'quiet'
+  let label = f < 1 ? `${dist(Math.min(dh, 1000), { step: 50 })} from the highway` : 'quiet'
   if (b.distRoad[i] * 20 <= 150 && f > 0.85) {
     f = 0.85
     label = 'on a road or trail'

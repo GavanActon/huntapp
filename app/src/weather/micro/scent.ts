@@ -18,6 +18,7 @@ import { leavesDown } from './leaves'
 import { tuneValues, useScentTune, type TuneValues } from './scentTune'
 import { metresBetween, useWindChecks } from './windChecks'
 import '../../ui/minipop.css'
+import { dist as distWords, height as heightWords } from '../../lengths'
 
 /**
  * The scent cone: where the hunter's scent goes from a spot during a sit.
@@ -1953,7 +1954,7 @@ function drawCloud(map: MlMap, f: Frame, dim: boolean) {
 
 /** How far scent is noticeable, to 10 m: '180 m', or '> 700 m' off the grid. */
 export function reachLabel(p: Plume): string {
-  return p.beyond ? `> ${EXTENT_M} m` : `${Math.round(p.reach / 10) * 10} m`
+  return p.beyond ? `> ${distWords(EXTENT_M)}` : distWords(p.reach)
 }
 
 /** Each person's noticeable edge in their own colour, their number and reach at its far tip. */
@@ -2029,7 +2030,7 @@ const HOLD_MS = 450
 const GROUND_DOT = '#ff9d4d'
 const STAND_DOT = '#fff2df'
 
-const heightName = (h: number) => (h === GROUND_H ? 'Ground' : `Stand ${h} m`)
+const heightName = (h: number) => (h === GROUND_H ? 'Ground' : `Stand ${heightWords(h, { digits: 1 })}`)
 
 /** The held person's popup: where they sit, the ground or a stand, a tap to change it; and Remove. */
 let personPop: { pop: maplibregl.Popup; k: number; sync: () => void } | null = null
@@ -2190,7 +2191,7 @@ function syncMarkers(map: MlMap | null) {
     const stand = p.height !== GROUND_H
     el.style.setProperty('--sp', own ? personColour(k) : stand ? STAND_DOT : GROUND_DOT)
     el.style.setProperty('--sp-edge', own && stand ? STAND_DOT : '')
-    el.dataset.h = stand ? `${p.height} m` : ''
+    el.dataset.h = stand ? heightWords(p.height, { digits: 1 }) : ''
   })
   personPop?.sync()
 }
@@ -2850,12 +2851,12 @@ const veil = (() => {
 function reachText(p: Plume): string {
   if (p.height > GROUND_H) {
     if (p.reach < 40) return 'stays over the deer: barely noticeable at nose height'
-    const far = p.beyond ? `past ${EXTENT_M} m` : `about ${Math.round(p.reach / 10) * 10} m`
-    return p.landing >= 30 ? `reaches noses from about ${Math.round(p.landing / 10) * 10} m out to ${far}` : `noticeable to ${far}`
+    const far = p.beyond ? `past ${distWords(EXTENT_M)}` : `about ${distWords(p.reach)}`
+    return p.landing >= 30 ? `reaches noses from about ${distWords(p.landing)} out to ${far}` : `noticeable to ${far}`
   }
-  if (p.beyond) return `noticeable past ${EXTENT_M} m`
-  if (p.reach < 40) return 'thins out within about 40 m'
-  return `noticeable to about ${Math.round(p.reach / 10) * 10} m`
+  if (p.beyond) return `noticeable past ${distWords(EXTENT_M)}`
+  if (p.reach < 40) return `thins out within about ${distWords(40)}`
+  return `noticeable to about ${distWords(p.reach)}`
 }
 
 /** The pale shade's words: how far the tongue may swing, and that a check pulls it in. */

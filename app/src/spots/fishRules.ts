@@ -14,6 +14,7 @@ import { COVER, type Habitat, type LakeFacts } from './habitatGrid'
 import type { Conditions } from './conditions'
 import { compass8 } from './conditions'
 import type { Factor, FishTarget, Verdict } from './types'
+import { depth, depthRange, dist as distWords, km } from '../lengths'
 
 export type Period = 'ice' | 'spawn' | 'postspawn' | 'earlysummer' | 'summer' | 'latesummer' | 'turnover' | 'latefall'
 
@@ -241,7 +242,7 @@ export function cellScore(t: FishTarget, b: FishBands, h: Habitat, i: number, la
   const brk = breakAt(b, h, i)
   if (brk >= 4) {
     structure += 0.35
-    reasons?.push(`a break (${brk.toFixed(0)} m per 100 m)`)
+    reasons?.push(`a break (a ${brk.toFixed(0)}% drop)`)
   } else if (brk >= 2) structure += 0.2
   const nearShore = dist <= 150
   if (nearShore && landFrac < 0.4) {
@@ -259,7 +260,7 @@ export function cellScore(t: FishTarget, b: FishBands, h: Habitat, i: number, la
   }
   if (inlet <= 150 && (ctx.period === 'spawn' || ctx.period === 'postspawn' || ctx.period === 'latefall' || t === 'pike')) {
     structure += 0.3
-    reasons?.push(`${inlet <= 40 ? 'at' : `${inlet} m from`} an inlet or outlet`)
+    reasons?.push(`${inlet <= 40 ? 'at' : `${distWords(inlet)} from`} an inlet or outlet`)
   } else if (inlet <= 150) structure += 0.1
   if (!nearShore && dist >= 250 && depth != null && depth <= hi && depth >= lo && brk >= 2) {
     structure += 0.25 // a hump or saddle in open water
@@ -273,7 +274,7 @@ export function cellScore(t: FishTarget, b: FishBands, h: Habitat, i: number, la
   if (t !== 'pike' && ctx.windward && nearShore) {
     if (f >= 400) {
       wind = ctx.coldInactive ? 0.9 : 1.3
-      reasons?.push(`windward shore, ${(f / 1000).toFixed(1)} km of fetch, wind ${compass8(c.windDir)}${c.windPersistH >= 6 ? ` for ${c.windPersistH} h` : ''}`)
+      reasons?.push(`windward shore, ${km(f / 1000)} of fetch, wind ${compass8(c.windDir)}${c.windPersistH >= 6 ? ` for ${c.windPersistH} h` : ''}`)
     } else if (f < 100) {
       wind = ctx.coldInactive ? 1.1 : 0.75
       if (ctx.coldInactive) reasons?.push('lee shore: cold, quiet water')
@@ -362,10 +363,10 @@ export function fishVerdict(t: FishTarget, c: Conditions, lake: LakeFacts | null
   if (ctx.period === 'turnover') notes.push('Turnover: a tough couple of days when the lake mixes, then fish spread through the column. Work sharp breaks next to the deepest water.')
   const [lo, hi] = lake ? depthWindow(t, ctx.period, ctx.low, lake, ctx.postFront) : [0, 0]
   if (lake) {
-    notes.push(`${PERIOD_NAMES[ctx.period]} · try ${lo.toFixed(0)}–${hi.toFixed(0)} m${lake.maxDepth ? ` (${lake.name ?? 'lake'} max ${lake.maxDepth.toFixed(1)} m${lake.meanDepth ? `, mean ${lake.meanDepth.toFixed(1)} m` : ''})` : ''}`)
-    if (ctx.period === 'summer' || ctx.period === 'latesummer') notes.push(`Thermocline about ${thermoclineM(lake).toFixed(0)} m from the ${(lake.fetchMaxM / 1000).toFixed(1)} km fetch${lake.secchi != null && lake.secchi < 2.5 ? ' (stained water, shallower)' : ''}.`)
-    if (lake.secchi != null) notes.push(lake.secchi < 2.5 ? `Secchi ${lake.secchi} m: stained, walleye feed in daylight here.` : `Secchi ${lake.secchi} m: clearer, low light matters more.`)
-    if (lake.depthSurvey) notes.push('Depths are read from the MNR survey sheet (1978–79 contours, 2 m apart). Bottoms shift: sound them.')
+    notes.push(`${PERIOD_NAMES[ctx.period]} · try ${depthRange(lo, hi)}${lake.maxDepth ? ` (${lake.name ?? 'lake'} max ${depth(lake.maxDepth)}${lake.meanDepth ? `, mean ${depth(lake.meanDepth)}` : ''})` : ''}`)
+    if (ctx.period === 'summer' || ctx.period === 'latesummer') notes.push(`Thermocline about ${depth(thermoclineM(lake), undefined, 0)} from the ${km(lake.fetchMaxM / 1000)} fetch${lake.secchi != null && lake.secchi < 2.5 ? ' (stained water, shallower)' : ''}.`)
+    if (lake.secchi != null) notes.push(lake.secchi < 2.5 ? `Secchi ${depth(lake.secchi)}: stained, walleye feed in daylight here.` : `Secchi ${depth(lake.secchi)}: clearer, low light matters more.`)
+    if (lake.depthSurvey) notes.push(`Depths are read from the MNR survey sheet (1978–79 contours, ${depth(2, undefined, 0)} apart). Bottoms shift: sound them.`)
     else if (!lake.depthModel) notes.push('No depth survey for this lake: depths are guessed from the shoreline.')
     else notes.push('Depths are a shape estimate from the shoreline, calibrated to the MNR survey mean and maximum. Sound them.')
   }
@@ -379,12 +380,12 @@ export function fishVerdict(t: FishTarget, c: Conditions, lake: LakeFacts | null
 export function describeFishCell(t: FishTarget, b: FishBands, h: Habitat, i: number, lake: LakeFacts, c: Conditions): string[] {
   const out: string[] = []
   const dq = b.depth[i]
-  if (dq !== 255) out.push(`est. ${(dq * 0.25).toFixed(1)} m`)
-  else out.push(`${b.distShore[i] * 10} m from shore, depth unknown`)
+  if (dq !== 255) out.push(`est. ${depth(dq * 0.25)}`)
+  else out.push(`${distWords(b.distShore[i] * 10)} from shore, depth unknown`)
   const ctx = fishContext(c)
   cellScore(t, b, h, i, lake, c, ctx, out)
   const [lo, hi] = depthWindow(t, ctx.period, ctx.low, lake, ctx.postFront)
-  out.push(`${PERIOD_NAMES[ctx.period]}: ${lo.toFixed(0)}–${hi.toFixed(0)} m band`)
+  out.push(`${PERIOD_NAMES[ctx.period]}: ${depthRange(lo, hi)} band`)
   return out
 }
 

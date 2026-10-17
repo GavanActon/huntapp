@@ -88,6 +88,9 @@ function buildFc(): FeatureCollection {
   return { type: 'FeatureCollection', features }
 }
 
+/** A depth label in the phone's units: metres to a decimal under 10, feet whole. */
+const depthLabel = (d: number) => (useAppStore.getState().units === 'imperial' ? String(Math.round(d * 3.28084)) : d < 10 ? d.toFixed(1) : String(Math.round(d)))
+
 /** Sparse depth labels: one per lake band run every few cells, on the
  *  deeper bands only, so the lake reads like a chart, not a spreadsheet. */
 function labelsFc(): FeatureCollection {
@@ -106,7 +109,7 @@ function labelsFc(): FeatureCollection {
       if (!lakeId[i] || depth[i] === 255 || surveyed.has(lakeId[i])) continue
       const d = depth[i] * scale
       if (d < 2) continue
-      features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [west + (c + 0.5) * dLon, north - (r + 0.5) * dLat] }, properties: { label: d < 10 ? d.toFixed(1) : String(Math.round(d)) } })
+      features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [west + (c + 0.5) * dLon, north - (r + 0.5) * dLat] }, properties: { label: depthLabel(d) } })
     }
   }
   return { type: 'FeatureCollection', features }
@@ -166,6 +169,10 @@ export function initDepthLayer() {
     m.once('remove', () => {
       if (layersOn === m) layersOn = null
     })
+  })
+  // the labels read in the phone's units: worded again when those change
+  useAppStore.subscribe((st, prev) => {
+    if (st.units !== prev.units) (layersOn?.getSource(`${SRC}-labels`) as GeoJSONSource | undefined)?.setData(labelsFc())
   })
   onHabitat(() => {
     // the grid usually lands after the map: add the layers then

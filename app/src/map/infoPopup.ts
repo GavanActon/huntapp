@@ -17,6 +17,7 @@ import { DROPPED_NAME, openPinSheet } from './placePopup'
 import { closeOnTapOff } from './tapPopup'
 import { attachTapWeather } from './tapWeather'
 import { hdOffer } from '../ui/grade'
+import { dist } from '../lengths'
 
 /** A spot the popup is about (a link's, a Go to's): its title row, and the
  *  name Pin keeps it under. */
@@ -43,7 +44,7 @@ function outFix(): Fix | null {
 function fromYou(f: Fix, lon: number, lat: number): string {
   const d = metresBetween(f.lon, f.lat, lon, lat)
   const brg = (Math.atan2((lon - f.lon) * Math.cos((f.lat * Math.PI) / 180), lat - f.lat) * 180) / Math.PI
-  return `${d >= 1000 ? `${(d / 1000).toFixed(1)} km` : `${Math.round(d / 10) * 10} m`} ${compass((brg + 360) % 360)}`
+  return `${dist(d)} ${compass((brg + 360) % 360)}`
 }
 
 /**

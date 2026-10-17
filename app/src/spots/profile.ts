@@ -18,6 +18,7 @@
 import { ACTIVE_AREA } from '../areas'
 import { dayWords, regsFor, seasonOn, type Quarry, type QuarryStatus, type ZoneRegs } from './regs'
 import type { HuntTarget } from './types'
+import { dist } from '../lengths'
 
 const P = ACTIVE_AREA.profile
 
@@ -137,7 +138,7 @@ export function regsLines(t: HuntTarget, timeMs: number): { warnings: string[]; 
     notes.push(...(REGS_HERE.notes ?? []))
   }
   if ((t === 'moose' || t === 'bear') && presence('grizzly') !== 'absent') {
-    notes.push('Grizzly country: move the meat 200 m from the gut pile and hang it; come back from upwind and glass first; leave a kill that has been moved or buried.')
+    notes.push(`Grizzly country: move the meat ${dist(200)} from the gut pile and hang it; come back from upwind and glass first; leave a kill that has been moved or buried.`)
   }
   if (REGS_HERE) notes.push(`From the ${REGS_HERE.edition}, read ${dayWords(REGS_HERE.checked.slice(5))} ${REGS_HERE.checked.slice(0, 4)}: check the current regulations.`)
   return { warnings, notes }

@@ -18,6 +18,7 @@ import { coneSizeWord, drawnView, SCENT_HEIGHTS, useScent, type ScentView } from
 import { useWindChecks } from '../weather/micro/windChecks'
 import { HOT_DEFS } from './hotButtons'
 import { useTapOff } from './tapOff'
+import { height } from '../lengths'
 
 /**
  * A hot button's drawer: a press and hold slides it out beside the button,
@@ -83,7 +84,8 @@ function youHere(): { lon: number; lat: number } | null {
   return g.locating && fix && inRegion(fix.lon, fix.lat) ? { lon: fix.lon, lat: fix.lat } : null
 }
 
-const HEIGHTS: readonly Opt<number>[] = SCENT_HEIGHTS.map((h, i) => [h, i === 0 ? 'Ground' : `${h} m`] as const)
+/** The stand heights, worded in the phone's units. */
+const heights = (): readonly Opt<number>[] => SCENT_HEIGHTS.map((h, i) => [h, i === 0 ? 'Ground' : height(h, { digits: 1 })] as const)
 const VIEWS: readonly Opt<ScentView>[] = [
   ['cloud', 'Cloud'],
   ['particles', 'Particles'],
@@ -212,13 +214,14 @@ function ScentRows() {
         </div>
       </div>
       <Slider label="Strength" value={Math.round(strength * 100)} min={10} max={100} step={5} onChange={(v) => setStrength(v / 100)} />
-      <Seg label="Height" value={height} options={HEIGHTS} onPick={setHeight} />
+      <Seg label="Height" value={height} options={heights()} onPick={setHeight} />
       <Seg label="View" value={drawnView(view, n)} options={n > 1 ? PARTY_VIEWS : VIEWS} onPick={setView} />
     </>
   )
 }
 
-const INTERVALS: readonly Opt<(typeof CONTOUR_INTERVALS)[number]>[] = CONTOUR_INTERVALS.map((m) => [m, `${m} m`] as const)
+/** The contour spacings, worded in the phone's units (the lines stay a metric spacing: 5 m reads 16 ft). */
+const intervals = (): readonly Opt<(typeof CONTOUR_INTERVALS)[number]>[] => CONTOUR_INTERVALS.map((m) => [m, height(m)] as const)
 
 /** The contour lines' interval, the lines redrawing as it is picked; the lines come on so the pick can be seen. */
 function ContourRows() {
@@ -227,7 +230,7 @@ function ContourRows() {
   useEffect(() => {
     useAppStore.getState().setLayer('contours', true)
   }, [])
-  return <Seg label="Lines every" value={m} options={INTERVALS} onPick={setInterval} />
+  return <Seg label="Lines every" value={m} options={intervals()} onPick={setInterval} />
 }
 
 function HeardRows({ go }: RowsProps) {

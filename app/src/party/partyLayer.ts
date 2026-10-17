@@ -6,6 +6,7 @@ import { agoLabel } from '../time'
 import { memberColour } from './partyCode'
 import { SCENT_FRESH_MS, showMemberScent, usePartyStore, type Member } from './party'
 import '../ui/party.css'
+import { dist, height } from '../lengths'
 
 /**
  * The party on the map (party.ts): each member with a position, a dot in
@@ -42,7 +43,7 @@ function showMemberPopup(map: MlMap, m: Member) {
   head.textContent = m.who
   const line = document.createElement('div')
   line.className = 'dim'
-  line.textContent = [`placed ${agoLabel(age)}`, m.pos.h > 2 ? `in a stand, ${m.pos.h} m` : 'on the ground', m.pos.mv ? 'walking' : null, m.pos.acc && m.pos.acc > 25 ? `±${m.pos.acc} m` : null].filter(Boolean).join(' · ')
+  line.textContent = [`placed ${agoLabel(age)}`, m.pos.h > 2 ? `in a stand, ${height(m.pos.h, { digits: 1 })}` : 'on the ground', m.pos.mv ? 'walking' : null, m.pos.acc && m.pos.acc > 25 ? `±${dist(m.pos.acc, { step: 1 })}` : null].filter(Boolean).join(' · ')
   el.append(head, line)
   const p = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, closeOnClick: false, offset: 18, maxWidth: '240px' }).setLngLat([m.pos.lon, m.pos.lat]).setDOMContent(el).addTo(map)
   if (age <= SCENT_FRESH_MS) {

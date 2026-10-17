@@ -8,6 +8,7 @@ import { formatDistance } from '../measure/measureMath'
 import { campEnd, clearRoutes, closeRoutes, huntBlocked, ROUTE_COLOURS, ROUTE_LETTERS, useRoutes, youEnd, type RouteMode } from '../routes/routeStore'
 import { approachText, endName, height, lidarText, routeFacts, routeLine, routeTag, routeTime, timeParts } from '../routes/routeText'
 import { IconMinus, IconPlus, IconSwap } from './icons'
+import { km as kmWords } from '../lengths'
 
 /**
  * Route mode's card, in the bottom bar like the ruler's. First the three
@@ -65,7 +66,7 @@ export default function RouteCard() {
   // with no end yet the card is just its head and From: the next map tap sets it
   let msg: string | null = null
   if (!to) msg = ''
-  else if (status === 'outside') msg = `Both ends must be within ${CORE_KM} km of ${HOME_WORDS}.`
+  else if (status === 'outside') msg = `Both ends must be within ${kmWords(CORE_KM)} of ${HOME_WORDS}.`
   else if (status === 'water') msg = 'That end is out on the water.'
   else if (status === 'no-way') msg = 'No way there on foot.'
   else if (status === 'no-grid') msg = 'Download the maps in Settings first.'

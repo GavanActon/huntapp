@@ -16,6 +16,8 @@ import { useBushLabels } from '../bushLabels/labelStore'
 import { baseTone, BOG_TUFT, bogTuftImage, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour, lidarShadeShown, openLanesOut, type ArchiveRange, reliefShadePaint, standIn, syncUnderlays } from './mapStyle'
 import { offlineComplete, registerAllDataFiles, registerDataFile, sourceModes } from './pmtilesRegistry'
 import { probeTerrainDepth, STREAM_PICTURES, STREAMED_KEYS } from './streamPictures'
+// the contours' and lake depths' numbers in the phone's units
+import './unitLabels'
 import { initViewLook } from './viewLook'
 import { initWindTiles } from '../weather/micro/windTiles'
 import { showInfoPopup } from './infoPopup'

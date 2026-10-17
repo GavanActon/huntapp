@@ -4,6 +4,7 @@ import { checkFelt, forecastVerdict, steadiness, useWindChecks, verdict, type Wi
 import { clockShort } from '../time'
 import { SOUND_NAMES, SPECIES_NAMES, useHuntLog, WHAT_NAMES, type LogEntry } from './huntLog'
 import { outingChecks, outingEntries, outingTitle, type Outing } from './outings'
+import { dist, speed, temp } from '../lengths'
 
 /**
  * The log leaves the phone as files: the entries and the wind checks as a
@@ -149,8 +150,8 @@ function entryWpt(e: LogEntry): string {
   const what = e.sound ? SOUND_NAMES[e.sound] : WHAT_NAMES[e.what]
   const name = `${SPECIES_NAMES[e.species]}${e.count && e.count > 1 ? ` ×${e.count}` : ''}${e.kind ? ` (${e.kind})` : ''} · ${what.toLowerCase()} ${clockShort(e.ts)}`
   const desc = [
-    e.from ? `${Math.round(e.from.distM)} m ${compass(e.from.bearing)} of where you stood` : '',
-    e.wx ? `${Math.round(e.wx.tempC)}°C, ${Math.round(e.wx.windKmh)} km/h from ${compass(e.wx.windDir)}` : '',
+    e.from ? `${dist(e.from.distM, { step: 1 })} ${compass(e.from.bearing)} of where you stood` : '',
+    e.wx ? `${temp(e.wx.tempC)}, ${speed(e.wx.windKmh)} from ${compass(e.wx.windDir)}` : '',
     e.model ? `map ${Math.round(e.model.score * 100)}, beat ${Math.round(e.model.percentile * 100)}%` : '',
     e.note ?? '',
   ]

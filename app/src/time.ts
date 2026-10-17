@@ -104,11 +104,12 @@ export function hourOfDayLabel(h: number): string {
   return `${h % 12 || 12} ${h < 12 ? 'AM' : 'PM'}`
 }
 
-/** Compact duration: "30m", "1h", "1½h", "2h". */
+/** Compact duration: "30 min", "1 h", "1½ h", "2 h". Never "30m": it sits beside distances,
+ *  where it reads as metres (Gavan, 2026-10-17, the unit pass). */
 export function durationLabel(min: number): string {
-  if (min < 60) return `${min}m`
+  if (min < 60) return `${min} min`
   const h = Math.floor(min / 60)
-  return `${h}${min % 60 >= 30 ? '½' : ''}h`
+  return `${h}${min % 60 >= 30 ? '½' : ''} h`
 }
 
 /** "just now", "12 min ago", "3 h ago", "2 d ago" — for data-freshness rows. */

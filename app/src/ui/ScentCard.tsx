@@ -8,6 +8,7 @@ import { compass } from '../weather/openMeteo'
 import { useLookTick } from './useLookTick'
 import { useTapOff } from './tapOff'
 import './live.css'
+import { dist, height as heightWords } from '../lengths'
 
 /**
  * "Your scent": the live card's Scent › opened, a top card in its slot with
@@ -102,7 +103,7 @@ export default function ScentCard(): JSX.Element | null {
               </>
             )}
             {g && plume && <span className="dim"> · </span>}
-            {plume && (plume.height > GROUND_H && plume.landing >= 30 ? `noticeable from ${Math.round(plume.landing / 10) * 10} m out to ${reachLabel(plume)}` : `noticeable to ${reachLabel(plume)}`)}
+            {plume && (plume.height > GROUND_H && plume.landing >= 30 ? `noticeable from ${dist(plume.landing)} out to ${reachLabel(plume)}` : `noticeable to ${reachLabel(plume)}`)}
           </div>
         )}
         {plume && <div className="scent-line dim">Shaded by how often a nose there catches it: darkest most minutes, palest now and then</div>}
@@ -148,7 +149,7 @@ export default function ScentCard(): JSX.Element | null {
         {at.party ? (
           // a party member's height is theirs, set on their phone
           <div className="scent-line">
-            <span className="dim">{at.who} is</span> {at.height === GROUND_H ? 'on the ground' : `in a stand, ${at.height} m`}
+            <span className="dim">{at.who} is</span> {at.height === GROUND_H ? 'on the ground' : `in a stand, ${heightWords(at.height, { digits: 1 })}`}
           </div>
         ) : (
         <div className="sc-sec">
@@ -156,7 +157,7 @@ export default function ScentCard(): JSX.Element | null {
           <div className="seg" role="radiogroup" aria-label={at.live || !many ? 'Where you sit' : `Where ${k + 1} sits`}>
             {SCENT_HEIGHTS.map((h) => (
               <button key={h} className={height === h ? 'seg-on' : ''} role="radio" aria-checked={height === h} onClick={() => setHeight(h)}>
-                {h === GROUND_H ? 'Ground' : `Stand ${h} m`}
+                {h === GROUND_H ? 'Ground' : `Stand ${heightWords(h, { digits: 1 })}`}
               </button>
             ))}
           </div>
