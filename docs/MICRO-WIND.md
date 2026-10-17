@@ -369,7 +369,8 @@ knows the turbulence. Every area was rerun to keep it:
     upslope gone over water, on test set v4: water in a lee over 10°
     46 → 48% within 45° of PALM, sunny water 84 → 91%, land unmoved; the
     scent card's tuned tongue 0.59 → 0.61, misses held, SD held; the checks
-    unchanged. No shelter at all over water (1) cost a miss on the card.
+    unchanged. No shelter at all over water (1) took a miss off the HD card
+    but added two on SD, so half it is.
 - **Small openings**: trees within 45 m on three sides or more means the
   air swirls.
 - **A tree line ahead** (2026-10-07, [SHORE-WIND.md](SHORE-WIND.md) rule
