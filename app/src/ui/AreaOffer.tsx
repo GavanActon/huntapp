@@ -1,6 +1,7 @@
 import { useState, type JSX } from 'react'
 import { areaById, otherAreaAt } from '../areas'
 import { switchArea } from '../areas/switch'
+import { useAppStore } from '../state/appStore'
 import { useGpsStore } from '../tracking/gpsStore'
 import './areas.css'
 
@@ -31,15 +32,19 @@ function putOff(id: string) {
  * The fix is in another area's box: a chip offers to switch to it. Only
  * offers: the phone is glanced at and pocketed, and a reload on a fix
  * alone would drop the people placed and the card left open mid-sit.
- * Nothing at all with no fix, or with the fix in the area the app is in.
+ * Nothing at all with no fix, or with the fix in the area the app is in;
+ * nor while the map follows the fix: the view goes into the box with it,
+ * and the app goes there by itself (areas/lookSwitch.ts). Left for a fix in
+ * one box while the map is looked at somewhere else.
  */
 export default function AreaOffer(): JSX.Element | null {
   // the area's id, not the fix: the chip redraws when the answer changes, not on every fix
   const id = useGpsStore((s) => (s.fix ? (otherAreaAt(s.fix.lon, s.fix.lat)?.id ?? null) : null))
   // put away this run: the chip goes at once, and stays gone where storage is blocked
   const [gone, setGone] = useState<string[]>([])
+  const following = useAppStore((s) => s.follow)
   const area = areaById(id)
-  if (!area || gone.includes(area.id) || isOff(area.id)) return null
+  if (!area || following || gone.includes(area.id) || isOff(area.id)) return null
   // to where you are, with nothing to do on arrival: follow comes back with location
   const go = () => {
     const f = useGpsStore.getState().fix

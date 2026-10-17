@@ -56,21 +56,22 @@ let switching = false
  * it asks first: when a download is running (the switch stops it), when
  * people are placed for the scent (a setup placed by hand is never saved;
  * the live cone comes back with the first fix), and when there is no
- * signal and the area's maps or its forecast are not on the phone. With
- * `carry` the people placed go over the reload instead, kept as the app
- * keeps them over its own reloads (scent.ts carryPlaced), and it does not
- * ask about them. False when it does not go.
+ * signal and the area's maps or its forecast are not on the phone. `byItself`
+ * (the view settled in the area's box) asks nothing: the people placed go
+ * over the reload, kept as the app keeps them over its own reloads
+ * (scent.ts carryPlaced), no signal goes as it is, and a download running
+ * holds it back (false) for the caller to wait out. False when it does not go.
  */
-export function switchArea(id: string, view?: { center: [number, number]; zoom: number }, then?: SwitchThen, carry = false): boolean {
+export function switchArea(id: string, view?: { center: [number, number]; zoom: number }, then?: SwitchThen, byItself = false): boolean {
   const area = areaById(id)
   if (switching || !area || area.id === ACTIVE_AREA.id) return false
   // the reload drops the run: a file still coming is not marked saved (offline/fileStore), the ones done stay
-  if (useDownloads.getState().active && !confirm(`Maps are downloading. Going to ${area.name} stops the download: the files it has finished stay on the phone, the rest can be downloaded later. Go anyway?`)) return false
-  if (!carry && useScent.getState().people.some((p) => !p.live) && !confirm(`Going to ${area.name} reloads the app, and the people placed for the scent go with it. Go anyway?`)) return false
-  const gaps = navigator.onLine ? null : offlineGaps(area)
+  if (useDownloads.getState().active && (byItself || !confirm(`Maps are downloading. Going to ${area.name} stops the download: the files it has finished stay on the phone, the rest can be downloaded later. Go anyway?`))) return false
+  if (!byItself && useScent.getState().people.some((p) => !p.live) && !confirm(`Going to ${area.name} reloads the app, and the people placed for the scent go with it. Go anyway?`)) return false
+  const gaps = byItself || navigator.onLine ? null : offlineGaps(area)
   if (gaps && !confirm(`No signal, and ${gaps}. Go anyway?`)) return false
   switching = true
-  if (carry) carryPlaced()
+  if (byItself) carryPlaced()
   flushTrackSave()
   if (view) saveView({ center: view.center, zoom: view.zoom, bearing: 0 }, area.id)
   // location on: follow comes back with it only when the switch is to where
