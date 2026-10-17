@@ -52,7 +52,7 @@ Until you confirm you've taken over, c4 keeps the seat; after that, c4 makes no 
 - **The scorecard:**
   - `pipeline/teacher/palm/scorecard.py` scores a commit in the worktree `C:/dev/huntapp-score` on port 5251.
   - It takes `scores/worktree.lock`, so a second run waits.
-  - `--grid hd|sd|both` and `--sd-version v1|v2t|v2t2` (the SD column). SD needs `--patch pipeline/teacher/palm/sd-tiles.diff` (the dev-only `?tiles=force`, uncommitted in windTiles.ts).
+  - `--grid hd|sd|both` and `--sd-version v1|v2t|v2t2` (the SD column). SD needs the dev-only `?tiles=force` in windTiles.ts: in the app since 9d6e96a; for an older ref, add `--patch pipeline/teacher/palm/sd-tiles.diff`.
 - **The nightly loop:** `palm_loop.py`, Windows task "Groundwind PALM loop" at 05:30, reports to `pipeline/raw/teacher/palm/loop/reports/<date>.md`. Today's defaults (f08 + r51all) are its new baseline.
 
 ## In flight (times EDT, 2026-10-17)
@@ -66,7 +66,7 @@ Until you confirm you've taken over, c4 keeps the seat; after that, c4 makes no 
 | xonix CPU | 140–180: surrogate-set explore runs (whitefish, lacbailey-bank) | last | the surrogate checkpoint |
 | xonix GPU | lee3-train (88's lee-weighted net, two kit jobs ~12 min each), then the sdx chain (SD tiles from the queue's end) | now | 88 |
 | XEVO | 88's trial script: waits for lee3, evals it, bakes the 12 box tiles as sd/v2t (lee) and sd/v2t2 (lee + provincial wetlands), then resumes v1 | ~01:00–02:00 | you |
-| XEVO | `pipeline/teacher/palm/score_trials.ps1`: waits for v2t and v2t2 on R2, then scores HD+v1, v2t and v2t2 (logs in `scores/trial-logs/`). c4 started it from its scratchpad. **If c4's session is gone, start it again** (`powershell -ExecutionPolicy Bypass -File pipeline\teacher\palm\score_trials.ps1`, in the background) | after the trial tiles | you, then the v2 re-bake call goes to Gavan |
+| XEVO | `pipeline/teacher/palm/score_trials.ps1`: waits for v2t and v2t2 on R2, then scores HD+v1, v2t and v2t2 (logs in `scores/trial-logs/`). c4 runs it in the background from this repo copy (restarted 2026-10-17 ~00:15 without the patch, since 9d6e96a carries the switch). **If c4's session is gone and no `scores/trial-logs/` appear after the trial tiles land, start it again** (`powershell -ExecutionPolicy Bypass -File pipeline\teacher\palm\score_trials.ps1`, in the background) | after the trial tiles | you, then the v2 re-bake call goes to Gavan |
 | XEVO | three idle WindNinja runners in -Watch on the main kit (from the Duhamel bake) | idle | leave them |
 
 ## Where things stand (the night of 10-16)
@@ -89,17 +89,16 @@ Until you confirm you've taken over, c4 keeps the seat; after that, c4 makes no 
 
   So flat forest's value is the canopy-driven floor (still against moving, the turned edges), not terrain resolution. That points at the PALM-taught floor (the surrogate checkpoint), pulled forward. c4 put it to Gavan as the next build. **Not yet decided.**
 
-## Uncommitted work of c4's (shared working tree; ask Gavan before committing)
+## c4's work: committed on Gavan's word (2026-10-17)
 
-- `pipeline/teacher/palm/`:
+- **9d6e96a and its follow-up, local only (not pushed; a push is Gavan's word, or ba's dev push under its standing instruction, which carries them):**
   - scorecard.py: --grid, --sd-version, the lock;
-  - build_case.py: the surrogate-set runs and the drainage-fade runs;
-  - testset.json: forcing rows;
-  - SCORES.md;
-  - ops_page.py, wn_fine.py, score_trials.ps1, sd-tiles.diff, HANDOVER.md.
-- `docs/SCENT-TESTSET.md`.
-- `app/src/weather/micro/windTiles.ts`: the `FORCE_TILES` hunks, dev-only.
-- Not in git: `pipeline/raw/windcfd/sdtiles/{xonix_batch,stands_batch,xonix_keycheck,xonix_cpu,xonix_cpu_trace}.ps1` and `pipeline/raw/windcfd/wntest/`.
+  - build_case.py runs;
+  - testset.json, SCORES.md;
+  - ops_page.py, wn_fine.py, score_trials.ps1, sd-tiles.diff, HANDOVER.md;
+  - docs/SCENT-TESTSET.md, docs/SCENT-TEACHER.md;
+  - windTiles.ts `FORCE_TILES` (dev-only).
+- **Not in git** (pipeline/raw is ignored): `pipeline/raw/windcfd/sdtiles/{xonix_batch,stands_batch,xonix_keycheck,xonix_cpu,xonix_cpu_trace}.ps1` and `pipeline/raw/windcfd/wntest/`.
 
 ## Gotchas learned the hard way
 
