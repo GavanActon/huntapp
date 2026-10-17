@@ -295,11 +295,14 @@ function SendSettingsRow({ online }: { online: boolean }): JSX.Element {
 /**
  * Settings, one level deep, under headings and nothing folded away (Gavan,
  * 2026-10-05: categorical, but don't hide): On this phone (the maps, the
- * weather), Map (Map buttons and Views, which left the ⋯ menu for here, the
- * contour interval, past hunts), Wind flow, Display (units, the hand, text
- * and buttons, Outdoor), Sharing (your initials), Something wrong?. The
- * download runs in offline/downloads.ts, so closing the sheet does not stop
- * it. The host draws the title row.
+ * weather), Map (Map buttons and Views, which left the ⋯ menu for here, past
+ * hunts), Display (units, the hand, text and buttons; Outdoor is the strip's
+ * own button), Sharing (your initials, the checks, the stats), Something
+ * wrong? (the dev log, the credits, the build), and Dev mode, a switch that
+ * shows the rows for building the app: the terrain wind's HD/SD, the scent
+ * knobs, sending these settings (Gavan, 2026-10-17). The download runs in
+ * offline/downloads.ts, so closing the sheet does not stop it. The host draws
+ * the title row.
  */
 export default function SettingsSheet(): JSX.Element {
   const units = useAppStore((s) => s.units)
@@ -307,8 +310,8 @@ export default function SettingsSheet(): JSX.Element {
   const textSize = useAppStore((s) => s.textSize)
   const stripButtons = useAppStore((s) => s.stripButtons)
   const setStripButtons = useAppStore((s) => s.setStripButtons)
-  const outdoor = useAppStore((s) => s.outdoor)
-  const setOutdoor = useAppStore((s) => s.setOutdoor)
+  const devMode = useAppStore((s) => s.devMode)
+  const setDevMode = useAppStore((s) => s.setDevMode)
   const setTextSize = useAppStore((s) => s.setTextSize)
   const leftHanded = useAppStore((s) => s.leftHanded)
   const setLeftHanded = useAppStore((s) => s.setLeftHanded)
@@ -381,24 +384,6 @@ export default function SettingsSheet(): JSX.Element {
         </div>
       </div>
 
-      <div className="st-sec">Wind</div>
-      {/* shown as SD (the map's grade tile), the wind is SD's whatever this says */}
-      {hasSdWind() && !SD_PREVIEW && (
-        <div className="st-row st-two">
-          <span>
-            Terrain wind
-            <small className="dim">HD is WindNinja's solve baked for this area. SD is the net that stands in for it where no solve has run.</small>
-          </span>
-          <div className="seg" role="radiogroup" aria-label="Terrain wind">
-            {(['hd', 'sd'] as const).map((v) => (
-              <button key={v} className={terrain === v ? 'seg-on' : ''} role="radio" aria-checked={terrain === v} onClick={() => pickTerrainWind(v)}>
-                {v === 'hd' ? 'HD' : 'SD'}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       <div className="st-sec">Display</div>
       <div className="st-row">
         <span>Units</span>
@@ -444,12 +429,7 @@ export default function SettingsSheet(): JSX.Element {
           ))}
         </div>
       </div>
-      <label className="st-row">
-        <span>
-          Outdoor <span className="dim">· for sun on the phone</span>
-        </span>
-        <input type="checkbox" className="switch" checked={outdoor} onChange={(e) => setOutdoor(e.target.checked)} />
-      </label>
+      {/* Outdoor (for sun on the phone) is the strip's own button, not a row here as well */}
 
       <div className="st-sec">Sharing</div>
       <label className="st-row">
@@ -463,14 +443,6 @@ export default function SettingsSheet(): JSX.Element {
 
       <div className="st-sec">Something wrong?</div>
       <DevlogRows />
-      <SendSettingsRow online={online} />
-      <button className="st-row" onClick={() => useAppStore.getState().openSheet({ kind: 'scentTune' })}>
-        <span>
-          Scent tuning
-          <small>dev: the cone's knobs on sliders, kept on this phone</small>
-        </span>
-        <span className="dim">›</span>
-      </button>
       <details className="st-credits">
         <summary className="st-row">
           <span>Map credits</span>
@@ -484,6 +456,44 @@ export default function SettingsSheet(): JSX.Element {
         </ul>
       </details>
       <BuildRow online={online} />
+
+      {/* the rows for building the app, behind one switch (Gavan, 2026-10-17) */}
+      <div className="st-sec">Dev mode</div>
+      <label className="st-row st-two">
+        <span>
+          Dev mode
+          <small className="dim">the rows for building the app: the terrain wind, the scent knobs, sending these settings</small>
+        </span>
+        <input type="checkbox" className="switch" checked={devMode} onChange={(e) => setDevMode(e.target.checked)} />
+      </label>
+      {devMode && (
+        <>
+          {/* shown as SD (the pill's grade word), the wind is SD's whatever this says */}
+          {hasSdWind() && !SD_PREVIEW && (
+            <div className="st-row st-two">
+              <span>
+                Terrain wind
+                <small className="dim">HD is WindNinja's solve baked for this area. SD is the net that stands in for it where no solve has run.</small>
+              </span>
+              <div className="seg" role="radiogroup" aria-label="Terrain wind">
+                {(['hd', 'sd'] as const).map((v) => (
+                  <button key={v} className={terrain === v ? 'seg-on' : ''} role="radio" aria-checked={terrain === v} onClick={() => pickTerrainWind(v)}>
+                    {v === 'hd' ? 'HD' : 'SD'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <button className="st-row st-two" onClick={() => useAppStore.getState().openSheet({ kind: 'scentTune' })}>
+            <span>
+              Scent tuning
+              <small className="dim">the cone's knobs on sliders, kept on this phone</small>
+            </span>
+            <span className="dim">›</span>
+          </button>
+          <SendSettingsRow online={online} />
+        </>
+      )}
     </div>
   )
 }

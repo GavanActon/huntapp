@@ -334,6 +334,10 @@ export interface AppState {
   /** Outdoor: opaque birch chrome and dark ink for sun on the phone; persisted */
   outdoor: boolean
   setOutdoor: (v: boolean) => void
+  /** Dev mode: the Settings rows for the people building the app (the scent knobs,
+   *  the terrain wind's HD/SD, sending these settings) shown; persisted */
+  devMode: boolean
+  setDevMode: (v: boolean) => void
   /** your initials, on the wind checks you share with the party */
   who: string
   setWho: (v: string) => void
@@ -425,6 +429,8 @@ export const useAppStore = create<AppState>()(
       setTextSize: (textSize) => set({ textSize }),
       outdoor: false,
       setOutdoor: (outdoor) => set({ outdoor }),
+      devMode: false,
+      setDevMode: (devMode) => set({ devMode }),
       who: '',
       setWho: (who) => set({ who: who.trim().slice(0, 12) }),
       planTimeMs: null,
@@ -496,6 +502,7 @@ export const useAppStore = create<AppState>()(
         leaves: s.leaves,
         textSize: s.textSize,
         outdoor: s.outdoor,
+        devMode: s.devMode,
         stripOpen: s.stripOpen,
         hotButtons: s.hotButtons,
         leftHanded: s.leftHanded,
