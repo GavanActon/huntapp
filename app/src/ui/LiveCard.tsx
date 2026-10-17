@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type JSX, type ReactNode } from 'react'
 import { useHunting } from '../hunting/hunting'
 import { heardThisHunt, movesChip, movesLine, readMoves, soundRow, useSwing } from '../hunting/moveLayer'
+import { useHuntLog } from '../log/huntLog'
 import { openHuntLog } from '../log/logView'
 import { useAppStore } from '../state/appStore'
 import { useSpotsStore } from '../state/spotsStore'
@@ -80,6 +81,8 @@ function briefScent(p: Plume): string {
 
 export default function LiveCard(): JSX.Element | null {
   useLookTick()
+  // the bull's moves come off the log (readMoves): a new entry redraws the card
+  useHuntLog((s) => s.entries)
   useSwing((s) => s.swing)
   const cone = useHunting((s) => s.cone)
   const people = useScent((s) => s.people)
@@ -92,7 +95,9 @@ export default function LiveCard(): JSX.Element | null {
   const folded = useAppStore((s) => s.liveFolded)
   const setLiveFolded = useAppStore((s) => s.setLiveFolded)
   const setTopCard = useAppStore((s) => s.setTopCard)
-  const fix = useGpsStore((s) => s.fix)
+  // of the fix only its spread, in whole metres: the card said "waiting for a fix" or how wide
+  // it was, and redrew on every fix for it (the cone itself follows the fixes in hunting.ts)
+  const fixSpread = useGpsStore((s) => (s.fix ? Math.round(s.fix.sigma ?? s.fix.accuracy) : null))
   const target = useSpotsStore((s) => s.target)
   const conditions = useSpotsStore((s) => s.conditions)
   const weights = useSpotsStore((s) => s.weights)
@@ -187,10 +192,7 @@ export default function LiveCard(): JSX.Element | null {
     scentText = briefScent(livePlume)
     if (planTimeMs != null) when = `${isToday(planTimeMs) ? '' : `${dayShort(planTimeMs)} `}${hourShort(planTimeMs)}`
   } else if (live) scentText = 'Scent · working out…'
-  else if (cone) {
-    const spread = fix ? (fix.sigma ?? fix.accuracy) : null
-    scentText = spread != null && spread > 40 ? `Scent · fix ±${dist(spread, { step: 1 })}` : 'Scent · waiting for a fix'
-  }
+  else if (cone) scentText = fixSpread != null && fixSpread > 40 ? `Scent · fix ±${dist(fixSpread, { step: 1 })}` : 'Scent · waiting for a fix'
 
   // ---- line 2: the bull, or the spot's score at the planning time
   let second: ReactNode = null
@@ -227,7 +229,9 @@ export default function LiveCard(): JSX.Element | null {
   if (open) {
     const es = heardThisHunt()
     const last = es[es.length - 1]
-    const at = live ?? (fix ? { lon: fix.lon, lat: fix.lat } : (moves?.you ?? null))
+    // where you are, read as the rows draw: the card follows the clock, not every fix
+    const f = useGpsStore.getState().fix
+    const at = live ?? (f ? { lon: f.lon, lat: f.lat } : (moves?.you ?? null))
     const drain = at ? drainLine(at.lon, at.lat, now) : null
     return (
       <div className="livecard livecard-open" ref={ref}>

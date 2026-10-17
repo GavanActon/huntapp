@@ -57,7 +57,8 @@ async function lookup(q: string, signal: AbortSignal): Promise<Hit[]> {
 
 export default function WhereTo() {
   const selected = useExplore((s) => s.selected)
-  const fix = useGpsStore((s) => s.fix)
+  // the Where I am button needs only to know there is a fix; it reads the fix when tapped
+  const hasFix = useGpsStore((s) => s.fix != null)
   const [text, setText] = useState('')
   const [hits, setHits] = useState<Hit[]>([])
   const [state, setState] = useState<'idle' | 'looking' | 'none' | 'offline'>('idle')
@@ -135,8 +136,15 @@ export default function WhereTo() {
         <button className="btn quiet" onClick={paste} aria-label="Paste">
           Paste
         </button>
-        {fix && (
-          <button className="btn quiet" onClick={() => go(fix.lon, fix.lat)} aria-label="Where I am">
+        {hasFix && (
+          <button
+            className="btn quiet"
+            onClick={() => {
+              const f = useGpsStore.getState().fix
+              if (f) go(f.lon, f.lat)
+            }}
+            aria-label="Where I am"
+          >
             Me
           </button>
         )}

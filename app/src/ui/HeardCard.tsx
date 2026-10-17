@@ -86,7 +86,8 @@ export default function HeardCard() {
   const editing = useHuntLog((s) => (editId ? s.entries.find((x) => x.id === editId) : undefined))
   const add = useHuntLog((s) => s.add)
   const fix = useGpsStore((s) => s.fix)
-  const heading = useCompass((s) => s.heading)
+  // whole degrees: the compass reads many times a second, the card and its rose redraw when the degree changes
+  const heading = useCompass((s) => (s.heading == null ? null : Math.round(s.heading)))
   const status = useCompass((s) => s.status)
   const [species, setSpecies] = useState<LogSpecies>(() => editing?.species ?? heatAnimal())
   // an entry saved without a sound (the log's own card) reads as what it was

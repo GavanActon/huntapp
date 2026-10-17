@@ -37,7 +37,8 @@ export default function RouteCard() {
   const picking = useRoutes((s) => s.picking)
   const { setMode, setPick, setStayDry, swap, setFrom, setTo, setPicking } = useRoutes.getState()
   const locating = useGpsStore((s) => s.locating)
-  useGpsStore((s) => s.fix)
+  // what youEnd reads of the fix: where, to 10 m, and whether it is good enough; not every fix
+  useGpsStore((s) => (s.fix ? `${s.fix.lon.toFixed(4)},${s.fix.lat.toFixed(4)},${(s.fix.sigma ?? s.fix.accuracy) <= 150}` : null))
   const you = youEnd()
   const units = useAppStore((s) => s.units)
   const paceKmh = useAppStore((s) => s.paceKmh)

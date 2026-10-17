@@ -56,12 +56,15 @@ export interface MapsNudge {
 /** Read inside a component: re-renders with the stores it reads. */
 export function useMapsNudge(): MapsNudge {
   const online = useAppStore((s) => s.online)
-  const dl = useDownloads()
+  // the run's start and end and what it saved, not its every chunk: the strip and the menu read this
+  const active = useDownloads((s) => s.active)
+  const areaId = useDownloads((s) => s.areaId)
+  useDownloads((s) => s.storedAt)
   // the server's list landing (bootManifest) and the pending list both change the answer
   useMapUpdates((s) => s.onServer)
   useMapUpdates((s) => s.pending)
   const maps = mapsStatus()
-  const downloading = dl.active && dl.areaId === ACTIVE_AREA.id
+  const downloading = active && areaId === ACTIVE_AREA.id
   // new maps on the server have the badge beside Settings already (replace)
   const show = online && !downloading && maps.action === 'download' && !maps.replace && maps.files.length > 0
   const gridsKept = manifestGet(microFile()) != null && manifestGet(habitatFile()) != null

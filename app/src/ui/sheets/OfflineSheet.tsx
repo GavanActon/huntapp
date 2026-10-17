@@ -30,7 +30,9 @@ const labelOf = (name: string, areaId: string) =>
  * Reached from the Settings row; ‹ Back is the host's.
  */
 export default function OfflineSheet(): JSX.Element {
-  const dl = useDownloads()
+  // the run's start and end and what it saved; each area's block follows its own chunks
+  const storedAt = useDownloads((s) => s.storedAt)
+  const active = useDownloads((s) => s.active)
   // what the blocks read: re-rendered when any of it moves
   useMapUpdates((s) => s.pending)
   useMapUpdates((s) => s.onServer)
@@ -40,7 +42,7 @@ export default function OfflineSheet(): JSX.Element {
 
   useEffect(() => {
     void storageEstimate().then(setQuota)
-  }, [dl.storedAt, dl.active])
+  }, [storedAt, active])
 
   // what an area not saved would bring: the server's list, asked when the
   // sheet opens (in the background, only by a phone keeping another area's maps)

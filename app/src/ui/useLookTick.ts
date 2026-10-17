@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useHuntLog } from '../log/huntLog'
 
-/** Re-render every half minute and on each look, for "min ago" and a sound going stale. */
+/** Re-render every half minute and on each look, for "min ago" and a sound
+ *  going stale. A card that reads the hunt log subscribes to it itself
+ *  (LiveCard): the strip and the scent card do not read it. */
 export function useLookTick(): void {
   const [, tick] = useState(0)
   useEffect(() => {
@@ -14,5 +15,4 @@ export function useLookTick(): void {
       document.removeEventListener('visibilitychange', onLook)
     }
   }, [])
-  useHuntLog((s) => s.entries)
 }
