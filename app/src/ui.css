@@ -1408,6 +1408,12 @@
 
 /* a hold menu's head: the button's whole name (and icon), for someone
    still learning what each one is */
+/* a capped drawer scrolls its rows, never squeezes them: a flex column shrinks its
+   children before it overflows, and at 360 px the rows' text overlapped (2026-10-17) */
+.hotdrawer > * {
+  flex-shrink: 0;
+}
+
 .hd-title {
   display: flex;
   align-items: center;
