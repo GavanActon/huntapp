@@ -119,16 +119,23 @@ export default function App() {
   const checking = useCheckForm((s) => s.at != null)
   const EXPLORE = useAppStore((s) => s.exploreMode)
   const barRef = useRef<HTMLDivElement>(null)
+  const topRef = useRef<HTMLDivElement>(null)
   // a tall form in the bar (a moose heard, a wind check, an entry) would
   // ride the columns up over the strip and the live card: they wait for it
   const formUp = logging || hearing || checking
 
-  // --barh: what the columns sit above, published for the CSS
+  // --barh: what the columns sit above; --toph: the strip and the cards at the top,
+  // what a button's drawer must stay under (ui.css .hotdrawer); both published for the CSS
   useEffect(() => {
-    const el = barRef.current
-    if (!el) return
-    const ro = new ResizeObserver(() => document.documentElement.style.setProperty('--barh', `${Math.round(el.offsetHeight)}px`))
-    ro.observe(el)
+    const bar = barRef.current
+    const top = topRef.current
+    if (!bar || !top) return
+    const ro = new ResizeObserver(() => {
+      document.documentElement.style.setProperty('--barh', `${Math.round(bar.offsetHeight)}px`)
+      document.documentElement.style.setProperty('--toph', `${Math.round(top.offsetHeight)}px`)
+    })
+    ro.observe(bar)
+    ro.observe(top)
     return () => ro.disconnect()
   }, [])
 
@@ -196,7 +203,7 @@ export default function App() {
   return (
     <div className={`app${leftHanded ? ' app-lefty' : ''}`}>
       <MapView />
-      <div className="toparea">
+      <div className="toparea" ref={topRef}>
         <TopBar />
         {/* sharpening the wind: the map and the rose, nothing else up top (Gavan, 2026-10-08) */}
         {!checking && <WeatherStrip />}

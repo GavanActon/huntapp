@@ -1374,6 +1374,12 @@
   width: max-content;
   min-width: 170px;
   max-width: calc(100vw - 150px);
+  /* no taller than the room between the strip (with the cards under it, --toph) and
+     the bar: a drawer that has grown (the wind's, 2026-10-17) scrolls instead of
+     going under the strip on a small phone or at the largest text */
+  max-height: calc(100dvh - var(--toph, 132px) - var(--barh, 0px) - 56px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 6px;
   border-radius: 14px;
   background: var(--c-surface);

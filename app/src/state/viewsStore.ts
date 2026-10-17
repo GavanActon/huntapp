@@ -241,6 +241,12 @@ export const useViews = create<ViewsState>()(
         return p as ViewsState
       },
       partialize: (s) => ({ mode: s.mode, saved: s.saved, lastTarget: s.lastTarget, lastViewId: s.lastViewId, pinned: s.pinned, lookBefore: s.lookBefore }),
+      // a fishing mode saved elsewhere does not open outside Ontario (spots/profile.ts FISH_HERE):
+      // the phone would be on the fishing buttons and views with no fish to pick
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<ViewsState>
+        return { ...current, ...p, mode: p.mode === 'fish' && !FISH_HERE ? 'hunt' : (p.mode ?? current.mode) }
+      },
     },
   ),
 )
