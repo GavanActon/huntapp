@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { DEFAULT_LAYERS, DEFAULT_OPACITY, useAppStore, type LayerOpacity, type LayerVisibility, type MapDetail, type WindStyle } from './appStore'
 import { useSpotsStore } from './spotsStore'
+import { FISH_HERE } from '../spots/profile'
 import { isFish, type Target } from '../spots/types'
 
 /**
@@ -142,7 +143,8 @@ export const useViews = create<ViewsState>()(
       keepLook: () => set({ lookBefore: null }),
       setMode: (mode) => {
         const s = get()
-        if (mode === s.mode) return
+        // no fishing outside Ontario (spots/profile.ts FISH_HERE): the mode stays hunting
+        if (mode === s.mode || (mode === 'fish' && !FISH_HERE)) return
         const sp = useSpotsStore.getState()
         const lastTarget = { ...s.lastTarget, [s.mode]: sp.target }
         set({ mode, lastTarget })

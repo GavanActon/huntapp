@@ -1,6 +1,7 @@
 import { useRef, useState, type JSX } from 'react'
 import { useAppStore } from '../../state/appStore'
 import { splitViews, useViews, type MapView, type Mode } from '../../state/viewsStore'
+import { FISH_HERE } from '../../spots/profile'
 import { IconStar, IconTrash } from '../icons'
 import './settings.css'
 
@@ -73,13 +74,16 @@ export default function ViewsSheet(): JSX.Element {
     <div className="settings">
       <div className="sheet-head">
         <span className="sheet-title">Views</span>
-        <div className="seg" role="radiogroup" aria-label="Which set">
-          {(['hunt', 'fish'] as const).map((m) => (
-            <button key={m} className={mode === m ? 'seg-on' : ''} role="radio" aria-checked={mode === m} onClick={() => setMode(m)}>
-              {m === 'hunt' ? 'Hunting' : 'Fishing'}
-            </button>
-          ))}
-        </div>
+        {/* the fishing views where fishing is on offer (spots/profile.ts FISH_HERE) */}
+        {FISH_HERE && (
+          <div className="seg" role="radiogroup" aria-label="Which set">
+            {(['hunt', 'fish'] as const).map((m) => (
+              <button key={m} className={mode === m ? 'seg-on' : ''} role="radio" aria-checked={mode === m} onClick={() => setMode(m)}>
+                {m === 'hunt' ? 'Hunting' : 'Fishing'}
+              </button>
+            ))}
+          </div>
+        )}
         <button className="sheet-done" onClick={stacked ? popSheet : closeSheet}>
           Done
         </button>

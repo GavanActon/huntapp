@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type JSX, type PointerEvent as ReactPointe
 import { createPortal } from 'react-dom'
 import { useAppStore, type HotId, type HotSets, type HotSide } from '../../state/appStore'
 import { useViews } from '../../state/viewsStore'
+import { FISH_HERE } from '../../spots/profile'
 import { haptic } from '../haptics'
 import { HOT_DEFS, HOT_ORDER } from '../hotButtons'
 import { IconLocate } from '../icons'
@@ -204,13 +205,16 @@ export default function ButtonsSheet(): JSX.Element {
     <div className="settings hotedit" ref={root}>
       <div className="sheet-head">
         <span className="sheet-title">Map buttons</span>
-        <div className="seg" role="radiogroup" aria-label="Which set">
-          {(['hunt', 'fish'] as const).map((m) => (
-            <button key={m} className={mode === m ? 'seg-on' : ''} role="radio" aria-checked={mode === m} onClick={() => setMode(m)}>
-              {m === 'hunt' ? 'Hunting' : 'Fishing'}
-            </button>
-          ))}
-        </div>
+        {/* the fishing set where fishing is on offer (spots/profile.ts FISH_HERE) */}
+        {FISH_HERE && (
+          <div className="seg" role="radiogroup" aria-label="Which set">
+            {(['hunt', 'fish'] as const).map((m) => (
+              <button key={m} className={mode === m ? 'seg-on' : ''} role="radio" aria-checked={mode === m} onClick={() => setMode(m)}>
+                {m === 'hunt' ? 'Hunting' : 'Fishing'}
+              </button>
+            ))}
+          </div>
+        )}
         <button className="sheet-done" onClick={stacked ? popSheet : closeSheet}>
           Done
         </button>

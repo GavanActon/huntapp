@@ -17,7 +17,7 @@ import { drainWindow, groundAirAround, loadMicro, onMicro, REGIME_TIP } from '..
 import { useWindChecks } from '../weather/micro/windChecks'
 import { activityBar } from '../spots/grades'
 import { FISH_TARGETS, HUNT_TARGETS, isFish, TARGET_NAMES, type Target } from '../spots/types'
-import { targetStanding } from '../spots/profile'
+import { FISH_HERE, targetStanding } from '../spots/profile'
 import { agoLabel, clockShort, dayLabel, dayShort, floorHourMs, hourAmPm, hourMinShort, hourShort, isToday, startOfDayMs } from '../time'
 import { IconCheck, IconChevronDown, IconChevronUp, IconDots, IconGrid, IconGridOff, IconHeat, IconPin, IconSun } from './icons'
 import AppMenu from './AppMenu'
@@ -599,8 +599,13 @@ export default function WeatherStrip() {
           <div className="menu-pop" role="menu" aria-label="What you are after">
             {/* only what is here and may be hunted (spots/profile.ts): no deer in the BC mountains */}
             {HUNT_TARGETS.filter((t) => targetStanding(t).show).map(quarryRow)}
-            <div className="wx-menu-rule" />
-            {FISH_TARGETS.map(quarryRow)}
+            {/* fishing where it is on offer (spots/profile.ts FISH_HERE): Ontario's lakes, surveys and seasons */}
+            {FISH_HERE && (
+              <>
+                <div className="wx-menu-rule" />
+                {FISH_TARGETS.map(quarryRow)}
+              </>
+            )}
           </div>
         )}
       </span>

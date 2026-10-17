@@ -36,6 +36,11 @@ export const PROFILE = {
 /** The area's zone in the species table; null where nobody has read its book in yet. */
 export const REGS_HERE: ZoneRegs | null = regsFor(ACTIVE_AREA.jurisdiction, ACTIVE_AREA.zone.name)
 
+/** Fishing is on offer here: the lake species (MNR's surveys), the depths and
+ *  the seasons (FMZ 7, fishRules.ts) are all Ontario's, so walleye and pike
+ *  were scored on any lake in the Yukon under Ontario's dates. */
+export const FISH_HERE = ACTIVE_AREA.jurisdiction === 'ON'
+
 /** The species each target stands for: the heat map is the best of them
  *  that may be hunted that day. */
 export const TARGET_MEMBERS: Record<HuntTarget, Quarry[]> = {
