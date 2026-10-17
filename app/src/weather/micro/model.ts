@@ -326,6 +326,16 @@ export function habitatAligned(h: Habitat | null): h is Habitat {
   return !!h && !!g && !areaGrid && h.cols === g.cols && h.rows === g.rows && Math.abs(h.west - g.west) < 0.25 * Math.abs(g.dLon) && Math.abs(h.north - g.north) < 0.25 * Math.abs(g.dLat)
 }
 
+/** Where a stand's make-up (crown, conifer, hardwood, and the bush's `thick` where it has it) is read
+ *  at the sampler's cells: the micro grid itself when it carries the bands (a national tile with the
+ *  habitat-lite's SCANFI bands under the same names), else the area's habitat where it is aligned. */
+export function standBands(): Habitat | null {
+  const g = grid
+  if (g && g.has('crown') && g.has('conifer') && g.has('hardwood')) return g
+  const h = habitat()
+  return h && h.has('crown') && h.has('conifer') && h.has('hardwood') && habitatAligned(h) ? h : null
+}
+
 const planMs = () => useAppStore.getState().planTimeMs ?? Date.now()
 
 /** The two baked directions either side of a wind from dirFrom. */
@@ -1113,19 +1123,20 @@ let habRef: Habitat | null = null
 let habCrown: ArrayLike<number> | null = null
 let habCon: ArrayLike<number> | null = null
 let habHw: ArrayLike<number> | null = null
+let habCrownS = 1
 function towerShare(g: Habitat, i: number, leaves: number): number | null {
-  const h = habitat()
-  if (h !== habRef || (h && !habCrown)) {
+  // the micro grid's coarse copy while the full bands come, or tiles without the bands, have no stand to read
+  const h = g === grid ? standBands() : null
+  if (h !== habRef) {
     habRef = h
-    const ok = !!h && h.has('crown') && h.has('hardwood') && h.has('conifer')
-    habCrown = ok ? h!.raw('crown') : null
-    habCon = ok ? h!.raw('conifer') : null
-    habHw = ok ? h!.raw('hardwood') : null
+    habCrown = h ? h.raw('crown') : null
+    habCon = h ? h.raw('conifer') : null
+    habHw = h ? h.raw('hardwood') : null
+    habCrownS = h ? h.scale('crown') : 1
   }
-  // the micro grid's coarse copy while the full bands come, or the national tiles, have other cells
-  if (!habCrown || !habCon || !habHw || !habitatAligned(h) || g !== grid) return null
+  if (!habCrown || !habCon || !habHw || i >= habCrown.length) return null
   const cr = habCrown[i]
-  const C = cr > 0 && cr !== 255 ? Math.min(1, cr / 100) : 0.6
+  const C = cr > 0 && cr !== 255 ? Math.min(1, (cr * habCrownS) / 100) : 0.6
   const cn = habCon[i]
   const hw = habHw[i]
   const D = cn + hw > 0 && cn !== 255 && hw !== 255 ? hw / (cn + hw) : 0.3

@@ -12,9 +12,8 @@ import { useAppStore } from '../../state/appStore'
 import { compass } from '../openMeteo'
 import { onProfile } from '../boundaryLayer'
 import { onWeatherGrid } from '../windGrid'
-import { groundGust, groundSampler, groundStability, groundWind, habitatAligned, loadMicro, microGrid, onMicro, SAMPLE_N, type GroundSampler } from './model'
+import { groundGust, groundSampler, groundStability, groundWind, loadMicro, microGrid, onMicro, SAMPLE_N, standBands, type GroundSampler } from './model'
 import { ensureRelief, onRelief, reliefCell, reliefNear, WATER } from './relief'
-import { habitat } from '../../spots/habitatGrid'
 import { leavesDown } from './leaves'
 import { tuneValues, useScentTune, type TuneValues } from './scentTune'
 import { metresBetween, useWindChecks } from './windChecks'
@@ -449,17 +448,19 @@ interface HabBands {
   crown: ArrayLike<number>
   conifer: ArrayLike<number>
   hardwood: ArrayLike<number>
-  thick: ArrayLike<number>
+  /** the bush, where the stand's source has it */
+  thick: ArrayLike<number> | null
   thickS: number
+  crownS: number
 }
 
 function habBands(): HabBands | null {
-  const h = habitat()
-  if (!h || !h.has('crown') || !h.has('thick')) return null
-  // the habitat's cells are the sampler's only on the area's own grid (model.ts habitatAligned):
-  // under the national tiles the index is the mosaic's, and the stand's defaults stand
-  if (!habitatAligned(h)) return null
-  return { crown: h.raw('crown'), conifer: h.raw('conifer'), hardwood: h.raw('hardwood'), thick: h.raw('thick'), thickS: h.scale('thick') }
+  // the stand's make-up at the sampler's own cells (model.ts standBands): the area's habitat where it
+  // shares the micro grid's cells, a tile's own bands where it carries them; else the defaults stand
+  const h = standBands()
+  if (!h) return null
+  const thick = h.has('thick') ? h.raw('thick') : null
+  return { crown: h.raw('crown'), conifer: h.raw('conifer'), hardwood: h.raw('hardwood'), thick, thickS: thick ? h.scale('thick') : 1, crownS: h.scale('crown') }
 }
 
 /** The bush's hold on the air at nose height: nothing to 0.2, down to 0.4 of the head wind at a wall. */
@@ -584,14 +585,14 @@ function columnOf(out: Float32Array, hab: HabBands | null, conv: number, leafOn:
   let closure = stand ? 0.6 : 0
   let conifer = 0.5
   let trap = 0.3
-  if (hab && i >= 0) {
+  if (hab && i >= 0 && i < hab.crown.length) {
     const cr = hab.crown[i]
-    if (stand && cr > 0) closure = Math.min(1, cr / 100)
+    if (stand && cr > 0 && cr !== 255) closure = Math.min(1, (cr * hab.crownS) / 100)
     const cn = hab.conifer[i]
     const hw = hab.hardwood[i]
-    if (cn + hw > 0) conifer = cn / (cn + hw)
-    const t = hab.thick[i]
-    if (t !== 255) trap = t * hab.thickS
+    if (cn + hw > 0 && cn !== 255 && hw !== 255) conifer = cn / (cn + hw)
+    const t = hab.thick ? hab.thick[i] : 255
+    if (t !== 255 && t != null) trap = t * hab.thickS
   }
   const deep = stableDepth(stable) * T.stableDepth
   // the way the head wind runs (it carries the shore and tree-wall rules the
