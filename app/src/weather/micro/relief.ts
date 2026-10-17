@@ -26,6 +26,16 @@ export function elevAt(lon: number, lat: number): number {
   return i < 0 ? NaN : g.data.elev[i]
 }
 
+/** The going grid's cell under a point, and its centre; null outside the grid or before it is loaded. */
+export function goingCellAt(lon: number, lat: number): { i: number; lon: number; lat: number } | null {
+  const g = going()
+  if (!g) return null
+  const i = g.grid.index(lon, lat)
+  if (i < 0) return null
+  const [x, y] = g.grid.center(i)
+  return { i, lon: x, lat: y }
+}
+
 /** The point is open water by the going grid's ground class; false outside it or before it is loaded. */
 export function waterAt(lon: number, lat: number): boolean {
   const g = going()

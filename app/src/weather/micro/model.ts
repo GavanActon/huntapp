@@ -16,7 +16,7 @@ import { biasFor, biasMatters, biasWords, learnBiases, type Bias, type Lesson } 
 import { fitAmbient, fitHoldsUntil, fitMatters, fitWeightAt, fitWeightsAt, fitWords, sessionAt, sessionsOf, sitScore as scoreSit, type AmbientFit, type MapProbeFn, type ProbeFn, type SitScore } from './ambientFit'
 import { tuneValues, useScentTune, type TuneValues } from './scentTune'
 import { leavesDown, leavesNote } from './leaves'
-import { elevAt, ensureRelief, onRelief, waterAt } from './relief'
+import { elevAt, ensureRelief, goingCellAt, onRelief, waterAt } from './relief'
 import { dist as distWords, height as heightWords } from '../../lengths'
 
 /**
@@ -225,7 +225,7 @@ function adopt(g: Habitat, prefix: string): void {
   hasBare = g.has(prefix + 'canopyBare')
   grid = g
   slotAxis = null
-  leeRise = null
+  leeRise.clear()
 }
 
 /**
@@ -546,7 +546,7 @@ export function useAreaGrid(): void {
   areaGrid = null
   ;({ grid, bands, scales, hasBare, file, fullIn, momU, momV, momScale, hasMom, momT, momTScale, momRef, hasTurb } = a)
   slotAxis = null
-  leeRise = null
+  leeRise.clear()
   for (const cb of listeners) cb()
 }
 
@@ -1092,7 +1092,8 @@ export function setLeeTune(t: Partial<typeof LEE_DEFAULT> | null): void {
   leeTune = { ...LEE_DEFAULT, ...t }
   bump()
 }
-let leeRise: Float32Array | null = null
+/** the lee's rise by the going grid's 10 m cell and the wind's sector (riseUpwind) */
+const leeRise = new Map<number, number>()
 
 /**
  * The head-height share of the local 10 m wind, scaled by the ground's cover:
@@ -1220,16 +1221,20 @@ export function setFloorTune(t: Partial<typeof FLOOR_DEFAULT> | null): void {
 }
 
 /** The steepest rise within LEE_REACH_M upwind of a point, degrees; NaN without the going grid.
- *  Scanned from the micro cell's centre, the cache's own key: from the point asked, the first point
- *  to ask in a cell set its rise for every later one (10 m ground under a 30 m cell), so the same
- *  sit read two rises across page loads (Whitefish W2 on SD, 6.2° or 4.7°, Hunter-Jay 2026-10-17). */
-function riseUpwind(i: number, lon: number, lat: number, fromDeg: number): number {
+ *  Scanned from the centre of the going grid's 10 m cell under the point and kept by that cell and
+ *  the sector: until 2026-10-17 kept by the 30 m micro cell but scanned from the point that first
+ *  asked, so the same sit read two rises across page loads (Whitefish W2 on SD, 6.2° or 4.7°;
+ *  Hunter-Jay). The micro cell's centre instead lost the 10 m ground's detail: PALM's deep lees
+ *  went 55 → 49% within 45°. */
+function riseUpwind(_i: number, lon: number, lat: number, fromDeg: number): number {
   const sector = (((Math.round(fromDeg / (360 / LEE_SECTORS)) % LEE_SECTORS) + LEE_SECTORS) % LEE_SECTORS)
-  if (leeRise) {
-    const hit = leeRise[i * LEE_SECTORS + sector]
-    if (!Number.isNaN(hit)) return hit
-  }
-  const [ox, oy] = grid && i >= 0 ? grid.center(i) : [lon, lat]
+  const gc = goingCellAt(lon, lat)
+  if (!gc) return NaN
+  const key = gc.i * LEE_SECTORS + sector
+  const hit = leeRise.get(key)
+  if (hit !== undefined) return hit
+  const ox = gc.lon
+  const oy = gc.lat
   const z0 = elevAt(ox, oy)
   if (!Number.isFinite(z0)) return NaN
   const brg = sector * (360 / LEE_SECTORS) * RAD
@@ -1241,11 +1246,7 @@ function riseUpwind(i: number, lon: number, lat: number, fromDeg: number): numbe
     if (!Number.isFinite(z)) break
     best = Math.max(best, Math.atan2(z - z0, x) / RAD)
   }
-  const g = grid
-  if (g) {
-    if (!leeRise || leeRise.length !== g.size * LEE_SECTORS) leeRise = new Float32Array(g.size * LEE_SECTORS).fill(NaN)
-    leeRise[i * LEE_SECTORS + sector] = best
-  }
+  leeRise.set(key, best)
   return best
 }
 
@@ -2100,7 +2101,7 @@ onProfile(bump)
 onWeatherGrid(bump)
 // the 10 m ground landing turns the lee of the land on: the field is not what it was
 onRelief(() => {
-  leeRise = null
+  leeRise.clear()
   for (const cb of listeners) cb()
 })
 useWindChecks.subscribe(bump)
@@ -2405,7 +2406,8 @@ if (import.meta.env.DEV || import.meta.env.VITE_DEV_SITE) {
       const k1 = (k0 + 1) % MOM_N
       const sb = standBands()
       const sector = (((Math.round(dirFrom / (360 / LEE_SECTORS)) % LEE_SECTORS) + LEE_SECTORS) % LEE_SECTORS)
-      const cached = leeRise && i >= 0 ? leeRise[i * LEE_SECTORS + sector] : null
+      const gc = goingCellAt(lon, lat)
+      const cached = gc ? leeRise.get(gc.i * LEE_SECTORS + sector) ?? null : null
       out.at = { i, k0, k1, mom: !!momU[k0] && !!momU[k1], turb: i >= 0 ? turbAt(i, dirFrom) : null, stand: sb === grid ? 'grid' : sb ? 'habitat' : null, leeRiseCached: cached != null && Number.isFinite(cached) ? cached : null }
       if (ms != null) {
         const ev = evaluate(makeCtx(ms), lon, lat, true)
