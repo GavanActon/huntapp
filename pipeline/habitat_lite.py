@@ -127,6 +127,9 @@ def main() -> int:
         ("hardwood", f_hard, 1, "hardwood % of composition (SCANFI v2)"),
         ("lead", f_lead, 1, "leading species: 1 Sb 2 Pj 3 Sw 4 Bf 5 Cw 6 La 7 Pt 8 Bw (SCANFI v2: broadleaf as 7)"),
         ("lakeId", lake_id, 1, "lake index into lakes[] (0 land)"),
+        # where the land cover has the ground at all: 0 is outside Canada's map, where the stand
+        # bands' 0 means no data rather than open (wind_tiles.py marks those cells 255 in a tile)
+        ("landcover", lc, 1, "land cover 2020 class (0 no data: outside Canada)"),
     ]
     header = {
         "region": REGION["id"],

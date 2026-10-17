@@ -74,21 +74,95 @@ def area_file(i: int, j: int) -> dict:
     }
 
 
+# the stand the towers' floor rule and the scent's closure read off the grid (model.ts standBands,
+# 2026-10-16, Gavan "Go yes"): % as uint8, 255 no data, under the habitat grid's own names
+STAND = ("crown", "conifer", "hardwood")
+
+
+def stand_bands(tid: str) -> list:
+    """habitat-lite's stand bands cut to the tile, 255 where the land cover has no ground at all
+    (outside Canada, where SCANFI's 0 is no data, not open). [] when the tile's habitat-lite is gone."""
+    import numpy as np
+
+    src = CACHE / f"habitat-lite-{tid}.hab"
+    if not src.exists():
+        return []
+    h, raw = habfile.read_hab_raw(src)
+    m, R, C = WIND_MARGIN, lattice.TILE_ROWS, lattice.TILE_COLS
+    meaning = {b["name"]: b.get("meaning", "") for b in h["bands"]}
+    gone = raw["landcover"][m : m + R, m : m + C] == 0 if "landcover" in raw else None
+    out = []
+    for name in STAND:
+        a = raw[name][m : m + R, m : m + C].astype(np.uint8)
+        if gone is not None:
+            a = np.where(gone, 255, a).astype(np.uint8)
+        out.append((name, a, 1, f"{meaning.get(name, name)}; 255 no data"))
+    return out
+
+
+def pack(tid: str, h: dict, bands: list, margin: int) -> dict:
+    """Bands written as out/<tid>.hab, the preview made again; `h` the header they came with, its
+    corner moved in by `margin` cells (the micro grid's margin, or 0 for a tile already cut)."""
+    C, R = lattice.TILE_COLS, lattice.TILE_ROWS
+    header = {k: v for k, v in h.items() if k not in ("bands", "codec", "first", "preview", "previewEnd")}
+    header |= {"region": tid, "cols": C, "rows": R, "west": round(h["west"] + margin * h["dLon"], 9), "north": round(h["north"] - margin * h["dLat"], 9),
+               "tile": {"lattice": [lattice.LON0, lattice.LAT0, lattice.D_LON, lattice.D_LAT, C, R], "margin": WIND_MARGIN, "version": VERSION}}
+    late = [b[0] for b in bands if b[0][:2] in ("mU", "mV", "mT")]
+    # the stand stays out of the preview: the tiles' mosaic reads only the full bands
+    header, bands, early = habfile.with_preview(header, bands, skip=late + list(STAND))
+    w = habfile.write_hab(OUT / f"{tid}.hab", header, bands, late=late, early=early)
+    return {"bytes": w["size"], "bands": w["bands"], "stand": any(b[0] == "crown" for b in bands)}
+
+
 def cut(tid: str) -> dict:
-    """The tile's micro grid with its margin, cut back to the tile, its preview made again."""
+    """The tile's micro grid with its margin, cut back to the tile, with habitat-lite's stand."""
     src = WORK / tid / f"micro-{tid}.hab"
     h, raw = habfile.read_hab_raw(src)
     keep = [b for b in h["bands"] if not b["name"].startswith(habfile.PREVIEW_PREFIX)]
     m, R, C = WIND_MARGIN, lattice.TILE_ROWS, lattice.TILE_COLS
     bands = [(b["name"], raw[b["name"]][m : m + R, m : m + C], b["scale"], b.get("meaning", "")) for b in keep]
-    header = {k: v for k, v in h.items() if k not in ("bands", "codec", "first", "preview", "previewEnd")}
-    header |= {"region": tid, "cols": C, "rows": R, "west": round(h["west"] + m * h["dLon"], 9), "north": round(h["north"] - m * h["dLat"], 9),
-               "tile": {"lattice": [lattice.LON0, lattice.LAT0, lattice.D_LON, lattice.D_LAT, C, R], "margin": m, "version": VERSION}}
-    late = [b[0] for b in bands if b[0][:2] in ("mU", "mV", "mT")]
-    header, bands, early = habfile.with_preview(header, bands, skip=late)
+    return pack(tid, h, bands + stand_bands(tid), m)
+
+
+def stand_one(tid: str) -> dict:
+    """A tile baked before it carried its stand: habitat-lite run again for it (CPU, a few
+    seconds) and its three bands added. A tile this machine lacks comes from R2 (the S3 API, not
+    the public host, whose edge may hold an older copy)."""
     out = OUT / f"{tid}.hab"
-    w = habfile.write_hab(out, header, bands, late=late, early=early)
-    return {"bytes": w["size"], "bands": w["bands"]}
+    if not out.exists():
+        sys.path.insert(0, str(ROOT / "app" / "scripts"))
+        import r2_sync  # noqa: E402
+
+        OUT.mkdir(parents=True, exist_ok=True)
+        body = r2_sync.client().get_object(Bucket=r2_sync.BUCKET, Key=f"data/sd/{VERSION}/{tid}.hab")["Body"].read()
+        out.write_bytes(body)
+    h, raw = habfile.read_hab_raw(out)
+    if "crown" in raw:
+        return {"tile": tid, "skipped": "has its stand"}
+    i, j = lattice.parse_id(tid)
+    AREAS.mkdir(parents=True, exist_ok=True)
+    (WORK / tid).mkdir(parents=True, exist_ok=True)
+    (AREAS / f"{tid}.json").write_text(json.dumps(area_file(i, j), indent=1), encoding="utf-8")
+    env = os.environ | {"HUNTAPP_AREAS_DIR": str(AREAS), "HUNTAPP_OUT": str(WORK / tid), "PYTHONIOENCODING": "utf-8", "PYTHONUNBUFFERED": "1"}
+    env.pop("HUNTAPP_AREA", None)
+    t = time.time()
+    log = WORK / tid / "stand.log"
+    with open(log, "w", encoding="utf-8") as f:
+        rc = subprocess.call([sys.executable, str(HERE / "habitat_lite.py"), "--area", tid], cwd=ROOT, env=env, stdout=f, stderr=subprocess.STDOUT)
+    if rc:
+        clean(tid)
+        tail = log.read_text(encoding="utf-8", errors="replace").splitlines()[-3:]
+        return {"tile": tid, "error": f"habitat_lite exited {rc}: {' | '.join(tail)}"}
+    keep = [b for b in h["bands"] if not b["name"].startswith(habfile.PREVIEW_PREFIX)]
+    bands = [(b["name"], raw[b["name"]], b["scale"], b.get("meaning", "")) for b in keep]
+    info = pack(tid, h, bands + stand_bands(tid), 0)
+    clean(tid)
+    shutil.rmtree(WORK / tid, ignore_errors=True)
+    done = OUT / f"{tid}.json"
+    rec = json.loads(done.read_text()) if done.exists() else {"tile": tid, "from": "r2"}
+    rec |= {"bytes": info["bytes"], "bands": info["bands"], "stand": info["stand"], "standSeconds": round(time.time() - t, 1)}
+    done.write_text(json.dumps(rec), encoding="utf-8")
+    return rec
 
 
 def clean(tid: str) -> None:
@@ -221,7 +295,7 @@ def r2_tiles() -> set[str]:
         return set(json.loads(r.read())["tiles"])
 
 
-def batches(queue: Path, size: int, dest: Path, reverse: bool = False) -> tuple[int, int]:
+def batches(queue: Path, size: int, dest: Path, reverse: bool = False, stands: bool = False) -> tuple[int, int]:
     """The queue cut into files of `size` tiles that neither R2 nor this machine has yet, in the
     queue's order, or from its end with `reverse`: each a job any machine can take (`bake --queue
     <batch file>`; 2026-10-15, the job system for xonix and XEVO). A second machine takes batches
@@ -229,7 +303,15 @@ def batches(queue: Path, size: int, dest: Path, reverse: bool = False) -> tuple[
     do; where they meet, each skips what the other has sent (queue_bake reads R2's index).
     Returns (batches, tiles)."""
     done = r2_tiles() | {p.stem for p in OUT.glob("t-*.json") if "error" not in json.loads(p.read_text())}
-    lines = [ln for ln in queue.read_text(encoding="utf-8").splitlines() if ln.strip() and ln.split("\t")[0].strip() not in done]
+    queued = [ln for ln in queue.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    if stands:
+        # the stand backfill (2026-10-16): the tiles baked so far, in the queue's order and then
+        # any it doesn't name (the pilot), less those this machine knows carry their stand
+        has = {p.stem for p in OUT.glob("t-*.json") if json.loads(p.read_text()).get("stand")}
+        named = {ln.split("\t")[0].strip() for ln in queued}
+        lines = [ln for ln in queued if ln.split("\t")[0].strip() in done - has] + sorted(done - has - named)
+    else:
+        lines = [ln for ln in queued if ln.split("\t")[0].strip() not in done]
     if reverse:
         lines.reverse()
     dest.mkdir(parents=True, exist_ok=True)
@@ -240,6 +322,54 @@ def batches(queue: Path, size: int, dest: Path, reverse: bool = False) -> tuple[
         n += 1
         (dest / f"batch-{n:04d}.txt").write_text("\n".join(lines[k : k + size]) + "\n", encoding="utf-8")
     return n, len(lines)
+
+
+def stands_run(path: Path, jobs: int, upload_every: int) -> None:
+    """The stand bands added to the tiles a file names (one id a line: `batches --stands` cuts
+    them), `jobs` at a time, sent to R2 every `upload_every` and at the end. A tile that has its
+    stand is skipped, so a file can be run again for the ones that failed; PAUSE beside it waits."""
+    import threading
+
+    ids = [ln.split("\t")[0].strip() for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    lock = threading.Lock()
+    todo = iter(ids)
+    n = [0]
+    t0 = time.time()
+    pause = path.parent / "PAUSE"
+
+    def send() -> None:
+        try:
+            index()
+            print(f"  uploaded {upload()[0]} to R2", flush=True)
+        except Exception as e:  # noqa: BLE001  a failed upload waits for the next one
+            print(f"  upload failed: {e}", flush=True)
+
+    def worker() -> None:
+        while True:
+            while pause.exists():
+                time.sleep(15)
+            with lock:
+                tid = next(todo, None)
+            if tid is None:
+                return
+            try:
+                info = stand_one(tid)
+            except Exception as e:  # noqa: BLE001  one tile's trouble never stops the rest
+                info = {"tile": tid, "error": f"{type(e).__name__}: {e}"}
+            with lock:
+                n[0] += 1
+                said = info.get("error") or info.get("skipped") or f"{info.get('standSeconds')} s, {info['bytes'] / 1e6:.1f} MB"
+                print(f"[{n[0]}/{len(ids)}] {tid}: {said} · {time.time() - t0:.0f} s in all", flush=True)
+                if upload_every and n[0] % upload_every == 0:
+                    send()
+
+    threads = [threading.Thread(target=worker) for _ in range(jobs)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    send()
+    print(f"stands done: {n[0]} tiles, {time.time() - t0:.0f} s", flush=True)
 
 
 RETRIES, RETRY_WAIT = 3, 600  # queue_bake: tries a tile gets, seconds between them
@@ -360,7 +490,7 @@ def queue_bake(path: Path, jobs: int, upload_every: int) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("cmd", choices=["plan", "bake", "seams", "index", "upload", "batches"])
+    ap.add_argument("cmd", choices=["plan", "bake", "seams", "index", "upload", "batches", "stands"])
     ap.add_argument("--box", nargs=4, type=float, metavar=("W", "S", "E", "N"))
     ap.add_argument("--jobs", type=int, default=2)
     ap.add_argument("--keep", action="store_true", help="keep each tile's working folder (with its margin) for the seams check")
@@ -369,6 +499,7 @@ def main() -> int:
     ap.add_argument("--size", type=int, default=50, help="batches: tiles a batch file")
     ap.add_argument("--out-dir", help="batches: where the batch files go")
     ap.add_argument("--reverse", action="store_true", help="batches: from the queue's end (a second machine)")
+    ap.add_argument("--stands", action="store_true", help="batches: the baked tiles still without their stand bands")
     a = ap.parse_args()
     cells = lattice.tiles_in(tuple(a.box)) if a.box else []
     if a.cmd == "plan":
@@ -383,8 +514,11 @@ def main() -> int:
         sent, skipped = upload()
         print(f"R2 data/sd/{VERSION}/: {sent} tiles sent, {skipped} already there, index of {len(idx['tiles'])}")
         return 0
+    if a.cmd == "stands":
+        stands_run(Path(a.queue), a.jobs, a.upload_every)
+        return 0
     if a.cmd == "batches":
-        n, k = batches(Path(a.queue), a.size, Path(a.out_dir), a.reverse)
+        n, k = batches(Path(a.queue), a.size, Path(a.out_dir), a.reverse, a.stands)
         print(f"{n} batch files of up to {a.size} tiles in {a.out_dir}: {k} tiles not yet baked")
         return 0
     if a.cmd == "seams":

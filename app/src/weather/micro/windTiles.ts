@@ -89,13 +89,16 @@ async function refreshIndex(map: MlMap): Promise<void> {
 // the tiles' files as they came, a few dozen: unpacked again when a block needs them
 const packed = new Map<string, Promise<ArrayBuffer | null>>()
 const KEEP = 24
-function fetchTile(id: string): Promise<ArrayBuffer | null> {
-  let p = packed.get(id)
+function fetchTile(id: string, bytes: number): Promise<ArrayBuffer | null> {
+  // the size in the address: a tile sent again (its stand bands added, 2026-10-16) is a new file
+  // to the edge's cache and to this one, the index (never cached) saying which
+  const key = `${id}?b=${bytes}`
+  let p = packed.get(key)
   if (!p) {
-    p = fetch(`${BASE}${id}.hab`)
+    p = fetch(`${BASE}${key}`)
       .then((r) => (r.ok ? r.arrayBuffer() : null))
       .catch(() => null)
-    packed.set(id, p)
+    packed.set(key, p)
     if (packed.size > KEEP) packed.delete(packed.keys().next().value!)
   }
   return p
@@ -136,8 +139,13 @@ function plain(d: BandDef): number {
   if (d.name === 'nUe' || d.name === 'sUe' || d.name === 'nVn' || d.name === 'sVn') return Math.round(1 / s)
   if (d.name === 'canopy' || d.name === 'canopyBare') return Math.round(0.6 / s)
   if (d.name === 'shoreDist') return d.dtype === 'uint8' ? 255 : 0
+  // the stand (model.ts standBands): not known there, not open
+  if (STAND.has(d.name)) return 255
   return 0
 }
+
+/** The stand bands a tile carries since 2026-10-16 (pipeline/wind_tiles.py STAND), 255 where unknown. */
+const STAND = new Set(['crown', 'conifer', 'hardwood', 'thick'])
 
 const ctor = { uint8: Uint8Array, int8: Int8Array, uint16: Uint16Array, int16: Int16Array, float32: Float32Array }
 
@@ -151,7 +159,11 @@ function stitch(L: Lattice, i0: number, j0: number, tiles: (Tile | null)[][]): {
   const R = L.rows
   const cols = n * C
   const rows = n * R
-  const defs = h0.bands.filter((b) => !b.name.startsWith(PREVIEW)).map((b) => ({ ...b, offset: 0 }))
+  // every band any of the tiles has: while the stand is backfilled a block can mix tiles with it
+  // and without, those without filled as unknown (plain)
+  const seen = new Map<string, BandDef>()
+  for (const t of have) for (const b of t.header.bands) if (!b.name.startsWith(PREVIEW) && !seen.has(b.name)) seen.set(b.name, b)
+  const defs = [...seen.values()].map((b) => ({ ...b, offset: 0 }))
   const header: BandHeader = {
     region: `sd-tiles ${i0}/${j0}`,
     generated: h0.generated,
@@ -235,7 +247,7 @@ async function moved(map: MlMap): Promise<void> {
           Promise.all(
             row.map(async (id) => {
               if (!(id in idx.tiles)) return null
-              const buf = await fetchTile(id)
+              const buf = await fetchTile(id, idx.tiles[id])
               return buf ? unpack(buf) : null
             }),
           ),
