@@ -73,8 +73,8 @@
             // the wind grid: SD's when the phone is set to it and it is baked (state/terrainWind.ts), else the first
             var gs = (area && area.grids) || []
             var sd = false
-            // or the area's HD not installed (state/grade.ts; a dev build's default, unknown here, is taken as installed)
-            try { sd = localStorage.getItem('huntapp-terrain-wind') === 'sd' || JSON.parse(localStorage.getItem('huntapp-hd') || '{}')[id] === false } catch (e) {}
+            // or the area's HD taken off on this phone (state/grade.ts; a false from before its scheme 2 is cleared there, so it counts for nothing here)
+            try { sd = localStorage.getItem('huntapp-terrain-wind') === 'sd' || (localStorage.getItem('huntapp-hd-scheme') === '2' && JSON.parse(localStorage.getItem('huntapp-hd') || '{}')[id] === false) } catch (e) {}
             var g = null
             for (var i = 0; i < gs.length; i++) {
               var isSd = /^micro-sd-/.test(gs[i].file)

@@ -31,6 +31,23 @@ function readAll(): Record<string, boolean> {
   }
 }
 
+/** Marks a phone whose choices were read under every HD area being everyone's. */
+const SCHEME_KEY = 'huntapp-hd-scheme'
+
+// Once per phone: a false saved before that (an Install never done, or a
+// Remove while the install was being tried) goes, so the area opens HD
+// like everyone's (Gavan, 2026-10-17: "I'm on pickle. Own it. Didn't change
+// the sd to hd"). A Remove after this is kept.
+try {
+  if (localStorage.getItem(SCHEME_KEY) !== '2') {
+    const kept = Object.fromEntries(Object.entries(readAll()).filter(([, v]) => v === true))
+    localStorage.setItem(HD_KEY, JSON.stringify(kept))
+    localStorage.setItem(SCHEME_KEY, '2')
+  }
+} catch {
+  /* private mode: nothing was kept to clear */
+}
+
 /** HD is on for the area on this phone (meaningful for an area baked in HD). */
 export function hdInstalled(areaId: string): boolean {
   const v = readAll()[areaId]
