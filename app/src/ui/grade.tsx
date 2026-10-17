@@ -3,7 +3,7 @@ import type { Map as MlMap } from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
 import { create } from 'zustand'
 import { ACTIVE_AREA, AREA_LIST, areaAt, fileUrl, type AreaDef } from '../areas'
-import { bushMeasured, CORE, FINE_RELIEF, GRADE, hasSdWind, hdFiles, SD_HIDDEN, SD_PREVIEW, windSolved, areaGrade } from '../config'
+import { bushMeasured, CORE, FINE_RELIEF, GRADE, hasSdWind, hdFiles, SD_HIDDEN, SD_OFFLINE, SD_PREVIEW, windSolved, areaGrade } from '../config'
 import { devlog } from '../devlog'
 import { setExplore } from '../explore'
 import { boxAround, boxOfBounds, hdFits, parseBoxId, sizeKm, unionBox } from '../explore/box'
@@ -24,11 +24,13 @@ import './grade.css'
  * HD on the map (docs/SD-HD-PLAN.md; Gavan, 2026-10-15). One rule: gold
  * means what you are looking at is HD. The action buttons HD powers wear a
  * gold ring and the weather strip a gold outline while the middle of the
- * view is inside an installed HD box, and fade off outside it; each HD box
- * on the phone is edged in gold on the map. SD shows no upgrade highlights.
+ * view is inside an HD box, and fade off outside it; each HD box on the
+ * phone is edged in gold on the map. SD shows no upgrade highlights.
+ * Every HD area is yours for now (state/grade.ts), so its HD streams in.
  * The grade circle by the view pill is gold or tan to match and opens the
- * grade sheet: Install for an HD area not installed (the files really
- * download, a ring lighting as each lands, then one reload), what HD adds
+ * grade sheet: what HD gives here, Install where the dev builds' Remove put
+ * an HD area back to SD (the files really download, a ring lighting as
+ * each lands, then one reload), what HD adds
  * and Get HD for an SD one, an order's stages, and every area. A tap on
  * ground outside the HD box offers Get HD here, or Extend next to the box
  * (hdOffer).
@@ -62,6 +64,8 @@ const sourceOf = (key: string) => {
 }
 const ARCTIC = ACTIVE_AREA.fineRelief != null
 const has = (k: string) => ACTIVE_AREA.files.pmtiles.includes(k)
+/** How an HD item stands while the map is SD: taken off (the dev builds' Remove), or not here with no signal. */
+const OFF = SD_OFFLINE ? 'Not on this phone' : 'Not installed'
 
 /** What the HD bake gave this area, or, for an SD area, what HD adds where it is baked. */
 export function hdItems(): HdItem[] {
@@ -84,7 +88,7 @@ export function hdItems(): HdItem[] {
       title: 'Wind solved for this ground',
       line: 'WindNinja ran the full solve here. It finds the lee behind rises and the bend round hills, at head height.',
       source: 'WindNinja momentum solve, under the HRDPS forecast',
-      sdNote: hasSdWind() ? 'Not installed: the SD wind model runs here.' : 'Runs here already: no SD wind was baked for this area.',
+      sdNote: hasSdWind() ? `${OFF}: the SD wind model runs here.` : 'Runs here already: no SD wind was baked for this area.',
     })
   }
   if (has('hillshadeLidar')) {
@@ -95,7 +99,7 @@ export function hdItems(): HdItem[] {
       title: ARCTIC ? 'Every bench and draw' : 'Old roads under the trees',
       line: ARCTIC ? `${FINE_RELIEF.name} shade, far sharper than the 30 m national relief.` : `${FINE_RELIEF.name} shade. Old logging roads and trails show through the canopy.`,
       source: sourceOf('hillshadeLidar') ?? FINE_RELIEF.attribution,
-      sdNote: 'Not installed: the 30 m shade draws here.',
+      sdNote: `${OFF}: the 30 m shade draws here.`,
     })
   }
   if (has('contours')) {
@@ -107,7 +111,7 @@ export function hdItems(): HdItem[] {
       title: 'Contours every metre',
       line: `From ${FINE_RELIEF.name}. The draws cold air drains down and the benches a moose beds on.`,
       source: sourceOf('contours'),
-      sdNote: 'Not installed: the 30 m contours draw here.',
+      sdNote: `${OFF}: the 30 m contours draw here.`,
     })
   }
   if (has('lanes')) {
@@ -119,7 +123,7 @@ export function hdItems(): HdItem[] {
       title: 'Shooting lanes',
       line: point('lanes') ? 'Where you can see and shoot, measured from the LiDAR point cloud.' : "Where you can see and shoot, from this area's own bush model at 10 m.",
       source: sourceOf('lanes'),
-      sdNote: 'Not installed: no lanes yet.',
+      sdNote: `${OFF}: no lanes yet.`,
     })
   }
   if (bushMeasured()) {
@@ -131,7 +135,7 @@ export function hdItems(): HdItem[] {
       title: point('understory') ? 'Bush measured at eye level' : 'Bush mapped for this ground',
       line: point('understory') ? 'Bush thickness from the LiDAR point cloud.' : 'Bush thickness from a model trained on this ground.',
       source: sourceOf('understory'),
-      sdNote: 'Not installed: no bush layer yet.',
+      sdNote: `${OFF}: no bush layer yet.`,
     })
   }
   return out

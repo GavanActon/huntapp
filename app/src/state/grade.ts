@@ -7,10 +7,11 @@
  * The page's head script (index.html) reads the same key for its early fetch
  * of the wind grid. No app imports, so config.ts can read it.
  *
- * Until HD is paid for, an HD area counts as installed by default on the
- * live app (nothing is taken from anyone), and as not yet installed on the
- * dev builds, so the install itself can be tried (Gavan, 2026-10-15: "I want
- * it to feel like you're installing an upgrade").
+ * Every area baked in HD is yours, on every build (Gavan, 2026-10-16: "For
+ * now let's just avoid the accounts. You own the areas we HD'd already"):
+ * with signal its HD files stream in as the map asks for them, and the
+ * area's save for the bush takes them too. An explicit false is the dev
+ * builds' Remove, kept for seeing an HD area as SD side by side.
  */
 
 export const HD_KEY = 'huntapp-hd'
@@ -18,10 +19,8 @@ export const HD_KEY = 'huntapp-hd'
 /** Set for the run after an install or a removal, so the map can say what came on or went. */
 const FLIPPED_KEY = 'huntapp-hd-flipped'
 
-const DEV_BUILD = !!import.meta.env.VITE_DEV_SITE || import.meta.env.DEV
-
-/** What an HD area is with nothing saved: installed on the live app, not yet on a dev build. */
-export const HD_DEFAULT = !DEV_BUILD
+/** What an HD area is with nothing saved: on (no accounts yet, so every HD area is everyone's). */
+export const HD_DEFAULT = true
 
 function readAll(): Record<string, boolean> {
   try {
@@ -32,7 +31,7 @@ function readAll(): Record<string, boolean> {
   }
 }
 
-/** HD is installed for the area on this phone (meaningful for an area baked in HD). */
+/** HD is on for the area on this phone (meaningful for an area baked in HD). */
 export function hdInstalled(areaId: string): boolean {
   const v = readAll()[areaId]
   return typeof v === 'boolean' ? v : HD_DEFAULT

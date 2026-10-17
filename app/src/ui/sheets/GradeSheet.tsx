@@ -1,7 +1,7 @@
 import { useEffect, useRef, type JSX } from 'react'
 import { ACTIVE_AREA } from '../../areas'
 import { switchArea } from '../../areas/switch'
-import { areaGrade, GRADE, SD_PREVIEW } from '../../config'
+import { areaGrade, GRADE, SD_OFFLINE, SD_PREVIEW } from '../../config'
 import { fmtBytes } from '../../offline/downloads'
 import { useAppStore } from '../../state/appStore'
 import { orderStage, STAGES, useHdOrders } from '../../state/hdOrders'
@@ -10,10 +10,12 @@ import { areaGrades, askHdForArea, GRADE_SWITCH, hdItems, installBytes, installH
 /**
  * HD at this spot (the grade circle, a tap on an HD-only button). Brief
  * first: the grade and one line. Then, by where the area stands on this
- * phone: Install (HD baked, not installed: the files download here, a
- * row's tab going gold as each lands, then the app restarts on HD), what
- * is installed with a Show for each, or what HD would add and Get HD (an
- * SD area). An order for the area shows its stages. Every area at the foot,
+ * phone: what HD gives here with a Show for each (every HD area is yours
+ * for now, state/grade.ts), Install where the dev builds' Remove put it
+ * back to SD (the files download here, a row's tab going gold as each
+ * lands, then the app restarts on HD), the word that HD comes with signal
+ * when it opened SD for want of it (config.ts SD_OFFLINE), or what HD
+ * would add and Get HD (an SD area). An order for the area shows its stages. Every area at the foot,
  * each with its grade.
  */
 export default function GradeSheet({ focus }: { focus?: string }): JSX.Element {
@@ -36,7 +38,9 @@ export default function GradeSheet({ focus }: { focus?: string }): JSX.Element {
   const head =
     GRADE === 'hd'
       ? { title: `${name} · HD`, line: 'Measured from LiDAR and solved for this ground. Gold on the map is HD.' }
-      : SD_PREVIEW
+      : SD_OFFLINE
+        ? { title: `${name} · SD for now`, line: "No signal, and this area's HD isn't on the phone yet. With signal it streams in by itself; save the area for the bush from the maps on this phone." }
+        : SD_PREVIEW
         ? { title: `HD for ${name}`, line: `Built for this spot and ready to install. About ${mb}, kept on the phone for the bush.` }
         : { title: `${name} is SD`, line: 'Built from national data, the wind on the trained model. HD measures this ground.' }
 
@@ -85,7 +89,7 @@ export default function GradeSheet({ focus }: { focus?: string }): JSX.Element {
       <p className="grade-lede">{head.line}</p>
 
       {/* not installed: the one thing to do here */}
-      {SD_PREVIEW && (
+      {SD_PREVIEW && !SD_OFFLINE && (
         <div className="grade-install">
           {!live.installing && (
             <button type="button" className="btn-primary grade-ask" onClick={() => void installHd()}>
@@ -130,7 +134,7 @@ export default function GradeSheet({ focus }: { focus?: string }): JSX.Element {
         </div>
       )}
 
-      <div className="grade-sec">{GRADE === 'hd' ? 'Installed here' : SD_PREVIEW ? 'What installs' : 'What HD adds'}</div>
+      <div className="grade-sec">{GRADE === 'hd' ? 'HD here' : SD_OFFLINE ? 'What comes with signal' : SD_PREVIEW ? 'What installs' : 'What HD adds'}</div>
       <div className="grade-list">{items.length ? items.map(row) : <p className="dim">Nothing HD was baked here.</p>}</div>
 
       {native === 'sd' && !order && (
@@ -147,7 +151,7 @@ export default function GradeSheet({ focus }: { focus?: string }): JSX.Element {
             <span className={`grade-badge grade-${grade === 'hd' ? 'hd' : 'sd'}`}>{grade === 'hd' ? 'HD' : 'SD'}</span>
             <span className="grade-area-name">
               {a.name}
-              <small className="dim">{grade === 'hd' ? 'HD installed' : grade === 'hd-off' ? 'HD ready to install' : 'SD'}</small>
+              <small className="dim">{grade === 'hd' ? 'HD' : grade === 'hd-off' ? 'HD, shown as SD' : 'SD'}</small>
             </span>
             {a.id === ACTIVE_AREA.id ? (
               <span className="dim grade-here">Here</span>

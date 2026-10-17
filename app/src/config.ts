@@ -2,6 +2,7 @@
 // area's (areas/index.ts). A new hunting area = a new app/src/areas/<id>.json
 // plus a pipeline run (docs/AREAS.md).
 import { ACTIVE_AREA, AREA_LIST, DEFAULT_AREA, type AreaDef } from './areas'
+import { manifestGet } from './offline/fileStore'
 import { hdInstalled } from './state/grade'
 import { terrainWind } from './state/terrainWind'
 
@@ -203,9 +204,22 @@ export function areaGrade(a: AreaDef = AREA): AreaGrade {
   return HD_PMTILES.some((k) => a.files.pmtiles.includes(k)) || windSolved(a) ? 'hd' : 'sd'
 }
 
-/** An HD area whose HD is not installed on this phone (state/grade.ts):
- *  the map is the area as an SD bake would have it, and Install is offered. */
-export const SD_PREVIEW = areaGrade() === 'hd' && !hdInstalled(AREA.id)
+/** An HD area opened with no signal whose HD wind grid is not on the phone
+ *  but its SD one is (saved while the dev builds opened HD areas as SD): the
+ *  map is SD, so the wind and the cones run on what is here, not on nothing. */
+export const SD_OFFLINE =
+  areaGrade() === 'hd' &&
+  hdInstalled(AREA.id) &&
+  hasSdWind() &&
+  typeof navigator !== 'undefined' &&
+  !navigator.onLine &&
+  !manifestGet(`micro-${AREA.id}.hab`) &&
+  !!manifestGet(`micro-sd-${AREA.id}.hab`)
+
+/** An HD area drawn as SD this run (state/grade.ts): the dev builds' Remove,
+ *  or no signal and the HD wind not on the phone (SD_OFFLINE). The map is
+ *  the area as an SD bake would have it. */
+export const SD_PREVIEW = areaGrade() === 'hd' && (!hdInstalled(AREA.id) || SD_OFFLINE)
 
 /** The grade the map is drawn at this run. */
 export const GRADE: AreaGrade = SD_PREVIEW ? 'sd' : areaGrade()
