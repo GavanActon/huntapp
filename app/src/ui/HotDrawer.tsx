@@ -58,13 +58,12 @@ function Seg<T extends string | number>({ label, note, value, options, onPick, o
   )
 }
 
-/** `text`: the value worded another way than a percentage (a count, a share to two places).
- *  `wide`: the slider the full width of the drawer under its label (Gavan, 2026-10-17: "Strength full width"). */
-function Slider({ label, value, min, max, step, onChange, text, wide }: { label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void; text?: string; wide?: boolean }) {
+/** `wide`: the slider the full width of the drawer under its label (Gavan, 2026-10-17: "Strength full width"). */
+function Slider({ label, value, min, max, step, onChange, wide }: { label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void; wide?: boolean }) {
   return (
     <div className={`hd-row${wide ? ' hd-wide' : ''}`}>
       <span>
-        {label} <span className="numeral dim">· {text ?? `${value}%`}</span>
+        {label} <span className="numeral dim">· {value}%</span>
       </span>
       <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} aria-label={label} />
     </div>
@@ -105,7 +104,8 @@ interface RowsProps {
 const STREAK_SIZES = ['auto', 'standard', 'large', 'larger'] as const
 const STREAK_W: Record<(typeof STREAK_SIZES)[number], number> = { auto: 0, standard: 1.5, large: 2.6, larger: 3.7 }
 
-/** The wind's knobs, all of them here (moved out of Settings, 2026-10-03).
+/** The wind's knobs (moved out of Settings, 2026-10-03), but Particles and
+ *  Trail, which went back to Settings under Dev mode (Gavan, 2026-10-17).
  *  Turbulence: the eddies the ground model finds behind tree lines, in small
  *  openings and slots, and in the lee of hills and ridges (the momentum
  *  solve's turbulence), drawn swirling; off, the straight drift. Leaves: the
@@ -118,8 +118,6 @@ function WindFlowRows() {
   const swirl = useAppStore((s) => s.flowTuning.windSwirl)
   const size = useAppStore((s) => s.flowTuning.windSize)
   const style = useAppStore((s) => s.flowTuning.windStyle)
-  const density = useAppStore((s) => s.flowTuning.windDensity)
-  const trail = useAppStore((s) => s.flowTuning.windTrail)
   const setFlowTuning = useAppStore((s) => s.setFlowTuning)
   return (
     <>
@@ -151,10 +149,8 @@ function WindFlowRows() {
         </div>
       </div>
       <LeavesRow />
-      {/* the sliders at the foot, in this order, Strength the full width (Gavan, 2026-10-17) */}
-      <Slider label="Particles" value={density} min={200} max={2500} step={100} text={String(density)} onChange={(v) => setFlowTuning({ windDensity: v })} />
+      {/* Strength at the foot, the full width (Gavan, 2026-10-17) */}
       <Slider label="Strength" value={Math.round(op * 100)} min={10} max={100} step={5} onChange={(v) => setOp(v / 100)} wide />
-      <Slider label="Trail" value={Math.round(trail * 100)} min={86} max={97} step={1} text={trail.toFixed(2)} onChange={(v) => setFlowTuning({ windTrail: v / 100 })} />
     </>
   )
 }

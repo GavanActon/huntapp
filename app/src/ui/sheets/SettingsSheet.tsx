@@ -299,7 +299,8 @@ function SendSettingsRow({ online }: { online: boolean }): JSX.Element {
  * hunts), Display (units, the hand, text and buttons; Outdoor is the strip's
  * own button), Sharing (your initials, the checks, the stats), About (the
  * credits, the build), and Dev mode, a switch that shows the rows for
- * building the app: the terrain wind's HD/SD, the scent knobs, sending these
+ * building the app: the terrain wind's HD/SD, the wind's particles and trail
+ * (out of the Wind flow button's drawer), the scent knobs, sending these
  * settings, the dev log (Gavan, 2026-10-17). The download runs in
  * offline/downloads.ts, so closing the sheet does not stop it. The host draws
  * the title row.
@@ -312,6 +313,9 @@ export default function SettingsSheet(): JSX.Element {
   const setStripButtons = useAppStore((s) => s.setStripButtons)
   const devMode = useAppStore((s) => s.devMode)
   const setDevMode = useAppStore((s) => s.setDevMode)
+  const density = useAppStore((s) => s.flowTuning.windDensity)
+  const trail = useAppStore((s) => s.flowTuning.windTrail)
+  const setFlowTuning = useAppStore((s) => s.setFlowTuning)
   const setTextSize = useAppStore((s) => s.setTextSize)
   const leftHanded = useAppStore((s) => s.leftHanded)
   const setLeftHanded = useAppStore((s) => s.setLeftHanded)
@@ -372,7 +376,7 @@ export default function SettingsSheet(): JSX.Element {
         <span>Views</span>
         <span className="dim">›</span>
       </button>
-      {/* the contour interval and the wind's knobs are the Contours and Wind flow buttons' own (a press and hold, HotDrawer), not here as well */}
+      {/* the contour interval and the wind's knobs are the Contours and Wind flow buttons' own (a press and hold, HotDrawer), not here as well; the wind's particles and trail are under Dev mode */}
       <div className="st-row">
         <span>Past hunts on the map</span>
         <div className="seg" role="radiogroup" aria-label="Past hunts on the map">
@@ -461,7 +465,7 @@ export default function SettingsSheet(): JSX.Element {
       <label className="st-row st-two">
         <span>
           Dev mode
-          <small className="dim">the rows for building the app: the terrain wind, the scent knobs, sending these settings, the dev log</small>
+          <small className="dim">the rows for building the app: the terrain wind, the wind's particles and trail, the scent knobs, sending these settings, the dev log</small>
         </span>
         <input type="checkbox" className="switch" checked={devMode} onChange={(e) => setDevMode(e.target.checked)} />
       </label>
@@ -483,6 +487,19 @@ export default function SettingsSheet(): JSX.Element {
               </div>
             </div>
           )}
+          {/* out of the Wind flow button's drawer (Gavan, 2026-10-17: "stuff you probably don't want") */}
+          <div className="st-row st-slider">
+            <span>
+              Wind particles <span className="numeral">· {density}</span>
+            </span>
+            <input type="range" min={200} max={2500} step={100} value={density} onChange={(e) => setFlowTuning({ windDensity: Number(e.target.value) })} aria-label="Wind particles" />
+          </div>
+          <div className="st-row st-slider">
+            <span>
+              Wind trail <span className="numeral">· {trail.toFixed(2)}</span>
+            </span>
+            <input type="range" min={86} max={97} step={1} value={Math.round(trail * 100)} onChange={(e) => setFlowTuning({ windTrail: Number(e.target.value) / 100 })} aria-label="Wind trail" />
+          </div>
           <button className="st-row st-two" onClick={() => useAppStore.getState().openSheet({ kind: 'scentTune' })}>
             <span>
               Scent tuning
