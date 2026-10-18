@@ -1,0 +1,222 @@
+{
+  "id": "clearwater",
+  "name": "Clearwater",
+  "jurisdiction": "AB",
+  "centre": [
+    -115.250061,
+    52.278114
+  ],
+  "home": {
+    "center": [
+      -115.250061,
+      52.278114
+    ],
+    "zoom": 13
+  },
+  "region": {
+    "west": -115.368,
+    "south": 52.206,
+    "east": -115.133,
+    "north": 52.35
+  },
+  "core": {
+    "west": -115.323,
+    "south": 52.233,
+    "east": -115.177,
+    "north": 52.323,
+    "maxzoom": 16
+  },
+  "regionMaxzoom": 13,
+  "declination": 14.0,
+  "timezone": "America/Edmonton",
+  "zone": {
+    "label": "WMU",
+    "name": "326"
+  },
+  "relief": [
+    1070,
+    1328
+  ],
+  "base": "areas/clearwater/",
+  "surveyedLakes": [],
+  "live": {
+    "lio": false,
+    "satellite": null,
+    "sharp": "esri"
+  },
+  "attribution": {
+    "vectors": "",
+    "lakes": "",
+    "bush": ""
+  },
+  "presets": [
+    {
+      "name": "Requested spot",
+      "lon": -115.250061,
+      "lat": 52.278114,
+      "kind": "stand",
+      "note": "HD requested 2026-10-17 for a friend hunting 10-18/19"
+    }
+  ],
+  "bundle": {
+    "description": "Topo, imagery, LiDAR relief and contours, forest stands, water, roads, and the habitat, wind and going grids around Clearwater; full detail within 5 km of the spot."
+  },
+  "files": {
+    "pmtiles": [
+      "topo",
+      "hillshade",
+      "dem",
+      "contoursWide",
+      "historical"
+    ],
+    "geo": [],
+    "baseGeo": [],
+    "grids": [
+      "habitat",
+      "micro-sd",
+      "going"
+    ]
+  },
+  "bake": {
+    "outDir": "app/public/data/areas/clearwater",
+    "hrdem": [],
+    "lidar": "none",
+    "vectors": null,
+    "forest": null,
+    "imagery": null,
+    "pointcloud": null,
+    "nts": [
+      "083B03",
+      "083B06"
+    ]
+  },
+  "profile": {
+    "checked": "2026-10-17",
+    "treeline": null,
+    "ecoregion": {
+      "cec1": "5",
+      "cec2": "5.4",
+      "cec3": "5.4.2",
+      "name": "Clear Hills and Western Alberta Uplands",
+      "family": "Boreal Plains"
+    },
+    "north": false,
+    "stands": {
+      "shrubHeight": false,
+      "leadSpecies": false
+    }
+  },
+  "coverage": {
+    "checked": "2026-10-17",
+    "pmtiles": {
+      "basemap": {
+        "missing": "not baked: the map draws the live NRCan base map"
+      },
+      "topo": {
+        "file": "topo-clearwater.pmtiles",
+        "bytes": 6195534,
+        "source": "Toporama hypsography (contours and spot heights), NRCan WMS",
+        "licence": "OGL-Canada"
+      },
+      "satellite": {
+        "missing": "not in this area's maps"
+      },
+      "hillshade": {
+        "file": "hillshade-clearwater.pmtiles",
+        "bytes": 15728629,
+        "source": "MRDEM 30 m hillshade, NRCan WMS",
+        "licence": "OGL-Canada"
+      },
+      "hillshadeLidar": {
+        "missing": "not in this area's maps"
+      },
+      "dem": {
+        "file": "dem-clearwater.pmtiles",
+        "bytes": 12857921,
+        "source": "MRDEM 30 m, with HRDEM 1 m LiDAR over the core (mrdem-30), NRCan",
+        "licence": "OGL-Canada"
+      },
+      "contours": {
+        "missing": "not in this area's maps"
+      },
+      "contoursWide": {
+        "file": "contours-wide-clearwater.pmtiles",
+        "bytes": 704964,
+        "source": "MRDEM 30 m DTM, NRCan",
+        "licence": "OGL-Canada"
+      },
+      "forest": {
+        "missing": "not in this area's maps"
+      },
+      "understory": {
+        "missing": "not in this area's maps"
+      },
+      "lanes": {
+        "missing": "not in this area's maps"
+      },
+      "bathy": {
+        "missing": "not baked: lake depths are drawn from GeoJSON (depth)"
+      },
+      "historical": {
+        "file": "historical-clearwater.pmtiles",
+        "bytes": 18510772,
+        "source": "CanMatrix2 1:50 000 NTS scans, NRCan: 083B03, 083B06",
+        "licence": "OGL-Canada"
+      },
+      "bathySheets": {
+        "missing": "not in this area's maps"
+      },
+      "places": {
+        "missing": "not in this area's maps"
+      }
+    },
+    "geo": {
+      "wmu": {
+        "missing": "not in this area's maps"
+      },
+      "camps": {
+        "missing": "not in this area's maps"
+      },
+      "crown": {
+        "missing": "not in this area's maps"
+      },
+      "parks": {
+        "missing": "not in this area's maps"
+      },
+      "bathy": {
+        "missing": "not in this area's maps"
+      },
+      "fire": {
+        "missing": "not in this area's maps"
+      },
+      "roads": {
+        "missing": "not in this area's maps"
+      },
+      "forest": {
+        "missing": "not in the maps as GeoJSON: the map reads the stands from the forest tiles, and the GeoJSON stays the bake's input"
+      },
+      "depth": {
+        "missing": "not in this area's maps"
+      }
+    },
+    "baseGeo": {
+      "waterbody": {
+        "missing": "not in this area's maps"
+      }
+    },
+    "grids": {
+      "habitat": {
+        "missing": "not in this area's maps"
+      },
+      "micro": {
+        "missing": "not in this area's maps"
+      },
+      "going": {
+        "missing": "not in this area's maps"
+      },
+      "micro-sd": {
+        "missing": "not in this area's maps"
+      }
+    }
+  }
+}

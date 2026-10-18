@@ -334,10 +334,13 @@ const FONT = ['Noto Sans Regular']
 const FONT_MED = ['Noto Sans Medium']
 const HALO = { 'text-halo-color': 'rgba(10,20,12,0.92)', 'text-halo-width': 1.2 }
 
-/** An area with no imagery at all, baked or live (Blanchard River, BC:
+/** An area with no imagery at all, baked, live or sharp (Blanchard River, BC:
  *  the province's orthos stop east of 134° W and the Yukon's mosaic at
- *  the border). */
-export const NO_IMAGERY = !LIVE.satellite && !DATA_FILES.some((d) => d.key === 'satellite')
+ *  the border). An area with Esri's sharp alone (Clearwater, AB: no baked
+ *  photo, no province) has imagery: streamed or through sharp://, it is
+ *  the whole of the photo view there, and the stand-in must not hide it
+ *  (Gavan, 2026-10-17: "the sat there is horrible, can't see anything"). */
+export const NO_IMAGERY = !LIVE.satellite && !DATA_FILES.some((d) => d.key === 'satellite') && !SHARP_IMAGERY
 
 /** A view that asks for imagery where there is none (Bow, Sit, Land) gets
  *  the Topo look instead: the relief colours and a full hillshade, so the

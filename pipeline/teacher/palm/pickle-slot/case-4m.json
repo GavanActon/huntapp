@@ -1,7 +1,7 @@
 {
  "case": "pickle-slot",
  "tag": "4m",
- "built": "2026-10-17 01:42",
+ "built": "2026-10-17 17:48",
  "epsg": 32616,
  "dx": 4.0,
  "nx": 256,
@@ -1498,6 +1498,328 @@
    "surface_heatflux": 0.04,
    "cthf": 0.05,
    "why": "a sunny morning under a west wind: heated ground with the lee's backflow",
+   "scent": [
+    {
+     "name": "throat west bank 1.5 m",
+     "x": 510.0,
+     "y": 582.0,
+     "h": 1.5,
+     "utm": [
+      604230.0,
+      5422482.0
+     ],
+     "ground_m": 339.0,
+     "canopy_m": 11.6,
+     "water": false
+    },
+    {
+     "name": "throat west bank 5 m",
+     "x": 510.0,
+     "y": 582.0,
+     "h": 5.0,
+     "utm": [
+      604230.0,
+      5422482.0
+     ],
+     "ground_m": 339.0,
+     "canopy_m": 11.6,
+     "water": false
+    },
+    {
+     "name": "the exit 1.5 m",
+     "x": 562.0,
+     "y": 638.0,
+     "h": 1.5,
+     "utm": [
+      604282.0,
+      5422538.0
+     ],
+     "ground_m": 339.1,
+     "canopy_m": 10.4,
+     "water": false
+    },
+    {
+     "name": "bay, over the water 30 m S of the shore 1.5 m",
+     "x": 680.0,
+     "y": 361.0,
+     "h": 1.5,
+     "utm": [
+      604400.0,
+      5422261.0
+     ],
+     "ground_m": 338.2,
+     "canopy_m": 0.0,
+     "water": true
+    },
+    {
+     "name": "the point 1.5 m",
+     "x": 514.0,
+     "y": 586.0,
+     "h": 1.5,
+     "utm": [
+      604234.0,
+      5422486.0
+     ],
+     "ground_m": 339.1,
+     "canopy_m": 9.8,
+     "water": false
+    },
+    {
+     "name": "the point 5 m",
+     "x": 514.0,
+     "y": 586.0,
+     "h": 5.0,
+     "utm": [
+      604234.0,
+      5422486.0
+     ],
+     "ground_m": 339.1,
+     "canopy_m": 9.8,
+     "water": false
+    },
+    {
+     "name": "ring 000 120 m",
+     "x": 524.0,
+     "y": 695.2,
+     "h": 1.5,
+     "utm": [
+      604244.0,
+      5422595.2
+     ],
+     "ground_m": 343.8,
+     "canopy_m": 7.3,
+     "water": false
+    },
+    {
+     "name": "ring 090 120 m",
+     "x": 644.0,
+     "y": 575.2,
+     "h": 1.5,
+     "utm": [
+      604364.0,
+      5422475.2
+     ],
+     "ground_m": 340.6,
+     "canopy_m": 17.0,
+     "water": false
+    },
+    {
+     "name": "ring 135 120 m",
+     "x": 608.8,
+     "y": 490.4,
+     "h": 1.5,
+     "utm": [
+      604328.8,
+      5422390.4
+     ],
+     "ground_m": 339.8,
+     "canopy_m": 15.5,
+     "water": false
+    },
+    {
+     "name": "ring 180 84 m",
+     "x": 530.0,
+     "y": 494.0,
+     "h": 1.5,
+     "utm": [
+      604250.0,
+      5422394.0
+     ],
+     "ground_m": 338.8,
+     "canopy_m": 8.2,
+     "water": false
+    }
+   ]
+  },
+  "pickle-slot_am270t_4m": {
+   "direction": 270.0,
+   "speed_kph": 11.5,
+   "zref_m": 80.0,
+   "stability": "stable",
+   "hours": 3.5,
+   "average_s": 600.0,
+   "theta_surface": 284.5,
+   "theta_gradients": [
+    [
+     0.0,
+     4.0
+    ],
+    [
+     80.0,
+     0.5
+    ]
+   ],
+   "surface": "rate",
+   "heating_rate": 1.0,
+   "surface_heatflux": 0.02,
+   "cthf": 0.02,
+   "series": {
+    "avg_s": 600.0,
+    "from_s": 1200.0,
+    "mask_dt": 120.0
+   },
+   "why": "the dawn as a series at the slot: the night's inversion warming 1 K/h for 3.5 h under the W wind; when P1-P4's pooled floor rejoins the wind and the lee's backflow starts (the am270 misses' clock)",
+   "scent": [
+    {
+     "name": "throat west bank 1.5 m",
+     "x": 510.0,
+     "y": 582.0,
+     "h": 1.5,
+     "utm": [
+      604230.0,
+      5422482.0
+     ],
+     "ground_m": 339.0,
+     "canopy_m": 11.6,
+     "water": false
+    },
+    {
+     "name": "throat west bank 5 m",
+     "x": 510.0,
+     "y": 582.0,
+     "h": 5.0,
+     "utm": [
+      604230.0,
+      5422482.0
+     ],
+     "ground_m": 339.0,
+     "canopy_m": 11.6,
+     "water": false
+    },
+    {
+     "name": "the exit 1.5 m",
+     "x": 562.0,
+     "y": 638.0,
+     "h": 1.5,
+     "utm": [
+      604282.0,
+      5422538.0
+     ],
+     "ground_m": 339.1,
+     "canopy_m": 10.4,
+     "water": false
+    },
+    {
+     "name": "bay, over the water 30 m S of the shore 1.5 m",
+     "x": 680.0,
+     "y": 361.0,
+     "h": 1.5,
+     "utm": [
+      604400.0,
+      5422261.0
+     ],
+     "ground_m": 338.2,
+     "canopy_m": 0.0,
+     "water": true
+    },
+    {
+     "name": "the point 1.5 m",
+     "x": 514.0,
+     "y": 586.0,
+     "h": 1.5,
+     "utm": [
+      604234.0,
+      5422486.0
+     ],
+     "ground_m": 339.1,
+     "canopy_m": 9.8,
+     "water": false
+    },
+    {
+     "name": "the point 5 m",
+     "x": 514.0,
+     "y": 586.0,
+     "h": 5.0,
+     "utm": [
+      604234.0,
+      5422486.0
+     ],
+     "ground_m": 339.1,
+     "canopy_m": 9.8,
+     "water": false
+    },
+    {
+     "name": "ring 000 120 m",
+     "x": 524.0,
+     "y": 695.2,
+     "h": 1.5,
+     "utm": [
+      604244.0,
+      5422595.2
+     ],
+     "ground_m": 343.8,
+     "canopy_m": 7.3,
+     "water": false
+    },
+    {
+     "name": "ring 090 120 m",
+     "x": 644.0,
+     "y": 575.2,
+     "h": 1.5,
+     "utm": [
+      604364.0,
+      5422475.2
+     ],
+     "ground_m": 340.6,
+     "canopy_m": 17.0,
+     "water": false
+    },
+    {
+     "name": "ring 135 120 m",
+     "x": 608.8,
+     "y": 490.4,
+     "h": 1.5,
+     "utm": [
+      604328.8,
+      5422390.4
+     ],
+     "ground_m": 339.8,
+     "canopy_m": 15.5,
+     "water": false
+    },
+    {
+     "name": "ring 180 84 m",
+     "x": 530.0,
+     "y": 494.0,
+     "h": 1.5,
+     "utm": [
+      604250.0,
+      5422394.0
+     ],
+     "ground_m": 338.8,
+     "canopy_m": 8.2,
+     "water": false
+    }
+   ]
+  },
+  "pickle-slot_dusk288tp_4m": {
+   "direction": 288.0,
+   "speed_kph": 11.2,
+   "zref_m": 80.0,
+   "stability": "stable",
+   "hours": 3.5,
+   "average_s": 600.0,
+   "theta_surface": 294.7,
+   "theta_gradients": [
+    [
+     0.0,
+     1.25
+    ],
+    [
+     80.0,
+     0.5
+    ]
+   ],
+   "surface": "rate",
+   "heating_rate": -1.0,
+   "surface_heatflux": -0.02,
+   "cthf": -0.02,
+   "series": {
+    "avg_s": 600.0,
+    "from_s": 1200.0,
+    "mask_dt": 120.0
+   },
+   "why": "the slot's dusk series started with 1 K already built over 2-80 m: does drainage start at once (the earlier onset was PALM's spin-up) or at the same clock (physical; the inversion gate is fittable)",
    "scent": [
     {
      "name": "throat west bank 1.5 m",

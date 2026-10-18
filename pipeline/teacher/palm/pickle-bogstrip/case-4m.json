@@ -1,7 +1,7 @@
 {
  "case": "pickle-bogstrip",
  "tag": "4m",
- "built": "2026-10-15 14:11",
+ "built": "2026-10-17 14:38",
  "epsg": 32616,
  "dx": 4.0,
  "nx": 256,
@@ -497,6 +497,167 @@
    "surface_heatflux": -0.02,
    "cthf": -0.02,
    "why": "dusk, 2026-09-28 23Z (282 at 5 km/h, 80 m 294 at 11 km/h): does the cooling strip send its scent along the floor and into the walls",
+   "scent": [
+    {
+     "name": "Gavan's sit 30 Sep, winded, bull S 1.5 m",
+     "x": 551.2,
+     "y": 506.8,
+     "h": 1.5,
+     "utm": [
+      606111.2,
+      5423346.8
+     ],
+     "ground_m": 341.0,
+     "canopy_m": 13.2,
+     "water": false
+    },
+    {
+     "name": "Gavan's sit 30 Sep, winded, bull S 5 m",
+     "x": 551.2,
+     "y": 506.8,
+     "h": 5.0,
+     "utm": [
+      606111.2,
+      5423346.8
+     ],
+     "ground_m": 341.0,
+     "canopy_m": 13.2,
+     "water": false
+    },
+    {
+     "name": "position 2, 30 Sep 1.5 m",
+     "x": 459.0,
+     "y": 501.7,
+     "h": 1.5,
+     "utm": [
+      606019.0,
+      5423341.7
+     ],
+     "ground_m": 341.0,
+     "canopy_m": 12.3,
+     "water": false
+    },
+    {
+     "name": "position 1, 30 Sep 1.5 m",
+     "x": 436.4,
+     "y": 533.5,
+     "h": 1.5,
+     "utm": [
+      605996.4,
+      5423373.5
+     ],
+     "ground_m": 339.4,
+     "canopy_m": 8.9,
+     "water": false
+    },
+    {
+     "name": "the point 1.5 m",
+     "x": 504.0,
+     "y": 520.3,
+     "h": 1.5,
+     "utm": [
+      606064.0,
+      5423360.3
+     ],
+     "ground_m": 341.0,
+     "canopy_m": 4.1,
+     "water": false
+    },
+    {
+     "name": "the point 5 m",
+     "x": 504.0,
+     "y": 520.3,
+     "h": 5.0,
+     "utm": [
+      606064.0,
+      5423360.3
+     ],
+     "ground_m": 341.0,
+     "canopy_m": 4.1,
+     "water": false
+    },
+    {
+     "name": "ring 000 140 m",
+     "x": 504.0,
+     "y": 660.3,
+     "h": 1.5,
+     "utm": [
+      606064.0,
+      5423500.3
+     ],
+     "ground_m": 344.5,
+     "canopy_m": 12.0,
+     "water": false
+    },
+    {
+     "name": "ring 045 140 m",
+     "x": 603.0,
+     "y": 619.3,
+     "h": 1.5,
+     "utm": [
+      606163.0,
+      5423459.3
+     ],
+     "ground_m": 348.2,
+     "canopy_m": 9.5,
+     "water": false
+    },
+    {
+     "name": "ring 090 140 m",
+     "x": 644.0,
+     "y": 520.3,
+     "h": 1.5,
+     "utm": [
+      606204.0,
+      5423360.3
+     ],
+     "ground_m": 345.8,
+     "canopy_m": 15.5,
+     "water": false
+    },
+    {
+     "name": "ring 135 140 m",
+     "x": 603.0,
+     "y": 421.3,
+     "h": 1.5,
+     "utm": [
+      606163.0,
+      5423261.3
+     ],
+     "ground_m": 343.3,
+     "canopy_m": 11.0,
+     "water": false
+    }
+   ]
+  },
+  "pickle-bogstrip_dusk288t_4m": {
+   "direction": 288.0,
+   "speed_kph": 11.2,
+   "zref_m": 80.0,
+   "stability": "stable",
+   "hours": 3.5,
+   "average_s": 600.0,
+   "theta_surface": 294.7,
+   "theta_gradients": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     80.0,
+     0.5
+    ]
+   ],
+   "surface": "rate",
+   "heating_rate": -1.0,
+   "surface_heatflux": -0.02,
+   "cthf": -0.02,
+   "series": {
+    "avg_s": 600.0,
+    "from_s": 1200.0,
+    "mask_dt": 120.0
+   },
+   "why": "the dusk as a series at the strip: a neutral floor an hour before the inversion, 1 K/h of cooling for 3.5 h under the 288 evening wind; when P5-P7 leave the wind and still, and the strip's along-wall steering under a cooling floor",
    "scent": [
     {
      "name": "Gavan's sit 30 Sep, winded, bull S 1.5 m",

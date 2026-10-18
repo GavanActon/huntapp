@@ -220,11 +220,30 @@ CASES = {
                           theta_gradients=[(0.0, 0.0), (250.0, 1.0)],  # a morning mixed layer, capped at 250 m
                           surface_heatflux=0.04, cthf=0.05,  # K m/s: about 50 and 60 W/m2
                           why="a sunny morning under a west wind: heated ground with the lee's backflow"),
+            # the dawn as a clock at the slot under W (Hunter-Jay 2026-10-17): the night's inversion (dawn175's profile) warming
+            # 1 K/h for 3.5 h under am270's wind: when the lee's backflow and the sunny floor set in (the am270 class's clock)
+            "am270t": dict(direction=270.0, speed_kph=11.5, zref_m=80.0, stability="stable", hours=3.5, average_s=600.0,
+                           theta_surface=284.5,
+                           theta_gradients=[(0.0, 4.0), (80.0, 0.5)],
+                           surface="rate", heating_rate=1.0,
+                           surface_heatflux=0.02, cthf=0.02,
+                           series=dict(avg_s=600.0, from_s=1200.0, mask_dt=120.0),
+                           why="the dawn as a series at the slot: the night's inversion warming 1 K/h for 3.5 h under the W wind; when P1-P4's pooled floor rejoins the wind and the lee's backflow starts (the am270 misses' clock)"),
             # the dusk as a clock (Hunter-Jay, 2026-10-17; Gavan: accuracy first, the machines are the seat's). 9 of the
             # card's 10 misses are stable dusk (P2-P5 dusk288, W6/W9/W10 dusk210), and the floor model found the stable
             # floor's turn is not in the geometry: it is in the cooling. So the same evening as dusk288, but started
             # an hour before the inversion with a near-neutral low layer, cooling at 1 K/h for 3.5 h, the averaged
             # field every 10 min from 20 min in: when does each point's floor leave the wind and drain, and still
+            # the same series started pre-cooled (ba 2026-10-17: the onset at 100-120 min may be the neutral start's spin-up, not the
+            # evening's): 1 K already built over the lowest 80 m at t0, the same 1 K/h after. Drainage from the first window means the
+            # earlier onset was setup; the same onset means it is physical and the inversion gate can be fitted
+            "dusk288tp": dict(direction=288.0, speed_kph=11.2, zref_m=80.0, stability="stable", hours=3.5, average_s=600.0,
+                              theta_surface=294.7,
+                              theta_gradients=[(0.0, 1.25), (80.0, 0.5)],
+                              surface="rate", heating_rate=-1.0,
+                              surface_heatflux=-0.02, cthf=-0.02,
+                              series=dict(avg_s=600.0, from_s=1200.0, mask_dt=120.0),
+                              why="the slot's dusk series started with 1 K already built over 2-80 m: does drainage start at once (the earlier onset was PALM's spin-up) or at the same clock (physical; the inversion gate is fittable)"),
             "dusk288t": dict(direction=288.0, speed_kph=11.2, zref_m=80.0, stability="stable", hours=3.5, average_s=600.0,
                              theta_surface=294.7,
                              theta_gradients=[(0.0, 0.0), (80.0, 0.5)],  # before sunset: neutral to 80 m, 0.5 K/100 m above
@@ -281,6 +300,14 @@ CASES = {
                             surface="rate", heating_rate=-1.0,
                             surface_heatflux=-0.02, cthf=-0.02,
                             why="dusk, 2026-09-28 23Z (282 at 5 km/h, 80 m 294 at 11 km/h): does the cooling strip send its scent along the floor and into the walls"),
+            # the dusk as a clock at the strip (Hunter-Jay 2026-10-17; the slot's dusk288t recipe): P5's three dusk288 misses
+            "dusk288t": dict(direction=288.0, speed_kph=11.2, zref_m=80.0, stability="stable", hours=3.5, average_s=600.0,
+                             theta_surface=294.7,
+                             theta_gradients=[(0.0, 0.0), (80.0, 0.5)],
+                             surface="rate", heating_rate=-1.0,
+                             surface_heatflux=-0.02, cthf=-0.02,
+                             series=dict(avg_s=600.0, from_s=1200.0, mask_dt=120.0),
+                             why="the dusk as a series at the strip: a neutral floor an hour before the inversion, 1 K/h of cooling for 3.5 h under the 288 evening wind; when P5-P7 leave the wind and still, and the strip's along-wall steering under a cooling floor"),
         },
     ),
     # The bog SW of camp (26 of the GPX checks round 48.9250, -85.6006) and the flat bog
@@ -336,6 +363,15 @@ CASES = {
                                theta_surface=284.5, theta_gradients=[(0.0, 4.0), (80.0, 0.5)],
                                surface="rate", heating_rate=-0.5, surface_heatflux=-0.01, cthf=-0.01,
                                why="drainage fade, flat ground: dawn175 at 6.5 km/h at 80 m (~2 km/h forecast 10 m): pooling and drift or the wind"),
+            # the dawn as a clock at the bog (Hunter-Jay 2026-10-17): the morning's other transition. dawn175's night profile
+            # (+3.9 K over 2-80 m) with the ground warming 1 K/h for 3.5 h: when the pooled floor rejoins the wind
+            "dawn175t": dict(direction=175.0, speed_kph=19.0, zref_m=80.0, stability="stable", hours=3.5, average_s=600.0,
+                             theta_surface=284.5,
+                             theta_gradients=[(0.0, 4.0), (80.0, 0.5)],
+                             surface="rate", heating_rate=1.0,
+                             surface_heatflux=0.02, cthf=0.02,
+                             series=dict(avg_s=600.0, from_s=1200.0, mask_dt=120.0),
+                             why="the dawn as a series at the bog: the night's inversion with the ground warming 1 K/h for 3.5 h under the 175 morning wind; when P8-P10's pooled, drifting floor rejoins the wind (the dawn hunt's clock, felt drifting SE and SW)"),
         },
     ),
     # Lac Bailey's north bank (Quebec): the 1 m LiDAR flown 2024 (QC-600023), a bank rising
@@ -394,6 +430,14 @@ CASES = {
                             surface="rate", heating_rate=-1.0,
                             surface_heatflux=-0.02, cthf=-0.02,
                             why="a dusk with a light wind off the land: the cold air down the bank and out over the water"),
+            # the dusk as a clock at the bank (Hunter-Jay 2026-10-17): the held-out box's shore under a cooling floor
+            "dusk000t": dict(direction=0.0, speed_kph=8.0, zref_m=80.0, stability="stable", hours=3.5, average_s=600.0,
+                             theta_surface=285.2,
+                             theta_gradients=[(0.0, 0.0), (300.0, 0.5)],
+                             surface="rate", heating_rate=-1.0,
+                             surface_heatflux=-0.02, cthf=-0.02,
+                             series=dict(avg_s=600.0, from_s=1200.0, mask_dt=120.0),
+                             why="the dusk as a series at the bank: a neutral floor an hour before the inversion, 1 K/h of cooling for 3.5 h under a light N wind off the land; when the cold air starts down the bank and out over the water, and L1-L3's floor leaves the wind"),
         },
     ),
     # Whitefish Lake (request #7 near Timmins, HD): the scent test set's second held-out box
@@ -499,6 +543,15 @@ CASES = {
             # d326 said the floor follows a 6.5 km/h forecast wind (10 m equivalent), not the slope. The same night
             # at a third and two thirds of the wind brackets where the cold air takes over on steep ground: one
             # threshold for every tile, not a place's fix
+            # Gavan's spot's dusk as a clock (Hunter-Jay 2026-10-17): d326's evening from a neutral floor an hour before the
+            # inversion, cooling 1 K/h for 3.5 h under the NW wind (20 km/h at 80 m): when the steep floor leaves the wind
+            "d326t": dict(direction=326.0, speed_kph=20.0, zref_m=80.0, stability="stable", hours=3.5, average_s=600.0,
+                          theta_surface=271.0,
+                          theta_gradients=[(0.0, 0.0), (80.0, 0.5)],
+                          surface="rate", heating_rate=-1.0,
+                          surface_heatflux=-0.02, cthf=-0.02,
+                          series=dict(avg_s=600.0, from_s=1200.0, mask_dt=120.0),
+                          why="the dusk as a series at Gavan's spot: a neutral floor an hour before the inversion, 1 K/h of cooling for 3.5 h under d326's NW wind; the clock at which the steep floor (G1) leaves the wind and drains"),
             "d326u06": dict(direction=326.0, speed_kph=6.0, zref_m=80.0, stability="stable", hours=2.0, average_s=1800.0,
                             theta_surface=271.0, theta_gradients=[(0.0, 4.75), (80.0, 0.5)],
                             surface="rate", heating_rate=-1.0, surface_heatflux=-0.02, cthf=-0.02,

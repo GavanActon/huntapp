@@ -839,7 +839,9 @@ def new_area(args) -> str:
     example = {"ON": area.DEFAULT_AREA, "QC": "lac-bailey"}.get(j)
     ex = area.load(example) if example and area.area_path(example).exists() else {}
     # elsewhere only the national layers: relief, topo and the old sheets
-    national = {"pmtiles": ["topo", "hillshade", "hillshadeLidar", "dem", "contours", "contoursWide", "historical"], "geo": [], "baseGeo": [], "grids": []}
+    # the grids every bake writes (config.ts windSolved / hasSdWind read this list: left empty, the app downloads no wind
+    # and no habitat at all; Clearwater, 2026-10-17); micro-sd is the surrogate's wind beside the solved one, as Blanchard's
+    national = {"pmtiles": ["topo", "hillshade", "hillshadeLidar", "dem", "contours", "contoursWide", "historical"], "geo": [], "baseGeo": [], "grids": ["habitat", "micro", "micro-sd", "going"]}
     files = json.loads(json.dumps(ex.get("files") or national))
     if j == "ON":  # never baked (basemap, bathy) or Pickle Lake's own survey sheets
         files["pmtiles"] = [k for k in files.get("pmtiles", []) if k not in ("bathySheets", "basemap", "bathy")]
@@ -893,7 +895,7 @@ def new_area(args) -> str:
             "pointcloud": {"adapter": "qc.mrnf_laz", "bbox": box_around(lon, lat, 6, 6)},
         },
     }
-    zone_label = {"ON": "WMU", "QC": "Zone", "YT": "GMS", "BC": "MU"}.get(j, "Zone")
+    zone_label = {"ON": "WMU", "QC": "Zone", "YT": "GMS", "BC": "MU", "AB": "WMU"}.get(j, "Zone")
     a = {
         "id": area_id,
         "name": args.name,
@@ -904,12 +906,15 @@ def new_area(args) -> str:
         "core": core,
         "regionMaxzoom": pickle["regionMaxzoom"],
         "declination": declination(lat, lon),
-        "timezone": {"YT": "America/Whitehorse", "BC": "America/Vancouver"}.get(j) or ("America/Winnipeg" if j == "ON" and lon < -90 else "America/Toronto"),
-        "zone": {"label": zone_label, "name": None},
+        "timezone": {"YT": "America/Whitehorse", "BC": "America/Vancouver", "AB": "America/Edmonton"}.get(j) or ("America/Winnipeg" if j == "ON" and lon < -90 else "America/Toronto"),
+        "zone": {"label": zone_label, "name": ""},  # a string, or areas/check.ts leaves the whole area out of the app (Clearwater, 2026-10-17); fill it by hand
         "relief": None,  # the bake fills it in from the core's elevations
         "base": f"areas/{area_id}/",
         "surveyedLakes": [],
-        "live": {"lio": j == "ON", "satellite": {"ON": "lio", "QC": "qc"}.get(j)},
+        "live": {"lio": j == "ON", "satellite": {"ON": "lio", "QC": "qc"}.get(j),
+                 # no province flies imagery here: Esri's sharp (sources.ts SHARP) streams over the box and past it,
+                 # as Blanchard River's does; without it the area shows the far band's 10 m (Gavan, 2026-10-17, Clearwater)
+                 **({} if j in ("ON", "QC") else {"sharp": "esri"})},
         "attribution": ex.get("attribution")
         or {
             "YT": {"vectors": "© Government of Yukon", "lakes": "CanVec © Natural Resources Canada", "bush": ""},
