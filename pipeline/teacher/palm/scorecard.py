@@ -317,6 +317,11 @@ def jobs_from(ts: dict, only: str | None) -> tuple[list[dict], list[str]]:
             # half that, so thresholds tuned on it came out ~2x strict. A run without an entry falls back to it.
             fc = (ts.get("forcing") or {}).get(run)
             if fc:
+                # the run's own 80 m wind over the settled layer (forcing_table kph80), as palm_compare sets it: under
+                # forced air makeCtx keeps the held clock's real lay, so a rule keyed to w80 (ba's ref 3 fade) would
+                # otherwise read 2026-09-30's camp forecast; neutral for every other rule (2026-10-18)
+                if fc.get("kph80") is not None:
+                    lay = {**lay, "w80": float(fc["kph80"])}
                 air = {"kmh": float(fc["kph"]), "dir": float(fc["from"]), "lay": lay, "sunElev": sun}
                 forcing = f"forecast ({fc.get('source', '?')})"
             else:
