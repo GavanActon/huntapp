@@ -170,3 +170,5 @@ file, `pipeline/raw/windcfd/sdtiles/xonix/PAUSE`.
 raw particles came over instead (6.9 GB, slow; XEVO's postprocess converts them with the repo's file). After every
 build_case, copy `<case>/case-*.json` (and build_case.py / palm_to_*.py when changed) into `pipeline/raw/windcfd/surrogate/palm/`.
 Done today for all six cases.
+
+**Reference row moves to 5e933a7 (17:20).** ba shipped the 80 m-keyed fade as the default (w12_2) at 5e933a7 on hunt-dev; the scorecard is re-running base on it, both grids, label reference-5e933a7, and those rows replace the 11:57 leerise-2a30c8e rows as the reference every later --patch is read against. Landed 17:24, identical to w12_2's rows: HD 0.60 / 0.61, misses 14 / 11, FA 38 / 41; SD 0.55 / 0.57, misses 18 / 12, FA 35 / 43 (scores/2026-10-18_1724_5e933a7_reference-5e933a7.json). That is the reference now.
