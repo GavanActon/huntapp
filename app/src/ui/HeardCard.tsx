@@ -31,6 +31,10 @@ import { dist as distWords } from '../lengths'
  *
  * Edit, from a saved dot's popup, opens it on that entry: the animal and
  * what it was, put right where it lies (the dot moves by press and hold).
+ *
+ * Downed (Gavan, 2026-10-18): shot and down, the dot is where it lies. It
+ * is a sighting in the log, and a moose down is no longer on the move: the
+ * live card says where he lies and draws no swing (moveLayer).
  */
 
 interface HeardForm {
@@ -121,7 +125,7 @@ export default function HeardCard() {
     if (editing) {
       // put right where it lies: the animal and what it was, the time and the spot kept
       const changed = editing.species !== species
-      useHuntLog.getState().update(editing.id, { species, what: sound === 'seen' ? 'seen' : 'heard', sound, kind: kind ?? (species === 'moose' && !changed ? editing.kind : undefined) })
+      useHuntLog.getState().update(editing.id, { species, what: sound === 'seen' || sound === 'down' ? 'seen' : 'heard', sound, kind: kind ?? (species === 'moose' && !changed ? editing.kind : undefined) })
       // another animal is another map to score it on
       if (changed)
         void snapshot(species, editing.lon, editing.lat)
@@ -147,7 +151,7 @@ export default function HeardCard() {
       lon,
       lat,
       species,
-      what: sound === 'seen' ? 'seen' : 'heard',
+      what: sound === 'seen' || sound === 'down' ? 'seen' : 'heard',
       count: 1,
       ...(kind ? { kind } : {}),
       sound,

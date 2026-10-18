@@ -1,10 +1,11 @@
 import { gpxDoc, trackToGpx, trkXml, useTrackStore, type Track, type TrackPoint } from '../tracking/trackStore'
 import { compass } from '../weather/openMeteo'
-import { checkFelt, forecastVerdict, steadiness, useWindChecks, verdict, type WindCheck } from '../weather/micro/windChecks'
+import { checkFelt, forecastVerdict, steadiness, STEADY_WORDS, useWindChecks, verdict, type WindCheck } from '../weather/micro/windChecks'
 import { clockShort } from '../time'
 import { SOUND_NAMES, SPECIES_NAMES, useHuntLog, WHAT_NAMES, type LogEntry } from './huntLog'
 import { outingChecks, outingEntries, outingTitle, type Outing } from './outings'
 import { dist, speed, temp } from '../lengths'
+import { installId, uploadNoteLink } from '../devlog'
 
 /**
  * The log leaves the phone as files: the entries and the wind checks as a
@@ -45,7 +46,7 @@ const CSV_COLS = [
   'temp_c', 'wind_kmh', 'wind_from', 'cloud_pct', 'precip_mm_h', 'day_high_c', 'warm_days_before',
   'model_score', 'model_percentile', 'day_activity', 'model_headline',
   // a wind check: what was felt, then the ground model's call and the forecast's, each scored
-  'source', 'felt_from', 'felt_strength', 'swing_deg', 'puffs', 'puff_dirs', 'steadiness', 'treetops_moving', 'held', 'replaced_at',
+  'source', 'felt_from', 'felt_strength', 'swing_deg', 'puffs', 'puff_dirs', 'steadiness', 'treetops_moving', 'held', 'steady', 'replaced_at',
   // seen from afar: the treetops there (felt_from is then the way they went), and where from
   'seen', 'seen_from_lat', 'seen_from_lon',
   'model_wind_from', 'model_wind_kmh', 'model_regime', 'model_sigma_deg', 'model_decoupled', 'model_slot', 'model_bias_deg', 'model_bias_ratio', 'model_verdict',
@@ -106,6 +107,7 @@ function checkRow(c: WindCheck): CsvRow {
     steadiness: steadiness(c),
     treetops_moving: c.aloft,
     held: c.held,
+    steady: c.steady,
     replaced_at: c.until != null ? iso(c.until) : undefined,
     seen: c.seen,
     seen_from_lat: c.seenFrom?.lat.toFixed(6),
@@ -125,12 +127,38 @@ function checkRow(c: WindCheck): CsvRow {
   }
 }
 
-export function csv(entries: LogEntry[], checks: WindCheck[]): string {
+/** The CSV's rows, oldest first, without the header. */
+function csvRows(entries: LogEntry[], checks: WindCheck[]): string[] {
   const q = (v: unknown) => (v == null ? '' : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v))
-  const rows = [...entries.map((e) => ({ ts: e.ts, row: entryRow(e) })), ...checks.map((c) => ({ ts: c.ts, row: checkRow(c) }))]
+  return [...entries.map((e) => ({ ts: e.ts, row: entryRow(e) })), ...checks.map((c) => ({ ts: c.ts, row: checkRow(c) }))]
     .sort((a, b) => a.ts - b.ts)
     .map(({ row }) => CSV_COLS.map((k) => q(row[k])).join(','))
-  return [CSV_COLS.join(','), ...rows].join('\n') + '\n'
+}
+
+export function csv(entries: LogEntry[], checks: WindCheck[]): string {
+  return [CSV_COLS.join(','), ...csvRows(entries, checks)].join('\n') + '\n'
+}
+
+/** What the API keeps of a text at most (the Sandies Worker keeps the end of a longer one, 400k): under it, so the header stays. */
+const SEND_MAX = 390_000
+
+/**
+ * The whole log sent to the devs (Gavan, 2026-10-18: "need export log to
+ * devs so I can share"): the CSV Export makes, under a line saying whose
+ * and which build, to the same API as the dev log. The answer is a code
+ * and a link to pass on; it is kept a month. A log past the API's size
+ * loses its oldest rows first.
+ */
+export async function sendLogToDevs(): Promise<{ code: string; url: string; rows: number; dropped: number }> {
+  const entries = useHuntLog.getState().entries
+  const checks = useWindChecks.getState().checks
+  const head = `Hunt log · ${new Date().toISOString()} · build ${__BUILD__.sha} · install ${installId()}\n${entries.length} entries, ${checks.length} wind checks\n\n${CSV_COLS.join(',')}\n`
+  const rows = csvRows(entries, checks)
+  let from = 0
+  let size = head.length + rows.reduce((n, r) => n + r.length + 1, 0)
+  while (size > SEND_MAX && from < rows.length) size -= rows[from++].length + 1
+  const r = await uploadNoteLink(head + rows.slice(from).join('\n') + '\n')
+  return { ...r, rows: rows.length - from, dropped: from }
 }
 
 /** The whole log as one CSV: every entry and every wind check. */
@@ -167,7 +195,7 @@ function checkWpt(c: WindCheck): string {
   const desc = [
     (c.puffs ?? 1) > 1 ? `${c.puffs} puffs` : '',
     c.aloft ? 'treetops moving' : '',
-    c.held ? 'had held a while' : '',
+    c.steady ? STEADY_WORDS[c.steady].toLowerCase() : c.held ? 'had held a while' : '',
     c.model ? `model: from ${compass(c.model.dirFrom)} ${Math.round(c.model.kmh)} km/h, ${c.model.regime}${c.model.slot ? ' (slot)' : ''}${c.model.decoupled ? ', decoupled' : ''}` : '',
     v ? (v === 'agree' ? 'agreed' : v === 'close' ? 'close' : 'missed') : '',
     c.forecast ? `forecast: from ${compass(c.forecast.dirFrom)} ${Math.round(c.forecast.kmh)} km/h` : '',

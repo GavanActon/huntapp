@@ -17,6 +17,7 @@ import { leavesWord } from '../weather/micro/leaves'
 import { coneSizeWord, drawnView, SCENT_HEIGHTS, useScent, type ScentView } from '../weather/micro/scent'
 import { useWindChecks } from '../weather/micro/windChecks'
 import { HOT_DEFS } from './hotButtons'
+import { useCheckForm } from './WindCheckCard'
 import { faster, paceText, slower } from './PaceNudge'
 import { useTapOff } from './tapOff'
 import { height } from '../lengths'
@@ -273,8 +274,13 @@ function HeardRows({ go }: RowsProps) {
 function WindCheckRows({ go }: RowsProps) {
   const checks = useWindChecks((s) => s.checks)
   const last = checks[checks.length - 1]
+  // your last one back in the form, the answers kept, to put right ("pressed back, oops!")
+  const redo = useCheckForm((s) => (last ? s.canRedo(last) : false))
   return (
     <>
+      <Act disabled={!redo} onTap={go(() => last && useCheckForm.getState().redoCheck(last.id))}>
+        Redo last check
+      </Act>
       <Act disabled={!last} onTap={() => last && useWindChecks.getState().remove(last.id)}>
         Undo last check
       </Act>

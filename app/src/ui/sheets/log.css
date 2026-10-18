@@ -501,3 +501,6 @@
   padding-left: 12px;
   font-size: calc(12.5px * var(--ui-scale));
 }
+/* Send to devs: how it went, under the ⋯ */
+.log-sent { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; padding: 6px 10px; border-radius: var(--r-md); background: rgba(var(--c-ink-rgb), 0.06); font-size: calc(12.5px * var(--ui-scale)); color: var(--c-text); word-break: break-all; }
+.log-sent span { flex: 1; }

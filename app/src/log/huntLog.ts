@@ -40,7 +40,7 @@ export const WHAT_DESC: Record<LogWhat, string> = {
 /** What was heard (or seen) of a moose out hunting, from where you stood (HeardCard). */
 export type MooseSound = 'cow' | 'bull' | 'thrash' | 'walk' | 'splash' | 'seen'
 /** The same for any game: a moose's sounds, then the others' (the Game card). */
-export type GameSound = MooseSound | 'grunt' | 'snort' | 'rattle' | 'drum' | 'flush' | 'howl' | 'heard'
+export type GameSound = MooseSound | 'grunt' | 'snort' | 'rattle' | 'drum' | 'flush' | 'howl' | 'heard' | 'down'
 export const SOUND_NAMES: Record<GameSound, string> = {
   cow: 'Cow call',
   bull: 'Bull grunt',
@@ -55,6 +55,7 @@ export const SOUND_NAMES: Record<GameSound, string> = {
   flush: 'Flush',
   howl: 'Howling',
   heard: 'Heard it',
+  down: 'Downed',
 }
 export const SOUND_DESC: Record<GameSound, string> = {
   cow: 'A cow calling',
@@ -70,15 +71,16 @@ export const SOUND_DESC: Record<GameSound, string> = {
   flush: 'Birds going up',
   howl: 'Wolves howling',
   heard: 'Heard it',
+  down: 'Shot and down: where it lies',
 }
 /** What each animal is heard (or seen) doing, in the Game card's order. */
 export const SPECIES_SOUNDS: Record<LogSpecies, GameSound[]> = {
-  moose: ['cow', 'bull', 'thrash', 'walk', 'splash', 'seen'],
-  deer: ['grunt', 'snort', 'rattle', 'walk', 'seen'],
-  bear: ['walk', 'heard', 'seen'],
-  grouse: ['drum', 'flush', 'seen'],
-  wolf: ['howl', 'seen'],
-  other: ['heard', 'seen'],
+  moose: ['cow', 'bull', 'thrash', 'walk', 'splash', 'seen', 'down'],
+  deer: ['grunt', 'snort', 'rattle', 'walk', 'seen', 'down'],
+  bear: ['walk', 'heard', 'seen', 'down'],
+  grouse: ['drum', 'flush', 'seen', 'down'],
+  wolf: ['howl', 'seen', 'down'],
+  other: ['heard', 'seen', 'down'],
 }
 
 /** The weather when it was logged. */

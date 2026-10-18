@@ -32,8 +32,13 @@ import { compass } from '../openMeteo'
  *
  * Two optional answers ride on a check. "Treetops moving, calm here" is
  * the ground air come loose from the wind above (decoupled), the one
- * thing the layering model most needs checking. "Same as a while ago" is
- * a wind that has held, so the check is trusted for longer.
+ * thing the layering model most needs checking. How steady it has been
+ * (`steady`, Gavan, 2026-10-18: "need more clarity on consistency: always,
+ * brief, one-off") says how long the check speaks for: always (the wind
+ * has held, `held`, trusted twice as long), brief (a spell that may turn
+ * back, half as long) or a one-off (a puff unlike the rest: a third of
+ * the say, half as long). Until then the one chip was "same as a while
+ * ago", `held` alone.
  *
  * Kept on the phone (localStorage); a camp weather station can later add
  * checks with source 'station'. Shared, if the hunter says yes when
@@ -146,8 +151,10 @@ export interface WindCheck {
   dirs?: (number | null)[]
   /** optional: treetops moving while the air here is calm (true), or moving the same (false) */
   aloft?: boolean
-  /** optional: the wind here has been the same for a while */
+  /** optional: the wind here has been the same for a while (set with steady 'always') */
   held?: boolean
+  /** optional: how steady the wind here has been (STEADY_WORDS) */
+  steady?: Steady
   /** seen from afar, not felt: what the treetops (or the water) there showed.
    *  The wind above the trees; `strength` then holds SEEN_STRENGTH's word. */
   seen?: Seen
@@ -170,6 +177,22 @@ export interface WindCheck {
   /** retired by a newer check near it, before checks added up (2026-10-08):
    *  kept for the log's replaced_at, no longer read */
   until?: number
+}
+
+/** How steady the wind has been where the check was made, as the hunter says it. */
+export type Steady = 'always' | 'brief' | 'once'
+export const STEADY_WORDS: Record<Steady, string> = { always: 'Always', brief: 'Brief', once: 'One-off' }
+export const STEADY_CUE: Record<Steady, string> = {
+  always: 'the whole time',
+  brief: 'comes and goes',
+  once: 'just this puff',
+}
+
+/** What how steady it was does to a check: its say (w) and how long it speaks for (t), against an unsaid one. */
+export function steadyK(c: WindCheck): { w: number; t: number } {
+  if (c.steady === 'once') return { w: 0.35, t: 0.5 }
+  if (c.steady === 'brief') return { w: 1, t: 0.5 }
+  return c.held || c.steady === 'always' ? { w: 1, t: 2 } : { w: 1, t: 1 }
 }
 
 /** A puff this close and this soon after the last one folds into it. */
@@ -210,6 +233,7 @@ function fold(prev: WindCheck, puff: Omit<WindCheck, 'id'>): WindCheck {
     dirs,
     ...(puff.aloft != null ? { aloft: puff.aloft } : {}),
     ...(puff.held != null ? { held: puff.held } : {}),
+    ...(puff.steady != null ? { steady: puff.steady } : {}),
     ...(puff.note ? { note: prev.note ? `${prev.note} · ${puff.note}` : puff.note } : {}),
   }
 }
@@ -228,9 +252,26 @@ export function steadiness(c: WindCheck): Steadiness | null {
   return 'steady'
 }
 
+/** How a check sits with the felt checks made before it near where it was
+ *  made (150 m, 3 h, the same person's): how many, how many went the same
+ *  way (within 45°, or both calm), and since when. */
+export function againstEarlier(c: WindCheck, checks: WindCheck[]): { n: number; same: number; since: number } | null {
+  if (c.seen) return null
+  const before = checks.filter(
+    (o) => o.id !== c.id && !o.seen && !o.until && (o.by ?? '') === (c.by ?? '') && o.ts < c.ts && c.ts - o.ts <= 3 * 3600_000 && metresBetween(o.lon, o.lat, c.lon, c.lat) <= 150,
+  )
+  if (!before.length) return null
+  const calm = (x: WindCheck) => x.dirFrom == null || x.strength === 'calm'
+  const same = before.filter((o) => (calm(o) || calm(c) ? calm(o) && calm(c) : angleDiff(o.dirFrom!, c.dirFrom!) <= 45)).length
+  return { n: before.length, same, since: Math.min(...before.map((o) => o.ts)) }
+}
+
 interface ChecksState {
   checks: WindCheck[]
-  add: (c: Omit<WindCheck, 'id'>) => WindCheck
+  /** a check, or a puff of the one just made here; `id` gives a check back the id it had (a redo, so the shared copy is put right) */
+  add: (c: Omit<WindCheck, 'id'> & { id?: string }) => WindCheck
+  /** a check put back as it was (a redo of the puff that folded into it) */
+  put: (c: WindCheck) => void
   /** a partner's checks, by id: the ones already here are left alone */
   merge: (cs: WindCheck[]) => number
   /** a party member's checks as they stand now (party/party.ts): new ones in, changed ones replaced, never one of yours */
@@ -259,13 +300,14 @@ export const useWindChecks = create<ChecksState>()(
         // (a look at the treetops far off is one look: it never folds)
         const prev = c.source === 'hand' && !c.seen ? get().checks.find((o) => !o.taken && o.source === 'hand' && !o.seen && (o.by ?? '') === (c.by ?? '') && c.ts - o.ts >= 0 && c.ts - o.ts <= SERIES_MS && metresBetween(o.lon, o.lat, c.lon, c.lat) <= SERIES_M) : undefined
         if (prev) {
-          const folded = fold(prev, c)
+          const { id: _id, ...puff } = c
+          const folded = fold(prev, puff)
           set((s) => ({ checks: s.checks.map((o) => (o.id === prev.id ? folded : o)) }))
           revealMark('wind')
           return folded
         }
         // one more: the checks before it here keep counting beside it
-        const check = { ...c, id: `wc${c.ts.toString(36)}${Math.random().toString(36).slice(2, 6)}` }
+        const check = { ...c, id: c.id ?? `wc${c.ts.toString(36)}${Math.random().toString(36).slice(2, 6)}` }
         set((s) => ({ checks: capped([...s.checks, check]) }))
         revealMark('wind')
         return check
@@ -287,6 +329,7 @@ export const useWindChecks = create<ChecksState>()(
         }
         set({ checks: capped([...byId.values()].sort((a, b) => a.ts - b.ts)) })
       },
+      put: (c) => set((s) => ({ checks: s.checks.map((o) => (o.id === c.id ? c : o)) })),
       remove: (id) => set((s) => ({ checks: s.checks.filter((c) => c.id !== id) })),
       setFelt: (id) =>
         set((s) => ({
@@ -373,18 +416,19 @@ const SIGMA_UNKNOWN = 45
  */
 export function checkW0(c: WindCheck, sigmaModel?: number): number {
   if (c.seen) return SEEN_W0
-  if (c.dirFrom == null || c.strength === 'calm') return W0
+  const k = steadyK(c).w
+  if (c.dirFrom == null || c.strength === 'calm') return k * W0
   const sm = sigmaModel ?? c.model?.sigmaDeg ?? SIGMA_UNKNOWN
   const so = DIR_SIGMA[c.strength] + (c.swingDeg ?? 0) / 2
-  return Math.max(W0_MIN, Math.min(W0, (sm / so) ** 2))
+  return k * Math.max(W0_MIN, Math.min(W0, (sm / so) ** 2))
 }
 
-/** A check's time scale: a wind that has held for a while is trusted twice as long. */
+/** A check's time scale: a wind that has held for a while is trusted twice as long, a brief one or a one-off half as long. */
 function tauOf(c: WindCheck): number {
-  return c.held ? 2 * TAU_MS : TAU_MS
+  return steadyK(c).t * TAU_MS
 }
 function maxOf(c: WindCheck): number {
-  return c.held ? 1.5 * MAX_MS : MAX_MS
+  return Math.min(1.5, steadyK(c).t) * MAX_MS
 }
 /** How long a felt check counts in the live blend: past this it is the place's memory (model.ts), no longer a fresh check. */
 export function maxReachMs(c: WindCheck): number {

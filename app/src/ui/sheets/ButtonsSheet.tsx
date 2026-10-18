@@ -14,7 +14,10 @@ import './settings.css'
  * into a column at any height, across to the other, or back to the tray to
  * take it off the map (Gavan, 2026-10-14: "two column, someone can drag
  * features in and out. No fixed number"). A column too tall for the screen
- * wraps inward on the map (HotColumn). Near is the thumb's column, My
+ * wraps inward on the map (HotColumn). Anywhere below the columns is the
+ * tray: a button dragged down past their foot, onto the heading, the hint,
+ * the empty sheet or off its bottom, comes off the map (Gavan, 2026-10-18:
+ * "drag to bottom anywhere instead of small area"). Near is the thumb's column, My
  * location fixed at its foot. The heading row is its own: the title, the
  * Hunting | Fishing switch and Done (back to Settings, which pushed it).
  */
@@ -61,6 +64,7 @@ export default function ButtonsSheet(): JSX.Element {
   const closeSheet = useAppStore((s) => s.closeSheet)
   const [drag, setDrag] = useState<Drag | null>(null)
   const root = useRef<HTMLDivElement>(null)
+  const cols = useRef<HTMLDivElement>(null)
   const press = useRef<Press | null>(null)
   const dragRef = useRef<Drag | null>(null)
 
@@ -88,7 +92,9 @@ export default function ButtonsSheet(): JSX.Element {
   /** The zone under the finger, and in a column, the place among the other buttons: above the first whose middle is below the finger. */
   const locate = (x: number, y: number, d: Drag): Drag => {
     const zone = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-zone]')
-    const over = (zone?.dataset.zone as Zone | undefined) ?? null
+    // below the columns' foot, whatever is under the finger, is the tray
+    const foot = cols.current?.getBoundingClientRect().bottom
+    const over = (zone?.dataset.zone as Zone | undefined) ?? (foot != null && y > foot ? 'tray' : null)
     let at = 0
     if (zone && (over === 'left' || over === 'right')) {
       const tiles = [...zone.querySelectorAll<HTMLElement>('[data-tile]')].filter((t) => t.dataset.tile !== d.id)
@@ -220,7 +226,7 @@ export default function ButtonsSheet(): JSX.Element {
         </button>
       </div>
 
-      <div className="hotedit-cols">
+      <div className="hotedit-cols" ref={cols}>
         {column('left')}
         {column('right')}
       </div>
@@ -231,7 +237,7 @@ export default function ButtonsSheet(): JSX.Element {
           <Tile key={id} id={id} lifted={drag?.id === id} onDown={(e) => down(e, id, 'tray')} />
         ))}
       </div>
-      <div className="hotedit-hint">Hold a button, then drag it</div>
+      <div className="hotedit-hint">Hold a button, then drag it · drop it anywhere down here to take it off the map</div>
 
       {drag &&
         createPortal(

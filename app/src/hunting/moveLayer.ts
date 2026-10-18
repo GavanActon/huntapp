@@ -140,9 +140,11 @@ export function readMoves(): MoveRead | null {
   const you: LL | null = fix ? { lon: fix.lon, lat: fix.lat } : (last.from ?? null)
   if (!you) return null
   const bearing = bearingTo(you, last)
+  // down: where he lies, going nowhere (no heading, no way round to your scent)
+  const down = last.sound === 'down'
   const prev = es.length > 1 ? es[es.length - 2] : null
-  const heading = prev && last.ts - prev.ts <= RECENT_MS && metresTo(prev, last) >= 30 ? bearingTo(prev, last) : null
-  const downwind = scentGoes(you)
+  const heading = !down && prev && last.ts - prev.ts <= RECENT_MS && metresTo(prev, last) >= 30 ? bearingTo(prev, last) : null
+  const downwind = down ? null : scentGoes(you)
   const d = downwind == null ? 0 : turnTo(bearing, downwind)
   // already working round you one way: he keeps on round that way
   let circling: 1 | -1 | null = null
@@ -170,6 +172,7 @@ export function readMoves(): MoveRead | null {
 /** Who it was, in a word: the sound's animal, else what was logged. */
 const WHO: Record<MooseSound, string> = { cow: 'Cow', bull: 'Bull', thrash: 'Thrashing', walk: 'Walking', splash: 'Splash', seen: 'Seen' }
 function who(e: LogEntry): string {
+  if (e.sound === 'down') return 'Down'
   if (e.sound) return WHO[e.sound as MooseSound] ?? SOUND_NAMES[e.sound] ?? 'Heard'
   if (e.kind === 'bull' || e.kind === 'cow') return e.kind === 'bull' ? 'Bull' : 'Cow'
   return e.what === 'seen' ? 'Seen' : 'Moose'
@@ -356,7 +359,7 @@ function planSwing(r: MoveRead) {
   })
 }
 
-const SHORT: Record<string, string> = { cow: 'cow', bull: 'grunt', thrash: 'thrash', walk: 'walking', splash: 'splash', seen: 'seen' }
+const SHORT: Record<string, string> = { cow: 'cow', bull: 'grunt', thrash: 'thrash', walk: 'walking', splash: 'splash', seen: 'seen', down: 'down' }
 
 /** An outing being replayed from the hunt log: its sounds instead of the live ones. */
 let replay: { from: number; to: number } | null = null

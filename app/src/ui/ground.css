@@ -97,3 +97,13 @@ div.me .me-hit { pointer-events: all; cursor: pointer; }
 }
 .gc-animal option { color: var(--c-text); background: var(--c-bg); }
 .gc-animal-note { font-weight: 600; color: var(--c-text-dim); }
+/* the saved check: Redo beside Done, and More under the brief lines */
+.ground-card .tb-head .gc-redo + .sheet-done { margin-left: 8px; }
+.ground-card .gc-more { align-self: flex-start; font-size: 12px; padding: 2px 0; }
+/* how steady: three side by side, the word over its cue */
+.gc-steady { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.gc-steady .chip-pick { flex-direction: column; gap: 1px; min-height: 44px; padding: 5px 4px; }
+.gc-steady .chip-pick b { font-weight: 700; color: var(--c-text); }
+.gc-steady .chip-pick span { font-size: calc(11.5px * var(--ui-scale)); color: var(--c-text-dim); line-height: 1.2; }
+.gc-steady .chip-pick.chip-on { background: var(--c-accent); }
+.gc-steady .chip-pick.chip-on b, .gc-steady .chip-pick.chip-on span { color: var(--c-on-accent); }

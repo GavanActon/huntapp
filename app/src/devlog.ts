@@ -310,6 +310,13 @@ export async function uploadNote(text: string): Promise<string> {
   return r.code
 }
 
+/** The same, with the link to pass on (the hunt log sent to the devs, log/logExport.ts). */
+export async function uploadNoteLink(text: string): Promise<{ code: string; url: string }> {
+  const r = await post(text)
+  devlog('log', `note sent · ${r.code}`)
+  return r
+}
+
 /** Hand the log to the share sheet as a file, or copy it where there is none. */
 export async function shareDevlog(): Promise<'shared' | 'copied' | 'failed'> {
   const text = devlogText(await snapshot())

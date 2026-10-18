@@ -4,7 +4,7 @@ import { cachedPointForecast, compass, hourAt } from '../weather/openMeteo'
 import { windSampler } from '../weather/windGrid'
 import { groundWind, loadMicro, sitScoreFor } from '../weather/micro/model'
 import { nextPuff } from '../weather/micro/ambientFit'
-import { angleDiff, checkFelt, checkPull, checkReachM, checkSpentAt, forecastVerdict, SEEN_CUE, SEEN_STRENGTH, steadiness, towardWords, useWindChecks, verdict, type Seen, type Strength, type WindCheck, STRENGTH_CUE } from '../weather/micro/windChecks'
+import { againstEarlier, angleDiff, checkFelt, checkPull, checkReachM, checkSpentAt, forecastVerdict, SEEN_CUE, SEEN_STRENGTH, steadiness, STEADY_CUE, STEADY_WORDS, towardWords, useWindChecks, verdict, type Seen, type Steady, type Strength, type WindCheck, STRENGTH_CUE } from '../weather/micro/windChecks'
 import { clockShort } from '../time'
 import { useAppStore } from '../state/appStore'
 import { requestCompass, startCompass, stopCompass, useCompass } from '../tracking/compass'
@@ -57,6 +57,16 @@ import { km as kmWords } from '../lengths'
  * is honest and climbs as the checks teach; and the puff that would teach
  * the most next.
  *
+ * Saved, the card is brief (Gavan, 2026-10-18: "wind check info too
+ * much"): the verdict, how it sits with the checks before it here, and
+ * when to check again; the rest folds under More. Redo ("pressed back,
+ * oops!") takes the check back out and opens the form on the same
+ * answers to put right: the time, the model's call and the forecast of
+ * the first try are kept, and so is the check's id, so a copy already
+ * shared is put right too. The last save is taken back exactly (a puff
+ * that folded into a check leaves the check as it was); an older check
+ * can be done again from its popup while it is a single puff.
+ *
  * Opened on a spot away from you (the map popup's Wind), it is a puff
  * there unless you say "treetops seen from afar": then it is the treetops
  * (or the water) over there, out glassing. The rose then faces the way
@@ -76,19 +86,59 @@ interface CheckAt {
   from?: { lon: number; lat: number } | null
 }
 
+type CheckInput = Omit<WindCheck, 'id'>
+
 interface CheckForm {
   at: CheckAt | null
+  /** a check being done again: its answers fill the form; saving keeps its time, its calls and (a whole check) its id */
+  redo: { input: CheckInput; id?: string } | null
+  /** the last save, to take back exactly: the check it made or folded into, what that was before (null: new), and what was said */
+  last: { id: string; prev: WindCheck | null; input: CheckInput } | null
   open: (lon: number, lat: number, label: string, seen?: { from: { lon: number; lat: number } | null }) => void
   close: () => void
+  /** Save's record of what it did */
+  saved: (id: string, prev: WindCheck | null, input: CheckInput) => void
+  /** whether a check can be done again: yours, and the last save or a single puff */
+  canRedo: (c: WindCheck) => boolean
+  /** take a check back out and open the form on its answers */
+  redoCheck: (id: string) => void
 }
-export const useCheckForm = create<CheckForm>((set) => ({
+export const useCheckForm = create<CheckForm>((set, get) => ({
   at: null,
+  redo: null,
+  last: null,
   open: (lon, lat, label, seen) => {
     // from the tap that opened the form: iOS only grants the compass from one
     void requestCompass()
-    set({ at: { lon, lat, label, ...(seen ? { seen: true, from: seen.from } : {}) } })
+    set({ at: { lon, lat, label, ...(seen ? { seen: true, from: seen.from } : {}) }, redo: null })
   },
-  close: () => set({ at: null }),
+  close: () => set({ at: null, redo: null }),
+  saved: (id, prev, input) => set({ last: { id, prev, input }, redo: null }),
+  canRedo: (c) => !c.taken && c.source === 'hand' && (get().last?.id === c.id || (c.puffs ?? 1) <= 1),
+  redoCheck: (id) => {
+    const store = useWindChecks.getState()
+    const c = store.checks.find((o) => o.id === id)
+    if (!c || !get().canRedo(c)) return
+    const last = get().last?.id === id ? get().last : null
+    let redo: CheckForm['redo']
+    if (last?.prev) {
+      // the puff that folded in: the check as it was before it
+      store.put(last.prev)
+      redo = { input: last.input }
+    } else {
+      store.remove(id)
+      const { id: _id, ...input } = c
+      redo = { input: last?.input ?? input, id }
+    }
+    devlog('wind', `redo ${id}${last?.prev ? ' (a puff)' : ''}`)
+    void requestCompass()
+    const input = redo.input
+    set({
+      at: { lon: input.lon, lat: input.lat, label: 'again', ...(input.seen || input.seenFrom ? { seen: true, from: input.seenFrom ?? null } : {}) },
+      redo,
+      last: null,
+    })
+  },
 }))
 
 /** The forecast wind at a place and minute as the map draws it: the HRDPS
@@ -116,6 +166,21 @@ function bearingTo(from: { lon: number; lat: number }, lon: number, lat: number)
 }
 
 const STRENGTHS: Strength[] = ['calm', 'drift', 'light', 'breezy', 'windy']
+const STEADIES: Steady[] = ['always', 'brief', 'once']
+
+/** How steady, as a check carries it: 'always' is also the older `held`. */
+function steadyFields(k: Steady | null): Pick<WindCheck, 'steady' | 'held'> {
+  return k ? { steady: k, ...(k === 'always' ? { held: true } : {}) } : {}
+}
+
+/** The check against the ones before it here, in a line: the same, a shift, or a swing. */
+function earlierWords(e: { n: number; same: number; since: number }, said?: Steady): string {
+  const checks = e.n === 1 ? 'your check' : `your ${e.n} checks`
+  const since = clockShort(e.since)
+  if (e.same === e.n) return `Same as ${checks} here since ${since}: holding`
+  if (e.same === 0) return said === 'once' ? `Not like ${checks} here since ${since}: a one-off, as you said` : `Not like ${checks} here since ${since}: a shift, or a one-off`
+  return `Matches ${e.same} of ${e.n} checks here since ${since}: it swings`
+}
 const SEENS: Seen[] = ['still', 'leaves', 'branches', 'sway', 'bend']
 
 export default function WindCheckCard() {
@@ -127,24 +192,29 @@ export default function WindCheckCard() {
   // slid as the phone wandered, and taps on them went missing: Gavan,
   // 2026-10-08)
   const bearing = useMapBearing((s) => s.bearing)
+  /** a check being done again: the form opens on its answers */
+  const redo = useCheckForm((s) => s.redo)
+  const first = useRef(redo?.input ?? null).current
   /** the way the powder goes, a true bearing; null until given */
-  const [dir, setDirState] = useState<number | null>(null)
+  const [dir, setDirState] = useState<number | null>(first && first.dirFrom != null ? (first.dirFrom + 180) % 360 : null)
   /** how it was given, and what "ahead" was read from */
-  const [via, setVia] = useState<{ how: 'arrow' | 'ahead'; read?: string } | null>(null)
-  const [strength, setStrength] = useState<Strength | null>(null)
+  const [via, setVia] = useState<{ how: 'arrow' | 'ahead'; read?: string } | null>(first && first.dirFrom != null ? { how: 'arrow' } : null)
+  const [strength, setStrength] = useState<Strength | null>(first && !first.seen ? first.strength : null)
   /** seen from afar: what the treetops did */
-  const [seenAs, setSeenAs] = useState<Seen | null>(null)
+  const [seenAs, setSeenAs] = useState<Seen | null>(first?.seen ?? null)
   /** seen, not felt: only when the hunter says so. Opened on a spot away
    *  from you it used to be seen by default, and with a fix without even
    *  asking (any tap more than 60 m from the fix), so a day's puffs went
    *  in as looks at the treetops, with a reach of kilometres and no say in
    *  the cone (Gavan, 2026-10-09: "still looks like 1.75 km from the wind
    *  check to the edge of the ring") */
-  const [seen, setSeen] = useState(false)
+  const [seen, setSeen] = useState(!!first?.seen)
   /** optional: treetops moving while it is calm here (the air decoupled) */
-  const [aloft, setAloft] = useState(false)
-  /** optional: the wind here has been the same for a while */
-  const [heldOn, setHeldOn] = useState(false)
+  const [aloft, setAloft] = useState(!!first?.aloft)
+  /** optional: how steady the wind here has been (always / brief / one-off) */
+  const [steady, setSteady] = useState<Steady | null>(first?.steady ?? (first?.held ? 'always' : null))
+  /** the saved card's More */
+  const [more, setMore] = useState(false)
   const [missing, setMissing] = useState<string | null>(null)
   const [saved, setSaved] = useState<WindCheck | null>(null)
   /** the map's call there now, with this check in */
@@ -230,6 +300,8 @@ export default function WindCheckCard() {
     }
     setSaving(true)
     const now = Date.now()
+    // a redo keeps the first try's time and calls: only the answers change
+    const r = useCheckForm.getState().redo
     // the model's call first, before this check can sway it; a check is
     // still worth saving without one (offline before the model loaded)
     let g: ReturnType<typeof groundWind> = null
@@ -239,19 +311,22 @@ export default function WindCheckCard() {
     } catch {
       g = null
     }
-    const c = add({
-      ts: now,
-      lon: at.lon,
-      lat: at.lat,
-      dirFrom: calm || d == null ? null : (d + 180) % 360,
-      strength,
-      ...(aloft ? { aloft: true } : {}),
-      ...(heldOn ? { held: true } : {}),
-      ...(useAppStore.getState().who ? { by: useAppStore.getState().who } : {}),
-      source: 'hand',
-      model: g ? { dirFrom: g.dirFrom, kmh: g.kmh, regime: g.regime, sigmaDeg: g.sigmaDeg, decoupled: g.decoupled, slot: g.inSlot, woods: g.inWoods, ...(g.bias ? { bias: g.bias } : {}) } : undefined,
-      forecast: forecastAt(at.lon, at.lat, now),
-    })
+    const c = record(
+      {
+        ts: r?.input.ts ?? now,
+        lon: at.lon,
+        lat: at.lat,
+        dirFrom: calm || d == null ? null : (d + 180) % 360,
+        strength,
+        ...(aloft ? { aloft: true } : {}),
+        ...steadyFields(steady),
+        ...(useAppStore.getState().who ? { by: useAppStore.getState().who } : {}),
+        source: 'hand',
+        model: r ? r.input.model : g ? { dirFrom: g.dirFrom, kmh: g.kmh, regime: g.regime, sigmaDeg: g.sigmaDeg, decoupled: g.decoupled, slot: g.inSlot, woods: g.inWoods, ...(g.bias ? { bias: g.bias } : {}) } : undefined,
+        forecast: r ? r.input.forecast : forecastAt(at.lon, at.lat, now),
+      },
+      r?.id,
+    )
     // what the map reads there now, this check in; then the sit's score, off the tap
     let a: ReturnType<typeof groundWind> = null
     try {
@@ -284,21 +359,60 @@ export default function WindCheckCard() {
       setDir(a.deg, 'ahead', a.read)
     }
     const now = Date.now()
-    const c = add({
-      ts: now,
-      lon: at.lon,
-      lat: at.lat,
-      dirFrom: calm || d == null ? null : (d + 180) % 360,
-      strength: SEEN_STRENGTH[seenAs],
-      seen: seenAs,
-      ...(at.from ? { seenFrom: { lon: at.from.lon, lat: at.from.lat } } : {}),
-      ...(heldOn ? { held: true } : {}),
-      ...(useAppStore.getState().who ? { by: useAppStore.getState().who } : {}),
-      source: 'hand',
-      forecast: forecastAt(at.lon, at.lat, now),
-    })
+    const r = useCheckForm.getState().redo
+    const c = record(
+      {
+        ts: r?.input.ts ?? now,
+        lon: at.lon,
+        lat: at.lat,
+        dirFrom: calm || d == null ? null : (d + 180) % 360,
+        strength: SEEN_STRENGTH[seenAs],
+        seen: seenAs,
+        ...(at.from ? { seenFrom: { lon: at.from.lon, lat: at.from.lat } } : {}),
+        ...steadyFields(steady),
+        ...(useAppStore.getState().who ? { by: useAppStore.getState().who } : {}),
+        source: 'hand',
+        forecast: r ? r.input.forecast : forecastAt(at.lon, at.lat, now),
+      },
+      r?.id,
+    )
     setSaved(c)
   }
+
+  /** Add the check, and keep what it did so Redo can take it back exactly. */
+  function record(input: CheckInput, id?: string): WindCheck {
+    const before = useWindChecks.getState().checks
+    const c = add({ ...input, ...(id ? { id } : {}) })
+    useCheckForm.getState().saved(c.id, before.find((o) => o.id === c.id) ?? null, input)
+    return c
+  }
+
+  /** Redo: the check back out, the form again on the same answers. */
+  const redoSaved = () => {
+    if (!saved) return
+    useCheckForm.getState().redoCheck(saved.id)
+    setSaved(null)
+    setAfter(null)
+    setSit(null)
+    setMore(false)
+  }
+
+  const savedHead = (
+    <div className="tb-head">
+      <span className="tb-title">Wind sharpened</span>
+      <button className="sheet-done gc-redo" style={{ marginLeft: 'auto' }} onClick={redoSaved}>
+        Redo
+      </button>
+      <button className="sheet-done" onClick={close}>
+        Done
+      </button>
+    </div>
+  )
+  const moreButton = (
+    <button className="linklike gc-more" onClick={() => setMore((m) => !m)} aria-expanded={more}>
+      {more ? 'Less' : 'More'}
+    </button>
+  )
 
   // ---- saved: what the map said against what you felt, what the check
   // does now, what it teaches, and when to check again
@@ -308,12 +422,7 @@ export default function WindCheckCard() {
     const km = checkReachM(saved, Date.now()) / 1000
     return (
       <div className="tripbuilder glass ground-card" ref={ref}>
-        <div className="tb-head">
-          <span className="tb-title">Wind sharpened</span>
-          <button className="sheet-done" style={{ marginLeft: 'auto' }} onClick={close}>
-            Done
-          </button>
-        </div>
+        {savedHead}
         <div className="gc-line">
           {fv && saved.forecast ? (
             <>
@@ -324,9 +433,14 @@ export default function WindCheckCard() {
           )}
         </div>
         <div className="gc-line">
-          Leads the wind above the trees here <b>{pull}%</b> now, out to ~{kmWords(km)} · fades by ~{clockShort(checkSpentAt(saved))}
+          <b>Look again by ~{clockShort(saved.ts + 40 * 60_000)}</b>, or the moment it shifts
         </div>
-        <div className="gc-note">Look again in about 40 min, or the moment it shifts.</div>
+        {moreButton}
+        {more && (
+          <div className="gc-line">
+            Leads the wind above the trees here <b>{pull}%</b> now, out to ~{kmWords(km)} · fades by ~{clockShort(checkSpentAt(saved))}
+          </div>
+        )}
         <ShareChecksAsk />
       </div>
     )
@@ -342,33 +456,36 @@ export default function WindCheckCard() {
     const said = m ? callWords(m) : null
     const puff = nextPuff(sit?.fit ?? null, sit?.count ?? 1, saved.forecast?.kmh ?? null)
     // when to puff again: sooner after a miss; a wind that had held, later
-    const againMs = saved.ts + (v === 'miss' ? 25 : saved.held ? 60 : 40) * 60_000
+    const againMs = Math.max(saved.ts, Date.now() - 5 * 60_000) + (v === 'miss' || saved.steady === 'brief' || saved.steady === 'once' ? 25 : saved.held ? 60 : 40) * 60_000
     // the map's call moved: 10° or a quarter in speed
     const moved = after && m ? angleDiff(after.dirFrom, m.dirFrom) >= 10 || Math.abs(Math.log(Math.max(after.kmh, 0.3) / Math.max(m.kmh, 0.3))) >= Math.log(1.25) : false
     const sc = sit && sit.score.n >= 2 ? sit.score : null
+    const earlier = againstEarlier(saved, useWindChecks.getState().checks)
     return (
       <div className="tripbuilder glass ground-card" ref={ref}>
-        <div className="tb-head">
-          <span className="tb-title">Wind sharpened</span>
-          <button className="sheet-done" style={{ marginLeft: 'auto' }} onClick={close}>
-            Done
-          </button>
-        </div>
-        {puffs > 1 && (
-          <div className="gc-line">
-            Puff {puffs} of this check: {saved.dirFrom == null ? 'calm' : `toward ${towardWords((saved.dirFrom + 180) % 360, saved.swingDeg)}`}
-            {steady ? `, ${steady}` : ''}
-          </div>
-        )}
+        {savedHead}
         <div className="gc-line">
           {v ? (
             <>
               The map <b className={`gc-verdict gc-${v}`}>{VERDICT_WORDS[v]}</b> · it said {said}, you felt {felt}
             </>
           ) : (
-            <>Saved without the map's call (it had not loaded) · you felt {felt}</>
+            <>Saved without the map&rsquo;s call (it had not loaded) · you felt {felt}</>
           )}
         </div>
+        {earlier && <div className="gc-line">{earlierWords(earlier, saved.steady)}</div>}
+        <div className="gc-line">
+          <b>Check again by ~{clockShort(againMs)}</b>, or the moment it shifts
+        </div>
+        {moreButton}
+        {more && (
+          <>
+        {puffs > 1 && (
+          <div className="gc-line">
+            Puff {puffs} of this check: {saved.dirFrom == null ? 'calm' : `toward ${towardWords((saved.dirFrom + 180) % 360, saved.swingDeg)}`}
+            {steady ? `, ${steady}` : ''}
+          </div>
+        )}
         {after && m && (
           <div className="gc-line">
             {moved ? (
@@ -391,9 +508,11 @@ export default function WindCheckCard() {
           </div>
         )}
         <div className="gc-line">
-          Leads the wind here <b>{pull}%</b> · fades by ~{clockShort(checkSpentAt(saved))} · <b>check again by ~{clockShort(againMs)}</b>, or the moment it shifts
+          Leads the wind here <b>{pull}%</b> · fades by ~{clockShort(checkSpentAt(saved))}
         </div>
         {puff && <div className="gc-note">{puff}</div>}
+          </>
+        )}
         <ShareChecksAsk />
       </div>
     )
@@ -402,7 +521,7 @@ export default function WindCheckCard() {
   return (
     <div className="tripbuilder glass ground-card" ref={ref}>
       <div className="tb-head">
-        <span className="tb-title">Sharpen the wind{seen ? ` · ${at.label}` : ''}</span>
+        <span className="tb-title">{redo ? 'Sharpen again' : `Sharpen the wind${seen ? ` · ${at.label}` : ''}`}</span>
       </div>
       {at.seen && (
         // a spot away from you: a puff there, or the treetops seen from here
@@ -472,18 +591,24 @@ export default function WindCheckCard() {
           ))}
         </div>
       )}
-      {/* optional, and worth more than they look: the treetops question is the layering model's one real test */}
-      <div className="gc-q">If you noticed</div>
-      <div className="gc-strength">
-        {!seen && (
+      {/* optional: how long the check speaks for (windChecks.ts steadyK); the lit one again takes it back */}
+      <div className="gc-q">How steady?</div>
+      <div className="gc-strength gc-steady">
+        {STEADIES.map((k) => (
+          <button key={k} className={`chip-pick${steady === k ? ' chip-on' : ''}`} onClick={() => setSteady((v) => (v === k ? null : k))} aria-pressed={steady === k}>
+            <b>{STEADY_WORDS[k]}</b>
+            <span>{STEADY_CUE[k]}</span>
+          </button>
+        ))}
+      </div>
+      {/* optional, and worth more than it looks: the treetops question is the layering model's one real test */}
+      {!seen && (
+        <div className="gc-strength">
           <button className={`chip-pick${aloft ? ' chip-on' : ''}`} onClick={() => setAloft((v) => !v)} aria-pressed={aloft}>
             treetops moving, calm here
           </button>
-        )}
-        <button className={`chip-pick${heldOn ? ' chip-on' : ''}`} onClick={() => setHeldOn((v) => !v)} aria-pressed={heldOn}>
-          same as a while ago
-        </button>
-      </div>
+        </div>
+      )}
       {missing && <div className="gc-missing">{missing}</div>}
       <button className="btn-primary" disabled={saving} onClick={() => void save()}>
         {saving ? 'Saving…' : 'Save'}

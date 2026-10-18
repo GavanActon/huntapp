@@ -1,4 +1,4 @@
-import { angleDiff, judgeCall, puffBoost, STRENGTH_RANGE, type Seen, type Strength, type WindCheck } from './windChecks'
+import { angleDiff, judgeCall, puffBoost, steadyK, STRENGTH_RANGE, type Seen, type Strength, type WindCheck } from './windChecks'
 
 /**
  * The air above the trees, fitted to the checks of a sit.
@@ -237,10 +237,10 @@ export function fitMatters(f: AmbientFit | null): f is AmbientFit {
   return !!f && f.count >= 2 && (Math.abs(f.turn) >= 8 || Math.abs(f.lnRatio) >= Math.log(1.2) || Math.abs(f.lnDrain) >= Math.log(1.5))
 }
 
-/** A check's say in a sit's fit against the sit's newest check: by age, half again for a swing. */
+/** A check's say in a sit's fit against the sit's newest check: by age, half again for a swing, how steady it was (steadyK). */
 export function fitWeight(c: WindCheck, refTs: number): number {
-  const tau = c.held ? 2 * FIT_TAU_MS : FIT_TAU_MS
-  return Math.exp(-Math.abs(refTs - c.ts) / tau) * (c.swingDeg ? 0.7 : 1) * puffBoost(c)
+  const k = steadyK(c)
+  return k.w * Math.exp(-Math.abs(refTs - c.ts) / (k.t * FIT_TAU_MS)) * (c.swingDeg ? 0.7 : 1) * puffBoost(c)
 }
 
 /** The fit's weights at a spot and moment, the turn's and the speed ratio's: full among the checks, a Gaussian off them, each fading after the last as the stations say. */

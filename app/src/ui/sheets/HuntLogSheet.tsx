@@ -4,7 +4,7 @@ import { switchArea } from '../../areas/switch'
 import { inRegion } from '../../config'
 import { checkWords, entryDetail } from '../../log/eventText'
 import { SPECIES_NAMES, tallies, useHuntLog, type LogEntry } from '../../log/huntLog'
-import { exportAllGpx, exportCsv } from '../../log/logExport'
+import { exportAllGpx, exportCsv, sendLogToDevs } from '../../log/logExport'
 import { entryTitle, showLogPopup } from '../../log/logLayer'
 import { LOG_FILTER_NAMES, LOG_FILTERS, logView, type LogFilter } from '../../log/logView'
 import { outingElsewhere, outings, outingSummary, outingTitle, type Outing } from '../../log/outings'
@@ -92,6 +92,32 @@ function Mark({ ev }: { ev: LogEvent }) {
   return <span className={`log-mark${w === 'nothing' ? ' log-hollow' : ''}`} style={{ background: DOT[w] }} />
 }
 
+/** The log to the devs: uploaded for a code, then the link to the share
+ *  sheet (or the clipboard) so it can go by text or mail; the line under
+ *  the ⋯ says how it went. */
+async function sendToDevs(say: (s: string) => void): Promise<void> {
+  say('Sending the log…')
+  let r: Awaited<ReturnType<typeof sendLogToDevs>>
+  try {
+    r = await sendLogToDevs()
+  } catch (e) {
+    return say(`Could not send · ${e instanceof Error ? e.message : 'no answer'}${navigator.onLine ? '' : ' (offline)'}`)
+  }
+  const sent = `Sent · code ${r.code}${r.dropped ? ` · the oldest ${r.dropped} rows left off` : ''}`
+  try {
+    await navigator.share({ title: 'Hunt log', text: `Hunt log · code ${r.code}`, url: r.url })
+    return say(sent)
+  } catch (e) {
+    if ((e as DOMException).name === 'AbortError') return say(sent)
+  }
+  try {
+    await navigator.clipboard.writeText(r.url)
+    say(`${sent} · link copied`)
+  } catch {
+    say(`${sent} · ${r.url}`)
+  }
+}
+
 export default function HuntLogSheet(): JSX.Element {
   // what the events are made of: re-listed when any of it moves
   useTrackStore((s) => s.tracks)
@@ -102,6 +128,8 @@ export default function HuntLogSheet(): JSX.Element {
   const setTopCard = useAppStore((s) => s.setTopCard)
   const [menu, setMenu] = useState(false)
   const [report, setReport] = useState(false)
+  /** Send to devs: under way, then the code (and whether the link went), or why not */
+  const [sent, setSent] = useState<string | null>(null)
   const [filter, setFilterState] = useState<LogFilter>(logView.filter)
   const todayMs = startOfDayMs(Date.now())
   const [open, setOpenState] = useState<number[]>(logView.open ?? [todayMs])
@@ -227,12 +255,24 @@ export default function HuntLogSheet(): JSX.Element {
             <button className="menu-row" role="menuitem" onClick={() => (setMenu(false), void exportAllGpx())}>
               Export GPX
             </button>
+            <button className="menu-row" role="menuitem" disabled={!entries.length && !checks.length} onClick={() => (setMenu(false), void sendToDevs(setSent))}>
+              Send to devs
+            </button>
             <button className="menu-row" role="menuitem" onClick={() => (setMenu(false), setReport((v) => !v))}>
               How the map is doing
             </button>
           </div>
         )}
       </div>
+
+      {sent && (
+        <div className="log-sent">
+          <span>{sent}</span>
+          <button className="linklike dim" onClick={() => setSent(null)} aria-label="Close">
+            ×
+          </button>
+        </div>
+      )}
 
       <div className="log-filters" role="radiogroup" aria-label="Show">
         {LOG_FILTERS.map((f) => (

@@ -8,6 +8,7 @@ import { timeLabel } from '../../time'
 import { compass } from '../openMeteo'
 import { aloftVerdict, checkFelt, checkPull, checkRadiusM, checkReachM, checkSpentAt, forecastVerdict, steadiness, useWindChecks, verdict, type WindCheck } from './windChecks'
 import { dist as distWords } from '../../lengths'
+import { useCheckForm } from '../../ui/WindCheckCard'
 
 /**
  * The wind checks still in effect, on the map. Each is an arrow where it
@@ -261,7 +262,7 @@ function popupHtml(c: WindCheck, at: number): string {
       ? `<li>In effect ${when}: ${pull}% of the wind above the trees here${half > 0 ? `, half or more to about ${dist(half)} (the inner ring)` : ''}, a tenth to about ${reach} (the outer)</li>`
       : `<li>In effect ${when}: ${pull}% of the ground wind here, half or more to about ${dist(checkRadiusM(c, at, 0.5))} (the ring), a tenth to about ${reach}</li>`) +
     `<li>${spent > at ? `Fades out by ${esc(timeLabel(spent))}` : 'About spent'}</li></ul>` +
-    `<div class="pg-acts">${c.seen ? '<button class="linklike ck-felt" type="button">it was a puff here, not the treetops</button>' : ''}<button class="linklike ck-remove" type="button">remove this check</button></div>`
+    `<div class="pg-acts">${c.seen ? '<button class="linklike ck-felt" type="button">it was a puff here, not the treetops</button>' : ''}${useCheckForm.getState().canRedo(c) ? '<button class="linklike ck-redo" type="button">redo this check</button>' : ''}<button class="linklike ck-remove" type="button">remove this check</button></div>`
   )
 }
 
@@ -280,6 +281,10 @@ export function showCheckPopup(map: MlMap, id: string): void {
   el.querySelector('.ck-remove')?.addEventListener('click', () => {
     useWindChecks.getState().remove(c.id)
     p.remove()
+  })
+  el.querySelector('.ck-redo')?.addEventListener('click', () => {
+    p.remove()
+    useCheckForm.getState().redoCheck(c.id)
   })
   el.querySelector('.ck-felt')?.addEventListener('click', () => {
     useWindChecks.getState().setFelt(c.id)
