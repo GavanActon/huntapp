@@ -4,7 +4,7 @@ import { useAppStore, type HotId, type HotSets, type HotSide } from '../../state
 import { useViews } from '../../state/viewsStore'
 import { FISH_HERE } from '../../spots/profile'
 import { haptic } from '../haptics'
-import { HOT_DEFS, HOT_ORDER } from '../hotButtons'
+import { HOT_DEFS, trayOf } from '../hotButtons'
 import { IconLocate } from '../icons'
 import './settings.css'
 
@@ -14,7 +14,9 @@ import './settings.css'
  * into a column at any height, across to the other, or back to the tray to
  * take it off the map (Gavan, 2026-10-14: "two column, someone can drag
  * features in and out. No fixed number"). A column too tall for the screen
- * wraps inward on the map (HotColumn). Anywhere below the columns is the
+ * wraps inward on the map (HotColumn). The tray is what the More button
+ * opens on the map (2026-10-18), and its heading says so, or that it is
+ * off the map while More is in it too. Anywhere below the columns is the
  * tray: a button dragged down past their foot, onto the heading, the hint,
  * the empty sheet or off its bottom, comes off the map (Gavan, 2026-10-18:
  * "drag to bottom anywhere instead of small area"). Near is the thumb's column, My
@@ -71,7 +73,9 @@ export default function ButtonsSheet(): JSX.Element {
   // the thumb's column is the right one, or the left for a left hand
   const sideOf = (c: Col): HotSide => ((c === 'right') !== leftHanded ? 'near' : 'far')
   const lists: Record<Col, HotId[]> = { left: sets[sideOf('left')], right: sets[sideOf('right')] }
-  const tray = HOT_ORDER.filter((id) => !sets.near.includes(id) && !sets.far.includes(id))
+  const tray = trayOf(sets)
+  // the tray is what More opens on the map; with More off the map, nothing does
+  const moreOn = !tray.includes('more')
 
   const drop = (d: Drag) => {
     if (!d.over || (d.over === 'tray' && d.from === 'tray')) return
@@ -231,13 +235,24 @@ export default function ButtonsSheet(): JSX.Element {
         {column('right')}
       </div>
 
-      <div className="st-sec">More buttons</div>
+      <div className="st-sec">{moreOn ? 'In the More button' : 'Off the map'}</div>
+      <div className="hotedit-note">
+        {moreOn ? (
+          <>
+            Tap <b>More</b> on the map for these. Drag one up into a column to give it its own button.
+          </>
+        ) : (
+          <>
+            These are not on the map. Drag <b>More buttons</b> into a column to reach them with one tap.
+          </>
+        )}
+      </div>
       <div className={`hotedit-tray${drag?.over === 'tray' ? ' over' : ''}`} data-zone="tray">
         {tray.map((id) => (
           <Tile key={id} id={id} lifted={drag?.id === id} onDown={(e) => down(e, id, 'tray')} />
         ))}
       </div>
-      <div className="hotedit-hint">Hold a button, then drag it · drop it anywhere down here to take it off the map</div>
+      <div className="hotedit-hint">Hold a button, then drag it · drop it anywhere down here to put it {moreOn ? 'in More' : 'off the map'}</div>
 
       {drag &&
         createPortal(

@@ -16,7 +16,8 @@ import { useGpsStore } from '../tracking/gpsStore'
 import { leavesWord } from '../weather/micro/leaves'
 import { coneSizeWord, drawnView, SCENT_HEIGHTS, useScent, type ScentView } from '../weather/micro/scent'
 import { useWindChecks } from '../weather/micro/windChecks'
-import { HOT_DEFS } from './hotButtons'
+import { HOT_DEFS, trayOf } from './hotButtons'
+import { hotAbsent, hotMark, openGrade } from './grade'
 import { useCheckForm } from './WindCheckCard'
 import { faster, paceText, slower } from './PaceNudge'
 import { useTapOff } from './tapOff'
@@ -397,8 +398,44 @@ function PinRows({ go }: RowsProps) {
   )
 }
 
+/** More's drawer: every button not in a column, a tap away (Gavan, 2026-10-18: "how can make additional buttons
+ *  accessible quickly" -> "Yea more"). A tap does what the button does on the map, and the drawer closes;
+ *  the way to arrange them is the last row. */
+function MoreRows({ go }: RowsProps) {
+  const mode = useViews((s) => s.mode)
+  const sets = useAppStore((s) => s.hotButtons[mode])
+  const openSheet = useAppStore((s) => s.openSheet)
+  const ids = trayOf(sets).filter((x) => x !== 'more')
+  return (
+    <>
+      {ids.length ? ids.map((x) => <MoreAct key={x} id={x} go={go} />) : <div className="hd-row dim">Every button is on the map</div>}
+      <Act onTap={go(() => openSheet({ kind: 'buttons' }))}>
+        Arrange buttons <span className="dim">›</span>
+      </Act>
+    </>
+  )
+}
+
+/** A tray button in More: its icon and name, lit while it is on; one never baked here is greyed. */
+function MoreAct({ id, go }: { id: HotId; go: RowsProps['go'] }) {
+  const d = HOT_DEFS[id]
+  const on = d.useActive()
+  const absent = hotAbsent(id)
+  const hd = hotMark(id)
+  return (
+    <Act on={on} disabled={absent} onTap={go(() => (hd === 'want' ? openGrade(id) : d.onTap()))}>
+      <span className="hd-more">
+        <d.Icon size={18} />
+        {d.name}
+      </span>
+    </Act>
+  )
+}
+
 function rows(id: HotId, go: RowsProps['go']): JSX.Element | null {
   switch (id) {
+    case 'more':
+      return <MoreRows go={go} />
     case 'windflow':
       return <WindFlowRows />
     case 'scent':

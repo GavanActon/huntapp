@@ -13,6 +13,8 @@ export default function HotSlot({ id, labels, open, onOpen, onClose }: { id: Hot
         id={id}
         onHold={onOpen}
         onTap={() => {
+          // More opens on a tap: its drawer is the tray's buttons
+          if (id === 'more') return open ? onClose() : onOpen()
           HOT_DEFS[id].onTap()
           if (open) onClose()
         }}

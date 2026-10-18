@@ -69,18 +69,19 @@ export type TopCard = { kind: 'scent' } | { kind: 'outing'; id: string }
  *  location is not one of them: it is always at the foot of the near
  *  column. Nor is the heat map: it sits on the strip's head beside the
  *  quarry chip. */
-export type HotId = 'windcheck' | 'scent' | 'heard' | 'windflow' | 'routes' | 'measure' | 'path' | 'contours' | 'pin' | 'understory' | 'lanes' | 'bathy' | 'radar'
+export type HotId = 'windcheck' | 'scent' | 'heard' | 'windflow' | 'routes' | 'measure' | 'path' | 'contours' | 'pin' | 'understory' | 'lanes' | 'bathy' | 'radar' | 'more'
 /** The two columns: `near` is the thumb's side (right, or left for a left hand), `far` the other. */
 export type HotSide = 'near' | 'far'
 export type HotSets = Record<HotSide, HotId[]>
 // a fresh phone's are Gavan's (2026-10-03, sent from his phone): Scent above Sharpen; Path in Route's
 // place (2026-10-18: "Path instead of route"), Route waiting in Map buttons' tray
+// More, at the far column's foot, opens the tray's buttons on the map (2026-10-18: "Yea more")
 export const DEFAULT_HOT: Record<'hunt' | 'fish', HotSets> = {
-  hunt: { near: ['heard', 'scent', 'windcheck', 'windflow'], far: ['path', 'measure', 'lanes', 'contours'] },
-  fish: { near: ['pin', 'bathy', 'windflow'], far: ['path', 'measure'] },
+  hunt: { near: ['heard', 'scent', 'windcheck', 'windflow'], far: ['path', 'measure', 'lanes', 'contours', 'more'] },
+  fish: { near: ['pin', 'bathy', 'windflow'], far: ['path', 'measure', 'more'] },
 }
 // Low power was taken out 2026-10-03: a saved layout holding it drops it here (unknown ids)
-const HOT_IDS: readonly HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'path', 'contours', 'pin', 'understory', 'lanes', 'bathy', 'radar']
+const HOT_IDS: readonly HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'path', 'contours', 'pin', 'understory', 'lanes', 'bathy', 'radar', 'more']
 /** Buttons that were: a saved layout keeps its slot (Person became the contour lines, 2026-10-02; + Person lives on the live card and the map popup). */
 const HOT_RENAMED: Record<string, HotId> = { person: 'contours' }
 
@@ -462,7 +463,8 @@ export const useAppStore = create<AppState>()(
       // v5: the wind flow sits just above My location; the v4 defaults are replaced
       // v7: the pins and tracks toggles became the marks: both off is all hidden
       // v8: low power is gone
-      version: 8,
+      // v9: More joins a saved layout at the far column's foot
+      version: 9,
       migrate: (persisted, from) => {
         const p = (persisted ?? {}) as Partial<AppState>
         if (from < 1) {
@@ -487,6 +489,15 @@ export const useAppStore = create<AppState>()(
           delete old.showTracks
         }
         if (from < 8) delete (p as { lowPower?: boolean }).lowPower
+        if (from < 9 && p.hotButtons) {
+          const hot = p.hotButtons as Partial<Record<'hunt' | 'fish', Partial<Record<HotSide, unknown>>>>
+          for (const m of ['hunt', 'fish'] as const) {
+            const s = hot[m]
+            if (!s || !Array.isArray(s.far)) continue
+            const placed = [...(Array.isArray(s.near) ? s.near : []), ...s.far]
+            if (!placed.includes('more')) s.far = [...s.far, 'more']
+          }
+        }
         return p as AppState
       },
       partialize: (s) => ({

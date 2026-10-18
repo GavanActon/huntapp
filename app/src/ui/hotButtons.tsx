@@ -14,7 +14,7 @@ import { useScent } from '../weather/micro/scent'
 import { HotDot, hotAbsent, hotMark, openGrade } from './grade'
 import { useHeardForm } from './HeardCard'
 import { useCheckForm } from './WindCheckCard'
-import { IconBush, IconContour, IconDepth, IconEar, IconLanes, IconPath, IconPin, IconPowder, IconRadar, IconRoute, IconRuler, IconScent, IconWind } from './icons'
+import { IconBush, IconContour, IconDepth, IconDots, IconEar, IconLanes, IconPath, IconPin, IconPowder, IconRadar, IconRoute, IconRuler, IconScent, IconWind } from './icons'
 import { logWindHere } from './logWindHere'
 
 /**
@@ -156,10 +156,24 @@ export const HOT_DEFS: Record<HotId, HotDef> = {
   lanes: layerDef('lanes', 'lanes', 'Shooting lanes', 'Lanes', IconLanes),
   bathy: layerDef('bathy', 'bathy', 'Lake depths', 'Depths', IconDepth),
   radar: layerDef('radar', 'weather', 'Radar', 'Radar', IconRadar),
+  // the tray's buttons, from the map: a tap opens them in its drawer (HotSlot, HotDrawer's MoreRows)
+  more: {
+    id: 'more',
+    name: 'More buttons',
+    short: 'More',
+    Icon: IconDots,
+    useActive: off,
+    onTap: () => {},
+  },
 }
 
 /** Every hot button, in the order the editor's Add chips list them. */
-export const HOT_ORDER: HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'path', 'contours', 'pin', 'understory', 'lanes', 'bathy', 'radar']
+export const HOT_ORDER: HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'path', 'contours', 'pin', 'understory', 'lanes', 'bathy', 'radar', 'more']
+
+/** The buttons not in either column: Map buttons' tray, and what More opens. */
+export function trayOf(sets: { near: HotId[]; far: HotId[] }): HotId[] {
+  return HOT_ORDER.filter((id) => !sets.near.includes(id) && !sets.far.includes(id))
+}
 
 const HOLD_MS = 450
 

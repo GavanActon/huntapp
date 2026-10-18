@@ -2574,3 +2574,13 @@
 .wxstrip-stream-done {
   opacity: 0;
 }
+
+/* More's drawer: the tray's buttons, icon and name */
+.hd-more { display: inline-flex; align-items: center; gap: 10px; }
+/* Map buttons: what the tray is */
+.hotedit-note {
+  padding: 0 2px 8px;
+  font-size: calc(12.5px * var(--ui-scale));
+  line-height: 1.35;
+  color: var(--c-text-dim);
+}
