@@ -178,3 +178,10 @@ Done today for all six cases.
 files sit at the data root, base ""), then land (and lots where the file has features) into files.geo, places into
 pmtiles, coverage again, r2_sync per area. **Blanchard River is still to do: ParcelMap BC reloads on Sundays and the
 step refuses to run then — run it Monday 2026-10-19 or later.** bake_area --new lists land/lots/places by default now.
+
+**Licence questions open with Gavan (huntapp-79, 19:30; docs/OLD-ROADS.md, e7a745c local, Optimus's research).** Information
+only, nothing changed: Blanchard River's pack ships BC DRA and TRIM road lines ("Access Only"; TRIM says no redistribution);
+Esri's terms allow offline use only through Esri Content Packages, so Esri tiles saved into our own packs (Blanchard, Highland,
+both Clearwaters: the sharp:// cache) read as outside the terms for a paid app. Don't change published data until Gavan decides.
+Also noted: bc_vectors' TRIM trail codes, yt_vectors' imagery note and seismic-line filter, DATA-SOURCES on LIO rail, Ontario's
+road package now split passable / non-passable (a bake after 2026-10-06 reads the passable ones only).
