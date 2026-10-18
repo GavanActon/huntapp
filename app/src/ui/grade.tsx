@@ -121,7 +121,11 @@ export function hdItems(): HdItem[] {
       hot: 'lanes',
       layer: 'lanes',
       title: 'Shooting lanes',
-      line: point('lanes') ? 'Where you can see and shoot, measured from the LiDAR point cloud.' : "Where you can see and shoot, from this area's own bush model at 10 m.",
+      line: point('lanes')
+        ? 'Where you can see and shoot, measured from the LiDAR point cloud.'
+        : /stand scale/.test(ACTIVE_AREA.coverage?.pmtiles.lanes?.source ?? '')
+          ? 'Where the bush is open or thick, from the national bush model at 30 m: stand scale, not single lanes.'
+          : "Where you can see and shoot, from this area's own bush model at 10 m.",
       source: sourceOf('lanes'),
       sdNote: `${OFF}: no lanes yet.`,
     })

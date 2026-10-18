@@ -67,6 +67,7 @@
       "hillshade",
       "dem",
       "understory",
+      "lanes",
       "contoursWide",
       "historical"
     ],
@@ -113,45 +114,35 @@
   "coverage": {
     "checked": "2026-10-18",
     "pmtiles": {
-      "basemap": {
-        "missing": "not baked: the map draws the live NRCan base map"
-      },
+      "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
       "topo": {
         "file": "topo-clearwater-east.pmtiles",
         "bytes": 2152438,
         "source": "Toporama hypsography (contours and spot heights), NRCan WMS",
         "licence": "OGL-Canada"
       },
-      "satellite": {
-        "missing": "not in this area's maps"
-      },
+      "satellite": { "missing": "not in this area's maps" },
       "hillshade": {
         "file": "hillshade-clearwater-east.pmtiles",
         "bytes": 13137385,
         "source": "MRDEM 30 m hillshade, NRCan WMS",
         "licence": "OGL-Canada"
       },
-      "hillshadeLidar": {
-        "missing": "not in this area's maps"
-      },
+      "hillshadeLidar": { "missing": "not in this area's maps" },
       "dem": {
         "file": "dem-clearwater-east.pmtiles",
         "bytes": 9731530,
         "source": "MRDEM 30 m, with HRDEM 1 m LiDAR over the core (mrdem-30), NRCan",
         "licence": "OGL-Canada"
       },
-      "contours": {
-        "missing": "not in this area's maps"
-      },
+      "contours": { "missing": "not in this area's maps" },
       "contoursWide": {
         "file": "contours-wide-clearwater-east.pmtiles",
         "bytes": 338050,
         "source": "MRDEM 30 m DTM, NRCan",
         "licence": "OGL-Canada"
       },
-      "forest": {
-        "missing": "not in this area's maps"
-      },
+      "forest": { "missing": "not in this area's maps" },
       "understory": {
         "file": "understory-clearwater-east.pmtiles",
         "bytes": 13316175,
@@ -160,58 +151,34 @@
         "vintage": "imagery 2023-2025, model trained 2026-10-08"
       },
       "lanes": {
-        "missing": "not in this area's maps"
+        "file": "lanes-clearwater-east.pmtiles",
+        "bytes": 2581956,
+        "source": "The shooting lanes at stand scale from the national bush model at 30 m (docs/BUSH-MODEL.md): open and light ground clear, thicker bush shaded darker, faded where the model is unsure. A 30 m cell shows where the bush is open or thick, not a single lane. Modelled, not measured",
+        "licence": "Copernicus Sentinel data; JAXA ALOS PALSAR mosaic (free, attribution); OGL-Canada; CanLaD CC BY 4.0",
+        "vintage": "imagery 2023-2025, model trained 2026-10-08"
       },
-      "bathy": {
-        "missing": "not baked: lake depths are drawn from GeoJSON (depth)"
-      },
+      "bathy": { "missing": "not baked: lake depths are drawn from GeoJSON (depth)" },
       "historical": {
         "file": "historical-clearwater-east.pmtiles",
         "bytes": 10030507,
         "source": "CanMatrix2 1:50 000 NTS scans, NRCan: 083B02, 083B03, 083B06, 083B07",
         "licence": "OGL-Canada"
       },
-      "bathySheets": {
-        "missing": "not in this area's maps"
-      },
-      "places": {
-        "missing": "not in this area's maps"
-      }
+      "bathySheets": { "missing": "not in this area's maps" },
+      "places": { "missing": "not in this area's maps" }
     },
     "geo": {
-      "wmu": {
-        "missing": "not in this area's maps"
-      },
-      "camps": {
-        "missing": "not in this area's maps"
-      },
-      "crown": {
-        "missing": "not in this area's maps"
-      },
-      "parks": {
-        "missing": "not in this area's maps"
-      },
-      "bathy": {
-        "missing": "not in this area's maps"
-      },
-      "fire": {
-        "missing": "not in this area's maps"
-      },
-      "roads": {
-        "missing": "not in this area's maps"
-      },
-      "forest": {
-        "missing": "not in the maps as GeoJSON: the map reads the stands from the forest tiles, and the GeoJSON stays the bake's input"
-      },
-      "depth": {
-        "missing": "not in this area's maps"
-      }
+      "wmu": { "missing": "not in this area's maps" },
+      "camps": { "missing": "not in this area's maps" },
+      "crown": { "missing": "not in this area's maps" },
+      "parks": { "missing": "not in this area's maps" },
+      "bathy": { "missing": "not in this area's maps" },
+      "fire": { "missing": "not in this area's maps" },
+      "roads": { "missing": "not in this area's maps" },
+      "forest": { "missing": "not in the maps as GeoJSON: the map reads the stands from the forest tiles, and the GeoJSON stays the bake's input" },
+      "depth": { "missing": "not in this area's maps" }
     },
-    "baseGeo": {
-      "waterbody": {
-        "missing": "not in this area's maps"
-      }
-    },
+    "baseGeo": { "waterbody": { "missing": "not in this area's maps" } },
     "grids": {
       "habitat": {
         "file": "habitat-clearwater-east.hab",

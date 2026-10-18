@@ -136,14 +136,21 @@ def main(argv=None) -> None:
     # shaded darker (build_vegstructure.LANES_RAMP), faded where the model is
     # unsure. Only from an area's own model: its 10 m map can draw a lane; the
     # general model's 30 m cells cannot (Gavan, 2026-10-09, Blanchard River:
-    # "make sure the range system works in this location")
-    if local:
+    # "make sure the range system works in this location"). --lanes draws them
+    # from the general model anyway, at stand scale, the source saying so
+    # (Gavan, 2026-10-18, Clearwater: "well we're estimating the bush layer" — an
+    # estimate is better than a greyed button where no one will ever tap labels)
+    if local or "--lanes" in (argv or sys.argv):
         lp = OUT_DIR / f"lanes-{REGION['id']}.pmtiles"
         ls = write_raster_pmtiles(lp, f"lanes-{REGION['id']}", attribution, MINZOOM, CORE["maxzoom"], lambda zz, x, y: tile(zz, x, y, bv.LANES_RAMP), metadata={"bushModel": notes})
         print(f"wrote {lp.name}: {lp.stat().st_size / 1e6:.1f} MB, " + ", ".join(f"z{k} {v[0]}" for k, v in sorted(ls.items())))
         note_source(
             lp.name,
-            source=f"The shooting lanes from the area's own bush model at 10 m (bush/local.py): open and light ground clear, thicker bush shaded darker; learned from {notes.get('labels', '?')} labels tapped on the photo. Modelled, not measured",
+            source=(
+                f"The shooting lanes from the area's own bush model at 10 m (bush/local.py): open and light ground clear, thicker bush shaded darker; learned from {notes.get('labels', '?')} labels tapped on the photo. Modelled, not measured"
+                if local
+                else "The shooting lanes at stand scale from the national bush model at 30 m (docs/BUSH-MODEL.md): open and light ground clear, thicker bush shaded darker, faded where the model is unsure. A 30 m cell shows where the bush is open or thick, not a single lane. Modelled, not measured"
+            ),
             licence="Copernicus Sentinel data; JAXA ALOS PALSAR mosaic (free, attribution); OGL-Canada; CanLaD CC BY 4.0",
             vintage=f"imagery 2023-2025, model trained {notes.get('trained', '?')}",
         )
