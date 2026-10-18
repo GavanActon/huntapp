@@ -16,7 +16,7 @@ map UI thread the next day).
 
 | role | held by (2026-10-15) | does | does not |
 |---|---|---|---|
-| **PALM owner** (the referee), and from 2026-10-18 the **bake seat** | Hunter-Jay (was huntapp-jay / huntapp-0a), named by Gavan 2026-10-17 ~00:20; the bakes on his "Go" 2026-10-18 ~06:30 (vacant since huntapp-88 became Optimus); huntapp-c4 until then | the service, the cases, `pipeline/teacher/palm/`, the queue, the test set, the scorecard; the area bakes (HD: `bake_area.py`, the WindNinja kits; SD: `wind_tiles.py`, the national queue) and their publish | change app rules |
+| **PALM owner** (the referee), and from 2026-10-18 the **bake seat** | huntapp-c5 (Opus), on Gavan's word 2026-10-18 ~19:45; Hunter-Jay (Fable, was huntapp-0a) from 2026-10-17 ~00:20 until then, the bakes from 06:30; huntapp-c4 before | the service, the cases, `pipeline/teacher/palm/`, the queue, the test set, the scorecard; the area bakes (HD: `bake_area.py`, the WindNinja kits; SD: `wind_tiles.py`, the national queue) and their publish | change app rules |
 | **Rule builder** | huntapp-ba | the app's wind (`model.ts`) and scent (`scent.ts`) changes, each scored on the card as a `--patch`; from 2026-10-16 also the wind data around them: the station collector (`pipeline/stations/collect.py`, daily 07:00 on XEVO) and the tower work (`pipeline/towers/`) | edit the PALM kit, the queue or the card |
 
 **Handover:** only Gavan names the PALM owner. The outgoing owner updates the table above and the
