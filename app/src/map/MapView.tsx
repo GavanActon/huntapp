@@ -211,11 +211,19 @@ export default function MapView() {
         for (const k of SD_HIDDEN) available.delete(k)
         devlog('map', `shown as SD · left out ${SD_HIDDEN.join(', ') || 'nothing'}`)
       }
-      // the coverage index's archive, outside every area's folder (explore/coverage.ts)
+      // the archives outside every area's folder, read together: the coverage
+      // index (explore/coverage.ts) and the far band, the country zoomed out
+      // (sources.ts FAR_KEY). One after the other their two header reads were
+      // 0.85 s of a weak link's 3.1 s to the map (docs/VIEWS.md)
       const online = useAppStore.getState().online
-      if (online && (await registerDataFile(COVERAGE_KEY, COVERAGE_FILE, null, `${DATA_BASE}explore/${COVERAGE_FILE}`)) !== 'missing') available.add(COVERAGE_KEY)
-      // the far band's archive, the country zoomed out (sources.ts FAR_KEY), the same way
-      if (online && (await registerDataFile(FAR_KEY, FAR_FILE, null, `${DATA_BASE}far/${FAR_FILE}`)) !== 'missing') available.add(FAR_KEY)
+      if (online) {
+        const [coverage, far] = await Promise.all([
+          registerDataFile(COVERAGE_KEY, COVERAGE_FILE, null, `${DATA_BASE}explore/${COVERAGE_FILE}`),
+          registerDataFile(FAR_KEY, FAR_FILE, null, `${DATA_BASE}far/${FAR_FILE}`),
+        ])
+        if (coverage !== 'missing') available.add(COVERAGE_KEY)
+        if (far !== 'missing') available.add(FAR_KEY)
+      }
       if (cancelled) return
       geoUrls.clear()
       for (const [k, v] of geo) geoUrls.set(k, v)
