@@ -372,6 +372,16 @@ CASES = {
                              surface_heatflux=0.02, cthf=0.02,
                              series=dict(avg_s=600.0, from_s=1200.0, mask_dt=120.0),
                              why="the dawn as a series at the bog: the night's inversion with the ground warming 1 K/h for 3.5 h under the 175 morning wind; when P8-P10's pooled, drifting floor rejoins the wind (the dawn hunt's clock, felt drifting SE and SW)"),
+            # the same dawn under a light wind (Hunter-Jay 2026-10-18): dawn175t at 19 km/h at 80 m never pooled (the wind owned
+            # the floor from the first window), so the question "when does the pooled floor rejoin the wind" needs a dawn
+            # where the pool holds: 8 km/h at 80 m (a forecast-equivalent ~3.5 at 10 m), the same night profile and warming
+            "dawn175tl": dict(direction=175.0, speed_kph=8.0, zref_m=80.0, stability="stable", hours=3.5, average_s=600.0,
+                              theta_surface=284.5,
+                              theta_gradients=[(0.0, 4.0), (80.0, 0.5)],
+                              surface="rate", heating_rate=1.0,
+                              surface_heatflux=0.02, cthf=0.02,
+                              series=dict(avg_s=600.0, from_s=1200.0, mask_dt=120.0),
+                              why="the dawn as a series at the bog under a light wind (8 at 80 m): the pool held through the night; the window and the warming at which P8-P10's floor lets go of the drift and rejoins the wind"),
         },
     ),
     # Lac Bailey's north bank (Quebec): the 1 m LiDAR flown 2024 (QC-600023), a bank rising
