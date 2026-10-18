@@ -157,3 +157,16 @@ the list is exhausted). start-runners.ps1 refuses a fourth watcher. The runner w
 meta.json (meshCount, speedKph): edit meta.json, not run.cfg. Clearwater's 984k mesh failed moveDynamicMesh on the
 22.5°-off-axis directions (67.5° four times); 650k is the retry. build_windcfd.py collect --fill stands one missing
 direction in from its neighbours and says so.
+
+**A product slot's preemption leaves holds behind (10-18 15:30).** When the product slot took wn-runners-xonix3 it froze
+the CPU and GPU jobs by writing `queue/hold-<job>` files; those are removed when the product job ENDS, and a cmd job that
+starts watching runners never ends, so `--xonix on` at 06:16 left 250 (bog dawn series) and sdx-0022 frozen for nine more
+hours (status line "paused (frozen)", load 2). Fix by hand: `rm queue/hold-*`, drop `pipeline/raw/windcfd/drain-XONIC.txt`
+so the runners stop and the product job ends, and remove it before the next kit. The SD bake's own pause is a different
+file, `pipeline/raw/windcfd/sdtiles/xonix/PAUSE`.
+
+**The kit's case files go stale (15:45).** xonix's scent step (palm_to_scent.py on /mnt/z/surrogate/palm) reads the KIT's
+`<case>/case-<tag>.json`, not the repo's: 250's shipped "pickle-bogs_dawn175t_4m is not a run of pickle-bogs-4m" and the
+raw particles came over instead (6.9 GB, slow; XEVO's postprocess converts them with the repo's file). After every
+build_case, copy `<case>/case-*.json` (and build_case.py / palm_to_*.py when changed) into `pipeline/raw/windcfd/surrogate/palm/`.
+Done today for all six cases.
