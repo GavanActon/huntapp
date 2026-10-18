@@ -18,6 +18,7 @@ import { closeOnTapOff } from './tapPopup'
 import { attachTapWeather } from './tapWeather'
 import { hdOffer } from '../ui/grade'
 import { dist } from '../lengths'
+import { landLine, landRank } from './landClasses'
 
 /** A spot the popup is about (a link's, a Go to's): its title row, and the
  *  name Pin keeps it under. */
@@ -47,6 +48,20 @@ function fromYou(f: Fix, lon: number, lat: number): string {
   return `${dist(d)} ${compass((brg + 360) % 360)}`
 }
 
+/** Whose land at a point, as the Property lines draw it: "Private land ·
+ *  ask to hunt · Lot 5, Con 3 · approx.", or null with the layer off or
+ *  nothing there. Read off the drawn layers, so it says what the map shows. */
+function landAt(m: MlMap, lng: number, lat: number): string | null {
+  const ids = ['land-fill', 'lots-hit'].filter((id) => m.getLayer(id) && m.getLayoutProperty(id, 'visibility') !== 'none')
+  if (!ids.length) return null
+  const fs = m.queryRenderedFeatures(m.project([lng, lat]), { layers: ids })
+  const cls = fs.filter((f) => f.layer.id === 'land-fill').sort((a, b) => landRank(String(a.properties?.CLASS)) - landRank(String(b.properties?.CLASS)))[0]
+  const lot = fs.find((f) => f.layer.id === 'lots-hit')?.properties?.LABEL
+  const line = landLine(cls ? (cls.properties as { CLASS?: string; NAME?: string }) : null)
+  const parts = [line, typeof lot === 'string' && lot ? lot : null].filter(Boolean)
+  return parts.length ? `${parts.join(' · ')} · approx.` : null
+}
+
 /**
  * The info popup at a point, as a tap on the map puts it up (MapView): the
  * weather there, the score while the heat is on, then the actions. With a
@@ -72,6 +87,9 @@ export function showInfoPopup(m: MlMap, lngLat: { lng: number; lat: number }, he
     ? `<button class="pp-game pp-digin" type="button"><b class="pp-score pp-${spotGrade(why.score)}">${Math.round(why.score * 100)}</b><span>${esc(TARGET_NAMES[sp.target])} · ${esc(spotGradeWords(sp.target, why.score))}</span><i>Dig in ›</i></button>`
     : ''
   const titleHtml = head ? `<div class="pp-title">${esc(head.title)}</div>` : ''
+  // whose land, while Property lines are drawn: the class that says no first, and the lot
+  const land = landAt(m, lng, lat)
+  const landHtml = land ? `<div class="pp-land">${esc(land)}</div>` : ''
   const sitting = useScent.getState().people.length > 0
   const hunting = useViews.getState().mode === 'hunt'
   const out = outFix()
@@ -84,7 +102,7 @@ export function showInfoPopup(m: MlMap, lngLat: { lng: number; lat: number }, he
   // past the HD box, or where it is not installed: one quiet row at the foot (ui/grade.tsx hdOffer)
   const offer = hdOffer(lng, lat)
   const offerHtml = offer ? `<button class="pp-hd" type="button">${esc(offer.label)} ›</button>` : ''
-  el.innerHTML = `${titleHtml}<div class="depth-popup-wx"></div>${gameHtml}<div class="pp-acts">${acts}</div>${offerHtml}`
+  el.innerHTML = `${titleHtml}<div class="depth-popup-wx"></div>${landHtml}${gameHtml}<div class="pp-acts">${acts}</div>${offerHtml}`
   const popup = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, closeOnClick: false, offset: 8, maxWidth: '260px' })
     .setLngLat([lng, lat])
     .setDOMContent(el)

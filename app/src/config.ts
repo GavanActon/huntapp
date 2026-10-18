@@ -104,6 +104,7 @@ const PMTILES: (Omit<DataFileDef, 'file'> & { stem: string })[] = [
 const PLACES_WORDS: [string, (a: AreaDef) => string][] = [
   ['camps', () => 'camps'],
   ['wmu', (a) => (a.zone.label === a.zone.label.toUpperCase() ? `${a.zone.label}s` : `${a.zone.label.toLowerCase()}s`)],
+  ['land', () => 'property lines'],
   ['crown', () => 'private land'],
   ['parks', () => 'parks'],
   ['fire', () => 'burns'],
@@ -136,6 +137,8 @@ export function dataFiles(a: AreaDef): DataFileDef[] {
 const OTHER_LABELS: Record<string, string> = {
   'geo:camps': 'Crown land camps',
   'geo:crown': 'Private land',
+  'geo:land': 'Property lines: whose land',
+  'geo:lots': 'Property lines: lot outlines',
   'geo:parks': 'Parks',
   'geo:bathy': 'Lake bathymetry',
   'geo:fire': 'Burns',
@@ -165,7 +168,7 @@ export const DATA_FILES: DataFileDef[] = dataFiles(AREA)
 
 /** Vector themes the pipeline writes as GeoJSON (build_vectors.py). When a
  *  file is on the phone or the server it replaces the live LIO query. */
-const ALL_GEO_THEMES = ['wmu', 'camps', 'crown', 'parks', 'bathy', 'fire', 'roads', 'forest', 'depth'] as const
+const ALL_GEO_THEMES = ['wmu', 'camps', 'crown', 'land', 'lots', 'parks', 'bathy', 'fire', 'roads', 'forest', 'depth'] as const
 export type GeoTheme = (typeof ALL_GEO_THEMES)[number]
 const geoThemes = (a: AreaDef): GeoTheme[] => ALL_GEO_THEMES.filter((t) => a.files.geo.includes(t))
 export const GEO_THEMES: readonly GeoTheme[] = geoThemes(AREA)

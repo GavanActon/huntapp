@@ -62,7 +62,8 @@ const GROUPS: { title: string; defs: LayerDef[] }[] = [
       { key: 'camps', name: 'Camps', data: 'places', live: 'camps' },
       // the zone's word is the area's: WMU boundaries in Ontario, Zone boundaries in Quebec
       { key: 'wmu', name: `${ZONE.label} boundaries`, data: 'places', live: 'wmu' },
-      { key: 'crown', name: 'Private land', data: 'places', live: 'crown' },
+      // whose land: the property step's classes and lots where baked (map/landClasses.ts), else the old private land
+      { key: 'crown', name: GEO_THEMES.includes('land') ? 'Property lines' : 'Private land', data: 'places', live: 'crown' },
       { key: 'parks', name: 'Parks', data: 'places', live: 'parks' },
       { key: 'roads', name: 'Bush roads', data: 'places' },
     ],
@@ -76,6 +77,10 @@ const GROUPS: { title: string; defs: LayerDef[] }[] = [
     ],
   },
 ]
+
+/** The property lines' caveat (map/landClasses.ts): what they are and are not. */
+const PROPERTY_NOTE =
+  'Approximate, from government open data: not a survey, can be out of date or off by tens of metres (100 m in parts of Ontario). Land shown as Crown can still be leased or closed, and unmarked land can be private. Ask before you hunt private land, reserves or settlement land; check park rules.'
 
 const DEFS: Record<string, LayerDef> = Object.fromEntries(GROUPS.flatMap((g) => g.defs).map((d) => [d.key, d]))
 
@@ -222,6 +227,8 @@ export default function LayersSheet(): JSX.Element {
             <span className="numeral dim">{sat === 0 ? 'colour' : `${sat > 0 ? '+' : ''}${Math.round(sat * 100)}`}</span>
           </div>
         )}
+        {/* property lines are open data, not a survey: said while they are drawn */}
+        {d.key === 'crown' && on && GEO_THEMES.includes('land') && <div className="layers-note">{PROPERTY_NOTE}</div>}
       </Fragment>
     )
   }

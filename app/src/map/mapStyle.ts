@@ -6,6 +6,7 @@ import { FAR_ATTRIBUTION, FAR_HANDOFF, FAR_KEY, FAR_MAXZOOM, LIVE_RASTER, LIVE_V
 import type { ContourInterval, LayerOpacity, LayerVisibility } from '../state/appStore'
 import { COVERAGE_KEY, COVERAGE_SOURCE, coverageLayers, coverageSource } from '../explore/coverage'
 import { STREAM_PICTURES, STREAMED_LABEL_MAX_ANGLE, streamedContours, streamedDem, streamedImagery, viewLit } from './streamPictures'
+import { landColour } from './landClasses'
 
 /** The ground under everything: the bush, dark green. (A baked vector base map
  *  in a Protomaps style was planned and never built; its styling and the
@@ -874,7 +875,9 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   // per theme) when it exists, else from the live LIO GeoJSON query (an
   // Ontario area's only: elsewhere a theme not baked is left out).
   const vectors: LayerSpecification[] = []
-  type Theme = 'forest' | 'bathy' | 'wmu' | 'camps' | 'crown' | 'parks' | 'fire' | 'roads'
+  type Theme = 'forest' | 'bathy' | 'wmu' | 'camps' | 'crown' | 'parks' | 'fire' | 'roads' | 'land' | 'lots'
+  // the property lines ride the Private land switch
+  const groupOf = (t: Theme): keyof LayerVisibility => (t === 'land' || t === 'lots' ? 'crown' : t)
   const themeSource = (t: Theme): { source: string; 'source-layer'?: string } | null => {
     if (t === 'forest' && has('forest')) {
       sources.forest = archive('forest', { type: 'vector' })
@@ -891,11 +894,11 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
     const live = t in LIVE_VECTOR ? LIVE_VECTOR[t as keyof typeof LIVE_VECTOR] : undefined
     const baked = o.geo.get(t)
     if (baked) {
-      sources[`geo-${t}`] = { type: 'geojson', data: geoData(`geo-${t}`, baked, t), attribution: live?.attribution ?? ATTRIBUTION.vectors }
+      sources[`geo-${t}`] = { type: 'geojson', data: geoData(`geo-${t}`, baked, groupOf(t)), attribution: live?.attribution ?? ATTRIBUTION.vectors }
       return { source: `geo-${t}` }
     }
     if (!live) return null
-    sources[`live-${t}`] = { type: 'geojson', data: geoData(`live-${t}`, live.url, t), attribution: live.attribution }
+    sources[`live-${t}`] = { type: 'geojson', data: geoData(`live-${t}`, live.url, groupOf(t)), attribution: live.attribution }
     return { source: `live-${t}` }
   }
 
@@ -1012,8 +1015,63 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
     )
   }
 
+  // Property lines (map/landClasses.ts): whose land, by class, and the lot
+  // outlines, on the same switch as the old Private land. An area baked with
+  // them draws them in its place; an older pack keeps the crown fill.
+  const baked = (t: string) => o.geo.has(t) || ACTIVE_AREA.files.geo.includes(t)
+  const land = baked('land') ? themeSource('land') : null
+  if (land) {
+    vectors.push(
+      tag({ id: 'land-fill', type: 'fill', ...land, layout: vis(o.layers.crown), paint: { 'fill-color': landColour(0.16) } }, 'crown'),
+      tag(
+        {
+          id: 'land-line',
+          type: 'line',
+          ...land,
+          layout: vis(o.layers.crown),
+          paint: {
+            'line-color': landColour(0.75),
+            'line-width': ['match', ['get', 'CLASS'], 'closed', 2, 1.2],
+            // a guess is dashed: likely private
+            'line-dasharray': ['match', ['get', 'CLASS'], 'likely-private', ['literal', [3, 2]], ['literal', [1, 0]]],
+          },
+        },
+        'crown',
+      ),
+    )
+  }
+  const lots = baked('lots') ? themeSource('lots') : null
+  if (lots) {
+    vectors.push(
+      // the hit area the tap reads the lot's label from: no paint
+      tag({ id: 'lots-hit', type: 'fill', ...lots, minzoom: 12, layout: vis(o.layers.crown), paint: { 'fill-color': 'rgba(0,0,0,0)' } }, 'crown'),
+      tag(
+        {
+          id: 'lots-line',
+          type: 'line',
+          ...lots,
+          minzoom: 12,
+          layout: vis(o.layers.crown),
+          paint: { 'line-color': 'rgba(255,255,255,0.6)', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 0.6, 16, 1.3], 'line-dasharray': [4, 2] },
+        },
+        'crown',
+      ),
+      tag(
+        {
+          id: 'lots-label',
+          type: 'symbol',
+          ...lots,
+          minzoom: 15,
+          layout: { ...vis(o.layers.crown), 'text-field': ['get', 'LABEL'], 'text-font': FONT, 'text-size': 11, 'symbol-placement': 'point', 'text-max-width': 8 },
+          paint: { 'text-color': 'rgba(255,255,255,0.85)', 'text-halo-color': 'rgba(0,0,0,0.7)', 'text-halo-width': 1.2 },
+        },
+        'crown',
+      ),
+    )
+  }
+
   // Patented (private) land. Everything without a patent is Crown.
-  const crown = themeSource('crown')
+  const crown = land ? null : themeSource('crown')
   if (crown) {
     vectors.push(
       tag(

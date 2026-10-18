@@ -44,8 +44,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import area  # noqa: E402  (first: it takes --area out of argv)
 from common import CACHE_DIR, OUT_DIR, REGION  # noqa: E402
 
-if area.JURISDICTION != "YT":
-    raise SystemExit(f"{REGION['name']} is in {area.JURISDICTION}: these are the Yukon's sources")
+# (the Yukon-only check is in main(): build_property.py imports query() for
+# the strip of a BC area north of 60°, Blanchard River's)
 
 GY = "https://mapservices.gov.yk.ca/arcgis/rest/services/GeoYukon"
 LAYERS = {
@@ -88,14 +88,15 @@ def get_json(name: str, url: str, params: dict) -> dict:
 
 
 def query(name: str, layer: str, fields: str = "*") -> list[dict]:
-    """Every feature touching the region, as GeoJSON in lon/lat, page by page."""
+    """Every feature touching the region, as GeoJSON in lon/lat, page by page.
+    `layer` is a LAYERS key or a GeoYukon layer's URL."""
     w, s, e, n = REGION["west"], REGION["south"], REGION["east"], REGION["north"]
     feats: list[dict] = []
     offset = 0
     while True:
         j = get_json(
             f"{name}-{offset}",
-            f"{LAYERS[layer]}/query",
+            f"{LAYERS.get(layer, layer)}/query",
             {
                 "where": "1=1",
                 "geometry": f"{w},{s},{e},{n}",
@@ -221,6 +222,8 @@ THEMES = {"waterbody": waterbody, "watercourse": watercourse, "wetland": wetland
 
 
 def main() -> int:
+    if area.JURISDICTION != "YT":
+        raise SystemExit(f"{REGION['name']} is in {area.JURISDICTION}: these are the Yukon's sources")
     asked = [a for a in sys.argv[1:] if not a.startswith("-")] or list(THEMES)
     for t in asked:
         if t not in THEMES:

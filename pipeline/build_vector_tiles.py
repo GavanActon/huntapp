@@ -7,10 +7,12 @@ map's load back by seconds on the phone, 2026-10-01).
                             area's forest adapter: build_forest.py in Ontario)
                             and `forest_label`, a point per patch of one
                             wood type, in from the zoom its name fits at
-  places-<region>.pmtiles   layers wmu, camps, crown, parks, fire, roads
-                            from <theme>-<region>.geojson (the area's vector
-                            adapter: build_vectors.py in Ontario), less any
-                            theme the province's licence keeps out (WITHHELD)
+  places-<region>.pmtiles   layers wmu, camps, crown, land, lots, parks,
+                            fire, roads from <theme>-<region>.geojson (the
+                            area's vector adapter: build_vectors.py in
+                            Ontario; land and lots from build_property.py),
+                            less any theme the province's licence keeps out
+                            (WITHHELD)
 
 The app's style (mapStyle.ts) already prefers these archives when they
 exist (DATA_FILES keys `forest` and `places`, one source-layer per theme)
@@ -50,13 +52,16 @@ TILE_BUFFER_PX = 64
 
 ARCHIVES: dict[str, list[str]] = {
     "forest": ["forest"],
-    "places": ["wmu", "camps", "crown", "parks", "fire", "roads"],
+    # crown stays for the packs already out; land and lots are build_property.py's
+    "places": ["wmu", "camps", "crown", "land", "lots", "parks", "fire", "roads"],
 }
 # by the province whose adapters made the themes
 ATTRIBUTION = {
     "ON": {"forest": "FRI © Ontario Ministry of Natural Resources", "places": "© Ontario MNRF"},
     "QC": {"forest": "Carte écoforestière © Gouvernement du Québec", "places": "© Gouvernement du Québec"},
     "BC": {"forest": "VRI © Province of British Columbia", "places": "© Province of British Columbia"},
+    # no vector adapter in Alberta: its places are build_property.py's land and lots, with NRCan's reserves
+    "AB": {"places": "© Government of Alberta, NRCan"},
 }
 # Themes a province's archives never carry: only open data goes in a pack,
 # and Quebec's hunting zones state no licence (qc_vectors.wmu). Not read

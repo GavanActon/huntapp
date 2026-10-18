@@ -207,6 +207,9 @@ def plan(a: dict) -> list[Step]:
     return [
         Step("rasters", "3.14", [["rasters.py"]]),
         adapter_step("vectors", "vectors", a),
+        # who holds the land and the lot lines (land-<id>, lots-<id>), from the province's open
+        # sources and NRCan's, for every province: one script, the federal layers are shared
+        Step("property", "3.14", [["build_property.py", "--area", a["id"]]]),
         adapter_step("forest", "forest", a),
         Step("topo", "3.14", [["build_tiles.py", *topo]]),
         Step(
@@ -465,8 +468,30 @@ def bake(args) -> int:
 
 # ---- the coverage report --------------------------------------------------
 
-OGL_ON, OGL_CA, CC_BY, OGL_YT, OGL_BC = "OGL-Ontario", "OGL-Canada", "CC BY 4.0", "OGL-Yukon", "OGL-BC"
+OGL_ON, OGL_CA, CC_BY, OGL_YT, OGL_BC, OGL_AB = "OGL-Ontario", "OGL-Canada", "CC BY 4.0", "OGL-Yukon", "OGL-BC", "OGL-Alberta"
 DERIVED = "derived from the layers above"
+# build_property.py's land and lots by province, (land, lots); its own
+# provenance notes replace these field by field. NRCan's reserves and
+# national parks are in every province's land.
+PROPERTY_SOURCES = {
+    "ON": (
+        {"source": "LIO: patent land by title holder, provincial parks, conservation reserves, Crown game preserves, federal land, Crown dispositions; NRCan reserves", "licence": f"{OGL_ON}; {OGL_CA}"},
+        {"source": "Lot Fabric Improved (within 100 m), LIO", "licence": OGL_ON},
+    ),
+    "BC": (
+        {"source": "ParcelMap BC parcels by owner type, parks and Crown tenures (TANTALIS); NRCan reserves", "licence": f"{OGL_BC}; {OGL_CA}"},
+        {"source": "ParcelMap BC parcel fabric, public view", "licence": OGL_BC},
+    ),
+    "YT": (
+        {"source": "GeoYukon: First Nation settlement land, wildlife sanctuaries, parks, leases; NRCan national parks", "licence": f"{OGL_YT}; {OGL_CA}"},
+        {"source": "Land Parcels - Surveyed, GeoYukon", "licence": f"{OGL_YT}; {OGL_CA}"},
+    ),
+    "AB": (
+        {"source": "Alberta parks and protected areas, Métis settlements, White Area quarter sections as likely private; NRCan reserves", "licence": f"{OGL_AB}; {OGL_CA}"},
+        {"source": "ATS v4.1 quarter sections, Government of Alberta", "licence": OGL_AB},
+    ),
+    "QC": ({"source": "Territoires récréatifs du Québec (TRQ) read for hunting, MRNF; NRCan reserves", "licence": f"{CC_BY}; {OGL_CA}"}, None),
+}
 PGC = "ArcticDEM: free, cite PGC (NSF OPP awards)"
 # The app's layer keys (the "files" of an area file) and, for each, the
 # file's name before "-<id>" and the step that makes it (to say why a layer
@@ -488,7 +513,19 @@ PMTILES = {
     "bathySheets": ("bathysheets", "lake-sheets"),
     "places": ("places", "vector-tiles"),
 }
-GEO = {"wmu": "vectors", "camps": "vectors", "crown": "vectors", "parks": "vectors", "bathy": "vectors", "fire": "vectors", "roads": "vectors", "forest": "forest", "depth": "depth-bands"}
+GEO = {
+    "wmu": "vectors",
+    "camps": "vectors",
+    "crown": "vectors",
+    "land": "property",
+    "lots": "property",
+    "parks": "vectors",
+    "bathy": "vectors",
+    "fire": "vectors",
+    "roads": "vectors",
+    "forest": "forest",
+    "depth": "depth-bands",
+}
 BASE_GEO = {"waterbody": "vectors"}
 GRIDS = {"habitat": "habitat", "micro": "micro", "going": "going", "micro-sd": "micro-sd"}
 NEVER_BAKED = {
@@ -500,6 +537,7 @@ NOT_IN = {  # layers a province has no source for, or none open
         ("geo", "wmu"): "not in the maps: the hunting zones' only source (SmartFaune) states no licence, so the area file names the zone instead",
         ("geo", "camps"): "Ontario only: Crown land camps come from LIO",
         ("geo", "crown"): "Ontario only: Crown land comes from LIO",
+        ("geo", "lots"): "no open lot lines: Quebec's cadastre states no licence, and baking it needs the MRNF's written permission",
         ("geo", "bathy"): "Ontario only: lake bathymetry comes from LIO",
         ("geo", "depth"): "Ontario only: lake depths need the ARA lake facts and the MNR sheets",
         ("pmtiles", "bathySheets"): "Ontario only: MNR lake survey sheets",
@@ -630,6 +668,8 @@ def known_sources(a: dict, lidar: list[str], pc_years: str | None) -> dict[tuple
             ("geo", "forest"): eco,
             ("baseGeo", "waterbody"): {"source": "GRHQ lakes, MRNF", "licence": CC_BY},
         }
+    land, lots = PROPERTY_SOURCES.get(a["jurisdiction"], (None, None))
+    out |= {k: v for k, v in ((("geo", "land"), land), (("geo", "lots"), lots)) if v}
     return out
 
 
