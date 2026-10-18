@@ -127,7 +127,8 @@
       "fire",
       "roads",
       "forest",
-      "depth"
+      "depth",
+      "land"
     ],
     "baseGeo": [
       "waterbody"
@@ -259,7 +260,12 @@
         "licence": "OGL-Ontario"
       },
       "crown": { "file": "crown-pickle-lake.geojson", "bytes": 72, "source": "Crown land, LIO", "licence": "OGL-Ontario" },
-      "land": { "missing": "not in this area's maps" },
+      "land": {
+        "file": "land-pickle-lake.geojson",
+        "bytes": 1582,
+        "source": "Provincial Park Regulated, LIO; Crown Land, MNR Non-Freehold Dispositions (leases, licences of occupation, land use permits; no holders), LIO",
+        "licence": "OGL-Ontario"
+      },
       "lots": { "missing": "not in this area's maps" },
       "parks": { "file": "parks-pickle-lake.geojson", "bytes": 13203, "source": "Provincial parks, LIO", "licence": "OGL-Ontario" },
       "bathy": { "file": "bathy-pickle-lake.geojson", "bytes": 67, "source": "Lake bathymetry lines, LIO", "licence": "OGL-Ontario" },
