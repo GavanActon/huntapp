@@ -134,7 +134,7 @@ export function hdItems(): HdItem[] {
       hot: 'lanes',
       layer: 'lanes',
       title: 'Shooting lanes: not here',
-      line: 'No LiDAR point cloud has been flown over this ground, so no lanes could be measured; the bush here is the national model's.',
+      line: "No LiDAR point cloud has been flown over this ground, so no lanes could be measured; the bush here is the national model's.",
       absent: true,
     })
   }
