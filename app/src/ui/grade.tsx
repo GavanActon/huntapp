@@ -52,6 +52,8 @@ export interface HdItem {
   source?: string
   /** how it stands while HD is not installed here */
   sdNote?: string
+  /** an HD area without it (no point cloud was flown: Clearwater's lanes): listed so the button can say why, never shown */
+  absent?: boolean
 }
 
 const point = (key: string) => /LiDAR|point cloud/i.test(ACTIVE_AREA.coverage?.pmtiles[key]?.source ?? '')
@@ -123,6 +125,18 @@ export function hdItems(): HdItem[] {
       source: sourceOf('lanes'),
       sdNote: `${OFF}: no lanes yet.`,
     })
+  } else {
+    // HD without a point cloud (Clearwater, AB): the Lanes button is greyed and a tap lands here
+    // (Gavan, 2026-10-17: "pressing ranges doesn't bring up HD… grey it out when it's not avail")
+    out.push({
+      id: 'lanes',
+      key: 'lanes',
+      hot: 'lanes',
+      layer: 'lanes',
+      title: 'Shooting lanes: not here',
+      line: 'No LiDAR point cloud has been flown over this ground, so no lanes could be measured; the bush here is the national model's.',
+      absent: true,
+    })
   }
   if (bushMeasured()) {
     out.push({
@@ -147,7 +161,11 @@ export function offInSd(it: HdItem): boolean {
 }
 
 /** The buttons HD powers here, by hot button id (an HD area only, installed or not). */
-const HD_HOT: Map<string, HdItem> = new Map(areaGrade() === 'hd' ? hdItems().filter((i) => i.hot).map((i) => [i.hot!, i]) : [])
+const HD_HOT: Map<string, HdItem> = new Map(areaGrade() === 'hd' ? hdItems().filter((i) => i.hot && !i.absent).map((i) => [i.hot!, i]) : [])
+
+/** The layer files a hot button draws from; without the file the button is greyed and a tap opens the grade sheet. */
+const HOT_FILES: Record<string, string> = { lanes: 'lanes', understory: 'understory' }
+export const hotAbsent = (id: string): boolean => id in HOT_FILES && !has(HOT_FILES[id])
 
 /** What a hot button's tap does, and a layer row's tab: `hd`, the HD bake
  *  powers it here; `want`, HD would add it and a tap opens what HD gives
@@ -168,7 +186,7 @@ export function layerMark(key: keyof LayerVisibility): HdMark {
   if (GRADE === 'hd') {
     if (key === 'hillshade') return has('hillshadeLidar') ? 'hd' : null
     if (key === 'contours') return has('contours') ? 'hd' : null
-    if (key === 'lanes') return has('lanes') ? 'hd' : null
+    if (key === 'lanes') return has('lanes') ? 'hd' : 'want'
     if (key === 'understory') return bushMeasured() ? 'hd' : null
     return null
   }

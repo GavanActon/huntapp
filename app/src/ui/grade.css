@@ -86,6 +86,17 @@
   box-shadow: var(--shadow-fab), 0 0 10px 1px rgba(var(--c-hd-rgb), 0.24);
 }
 
+/* a hot button whose layer was never baked here (no point cloud: no lanes): greyed, a tap opens the grade sheet */
+.fab.hotbtn.grade-off {
+  opacity: 0.45;
+}
+.grade-row.grade-absent {
+  opacity: 0.72;
+}
+.grade-row.grade-absent > .grade-tab {
+  opacity: 0.4;
+}
+
 /* the weather strip in the same outline while the view is HD */
 .wxstrip {
   transition: border-color 0.35s ease, box-shadow 0.35s ease;

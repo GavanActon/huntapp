@@ -44,7 +44,7 @@ export default function GradeSheet({ focus }: { focus?: string }): JSX.Element {
   function row(it: HdItem): JSX.Element {
     const isFocus = !!focus && (focus === it.hot || focus === it.id || focus === it.layer)
     return (
-      <div key={it.id} ref={isFocus ? focused : undefined} className={`grade-row${isFocus ? ' grade-focus' : ''}`}>
+      <div key={it.id} ref={isFocus ? focused : undefined} className={`grade-row${isFocus ? ' grade-focus' : ''}${it.absent ? ' grade-absent' : ''}`}>
         <span className={`grade-tab ${gold ? 'grade-tab-hd' : 'grade-tab-want'}`} aria-hidden="true">
           HD
         </span>
@@ -54,7 +54,7 @@ export default function GradeSheet({ focus }: { focus?: string }): JSX.Element {
           {SD_PREVIEW && it.sdNote && offInSd(it) && <span className="dim">{it.sdNote}</span>}
           {it.source && <small className="dim">{it.source}</small>}
         </div>
-        {gold && it.layer && (
+        {gold && it.layer && !it.absent && (
           <button type="button" className="grade-show" onClick={() => showHdLayer(it)}>
             Show
           </button>

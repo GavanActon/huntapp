@@ -11,7 +11,7 @@ import { useAppStore, type HotId, type LayerVisibility } from '../state/appStore
 import { usePlacesStore } from '../state/placesStore'
 import { useGpsStore } from '../tracking/gpsStore'
 import { useScent } from '../weather/micro/scent'
-import { HotDot, hotMark, openGrade } from './grade'
+import { HotDot, hotAbsent, hotMark, openGrade } from './grade'
 import { useHeardForm } from './HeardCard'
 import { useCheckForm } from './WindCheckCard'
 import { IconBush, IconContour, IconDepth, IconEar, IconLanes, IconPath, IconPin, IconPowder, IconRadar, IconRoute, IconRuler, IconScent, IconWind } from './icons'
@@ -172,6 +172,8 @@ export function HotButton({ id, onHold, onTap }: { id: HotId; onHold: () => void
   const labels = useAppStore((s) => s.buttonLabels)
   // HD would add it here (want): a tap says what HD gives. The ring (HotDot) is gold while the view is HD
   const hd = hotMark(id)
+  // its layer was never baked here (an HD area with no point cloud has no lanes): greyed, and a tap says why
+  const absent = hotAbsent(id)
   const timer = useRef(0)
   const held = useRef(false)
   const down = () => {
@@ -186,7 +188,7 @@ export function HotButton({ id, onHold, onTap }: { id: HotId; onHold: () => void
   const up = () => window.clearTimeout(timer.current)
   return (
     <button
-      className={`fab hotbtn${on ? ' active' : ''}${labels ? '' : ' no-label'}${hd === 'want' ? ' grade-want' : ''}`}
+      className={`fab hotbtn${on ? ' active' : ''}${labels ? '' : ' no-label'}${hd === 'want' ? ' grade-want' : ''}${absent ? ' grade-off' : ''}`}
       data-hot={id}
       onPointerDown={down}
       onPointerUp={up}
@@ -195,7 +197,7 @@ export function HotButton({ id, onHold, onTap }: { id: HotId; onHold: () => void
       onContextMenu={(e) => e.preventDefault()}
       onClick={() => {
         if (held.current) return (held.current = false)
-        if (hd === 'want') return openGrade(id)
+        if (hd === 'want' || absent) return openGrade(id)
         ;(onTap ?? d.onTap)()
       }}
       aria-pressed={on}
