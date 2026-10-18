@@ -902,6 +902,12 @@ def new_area(args) -> str:
     if no_lidar:  # the MRDEM's relief alone: its hillshade and its contours; the bush stays, the
         # national model's (pipeline/bush/render.py), modelled not measured (Clearwater, 2026-10-17)
         files["pmtiles"] = [k for k in files["pmtiles"] if k not in ("hillshadeLidar", "contours", "lanes")]
+    # whose land and the lot lines (build_property.py, the property step) are in every bake: listed where the
+    # province has an open source, with the places archive they are packed into (huntapp-79, 2026-10-18)
+    land, lots = PROPERTY_SOURCES.get(j, (None, None))
+    files["geo"] = list(files.get("geo", [])) + [k for k, v in (("land", land), ("lots", lots)) if v and k not in files.get("geo", [])]
+    if "places" not in files["pmtiles"]:
+        files["pmtiles"] = files["pmtiles"] + ["places"]
     if args.sd:  # the bush model's understory stands in for the point cloud's; one wind grid
         files["pmtiles"] = [k for k in files["pmtiles"] if k != "contoursWide"] + ["understory", "contoursWide"]
         files["grids"] = [g for g in files.get("grids", []) if g != "micro-sd"]

@@ -69,9 +69,13 @@
       "understory",
       "lanes",
       "contoursWide",
-      "historical"
+      "historical",
+      "places"
     ],
-    "geo": [],
+    "geo": [
+      "land",
+      "lots"
+    ],
     "baseGeo": [],
     "grids": [
       "habitat",
@@ -165,12 +169,24 @@
         "licence": "OGL-Canada"
       },
       "bathySheets": { "missing": "not in this area's maps" },
-      "places": { "missing": "not in this area's maps" }
+      "places": { "file": "places-clearwater-east.pmtiles", "bytes": 158144 }
     },
     "geo": {
       "wmu": { "missing": "not in this area's maps" },
       "camps": { "missing": "not in this area's maps" },
       "crown": { "missing": "not in this area's maps" },
+      "land": {
+        "file": "land-clearwater-east.geojson",
+        "bytes": 121849,
+        "source": "Aboriginal Lands of Canada and National Parks legislative boundaries, NRCan Surveyor General (CLSS); Parks and Protected Areas of Alberta; White Area quarter sections no public layer covers (ATS v4.1 and Green/White Area), Government of Alberta",
+        "licence": "OGL-Canada; OGL-Alberta"
+      },
+      "lots": {
+        "file": "lots-clearwater-east.geojson",
+        "bytes": 105950,
+        "source": "Alberta Township System v4.1 quarter sections, Government of Alberta",
+        "licence": "OGL-Alberta"
+      },
       "parks": { "missing": "not in this area's maps" },
       "bathy": { "missing": "not in this area's maps" },
       "fire": { "missing": "not in this area's maps" },

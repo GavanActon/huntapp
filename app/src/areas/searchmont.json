@@ -2,19 +2,52 @@
   "id": "searchmont",
   "name": "Searchmont",
   "jurisdiction": "ON",
-  "centre": [-84.0402, 46.77327],
-  "home": { "center": [-84.0402, 46.77327], "zoom": 13 },
-  "region": { "west": -84.154, "south": 46.698, "east": -83.926, "north": 46.849 },
-  "core": { "west": -84.0884, "south": 46.74303, "east": -83.992, "north": 46.80351, "maxzoom": 16 },
+  "centre": [
+    -84.0402,
+    46.77327
+  ],
+  "home": {
+    "center": [
+      -84.0402,
+      46.77327
+    ],
+    "zoom": 13
+  },
+  "region": {
+    "west": -84.154,
+    "south": 46.698,
+    "east": -83.926,
+    "north": 46.849
+  },
+  "core": {
+    "west": -84.0884,
+    "south": 46.74303,
+    "east": -83.992,
+    "north": 46.80351,
+    "maxzoom": 16
+  },
   "regionMaxzoom": 13,
   "declination": -7.6,
   "timezone": "America/Toronto",
-  "zone": { "label": "WMU", "name": "36" },
-  "relief": [226, 480],
+  "zone": {
+    "label": "WMU",
+    "name": "36"
+  },
+  "relief": [
+    226,
+    480
+  ],
   "base": "areas/searchmont/",
   "surveyedLakes": [],
-  "live": { "lio": true, "satellite": "lio" },
-  "attribution": { "vectors": "© Ontario MNRF", "lakes": "© Ontario MNRF", "bush": "" },
+  "live": {
+    "lio": true,
+    "satellite": "lio"
+  },
+  "attribution": {
+    "vectors": "© Ontario MNRF",
+    "lakes": "© Ontario MNRF",
+    "bush": ""
+  },
   "presets": [
     {
       "name": "Searchmont",
@@ -28,25 +61,63 @@
     "description": "Topo, imagery, 30 m relief and contours, forest stands, water, roads, and the habitat, surrogate wind and going grids around Searchmont; full detail over the 7.3 x 6.7 km box asked for."
   },
   "files": {
-    "pmtiles": ["topo", "satellite", "hillshade", "dem", "forest", "historical", "places", "understory", "contoursWide"],
-    "geo": ["wmu", "camps", "crown", "parks", "bathy", "fire", "roads", "forest", "depth"],
-    "baseGeo": ["waterbody"],
-    "grids": ["habitat", "micro", "going"]
+    "pmtiles": [
+      "topo",
+      "satellite",
+      "hillshade",
+      "dem",
+      "forest",
+      "historical",
+      "places",
+      "understory",
+      "contoursWide"
+    ],
+    "geo": [
+      "wmu",
+      "camps",
+      "crown",
+      "parks",
+      "bathy",
+      "fire",
+      "roads",
+      "forest",
+      "depth",
+      "land",
+      "lots"
+    ],
+    "baseGeo": [
+      "waterbody"
+    ],
+    "grids": [
+      "habitat",
+      "micro",
+      "going"
+    ]
   },
   "bake": {
     "outDir": "app/public/data/areas/searchmont",
     "hrdem": [],
     "lidar": "none",
     "vectors": "on.lio",
-    "forest": { "adapter": "on.fri", "gdb": "raw/fri/pp_FRI_FIMv2_AlgomaForest_2013_2D.gdb", "crs": null, "vintage": "2013 (Algoma Forest)" },
+    "forest": {
+      "adapter": "on.fri",
+      "gdb": "raw/fri/pp_FRI_FIMv2_AlgomaForest_2013_2D.gdb",
+      "crs": null,
+      "vintage": "2013 (Algoma Forest)"
+    },
     "imagery": "on.oiwms",
     "pointcloud": null,
     "wind": "sd",
-    "nts": ["041J12", "041J13", "041K09", "041K16"],
+    "nts": [
+      "041J12",
+      "041J13",
+      "041K09",
+      "041K16"
+    ],
     "sdRun": "all"
   },
   "coverage": {
-    "checked": "2026-10-10",
+    "checked": "2026-10-18",
     "pmtiles": {
       "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
       "topo": {
@@ -96,7 +167,7 @@
       "bathySheets": { "missing": "not in this area's maps" },
       "places": {
         "file": "places-searchmont.pmtiles",
-        "bytes": 127279,
+        "bytes": 207174,
         "source": "LIO: WMUs, Crown land camps, Crown land, parks, burns and roads",
         "licence": "OGL-Ontario"
       }
@@ -110,6 +181,18 @@
         "licence": "OGL-Ontario"
       },
       "crown": { "file": "crown-searchmont.geojson", "bytes": 307921, "source": "Crown land, LIO", "licence": "OGL-Ontario" },
+      "land": {
+        "file": "land-searchmont.geojson",
+        "bytes": 106709,
+        "source": "Patent Land External (Crown vs patent, by title holder type), LIO; Provincial Park Regulated, LIO; Conservation Reserve Regulated, LIO; Crown Land, MNR Non-Freehold Dispositions (leases, licences of occupation, land use permits; no holders), LIO",
+        "licence": "OGL-Ontario"
+      },
+      "lots": {
+        "file": "lots-searchmont.geojson",
+        "bytes": 116753,
+        "source": "Lot Fabric Improved (original Crown survey lots, within 100 m), LIO",
+        "licence": "OGL-Ontario"
+      },
       "parks": { "file": "parks-searchmont.geojson", "bytes": 322946, "source": "Provincial parks, LIO", "licence": "OGL-Ontario" },
       "bathy": { "file": "bathy-searchmont.geojson", "bytes": 6045429, "source": "Lake bathymetry lines, LIO", "licence": "OGL-Ontario" },
       "fire": { "file": "fire-searchmont.geojson", "bytes": 73, "source": "Fire disturbance areas, LIO", "licence": "OGL-Ontario" },
@@ -122,7 +205,10 @@
         "vintage": "2013 (Algoma Forest)"
       },
       "depth": {
-        "missing": "depth-bands step failed: FileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\dev\\\\huntapp\\\\app\\\\public\\\\data\\\\areas\\\\searchmont\\\\habitat-searchmont.hab'"
+        "file": "depth-searchmont.geojson",
+        "bytes": 344445,
+        "source": "depth bands: the MNR survey sheets where a lake was surveyed, else a shore-distance model",
+        "licence": "OGL-Ontario"
       }
     },
     "baseGeo": {
@@ -134,12 +220,26 @@
       }
     },
     "grids": {
-      "habitat": { "missing": "habitat step skipped: forest failed" },
+      "habitat": {
+        "file": "habitat-searchmont.hab",
+        "bytes": 2695292,
+        "source": "derived: MRDEM, NRCan 2020 land cover, forest stands, water, wetlands, roads and burns",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-10"
+      },
       "micro": {
-        "missing": "micro step failed: FileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\dev\\\\huntapp\\\\app\\\\public\\\\data\\\\areas\\\\searchmont\\\\habitat-searchmont.hab'"
+        "file": "micro-searchmont.hab",
+        "bytes": 6930972,
+        "source": "derived: the habitat grid and the MRDEM, with the surrogate net's terrain wind (build_windsd.py; no WindNinja run in an SD area)",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-11"
       },
       "going": {
-        "missing": "going step failed: FileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\dev\\\\huntapp\\\\app\\\\public\\\\data\\\\areas\\\\searchmont\\\\habitat-searchmont.hab'"
+        "file": "going-searchmont.hab",
+        "bytes": 1124232,
+        "source": "derived: HRDEM LiDAR, point-cloud bush or the forest-map estimate, water, wetlands and roads",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-10"
       },
       "micro-sd": { "missing": "not in this area's maps" }
     }
@@ -147,8 +247,17 @@
   "profile": {
     "checked": "2026-10-10",
     "treeline": null,
-    "ecoregion": { "cec1": "5", "cec2": "5.2", "cec3": "5.2.3", "name": "Algonquin/Southern Laurentians", "family": "Mixed Wood Shield" },
+    "ecoregion": {
+      "cec1": "5",
+      "cec2": "5.2",
+      "cec3": "5.2.3",
+      "name": "Algonquin/Southern Laurentians",
+      "family": "Mixed Wood Shield"
+    },
     "north": false,
-    "stands": { "shrubHeight": false, "leadSpecies": true }
+    "stands": {
+      "shrubHeight": false,
+      "leadSpecies": true
+    }
   }
 }

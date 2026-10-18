@@ -2,20 +2,61 @@
   "id": "sault-test",
   "name": "Sault test",
   "jurisdiction": "ON",
-  "centre": [-84.4949169, 46.4727536],
-  "home": { "center": [-84.4949169, 46.4727536], "zoom": 13 },
-  "region": { "west": -84.619, "south": 46.403, "east": -84.371, "north": 46.543 },
-  "core": { "west": -84.521, "south": 46.455, "east": -84.469, "north": 46.491, "maxzoom": 16 },
+  "centre": [
+    -84.4949169,
+    46.4727536
+  ],
+  "home": {
+    "center": [
+      -84.4949169,
+      46.4727536
+    ],
+    "zoom": 13
+  },
+  "region": {
+    "west": -84.619,
+    "south": 46.403,
+    "east": -84.371,
+    "north": 46.543
+  },
+  "core": {
+    "west": -84.521,
+    "south": 46.455,
+    "east": -84.469,
+    "north": 46.491,
+    "maxzoom": 16
+  },
   "regionMaxzoom": 13,
   "declination": -7.2,
   "timezone": "America/Toronto",
-  "zone": { "label": "WMU", "name": "36" },
-  "relief": [176, 199],
+  "zone": {
+    "label": "WMU",
+    "name": "36"
+  },
+  "relief": [
+    176,
+    199
+  ],
   "base": "areas/sault-test/",
   "surveyedLakes": [],
-  "live": { "lio": true, "satellite": "lio" },
-  "attribution": { "vectors": "© Ontario MNRF", "lakes": "© Ontario MNRF", "bush": "FRI LiDAR © Ontario MNR" },
-  "presets": [{ "name": "Requested spot", "lon": -84.4949169, "lat": 46.4727536, "kind": "stand", "note": "Area requested 2026-10-04" }],
+  "live": {
+    "lio": true,
+    "satellite": "lio"
+  },
+  "attribution": {
+    "vectors": "© Ontario MNRF",
+    "lakes": "© Ontario MNRF",
+    "bush": "FRI LiDAR © Ontario MNR"
+  },
+  "presets": [
+    {
+      "name": "Requested spot",
+      "lon": -84.4949169,
+      "lat": 46.4727536,
+      "kind": "stand",
+      "note": "Area requested 2026-10-04"
+    }
+  ],
   "bundle": {
     "description": "Topo, imagery, LiDAR relief and contours, LiDAR bush and shooting lanes, forest stands inferred from the national forest maps, water, roads, and the habitat, wind and going grids around the test spot west of Sault Ste. Marie; full detail within 2 km of it."
   },
@@ -34,9 +75,27 @@
       "historical",
       "places"
     ],
-    "geo": ["wmu", "camps", "crown", "parks", "bathy", "fire", "roads", "depth"],
-    "baseGeo": ["waterbody"],
-    "grids": ["habitat", "micro", "micro-sd", "going"]
+    "geo": [
+      "wmu",
+      "camps",
+      "crown",
+      "parks",
+      "bathy",
+      "fire",
+      "roads",
+      "depth",
+      "land",
+      "lots"
+    ],
+    "baseGeo": [
+      "waterbody"
+    ],
+    "grids": [
+      "habitat",
+      "micro",
+      "micro-sd",
+      "going"
+    ]
   },
   "bake": {
     "outDir": "app/public/data/areas/sault-test",
@@ -53,10 +112,14 @@
     },
     "imagery": "on.oiwms",
     "pointcloud": "on.fri_leafon",
-    "nts": ["041K08", "041K09", "041K10"]
+    "nts": [
+      "041K08",
+      "041K09",
+      "041K10"
+    ]
   },
   "coverage": {
-    "checked": "2026-10-07",
+    "checked": "2026-10-18",
     "pmtiles": {
       "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
       "topo": {
@@ -82,7 +145,7 @@
       },
       "dem": {
         "file": "dem-sault-test.pmtiles",
-        "bytes": 3641715,
+        "bytes": 3638762,
         "source": "MRDEM 30 m, with HRDEM 1 m LiDAR over the core (ON-Sault_SteMarie_UTM16_2024-1m, gaps filled from ON-SPL_ON_St_Marys_River_UTM16_2023-1m, ON-SPL_ON_Blind_River_UTM16_2022-1m), NRCan",
         "licence": "OGL-Canada",
         "vintage": "2024, gaps 2023, 2022"
@@ -126,7 +189,7 @@
       "bathySheets": { "missing": "not in this area's maps" },
       "places": {
         "file": "places-sault-test.pmtiles",
-        "bytes": 34250,
+        "bytes": 71021,
         "source": "LIO: WMUs, Crown land camps, Crown land, parks, burns and roads",
         "licence": "OGL-Ontario"
       }
@@ -140,6 +203,18 @@
         "licence": "OGL-Ontario"
       },
       "crown": { "file": "crown-sault-test.geojson", "bytes": 217746, "source": "Crown land, LIO", "licence": "OGL-Ontario" },
+      "land": {
+        "file": "land-sault-test.geojson",
+        "bytes": 45949,
+        "source": "Patent Land External (Crown vs patent, by title holder type), LIO; Federal Land Other, National Wildlife Area and Federal Protected Area, LIO; Crown Land, MNR Non-Freehold Dispositions (leases, licences of occupation, land use permits; no holders), LIO",
+        "licence": "OGL-Ontario"
+      },
+      "lots": {
+        "file": "lots-sault-test.geojson",
+        "bytes": 56604,
+        "source": "Lot Fabric Improved (original Crown survey lots, within 100 m), LIO",
+        "licence": "OGL-Ontario"
+      },
       "parks": { "file": "parks-sault-test.geojson", "bytes": 77, "source": "Provincial parks, LIO", "licence": "OGL-Ontario" },
       "bathy": { "file": "bathy-sault-test.geojson", "bytes": 67, "source": "Lake bathymetry lines, LIO", "licence": "OGL-Ontario" },
       "fire": { "file": "fire-sault-test.geojson", "bytes": 73, "source": "Fire disturbance areas, LIO", "licence": "OGL-Ontario" },
@@ -182,6 +257,13 @@
         "source": "derived: HRDEM LiDAR, point-cloud bush or the forest-map estimate, water, wetlands and roads",
         "licence": "derived from the layers above",
         "vintage": "generated 2026-10-04"
+      },
+      "micro-sd": {
+        "file": "micro-sd-sault-test.hab",
+        "bytes": 2990681,
+        "source": "derived: the habitat grid and the MRDEM, with the surrogate net's terrain wind in WindNinja's place (build_windsd.py)",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-11"
       }
     }
   }

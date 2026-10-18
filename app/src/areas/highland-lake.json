@@ -2,21 +2,66 @@
   "id": "highland-lake",
   "name": "Highland Lake",
   "jurisdiction": "YT",
-  "centre": [-134.760001, 63.360577],
-  "home": { "center": [-134.760001, 63.360577], "zoom": 13 },
-  "region": { "west": -134.95, "south": 63.291, "east": -134.57, "north": 63.431 },
-  "core": { "west": -134.82, "south": 63.333, "east": -134.7, "north": 63.388, "maxzoom": 15 },
+  "centre": [
+    -134.760001,
+    63.360577
+  ],
+  "home": {
+    "center": [
+      -134.760001,
+      63.360577
+    ],
+    "zoom": 13
+  },
+  "region": {
+    "west": -134.95,
+    "south": 63.291,
+    "east": -134.57,
+    "north": 63.431
+  },
+  "core": {
+    "west": -134.82,
+    "south": 63.333,
+    "east": -134.7,
+    "north": 63.388,
+    "maxzoom": 15
+  },
   "regionMaxzoom": 13,
   "declination": 18.2,
   "timezone": "America/Whitehorse",
-  "zone": { "label": "GMS", "name": "4-09" },
-  "relief": [920, 1684],
-  "fineRelief": { "name": "ArcticDEM 2 m", "attribution": "ArcticDEM © Polar Geospatial Center, University of Minnesota" },
+  "zone": {
+    "label": "GMS",
+    "name": "4-09"
+  },
+  "relief": [
+    920,
+    1684
+  ],
+  "fineRelief": {
+    "name": "ArcticDEM 2 m",
+    "attribution": "ArcticDEM © Polar Geospatial Center, University of Minnesota"
+  },
   "base": "areas/highland-lake/",
   "surveyedLakes": [],
-  "live": { "lio": false, "satellite": null, "sharp": "esri" },
-  "attribution": { "vectors": "© Government of Yukon", "lakes": "CanVec © Natural Resources Canada", "bush": "" },
-  "presets": [{ "name": "Highland Lake spot", "lon": -134.760001, "lat": 63.360577, "kind": "stand", "note": "From a plus code, 4 Oct 2026" }],
+  "live": {
+    "lio": false,
+    "satellite": null,
+    "sharp": "esri"
+  },
+  "attribution": {
+    "vectors": "© Government of Yukon",
+    "lakes": "CanVec © Natural Resources Canada",
+    "bush": ""
+  },
+  "presets": [
+    {
+      "name": "Highland Lake spot",
+      "lon": -134.760001,
+      "lat": 63.360577,
+      "kind": "stand",
+      "note": "From a plus code, 4 Oct 2026"
+    }
+  ],
   "bundle": {
     "description": "Topo, 1.5 m satellite imagery, 30 m relief and contours, forest stands inferred from the national forest maps, burns, water, game management subzones, First Nation settlement land, and the habitat, wind and going grids around Highland Lake; no 1 m LiDAR here."
   },
@@ -35,9 +80,22 @@
       "historical",
       "places"
     ],
-    "geo": ["wmu", "crown", "fire", "roads"],
-    "baseGeo": ["waterbody"],
-    "grids": ["habitat", "micro", "micro-sd", "going"]
+    "geo": [
+      "wmu",
+      "crown",
+      "fire",
+      "roads",
+      "land"
+    ],
+    "baseGeo": [
+      "waterbody"
+    ],
+    "grids": [
+      "habitat",
+      "micro",
+      "micro-sd",
+      "going"
+    ]
   },
   "bake": {
     "outDir": "app/public/data/areas/highland-lake",
@@ -51,11 +109,15 @@
     },
     "imagery": "yt.spot",
     "pointcloud": null,
-    "nts": ["105M07"],
-    "arcticdem": ["https://pgc-opendata-dems.s3.us-west-2.amazonaws.com/arcticdem/mosaics/v4.1/2m/40_11/40_11_2_2_2m_v4.1_dem.tif"]
+    "nts": [
+      "105M07"
+    ],
+    "arcticdem": [
+      "https://pgc-opendata-dems.s3.us-west-2.amazonaws.com/arcticdem/mosaics/v4.1/2m/40_11/40_11_2_2_2m_v4.1_dem.tif"
+    ]
   },
   "coverage": {
-    "checked": "2026-10-09",
+    "checked": "2026-10-18",
     "pmtiles": {
       "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
       "topo": {
@@ -131,7 +193,7 @@
       "bathySheets": { "missing": "Ontario only: MNR lake survey sheets" },
       "places": {
         "file": "places-highland-lake.pmtiles",
-        "bytes": 97495,
+        "bytes": 97837,
         "source": "GeoYukon: game management subzones, First Nation settlement land, burns and roads",
         "licence": "OGL-Yukon"
       }
@@ -145,6 +207,13 @@
       },
       "camps": { "missing": "Ontario only: Crown land camps come from LIO" },
       "crown": { "file": "crown-highland-lake.geojson", "bytes": 461, "source": "First Nation Settlement Lands, GeoYukon", "licence": "OGL-Yukon" },
+      "land": {
+        "file": "land-highland-lake.geojson",
+        "bytes": 396,
+        "source": "First Nation Settlement Lands, GeoYukon",
+        "licence": "OGL-Yukon; OGL-Canada"
+      },
+      "lots": { "missing": "not in this area's maps" },
       "parks": { "missing": "none baked for the Yukon yet" },
       "bathy": { "missing": "Ontario only: lake bathymetry comes from LIO" },
       "fire": {
@@ -191,6 +260,13 @@
         "source": "derived: HRDEM LiDAR, point-cloud bush or the forest-map estimate, water, wetlands and roads",
         "licence": "derived from the layers above",
         "vintage": "generated 2026-10-09"
+      },
+      "micro-sd": {
+        "file": "micro-sd-highland-lake.hab",
+        "bytes": 6864373,
+        "source": "derived: the habitat grid and the MRDEM, with the surrogate net's terrain wind in WindNinja's place (build_windsd.py)",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-11"
       }
     }
   },
@@ -203,8 +279,17 @@
       "north": 1380,
       "south": 1350
     },
-    "ecoregion": { "cec1": "6", "cec2": "6.1", "cec3": "6.1.5", "name": "Watson Highlands", "family": "Boreal Cordillera" },
+    "ecoregion": {
+      "cec1": "6",
+      "cec2": "6.1",
+      "cec3": "6.1.5",
+      "name": "Watson Highlands",
+      "family": "Boreal Cordillera"
+    },
     "north": true,
-    "stands": { "shrubHeight": false, "leadSpecies": false }
+    "stands": {
+      "shrubHeight": false,
+      "leadSpecies": false
+    }
   }
 }

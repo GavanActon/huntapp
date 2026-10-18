@@ -2,20 +2,61 @@
   "id": "whitefish-lake",
   "name": "Whitefish Lake",
   "jurisdiction": "ON",
-  "centre": [-80.8168, 48.15378],
-  "home": { "center": [-80.8168, 48.15378], "zoom": 13 },
-  "region": { "west": -80.914, "south": 48.088, "east": -80.719, "north": 48.219 },
-  "core": { "west": -80.8468, "south": 48.13407, "east": -80.7868, "north": 48.17349, "maxzoom": 16 },
+  "centre": [
+    -80.8168,
+    48.15378
+  ],
+  "home": {
+    "center": [
+      -80.8168,
+      48.15378
+    ],
+    "zoom": 13
+  },
+  "region": {
+    "west": -80.914,
+    "south": 48.088,
+    "east": -80.719,
+    "north": 48.219
+  },
+  "core": {
+    "west": -80.8468,
+    "south": 48.13407,
+    "east": -80.7868,
+    "north": 48.17349,
+    "maxzoom": 16
+  },
   "regionMaxzoom": 13,
   "declination": -10.2,
   "timezone": "America/Toronto",
-  "zone": { "label": "WMU", "name": "29" },
-  "relief": [305, 371],
+  "zone": {
+    "label": "WMU",
+    "name": "29"
+  },
+  "relief": [
+    305,
+    371
+  ],
   "base": "areas/whitefish-lake/",
   "surveyedLakes": [],
-  "live": { "lio": true, "satellite": "lio" },
-  "attribution": { "vectors": "© Ontario MNRF", "lakes": "© Ontario MNRF", "bush": "FRI LiDAR © Ontario MNR" },
-  "presets": [{ "name": "Whitefish Lake", "lon": -80.8197, "lat": 48.1539, "kind": "lake", "note": "HD box requested 2026-10-09 (b-247883-154913-248033-155059)" }],
+  "live": {
+    "lio": true,
+    "satellite": "lio"
+  },
+  "attribution": {
+    "vectors": "© Ontario MNRF",
+    "lakes": "© Ontario MNRF",
+    "bush": "FRI LiDAR © Ontario MNR"
+  },
+  "presets": [
+    {
+      "name": "Whitefish Lake",
+      "lon": -80.8197,
+      "lat": 48.1539,
+      "kind": "lake",
+      "note": "HD box requested 2026-10-09 (b-247883-154913-248033-155059)"
+    }
+  ],
   "bundle": {
     "description": "Topo, imagery, LiDAR relief and contours, forest stands, water, roads, and the habitat, wind and going grids around Whitefish Lake; full detail within 2 km of the spot."
   },
@@ -34,9 +75,26 @@
       "historical",
       "places"
     ],
-    "geo": ["wmu", "camps", "crown", "parks", "bathy", "fire", "roads", "forest", "depth"],
-    "baseGeo": ["waterbody"],
-    "grids": ["habitat", "micro", "going"]
+    "geo": [
+      "wmu",
+      "camps",
+      "crown",
+      "parks",
+      "bathy",
+      "fire",
+      "roads",
+      "forest",
+      "depth",
+      "land"
+    ],
+    "baseGeo": [
+      "waterbody"
+    ],
+    "grids": [
+      "habitat",
+      "micro",
+      "going"
+    ]
   },
   "bake": {
     "outDir": "app/public/data/areas/whitefish-lake",
@@ -47,16 +105,25 @@
     "vectors": "on.lio",
     "forest": {
       "adapter": "on.fri",
-      "gdb": ["raw/fri/pp_FRI_FIMv2_AbitibiRiver_2011_2D.gdb", "raw/fri/pp_FRI_FIMv2_TimiskamingForest_2014_2D.gdb"],
+      "gdb": [
+        "raw/fri/pp_FRI_FIMv2_AbitibiRiver_2011_2D.gdb",
+        "raw/fri/pp_FRI_FIMv2_TimiskamingForest_2014_2D.gdb"
+      ],
       "crs": "EPSG:26917",
       "vintage": "2011 (Abitibi River Forest), 2014 (Timiskaming Forest)"
     },
     "imagery": "on.oiwms",
-    "pointcloud": { "adapter": "on.fri_leafon", "radiusKm": 3.5, "maxGb": 20 },
-    "nts": ["042A02"]
+    "pointcloud": {
+      "adapter": "on.fri_leafon",
+      "radiusKm": 3.5,
+      "maxGb": 20
+    },
+    "nts": [
+      "042A02"
+    ]
   },
   "coverage": {
-    "checked": "2026-10-10",
+    "checked": "2026-10-18",
     "pmtiles": {
       "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
       "topo": {
@@ -131,7 +198,7 @@
       "bathySheets": { "missing": "not in this area's maps" },
       "places": {
         "file": "places-whitefish-lake.pmtiles",
-        "bytes": 82752,
+        "bytes": 101537,
         "source": "LIO: WMUs, Crown land camps, Crown land, parks, burns and roads",
         "licence": "OGL-Ontario"
       }
@@ -145,6 +212,13 @@
         "licence": "OGL-Ontario"
       },
       "crown": { "file": "crown-whitefish-lake.geojson", "bytes": 2633, "source": "Crown land, LIO", "licence": "OGL-Ontario" },
+      "land": {
+        "file": "land-whitefish-lake.geojson",
+        "bytes": 39119,
+        "source": "Patent Land External (Crown vs patent, by title holder type), LIO; Conservation Reserve Regulated, LIO; Crown Land, MNR Non-Freehold Dispositions (leases, licences of occupation, land use permits; no holders), LIO",
+        "licence": "OGL-Ontario"
+      },
+      "lots": { "missing": "not in this area's maps" },
       "parks": { "file": "parks-whitefish-lake.geojson", "bytes": 77, "source": "Provincial parks, LIO", "licence": "OGL-Ontario" },
       "bathy": { "file": "bathy-whitefish-lake.geojson", "bytes": 934519, "source": "Lake bathymetry lines, LIO", "licence": "OGL-Ontario" },
       "fire": { "file": "fire-whitefish-lake.geojson", "bytes": 73, "source": "Fire disturbance areas, LIO", "licence": "OGL-Ontario" },
@@ -200,8 +274,17 @@
   "profile": {
     "checked": "2026-10-09",
     "treeline": null,
-    "ecoregion": { "cec1": "5", "cec2": "5.2", "cec3": "5.2.3", "name": "Algonquin/Southern Laurentians", "family": "Mixed Wood Shield" },
+    "ecoregion": {
+      "cec1": "5",
+      "cec2": "5.2",
+      "cec3": "5.2.3",
+      "name": "Algonquin/Southern Laurentians",
+      "family": "Mixed Wood Shield"
+    },
     "north": false,
-    "stands": { "shrubHeight": false, "leadSpecies": true }
+    "stands": {
+      "shrubHeight": false,
+      "leadSpecies": true
+    }
   }
 }

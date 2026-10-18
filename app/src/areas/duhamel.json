@@ -2,28 +2,93 @@
   "id": "duhamel",
   "name": "Duhamel",
   "jurisdiction": "QC",
-  "centre": [-75.1448, 46.094625],
-  "home": { "center": [-75.1448, 46.094625], "zoom": 13 },
-  "region": { "west": -75.268, "south": 46.025, "east": -75.022, "north": 46.165 },
-  "core": { "west": -75.21, "south": 46.049, "east": -75.08, "north": 46.14, "maxzoom": 16 },
+  "centre": [
+    -75.1448,
+    46.094625
+  ],
+  "home": {
+    "center": [
+      -75.1448,
+      46.094625
+    ],
+    "zoom": 13
+  },
+  "region": {
+    "west": -75.268,
+    "south": 46.025,
+    "east": -75.022,
+    "north": 46.165
+  },
+  "core": {
+    "west": -75.21,
+    "south": 46.049,
+    "east": -75.08,
+    "north": 46.14,
+    "maxzoom": 16
+  },
   "regionMaxzoom": 13,
   "declination": -13.0,
   "timezone": "America/Toronto",
-  "zone": { "label": "Zone", "name": "10 Est" },
-  "relief": [211, 454],
+  "zone": {
+    "label": "Zone",
+    "name": "10 Est"
+  },
+  "relief": [
+    211,
+    454
+  ],
   "base": "areas/duhamel/",
   "surveyedLakes": [],
-  "live": { "lio": false, "satellite": "qc" },
-  "attribution": { "vectors": "© Gouvernement du Québec", "lakes": "GRHQ © Gouvernement du Québec", "bush": "LiDAR © Gouvernement du Québec (MRNF)" },
-  "presets": [{ "name": "Requested spot", "lon": -75.1448, "lat": 46.094625, "kind": "stand", "note": "Area requested 2026-10-15" }],
+  "live": {
+    "lio": false,
+    "satellite": "qc"
+  },
+  "attribution": {
+    "vectors": "© Gouvernement du Québec",
+    "lakes": "GRHQ © Gouvernement du Québec",
+    "bush": "LiDAR © Gouvernement du Québec (MRNF)"
+  },
+  "presets": [
+    {
+      "name": "Requested spot",
+      "lon": -75.1448,
+      "lat": 46.094625,
+      "kind": "stand",
+      "note": "Area requested 2026-10-15"
+    }
+  ],
   "bundle": {
     "description": "Topo, imagery, LiDAR relief and contours, forest stands, water, roads, and the habitat, wind and going grids around Duhamel; full detail within 5 km of the spot."
   },
   "files": {
-    "pmtiles": ["topo", "satellite", "hillshadeLidar", "dem", "contours", "contoursWide", "forest", "understory", "lanes", "historical", "places"],
-    "geo": ["parks", "fire", "roads"],
-    "baseGeo": ["waterbody"],
-    "grids": ["habitat", "micro", "micro-sd", "going"]
+    "pmtiles": [
+      "topo",
+      "satellite",
+      "hillshadeLidar",
+      "dem",
+      "contours",
+      "contoursWide",
+      "forest",
+      "understory",
+      "lanes",
+      "historical",
+      "places"
+    ],
+    "geo": [
+      "parks",
+      "fire",
+      "roads",
+      "land"
+    ],
+    "baseGeo": [
+      "waterbody"
+    ],
+    "grids": [
+      "habitat",
+      "micro",
+      "micro-sd",
+      "going"
+    ]
   },
   "bake": {
     "outDir": "app/public/data/areas/duhamel",
@@ -34,20 +99,42 @@
       "https://canelevation-dem.s3.ca-central-1.amazonaws.com/hrdem-lidar/QC-2015_600014-47_MTM09-1m-dtm.tif"
     ],
     "vectors": "qc",
-    "forest": { "adapter": "qc.ecoforestier", "vintage": "4th inventory, with cuts, burns and outbreaks to 2025" },
+    "forest": {
+      "adapter": "qc.ecoforestier",
+      "vintage": "4th inventory, with cuts, burns and outbreaks to 2025"
+    },
     "imagery": "qc.imagerie_gq",
-    "pointcloud": { "adapter": "qc.mrnf_laz", "bbox": { "west": -75.184, "south": 46.067, "east": -75.106, "north": 46.122 } },
-    "nts": ["031J03"]
+    "pointcloud": {
+      "adapter": "qc.mrnf_laz",
+      "bbox": {
+        "west": -75.184,
+        "south": 46.067,
+        "east": -75.106,
+        "north": 46.122
+      }
+    },
+    "nts": [
+      "031J03"
+    ]
   },
   "profile": {
     "checked": "2026-10-16",
     "treeline": null,
-    "ecoregion": { "cec1": "5", "cec2": "5.2", "cec3": "5.2.3", "name": "Algonquin/Southern Laurentians", "family": "Mixed Wood Shield" },
+    "ecoregion": {
+      "cec1": "5",
+      "cec2": "5.2",
+      "cec3": "5.2.3",
+      "name": "Algonquin/Southern Laurentians",
+      "family": "Mixed Wood Shield"
+    },
     "north": false,
-    "stands": { "shrubHeight": true, "leadSpecies": true }
+    "stands": {
+      "shrubHeight": true,
+      "leadSpecies": true
+    }
   },
   "coverage": {
-    "checked": "2026-10-16",
+    "checked": "2026-10-18",
     "pmtiles": {
       "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
       "topo": {
@@ -118,7 +205,7 @@
       "bathySheets": { "missing": "Ontario only: MNR lake survey sheets" },
       "places": {
         "file": "places-duhamel.pmtiles",
-        "bytes": 266913,
+        "bytes": 283059,
         "source": "TRQ territories, the carte écoforestière's burns and AQréseau roads, MRNF",
         "licence": "CC BY 4.0"
       }
@@ -127,6 +214,8 @@
       "wmu": { "missing": "not in the maps: the hunting zones' only source (SmartFaune) states no licence, so the area file names the zone instead" },
       "camps": { "missing": "Ontario only: Crown land camps come from LIO" },
       "crown": { "missing": "Ontario only: Crown land comes from LIO" },
+      "land": { "file": "land-duhamel.geojson", "bytes": 51722, "source": "Territoires récréatifs du Québec (TRQ), MRNF", "licence": "CC BY 4.0" },
+      "lots": { "missing": "no open lot lines: Quebec's cadastre states no licence, and baking it needs the MRNF's written permission" },
       "parks": {
         "file": "parks-duhamel.geojson",
         "bytes": 99211,
