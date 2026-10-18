@@ -39,11 +39,11 @@ jobs:
           # live app reads the same data/ prefix the dev site reads, which
           # dev.yml syncs from every push of main and the bakes upload to by
           # hand, so live and hunt-dev always see the same areas, far band and
-          # tiles. KEEP_DATA_IN_DIST keeps app/public/data in this bundle too,
-          # so a phone still on the build before the switch finds its own data/
-          # until it updates; drop it on the next promote after this one.
+          # tiles. The bundle is the app alone: KEEP_DATA_IN_DIST ('1') kept
+          # app/public/data in it for the one deploy after the switch
+          # (b2e2bd9), so a phone still on the build before it found its own
+          # data/ until it updated.
           VITE_DATA_BASE: https://data.groundwind.app/data/
-          KEEP_DATA_IN_DIST: '1'
       - uses: actions/upload-pages-artifact@v3
         with:
           path: app/dist
