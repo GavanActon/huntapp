@@ -100,7 +100,7 @@ interface RowsProps {
   go: (f: () => void) => () => void
 }
 
-/** The streak widths the thickness choices draw, px in an 18 × 14 box (Auto follows the text size). */
+/** The streak widths the thickness choices draw, px in an 18 × 14 box (Auto draws the middle one). */
 const STREAK_SIZES = ['auto', 'standard', 'large', 'larger'] as const
 const STREAK_W: Record<(typeof STREAK_SIZES)[number], number> = { auto: 0, standard: 1.5, large: 2.6, larger: 3.7 }
 

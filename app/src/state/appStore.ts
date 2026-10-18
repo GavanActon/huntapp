@@ -192,7 +192,7 @@ export interface FlowTuning {
   windTrail: number // per-frame fade 0.86–0.97, higher = longer streaks
   windHue: number // stroke hue, degrees
   windSat: number // stroke saturation %
-  windSize: SizeStop // streak width: auto follows the text size
+  windSize: SizeStop // streak width: auto draws the middle of the three (weather/windFlow.ts STREAK_PX)
   windSwirl: boolean // eddies drawn where the ground model says the air swirls
   windStyle: WindStyle // the streaks' look (weather/windFlow.ts LOOKS)
 }

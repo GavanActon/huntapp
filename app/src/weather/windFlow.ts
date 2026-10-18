@@ -9,7 +9,6 @@ import { ensureWeatherGrid, onWeatherGrid, onWeatherTick, windGridInfo, windSamp
 import { currentProfile, ensureProfile, onProfile } from './boundaryLayer'
 import { groundSampler, loadMicro, microGrid, onMicro } from './micro/model'
 import { useWindChecks } from './micro/windChecks'
-import { currentTextStop } from '../ui/textScale'
 
 /**
  * Wind made visible: particles advected by the forecast grid at the
@@ -311,13 +310,13 @@ function zoomFade(z: number): number {
   return Math.min(1, Math.max(0.3, (z - 13) / 2))
 }
 
-/** Streak width by the size setting, css px; auto follows the text size (Settings). */
+/** Streak width by the size setting, css px; Auto is the middle of the three (Gavan, 2026-10-18:
+ *  "Auto line thickness = middle of the three"), no longer the text size. */
 const STREAK_PX = { standard: 1.2, large: 2, larger: 2.8 } as const
-let streakPx: number = STREAK_PX.standard
+let streakPx: number = STREAK_PX.large
 function sizeStreaks() {
   const s = useAppStore.getState().flowTuning.windSize
-  // the phone's text size is read off the page: worked out when a setting changes, not every frame
-  streakPx = STREAK_PX[s === 'auto' || !s ? currentTextStop() : s]
+  streakPx = STREAK_PX[s === 'auto' || !s ? 'large' : s]
 }
 
 interface FieldGrid {
@@ -1191,11 +1190,7 @@ export function initWindFlow() {
   wired = true
   sizeStreaks()
   useAppStore.subscribe((s, prev) => {
-    if (s.flowTuning.windSize !== prev.flowTuning.windSize || s.textSize !== prev.textSize) sizeStreaks()
-  })
-  // the phone's text size can change while we are in the background
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') sizeStreaks()
+    if (s.flowTuning.windSize !== prev.flowTuning.windSize) sizeStreaks()
   })
   onEachMap((map) => {
     onFirstIdle(
