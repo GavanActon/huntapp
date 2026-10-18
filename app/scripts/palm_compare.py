@@ -256,6 +256,9 @@ def main() -> None:
                 fc = {"kph": float(d["ambientKph"]), "fromTrue": float(d["directions"][0])}
                 frow = FORCING.get(run)
                 lay, sun = AIR[stab]
+                # the run's own wind over the settled layer, so a rule keyed to the 80 m wind reads the run's, not the held clock's forecast
+                if frow and frow.get("kph80") is not None:
+                    lay = {**lay, "w80": float(frow["kph80"])}
                 air = {"kmh": frow["kph"] if frow else fc["kph"], "dir": frow["from"] if frow else fc["fromTrue"], "lay": lay, "sunElev": sun}
                 X, Y = lattice(info, args.step)
                 lon, lat = Transformer.from_crs(info["epsg"], 4326, always_xy=True).transform(X, Y)

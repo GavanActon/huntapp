@@ -1173,6 +1173,11 @@ function towerShare(g: Habitat, i: number, leaves: number): number | null {
 // inv0, inv1: the forecast's inversion (dTheta, 80 m less 2 m, K) under which the drainage is nothing
 // and over which it is whole (inv1 0: no gate, as before). PALM's dusk series at Whitefish, under the
 // wind fade from the start, drained only once about 1 K had built (Hunter-Jay, 2026-10-17)
+// ref 3: the fade keyed to the forecast's 80 m wind, over the settled layer (km/h; the 10 m's where
+// the profile has no 80 m): PALM's dusk floors drained under 8-11 km/h at 80 m (the bank, Whitefish,
+// the slot, the strip at a forecast 10 m of 5.4) and followed the wind at 17-20 (Gavan's Lac Bailey
+// spot at 6.5, the bogs' dawn), where the 10 m forecasts of the two sit a km/h apart. Keyed to the
+// floor's own sheltered wind instead (tried 2026-10-18) the slope under trees drained again
 const THERMAL_DEFAULT = { mix0: 5, mixScale: 1, trees: 0.7, ref: 1, mixS0: 5, mixSScale: 1, sl0: 3, sl1: 8, waterAna: 0, inv0: 0, inv1: 0 }
 let thermalTune = { ...THERMAL_DEFAULT }
 export function setThermalTune(t: Partial<typeof THERMAL_DEFAULT> | null): void {
@@ -1717,7 +1722,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   let kat = 0
   let katTo = 0
   const cool = Math.pow(1 - lay.cloud / 100, 1.5) * (ctx.sunElev < 0 ? 1 : ctx.sunElev < 10 ? (10 - ctx.sunElev) / 10 : 0)
-  const kWind = thermalTune.ref ? U : mech10
+  const kWind = thermalTune.ref === 3 ? (Number.isFinite(lay.w80) ? lay.w80 : U) : thermalTune.ref ? U : mech10
   const onSlope = clamp((b(K_THSLOPE, i) - thermalTune.sl0) / Math.max(0.1, thermalTune.sl1 - thermalTune.sl0), 0, 1) * (1 - lowness)
   const mixKat =
     (1 - onSlope) * Math.exp(-Math.max(0, kWind - thermalTune.mix0) / thermalTune.mixScale) +
