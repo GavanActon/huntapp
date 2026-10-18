@@ -859,8 +859,9 @@ def new_area(args) -> str:
             "baseGeo": ["waterbody"],
             "grids": ["habitat", "micro", "going"],
         }
-    if no_lidar:  # the MRDEM's relief alone: its hillshade and its contours
-        files["pmtiles"] = [k for k in files["pmtiles"] if k not in ("hillshadeLidar", "contours", "understory", "lanes")]
+    if no_lidar:  # the MRDEM's relief alone: its hillshade and its contours; the bush stays, the
+        # national model's (pipeline/bush/render.py), modelled not measured (Clearwater, 2026-10-17)
+        files["pmtiles"] = [k for k in files["pmtiles"] if k not in ("hillshadeLidar", "contours", "lanes")]
     if args.sd:  # the bush model's understory stands in for the point cloud's; one wind grid
         files["pmtiles"] = [k for k in files["pmtiles"] if k != "contoursWide"] + ["understory", "contoursWide"]
         files["grids"] = [g for g in files.get("grids", []) if g != "micro-sd"]
