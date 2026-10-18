@@ -1,0 +1,246 @@
+{
+  "id": "clearwater-east",
+  "name": "Clearwater East",
+  "jurisdiction": "AB",
+  "centre": [
+    -114.9684001,
+    52.2559605
+  ],
+  "home": {
+    "center": [
+      -114.9684001,
+      52.2559605
+    ],
+    "zoom": 13
+  },
+  "region": {
+    "west": -115.086,
+    "south": 52.184,
+    "east": -114.851,
+    "north": 52.328
+  },
+  "core": {
+    "west": -115.042,
+    "south": 52.211,
+    "east": -114.895,
+    "north": 52.301,
+    "maxzoom": 16
+  },
+  "regionMaxzoom": 13,
+  "declination": 13.9,
+  "timezone": "America/Edmonton",
+  "zone": {
+    "label": "WMU",
+    "name": "324"
+  },
+  "relief": [
+    969,
+    1154
+  ],
+  "base": "areas/clearwater-east/",
+  "surveyedLakes": [],
+  "live": {
+    "lio": false,
+    "satellite": null,
+    "sharp": "esri"
+  },
+  "attribution": {
+    "vectors": "",
+    "lakes": "",
+    "bush": ""
+  },
+  "presets": [
+    {
+      "name": "Requested spot",
+      "lon": -114.9684001,
+      "lat": 52.2559605,
+      "kind": "stand",
+      "note": "HD for request #13 (elk, deer), 2026-10-17; the hunt 10-18/19"
+    }
+  ],
+  "bundle": {
+    "description": "Topo, imagery, LiDAR relief and contours, forest stands, water, roads, and the habitat, wind and going grids around Clearwater East; full detail within 5 km of the spot."
+  },
+  "files": {
+    "pmtiles": [
+      "topo",
+      "hillshade",
+      "dem",
+      "understory",
+      "contoursWide",
+      "historical"
+    ],
+    "geo": [],
+    "baseGeo": [],
+    "grids": [
+      "habitat",
+      "micro",
+      "micro-sd",
+      "going"
+    ]
+  },
+  "bake": {
+    "outDir": "app/public/data/areas/clearwater-east",
+    "hrdem": [],
+    "lidar": "none",
+    "vectors": null,
+    "forest": null,
+    "imagery": null,
+    "pointcloud": null,
+    "nts": [
+      "083B02",
+      "083B03",
+      "083B06",
+      "083B07"
+    ]
+  },
+  "profile": {
+    "checked": "2026-10-17",
+    "treeline": null,
+    "ecoregion": {
+      "cec1": "5",
+      "cec2": "5.4",
+      "cec3": "5.4.2",
+      "name": "Clear Hills and Western Alberta Uplands",
+      "family": "Boreal Plains"
+    },
+    "north": false,
+    "stands": {
+      "shrubHeight": false,
+      "leadSpecies": false
+    }
+  },
+  "coverage": {
+    "checked": "2026-10-18",
+    "pmtiles": {
+      "basemap": {
+        "missing": "not baked: the map draws the live NRCan base map"
+      },
+      "topo": {
+        "file": "topo-clearwater-east.pmtiles",
+        "bytes": 2152438,
+        "source": "Toporama hypsography (contours and spot heights), NRCan WMS",
+        "licence": "OGL-Canada"
+      },
+      "satellite": {
+        "missing": "not in this area's maps"
+      },
+      "hillshade": {
+        "file": "hillshade-clearwater-east.pmtiles",
+        "bytes": 13137385,
+        "source": "MRDEM 30 m hillshade, NRCan WMS",
+        "licence": "OGL-Canada"
+      },
+      "hillshadeLidar": {
+        "missing": "not in this area's maps"
+      },
+      "dem": {
+        "file": "dem-clearwater-east.pmtiles",
+        "bytes": 9731530,
+        "source": "MRDEM 30 m, with HRDEM 1 m LiDAR over the core (mrdem-30), NRCan",
+        "licence": "OGL-Canada"
+      },
+      "contours": {
+        "missing": "not in this area's maps"
+      },
+      "contoursWide": {
+        "file": "contours-wide-clearwater-east.pmtiles",
+        "bytes": 338050,
+        "source": "MRDEM 30 m DTM, NRCan",
+        "licence": "OGL-Canada"
+      },
+      "forest": {
+        "missing": "not in this area's maps"
+      },
+      "understory": {
+        "file": "understory-clearwater-east.pmtiles",
+        "bytes": 13316175,
+        "source": "Bush model (docs/BUSH-MODEL.md): the eye-level understory predicted at 30 m from Sentinel-2 seasons, PALSAR, SCANFI, CanLaD and the MRDEM, trained on 435 plots of Ontario leaf-on LiDAR; faded where the model is unsure. Modelled, not measured",
+        "licence": "Copernicus Sentinel data; JAXA ALOS PALSAR mosaic (free, attribution); OGL-Canada; CanLaD CC BY 4.0",
+        "vintage": "imagery 2023-2025, model trained 2026-10-08"
+      },
+      "lanes": {
+        "missing": "not in this area's maps"
+      },
+      "bathy": {
+        "missing": "not baked: lake depths are drawn from GeoJSON (depth)"
+      },
+      "historical": {
+        "file": "historical-clearwater-east.pmtiles",
+        "bytes": 10030507,
+        "source": "CanMatrix2 1:50 000 NTS scans, NRCan: 083B02, 083B03, 083B06, 083B07",
+        "licence": "OGL-Canada"
+      },
+      "bathySheets": {
+        "missing": "not in this area's maps"
+      },
+      "places": {
+        "missing": "not in this area's maps"
+      }
+    },
+    "geo": {
+      "wmu": {
+        "missing": "not in this area's maps"
+      },
+      "camps": {
+        "missing": "not in this area's maps"
+      },
+      "crown": {
+        "missing": "not in this area's maps"
+      },
+      "parks": {
+        "missing": "not in this area's maps"
+      },
+      "bathy": {
+        "missing": "not in this area's maps"
+      },
+      "fire": {
+        "missing": "not in this area's maps"
+      },
+      "roads": {
+        "missing": "not in this area's maps"
+      },
+      "forest": {
+        "missing": "not in the maps as GeoJSON: the map reads the stands from the forest tiles, and the GeoJSON stays the bake's input"
+      },
+      "depth": {
+        "missing": "not in this area's maps"
+      }
+    },
+    "baseGeo": {
+      "waterbody": {
+        "missing": "not in this area's maps"
+      }
+    },
+    "grids": {
+      "habitat": {
+        "file": "habitat-clearwater-east.hab",
+        "bytes": 1711268,
+        "source": "derived: MRDEM, NRCan 2020 land cover, forest stands, water, wetlands, roads and burns",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-17"
+      },
+      "micro": {
+        "file": "micro-clearwater-east.hab",
+        "bytes": 5465682,
+        "source": "derived: the habitat grid and the MRDEM",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-18"
+      },
+      "going": {
+        "file": "going-clearwater-east.hab",
+        "bytes": 1959467,
+        "source": "derived: HRDEM LiDAR, point-cloud bush or the forest-map estimate, water, wetlands and roads",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-17"
+      },
+      "micro-sd": {
+        "file": "micro-sd-clearwater-east.hab",
+        "bytes": 4433273,
+        "source": "derived: the habitat grid and the MRDEM, with the surrogate net's terrain wind in WindNinja's place (build_windsd.py)",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-17"
+      }
+    }
+  }
+}

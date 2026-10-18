@@ -1,0 +1,75 @@
+{
+ "cells": [
+  1107,
+  1002
+ ],
+ "cell_m": [
+  9.09,
+  9.95
+ ],
+ "elevation_from_lidar": 1.0,
+ "bush_from_lidar_of_land": 0.0,
+ "bush_from": "LiDAR NRD where the point cloud was fetched, elsewhere the forest-map estimate calibrated on it",
+ "estimate_to_lidar": [
+  {
+   "estimate": 0.0,
+   "lidar_median": 0.0,
+   "cells": 44695
+  },
+  {
+   "estimate": 0.2,
+   "lidar_median": 0.15,
+   "cells": 44695
+  },
+  {
+   "estimate": 0.45,
+   "lidar_median": 0.3,
+   "cells": 44695
+  },
+  {
+   "estimate": 0.7,
+   "lidar_median": 0.45,
+   "cells": 44695
+  },
+  {
+   "estimate": 0.85,
+   "lidar_median": 0.6,
+   "cells": 44695
+  },
+  {
+   "estimate": 0.95,
+   "lidar_median": 0.75,
+   "cells": 44695
+  },
+  {
+   "estimate": 1.0,
+   "lidar_median": 1.0,
+   "cells": 44695
+  }
+ ],
+ "bush_land_percentiles": {
+  "10": 0.0,
+  "25": 0.003,
+  "50": 0.114,
+  "75": 0.246,
+  "90": 0.296,
+  "99": 0.368
+ },
+ "rough_m_land_percentiles": {
+  "10": 0.001,
+  "25": 0.004,
+  "50": 0.017,
+  "75": 0.053,
+  "90": 0.115,
+  "99": 0.291
+ },
+ "ground": {
+  "upland": 1009908,
+  "water": 0,
+  "marsh": 0,
+  "open peatland": 99306,
+  "swamp": 0,
+  "road": 0,
+  "stream": 0
+ }
+}

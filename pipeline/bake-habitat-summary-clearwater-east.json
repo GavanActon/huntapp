@@ -1,0 +1,88 @@
+{
+ "cover": {
+  "nodata": 140309,
+  "water": 16643,
+  "open wetland": 30525,
+  "treed wetland": 0,
+  "dense conifer": 61164,
+  "open conifer": 0,
+  "mixedwood": 12309,
+  "hardwood": 727,
+  "shrub / alder": 49911,
+  "young regen": 0,
+  "rock / barren": 1283,
+  "road": 0
+ },
+ "landform": {
+  "flat": 230536,
+  "ridge": 32581,
+  "valley": 28060,
+  "saddle": 81,
+  "bench": 9,
+  "peak": 181,
+  "slope": 21423
+ },
+ "disturbed": 0,
+ "inferredCuts": 0,
+ "lakes": [],
+ "thick": {
+  "from": "the bush model's NRD (satellite imagery, radar, SCANFI, CanLaD, terrain; docs/BUSH-MODEL.md) on the estimate's scale where thickSrc is 3; the forest-map estimate on water, roads, cells no leaf-on imagery saw, and ground the map names outright (open herb, lichen, rock, fen) (thickSrc 2)",
+  "lidarCells": 0,
+  "thickShareOfLand": 0.001,
+  "thickShareWhereLidar": null,
+  "estimateToLidar": [
+   {
+    "estimate": 0.0,
+    "lidar_median": 0.0,
+    "cells": 44695
+   },
+   {
+    "estimate": 0.2,
+    "lidar_median": 0.15,
+    "cells": 44695
+   },
+   {
+    "estimate": 0.45,
+    "lidar_median": 0.3,
+    "cells": 44695
+   },
+   {
+    "estimate": 0.7,
+    "lidar_median": 0.45,
+    "cells": 44695
+   },
+   {
+    "estimate": 0.85,
+    "lidar_median": 0.6,
+    "cells": 44695
+   },
+   {
+    "estimate": 0.95,
+    "lidar_median": 0.75,
+    "cells": 44695
+   },
+   {
+    "estimate": 1.0,
+    "lidar_median": 1.0,
+    "cells": 44695
+   }
+  ],
+  "trained": "2026-10-08",
+  "plots": 435,
+  "areas": [
+   "area-lac-bailey",
+   "area-pickle-lake",
+   "area-sault-test"
+  ],
+  "cvR": 0.538,
+  "cvR90m": 0.591,
+  "cvAucThick": 0.788,
+  "s2Scenes": {
+   "leafon": 6,
+   "autumn": 6,
+   "spring": 6,
+   "snow": 6
+  },
+  "seconds": 338
+ }
+}
