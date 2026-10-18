@@ -55,11 +55,20 @@ nothing. The repo's `github-pages` environment lets only `live` deploy.
   - A try's sync sends its tree's data too, uncommitted bakes included
     (`-SkipSync` leaves R2 alone).
   - So R2 holds the newest data synced from anywhere, not one commit's.
-- **The live app** still serves its data from inside its own build (GitHub
-  Pages), so a data change reaches hunters only through `live`.
-- Before the live app reads R2 (the commented `VITE_DATA_BASE` in
-  `pages.yml`), give it a prefix of its own, or a dev sync changes what
-  hunters see.
+- **The live app reads the same R2 prefix** since 2026-10-17 (Gavan: "live
+  needs to be everything on hunt dev"): `pages.yml` sets `VITE_DATA_BASE`
+  to `https://data.groundwind.app/data/`, so every area, the far band and
+  the tiles that hunt-dev has, live has. The live bundle itself is the app
+  alone (a few MB) once `KEEP_DATA_IN_DIST` is dropped from `pages.yml`:
+  it was kept for the first deploy after the switch, so a phone still on
+  the build before it finds its own `data/` until it updates. Drop it on
+  the next promote.
+  - What that means: a dev push that re-bakes an area changes what hunters
+    see before the app that goes with it is promoted. The data formats
+    change rarely; when one does (a `.hab` layout, an archive's keys),
+    promote the app in the same breath.
+  - Live's manifests are the ones `dev.yml` wrote from main's last build.
+    The live workflow does not sync, so the two never race for the prefix.
 
 ## Secrets (repo Settings → Secrets and variables → Actions)
 
