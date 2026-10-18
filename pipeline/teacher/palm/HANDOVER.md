@@ -172,3 +172,9 @@ build_case, copy `<case>/case-*.json` (and build_case.py / palm_to_*.py when cha
 Done today for all six cases.
 
 **Reference row moves to 5e933a7 (17:20).** ba shipped the 80 m-keyed fade as the default (w12_2) at 5e933a7 on hunt-dev; the scorecard is re-running base on it, both grids, label reference-5e933a7, and those rows replace the 11:57 leerise-2a30c8e rows as the reference every later --patch is read against. Landed 17:24, identical to w12_2's rows: HD 0.60 / 0.61, misses 14 / 11, FA 38 / 41; SD 0.55 / 0.57, misses 18 / 12, FA 35 / 43 (scores/2026-10-18_1724_5e933a7_reference-5e933a7.json). That is the reference now.
+
+**Property lines (18:50).** huntapp-79's property step (18d5919) baked into nine areas and pushed (92cc98a, 63de13b):
+`bake_area.py --area <id> --only property --only vector-tiles --only coverage` (Pickle Lake `--overwrite-published`; its
+files sit at the data root, base ""), then land (and lots where the file has features) into files.geo, places into
+pmtiles, coverage again, r2_sync per area. **Blanchard River is still to do: ParcelMap BC reloads on Sundays and the
+step refuses to run then — run it Monday 2026-10-19 or later.** bake_area --new lists land/lots/places by default now.
