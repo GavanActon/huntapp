@@ -4,7 +4,6 @@ import { formatDistance, type Units } from '../measure/measureMath'
 import type { DrawnRoute, RouteEnd, RouteMode } from './routeStore'
 
 const PTS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
-const SIDE = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west']
 const compass = (deg: number) => Math.round((((deg % 360) + 360) % 360) / 45) % 8
 
 export function routeTime(s: number): string {
@@ -20,8 +19,9 @@ export function height(m: number, units: Units): string {
 }
 
 /** "2.2 km · ↑21 m" */
+/** The row's distance, with the climb only where there is one worth a word (why ▸ has it always). */
 export function routeLine(r: DrawnRoute, units: Units): string {
-  return `${formatDistance(r.distM, units)} · ↑${height(r.climbM, units)}`
+  return r.climbM >= 30 ? `${formatDistance(r.distM, units)} · ↑${height(r.climbM, units)}` : formatDistance(r.distM, units)
 }
 
 /** Where a route ends, in words: the place's name, or how far and which way from the start ("1.8 km NW"). */
@@ -34,22 +34,6 @@ export function endName(from: RouteEnd | null, to: RouteEnd, units: Units): stri
   return `${formatDistance(Math.hypot(e, n), units)} ${PTS[compass((Math.atan2(e, n) * 180) / Math.PI)]}`
 }
 
-/** Which side of route A this one keeps to, "east of A", when it is well off it. */
-function sideOf(r: DrawnRoute, a: DrawnRoute): string | null {
-  const s = a.coords[0]
-  const g = a.coords[a.coords.length - 1]
-  const kx = Math.cos((s[1] * Math.PI) / 180)
-  const ux = (g[0] - s[0]) * kx
-  const uy = g[1] - s[1]
-  const L = Math.hypot(ux, uy)
-  if (!L) return null
-  // mean offset to the right of the line from start to end, metres
-  const right = (c: [number, number][]) => (c.reduce((t, p) => t + (uy * (p[0] - s[0]) * kx - ux * (p[1] - s[1])) / L, 0) / c.length) * 110_574
-  const d = right(r.coords) - right(a.coords)
-  if (Math.abs(d) < 40) return null
-  const travel = (Math.atan2(ux, uy) * 180) / Math.PI
-  return `${SIDE[compass(travel + (d > 0 ? 90 : -90))]} of A`
-}
 
 /** What sets route k apart: "quickest" for the first, else how much longer and why you might take it anyway. */
 export function routeTag(routes: DrawnRoute[], k: number, mode: RouteMode): string {
@@ -60,7 +44,9 @@ export function routeTag(routes: DrawnRoute[], k: number, mode: RouteMode): stri
   const time = dt > 0 ? `+${dt} min` : dt < 0 ? `${dt} min` : 'same time'
   const least = (f: (x: DrawnRoute) => number) => routes.every((o) => f(r) <= f(o))
   const most = (f: (x: DrawnRoute) => number) => routes.every((o) => f(r) >= f(o))
-  let why = 'another way'
+  // only a reason worth choosing it for; "another way" and which side of A
+  // it keeps to were words for nothing (Gavan, 2026-10-17: "too much txt")
+  let why = ''
   if (mode === 'hunt' && r.nearM != null && a.nearM != null && most((x) => x.nearM ?? 0) && r.nearM - a.nearM >= 150) why = 'more good ground'
   else if (mode === 'hunt' && r.scentM != null && a.scentM != null && least((x) => x.scentM ?? 0) && a.scentM - r.scentM >= 100) why = 'less scent on the game'
   else if (least((x) => x.climbM) && a.climbM - r.climbM >= 8) why = 'least climbing'
@@ -69,8 +55,7 @@ export function routeTag(routes: DrawnRoute[], k: number, mode: RouteMode): stri
   else if (most((x) => x.roadM) && r.roadM - a.roadM >= 200) why = 'more road'
   else if (r.crossings < a.crossings) why = r.crossings ? 'fewer creeks' : 'no creek'
   else if (least((x) => x.distM) && a.distM - r.distM >= 50) why = 'shortest'
-  else why = sideOf(r, a) ?? why
-  return `${time} · ${why}`
+  return why ? `${time} · ${why}` : time
 }
 
 /** What the picked route is like underfoot, the things worth knowing first. */

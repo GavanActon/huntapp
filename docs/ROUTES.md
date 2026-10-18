@@ -19,19 +19,25 @@ It has not yet been checked against a walk at Pickle Lake. See
   tap moves where you are going, a tap on a place goes there, and a tap
   on a route line picks that route. Both ends drag. ⇄ swaps the ends,
   which gives the way back.
-- **Read it**: one line per route with the time, distance and climb, and
-  what sets it apart ("+4 min · driest", "+1 min · east of A"). Under the
-  rows, the picked route's going (wet, thick bush, creeks, road) and how
-  the wind sits for the last 150 m ("Wind in your face coming in", or a
-  warning when it is at your back).
-- **why ▸**: where the time goes (the flat-ground time, then the minutes
-  bush, wet ground, climbing, creeks and rough ground add), how much of
-  the bush was measured by LiDAR, and the knobs: pace on the flat (shared
-  with the ruler) and **Stay dry**.
-- **Close** (×): the picked route stays on the map, and through a reload,
-  so it can be planned at camp and walked later, out hunting. Tap the line
-  for its time and ends, with **Clear** to take it off and **Edit** to
-  open the card on it again. The card has a **Clear** of its own.
+- **Where to**: the map's tap, nothing else (2026-10-17: the To chips
+  went, "you can click the map"); the start is You, Camp or a tap, and ⇄
+  gives the way back.
+- **Read it**: one line per route with the time, the distance (the climb
+  when there is one worth a word) and what sets it apart when something
+  does ("+4 min · driest"; "+1 min" alone when nothing does). The wind's
+  set for the last 150 m is no longer said on the card (2026-10-17); the
+  hunt route still minds it.
+- **why ▸**: the picked route's going (wet, thick bush, creeks, road),
+  where the time goes (the flat-ground time, then the minutes bush, wet
+  ground, climbing, creeks and rough ground add), how much of the bush
+  was measured by LiDAR, and the knobs: pace on the flat (shared with the
+  ruler) and **Stay dry**.
+- **Confirm / Clear** (the foot of the card, 2026-10-17): Confirm keeps
+  the picked route on the map and closes the card — the route stays
+  through a reload, so it can be planned at camp and walked later, out
+  hunting; Clear takes the routes off. The Routes button and Escape close
+  the card the way Confirm does. Tap a kept line for its time and ends,
+  with **Clear** to take it off and **Edit** to open the card on it again.
 
 ## The going grid
 

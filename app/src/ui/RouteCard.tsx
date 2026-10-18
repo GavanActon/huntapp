@@ -6,19 +6,23 @@ import { useSpotsStore } from '../state/spotsStore'
 import { TARGET_NAMES } from '../spots/types'
 import { formatDistance } from '../measure/measureMath'
 import { campEnd, clearRoutes, closeRoutes, huntBlocked, ROUTE_COLOURS, ROUTE_LETTERS, useRoutes, youEnd, type RouteMode } from '../routes/routeStore'
-import { approachText, endName, height, lidarText, routeFacts, routeLine, routeTag, routeTime, timeParts } from '../routes/routeText'
+import { height, lidarText, routeFacts, routeLine, routeTag, routeTime, timeParts } from '../routes/routeText'
 import { IconSwap } from './icons'
 import { PaceNudge } from './PaceNudge'
 import { km as kmWords } from '../lengths'
 
 /**
- * Route mode's card, in the bottom bar like the ruler's. First the three
- * routes, a line each: the time, the distance and climb, and what sets it
- * apart ("+4 min · driest"). The picked one says what it is like underfoot
- * and how the wind sits coming in. "why" opens where its time goes, how
- * much of the bush was measured, and the knobs: pace, stay dry. The
- * right column's Routes button closes the card (so does Escape), keeping
- * the picked route on the map.
+ * Route mode's card, in the bottom bar like the ruler's. Where you start
+ * (you, camp, or a tap), where you are going is the map's tap, then the
+ * three routes, a line each: the time, the distance (the climb when there
+ * is one) and what sets it apart when something does ("+4 min · driest").
+ * Under them "why", which opens the going underfoot, where the time goes,
+ * how much of the bush was measured, and the knobs: pace, stay dry. At the
+ * foot, Clear takes the routes off and Confirm keeps the picked one on the
+ * map and closes the card (so do the Routes button and Escape). Gavan,
+ * 2026-10-17: "Way too many options. Too much txt. Needs a clear confirm
+ * vs clear button"; "Kill the to options. You can click the map"; "Kill
+ * the wind in your face stuff."
  */
 
 const MODES: { m: RouteMode; name: string }[] = [
@@ -36,13 +40,12 @@ export default function RouteCard() {
   const oneWay = useRoutes((s) => s.oneWay)
   const stayDry = useRoutes((s) => s.stayDry)
   const picking = useRoutes((s) => s.picking)
-  const { setMode, setPick, setStayDry, swap, setFrom, setTo, setPicking } = useRoutes.getState()
+  const { setMode, setPick, setStayDry, swap, setFrom, setPicking } = useRoutes.getState()
   const locating = useGpsStore((s) => s.locating)
   // what youEnd reads of the fix: where, to 10 m, and whether it is good enough; not every fix
   useGpsStore((s) => (s.fix ? `${s.fix.lon.toFixed(4)},${s.fix.lat.toFixed(4)},${(s.fix.sigma ?? s.fix.accuracy) <= 150}` : null))
   const you = youEnd()
   const units = useAppStore((s) => s.units)
-  const target = useSpotsStore((s) => s.target)
   // what the hunt route waits on
   useSpotsStore((s) => s.status)
   const [more, setMore] = useState(false)
@@ -57,14 +60,11 @@ export default function RouteCard() {
 
   const blocked = mode === 'hunt' ? huntBlocked() : null
   const r = routes[pick]
-  const toName = to ? endName(from, to, units) : ''
-  // grouse do not wind you: the way the wind sits coming in is for big game
-  const approach = r && !(mode === 'hunt' && target === 'grouse') ? approachText(r.approach) : null
-  const game = TARGET_NAMES[target].toLowerCase()
 
-  // with no end yet the card is just its head and From: the next map tap sets it
+  // where you are going is the map's tap, nothing else (Gavan, 2026-10-17:
+  // "Kill the to options. You can click the map"); the way back is ⇄
   let msg: string | null = null
-  if (!to) msg = ''
+  if (!to) msg = picking === 'from' ? 'Tap the map where you start.' : 'Tap the map where you are going.'
   else if (status === 'outside') msg = `Both ends must be within ${kmWords(CORE_KM)} of ${HOME_WORDS}.`
   else if (status === 'water') msg = 'That end is out on the water.'
   else if (status === 'no-way') msg = 'No way there on foot.'
@@ -99,21 +99,6 @@ export default function RouteCard() {
             {picking === 'from' ? 'Tap the map…' : from?.kind === 'place' ? from.name : from?.kind === 'map' ? 'The map' : 'Tap the map'}
           </button>
         </span>
-        <span className="rt-end">
-          <span className="dim">To</span>
-          <button className={`chip-pick${to?.kind === 'camp' ? ' chip-on' : ''}`} onClick={() => setTo(campEnd())}>
-            {HOME_NAME}
-          </button>
-          <button className={`chip-pick${picking === 'to' && !to ? ' chip-on' : to && to.kind !== 'camp' ? ' chip-on' : ''}`} onClick={() => setPicking('to')}>
-            {to && to.kind !== 'camp' ? toName : picking === 'to' ? 'Tap the map…' : 'Tap the map'}
-          </button>
-          {to && (
-            <button className="linklike rt-clear" onClick={clearRoutes}>
-              Clear
-            </button>
-          )}
-          {stayDry && <span className="dim">· staying dry</span>}
-        </span>
       </div>
       {blocked && <div className="rt-note">{blocked}</div>}
       {msg != null ? (
@@ -134,19 +119,7 @@ export default function RouteCard() {
           </div>
           {oneWay && routes.length < 3 && <div className="rt-note">{routes.length === 1 ? 'Only the one real way through here.' : 'Only two real ways through here.'}</div>}
           {r && (
-            <div className="rt-facts">
-              {routeFacts(r, units).join(' · ')}
-              {mode === 'hunt' && r.nearM != null && (
-                <>
-                  {' · '}
-                  {formatDistance(r.nearM, units)} beside good {game} ground
-                </>
-              )}
-            </div>
-          )}
-          {r && (
             <div className="rt-facts rt-last">
-              {approach && <span className={approach.warn ? 'rt-warn' : undefined}>{approach.text}</span>}
               <button className="linklike rt-why" onClick={() => setMore(!more)} aria-expanded={more}>
                 {more ? 'less' : 'why ▸'}
               </button>
@@ -163,6 +136,16 @@ export default function RouteCard() {
           </span>
           <button className={`chip chip-pick${stayDry ? ' chip-on' : ''}`} onClick={() => setStayDry(!stayDry)} aria-pressed={stayDry}>
             Stay dry
+          </button>
+        </div>
+      )}
+      {to && (
+        <div className="rt-foot">
+          <button className="chip chip-pick" onClick={clearRoutes}>
+            Clear
+          </button>
+          <button className="btn-primary" disabled={!r} onClick={closeRoutes}>
+            Confirm
           </button>
         </div>
       )}
@@ -183,6 +166,15 @@ function RouteWhy() {
   const game = TARGET_NAMES[target].toLowerCase()
   return (
     <div className="rt-why-box">
+      <div>
+        {routeFacts(r, units).join(' · ')}
+        {mode === 'hunt' && r.nearM != null && (
+          <>
+            {' · '}
+            {formatDistance(r.nearM, units)} beside good {game} ground
+          </>
+        )}
+      </div>
       <div>
         <b className="numeral">{routeTime(flatMin * 60)}</b> on the flat
         {parts.map(([label, m]) => (
