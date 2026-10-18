@@ -1,5 +1,7 @@
 import maplibregl, { type GeoJSONSource, type Map as MlMap } from 'maplibre-gl'
 import type { Feature, FeatureCollection } from 'geojson'
+import { ACTIVE_AREA } from '../areas'
+import { useAreaLook } from '../areas/lookSwitch'
 import { getMap, onEachMap, withMap } from '../map/mapController'
 import { closeOnTapOff } from '../map/tapPopup'
 import { formatDistance } from '../measure/measureMath'
@@ -210,6 +212,9 @@ export function initRouteLayer() {
         const ks = hit.map((f) => f.properties?.k as number)
         return s.setPick(ks.includes(s.pick) ? s.pick : ks[0])
       }
+      // looked at from outside this area (another's box, or no area), the card says
+      // routes need the area's grid: a tap there sets no end (ui/RouteCard.tsx)
+      if (useAreaLook.getState().looking?.id !== ACTIVE_AREA.id) return
       const place = map.getLayer('pins-pt') ? map.queryRenderedFeatures(e.point, { layers: ['pins-pt'] })[0] : undefined
       const id = place?.properties?.id as string | undefined
       const p = id ? usePlacesStore.getState().places.find((q) => q.id === id) : undefined

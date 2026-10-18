@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { ACTIVE_AREA } from '../areas'
+import { useAreaLook } from '../areas/lookSwitch'
 import { CORE_KM, HOME_NAME, HOME_WORDS } from '../config'
 import { useAppStore } from '../state/appStore'
 import { useGpsStore } from '../tracking/gpsStore'
@@ -61,10 +63,16 @@ export default function RouteCard() {
   const blocked = mode === 'hunt' ? huntBlocked() : null
   const r = routes[pick]
 
+  // routes walk an area's going grid, baked for its core: looked at from
+  // elsewhere the card says so, instead of From and a word about camp
+  // 3,000 km away (Gavan, 2026-10-17, out west: "tapped two points. No good")
+  const looking = useAreaLook((s) => s.looking)
+  const away = looking?.id !== ACTIVE_AREA.id
   // where you are going is the map's tap, nothing else (Gavan, 2026-10-17:
   // "Kill the to options. You can click the map"); the way back is ⇄
   let msg: string | null = null
-  if (!to) msg = picking === 'from' ? 'Tap the map where you start.' : 'Tap the map where you are going.'
+  if (away) msg = looking ? `Routes here are ${looking.name}'s: go there first.` : "No walking grid here yet: routes need an area's maps."
+  else if (!to) msg = picking === 'from' ? 'Tap the map where you start.' : 'Tap the map where you are going.'
   else if (status === 'outside') msg = `Both ends must be within ${kmWords(CORE_KM)} of ${HOME_WORDS}.`
   else if (status === 'water') msg = 'That end is out on the water.'
   else if (status === 'no-way') msg = 'No way there on foot.'
@@ -86,6 +94,7 @@ export default function RouteCard() {
           <IconSwap size={16} />
         </button>
       </div>
+      {!away && (
       <div className="rt-ends">
         <span className="rt-end">
           <span className="dim">From</span>
@@ -100,6 +109,7 @@ export default function RouteCard() {
           </button>
         </span>
       </div>
+      )}
       {blocked && <div className="rt-note">{blocked}</div>}
       {msg != null ? (
         msg && <div className="tb-hint">{msg}</div>
@@ -139,7 +149,7 @@ export default function RouteCard() {
           </button>
         </div>
       )}
-      {to && (
+      {to && !away && (
         <div className="rt-foot">
           <button className="chip chip-pick" onClick={clearRoutes}>
             Clear
