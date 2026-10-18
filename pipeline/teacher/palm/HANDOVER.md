@@ -185,3 +185,54 @@ Esri's terms allow offline use only through Esri Content Packages, so Esri tiles
 both Clearwaters: the sharp:// cache) read as outside the terms for a paid app. Don't change published data until Gavan decides.
 Also noted: bc_vectors' TRIM trail codes, yt_vectors' imagery note and seismic-line filter, DATA-SOURCES on LIO rail, Ontario's
 road package now split passable / non-passable (a bake after 2026-10-06 reads the passable ones only).
+
+---
+
+## For the next session (Hunter-Jay → the same seat on Opus, 2026-10-18 ~19:45)
+
+Gavan is switching this seat's model. The seat is **PALM owner, scent-card referee, the xonix/XEVO job queue, and (since
+10-18) the area bakes**. Everything below is the state as left; the background waiters of the old session die with it,
+so re-arm what you need.
+
+**Live and dev.** hunt.groundwind.app is at `live` = f392094 (both Clearwater areas HD, Esri photo, modelled Bush, stand-scale
+lanes, greyed-Lanes rule). hunt-dev (main) is at af6f8e7 and carries, beyond live: ba's 80 m-keyed drainage fade (5e933a7,
+refereed, reference row moved), property lines in nine areas (92cc98a, 63de13b), and docs. **Promoting to live is Gavan's
+call** (`git push origin <sha>:live` after the dev run is green).
+
+**Open with Gavan (don't act without him):** (1) request #13 in D1 still unmarked — the seat's token has no D1 scope; the
+UPDATE is in the 06:30 notes above; (2) licence questions (BC DRA/TRIM roads in Blanchard's pack; Esri tiles kept offline
+by sharp:// in Blanchard, Highland, both Clearwaters) — 79 raised them, docs/OLD-ROADS.md; (3) a 30 m lanes layer was
+shipped on his "Go"; (4) live promotion of the fade and property lines.
+
+**Monday 2026-10-19 (bake seat):** Blanchard River's property lines — `py -3.14 pipeline/bake_area.py --area blanchard-river
+--only property --only vector-tiles --only coverage`, then list land/lots in its files.geo (lots only if the file has
+features), coverage again, `r2_sync.py --only areas/blanchard-river/`, commit, push. ParcelMap BC reloads Sundays.
+
+**PALM queue (see palm_status.py):** XEVO slot 1 runs 270 pickle-slot am270t (the slot's dawn series, since 13:21, ~7 h);
+xonix slot 1 runs 280 pickle-slot dusk288t at 2 m (since ~17:00, ~8 h); todo 290 bogstrip b190 2 m (~5 h), 300 slot dusk288tp
+(pre-cooled; decides ba's inversion gate 6a113d9), 310 bogs dawn175tl (the light-wind dawn; the dawn rule). The neutral
+explore runs (150-180) stay in held/ behind them. When each lands: `series_read.py <case> <run> --tag <4m|2m>` for the
+series; for 290 the forcing row (forcing_table.py --write) and the P6/P7 bands at 2 m against 4 m on the card. Write every
+verdict into docs/SCENT-TESTSET.md's booked-questions rows (they are all booked there) and OBJECTIVES.md. The old
+session's waiter for 260-300 (bgtr6xs4e) is gone: nothing reads them by itself now.
+
+**Reference row:** 5e933a7, scores/2026-10-18_1724_5e933a7_reference-5e933a7.json: HD 0.60 / 0.61, misses 14 / 11, FA
+38 / 41; SD 0.55 / 0.57, misses 18 / 12, FA 35 / 43. Score a candidate with
+`scorecard.py --ref <sha> --grid both --label <word> --variants '{...}'` (its own worktree, port 5251); the checks card
+with `app/scripts/checks_card.py --url http://localhost:5195/ --out x.json "--replay-arg=--thermal={...}"` (the `=` form,
+or argparse rejects the value); 5195 is ba's shared-tree server, sequence with ba's palm_compare. The towers card can't
+move on wind rules (its app side isn't built).
+
+**Next rule items, in order:** the near-still cone's width and reach at the strip (P5 dusk288's three misses, loop item #2);
+the dawn rule from 310; the inversion gate from 300; 2 m vs 4 m from 280/290. Backlog after: PALM with radiation and a
+land surface, PALM's level scaled to the towers, NOSE sensitivity, the slot's dusk from other angles.
+
+**SD tiles:** XEVO bakes the national queue (pipeline/raw/windtiles/queue.txt: Clearwater ring, then Ontario's north, then
+Quebec); xonix's GPU slot runs sdx batches again (its PAUSE lifted). water_tiles.py after any queue rebuild.
+
+**Scripts kept in app/scripts/headless/:** area_check.py (the in-page validator for a new area file: badAreaField null and
+the id in AREAS — run it before publishing any new area), photo_shots.py, live_area_grade.py, layers_sheet_shot.py. Each
+expects a dev server on 5177 (`npx vite --port 5177 --strictPort` in app/) or the live/dev URL inside the file.
+
+**Peers:** huntapp-ba (rules; builds a candidate within hours; send him the card rows), huntapp-79 (property lines),
+Optimus (code audit; the Clearwater research), huntapp-50 (bush model; its session was gone at 06:10).
