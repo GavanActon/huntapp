@@ -73,10 +73,11 @@ export type HotId = 'windcheck' | 'scent' | 'heard' | 'windflow' | 'routes' | 'm
 /** The two columns: `near` is the thumb's side (right, or left for a left hand), `far` the other. */
 export type HotSide = 'near' | 'far'
 export type HotSets = Record<HotSide, HotId[]>
-// a fresh phone's are Gavan's (2026-10-03, sent from his phone): Scent above Sharpen
+// a fresh phone's are Gavan's (2026-10-03, sent from his phone): Scent above Sharpen; Path in Route's
+// place (2026-10-18: "Path instead of route"), Route waiting in Map buttons' tray
 export const DEFAULT_HOT: Record<'hunt' | 'fish', HotSets> = {
-  hunt: { near: ['heard', 'scent', 'windcheck', 'windflow'], far: ['routes', 'measure', 'lanes', 'contours'] },
-  fish: { near: ['pin', 'bathy', 'windflow'], far: ['routes', 'measure'] },
+  hunt: { near: ['heard', 'scent', 'windcheck', 'windflow'], far: ['path', 'measure', 'lanes', 'contours'] },
+  fish: { near: ['pin', 'bathy', 'windflow'], far: ['path', 'measure'] },
 }
 // Low power was taken out 2026-10-03: a saved layout holding it drops it here (unknown ids)
 const HOT_IDS: readonly HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'path', 'contours', 'pin', 'understory', 'lanes', 'bathy', 'radar']
@@ -195,7 +196,8 @@ export interface FlowTuning {
   windSwirl: boolean // eddies drawn where the ground model says the air swirls
   windStyle: WindStyle // the streaks' look (weather/windFlow.ts LOOKS)
 }
-export const FLOW_TUNING_DEFAULTS: FlowTuning = { windDensity: 2500, windSpeed: 1, windTrail: 0.97, windHue: 195, windSat: 100, windSize: 'large', windSwirl: true, windStyle: 'standard' }
+// the Bold look on a fresh phone (Gavan, 2026-10-18: "Wind to bold")
+export const FLOW_TUNING_DEFAULTS: FlowTuning = { windDensity: 2500, windSpeed: 1, windTrail: 0.97, windHue: 195, windSat: 100, windSize: 'large', windSwirl: true, windStyle: 'bold' }
 
 /** How much of the area's detail the map draws. 'full': all of it, every
  *  view as it was. 'light': none of the high-res layers (the 1 m LiDAR
@@ -383,8 +385,9 @@ export const useAppStore = create<AppState>()(
       setHotSets: (mode, sets) => set((st) => ({ hotButtons: { ...st.hotButtons, [mode]: cleanSets(sets, st.hotButtons[mode]) } })),
       leftHanded: false,
       setLeftHanded: (leftHanded) => set({ leftHanded }),
-      // a fresh phone's names off and the top row extra large: Gavan's (2026-10-03)
-      buttonLabels: false,
+      // a fresh phone's top row extra large: Gavan's (2026-10-03); the names under the buttons on
+      // (2026-10-18: "Bottom names on"), so someone new can tell the buttons apart
+      buttonLabels: true,
       setButtonLabels: (buttonLabels) => set({ buttonLabels }),
       hotHidden: false,
       setHotHidden: (hotHidden) => set({ hotHidden }),
