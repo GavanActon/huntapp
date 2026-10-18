@@ -199,8 +199,7 @@ lanes, greyed-Lanes rule). hunt-dev (main) is at af6f8e7 and carries, beyond liv
 refereed, reference row moved), property lines in nine areas (92cc98a, 63de13b), and docs. **Promoting to live is Gavan's
 call** (`git push origin <sha>:live` after the dev run is green).
 
-**Open with Gavan (don't act without him):** (1) request #13 in D1 still unmarked — the seat's token has no D1 scope; the
-UPDATE is in the 06:30 notes above; (2) licence questions (BC DRA/TRIM roads in Blanchard's pack; Esri tiles kept offline
+**Open with Gavan (don't act without him):** (1) ~~request #13 in D1 still unmarked~~ done by Gavan (2026-10-18 ~20:00); (2) licence questions (BC DRA/TRIM roads in Blanchard's pack; Esri tiles kept offline
 by sharp:// in Blanchard, Highland, both Clearwaters) — 79 raised them, docs/OLD-ROADS.md; (3) a 30 m lanes layer was
 shipped on his "Go"; (4) live promotion of the fade and property lines.
 
@@ -236,3 +235,9 @@ expects a dev server on 5177 (`npx vite --port 5177 --strictPort` in app/) or th
 
 **Peers:** huntapp-ba (rules; builds a candidate within hours; send him the card rows), huntapp-79 (property lines),
 Optimus (code audit; the Clearwater research), huntapp-50 (bush model; its session was gone at 06:10).
+
+**huntapp-c5 took the seat (2026-10-18 ~19:50, Gavan: "yes - take the seat").** Waiters (scratchpad wait_series.sh) for 270 am270t
+and 280 dusk288t 2 m run series_read.py when each lands; 290/300/310 to arm as they start. The Property lines switch checked
+headless on hunt-dev 682996e at Searchmont: private lots and Goulais River PP read right; the sheet is now reached by the
+view button (Sat ▾) → More › → Edit this view › → Land, so layers_sheet_shot.py's old More-menu path no longer gets there.
+Gavan: the seat commits its verdicts and notes as it goes.
