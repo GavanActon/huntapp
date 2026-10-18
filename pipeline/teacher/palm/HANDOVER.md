@@ -148,3 +148,12 @@ layer as imagery. Check a new area with the in-page validator before anything el
 on a dev server (scratchpad cwcheck.py); `Object.keys(AREAS)` must list it. Fill the zone by hand: Alberta's WMU service is
 https://geospatial.alberta.ca/mimas/rest/services/boundaries/fishwild_wildlife_mgmt_unit_public/FeatureServer/0/query (point query).
 Esri's block differs within a few km (sharp Maxar west of Clearwater, an older coarse capture at the request point).
+
+**WindNinja runners and a failed direction (03:20).** run.ps1 sweeps its job list in order and, after a run, carries on
+DOWN the list; a direction freed by a failure (claim → failed-<me>-<stamp>.txt) is only seen again when a runner's sweep
+ends and it re-reads the kit. With seven runners busy on the next area that can be hours. To retry one now, run one sweep
+by hand: `powershell -ExecutionPolicy Bypass -File pipeline/raw/windcfd/run.ps1 -Threads 4` (no -Watch; it exits when
+the list is exhausted). start-runners.ps1 refuses a fourth watcher. The runner writes each run.cfg from the kit's
+meta.json (meshCount, speedKph): edit meta.json, not run.cfg. Clearwater's 984k mesh failed moveDynamicMesh on the
+22.5°-off-axis directions (67.5° four times); 650k is the retry. build_windcfd.py collect --fill stands one missing
+direction in from its neighbours and says so.

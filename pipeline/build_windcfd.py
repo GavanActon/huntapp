@@ -217,6 +217,25 @@ def collect() -> None:
             bands[f"s{d:05.1f}"] = (ks_ / meta["speedKph"]).astype(np.float32)
             turb.append(d)
     missing = [d for d in meta["directions"] if d not in done]
+    if missing and "--fill" in sys.argv:
+        # a direction WindNinja will not run (Clearwater's 67.5° failed moveDynamicMesh four times, 2026-10-18)
+        # stands in from its two neighbours: their u/v averaged (the mean of two vectors 22.5° apart points
+        # between them, 2% short, which the cosine puts back) and the turbulence likewise. Locally the
+        # 45°-apart accuracy of an 8-direction kit (2.5° median); said in the output so it is not mistaken
+        step = 360.0 / len(meta["directions"])
+        for d in list(missing):
+            lo, hi = (d - step) % 360.0, (d + step) % 360.0
+            if lo in done and hi in done:
+                c = 1.0 / math.cos(math.radians(step / 2))
+                bands[f"u{d:05.1f}"] = ((bands[f"u{lo:05.1f}"] + bands[f"u{hi:05.1f}"]) * 0.5 * c).astype(np.float32)
+                bands[f"v{d:05.1f}"] = ((bands[f"v{lo:05.1f}"] + bands[f"v{hi:05.1f}"]) * 0.5 * c).astype(np.float32)
+                if f"s{lo:05.1f}" in bands and f"s{hi:05.1f}" in bands:
+                    bands[f"s{d:05.1f}"] = ((bands[f"s{lo:05.1f}"] + bands[f"s{hi:05.1f}"]) * 0.5).astype(np.float32)
+                    turb.append(d)
+                done.append(d)
+                missing.remove(d)
+                print(f"  {d:05.1f}°: FILLED from {lo:05.1f}° and {hi:05.1f}° (not run)")
+        done.sort()
     if missing:
         raise SystemExit(f"{REGION['id']}: {len(missing)} directions not run yet: {missing}")
     if turb and len(turb) < len(done):
