@@ -1178,7 +1178,9 @@ function towerShare(g: Habitat, i: number, leaves: number): number | null {
 // the slot, the strip at a forecast 10 m of 5.4) and followed the wind at 17-20 (Gavan's Lac Bailey
 // spot at 6.5, the bogs' dawn), where the 10 m forecasts of the two sit a km/h apart. Keyed to the
 // floor's own sheltered wind instead (tried 2026-10-18) the slope under trees drained again
-const THERMAL_DEFAULT = { mix0: 5, mixScale: 1, trees: 0.7, ref: 1, mixS0: 5, mixSScale: 1, sl0: 3, sl1: 8, waterAna: 0, inv0: 0, inv1: 0 }
+// ref 3 at 12 km/h, by e every 2, since 2026-10-18 (scent card v4: misses held, SD one fewer; palm_compare
+// Gavan's Lac Bailey spot 53 -> 60%, its dusk series 25 -> 47; the checks in band)
+const THERMAL_DEFAULT = { mix0: 12, mixScale: 2, trees: 0.7, ref: 3, mixS0: 12, mixSScale: 2, sl0: 3, sl1: 8, waterAna: 0, inv0: 0, inv1: 0 }
 let thermalTune = { ...THERMAL_DEFAULT }
 export function setThermalTune(t: Partial<typeof THERMAL_DEFAULT> | null): void {
   thermalTune = { ...THERMAL_DEFAULT, ...t }

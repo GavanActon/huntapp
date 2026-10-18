@@ -197,14 +197,21 @@ knows the turbulence. Every area was rerun to keep it:
   - In the browser: × strength = max(inversion·stable, 0.6·clear-sky
     cooling after the sun is under 10°), × a fade with the wind over the
     place, × 0.7 under trees.
-  - **The fade** (2026-10-16, `THERMAL_DEFAULT` in model.ts): whole up to
-    5 km/h of the forecast's 10 m wind (as the sit's checks have fitted
-    it), then down by e every 1 km/h, on slopes and flats alike.
-    Provisional on the fade sweep: PALM runs at about 2 and 4 km/h on
-    Gavan's slope and the Pickle bog (d326u06, d326u12, dawn175u06) say
-    whether the slope's turn sits lower; if it does, the slope's fade
-    (mixS0, mixSScale) moves and goes back to the card. Until
-    then it was 5 km/h of the local wind after a settled night's
+  - **The fade** (2026-10-18, `THERMAL_DEFAULT` in model.ts): whole while
+    the forecast's 80 m wind, over the settled layer, is under 12 km/h,
+    then down by e every 2 km/h, on slopes and flats alike (the 10 m wind
+    where the profile has no 80 m). The drainage has to beat the wind
+    above the canopy, and PALM's dusk floors split on it where the 10 m
+    forecasts did not: drained under 8–11 km/h at 80 m (the Lac Bailey
+    bank, Whitefish, the Pickle slot, the strip at a 10 m forecast of 5.4)
+    and followed the wind at 17–20 (Gavan's spot at 6.5 at 10 m, the bogs'
+    dawn). On test set v4 against the 10 m fade it replaced: the scent
+    card's misses held and SD's one fewer; PALM direction over the stable
+    runs 48.7 → 48.9%, Gavan's spot 53 → 60% and its dusk series 25 →
+    47%, the bank's series 72 → 69%; the checks in band. Keyed to the
+    floor's own sheltered wind instead, the treed slope drained again.
+    From 2026-10-16 to 10-18 it was 5 km/h of the forecast's 10 m wind
+    (as the sit's checks fit it), by e every 1 km/h. Before that it was 5 km/h of the local wind after a settled night's
     decoupling, by e every 8, which kept a slope draining under a forecast
     of 8–9 km/h: Gavan's Lac Bailey spot at 8 pm on 15 Oct, where the app
     sent the scent NE downhill 226 m and PALM took it SE with the NW wind
