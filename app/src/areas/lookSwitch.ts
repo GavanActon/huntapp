@@ -5,7 +5,7 @@ import { onEachMap } from '../map/mapController'
 import { useDownloads } from '../offline/downloads'
 import { useAppStore } from '../state/appStore'
 import { useGpsStore } from '../tracking/gpsStore'
-import { ACTIVE_AREA, otherAreaAt, type AreaDef } from './index'
+import { ACTIVE_AREA, areaAt, otherAreaAt, type AreaDef } from './index'
 import { switchArea } from './switch'
 
 /**
@@ -38,8 +38,14 @@ const SETTLE_MS = 1200
  *  taken on a fix alone, since the phone is glanced at and pocketed and a
  *  reload nobody asked for would drop the people placed and the card left
  *  open mid-sit. Following, the view goes into the box with the fix and the
- *  switch below goes by itself. */
-export const useAreaLook = create<{ waiting: AreaDef | null; offer: AreaDef | null }>(() => ({ waiting: null, offer: null }))
+ *  switch below goes by itself.
+ *  `looking`: the area whose box holds the view's centre, at any zoom (the
+ *  open one on opening; null over no area at all): what the strip's save
+ *  line, the ⋯ menu's row and the maps sheet speak of. They spoke of the
+ *  open area whatever was on screen: streaming a friend's spot in Alberta,
+ *  "save the maps for camp" pointed Gavan to Lac Bailey (2026-10-17,
+ *  "Should be tap on area"). */
+export const useAreaLook = create<{ waiting: AreaDef | null; offer: AreaDef | null; looking: AreaDef | null }>(() => ({ waiting: null, offer: null, looking: ACTIVE_AREA }))
 
 function offerFromFix() {
   const f = useGpsStore.getState().fix
@@ -74,6 +80,15 @@ function inBox(r: AreaDef['region'], lon: number, lat: number): boolean {
 
 onEachMap((m) => {
   let timer = 0
+
+  // the area under the view's centre, kept as the view moves
+  const look = () => {
+    const c = m.getCenter()
+    const a = areaAt(c.lng, c.lat)
+    if ((a?.id ?? null) !== (useAreaLook.getState().looking?.id ?? null)) useAreaLook.setState({ looking: a })
+  }
+  look()
+  m.on('moveend', look)
 
   const settled = () => {
     timer = 0

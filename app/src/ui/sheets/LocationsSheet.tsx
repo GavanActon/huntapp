@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState, type JSX } from 'react'
-import { ACTIVE_AREA, AREA_LIST, type AreaDef } from '../../areas'
+import { ACTIVE_AREA, AREA_LIST, areaAt, type AreaDef } from '../../areas'
 import { switchArea } from '../../areas/switch'
+import { setExplore } from '../../explore'
+import { boxAround } from '../../explore/box'
+import { useExplore } from '../../explore/store'
 import { getMap } from '../../map/mapController'
 import { useDownloads } from '../../offline/downloads'
 import { bundleOf, keepsArea } from '../../offline/updates'
@@ -46,6 +49,20 @@ export default function LocationsSheet(): JSX.Element {
     switchArea(a.id, { center: a.home.center, zoom: a.home.zoom })
   }
 
+  // a new location is asked for the way Explore asks: the box, then SD or HD
+  // (explore/index.ts). Over no area the box goes round the view at once;
+  // over one, Explore comes on and the box goes down where the next tap
+  // lands outside the areas (Gavan, 2026-10-17: "there should also be an
+  // add which lets you add locations through the same method")
+  const add = () => {
+    closeSheet()
+    setExplore(true)
+    const m = getMap()
+    if (!m) return
+    const c = m.getCenter()
+    if (!areaAt(c.lng, c.lat)) useExplore.getState().select({ box: boxAround(c.lng, c.lat), lon: c.lng, lat: c.lat })
+  }
+
   return (
     <div className="pins">
       <div className="place-list">
@@ -73,6 +90,12 @@ export default function LocationsSheet(): JSX.Element {
             </div>
           )
         })}
+        <div className="place-row">
+          <button className="row-text place-go" onClick={add}>
+            <span className="row-title">Add a location</span>
+            <span className="row-desc">a box where you want maps, then SD or HD</span>
+          </button>
+        </div>
       </div>
     </div>
   )

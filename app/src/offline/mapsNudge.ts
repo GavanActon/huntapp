@@ -11,6 +11,7 @@
  * spots do, the map itself does not yet.
  */
 import { ACTIVE_AREA } from '../areas'
+import { useAreaLook } from '../areas/lookSwitch'
 import { habitatFile, microFile } from '../config'
 import { useAppStore } from '../state/appStore'
 import { useDownloads, mapsStatus } from './downloads'
@@ -65,8 +66,10 @@ export function useMapsNudge(): MapsNudge {
   useMapUpdates((s) => s.pending)
   const maps = mapsStatus()
   const downloading = active && areaId === ACTIVE_AREA.id
+  // the row is about this area's maps: not while the view is over another area, or over none (the strip's line speaks for those)
+  const looking = useAreaLook((s) => s.looking)
   // new maps on the server have the badge beside Settings already (replace)
-  const show = online && !downloading && maps.action === 'download' && !maps.replace && maps.files.length > 0
+  const show = online && !downloading && maps.action === 'download' && !maps.replace && maps.files.length > 0 && looking?.id === ACTIVE_AREA.id
   const gridsKept = manifestGet(microFile()) != null && manifestGet(habitatFile()) != null
   return { show, dot: show && !seenLately(ACTIVE_AREA.id), bytes: bytesOf(maps.files), gridsKept, downloading, files: maps.files }
 }

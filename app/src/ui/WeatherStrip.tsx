@@ -26,7 +26,57 @@ import { markNudgeSeen, useMapsNudge } from '../offline/mapsNudge'
 import { useLookTick } from './useLookTick'
 import { useTapOff } from './tapOff'
 import { useLoadProgress } from '../offline/loadProgress'
+import { ACTIVE_AREA, type AreaDef } from '../areas'
+import { useAreaLook } from '../areas/lookSwitch'
+import { switchArea } from '../areas/switch'
+import { withMap } from '../map/mapController'
+import { setExplore } from '../explore'
+import { boxAround } from '../explore/box'
+import { useExplore } from '../explore/store'
 import './strip.css'
+
+/**
+ * The strip's loading line while the wind streams in: the first seconds say
+ * it stays on the phone; past eight, the offer to save the maps — of the
+ * area the view is over, not the one the app is in. Looking at another
+ * area's box, the tap goes there and opens its maps. Over no area at all
+ * (a friend's spot streamed on the national tiles) there are no maps to
+ * save, and the tap puts Explore's box round the view to ask for the ground
+ * (Gavan, 2026-10-17, at 52.278,-115.250: "Should be tap on area").
+ */
+function StreamLine({ slow, done, looking, openOffline }: { slow: boolean; done: boolean; looking: AreaDef | null; openOffline: () => void }) {
+  const elsewhere = looking && looking.id !== ACTIVE_AREA.id ? looking : null
+  const act = () => {
+    if (looking && !elsewhere) return openOffline()
+    withMap((m) => {
+      const c = m.getCenter()
+      if (elsewhere) switchArea(elsewhere.id, { center: [c.lng, c.lat], zoom: m.getZoom() }, { kind: 'offline' })
+      else {
+        setExplore(true)
+        useExplore.getState().select({ box: boxAround(c.lng, c.lat), lon: c.lng, lat: c.lat })
+      }
+    })
+  }
+  return (
+    <button className={`wxstrip-stream${done ? ' wxstrip-stream-done' : ''}`} onClick={act}>
+      {!slow ? (
+        'First time here: streaming the wind · it stays on the phone'
+      ) : !looking ? (
+        <>
+          First time here: streaming the wind · no maps to save here · <b>ask for this ground ›</b>
+        </>
+      ) : elsewhere ? (
+        <>
+          First time here: streaming the wind · <b>save {elsewhere.name}'s maps for camp ›</b>
+        </>
+      ) : (
+        <>
+          First time here: streaming the wind · <b>save the maps for camp ›</b>
+        </>
+      )}
+    </button>
+  )
+}
 
 /**
  * The outlook strip at the top of the map. Its head is what you are after
@@ -267,6 +317,7 @@ export default function WeatherStrip() {
     return () => window.clearTimeout(t)
   }, [load.visible])
   const nudge = useMapsNudge()
+  const looking = useAreaLook((s) => s.looking)
   const openSheetFor = useAppStore((s) => s.openSheet)
   const stripOpen = useAppStore((s) => s.stripOpen)
   const EXPLORE = useAppStore((s) => s.exploreMode)
@@ -805,17 +856,7 @@ export default function WeatherStrip() {
           )}
         </>
       )}
-      {load.visible && (
-        <button className={`wxstrip-stream${load.done ? ' wxstrip-stream-done' : ''}`} onClick={() => openSheetFor({ kind: 'offline' })}>
-          {streamSlow ? (
-            <>
-              First time here: streaming the wind · <b>save the maps for camp ›</b>
-            </>
-          ) : (
-            'First time here: streaming the wind · it stays on the phone'
-          )}
-        </button>
-      )}
+      {load.visible && <StreamLine slow={streamSlow} done={load.done} looking={looking} openOffline={() => openSheetFor({ kind: 'offline' })} />}
       {stripOpen && (
         <button className="wxfold-handle" onClick={() => setStripOpen(false)} aria-label="Fold the strip">
           <IconChevronUp size={16} />

@@ -1,5 +1,6 @@
 import { useEffect, useState, type JSX } from 'react'
 import { ACTIVE_AREA, AREA_LIST, areaById, type AreaDef, type CoverageLayer } from '../../areas'
+import { useAreaLook } from '../../areas/lookSwitch'
 import { dataFiles, habitatFile, layerLabel, microFile } from '../../config'
 import { fmtBytes, mapsStatus, removeFiles, removeSharpOnly, runMaps, useDownloads } from '../../offline/downloads'
 import { listStored, storageEstimate, type StoredFileInfo } from '../../offline/fileStore'
@@ -51,10 +52,18 @@ export default function OfflineSheet(): JSX.Element {
   }, [])
 
   const stored = new Map(listStored().map((s) => [s.name, s]))
+  // the area the view is over comes first, unfolded, when it is not the one
+  // the app is in; over no area at all the sheet says so before the list
+  // (areas/lookSwitch.ts `looking`)
+  const looking = useAreaLook((s) => s.looking)
+  const areas = AREA_LIST.filter((a) => !a.virtual)
+  const first = looking && looking.id !== ACTIVE_AREA.id ? looking : null
+  const ordered = first ? [first, ...areas.filter((a) => a.id !== first.id)] : areas
   return (
     <div className="settings">
-      {AREA_LIST.filter((a) => !a.virtual).map((a) => (
-        <AreaMaps key={a.id} area={a} stored={stored} />
+      {!looking && <p className="st-note">The ground on screen is streamed and has no area of its own yet, so there are no maps to save for it: Explore asks for one. The areas:</p>}
+      {ordered.map((a) => (
+        <AreaMaps key={a.id} area={a} stored={stored} unfolded={a.id === (first?.id ?? ACTIVE_AREA.id)} />
       ))}
       {quota && quota.quota > 0 && (
         <div className="st-files-foot">
@@ -67,13 +76,13 @@ export default function OfflineSheet(): JSX.Element {
   )
 }
 
-function AreaMaps({ area, stored }: { area: AreaDef; stored: Map<string, StoredFileInfo> }): JSX.Element | null {
+function AreaMaps({ area, stored, unfolded }: { area: AreaDef; stored: Map<string, StoredFileInfo>; unfolded: boolean }): JSX.Element | null {
   const dl = useDownloads()
   const pending = useMapUpdates((s) => s.pending)
   const listing = useMapUpdates((s) => s.listing?.[area.id])
   const here = area.id === ACTIVE_AREA.id
-  // the area the app is in shows its files; another folds them under the count
-  const [open, setOpen] = useState(here)
+  // the area the app is in, or the one the view is over, shows its files; another folds them under the count
+  const [open, setOpen] = useState(unfolded)
   // a Remove under way: thousands of imagery tiles can take a moment
   const [removing, setRemoving] = useState<'maps' | 'sharp' | null>(null)
   const remove = async (what: 'maps' | 'sharp', ask: string, run: () => Promise<void>) => {

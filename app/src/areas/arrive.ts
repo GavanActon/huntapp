@@ -33,6 +33,11 @@ export function initAreaArrival(): void {
   const then = takeSwitchThen()
   // a look has done its part already: the map opened where it was meant to, follow held off
   if (!then || then.kind === 'look') return
+  // the save was of this area, looked at from another: its maps sheet
+  if (then.kind === 'offline') {
+    useAppStore.getState().openSheet({ kind: 'offline' })
+    return
+  }
   if (then.kind === 'select') {
     if (!usePlacesStore.getState().places.some((p) => p.id === then.id)) return
     usePlacesStore.getState().select(then.id)

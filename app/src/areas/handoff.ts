@@ -15,6 +15,8 @@
  *  (areas/start.ts linkMark), noted as shown once it is up. */
 export type SwitchThen =
   | { kind: 'look' }
+  /** the maps sheet, for the area the view was over (ui/WeatherStrip.tsx's save line) */
+  | { kind: 'offline' }
   | { kind: 'spot'; lon: number; lat: number; name?: string; link?: string }
   /** pins: its sheet open on it once there (map/placePopup.ts Open) */
   | { kind: 'select'; id: string; pins?: boolean }
