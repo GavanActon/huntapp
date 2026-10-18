@@ -180,7 +180,9 @@ export function syncUnderlays(map: MlMap, layers: LayerVisibility, opacity: Laye
   ;({ layers, opacity } = standIn(layers, opacity))
   const b = map.getBounds()
   const inside = b.getWest() >= REGION.west && b.getEast() <= REGION.east && b.getSouth() >= REGION.south && b.getNorth() <= REGION.north
-  const imagery = imageryWhole(layers, opacity) && !!map.getLayer('satellite')
+  // Esri's sharp photo is the imagery where nothing is baked (Clearwater, AB): with it left out,
+  // the live shade and the base map stayed on over and under it in the Hunt view (Gavan, 2026-10-18: "washed out")
+  const imagery = imageryWhole(layers, opacity) && !!(map.getLayer('satellite') || map.getLayer('satellite-sharp'))
   const relief = !hd && layers.relief && !!map.getLayer('relief-colour')
   // the wind's colours cover the ground whole, and the DEM's own shade is over them in the box
   const wind = windGround(layers) && !!map.getLayer('relief-shade')
@@ -549,8 +551,10 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
         'hillshade',
         'hillshade',
       ) as LayerSpecification
-      // streamed (a trial), under the live imagery the same way: over it, it washed the photo grey
-      const baked = has('satellite') || STREAM_PICTURES ? rasters.findIndex((l) => l.id === 'satellite') : -1
+      // streamed (a trial), under the live imagery the same way: over it, it washed the photo grey;
+      // and under Esri's sharp photo where it is the only one (Clearwater, AB), the same wash in Hunt
+      const under = has('satellite') || STREAM_PICTURES ? 'satellite' : 'satellite-sharp'
+      const baked = rasters.findIndex((l) => l.id === under)
       if (baked >= 0) rasters.splice(baked, 0, shade)
       else rasters.push(shade)
       liveShadeUnderImagery = baked >= 0

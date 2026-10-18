@@ -172,7 +172,9 @@ export function HotButton({ id, onHold, onTap }: { id: HotId; onHold: () => void
   const labels = useAppStore((s) => s.buttonLabels)
   // HD would add it here (want): a tap says what HD gives. The ring (HotDot) is gold while the view is HD
   const hd = hotMark(id)
-  // its layer was never baked here (an HD area with no point cloud has no lanes): greyed, and a tap says why
+  // its layer was never baked here (no point cloud, so no lanes): greyed, and a tap does nothing, in
+  // an SD area too; it no longer opens the grade sheet's Get HD (Gavan, 2026-10-18, at Clearwater:
+  // "When I tap range just don't bring me to get HD screen")
   const absent = hotAbsent(id)
   const timer = useRef(0)
   const held = useRef(false)
@@ -197,11 +199,13 @@ export function HotButton({ id, onHold, onTap }: { id: HotId; onHold: () => void
       onContextMenu={(e) => e.preventDefault()}
       onClick={() => {
         if (held.current) return (held.current = false)
-        if (hd === 'want' || absent) return openGrade(id)
+        if (absent) return
+        if (hd === 'want') return openGrade(id)
         ;(onTap ?? d.onTap)()
       }}
       aria-pressed={on}
-      aria-label={d.name}
+      aria-disabled={absent || undefined}
+      aria-label={absent ? `${d.name}: not here` : d.name}
     >
       <d.Icon />
       <HotDot id={id} />

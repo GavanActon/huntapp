@@ -126,8 +126,9 @@ export function hdItems(): HdItem[] {
       sdNote: `${OFF}: no lanes yet.`,
     })
   } else {
-    // HD without a point cloud (Clearwater, AB): the Lanes button is greyed and a tap lands here
-    // (Gavan, 2026-10-17: "pressing ranges doesn't bring up HD… grey it out when it's not avail")
+    // HD without a point cloud (Clearwater, AB): the Lanes button is greyed (Gavan, 2026-10-17:
+    // "pressing ranges doesn't bring up HD… grey it out when it's not avail") and its tap does nothing
+    // (2026-10-18: "just don't bring me to get HD screen"); the row stays in the sheet to say why
     out.push({
       id: 'lanes',
       key: 'lanes',
@@ -163,7 +164,7 @@ export function offInSd(it: HdItem): boolean {
 /** The buttons HD powers here, by hot button id (an HD area only, installed or not). */
 const HD_HOT: Map<string, HdItem> = new Map(areaGrade() === 'hd' ? hdItems().filter((i) => i.hot && !i.absent).map((i) => [i.hot!, i]) : [])
 
-/** The layer files a hot button draws from; without the file the button is greyed and a tap opens the grade sheet. */
+/** The layer files a hot button draws from; without the file the button is greyed and a tap does nothing. */
 const HOT_FILES: Record<string, string> = { lanes: 'lanes', understory: 'understory' }
 export const hotAbsent = (id: string): boolean => id in HOT_FILES && !has(HOT_FILES[id])
 
