@@ -5,20 +5,21 @@ import { IconCheck, IconChevronDown, IconLayers } from './icons'
 import { useTapOff } from './tapOff'
 import { setExplore } from '../explore'
 import { GradeTile } from './grade'
-import { viewHere, viewPic } from './viewKit'
+import { viewHere } from './viewKit'
 import './views.css'
 
 /**
  * The view pill, bottom left: the name of the view the map is showing
- * ("Scout"), and a menu of the user's views. Past a rule in the same pill,
- * the map's grade, HD or SD, which opens the grade sheet. The menu is My
- * views, a picture each, then `All views ›`: the Views sheet, every view
- * with what it shows and what it is for, to see and to add, and Make your
- * own at its foot (Gavan, 2026-10-19: "don't want to bloat the menu - we
- * want users learning what the views are + having the ability to grab the
- * ones they want"). No modes here: the quarry chip on the strip sets
- * hunting or fishing. The menu's open state lives in the app store
- * (viewMenuOpen) so the hot column can step out from under it.
+ * ("Scout"), and a menu of the user's shortlist, the views by name, one tap
+ * each, then `More ›`: the Views sheet, every view with its picture, what
+ * it shows and what it is for, + to add it here, and Make your own at its
+ * foot (Gavan, 2026-10-19: "press view pill, see views in text and at the
+ * bottom more -> brings up views. + to add to shortlist"; the pictures in
+ * the menu were "way too slow and cumbersome"). Past a rule in the same
+ * pill, the map's grade, HD or SD, which opens the grade sheet. No modes
+ * here: the quarry chip on the strip sets hunting or fishing. The menu's
+ * open state lives in the app store (viewMenuOpen) so the hot column can
+ * step out from under it.
  */
 
 export default function ViewPill() {
@@ -51,43 +52,10 @@ export default function ViewPill() {
     <div className="viewpill-wrap" ref={box}>
       {open && (
         <div className="viewpill-menu glass" role="menu" aria-label="Views">
-          <div className="viewpill-sec">My views</div>
-          {mine.length > 0 ? (
-            <div className="viewpill-cards">
-              {mine.map((v) => (
-                <button
-                  key={v.id}
-                  className={`viewcard${on?.id === v.id ? ' on' : ''}`}
-                  role="menuitemradio"
-                  aria-checked={on?.id === v.id}
-                  onClick={() => {
-                    apply(v)
-                    close()
-                  }}
-                >
-                  <img src={viewPic(v)} alt="" draggable={false} />
-                  <span>{v.name}</span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="viewpill-none">None yet: add the ones you want from All views.</div>
-          )}
-          <button
-            className="viewpill-name viewpill-all"
-            role="menuitem"
-            onClick={() => {
-              close()
-              openSheet({ kind: 'views' })
-            }}
-          >
-            <span>All views</span>
-            <span className="dim">›</span>
-          </button>
           {/* Explore: a mode over any view (explore/index.ts), with signal */}
           {online && (
             <button
-              className={`viewpill-name viewpill-explore${explore ? ' on' : ''}`}
+              className={`viewpill-name${explore ? ' on' : ''}`}
               role="menuitemcheckbox"
               aria-checked={explore}
               onClick={() => {
@@ -99,6 +67,32 @@ export default function ViewPill() {
               {explore && <IconCheck size={18} />}
             </button>
           )}
+          {mine.map((v) => (
+            <div key={v.id} className={`viewpill-row${on?.id === v.id ? ' on' : ''}`}>
+              <button
+                className="viewpill-name"
+                role="menuitem"
+                onClick={() => {
+                  apply(v)
+                  close()
+                }}
+              >
+                <span>{v.name}</span>
+                {on?.id === v.id && <IconCheck size={18} />}
+              </button>
+            </div>
+          ))}
+          <button
+            className="viewpill-name viewpill-more"
+            role="menuitem"
+            onClick={() => {
+              close()
+              openSheet({ kind: 'views' })
+            }}
+          >
+            <span>More</span>
+            <span className="dim">›</span>
+          </button>
         </div>
       )}
       {/* one pill: the view, a rule, and the map's grade (ui/grade.tsx GradeTile), each its own tap */}

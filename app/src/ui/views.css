@@ -37,44 +37,25 @@
   left: 0;
   bottom: calc(100% + 8px);
   z-index: 12;
-  /* four pictures across, the screen's width less its gutters on a small phone */
-  width: min(calc(100vw - 24px), 360px);
-  box-sizing: border-box;
-  padding: 10px;
+  width: 230px;
+  padding: 8px;
   border-radius: var(--r-lg);
   border: 1px solid var(--c-border-strong);
   background: var(--c-surface-heavy);
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  /* as many views as the user adds: the menu scrolls before it leaves the screen */
+  /* as many pinned as the user likes: the menu scrolls before it leaves the screen */
   max-height: min(70vh, 560px);
   overflow-y: auto;
   animation: rise-in 0.15s ease;
 }
-/* a left hand: the pill is at the right, the menu hangs from its right edge */
-.app-lefty .viewpill-menu {
-  left: auto;
-  right: 0;
+.viewpill-row {
+  display: flex;
+  align-items: center;
+  border-radius: var(--r-md);
 }
-.viewpill-sec {
-  padding: 0 2px;
-  font-size: calc(11px * var(--ui-scale));
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--c-text-dim);
-}
-.viewpill-cards {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-  padding-bottom: 2px;
-}
-.viewpill-none {
-  padding: 4px 2px 6px;
-  font-size: calc(13px * var(--ui-scale));
-  color: var(--c-text-dim);
+.viewpill-row.on {
+  background: var(--c-accent-dim);
 }
 .viewpill-name {
   flex: 1;
@@ -104,23 +85,21 @@
   background: rgba(var(--c-ink-rgb), 0.1);
   transform: none;
 }
-/* All views: a row of its own under the pictures */
-.viewpill-all {
-  flex: none;
-  border: 1px solid var(--c-border);
-  background: rgba(var(--c-ink-rgb), 0.04);
-  font-weight: 600;
-}
-.viewpill-explore {
-  flex: none;
-  font-size: calc(14px * var(--ui-scale));
+.viewpill-more {
   color: var(--c-text-dim);
 }
-.viewpill-explore.on {
-  color: var(--c-text);
+.viewpill-divider {
+  height: 1px;
+  background: rgba(var(--c-ink-rgb), 0.16);
+  margin: 4px 0;
+}
+/* a left hand: the pill is at the right, the menu hangs from its right edge */
+.app-lefty .viewpill-menu {
+  left: auto;
+  right: 0;
 }
 
-/* ---------- a view's picture card: My views, and Underneath in Make your own ---------- */
+/* ---------- a view's picture card: Underneath in Make your own ---------- */
 .viewcard {
   display: flex;
   flex-direction: column;
@@ -151,11 +130,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.viewcard.on,
 .viewcard[aria-pressed='true'] {
   border-color: var(--c-accent);
 }
-.viewcard.on span,
 .viewcard[aria-pressed='true'] span {
   color: var(--c-accent);
 }
