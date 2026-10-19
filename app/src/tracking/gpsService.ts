@@ -27,6 +27,21 @@ function remember(on: boolean) {
   }
 }
 
+/** Dev mode's GPS on tap is on: the map's taps say where you are and the phone's fixes are let go. */
+export function tapGpsOn(): boolean {
+  const a = useAppStore.getState()
+  return a.devMode && a.devGpsTap
+}
+
+/** Dev mode: you are where the map was tapped (Gavan, 2026-10-19: "dev mode flag set gps on tap"), a
+ *  good fix, standing still; location on, so everything that wants a fix has one. */
+export function setTapFix(lon: number, lat: number): void {
+  const g = useGpsStore.getState()
+  g.setLocating(true)
+  g.setFix({ lon, lat, accuracy: 5, sigma: 5, sogKn: 0, cog: null, ts: Date.now() })
+  g.setStatus('on')
+}
+
 export function startGps(why = 'location on') {
   if (watchId != null) return
   const gps = useGpsStore.getState()
@@ -44,6 +59,8 @@ export function startGps(why = 'location on') {
         cog: p.coords.heading == null || Number.isNaN(p.coords.heading) ? null : p.coords.heading,
         ts: p.timestamp,
       }
+      // dev mode's GPS on tap: the taps say where you are
+      if (tapGpsOn()) return
       const gps = useGpsStore.getState()
       const { fix } = filter.push(raw)
       gpsLogFix(raw, fix, filter)
@@ -53,6 +70,7 @@ export function startGps(why = 'location on') {
       gps.setStatus('on')
     },
     (err) => {
+      if (tapGpsOn()) return
       const s = useGpsStore.getState()
       if (err.code === err.PERMISSION_DENIED) s.setStatus('denied', err.message)
       else s.setStatus('error', err.message)

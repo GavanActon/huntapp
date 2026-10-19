@@ -89,6 +89,18 @@ function features(at: number): FeatureCollection {
     }
     return { type: 'FeatureCollection', features: out }
   }
+  // a check in effect now keeps its arrow when the strip is on a later hour it no longer reaches, faint
+  // (Gavan, 2026-10-19: "tapped map wind check, didn't see arrow pop up": the strip was ahead of now)
+  const live = new Set(checksInEffect(at).map((c) => c.id))
+  const now = Date.now()
+  for (const c of checksInEffect(now)) {
+    if (live.has(c.id)) continue
+    out.push({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [c.lon, c.lat] },
+      properties: { id: c.id, pull: 0.25, calm: c.dirFrom == null, seen: !!c.seen, toward: c.dirFrom == null ? 0 : (c.dirFrom + 180) % 360, puffs: c.puffs ?? 1 },
+    })
+  }
   for (const c of checksInEffect(at)) {
     const pull = checkPull(c, c.lon, c.lat, at)
     if (c.seen) {

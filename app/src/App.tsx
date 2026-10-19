@@ -61,6 +61,7 @@ function TopBar() {
   const offlineReady = useAppStore((s) => s.offlineReady)
   const gpsStatus = useGpsStore((s) => s.status)
   const gpsError = useGpsStore((s) => s.lastError)
+  const devMode = useAppStore((s) => s.devMode)
   const headingUp = useGpsStore((s) => s.headingUp)
   // whole degrees: the compass reads many times a second, the chip redraws when the degree changes
   const heading = useCompass((s) => (s.heading == null ? null : Math.round(s.heading) % 360))
@@ -86,8 +87,9 @@ function TopBar() {
       {/* offline with every map saved is the normal state at camp: nothing to say */}
       {!online && !offlineReady && <span className="chip chip-warn">Offline · some maps not saved</span>}
       {gpsStatus === 'denied' && <span className="chip chip-warn">Location denied</span>}
-      {gpsStatus === 'insecure' && <span className="chip chip-warn">No location over plain http</span>}
-      {gpsStatus === 'error' && <span className="chip chip-warn">{gpsError ? `No GPS fix · ${gpsError}` : 'No GPS fix'}</span>}
+      {/* the rest says nothing a hunter can act on (Gavan, 2026-10-19): dev mode's, and the dev log's (tracking/gpsLog.ts) */}
+      {devMode && gpsStatus === 'insecure' && <span className="chip chip-warn">No location over plain http</span>}
+      {devMode && gpsStatus === 'error' && <span className="chip chip-warn">{gpsError ? `No GPS fix · ${gpsError}` : 'No GPS fix'}</span>}
     </div>
   )
 }

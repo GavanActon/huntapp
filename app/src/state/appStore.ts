@@ -344,6 +344,9 @@ export interface AppState {
    *  the terrain wind's HD/SD, sending these settings) shown; persisted */
   devMode: boolean
   setDevMode: (v: boolean) => void
+  /** dev mode: a tap on the map is where you are, the phone's GPS ignored (gpsService setTapFix); persisted */
+  devGpsTap: boolean
+  setDevGpsTap: (v: boolean) => void
   /** your initials, on the wind checks you share with the party */
   who: string
   setWho: (v: string) => void
@@ -438,6 +441,8 @@ export const useAppStore = create<AppState>()(
       setOutdoor: (outdoor) => set({ outdoor }),
       devMode: false,
       setDevMode: (devMode) => set({ devMode }),
+      devGpsTap: false,
+      setDevGpsTap: (devGpsTap) => set({ devGpsTap }),
       who: '',
       setWho: (who) => set({ who: who.trim().slice(0, 12) }),
       planTimeMs: null,
@@ -520,6 +525,7 @@ export const useAppStore = create<AppState>()(
         textSize: s.textSize,
         outdoor: s.outdoor,
         devMode: s.devMode,
+        devGpsTap: s.devGpsTap,
         stripOpen: s.stripOpen,
         hotButtons: s.hotButtons,
         leftHanded: s.leftHanded,

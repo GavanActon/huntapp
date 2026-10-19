@@ -260,6 +260,20 @@ function DevlogRows(): JSX.Element {
   )
 }
 
+/** Dev mode: a tap on the map is where you are (gpsService setTapFix), for trying the out-there parts at home. */
+function GpsTapRow(): JSX.Element {
+  const on = useAppStore((s) => s.devGpsTap)
+  return (
+    <label className="st-row st-two">
+      <span>
+        GPS on tap
+        <small className="dim">a tap on the map puts you there; the phone's GPS is let go till this is off</small>
+      </span>
+      <input type="checkbox" className="switch" checked={on} onChange={(e) => useAppStore.getState().setDevGpsTap(e.target.checked)} />
+    </label>
+  )
+}
+
 /** My settings › Send: the settings alone, no log and no position, for a
  *  phone set up just so to become the app's defaults (devlog.ts). The
  *  answer is a code to read out. */
@@ -494,6 +508,7 @@ export default function SettingsSheet(): JSX.Element {
             </span>
             <span className="dim">›</span>
           </button>
+          <GpsTapRow />
           <SendSettingsRow online={online} />
           <DevlogRows />
         </>

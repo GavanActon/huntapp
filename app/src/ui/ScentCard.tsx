@@ -1,4 +1,4 @@
-import { useEffect, useRef, type JSX } from 'react'
+import { useEffect, useRef, useState, type JSX } from 'react'
 import { useAppStore } from '../state/appStore'
 import { clockShort } from '../time'
 import { groundWind } from '../weather/micro/model'
@@ -9,6 +9,7 @@ import { useLookTick } from './useLookTick'
 import { useTapOff } from './tapOff'
 import './live.css'
 import { dist, height as heightWords } from '../lengths'
+import { fmtCoord } from '../map/MapView'
 
 /**
  * "Your scent": the live card's Scent › opened, a top card in its slot with
@@ -26,10 +27,12 @@ import { dist, height as heightWords } from '../lengths'
  * map (the app-wide rule, tapOff).
  */
 
-const VIEWS: { v: ScentView; name: string; many?: boolean }[] = [
+// By person alone too, and Particles last (Gavan, 2026-10-19: "per person scent is really quite clear,
+// should be an option when solo; particle is the last one, least useful but a bit informative in how it's built")
+const VIEWS: { v: ScentView; name: string }[] = [
   { v: 'cloud', name: 'Cloud' },
+  { v: 'people', name: 'By person' },
   { v: 'particles', name: 'Particles' },
-  { v: 'people', name: 'By person', many: true },
 ]
 
 export default function ScentCard(): JSX.Element | null {
@@ -163,6 +166,11 @@ export default function ScentCard(): JSX.Element | null {
           </div>
         </div>
         )}
+        {/* where this one sits, to the metre; a tap copies it (Gavan, 2026-10-19: "Advanced on scent give me location") */}
+        <div className="sc-sec">
+          <span className="sc-sec-name">Location</span>
+          <CopyCoord lon={at.lon} lat={at.lat} />
+        </div>
         <div className="sc-sec">
           <span className="sc-sec-name">
             Cone size <span className="dim">· {coneSizeWord(risk)}</span>
@@ -186,7 +194,7 @@ export default function ScentCard(): JSX.Element | null {
         <div className="sc-sec">
           <span className="sc-sec-name">Draw it as</span>
           <div className="seg" role="radiogroup" aria-label="How it is drawn">
-            {VIEWS.filter((o) => many || !o.many).map((o) => (
+            {VIEWS.map((o) => (
               <button key={o.v} className={shown === o.v ? 'seg-on' : ''} role="radio" aria-checked={shown === o.v} onClick={() => setView(o.v)}>
                 {o.name}
               </button>
@@ -208,5 +216,23 @@ export default function ScentCard(): JSX.Element | null {
         )}
       </div>
     </div>
+  )
+}
+
+/** A spot's coordinates as a button: a tap copies them, and says so for a moment. */
+function CopyCoord({ lon, lat }: { lon: number; lat: number }): JSX.Element {
+  const [copied, setCopied] = useState(false)
+  const text = fmtCoord(lon, lat)
+  return (
+    <button
+      className="oc-coord numeral sc-coord"
+      onClick={() => {
+        void navigator.clipboard?.writeText(text)
+        setCopied(true)
+        window.setTimeout(() => setCopied(false), 900)
+      }}
+    >
+      {copied ? 'Copied' : text}
+    </button>
   )
 }

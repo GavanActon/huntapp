@@ -90,12 +90,12 @@ function youHere(): { lon: number; lat: number } | null {
 
 /** The stand heights, worded in the phone's units. */
 const heights = (): readonly Opt<number>[] => SCENT_HEIGHTS.map((h, i) => [h, i === 0 ? 'Ground' : height(h, { digits: 1 })] as const)
+// each one's edge in their own colour, alone too; particles last, the least useful but it shows how it is built
 const VIEWS: readonly Opt<ScentView>[] = [
   ['cloud', 'Cloud'],
+  ['people', 'By person'],
   ['particles', 'Particles'],
 ]
-// with a party placed, each one's edge in their own colour as well
-const PARTY_VIEWS: readonly Opt<ScentView>[] = [...VIEWS, ['people', 'By person']]
 
 interface RowsProps {
   /** close the drawer, then do the thing */
@@ -185,7 +185,7 @@ function LeavesRow() {
 
 /** The cone's knobs only: + Person, Clear sitters and the card are the scent card's own (2026-10-02).
  *  Cone size first: smaller (only strong scent counts) to bigger (it counts sooner, the wind wanders more).
- *  With two or more placed, the view has By person too, as Your scent's has. */
+ *  The view: Cloud, By person (alone too), Particles, as Your scent's. */
 function ScentRows() {
   const height = useScent((s) => s.height)
   const setHeight = useScent((s) => s.setHeight)
@@ -221,7 +221,7 @@ function ScentRows() {
       </div>
       <Slider label="Strength" value={Math.round(strength * 100)} min={10} max={100} step={5} onChange={(v) => setStrength(v / 100)} />
       <Seg label="Height" value={height} options={heights()} onPick={setHeight} />
-      <Seg label="View" value={drawnView(view, n)} options={n > 1 ? PARTY_VIEWS : VIEWS} onPick={setView} />
+      <Seg label="View" value={drawnView(view, n)} options={VIEWS} onPick={setView} />
     </>
   )
 }

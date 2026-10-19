@@ -1696,15 +1696,16 @@ function groupOf(f: Frame, runs: (PlumeRun | null)[]): Group {
 
 // ---------------------------------------------------------------- state and map layer
 
-/** The shaded cloud, particles streaming along their paths, or each person's own edge (two or more). */
+/** The shaded cloud, each person's own edge (alone too: Gavan, 2026-10-19, "per person scent is really
+ *  quite clear, should be an option when solo"), or particles streaming along their paths. */
 export type ScentView = 'cloud' | 'particles' | 'people'
 /** Where the hunter sits: on the ground, or a tree stand at 4 or 6 m. */
 export const SCENT_HEIGHTS = [GROUND_H, 4, 6] as const
 /** Each person's colour when their own edges are drawn, by number. */
 const PERSON_COLOURS = ['#5fd4ff', '#b7f06a', '#ff7ad9', '#ffe066', '#b69cff', '#7dffc8']
 export const personColour = (k: number) => PERSON_COLOURS[k % PERSON_COLOURS.length]
-/** The view as drawn: one person has no edges of their own to tell apart. */
-export const drawnView = (v: ScentView, people: number): ScentView => (v === 'people' && people < 2 ? 'cloud' : v)
+/** The view as drawn: as picked, one person's edge included (until 2026-10-19 one person drew the cloud). */
+export const drawnView = (v: ScentView, _people: number): ScentView => v
 
 /** Someone sitting: where, and how high. */
 export interface Sitter {

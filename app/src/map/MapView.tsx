@@ -35,6 +35,7 @@ import { initBoxLayer } from '../explore/boxLayer'
 import { COVERAGE_FILE, COVERAGE_KEY, syncCoverageState } from '../explore/coverage'
 import { useExplore } from '../explore/store'
 import { useGpsStore } from '../tracking/gpsStore'
+import { setTapFix, tapGpsOn } from '../tracking/gpsService'
 
 /** Your pins and the preset places, each as the strip's marks say. */
 function placesGeoJson(): FeatureCollection {
@@ -402,6 +403,8 @@ export default function MapView() {
         if (armed === 'scent') return useScent.getState().add(e.lngLat.lng, e.lngLat.lat)
         // Heard pressed: the tap is where it was; what it was comes next
         if (armed === 'heard') return useHeardForm.getState().show({ lon: e.lngLat.lng, lat: e.lngLat.lat })
+        // dev mode's GPS on tap: the tap is where you are, and nothing else
+        if (tapGpsOn()) return setTapFix(e.lngLat.lng, e.lngLat.lat)
         // outside every baked box the tap picks the cell under it for the card (explore/index.ts)
         if (exploreTap(m, e)) return
         // a place, a numbered pin, a wind check, a kept route or a path has its own tap
