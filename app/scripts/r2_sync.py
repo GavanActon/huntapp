@@ -68,6 +68,23 @@ TYPES = {
 CACHE_DATA = 'public, max-age=600'
 CACHE_MANIFEST = 'no-cache'
 
+# Gavan, 2026-10-19, the machines on the road: "pause any uploading on xevo and xonix for now.
+# Building is fine, uploading not." This file on XEVO's share holds every upload from the machines
+# (this script, wind_tiles.py's tiles, the ops page, the stations): what was built waits on disk and
+# the first upload after it is removed sends it. GitHub's dev run has no such file and uploads as ever.
+HOLD = [ROOT / 'pipeline' / 'raw' / 'windcfd' / 'HOLD-UPLOADS', Path(r'\\XEVO\windcfd2\HOLD-UPLOADS')]
+
+
+def held() -> Path | None:
+    """The hold file when uploads are held, else None."""
+    for p in HOLD:
+        try:
+            if p.exists():
+                return p
+        except OSError:
+            pass
+    return None
+
 
 def secret(name: str) -> str:
     v = os.environ.get(name)
@@ -260,6 +277,8 @@ def main() -> None:
     ap.add_argument('--only', help='only keys under this path below data/ (e.g. areas/blanchard-river/)')
     ap.add_argument('--verify', type=int, default=4, help='HEAD this many objects through the public domain after (0: none)')
     ap.add_argument('--jobs', type=int, default=4, help='uploads at once')
+    if (h := held()) and '--dry-run' not in sys.argv:
+        sys.exit(f'uploads held ({h}): nothing sent; remove the file to send')
     ap.add_argument('--prefix', default='data/', help="the keys' folder in the bucket, ending in / or empty (default data/)")
     a = ap.parse_args()
     PREFIX = a.prefix if not a.prefix or a.prefix.endswith('/') else a.prefix + '/'

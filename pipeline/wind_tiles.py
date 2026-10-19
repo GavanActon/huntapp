@@ -257,6 +257,9 @@ def upload() -> tuple[int, int]:
     sys.path.insert(0, str(ROOT / "app" / "scripts"))
     import r2_sync  # noqa: E402  (its R2 client and keys)
 
+    if h := r2_sync.held():
+        print(f"  uploads held ({h}): the tiles stay in {OUT}", flush=True)
+        return 0, 0
     s3 = r2_sync.client()
     prefix = f"data/sd/{VERSION}/"
     have, sizes = {}, {}

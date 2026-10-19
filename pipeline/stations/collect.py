@@ -281,6 +281,13 @@ def main() -> int:
     ap.add_argument("--r2", action="store_true", help="copy new days and stations.json to R2")
     ap.add_argument("--low", action="store_true", help="only the gauge-height wind, for kept days in the window that have no low file")
     args = ap.parse_args()
+    if args.r2:
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "app" / "scripts"))
+        import r2_sync  # noqa: E402  (the machines' upload hold)
+
+        if h := r2_sync.held():
+            print(f"uploads held ({h}): kept here, not sent to R2", flush=True)
+            args.r2 = False
     OUT.mkdir(parents=True, exist_ok=True)
     done_path, stn_path = OUT / "done.json", OUT / "stations.json"
     done = set(json.loads(done_path.read_text())) if done_path.exists() else set()
