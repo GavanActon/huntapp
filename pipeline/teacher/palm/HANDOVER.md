@@ -241,3 +241,9 @@ and 280 dusk288t 2 m run series_read.py when each lands; 290/300/310 to arm as t
 headless on hunt-dev 682996e at Searchmont: private lots and Goulais River PP read right; the sheet is now reached by the
 view button (Sat ▾) → More › → Edit this view › → Land, so layers_sheet_shot.py's old More-menu path no longer gets there.
 Gavan: the seat commits its verdicts and notes as it goes.
+
+**The move (10-18 ~22:20).** Gavan shuts both machines off at 04:30 on 10-19 and takes them to Ottawa for a few days: simple
+tasks (bakes) only, credits short. 290 (strip b190 2 m) and 310 (bog dawn175tl) moved todo → held/ so neither starts and is
+cut; put them back in todo/ once the machines are up. 280 (xonix, ~01:00) and 300 (XEVO, ~03:50) should land before the
+shutdown; if a run is cut it stays in taken/ — move it back to todo/ to rerun. sdst-0007 resumes by tile. Searchmont HD
+(SD-only today; LiDAR 2024 covers the hill) is proposed, waiting on his go.
