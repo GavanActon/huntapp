@@ -2239,6 +2239,88 @@ function runsFor(people: Sitter[], ms: number): (PlumeRun | null)[] {
   return out
 }
 
+/**
+ * The noticeable tongue's pieces (Gavan, 2026-10-19: "dev log on separation, for scent", after a cone
+ * split in two at Lac Bailey: scent held up off a knoll's drop over 75-145 m, back down beyond). Cells at
+ * NOTICE or more, joined 8 ways, 4 cells or more each; each piece's nearest and farthest metres from the
+ * sit and the way it lies. Read off the run as drawn, so the simulation is untouched.
+ */
+function tonguePieces(t: Float32Array): { from: number; to: number; toward: number; cells: number }[] {
+  const mid = (N - 1) / 2
+  const seen = new Uint8Array(N * N)
+  const out: { from: number; to: number; toward: number; cells: number }[] = []
+  const stack: number[] = []
+  for (let k0 = 0; k0 < N * N; k0++) {
+    if (seen[k0] || t[k0] < NOTICE) continue
+    let from = Infinity
+    let to = 0
+    let ex = 0
+    let ny = 0
+    let cells = 0
+    seen[k0] = 1
+    stack.push(k0)
+    while (stack.length) {
+      const k = stack.pop()!
+      const i = k % N
+      const j = (k - i) / N
+      const x = (i - mid) * CELL_M
+      const y = (mid - j) * CELL_M
+      const d = Math.hypot(x, y)
+      from = Math.min(from, d)
+      to = Math.max(to, d)
+      ex += x * t[k]
+      ny += y * t[k]
+      cells++
+      for (let dj = -1; dj <= 1; dj++)
+        for (let di = -1; di <= 1; di++) {
+          const a = i + di
+          const b = j + dj
+          if (a < 0 || b < 0 || a >= N || b >= N) continue
+          const q = b * N + a
+          if (!seen[q] && t[q] >= NOTICE) {
+            seen[q] = 1
+            stack.push(q)
+          }
+        }
+    }
+    if (cells >= 4) out.push({ from: Math.round(from), to: Math.round(to), toward: ((Math.atan2(ex, ny) * 180) / Math.PI + 360) % 360, cells })
+  }
+  return out.sort((a, b) => a.from - b.from)
+}
+
+/** What was last said of each person's tongue, so the log speaks only when it changes. */
+const piecesSaid = new Map<number, string>()
+
+/** A tongue that comes in pieces, in the dev log once per change and never mid-drag: the pieces, the gaps, and
+ *  what the run says of why (scent held up off a drop, whether it touched down again, stable air, the checks). */
+function logPieces(people: Sitter[], runs: (PlumeRun | null)[]) {
+  if (dragging >= 0) return
+  runs.forEach((r, k) => {
+    if (!r) return
+    const ps = tonguePieces(r.tongue)
+    const p = r.plume
+    const sig = `${ps.length}|${Math.round(p.lifted * 10)}|${p.lon.toFixed(4)},${p.lat.toFixed(4)}`
+    if (piecesSaid.get(k) === sig) return
+    const was = piecesSaid.get(k)
+    piecesSaid.set(k, sig)
+    // one piece, as most cones are: said only when it was in pieces before
+    if (ps.length <= 1 && !(was && Number(was.split('|')[0]) > 1)) return
+    const who = people.length > 1 ? `${sitterName(people[k], k)} ` : ''
+    const bits = ps.map((q) => `${q.from}–${q.to} m ${compass(q.toward)}`).join(' | ')
+    const gaps = ps.slice(1).map((q, i) => `${ps[i].to}–${q.from} m`)
+    const why = [
+      p.lifted > 0.05 ? `${Math.round(p.lifted * 100)}% held >2 m up off a drop` : 'not held up',
+      p.stable ? 'stable' : 'mixed',
+      p.touchdown ? 'touches down on rising ground' : 'no touchdown counted',
+      p.calm ? 'calm at the sit' : null,
+      p.checks ? `${p.checks.n} check${p.checks.n === 1 ? '' : 's'} ${Math.round(p.checks.share * 100)}% of it` : 'checks none',
+      p.height !== GROUND_H ? `stand ${p.height} m` : null,
+      `swing ±${Math.round(p.swing)}°`,
+    ].filter(Boolean)
+    devlog('scent', ps.length > 1 ? `${who}split in ${ps.length} · ${bits} · gap ${gaps.join(', ')} · ${why.join(' · ')} · at ${p.lat.toFixed(5)},${p.lon.toFixed(5)}` : `${who}one piece again · ${bits || 'none noticeable'} · ${why.join(' · ')}`)
+  })
+}
+
 /** Everyone's scent as last drawn, for what else needs to know where it goes (the moose's swing). */
 let drawn: Frame | null = null
 
@@ -2267,6 +2349,7 @@ function draw(map: MlMap) {
     return
   }
   const runs = runsFor(people, planMinute())
+  logPieces(people, runs)
   const plumes = runs.map((r) => r?.plume ?? null)
   if (!runs.some(Boolean)) {
     drawn = null
