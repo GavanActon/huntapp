@@ -109,3 +109,8 @@ div.me .me-hit { pointer-events: all; cursor: pointer; }
 .gc-steady .chip-pick.chip-on b { color: var(--c-on-accent); }
 /* the saved check's two lines: the map's outcome, the next check */
 .ground-card .gc-outcome { font-size: 15px; }
+/* how hard: five short chips in a row, the picked one's cue under them (the card fits beside the map) */
+.gc-row5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.gc-row5 .chip-pick { justify-content: center; min-height: 40px; padding: 5px 2px; text-transform: capitalize; font-weight: 700; font-size: calc(13px * var(--ui-scale)); }
+.gc-row5 .chip-pick.chip-on { background: var(--c-accent); color: var(--c-on-accent); }
+.ground-card .gc-cue { min-height: 2.6em; font-size: calc(12px * var(--ui-scale)); line-height: 1.3; color: var(--c-text-dim); }

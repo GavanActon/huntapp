@@ -608,7 +608,7 @@ export default function WindCheckCard() {
       <div className="gc-q">How hard?</div>
       {/* each step in three: how far in a second, what the powder looks like, what you feel; seen, the treetops and the water */}
       {seen ? (
-        <div className="gc-strength gc-cues">
+        <div className="gc-strength gc-row5">
           {SEENS.map((s) => (
             <button
               key={s}
@@ -620,13 +620,12 @@ export default function WindCheckCard() {
               }}
               aria-pressed={seenAs === s}
             >
-              <b>{s}</b>
-              <span>{SEEN_CUE[s]}</span>
+              {s}
             </button>
           ))}
         </div>
       ) : (
-        <div className="gc-strength gc-cues">
+        <div className="gc-strength gc-row5">
           {STRENGTHS.map((s) => (
             <button
               key={s}
@@ -638,12 +637,13 @@ export default function WindCheckCard() {
               }}
               aria-pressed={strength === s}
             >
-              <b>{s}</b>
-              <span>{STRENGTH_CUE[s]}</span>
+              {s}
             </button>
           ))}
         </div>
       )}
+      {/* what the picked one looks like, for that one only (Gavan, 2026-10-19: "Sharpen wind takes the whole screen") */}
+      <div className="gc-cue">{seen ? (seenAs ? SEEN_CUE[seenAs] : 'Tap one to see what it looks like') : strength ? STRENGTH_CUE[strength] : 'Tap one to see what it looks like'}</div>
       {/* optional: how long the check speaks for (windChecks.ts steadyK); the lit one again takes it back */}
       <div className="gc-q">How steady?</div>
       <div className="gc-strength gc-steady">

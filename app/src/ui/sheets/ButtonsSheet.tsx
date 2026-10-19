@@ -5,7 +5,7 @@ import { useViews } from '../../state/viewsStore'
 import { FISH_HERE } from '../../spots/profile'
 import { haptic } from '../haptics'
 import { HOT_DEFS, trayOf } from '../hotButtons'
-import { IconLocate } from '../icons'
+import { IconLocate, IconSwap } from '../icons'
 import './settings.css'
 
 /**
@@ -16,7 +16,12 @@ import './settings.css'
  * features in and out. No fixed number"). A column too tall for the screen
  * wraps inward on the map (HotColumn). The tray is what the More button
  * opens on the map (2026-10-18), and its heading says so, or that it is
- * off the map while More is in it too. Anywhere below the columns is the
+ * off the map while More is in it too. Under it, Not shown: the buttons
+ * not wanted at all, neither on the map nor in More (Gavan, 2026-10-19:
+ * "three tiers of buttons: fav/priority - show up in more - not
+ * interested"). Flip swaps the columns' sides, the thumb's column and My
+ * location with them (it was Settings → Thumb: "ability to flip. Then we
+ * remove the setting button"). Anywhere below the columns is the
  * tray: a button dragged down past their foot, onto the heading, the hint,
  * the empty sheet or off its bottom, comes off the map (Gavan, 2026-10-18:
  * "drag to bottom anywhere instead of small area"). Near is the thumb's column, My
@@ -24,7 +29,7 @@ import './settings.css'
  * Hunting | Fishing switch and Done (back to Settings, which pushed it).
  */
 
-type Zone = 'left' | 'right' | 'tray'
+type Zone = 'left' | 'right' | 'tray' | 'off'
 type Col = 'left' | 'right'
 
 /** a finger holds a button this long to lift it; one that moves sooner was scrolling the sheet */
@@ -60,6 +65,7 @@ export default function ButtonsSheet(): JSX.Element {
   const [mode, setMode] = useState<'hunt' | 'fish'>(() => useViews.getState().mode)
   const sets = useAppStore((s) => s.hotButtons[mode])
   const leftHanded = useAppStore((s) => s.leftHanded)
+  const setLeftHanded = useAppStore((s) => s.setLeftHanded)
   const setHotSets = useAppStore((s) => s.setHotSets)
   const stacked = useAppStore((s) => s.sheets.length > 1)
   const popSheet = useAppStore((s) => s.popSheet)
@@ -67,6 +73,7 @@ export default function ButtonsSheet(): JSX.Element {
   const [drag, setDrag] = useState<Drag | null>(null)
   const root = useRef<HTMLDivElement>(null)
   const cols = useRef<HTMLDivElement>(null)
+  const offZone = useRef<HTMLDivElement>(null)
   const press = useRef<Press | null>(null)
   const dragRef = useRef<Drag | null>(null)
 
@@ -74,15 +81,17 @@ export default function ButtonsSheet(): JSX.Element {
   const sideOf = (c: Col): HotSide => ((c === 'right') !== leftHanded ? 'near' : 'far')
   const lists: Record<Col, HotId[]> = { left: sets[sideOf('left')], right: sets[sideOf('right')] }
   const tray = trayOf(sets)
+  const off = sets.off ?? []
   // the tray is what More opens on the map; with More off the map, nothing does
   const moreOn = !tray.includes('more')
 
   const drop = (d: Drag) => {
-    if (!d.over || (d.over === 'tray' && d.from === 'tray')) return
-    const next: Record<Col, HotId[]> = { left: lists.left.filter((x) => x !== d.id), right: lists.right.filter((x) => x !== d.id) }
-    if (d.over !== 'tray') next[d.over].splice(d.at, 0, d.id)
-    if (next.left.join() === lists.left.join() && next.right.join() === lists.right.join()) return
-    setHotSets(mode, { [sideOf('left')]: next.left, [sideOf('right')]: next.right } as HotSets)
+    if (!d.over || d.over === d.from && (d.over === 'tray' || d.over === 'off')) return
+    const next = { left: lists.left.filter((x) => x !== d.id), right: lists.right.filter((x) => x !== d.id), off: off.filter((x) => x !== d.id) }
+    if (d.over === 'left' || d.over === 'right') next[d.over].splice(d.at, 0, d.id)
+    else if (d.over === 'off') next.off.push(d.id)
+    if (next.left.join() === lists.left.join() && next.right.join() === lists.right.join() && next.off.join() === off.join()) return
+    setHotSets(mode, { [sideOf('left')]: next.left, [sideOf('right')]: next.right, off: next.off } as HotSets)
     haptic()
   }
   const dropRef = useRef(drop)
@@ -96,9 +105,10 @@ export default function ButtonsSheet(): JSX.Element {
   /** The zone under the finger, and in a column, the place among the other buttons: above the first whose middle is below the finger. */
   const locate = (x: number, y: number, d: Drag): Drag => {
     const zone = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-zone]')
-    // below the columns' foot, whatever is under the finger, is the tray
+    // below the columns' foot, whatever is under the finger, is More's tier, and from Not shown's top down, Not shown
     const foot = cols.current?.getBoundingClientRect().bottom
-    const over = (zone?.dataset.zone as Zone | undefined) ?? (foot != null && y > foot ? 'tray' : null)
+    const offTop = offZone.current?.getBoundingClientRect().top
+    const over = (zone?.dataset.zone as Zone | undefined) ?? (offTop != null && y >= offTop - 24 ? 'off' : foot != null && y > foot ? 'tray' : null)
     let at = 0
     if (zone && (over === 'left' || over === 'right')) {
       const tiles = [...zone.querySelectorAll<HTMLElement>('[data-tile]')].filter((t) => t.dataset.tile !== d.id)
@@ -230,6 +240,10 @@ export default function ButtonsSheet(): JSX.Element {
         </button>
       </div>
 
+      <button className="st-more hotedit-flip" onClick={() => setLeftHanded(!leftHanded)}>
+        <IconSwap size={16} /> Flip sides
+      </button>
+
       <div className="hotedit-cols" ref={cols}>
         {column('left')}
         {column('right')}
@@ -252,7 +266,14 @@ export default function ButtonsSheet(): JSX.Element {
           <Tile key={id} id={id} lifted={drag?.id === id} onDown={(e) => down(e, id, 'tray')} />
         ))}
       </div>
-      <div className="hotedit-hint">Hold a button, then drag it · drop it anywhere down here to put it {moreOn ? 'in More' : 'off the map'}</div>
+      <div className="st-sec">Not shown</div>
+      <div className="hotedit-note">Not on the map and not in More. Drag one back up to use it.</div>
+      <div className={`hotedit-tray hotedit-off${drag?.over === 'off' ? ' over' : ''}`} data-zone="off" ref={offZone}>
+        {off.map((id) => (
+          <Tile key={id} id={id} lifted={drag?.id === id} onDown={(e) => down(e, id, 'off')} />
+        ))}
+      </div>
+      <div className="hotedit-hint">Hold a button, then drag it</div>
 
       {drag &&
         createPortal(

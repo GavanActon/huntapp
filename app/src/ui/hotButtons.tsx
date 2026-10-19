@@ -170,9 +170,9 @@ export const HOT_DEFS: Record<HotId, HotDef> = {
 /** Every hot button, in the order the editor's Add chips list them. */
 export const HOT_ORDER: HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'path', 'contours', 'pin', 'understory', 'lanes', 'bathy', 'radar', 'more']
 
-/** The buttons not in either column: Map buttons' tray, and what More opens. */
-export function trayOf(sets: { near: HotId[]; far: HotId[] }): HotId[] {
-  return HOT_ORDER.filter((id) => !sets.near.includes(id) && !sets.far.includes(id))
+/** The buttons in neither column nor set aside as not wanted: Map buttons' More tier, and what More opens. */
+export function trayOf(sets: { near: HotId[]; far: HotId[]; off?: HotId[] }): HotId[] {
+  return HOT_ORDER.filter((id) => !sets.near.includes(id) && !sets.far.includes(id) && !(sets.off ?? []).includes(id))
 }
 
 const HOLD_MS = 450

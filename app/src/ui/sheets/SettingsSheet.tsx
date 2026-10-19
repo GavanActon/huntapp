@@ -315,8 +315,6 @@ export default function SettingsSheet(): JSX.Element {
   const trail = useAppStore((s) => s.flowTuning.windTrail)
   const setFlowTuning = useAppStore((s) => s.setFlowTuning)
   const setTextSize = useAppStore((s) => s.setTextSize)
-  const leftHanded = useAppStore((s) => s.leftHanded)
-  const setLeftHanded = useAppStore((s) => s.setLeftHanded)
   const buttonLabels = useAppStore((s) => s.buttonLabels)
   const setButtonLabels = useAppStore((s) => s.setButtonLabels)
   const pastHunts = useAppStore((s) => s.pastHunts)
@@ -397,16 +395,7 @@ export default function SettingsSheet(): JSX.Element {
           ))}
         </div>
       </div>
-      <div className="st-row">
-        <span>Thumb</span>
-        <div className="seg" role="radiogroup" aria-label="Which hand">
-          {([false, true] as const).map((left) => (
-            <button key={String(left)} className={leftHanded === left ? 'seg-on' : ''} role="radio" aria-checked={leftHanded === left} onClick={() => setLeftHanded(left)}>
-              {left ? 'Left' : 'Right'}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* the thumb's side is Map buttons' Flip now (2026-10-19) */}
       <label className="st-row">
         <span>Button names</span>
         <input type="checkbox" className="switch" checked={buttonLabels} onChange={(e) => setButtonLabels(e.target.checked)} />

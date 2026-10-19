@@ -72,7 +72,9 @@ export type TopCard = { kind: 'scent' } | { kind: 'outing'; id: string }
 export type HotId = 'windcheck' | 'scent' | 'heard' | 'windflow' | 'routes' | 'measure' | 'path' | 'contours' | 'pin' | 'understory' | 'lanes' | 'bathy' | 'radar' | 'more'
 /** The two columns: `near` is the thumb's side (right, or left for a left hand), `far` the other. */
 export type HotSide = 'near' | 'far'
-export type HotSets = Record<HotSide, HotId[]>
+/** The two columns, and the buttons not wanted at all (`off`: neither on the map nor in More, 2026-10-19:
+ *  "three tiers of buttons: fav/priority - show up in more - not interested"); the rest are More's. */
+export type HotSets = Record<HotSide, HotId[]> & { off?: HotId[] }
 // a fresh phone's are Gavan's (2026-10-03, sent from his phone): Scent above Sharpen; Path in Route's
 // place (2026-10-18: "Path instead of route"), Route waiting in Map buttons' tray
 // More, at the far column's foot, opens the tray's buttons on the map (2026-10-18: "Yea more")
@@ -96,11 +98,12 @@ function cleanHot(ids: readonly unknown[]): HotId[] {
   return out
 }
 
-/** Both columns, each button in one of them only (the near column keeps one found in both). */
-function cleanSets(s: { near?: unknown; far?: unknown }, d: HotSets): HotSets {
+/** Both columns and the not-wanted, each button in one of them only (the near column keeps one found in both). */
+function cleanSets(s: { near?: unknown; far?: unknown; off?: unknown }, d: HotSets): HotSets {
   const near = Array.isArray(s.near) ? cleanHot(s.near) : d.near
   const far = (Array.isArray(s.far) ? cleanHot(s.far) : d.far).filter((id) => !near.includes(id))
-  return { near, far }
+  const off = (Array.isArray(s.off) ? cleanHot(s.off) : (d.off ?? [])).filter((id) => !near.includes(id) && !far.includes(id))
+  return { near, far, off }
 }
 
 /** Every map layer the Layers sheet can switch. Keys match the style's
@@ -531,7 +534,7 @@ export const useAppStore = create<AppState>()(
       }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<AppState>
-        const hot = (p.hotButtons ?? {}) as Partial<Record<'hunt' | 'fish', Partial<Record<HotSide, unknown>>>>
+        const hot = (p.hotButtons ?? {}) as Partial<Record<'hunt' | 'fish', Partial<Record<HotSide | 'off', unknown>>>>
         const sets = (m: 'hunt' | 'fish'): HotSets => cleanSets(hot[m] ?? {}, DEFAULT_HOT[m])
         return {
           ...current,
