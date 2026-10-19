@@ -57,6 +57,36 @@ valley floor to the top, with a forecast of 190° at 11 km/h:
   where he then felt 180°. The region-wide bias lesson was small (1–16°,
   ×1.2–1.4).
 
+A third visit (2026-10-18, 13:47–14:27 EDT, build f392094): eight checks
+(11 puffs and the treetops once) on a 700 m walk NE along the foot of the
+ski hill's W/NW face, 25–50 m above the floor, 1.1–1.7 km E of the 10-10
+spot. Forecast 215° at 18 km/h; Ranger Lake 229°, the Sault airport 226°:
+a SW ambient the forecast had right.
+- **The air came from the W.** Puffs and the treetops read 264–284°, ~50°
+  right of the ambient. The hill's spurs rise 4–17° within 60–240 m to
+  the SW; to the W the ground falls open to the valley. So the wind bends
+  round the hill's foot and comes in off the valley: with 10-11's 249° on
+  the floor, two days of a S–SW ambient reading WSW–W low in this valley.
+- **Reversals behind the nearest bank.** Where a 17° bank stands 60 m SW
+  (13:57–13:59), puffs from 127° and 139° came between puffs from 282–284°;
+  500 m on (14:12) one from 57° a minute after one from 241°.
+- **Replay** (replay.py --loo, a5f99fa, the 20 Searchmont checks): the raw
+  map (no checks) had 4 of 7 felt within 45°, the forecast 4 of 7. Its
+  good calls were very good (14:11 9°, 14:27 1°, the turn toward W at the
+  foot already in the SD wind) and it called the bank's lee calm (306°,
+  347°) where he felt breezy W with the SE puffs. The checks helped each
+  other for the first 15 minutes (13:47: 41° → 18°) and then hurt: the W
+  checks pulled 14:11 and 14:20 another 40° W (9° → 47–71°, 52° → 77–94°)
+  where the air was SW–S. Distance can't tell the hill's foot from the
+  ground 300–500 m on; likeness has to (layer 4). Lessons from 10-10/10-11
+  barely reach these spots (1+ km away): across all 20, other days' checks
+  moved the blend 56 → 62% within 45°, median 40° → 34°, mostly on 10-11.
+- **A fold that invents a direction.** The 13:59 check folded two puffs
+  143° apart (139°, 282°) and saved their mean, 210°: no puff came from
+  there, and it lands on the forecast, so it scores as a hit. A check whose
+  puffs part by more than ~90° should keep the steadier side or save as
+  swinging, not the mean (windChecks.ts fold).
+
 One evening and one morning are a hypothesis, not a proof. They are also a
 clean test case for everything below.
 
