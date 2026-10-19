@@ -10,9 +10,13 @@ import { onEachMap } from './mapController'
  * loading minimal - I just want a small line moving across the bottom of the weather strip loading
  * each layer"). A layer in from its own file on the phone is in before the line's 300 ms: no line.
  *
- * Read off the style itself after every change (styledata), so it covers whatever turns a layer on.
- * The map's first draw is not faded; nor is a layer whose opacity is an expression (a fade would end
- * on a flat number): those come in as before.
+ * Caught at the moment a layer comes on: the map's own setLayoutProperty (visibility) and addLayer
+ * are wrapped, so every caller is covered. The opacity goes to nothing in a microtask, after the
+ * caller has set the layer up (the Layers sheet sets its strength after its visibility) and before the
+ * next frame is drawn, then runs up from the frame after. Read off the style after a draw instead
+ * (styledata, until 2026-10-19), the layer was drawn whole first and then dipped: "with range, I see
+ * it load, then it unloads and fades in". The map's first draw is not faded; nor is a layer whose
+ * opacity is an expression (a fade would end on a flat number): those come in as before.
  */
 
 const FADE_MS = 450
@@ -31,16 +35,9 @@ const OPACITY: Record<string, string[]> = {
   'fill-extrusion': ['fill-extrusion-opacity'],
 }
 
-/** The layers drawn now: in the style, not hidden. */
-function visibleIds(map: MlMap): string[] {
-  const out: string[] = []
-  for (const id of map.getLayersOrder()) {
-    const l = map.getLayer(id)
-    if (!l || l.type === 'background' || l.type === 'custom') continue
-    if (map.getLayoutProperty(id, 'visibility') === 'none') continue
-    out.push(id)
-  }
-  return out
+/** Fade these in: after the caller is through (a microtask), before the next frame. */
+function fadeSoon(map: MlMap, ids: string[]) {
+  queueMicrotask(() => fadeIn(map, ids.filter((id) => map.getLayer(id) && map.getLayoutProperty(id, 'visibility') !== 'none')))
 }
 
 function fadeIn(map: MlMap, ids: string[]) {
@@ -111,32 +108,32 @@ export function initLayerArrive(): void {
   if (wired) return
   wired = true
   onEachMap((map) => {
-    let shown: Set<string> | null = null
-    let busy = false
-    const sweep = () => {
-      // our own paint changes come back through here: nothing new in them
-      if (busy || !map.isStyleLoaded()) return
-      const now = visibleIds(map)
-      const before = shown
-      shown = new Set(now)
-      // the first draw comes in as it always has
-      if (!before) return
-      const fresh = now.filter((id) => !before.has(id))
-      if (!fresh.length) return
-      busy = true
-      try {
-        fadeIn(map, fresh)
-      } finally {
-        busy = false
-      }
+    // the first draw comes in as it always has
+    let ready = false
+    map.once('idle', () => (ready = true))
+    const arrive = (ids: string[]) => {
+      if (!ready || !ids.length) return
+      fadeSoon(map, ids)
       const sources = new Set<string>()
-      for (const id of fresh) {
+      for (const id of ids) {
         const src = (map.getLayer(id) as { source?: string } | undefined)?.source
         if (src) sources.add(src)
       }
-      for (const s of sources) void trackTask(`layer:${s}`, sourceLoaded(map, s))
+      for (const src of sources) void trackTask(`layer:${src}`, sourceLoaded(map, src))
     }
-    map.on('styledata', sweep)
-    map.once('idle', sweep)
+    const setLayout = map.setLayoutProperty.bind(map)
+    map.setLayoutProperty = ((id: string, name: string, value: unknown, options?: object) => {
+      const on = name === 'visibility' && value !== 'none' && !!map.getLayer(id) && map.getLayoutProperty(id, 'visibility') === 'none'
+      const r = setLayout(id, name, value, options)
+      if (on) arrive([id])
+      return r
+    }) as typeof map.setLayoutProperty
+    const addLayer = map.addLayer.bind(map)
+    map.addLayer = ((layer: Parameters<MlMap['addLayer']>[0], before?: string) => {
+      const r = addLayer(layer, before)
+      const id = (layer as { id?: string }).id
+      if (id && map.getLayer(id) && map.getLayoutProperty(id, 'visibility') !== 'none') arrive([id])
+      return r
+    }) as typeof map.addLayer
   })
 }
