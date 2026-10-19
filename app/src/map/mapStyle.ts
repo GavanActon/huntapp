@@ -187,6 +187,13 @@ export function syncUnderlays(map: MlMap, layers: LayerVisibility, opacity: Laye
   const relief = !hd && layers.relief && !!map.getLayer('relief-colour')
   // the wind's colours cover the ground whole, and the DEM's own shade is over them in the box
   const wind = windGround(layers) && !!map.getLayer('relief-shade')
+  // drawn for nothing in the box (docs/VIEWS.md, measured hiding each in turn: 0.000% of the picture
+  // visibly at z13 and z15 at Pickle Lake and Lac Bailey; Gavan, 2026-10-19: "cutting layers that don't
+  // show up"): the base map under the baked photo at 0.8 (Bush, Scout, Lake) and under the live shade at
+  // 0.9 (Terrain), and the far band under the baked photo at any strength (Sat, Hunt, Bush, Scout, Lake)
+  const baked = !!(map.getLayer('satellite') || map.getLayer('satellite-sharp'))
+  const photoOver = layers.satellite && baked && opacity.satellite >= 0.8
+  const liveShade = layers.hillshade && !!map.getLayer('hillshade-live') && opacity.hillshade >= 0.85 && !(inside && ((imagery && liveShadeUnderImagery) || relief || wind))
   const show: Record<string, boolean> = {
     // with the whole imagery on, the photo is the map: the Toporama sheet only ever showed
     // while the photo was on its way (a topo map first on a slow phone's opening, Gavan,
@@ -197,7 +204,8 @@ export function syncUnderlays(map: MlMap, layers: LayerVisibility, opacity: Laye
     // photo at Timmins (Gavan, 2026-10-09: "In sat mode, I saw the topocan map"); the
     // sheet is the Topo view's
     toposheet: !inside && !imagery,
-    base: !(imagery || ((relief || wind) && inside)),
+    base: !(imagery || ((relief || wind || photoOver || liveShade) && inside)),
+    'satellite-far': layers.satellite && !(inside && baked),
     'satellite-live': layers.satellite && !(imagery && inside),
     'hillshade-live': layers.hillshade && !(inside && ((imagery && liveShadeUnderImagery) || relief || wind)),
   }
