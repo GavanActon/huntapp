@@ -68,7 +68,8 @@ export const BUILT_IN: MapView[] = [
   // the Contrast look, white (Gavan, 2026-10-07: "a default view, call it Wind, the Windy version";
   // 2026-10-08: "just terrain + colours", and with the streaks off the shade and colours stay, so
   // the colours are a layer of their own); light, as Topo is, the shade the DEM's
-  { id: 'hunt-wind', name: 'Wind', mode: 'hunt', builtIn: true, heat: false, detail: 'light', opacity: { ...DEFAULT_OPACITY, hillshade: 0.7 }, layers: L(['hillshade', 'windColours', 'windFlow']), wind: 'contrast' },
+  // contours on: the wind reads against the ground's shape (Gavan, 2026-10-19: "default wind view should have contours enabled")
+  { id: 'hunt-wind', name: 'Wind', mode: 'hunt', builtIn: true, heat: false, detail: 'light', opacity: { ...DEFAULT_OPACITY, hillshade: 0.7 }, layers: L(['hillshade', 'contours', 'windColours', 'windFlow']), wind: 'contrast' },
   { id: 'hunt-scout', name: 'Scout', mode: 'hunt', builtIn: true, heat: true, opacity: DEFAULT_OPACITY, layers: L(['satellite', 'contours', 'forest', 'fire', 'roads']) },
   // the shade alone, its contour lines black on the white (CONTOUR_INK.shade)
   { id: 'hunt-terrain', name: 'Terrain', mode: 'hunt', builtIn: true, heat: false, opacity: { ...DEFAULT_OPACITY, hillshade: 0.9 }, layers: L(['hillshade', 'contours', 'roads']) },

@@ -101,7 +101,7 @@ const lngOf = (x: number) => x * 360 - 180
 const latOf = (y: number) => (Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180) / Math.PI
 /** its opacity over a ground, at full strength (the Strength slider scales it) */
 const WASH_ALPHA = 0.6
-/** the shade layers, any of which the wash goes under as the ground (mapStyle.ts) */
+/** the shade layers (mapStyle.ts): the wash goes under the first that is see-through shading (type hillshade) */
 const SHADE_IDS = ['hillshade-live', 'hillshade', 'relief-shade', 'hillshade-lidar']
 /** windy.com's wind colours, by speed in km/h (its scale runs in m/s: 0, 1, 3, 5 ...) */
 const WASH_STOPS: readonly [number, readonly [number, number, number]][] = [
@@ -152,7 +152,10 @@ function washBefore(map: MlMap): string | undefined {
     const t = map.getLayer(id)?.type
     return t === 'line' || t === 'symbol' || t === 'circle'
   }
-  return (windGround(useAppStore.getState().layers) ? ids.find((id) => SHADE_IDS.includes(id)) : undefined) ?? ids.find(over)
+  // under the see-through shading (a hillshade layer: highlights and shadows), over the shade pictures (raster
+  // tiles, opaque grey): zoomed out past the box the live shade comes on, and the wash went under it, so the
+  // colours were lost (Gavan, 2026-10-19: "wind zoom out loose colouring")
+  return (windGround(useAppStore.getState().layers) ? ids.find((id) => SHADE_IDS.includes(id) && map.getLayer(id)?.type === 'hillshade') : undefined) ?? ids.find(over)
 }
 
 /** A paint's work goes in slices of this, ms: a new zoom level or new air
