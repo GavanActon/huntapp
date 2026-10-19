@@ -355,6 +355,8 @@ export default function SettingsSheet(): JSX.Element {
     <div className="settings">
       <div className="st-sec">On this phone</div>
       {/* the row's word (All saved, Download) is the area the app is in; the sheet has every area */}
+      {/* the whole row opens the maps sheet, with its › (Gavan, 2026-10-19: "Maps on this phone not a button");
+          Download stays its own button */}
       <div className="st-row st-two">
         <button onClick={() => pushSheet({ kind: 'offline' })}>
           <span>Maps on this phone</span>
@@ -365,7 +367,9 @@ export default function SettingsSheet(): JSX.Element {
             {maps.text}
           </button>
         ) : (
-          <span className={dl.active ? 'st-more' : 'dim'}>{maps.text}</span>
+          <button className="st-go" onClick={() => pushSheet({ kind: 'offline' })}>
+            <span className={dl.active ? 'st-more' : 'dim'}>{maps.text}</span> <span className="dim">›</span>
+          </button>
         )}
       </div>
       {dl.active && (

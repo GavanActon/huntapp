@@ -10,6 +10,8 @@ export type Sheet =
   | { kind: 'pins' }
   /** one pin: its name, colour, kind and notes (ui/sheets/PinSheet.tsx); fresh, just dropped: Save, not Share and Delete */
   | { kind: 'pin'; id: string; fresh?: boolean }
+  /** one game entry, as a pin: what and when, notes, Edit, Share, Keep as a pin (ui/sheets/EntrySheet.tsx) */
+  | { kind: 'entry'; id: string }
   | { kind: 'huntlog' }
   | { kind: 'settings' }
   | { kind: 'scentTune' }
@@ -36,6 +38,7 @@ export const SHEET_HALF_PCT: Record<SheetKind, number> = {
   pins: 46,
   // the name, colour and kind, the note box and the latest notes; the pin itself kept in view above
   pin: 56,
+  entry: 50,
   huntlog: 44,
   settings: 72,
   // the scent model's knobs: tall, the cone still in view above

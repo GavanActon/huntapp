@@ -6,7 +6,6 @@ import { startOfDayMs } from '../time'
 import { closeOnTapOff } from '../map/tapPopup'
 import { fmtCoord } from '../map/MapView'
 import { agoLabel, hourMinShort } from '../time'
-import { useHeardForm } from '../ui/HeardCard'
 import { SOUND_NAMES, SPECIES_NAMES, useHuntLog, WHAT_NAMES, type LogEntry } from './huntLog'
 
 /**
@@ -96,19 +95,21 @@ export function entryTitle(e: LogEntry): string {
 }
 
 /** An entry the Game card can change: one of yours, heard or seen (a blank sit or sign is the log's own card). */
-function editable(e: LogEntry): boolean {
+export function entryEditable(e: LogEntry): boolean {
   return !e.taken && (e.sound != null || e.what === 'seen' || e.what === 'heard')
 }
 
-/** A tapped entry: what and when, its coordinates (a tap copies them), Edit (what and which animal,
- *  in the Game card) and Delete. No ×: tap off; press and hold the dot to move it. */
+/** A tapped entry: what and when, its coordinates (a tap copies them), and Open for its sheet, a pin's
+ *  kind (Edit, notes, Share, Keep as a pin, Delete: ui/sheets/EntrySheet.tsx). No ×: tap off; press and
+ *  hold the dot to move it. */
 export function showLogPopup(map: MlMap, e: LogEntry): void {
   const el = document.createElement('div')
   const ago = agoLabel(Date.now() - e.ts)
   el.innerHTML =
     `<div class="lp-title">${esc(entryTitle(e))}</div>` +
     `<div class="lp-when">${esc(hourMinShort(e.ts))} · ${esc(ago)}${e.note ? ` · ${esc(e.note)}` : ''}</div>` +
-    `<div class="pp-acts"><button class="lp-coord">${esc(fmtCoord(e.lon, e.lat))}</button>${editable(e) ? '<button class="lp-edit mp-plain">Edit</button>' : ''}<button class="lp-del">Delete</button></div>`
+    `${e.notes?.length ? `<div class="lp-when">${esc(e.notes[e.notes.length - 1].text.slice(0, 80))}</div>` : ''}` +
+    `<div class="pp-acts"><button class="lp-coord">${esc(fmtCoord(e.lon, e.lat))}</button><button class="lp-open mp-plain">Open</button></div>`
   const popup = new maplibregl.Popup({ className: 'depth-popup', closeButton: false, closeOnClick: false, offset: 10, maxWidth: '260px' })
     .setLngLat([e.lon, e.lat])
     .setDOMContent(el)
@@ -120,13 +121,9 @@ export function showLogPopup(map: MlMap, e: LogEntry): void {
     b.textContent = 'Copied'
     window.setTimeout(() => popup.remove(), 600)
   })
-  el.querySelector('.lp-edit')?.addEventListener('click', () => {
+  el.querySelector('.lp-open')?.addEventListener('click', () => {
     popup.remove()
-    useHeardForm.getState().editEntry(e.id)
-  })
-  el.querySelector('.lp-del')?.addEventListener('click', () => {
-    useHuntLog.getState().remove(e.id)
-    popup.remove()
+    useAppStore.getState().openSheet({ kind: 'entry', id: e.id })
   })
 }
 

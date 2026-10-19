@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type JSX } from 'react'
+import { NoteBox, NoteList, type NoteStore } from './Notes'
 import { ACTIVE_AREA } from '../../areas'
-import type { PinNote, PlaceDef } from '../../config'
+import type { PlaceDef } from '../../config'
 import { DROPPED_NAME } from '../../map/placePopup'
 import { coordWords } from '../../share/link'
 import { shareSpot } from '../../share/share'
@@ -8,7 +9,7 @@ import { fromHome } from '../../spots/scoring'
 import { useAppStore } from '../../state/appStore'
 import { PIN_COLOURS, placeColour } from '../../state/pinColours'
 import { homePlace, placeArea, usePlacesStore } from '../../state/placesStore'
-import { agoLabel, stampLabel } from '../../time'
+import { agoLabel } from '../../time'
 import './log.css'
 
 const KINDS: PlaceDef['kind'][] = ['stand', 'trail', 'landing', 'camp', 'lake']
@@ -66,7 +67,11 @@ export default function PinSheet({ id, fresh = false }: { id: string; fresh?: bo
   const home = homePlace()
   const away = placeArea(p)
   const where = p.id === home.id ? null : away && away.id !== ACTIVE_AREA.id ? away.name : fromHome(p.lon, p.lat, home)
-  const notes = (p.notes ?? []).filter((n) => n.at !== draftAt).reverse()
+  const store: NoteStore = {
+    add: (text) => usePlacesStore.getState().addNote(p.id, text),
+    edit: (at, text) => usePlacesStore.getState().editNote(p.id, at, text),
+    remove: (at) => usePlacesStore.getState().removeNote(p.id, at),
+  }
 
   return (
     <div className="pin-sheet" ref={root}>
@@ -106,14 +111,8 @@ export default function PinSheet({ id, fresh = false }: { id: string; fresh?: bo
         ))}
       </div>
 
-      <NoteBox id={p.id} onDraft={setDraftAt} />
-      {notes.length > 0 && (
-        <div className="ps-notes">
-          {notes.map((n) => (
-            <NoteRow key={n.at} id={p.id} n={n} />
-          ))}
-        </div>
-      )}
+      <NoteBox store={store} onDraft={setDraftAt} />
+      <NoteList store={store} notes={p.notes} draftAt={draftAt} />
 
       <div className="ps-meta">
         {p.savedAt > 0 ? `dropped ${agoLabel(Date.now() - p.savedAt)}` : p.kind}
@@ -131,109 +130,6 @@ export default function PinSheet({ id, fresh = false }: { id: string; fresh?: bo
           </button>
         </div>
       )}
-    </div>
-  )
-}
-
-/** A textarea as tall as what is in it. */
-function useGrow(ref: React.RefObject<HTMLTextAreaElement | null>, text: string) {
-  useLayoutEffect(() => {
-    const el = ref.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = `${el.scrollHeight}px`
-  }, [ref, text])
-}
-
-/**
- * The next note. Its first letter writes it, stamped then; each one after
- * edits it; emptied, it goes. Let go of (Done, a tap elsewhere) it joins
- * the list and the box is empty for the next.
- */
-function NoteBox({ id, onDraft }: { id: string; onDraft: (at: number | null) => void }): JSX.Element {
-  const [text, setText] = useState('')
-  const draft = useRef<number | null>(null)
-  const ref = useRef<HTMLTextAreaElement>(null)
-  useGrow(ref, text)
-  const change = (v: string) => {
-    setText(v)
-    const st = usePlacesStore.getState()
-    const t = v.trim()
-    if (draft.current == null) {
-      if (!t) return
-      draft.current = st.addNote(id, t)
-      onDraft(draft.current)
-    } else if (t) st.editNote(id, draft.current, t)
-    else {
-      st.removeNote(id, draft.current)
-      draft.current = null
-      onDraft(null)
-    }
-  }
-  const finish = () => {
-    if (draft.current == null) return
-    draft.current = null
-    setText('')
-    onDraft(null)
-  }
-  return <textarea ref={ref} className="ps-addnote" rows={1} placeholder="Add a note" aria-label="Add a note" maxLength={2000} value={text} onChange={(e) => change(e.target.value)} onBlur={finish} />
-}
-
-/** A note written before: its words and when. A tap edits it in place; emptied, or Delete, and it goes. */
-function NoteRow({ id, n }: { id: string; n: PinNote }): JSX.Element {
-  const [editing, setEditing] = useState(false)
-  const [text, setText] = useState(n.text)
-  const ref = useRef<HTMLTextAreaElement>(null)
-  useGrow(ref, editing ? text : '')
-  const st = usePlacesStore.getState
-  if (!editing) {
-    return (
-      <button
-        className="ps-note"
-        onClick={() => {
-          setText(n.text)
-          setEditing(true)
-        }}
-      >
-        <span className="ps-note-text">{n.text}</span>
-        <span className="ps-note-when">{stampLabel(n.at)}</span>
-      </button>
-    )
-  }
-  return (
-    <div className="ps-note ps-note-edit">
-      <textarea
-        ref={ref}
-        rows={1}
-        autoFocus
-        aria-label="Note"
-        maxLength={2000}
-        value={text}
-        onChange={(e) => {
-          setText(e.target.value)
-          if (e.target.value.trim()) st().editNote(id, n.at, e.target.value.trim())
-        }}
-        onBlur={(e) => {
-          // a tap on Delete lands after the blur: let it do the deleting
-          if ((e.relatedTarget as HTMLElement | null)?.dataset.del) return
-          if (!text.trim()) st().removeNote(id, n.at)
-          setEditing(false)
-        }}
-      />
-      <span className="ps-note-when">
-        {stampLabel(n.at)} ·{' '}
-        <button
-          className="linklike danger"
-          data-del="1"
-          // the textarea keeps the focus, so its blur does not take this button away under the tap
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => {
-            if (confirm('Delete this note?')) st().removeNote(id, n.at)
-          }}
-        >
-          Delete
-        </button>
-      </span>
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Habitat } from '../spots/habitatGrid'
 import type { HuntTarget } from '../spots/types'
+import type { PinNote } from '../config'
 import { revealMark } from '../state/appStore'
 import { dist as distWords } from '../lengths'
 
@@ -119,6 +120,8 @@ export interface LogEntry {
   /** placed from where you stood: your spot, the bearing to it (true) and the rough distance, m */
   from?: { lon: number; lat: number; bearing: number; distM: number }
   note?: string
+  /** dated notes, as a pin's (ui/sheets/EntrySheet.tsx) */
+  notes?: PinNote[]
   wx?: LogWeather
   model?: LogModel
   /** a party member's (party/party.ts): their initials, and their id in the party */
@@ -133,6 +136,10 @@ interface LogState {
   add: (e: Omit<LogEntry, 'id'>) => LogEntry
   update: (id: string, patch: Partial<LogEntry>) => void
   remove: (id: string) => void
+  /** a dated note on an entry, returning its stamp; edited and removed by it */
+  addNote: (id: string, text: string, at?: number) => number
+  editNote: (id: string, at: number, text: string) => void
+  removeNote: (id: string, at: number) => void
   /** a party member's entries as they stand now: new ones in, changed ones replaced, never one of yours */
   takeIn: (es: LogEntry[]) => void
 }
@@ -150,6 +157,19 @@ export const useHuntLog = create<LogState>()(
       },
       update: (id, patch) => set((s) => ({ entries: s.entries.map((e) => (e.id === id ? { ...e, ...patch } : e)) })),
       remove: (id) => set((s) => ({ entries: s.entries.filter((e) => e.id !== id) })),
+      addNote: (id, text, at = Date.now()) => {
+        set((s) => ({ entries: s.entries.map((e) => (e.id === id ? { ...e, notes: [...(e.notes ?? []), { at, text }] } : e)) }))
+        return at
+      },
+      editNote: (id, at, text) => set((s) => ({ entries: s.entries.map((e) => (e.id === id ? { ...e, notes: e.notes?.map((n) => (n.at === at ? { ...n, text } : n)) } : e)) })),
+      removeNote: (id, at) =>
+        set((s) => ({
+          entries: s.entries.map((e) => {
+            if (e.id !== id) return e
+            const notes = e.notes?.filter((n) => n.at !== at)
+            return { ...e, notes: notes?.length ? notes : undefined }
+          }),
+        })),
       takeIn: (es) => {
         const ok = es.filter((e) => e && typeof e.id === 'string' && Number.isFinite(e.ts) && Number.isFinite(e.lon) && Number.isFinite(e.lat))
         if (!ok.length) return

@@ -504,3 +504,6 @@
 /* Send to devs: how it went, under the ⋯ */
 .log-sent { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; padding: 6px 10px; border-radius: var(--r-md); background: rgba(var(--c-ink-rgb), 0.06); font-size: calc(12.5px * var(--ui-scale)); color: var(--c-text); word-break: break-all; }
 .log-sent span { flex: 1; }
+
+/* a game entry's sheet (EntrySheet): its title in the head, as a pin's name */
+.pin-sheet .ps-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
