@@ -325,7 +325,7 @@ export default function HuntLogSheet(): JSX.Element {
                 const w = LESSON_WORDS[r.lesson]
                 return (
                   <div key={r.lesson} className="log-lesson">
-                    {w[0].toUpperCase() + w.slice(1)}: {r.agree} of {n} confirmed{r.close ? `, ${r.close} fine-tuned` : ''}{r.miss ? `, ${r.miss} corrected` : ''}
+                    {w[0].toUpperCase() + w.slice(1)}: {r.agree} of {n} confirmed{r.close ? `, ${r.close} fine-tuned` : ''}{r.miss ? `, ${r.miss} correcting` : ''}
                     {biasMatters(r.bias) ? ` · ${biasWords(r.bias, r.lesson).replace(/ this season$/, '')}` : n < 5 ? ' · too few to learn from yet' : ''}
                   </div>
                 )

@@ -514,8 +514,11 @@ export function checkSpentAt(c: WindCheck): number {
  *  treetops were doing: a hit when both say decoupled or both say not. */
 /** A verdict in words, as what the check did for the hunter (Gavan, 2026-10-18: "instead of missed or
  *  negative words in wind checks, use positive benefit based language"): the map was right and the check
- *  confirmed it, near and the check fine-tuned it, off and the check corrected it there. */
-export const VERDICT_WORD: Record<'agree' | 'close' | 'miss', string> = { agree: 'confirmed', close: 'fine-tuned', miss: 'corrected' }
+ *  confirmed it, near and the check fine-tuned it, off and the check is correcting it there. Correcting,
+ *  not corrected (Gavan, the same day: "if it's a big miss don't you need more data? It's not corrected
+ *  then. More like correcting"): one puff starts the pull, the next checks settle it, so a miss asks
+ *  for the next check soon (WindCheckCard nextMin). */
+export const VERDICT_WORD: Record<'agree' | 'close' | 'miss', string> = { agree: 'confirmed', close: 'fine-tuned', miss: 'correcting' }
 
 export function aloftVerdict(c: WindCheck): 'agree' | 'miss' | null {
   if (c.aloft == null || c.model?.decoupled == null) return null

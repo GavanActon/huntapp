@@ -59,7 +59,9 @@ import { km as kmWords } from '../lengths'
  * Saved, the card is two lines (Gavan, 2026-10-18: "wind check info too
  * much", then "KIS. The map: outcome. Then when their next check should
  * be, in minutes from now"): "The map: confirmed" and "Next check in 25 min",
- * the outcome said as what the check did (confirmed, fine-tuned, corrected),
+ * the outcome said as what the check did (confirmed, fine-tuned, or
+ * correcting: a big miss is one data point, so the next check comes soon,
+ * in 10 min, "to settle it"),
  * counting down while the card is up; the rest (what it said and what you
  * felt, how it sits with the checks before it here, the sit's score) folds
  * under More. Redo ("pressed back,
@@ -161,6 +163,13 @@ function callWords(m: { dirFrom: number; kmh: number }): string {
 
 /** The saved card's one word, what the check did: "The map: confirmed" (VERDICT_WORD). */
 const OUTCOME = VERDICT_WORD
+/** Minutes to the next check by what this one said: a miss wants more data soon; a near one, or a wind
+ *  that comes and goes, in a while; a wind that has held, later. */
+function nextMin(v: 'agree' | 'close' | 'miss' | null, c: WindCheck): number {
+  if (v === 'miss') return 10
+  if (v === 'close' || c.steady === 'brief' || c.steady === 'once') return 25
+  return c.held ? 60 : 40
+}
 /** Minutes from now to a moment, at least one. */
 const minsTo = (ms: number) => Math.max(1, Math.round((ms - Date.now()) / 60_000))
 
@@ -440,7 +449,8 @@ export default function WindCheckCard() {
           The forecast: {fv && saved.forecast ? <b className={`gc-verdict gc-${fv}`}>{OUTCOME[fv]}</b> : <b>no call</b>}
         </div>
         <div className="gc-line gc-outcome">
-          Next look in <b>{minsTo(Math.max(saved.ts, Date.now() - 5 * 60_000) + 40 * 60_000)} min</b>
+          Next look in <b>{minsTo(Math.max(saved.ts, Date.now() - 5 * 60_000) + nextMin(fv, saved) * 60_000)} min</b>
+          {fv === 'miss' ? ' to settle it' : ''}
         </div>
         {moreButton}
         {more && (
@@ -465,7 +475,7 @@ export default function WindCheckCard() {
     const said = m ? callWords(m) : null
     const puff = nextPuff(sit?.fit ?? null, sit?.count ?? 1, saved.forecast?.kmh ?? null)
     // when to puff again: sooner after a miss; a wind that had held, later
-    const againMs = Math.max(saved.ts, Date.now() - 5 * 60_000) + (v === 'miss' || saved.steady === 'brief' || saved.steady === 'once' ? 25 : saved.held ? 60 : 40) * 60_000
+    const againMs = Math.max(saved.ts, Date.now() - 5 * 60_000) + nextMin(v, saved) * 60_000
     // the map's call moved: 10° or a quarter in speed
     const moved = after && m ? angleDiff(after.dirFrom, m.dirFrom) >= 10 || Math.abs(Math.log(Math.max(after.kmh, 0.3) / Math.max(m.kmh, 0.3))) >= Math.log(1.25) : false
     const sc = sit && sit.score.n >= 2 ? sit.score : null
@@ -478,6 +488,7 @@ export default function WindCheckCard() {
         </div>
         <div className="gc-line gc-outcome">
           Next check in <b>{minsTo(againMs)} min</b>
+          {v === 'miss' ? ' to settle it' : ''}
         </div>
         {moreButton}
         {more && (
