@@ -57,9 +57,12 @@ import { km as kmWords } from '../lengths'
  * is honest and climbs as the checks teach; and the puff that would teach
  * the most next.
  *
- * Saved, the card is brief (Gavan, 2026-10-18: "wind check info too
- * much"): the verdict, how it sits with the checks before it here, and
- * when to check again; the rest folds under More. Redo ("pressed back,
+ * Saved, the card is two lines (Gavan, 2026-10-18: "wind check info too
+ * much", then "KIS. The map: outcome. Then when their next check should
+ * be, in minutes from now"): "The map: agreed" and "Next check in 25 min",
+ * counting down while the card is up; the rest (what it said and what you
+ * felt, how it sits with the checks before it here, the sit's score) folds
+ * under More. Redo ("pressed back,
  * oops!") takes the check back out and opens the form on the same
  * answers to put right: the time, the model's call and the forecast of
  * the first try are kept, and so is the check's id, so a copy already
@@ -156,7 +159,10 @@ function callWords(m: { dirFrom: number; kmh: number }): string {
   return m.kmh < 1 ? 'calm' : `toward ${compass((m.dirFrom + 180) % 360)} at ${Math.round(m.kmh)}`
 }
 
-const VERDICT_WORDS = { agree: 'agreed', close: 'was close', miss: 'missed' } as const
+/** The saved card's one word: "The map: agreed". */
+const OUTCOME = { agree: 'agreed', close: 'close', miss: 'missed' } as const
+/** Minutes from now to a moment, at least one. */
+const minsTo = (ms: number) => Math.max(1, Math.round((ms - Date.now()) / 60_000))
 
 /** Bearing from the check's spot to a point on the map, degrees true. */
 function bearingTo(from: { lon: number; lat: number }, lon: number, lat: number): number {
@@ -215,6 +221,8 @@ export default function WindCheckCard() {
   const [steady, setSteady] = useState<Steady | null>(first?.steady ?? (first?.held ? 'always' : null))
   /** the saved card's More */
   const [more, setMore] = useState(false)
+  /** the saved card's minutes count down: a redraw every half minute while it is up */
+  const [, tick] = useState(0)
   const [missing, setMissing] = useState<string | null>(null)
   const [saved, setSaved] = useState<WindCheck | null>(null)
   /** the map's call there now, with this check in */
@@ -225,6 +233,11 @@ export default function WindCheckCard() {
   const ref = useRef<HTMLDivElement>(null)
   // a tap off the card, the map included, closes it
   useTapOff(ref, true, close)
+  useEffect(() => {
+    if (!saved) return
+    const t = window.setInterval(() => tick((n) => n + 1), 30_000)
+    return () => window.clearInterval(t)
+  }, [saved])
 
   // the compass runs while the card is up; it is read only when "ahead" is asked
   useEffect(() => {
@@ -423,23 +436,20 @@ export default function WindCheckCard() {
     return (
       <div className="tripbuilder glass ground-card" ref={ref}>
         {savedHead}
-        <div className="gc-line">
-          {fv && saved.forecast ? (
-            <>
-              The forecast <b className={`gc-verdict gc-${fv}`}>{VERDICT_WORDS[fv]}</b> · it said {callWords(saved.forecast)}, you saw {checkFelt(saved)}
-            </>
-          ) : (
-            <>You saw {checkFelt(saved)}</>
-          )}
+        <div className="gc-line gc-outcome">
+          The forecast: {fv && saved.forecast ? <b className={`gc-verdict gc-${fv}`}>{OUTCOME[fv]}</b> : <b>no call</b>}
         </div>
-        <div className="gc-line">
-          <b>Look again by ~{clockShort(saved.ts + 40 * 60_000)}</b>, or the moment it shifts
+        <div className="gc-line gc-outcome">
+          Next look in <b>{minsTo(Math.max(saved.ts, Date.now() - 5 * 60_000) + 40 * 60_000)} min</b>
         </div>
         {moreButton}
         {more && (
-          <div className="gc-line">
-            Leads the wind above the trees here <b>{pull}%</b> now, out to ~{kmWords(km)} · fades by ~{clockShort(checkSpentAt(saved))}
-          </div>
+          <>
+            <div className="gc-line">{saved.forecast ? `It said ${callWords(saved.forecast)}, you saw ${checkFelt(saved)}` : `You saw ${checkFelt(saved)}`}</div>
+            <div className="gc-line">
+              Leads the wind above the trees here <b>{pull}%</b> now, out to ~{kmWords(km)} · fades by ~{clockShort(checkSpentAt(saved))}
+            </div>
+          </>
         )}
         <ShareChecksAsk />
       </div>
@@ -464,22 +474,17 @@ export default function WindCheckCard() {
     return (
       <div className="tripbuilder glass ground-card" ref={ref}>
         {savedHead}
-        <div className="gc-line">
-          {v ? (
-            <>
-              The map <b className={`gc-verdict gc-${v}`}>{VERDICT_WORDS[v]}</b> · it said {said}, you felt {felt}
-            </>
-          ) : (
-            <>Saved without the map&rsquo;s call (it had not loaded) · you felt {felt}</>
-          )}
+        <div className="gc-line gc-outcome">
+          The map: {v ? <b className={`gc-verdict gc-${v}`}>{OUTCOME[v]}</b> : <b>no call</b>}
         </div>
-        {earlier && <div className="gc-line">{earlierWords(earlier, saved.steady)}</div>}
-        <div className="gc-line">
-          <b>Check again by ~{clockShort(againMs)}</b>, or the moment it shifts
+        <div className="gc-line gc-outcome">
+          Next check in <b>{minsTo(againMs)} min</b>
         </div>
         {moreButton}
         {more && (
           <>
+        <div className="gc-line">{said ? `It said ${said}, you felt ${felt}` : `The map had not loaded · you felt ${felt}`}</div>
+        {earlier && <div className="gc-line">{earlierWords(earlier, saved.steady)}</div>}
         {puffs > 1 && (
           <div className="gc-line">
             Puff {puffs} of this check: {saved.dirFrom == null ? 'calm' : `toward ${towardWords((saved.dirFrom + 180) % 360, saved.swingDeg)}`}

@@ -106,3 +106,5 @@ div.me .me-hit { pointer-events: all; cursor: pointer; }
 .gc-steady .chip-pick b { font-weight: 700; color: var(--c-text); }
 .gc-steady .chip-pick.chip-on { background: var(--c-accent); }
 .gc-steady .chip-pick.chip-on b { color: var(--c-on-accent); }
+/* the saved check's two lines: the map's outcome, the next check */
+.ground-card .gc-outcome { font-size: 15px; }
