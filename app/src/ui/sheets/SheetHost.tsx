@@ -13,6 +13,7 @@ const ScentTuneSheet = lazy(() => import('./ScentTuneSheet'))
 const GuideSheet = lazy(() => import('./GuideSheet'))
 const ButtonsSheet = lazy(() => import('./ButtonsSheet'))
 const ViewsSheet = lazy(() => import('./ViewsSheet'))
+const MakeViewSheet = lazy(() => import('./MakeViewSheet'))
 const OfflineSheet = lazy(() => import('./OfflineSheet'))
 const LayersSheet = lazy(() => import('./LayersSheet'))
 const CoordsSheet = lazy(() => import('./CoordsSheet'))
@@ -34,6 +35,7 @@ const TITLES: Record<SheetKind, string> = {
   guide: 'How we hunt here',
   buttons: '',
   views: '',
+  makeView: '',
   offline: 'Maps on this phone',
   layers: '',
   coords: 'Go to coordinates',
@@ -68,6 +70,8 @@ function panel(s: Sheet): ReactNode {
       return <ButtonsSheet />
     case 'views':
       return <ViewsSheet />
+    case 'makeView':
+      return <MakeViewSheet />
     case 'offline':
       return <OfflineSheet />
     case 'layers':
@@ -104,8 +108,8 @@ export default function SheetHost(): JSX.Element | null {
         Done
       </button>
     ) : undefined
-  // Map buttons and Views draw their own heading row, Done in it (back to Settings): no host row, no ‹ Back
-  const own = sheet.kind === 'buttons' || sheet.kind === 'views'
+  // Map buttons, Views and Make your own draw their own heading row, Done or ‹ Views in it: no host row, no ‹ Back
+  const own = sheet.kind === 'buttons' || sheet.kind === 'views' || sheet.kind === 'makeView'
   return (
     <BottomSheet
       snapKey={sheet.kind}

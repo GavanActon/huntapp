@@ -469,8 +469,9 @@ export default defineConfig({
         // (2026-10-03, "fetching it…" and nothing)
         skipWaiting: true,
         clientsClaim: true,
-        // the areas' iPhone manifests too: an icon added with no signal still gets its area
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}', 'manifest-*.webmanifest'],
+        // the areas' iPhone manifests too: an icon added with no signal still gets its area; the
+        // views' pictures (56 KB, the pill menu and the Views sheet) so they are there with no signal
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}', 'manifest-*.webmanifest', 'views/*.webp'],
         // the icons too (580 KB): the home screen reads them when the app is added, online
         globIgnores: ['data/**', 'fonts/**', 'sprites/**', 'icons/**'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,

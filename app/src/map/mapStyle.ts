@@ -203,8 +203,10 @@ export function syncUnderlays(map: MlMap, layers: LayerVisibility, opacity: Laye
     // the dark ground now. In Explore too: kept there, it came in ahead of the province's
     // photo at Timmins (Gavan, 2026-10-09: "In sat mode, I saw the topocan map"); the
     // sheet is the Topo view's
-    toposheet: !inside && !imagery,
-    base: !(imagery || ((relief || wind || photoOver || liveShade) && inside)),
+    // and the Canada map view's own map, in the box too, the base map under it then for nothing
+    // (the sheet is opaque paper from z7, its minzoom)
+    toposheet: (!inside && !imagery) || layers.toposheet,
+    base: !(imagery || ((relief || wind || photoOver || liveShade) && inside) || (layers.toposheet && !!map.getLayer('toposheet') && map.getZoom() >= 7)),
     'satellite-far': layers.satellite && !(inside && baked),
     'satellite-live': layers.satellite && !(imagery && inside),
     'hillshade-live': layers.hillshade && !(inside && ((imagery && liveShadeUnderImagery) || relief || wind)),
@@ -220,7 +222,8 @@ export function syncUnderlays(map: MlMap, layers: LayerVisibility, opacity: Laye
  *  (windFlow.ts), since a lake and the land beside it want different inks. */
 export type BaseTone = 'imagery' | 'topo' | 'relief' | 'shade'
 export function baseTone(layers: LayerVisibility): BaseTone {
-  if (layers.topo) return 'topo'
+  // the paper maps (the Canada map, the old sheet with no imagery over it) take the topo sheet's ink
+  if (layers.topo || layers.toposheet || (layers.historical && !layers.satellite)) return 'topo'
   if (layers.relief) return 'relief'
   if (layers.hillshade && !layers.satellite) return 'shade'
   return 'imagery'

@@ -18,6 +18,7 @@ export type Sheet =
   | { kind: 'guide' }
   | { kind: 'buttons' }
   | { kind: 'views' }
+  | { kind: 'makeView' }
   | { kind: 'offline' }
   | { kind: 'layers' }
   /** text: what it opens holding (a paste that could not go straight
@@ -47,6 +48,8 @@ export const SHEET_HALF_PCT: Record<SheetKind, number> = {
   // both columns side by side and the tray of the rest, all in view while a button is dragged
   buttons: 84,
   views: 66,
+  // the name, the six maps underneath and the first of the switches, the map above showing each pick
+  makeView: 66,
   offline: 60,
   layers: 80,
   // the Paste button, the box, the areas and the first of Recent, the map still in view
@@ -125,6 +128,8 @@ export interface LayerVisibility {
   lanes: boolean
   bathy: boolean
   historical: boolean
+  /** NRCan's Toporama sheet, the whole map (the Canada map view): past the box it is the base under the topo views anyway (syncUnderlays) */
+  toposheet: boolean
   satellite: boolean
   camps: boolean
   wmu: boolean
@@ -162,6 +167,7 @@ export const DEFAULT_LAYERS: LayerVisibility = {
   lanes: false,
   bathy: false,
   historical: false,
+  toposheet: false,
   satellite: true,
   camps: false,
   wmu: false,

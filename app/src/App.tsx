@@ -222,7 +222,8 @@ export default function App() {
           )}
         </div>
       )}
-      {!sheetOpen && !formUp && <ToolColumn />}
+      {/* the view menu is four pictures across: the near column steps out from under it too */}
+      {!sheetOpen && !formUp && !viewMenuOpen && <ToolColumn />}
       <div className="bottombar" ref={barRef}>
         {/* the tool's card, else the form that is up: an entry, a moose heard, a wind check */}
         {tool === 'labels' && <BushLabelCard />}

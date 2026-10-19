@@ -1,74 +1,84 @@
-import { useRef, useState, type JSX } from 'react'
+import { useMemo, useState, type JSX } from 'react'
 import { useAppStore } from '../../state/appStore'
-import { splitViews, useViews, type MapView, type Mode } from '../../state/viewsStore'
+import { currentView, useViews, viewsFor, type MapView, type Mode } from '../../state/viewsStore'
 import { FISH_HERE } from '../../spots/profile'
-import { IconStar, IconTrash } from '../icons'
+import { IconTrash } from '../icons'
+import { needsSignal, viewHere, viewPic, viewWhat } from '../viewKit'
 import './settings.css'
+import '../views.css'
 
 /**
- * Views: which of a mode's views sit at the top of the pill menu, and in
- * what order. A star pins a view (it joins the end of the top list) or
- * sends it back under More; the handle at the left of a pinned row drags
- * it up or down the list. Saved views have a trash. The heading row is its
- * own: the title, the Hunting | Fishing switch and Done (back to Settings,
- * which pushed it, or closed).
+ * Views: every view the area can show, each with its picture, what it
+ * shows and what it is for. A tap on one puts it on the map (the sheet
+ * stays, the map above it changes), `+ Add` puts it in My views, the pill
+ * menu, and `✓ In menu` takes it back out. The phone's own views follow,
+ * and at the foot Make your own (Gavan, 2026-10-19: "you want more, you
+ * dig"). The heading row is its own: the title, the Hunting | Fishing
+ * switch and Done (back to Settings, which pushed it, or closed).
  */
 export default function ViewsSheet(): JSX.Element {
-  const [mode, setMode] = useState<Mode>(() => useViews.getState().mode)
+  const [mode, setShown] = useState<Mode>(() => useViews.getState().mode)
   const saved = useViews((s) => s.saved)
   const pinned = useViews((s) => s.pinned)
   const togglePin = useViews((s) => s.togglePin)
-  const setPinned = useViews((s) => s.setPinned)
   const remove = useViews((s) => s.remove)
+  const apply = useViews((s) => s.apply)
+  const setMode = useViews((s) => s.setMode)
+  const appMode = useViews((s) => s.mode)
+  const lastViewId = useViews((s) => s.lastViewId)
+  const layers = useAppStore((s) => s.layers)
+  const online = useAppStore((s) => s.online)
   const stacked = useAppStore((s) => s.sheets.length > 1)
   const popSheet = useAppStore((s) => s.popSheet)
   const closeSheet = useAppStore((s) => s.closeSheet)
-  const { top, rest } = splitViews(mode, saved, pinned)
+  const pushSheet = useAppStore((s) => s.pushSheet)
 
-  /** the id under the finger while a row is being dragged */
-  const [dragging, setDragging] = useState<string | null>(null)
-  const rows = useRef(new Map<string, HTMLDivElement>())
+  const on = useMemo(() => currentView(), [layers, appMode, saved, lastViewId])
+  const all = viewsFor(mode, saved).filter(viewHere)
+  const builtIn = all.filter((v) => v.builtIn)
+  const own = all.filter((v) => !v.builtIn)
 
-  function startDrag(e: React.PointerEvent, id: string) {
-    e.preventDefault()
-    e.stopPropagation()
-    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
-    setDragging(id)
-  }
-  /** the row the finger is over becomes the dragged row's place */
-  function moveDrag(e: React.PointerEvent, id: string) {
-    if (dragging !== id) return
-    const ids = top.map((v) => v.id)
-    const from = ids.indexOf(id)
-    let to = from
-    for (const [other, el] of rows.current) {
-      if (other === id) continue
-      const r = el.getBoundingClientRect()
-      if (e.clientY < r.top || e.clientY > r.bottom) continue
-      to = ids.indexOf(other)
-      break
-    }
-    if (to === from || to < 0) return
-    const next = ids.filter((x) => x !== id)
-    next.splice(to, 0, id)
-    setPinned(mode, next)
-  }
-  function endDrag() {
-    setDragging(null)
+  function show(v: MapView) {
+    // a fishing view picked while hunting (or the reverse) is a change of mode first
+    if (v.mode !== useViews.getState().mode) setMode(v.mode)
+    apply(v)
   }
 
-  const trash = (v: MapView) =>
-    v.builtIn ? null : (
-      <button
-        className="icon-btn danger viewedit-trash"
-        aria-label={`Delete ${v.name}`}
-        onClick={() => {
-          if (confirm(`Delete the view ${v.name}?`)) remove(v.id)
-        }}
-      >
-        <IconTrash size={14} />
-      </button>
+  const row = (v: MapView) => {
+    const mine = pinned[v.mode].includes(v.id)
+    const dark = needsSignal(v) && !online
+    return (
+      <div key={v.id} className={`vx-row${on?.id === v.id ? ' on' : ''}${dark ? ' off' : ''}`}>
+        <button className="vx-show" onClick={() => show(v)} aria-label={`Show ${v.name}`}>
+          <img src={viewPic(v)} alt="" loading="lazy" draggable={false} />
+          <span className="vx-text">
+            <span className="vx-name">
+              {v.name}
+              {on?.id === v.id && <small>on the map</small>}
+            </span>
+            <span className="vx-what">{viewWhat(v)}</span>
+            {(v.use || dark) && <span className="vx-use">{dark ? 'Needs signal' : v.use}</span>}
+          </span>
+        </button>
+        <div className="vx-side">
+          <button className={`vx-pin${mine ? ' mine' : ''}`} aria-pressed={mine} onClick={() => togglePin(v.id)}>
+            {mine ? '✓ In menu' : '+ Add'}
+          </button>
+          {!v.builtIn && (
+            <button
+              className="icon-btn danger vx-trash"
+              aria-label={`Delete ${v.name}`}
+              onClick={() => {
+                if (confirm(`Delete the view ${v.name}?`)) remove(v.id)
+              }}
+            >
+              <IconTrash size={14} />
+            </button>
+          )}
+        </div>
+      </div>
     )
+  }
 
   return (
     <div className="settings">
@@ -78,7 +88,7 @@ export default function ViewsSheet(): JSX.Element {
         {FISH_HERE && (
           <div className="seg" role="radiogroup" aria-label="Which set">
             {(['hunt', 'fish'] as const).map((m) => (
-              <button key={m} className={mode === m ? 'seg-on' : ''} role="radio" aria-checked={mode === m} onClick={() => setMode(m)}>
+              <button key={m} className={mode === m ? 'seg-on' : ''} role="radio" aria-checked={mode === m} onClick={() => setShown(m)}>
                 {m === 'hunt' ? 'Hunting' : 'Fishing'}
               </button>
             ))}
@@ -88,56 +98,24 @@ export default function ViewsSheet(): JSX.Element {
           Done
         </button>
       </div>
+      <div className="st-line">Tap one to see it. Add the ones you want to your menu.</div>
 
-      <div className="st-sec">At the top · drag to order</div>
-      <div className={`viewedit-list${dragging ? ' dragging' : ''}`}>
-        {top.length === 0 && <div className="st-line">Nothing pinned: the menu starts at More.</div>}
-        {top.map((v) => (
-          <div
-            key={v.id}
-            className={`viewedit-row${dragging === v.id ? ' lifted' : ''}`}
-            ref={(el) => {
-              if (el) rows.current.set(v.id, el)
-              else rows.current.delete(v.id)
-            }}
-          >
-            <span
-              className="viewedit-grip"
-              aria-label={`Move ${v.name}`}
-              role="button"
-              onPointerDown={(e) => startDrag(e, v.id)}
-              onPointerMove={(e) => moveDrag(e, v.id)}
-              onPointerUp={endDrag}
-              onPointerCancel={endDrag}
-            >
-              <i />
-              <i />
-              <i />
-            </span>
-            <span className="viewedit-name">{v.name}</span>
-            {trash(v)}
-            <button className="viewedit-star on" onClick={() => togglePin(v.id)} aria-pressed aria-label={`Unpin ${v.name}`}>
-              <IconStar size={16} />
-            </button>
-          </div>
-        ))}
-      </div>
+      <div className="vx-list">{builtIn.map(row)}</div>
 
-      <div className="st-sec">Under More</div>
-      <div className="viewedit-list">
-        {rest.length === 0 && <div className="st-line">Every view is at the top.</div>}
-        {rest.map((v) => (
-          <div key={v.id} className="viewedit-row">
-            <span className="viewedit-grip blank" />
-            <span className="viewedit-name">{v.name}</span>
-            {trash(v)}
-            <button className="viewedit-star" onClick={() => togglePin(v.id)} aria-pressed={false} aria-label={`Pin ${v.name}`}>
-              <IconStar size={16} />
-            </button>
-          </div>
-        ))}
-      </div>
-      <div className="st-line">Save a new view from Edit this view, under the view pill.</div>
+      {own.length > 0 && (
+        <>
+          <div className="st-sec">Your own</div>
+          <div className="vx-list">{own.map(row)}</div>
+        </>
+      )}
+
+      <button className="vx-make" onClick={() => pushSheet({ kind: 'makeView' })}>
+        <span>
+          <b>Make your own view</b>
+          <small>Pick what goes underneath and on top, save it</small>
+        </span>
+        <span className="dim">›</span>
+      </button>
     </div>
   )
 }
