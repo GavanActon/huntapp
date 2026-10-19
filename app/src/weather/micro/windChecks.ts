@@ -36,9 +36,12 @@ import { compass } from '../openMeteo'
  * (`steady`, Gavan, 2026-10-18: "need more clarity on consistency: always,
  * brief, one-off"; then "one word: always, sometimes, one-off") says how
  * long the check speaks for: always (the wind has held, `held`, trusted
- * twice as long), sometimes (`brief`: a spell that may turn
- * back, half as long) or a one-off (a puff unlike the rest: a third of
- * the say, half as long). Until then the one chip was "same as a while
+ * twice as long, the older rule), sometimes (`brief`) or a one-off. The
+ * last two weigh as a check that said nothing: no data yet says by how
+ * much they should count (Gavan's checks before 10-18 carry no such
+ * answer), so they ask for more puffs instead, spaced out, which is the
+ * instrument's own answer to an unsteady wind (WindCheckCard; docs/
+ * CHECK-INSTRUMENT.md). Until 10-18 the one chip was "same as a while
  * ago", `held` alone.
  *
  * Kept on the phone (localStorage); a camp weather station can later add
@@ -185,10 +188,10 @@ export type Steady = 'always' | 'brief' | 'once'
 /** One word each (Gavan, 2026-10-18: "one word, always, sometimes, one-off"); 'brief' keeps its name in the data. */
 export const STEADY_WORDS: Record<Steady, string> = { always: 'Always', brief: 'Sometimes', once: 'One-off' }
 
-/** What how steady it was does to a check: its say (w) and how long it speaks for (t), against an unsaid one. */
+/** What how steady it was does to a check: its say (w) and how long it speaks for (t), against an unsaid
+ *  one. Only a wind that has held changes it (twice as long); Sometimes and One-off are recorded, and ask
+ *  for more puffs rather than guess a weight, till checks that carry them can be scored. */
 export function steadyK(c: WindCheck): { w: number; t: number } {
-  if (c.steady === 'once') return { w: 0.35, t: 0.5 }
-  if (c.steady === 'brief') return { w: 1, t: 0.5 }
   return c.held || c.steady === 'always' ? { w: 1, t: 2 } : { w: 1, t: 1 }
 }
 
@@ -420,7 +423,7 @@ export function checkW0(c: WindCheck, sigmaModel?: number): number {
   return k * Math.max(W0_MIN, Math.min(W0, (sm / so) ** 2))
 }
 
-/** A check's time scale: a wind that has held for a while is trusted twice as long, a brief one or a one-off half as long. */
+/** A check's time scale: a wind that has held for a while is trusted twice as long. */
 function tauOf(c: WindCheck): number {
   return steadyK(c).t * TAU_MS
 }

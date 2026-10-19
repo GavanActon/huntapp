@@ -3,8 +3,8 @@ import { create } from 'zustand'
 import { cachedPointForecast, compass, hourAt } from '../weather/openMeteo'
 import { windSampler } from '../weather/windGrid'
 import { groundWind, loadMicro, sitScoreFor } from '../weather/micro/model'
-import { nextPuff } from '../weather/micro/ambientFit'
-import { VERDICT_WORD, againstEarlier, angleDiff, checkFelt, checkPull, checkReachM, checkSpentAt, forecastVerdict, SEEN_CUE, SEEN_STRENGTH, steadiness, STEADY_WORDS, towardWords, useWindChecks, verdict, type Seen, type Steady, type Strength, type WindCheck, STRENGTH_CUE } from '../weather/micro/windChecks'
+import { holdsForMs, nextPuff, puffsToSettle } from '../weather/micro/ambientFit'
+import { VERDICT_WORD, againstEarlier, angleDiff, checkFelt, checkPull, checkReachM, checkSpentAt, forecastVerdict, metresBetween, SEEN_CUE, SEEN_STRENGTH, steadiness, STEADY_WORDS, towardWords, useWindChecks, verdict, type Seen, type Steady, type Strength, type WindCheck, STRENGTH_CUE } from '../weather/micro/windChecks'
 import { clockShort } from '../time'
 import { useAppStore } from '../state/appStore'
 import { requestCompass, startCompass, stopCompass, useCompass } from '../tracking/compass'
@@ -60,8 +60,18 @@ import { km as kmWords } from '../lengths'
  * much", then "KIS. The map: outcome. Then when their next check should
  * be, in minutes from now"): "The map: confirmed" and "Next check in 25 min",
  * the outcome said as what the check did (confirmed, fine-tuned, or
- * correcting: a big miss is one data point, so the next check comes soon,
- * in 10 min, "to settle it"),
+ * correcting). The second line is the research's, not a guess (Gavan, the
+ * same evening: "our research and experiments said something regarding
+ * this"; "spaced out by enough minutes to ensure it's not just a local
+ * gust"). One puff is a ~63° instrument, so a big miss asks for more
+ * puffs: "Next puff in 5 min · 2 more to settle it", 5 min apart (twice
+ * the head-height meander's 1-2 min, so each puff samples a fresh gust),
+ * until this spot has puffsToSettle for the forecast's wind, at least 3
+ * (the mean of three averages the meander) and at most 8 (where the
+ * station tests level off); a wind said to come and go, the map otherwise
+ * right, asks for three. Otherwise, or once
+ * settled, "Next check in 100 min": when the check's pull has faded to half
+ * (holdsForMs; twice that for a wind that has held),
  * counting down while the card is up; the rest (what it said and what you
  * felt, how it sits with the checks before it here, the sit's score) folds
  * under More. Redo ("pressed back,
@@ -163,12 +173,29 @@ function callWords(m: { dirFrom: number; kmh: number }): string {
 
 /** The saved card's one word, what the check did: "The map: confirmed" (VERDICT_WORD). */
 const OUTCOME = VERDICT_WORD
-/** Minutes to the next check by what this one said: a miss wants more data soon; a near one, or a wind
- *  that comes and goes, in a while; a wind that has held, later. */
-function nextMin(v: 'agree' | 'close' | 'miss' | null, c: WindCheck): number {
-  if (v === 'miss') return 10
-  if (v === 'close' || c.steady === 'brief' || c.steady === 'once') return 25
-  return c.held ? 60 : 40
+/** Puffs this far apart each sample a fresh gust: twice the head-height meander's time (PALM's stands
+ *  wander 40-60° on a 1-2 min scale; the scent's meander is 150 s), so one puff barely knows the last. */
+const PUFF_GAP_MS = 5 * 60_000
+/** A spot settles at puffsToSettle's count for the forecast's wind, held to at least 3 (the mean of three
+ *  takes a 63° puff to ~36°, CHECK-INSTRUMENT.md) and at most 8 (the station tests: 96% within 45°, a
+ *  far-off call put right in 83% of sits). */
+const SETTLE_MIN = 3
+const SETTLE_MAX = 8
+/** Puffs at this spot that still count together: yours, felt, within 150 m and two hours (half a check's
+ *  pull is left at two hours, WIND-LEARNING.md), this check's own folded puffs among them. */
+function puffsHere(c: WindCheck, checks: WindCheck[]): number {
+  return checks
+    .filter((o) => !o.seen && !o.taken && (o.by ?? '') === (c.by ?? '') && o.ts <= c.ts && c.ts - o.ts <= 2 * 3600_000 && metresBetween(o.lon, o.lat, c.lon, c.lat) <= 150)
+    .reduce((n, o) => n + (o.puffs ?? 1), 0)
+}
+/** The second line's sum: how many more puffs settle this spot (0: settled, or nothing asks for more).
+ *  A big miss settles the map's error: puffsToSettle for the forecast's wind, 3 to 8. A wind said to come
+ *  and go, the map otherwise right, only has its gusts to average: the instrument's three. */
+function puffsLeft(v: 'agree' | 'close' | 'miss' | null, c: WindCheck, checks: WindCheck[]): number {
+  const unsteady = c.steady === 'brief' || c.steady === 'once'
+  if (v !== 'miss' && !unsteady) return 0
+  const target = v === 'miss' ? Math.min(SETTLE_MAX, Math.max(SETTLE_MIN, puffsToSettle(c.forecast?.kmh ?? null))) : SETTLE_MIN
+  return Math.max(0, target - puffsHere(c, checks))
 }
 /** Minutes from now to a moment, at least one. */
 const minsTo = (ms: number) => Math.max(1, Math.round((ms - Date.now()) / 60_000))
@@ -193,7 +220,7 @@ function earlierWords(e: { n: number; same: number; since: number }, said?: Stea
   const checks = e.n === 1 ? 'your check' : `your ${e.n} checks`
   const since = clockShort(e.since)
   if (e.same === e.n) return `Holding: the same as ${checks} here since ${since}`
-  if (e.same === 0) return said === 'once' ? `A one-off, as you said: the map takes it lightly` : `A new wind since ${checks} here at ${since}: the map follows it now`
+  if (e.same === 0) return said === 'once' ? `A one-off, as you said: a few more puffs settle it` : `A new wind since ${checks} here at ${since}: the map follows it now`
   return `Swinging: ${e.same} of ${e.n} checks here since ${since} go this way, and the map allows for it`
 }
 const SEENS: Seen[] = ['still', 'leaves', 'branches', 'sway', 'bend']
@@ -230,6 +257,8 @@ export default function WindCheckCard() {
   const [steady, setSteady] = useState<Steady | null>(first?.steady ?? (first?.held ? 'always' : null))
   /** the saved card's More */
   const [more, setMore] = useState(false)
+  /** when Save was tapped: the next puff is spaced from it */
+  const [savedAt, setSavedAt] = useState(0)
   /** the saved card's minutes count down: a redraw every half minute while it is up */
   const [, tick] = useState(0)
   const [missing, setMissing] = useState<string | null>(null)
@@ -366,6 +395,7 @@ export default function WindCheckCard() {
       }
     }, 60)
     setSaving(false)
+    setSavedAt(Date.now())
     setSaved(c)
   }
 
@@ -398,6 +428,7 @@ export default function WindCheckCard() {
       },
       r?.id,
     )
+    setSavedAt(Date.now())
     setSaved(c)
   }
 
@@ -449,8 +480,7 @@ export default function WindCheckCard() {
           The forecast: {fv && saved.forecast ? <b className={`gc-verdict gc-${fv}`}>{OUTCOME[fv]}</b> : <b>no call</b>}
         </div>
         <div className="gc-line gc-outcome">
-          Next look in <b>{minsTo(Math.max(saved.ts, Date.now() - 5 * 60_000) + nextMin(fv, saved) * 60_000)} min</b>
-          {fv === 'miss' ? ' to settle it' : ''}
+          Next look in <b>{minsTo(savedAt + holdsForMs(!!saved.held))} min</b>
         </div>
         {moreButton}
         {more && (
@@ -475,7 +505,9 @@ export default function WindCheckCard() {
     const said = m ? callWords(m) : null
     const puff = nextPuff(sit?.fit ?? null, sit?.count ?? 1, saved.forecast?.kmh ?? null)
     // when to puff again: sooner after a miss; a wind that had held, later
-    const againMs = Math.max(saved.ts, Date.now() - 5 * 60_000) + nextMin(v, saved) * 60_000
+    const left = puffsLeft(v, saved, useWindChecks.getState().checks)
+    // settled: when this spot's checks have faded to half, from the fit when it reaches here
+    const againMs = after?.ambient?.holdsUntil ?? savedAt + holdsForMs(!!saved.held)
     // the map's call moved: 10° or a quarter in speed
     const moved = after && m ? angleDiff(after.dirFrom, m.dirFrom) >= 10 || Math.abs(Math.log(Math.max(after.kmh, 0.3) / Math.max(m.kmh, 0.3))) >= Math.log(1.25) : false
     const sc = sit && sit.score.n >= 2 ? sit.score : null
@@ -487,8 +519,15 @@ export default function WindCheckCard() {
           The map: {v ? <b className={`gc-verdict gc-${v}`}>{OUTCOME[v]}</b> : <b>no call</b>}
         </div>
         <div className="gc-line gc-outcome">
-          Next check in <b>{minsTo(againMs)} min</b>
-          {v === 'miss' ? ' to settle it' : ''}
+          {left > 0 ? (
+            <>
+              Next puff in <b>{minsTo(savedAt + PUFF_GAP_MS)} min</b> · {left} more to settle it
+            </>
+          ) : (
+            <>
+              Next check in <b>{minsTo(againMs)} min</b>
+            </>
+          )}
         </div>
         {moreButton}
         {more && (

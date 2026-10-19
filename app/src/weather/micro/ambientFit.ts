@@ -541,9 +541,15 @@ export function fitWords(f: AmbientFit): string {
   return `the air above the trees runs ${bits.join(' at ')}${drain ? `; ${drain}` : ''}`
 }
 
+/** How long after a check the turn's quick part takes to fade to half the fit: about 100 min (the
+ *  stations: 0.64 of a check's offset holds an hour on, 0.49 at two), twice that for a wind that has held. */
+export function holdsForMs(held: boolean): number {
+  return (held ? 2 : 1) * TURN_TAU_MS * Math.log((1 - TURN_KEEP) / (0.5 - TURN_KEEP))
+}
+
 /** When the turn's quick part has faded to half the fit: the words for "held till". */
 export function fitHoldsUntil(f: AmbientFit): number {
-  return f.lastTs + (f.held ? 2 : 1) * TURN_TAU_MS * Math.log((1 - TURN_KEEP) / (0.5 - TURN_KEEP))
+  return f.lastTs + holdsForMs(f.held)
 }
 
 /**
