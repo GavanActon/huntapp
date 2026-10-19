@@ -247,3 +247,12 @@ tasks (bakes) only, credits short. 290 (strip b190 2 m) and 310 (bog dawn175tl) 
 cut; put them back in todo/ once the machines are up. 280 (xonix, ~01:00) and 300 (XEVO, ~03:50) should land before the
 shutdown; if a run is cut it stays in taken/ — move it back to todo/ to rerun. sdst-0007 resumes by tile. Searchmont HD
 (SD-only today; LiDAR 2024 covers the hill) is proposed, waiting on his go.
+
+**Booked rule item (10-19, from the Features session; Gavan's field note at Lac Bailey 49.42433,-69.54973, "Scent here. Split in two. Weird").**
+The still-air hold off a drop (scent.ts simulatePlume ~1099-1107) fires in air the model calls wind: stillShare ~0.64 at a
+sheltered 0.55 m/s, so puffs are held 4-8 m up over an 8.5 m drop where Fr = U/(N·drop) ~1-2.5 says the air follows the
+slope; the cone splits (7-75 m | 143-440 m). Candidates for one scorecard run (--patch scent.ts, variants): (a) a Froude ramp
+on the hold (full under ~0.3, gone by 1, from the layering's dTheta) in place of stillShare; (b) hold only in calm cells
+(out[3] === 0.5 && out[4] === 0). Bar as ever; no builder named since ba's session ended (Gavan names one). Display
+(no hole on the axis, a "passes over" band, swungGrid on the filled tongue) is UI, not the card's. Evidence: Features'
+scratchpad split/ (exp1.json, an-*.json, shots). First rule item once the machines are up after the move.
