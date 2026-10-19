@@ -340,13 +340,13 @@ phone (app/src/weather/micro/checkShare.ts)
                  └─ GET /api/checks/export  (JSON, behind STATS_KEY)
 ```
 
-- **Asked once.** After a phone's first check is saved, the card asks
-  "Share your wind checks?" with **Share** and **Not now**. That is the only
-  time: answered or not (the card closed without a tap), it is not put
-  again, and only **Settings → Sharing → Share wind checks** changes it.
-  Unanswered, nothing goes. Putting the question is a `check_share_ask`
-  event and the answer a `check_share` event (`on`, `via`: ask or
-  settings), so the dashboard shows how many of those asked say yes.
+- **On by default (since 2026-10-18).** Gavan: "For now default to on";
+  a prompt covering every sharing feature comes later. The saved card no
+  longer asks. A phone that answered **Not now** on the old card, or
+  switched it off, keeps off; **Settings → Sharing → Share wind checks**
+  switches it either way (a `check_share` event, `on`, `via: settings`).
+  From 2026-10-06 to 10-18 the card asked once after a phone's first
+  check (`check_share_ask`), and nothing went unanswered.
 - **Anonymous.** A check goes whole (place, time, what was felt, every
   puff, the two optional answers, what the map and the forecast said) under
   the phone's random id. Never `by` (initials) or `note`: the phone leaves

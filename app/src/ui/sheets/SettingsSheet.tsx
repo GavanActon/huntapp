@@ -13,7 +13,7 @@ import { setTerrainWind, terrainWind, type TerrainWind } from '../../state/terra
 import { flushTrackSave } from '../../tracking/trackStore'
 import { agoLabel, dayTimeLabel } from '../../time'
 import { campForecast, hrdpsRunLabel, nextWeatherUpdateMs, onWeatherRefreshed, refreshWeather, useWeatherStatus } from '../../weather/refresh'
-import { onShareChange, setShare, shareCounts, shareState, wasAsked } from '../../weather/micro/checkShare'
+import { onShareChange, setShare, shareCounts, shareState } from '../../weather/micro/checkShare'
 import { carryPlaced } from '../../weather/micro/scent'
 import './settings.css'
 
@@ -164,9 +164,9 @@ function StatsRow(): JSX.Element {
 }
 
 /**
- * Sharing the wind checks (weather/micro/checkShare.ts): asked once on the
- * check card, switched here. Not yet answered reads as off. While on, how
- * many have gone and how many wait for a signal.
+ * Sharing the wind checks (weather/micro/checkShare.ts): on unless this
+ * phone said no, switched here. While on, how many have gone and how many
+ * wait for a signal.
  */
 function CheckShareRow({ online }: { online: boolean }): JSX.Element {
   const [, tick] = useState(0)
@@ -174,9 +174,7 @@ function CheckShareRow({ online }: { online: boolean }): JSX.Element {
   const on = shareState() === 'on'
   const { sent, waiting } = shareCounts()
   const status = !on
-    ? shareState() === 'off' || wasAsked()
-      ? 'off · your checks stay on this phone'
-      : 'off till you say · asked once, after your first check'
+    ? 'off · your checks stay on this phone'
     : waiting
       ? `${sent} sent · ${waiting} to go${online ? '' : ' when there is signal'}`
       : `all ${sent} sent · without your name or notes`

@@ -12,7 +12,6 @@ import { useGpsStore } from '../tracking/gpsStore'
 import { useMapBearing } from '../map/mapBearing'
 import { devlog } from '../devlog'
 import Rose, { Arrow } from './Rose'
-import ShareChecksAsk from './ShareChecksAsk'
 import { useTapOff } from './tapOff'
 import './ground.css'
 import { km as kmWords } from '../lengths'
@@ -451,7 +450,6 @@ export default function WindCheckCard() {
             </div>
           </>
         )}
-        <ShareChecksAsk />
       </div>
     )
   }
@@ -518,7 +516,6 @@ export default function WindCheckCard() {
         {puff && <div className="gc-note">{puff}</div>}
           </>
         )}
-        <ShareChecksAsk />
       </div>
     )
   }
