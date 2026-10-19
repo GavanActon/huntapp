@@ -19,7 +19,9 @@ import { compass } from '../openMeteo'
  * check watched longer, not a new one: it folds in (SERIES_M, SERIES_MS).
  * The folded check keeps every puff's direction, and from those comes the
  * arc and how steady the air is: puffs that go the same way say steady,
- * puffs every way say swirly, with no question asked. A check with one
+ * puffs every way say swirly, with no question asked. Puffs that part by
+ * more than 90° (an eddy, a reversal) don't average: the check takes the
+ * side most of them went (puffSide). A check with one
  * puff can still say it swings, with a second arrow on the rose.
  *
  * Otherwise a new check is one more, and they add up (Gavan, 2026-10-08:
@@ -214,14 +216,36 @@ function puffSpread(dirs: number[]): { mean: number; arc: number } {
   return { mean, arc: worst * 2 }
 }
 
+/** Puffs this far apart went different ways (an eddy, a reversal), not one wind wavering. */
+const PARTED_DEG = 90
+/** A puff's own side: the puffs within this of it. */
+const SIDE_DEG = 60
+
+/** The puffs a check keeps its direction from. When two puffs part by more than
+ *  PARTED_DEG their mean is a way no puff went (Searchmont 2026-10-18: 139° and 282°
+ *  saved as 210°, right on the forecast), so it keeps the side most puffs took, the
+ *  latest puff's side in a tie; else every puff. */
+function puffSide(moving: number[]): { side: number[]; parted: boolean } {
+  const parted = moving.some((a, i) => moving.some((b, j) => j > i && angleDiff(a, b) > PARTED_DEG))
+  if (!parted) return { side: moving, parted }
+  let best: number[] = []
+  for (let i = moving.length - 1; i >= 0; i--) {
+    const near = moving.filter((d) => angleDiff(d, moving[i]) <= SIDE_DEG)
+    if (near.length > best.length) best = near
+  }
+  return { side: best, parted }
+}
+
 /** A puff folded into the check it continues: the arc and the strength from every puff so far. */
 function fold(prev: WindCheck, puff: Omit<WindCheck, 'id'>): WindCheck {
   const dirs = [...(prev.dirs ?? [prev.dirFrom]), puff.strength === 'calm' ? null : puff.dirFrom]
   const moving = dirs.filter((d): d is number => d != null)
-  const { mean, arc } = puffSpread(moving)
-  // the swing is the arc the puffs spanned, or what either puff said it swung
-  const said = Math.max(prev.swingDeg ?? 0, puff.swingDeg ?? 0)
-  const swing = Math.max(said, arc >= 20 ? Math.max(45, Math.round(arc)) : 0)
+  const { side, parted } = puffSide(moving)
+  const { mean, arc } = puffSpread(side)
+  // the swing is the arc the kept puffs spanned, or what a single puff said it swung; puffs that
+  // went other ways stay in dirs (steadiness reads them) and leave it wavering at least
+  const said = Math.max((prev.puffs ?? 1) > 1 ? 0 : (prev.swingDeg ?? 0), puff.swingDeg ?? 0)
+  const swing = Math.max(said, arc >= 20 ? Math.max(45, Math.round(arc)) : 0, parted ? 45 : 0)
   // the wind is what moved the powder; a lull is a lull
   const strongest = [prev.strength, puff.strength].sort((a, b) => STRENGTH_KMH[b] - STRENGTH_KMH[a])[0]
   return {
@@ -246,7 +270,8 @@ export function steadiness(c: WindCheck): Steadiness | null {
   if (n < 2) return c.swingDeg ? (c.swingDeg >= 90 ? 'swirly' : 'wavering') : null
   const lulls = (c.dirs ?? []).filter((d) => d == null).length
   if (c.dirFrom == null) return 'steady'
-  const arc = c.swingDeg ?? 0
+  // every puff, the ones that went another way too (fold keeps its direction from one side)
+  const arc = Math.max(c.swingDeg ?? 0, puffSpread((c.dirs ?? []).filter((d): d is number => d != null)).arc)
   if (arc >= 90 || lulls * 2 >= n) return 'swirly'
   if (arc >= 45 || lulls) return 'wavering'
   return 'steady'
