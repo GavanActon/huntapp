@@ -262,3 +262,10 @@ stopped; the "Groundwind stations" and "Groundwind PALM loop" tasks disabled; sd
 (4cadb9c: r2_sync.held() stops every machine upload). Queue: 310 on XEVO (host: xevo, from 11:40), 280 (rerun) and 290 on
 xonix when it is up. To undo: delete HOLD-UPLOADS, Enable-ScheduledTask both tasks, sdst-0007 back to todo/, restart the
 tile bake (command in the 10-19 memory note).
+
+**Bake queue, HIGH when baking resumes (Gavan via Features, 10-19): lakes into vector tiles.** Move each area's
+`waterbody-<id>.geojson` (Pickle 2.26 MB, Topo's biggest file: 24.8 s to settle on 2 Mbit, docs/VIEWS.md) into a vector tile
+archive: a `waterbody` source-layer in the places archive (build_vector_tiles.py ARCHIVES["places"]) or its own small one,
+same features and properties relief-lakes / Topo read; every area, listed in the area file like land and lots, synced to R2.
+Keep the GeoJSON one release for older builds. The app side (relief-lakes on the archive, GeoJSON fallback) is Features'
+(huntapp-79): tell it when the archives are on R2.
