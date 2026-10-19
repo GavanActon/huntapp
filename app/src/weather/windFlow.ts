@@ -274,6 +274,8 @@ function drawWash(map: MlMap, i0: number, j0: number, cols: number, rows: number
     map.addLayer({ id: WASH_SRC, type: 'raster', source: WASH_SRC, paint: { 'raster-opacity': washOpacity(), 'raster-resampling': 'linear', 'raster-fade-duration': 0 } }, washBefore(map))
     return
   }
+  // back while fading out: it stays, and comes up again
+  washLeaving++
   src.setCoordinates(coordinates)
   map.setPaintProperty(WASH_SRC, 'raster-opacity', washOpacity())
   // the ground it is on may have changed under it (the imagery switched on, say)
@@ -285,15 +287,34 @@ function drawWash(map: MlMap, i0: number, j0: number, cols: number, rows: number
   requestAnimationFrame(() => src.pause?.())
 }
 
-function removeWash(map: MlMap) {
-  // a paint under way would put it back
-  washJob++
+/** a wash fading out: bumped by a paint that brings it back, so the removal does not land */
+let washLeaving = 0
+
+function dropWash(map: MlMap) {
   try {
     if (map.getLayer(WASH_SRC)) map.removeLayer(WASH_SRC)
     if (map.getSource(WASH_SRC)) map.removeSource(WASH_SRC)
   } catch {
     /* the style is going (a lost context, the map removed): the wash goes with it */
   }
+}
+
+/** The wash out of the view: faded down first, as every layer leaving a view is (map/layerArrive.ts,
+ *  Gavan, 2026-10-19: "changing a view should smoothly transition"), then taken off. */
+function removeWash(map: MlMap) {
+  // a paint under way would put it back
+  washJob++
+  const job = ++washLeaving
+  try {
+    if (!map.getLayer(WASH_SRC)) return dropWash(map)
+    map.setPaintProperty(WASH_SRC, 'raster-opacity-transition', { duration: 250, delay: 100 })
+    map.setPaintProperty(WASH_SRC, 'raster-opacity', 0)
+  } catch {
+    return dropWash(map)
+  }
+  window.setTimeout(() => {
+    if (job === washLeaving) dropWash(map)
+  }, 400)
 }
 
 const nowMs = () => useAppStore.getState().planTimeMs ?? Date.now()
