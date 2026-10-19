@@ -4,7 +4,7 @@ import { cachedPointForecast, compass, hourAt } from '../weather/openMeteo'
 import { windSampler } from '../weather/windGrid'
 import { groundWind, loadMicro, sitScoreFor } from '../weather/micro/model'
 import { nextPuff } from '../weather/micro/ambientFit'
-import { againstEarlier, angleDiff, checkFelt, checkPull, checkReachM, checkSpentAt, forecastVerdict, SEEN_CUE, SEEN_STRENGTH, steadiness, STEADY_WORDS, towardWords, useWindChecks, verdict, type Seen, type Steady, type Strength, type WindCheck, STRENGTH_CUE } from '../weather/micro/windChecks'
+import { VERDICT_WORD, againstEarlier, angleDiff, checkFelt, checkPull, checkReachM, checkSpentAt, forecastVerdict, SEEN_CUE, SEEN_STRENGTH, steadiness, STEADY_WORDS, towardWords, useWindChecks, verdict, type Seen, type Steady, type Strength, type WindCheck, STRENGTH_CUE } from '../weather/micro/windChecks'
 import { clockShort } from '../time'
 import { useAppStore } from '../state/appStore'
 import { requestCompass, startCompass, stopCompass, useCompass } from '../tracking/compass'
@@ -58,7 +58,8 @@ import { km as kmWords } from '../lengths'
  *
  * Saved, the card is two lines (Gavan, 2026-10-18: "wind check info too
  * much", then "KIS. The map: outcome. Then when their next check should
- * be, in minutes from now"): "The map: agreed" and "Next check in 25 min",
+ * be, in minutes from now"): "The map: confirmed" and "Next check in 25 min",
+ * the outcome said as what the check did (confirmed, fine-tuned, corrected),
  * counting down while the card is up; the rest (what it said and what you
  * felt, how it sits with the checks before it here, the sit's score) folds
  * under More. Redo ("pressed back,
@@ -158,8 +159,8 @@ function callWords(m: { dirFrom: number; kmh: number }): string {
   return m.kmh < 1 ? 'calm' : `toward ${compass((m.dirFrom + 180) % 360)} at ${Math.round(m.kmh)}`
 }
 
-/** The saved card's one word: "The map: agreed". */
-const OUTCOME = { agree: 'agreed', close: 'close', miss: 'missed' } as const
+/** The saved card's one word, what the check did: "The map: confirmed" (VERDICT_WORD). */
+const OUTCOME = VERDICT_WORD
 /** Minutes from now to a moment, at least one. */
 const minsTo = (ms: number) => Math.max(1, Math.round((ms - Date.now()) / 60_000))
 
@@ -182,9 +183,9 @@ function steadyFields(k: Steady | null): Pick<WindCheck, 'steady' | 'held'> {
 function earlierWords(e: { n: number; same: number; since: number }, said?: Steady): string {
   const checks = e.n === 1 ? 'your check' : `your ${e.n} checks`
   const since = clockShort(e.since)
-  if (e.same === e.n) return `Same as ${checks} here since ${since}: holding`
-  if (e.same === 0) return said === 'once' ? `Not like ${checks} here since ${since}: a one-off, as you said` : `Not like ${checks} here since ${since}: a shift, or a one-off`
-  return `Matches ${e.same} of ${e.n} checks here since ${since}: it swings`
+  if (e.same === e.n) return `Holding: the same as ${checks} here since ${since}`
+  if (e.same === 0) return said === 'once' ? `A one-off, as you said: the map takes it lightly` : `A new wind since ${checks} here at ${since}: the map follows it now`
+  return `Swinging: ${e.same} of ${e.n} checks here since ${since} go this way, and the map allows for it`
 }
 const SEENS: Seen[] = ['still', 'leaves', 'branches', 'sway', 'bend']
 

@@ -512,6 +512,11 @@ export function checkSpentAt(c: WindCheck): number {
 
 /** Did the model call the layering? Only for a check that said what the
  *  treetops were doing: a hit when both say decoupled or both say not. */
+/** A verdict in words, as what the check did for the hunter (Gavan, 2026-10-18: "instead of missed or
+ *  negative words in wind checks, use positive benefit based language"): the map was right and the check
+ *  confirmed it, near and the check fine-tuned it, off and the check corrected it there. */
+export const VERDICT_WORD: Record<'agree' | 'close' | 'miss', string> = { agree: 'confirmed', close: 'fine-tuned', miss: 'corrected' }
+
 export function aloftVerdict(c: WindCheck): 'agree' | 'miss' | null {
   if (c.aloft == null || c.model?.decoupled == null) return null
   return c.aloft === c.model.decoupled ? 'agree' : 'miss'

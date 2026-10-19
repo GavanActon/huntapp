@@ -570,13 +570,13 @@ export function nextPuff(f: AmbientFit | null, count: number, forecastKmh: numbe
   if (!f) {
     if (count >= 2) return null
     return need <= 3
-      ? 'In air this light the forecast is often off: one more puff, 50 m or more from this one, and the map fits the air here.'
+      ? 'In air this light, one more puff 50 m or more from this one fits the map to the air right here.'
       : 'A second puff, 50 m or more from this one, lets the map fit the air here rather than patch it.'
   }
   if (f.allWoods) return 'One puff in the open (a bog, a shore, a cutline) would split the air above from the trees’ share: every check so far was under the canopy.'
   if (f.allOpen && count >= 2) return 'One puff under the trees would say how much of this gets in to where you sit: every check so far was in the open.'
-  if (f.sure < 0.5 && count >= 2) return 'The checks disagree on the direction: one more puff where you will sit would settle which air you are in.'
-  if (need > 8) return `In a wind like this the forecast is seldom more than about ${Math.round(f.priorTurn)}° off: your puffs mostly confirm it.`
+  if (f.sure < 0.5 && count >= 2) return 'Your checks point two ways: one more puff where you will sit settles which air you are in.'
+  if (need > 8) return `In a wind like this the forecast holds to within about ${Math.round(f.priorTurn)}°: your puffs confirm it.`
   if (count < need) {
     const more = need - count
     return `${more} more puff${more === 1 ? '' : 's'}, spaced out, and the air here is settled: in this wind about ${need} is what it takes to trust your checks over the forecast.`

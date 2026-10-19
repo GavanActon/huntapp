@@ -14,7 +14,7 @@ import { dateShort, dayShort, hourMinShort, startOfDayMs } from '../../time'
 import { useGpsStore } from '../../tracking/gpsStore'
 import { useTrackStore } from '../../tracking/trackStore'
 import { showCheckPopup } from '../../weather/micro/checkLayer'
-import { aloftVerdict, forecastVerdict, useWindChecks, verdict, type WindCheck } from '../../weather/micro/windChecks'
+import { aloftVerdict, forecastVerdict, useWindChecks, verdict, VERDICT_WORD, type WindCheck } from '../../weather/micro/windChecks'
 import { biasMatters, biasWords, LESSON_WORDS, lessonScores } from '../../weather/micro/bias'
 import { IconTrack } from '../icons'
 import { useLogForm } from '../LogCard'
@@ -229,7 +229,7 @@ export default function HuntLogSheet(): JSX.Element {
         <span className="log-ev-text">
           <span className="log-ev-title">
             {title}
-            {badge && <b className={`gc-verdict gc-${badge}`}>{badge === 'agree' ? 'agreed' : badge === 'close' ? 'close' : 'missed'}</b>}
+            {badge && <b className={`gc-verdict gc-${badge}`}>{VERDICT_WORD[badge]}</b>}
           </span>
           {desc && <span className={`log-ev-desc${ev.type === 'outing' && !ev.o.blank ? ' log-amber' : ''}`}>{desc}</span>}
         </span>
@@ -318,14 +318,14 @@ export default function HuntLogSheet(): JSX.Element {
           ))}
           {scored.length > 0 && (
             <div>
-              <b>Wind checks</b> · model {hits}/{scored.length} agreed
-              {fcScored.length > 0 && ` · forecast ${fcHits}/${fcScored.length}`}
+              <b>Wind checks</b> · confirmed the map {hits} of {scored.length}, sharpened it {scored.length - hits}
+              {fcScored.length > 0 && ` · confirmed the forecast ${fcHits} of ${fcScored.length}`}
               {lessonScores(scored, verdict).map((r) => {
                 const n = r.agree + r.close + r.miss
                 const w = LESSON_WORDS[r.lesson]
                 return (
                   <div key={r.lesson} className="log-lesson">
-                    {w[0].toUpperCase() + w.slice(1)}: {r.agree} of {n} agreed{r.close ? `, ${r.close} close` : ''}
+                    {w[0].toUpperCase() + w.slice(1)}: {r.agree} of {n} confirmed{r.close ? `, ${r.close} fine-tuned` : ''}{r.miss ? `, ${r.miss} corrected` : ''}
                     {biasMatters(r.bias) ? ` · ${biasWords(r.bias, r.lesson).replace(/ this season$/, '')}` : n < 5 ? ' · too few to learn from yet' : ''}
                   </div>
                 )

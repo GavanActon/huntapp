@@ -13,7 +13,7 @@ import { useGpsStore } from '../tracking/gpsStore'
 import { showOutingTrack } from '../tracking/trackLayer'
 import { useTrackStore } from '../tracking/trackStore'
 import { showOutingChecks } from '../weather/micro/checkLayer'
-import { useWindChecks, verdict, type WindCheck } from '../weather/micro/windChecks'
+import { useWindChecks, verdict, VERDICT_WORD, type WindCheck } from '../weather/micro/windChecks'
 import { checkWords, entryDetail } from '../log/eventText'
 import { IconLocate, IconTrash } from './icons'
 import { useTapOff } from './tapOff'
@@ -89,7 +89,8 @@ function countsLine(o: Outing, entries: LogEntry[], checks: WindCheck[]): string
   return parts.join(' · ')
 }
 
-const BADGE = { agree: 'agreed', close: 'close', miss: 'missed' } as const
+// what the check did, never a miss (windChecks.ts VERDICT_WORD)
+const BADGE = VERDICT_WORD
 
 /** A sound or a wind check in the outing: its line, Go, Delete. */
 function Row({ lon, lat, title, desc, badge, onDelete }: { lon: number; lat: number; title: string; desc?: string; badge?: keyof typeof BADGE | null; onDelete: () => void }) {
