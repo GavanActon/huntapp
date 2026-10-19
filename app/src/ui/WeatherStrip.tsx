@@ -27,6 +27,7 @@ import { useLookTick } from './useLookTick'
 import { useTapOff } from './tapOff'
 import { useLoadProgress } from '../offline/loadProgress'
 import './strip.css'
+import Toast, { toast } from './Toast'
 
 
 /**
@@ -278,6 +279,7 @@ export default function WeatherStrip() {
   useTapOff(marksRef, marksMenu, () => setMarksMenu(false))
   const marksHold = useHold(() => setMarksMenu(true))
   const tapMarks = () => {
+    toast(marksOn ? 'Your marks hidden' : 'Your marks shown')
     if (marksOn) return setMarksHidden(true)
     // none picked: the tap brings them all
     if (!MARK_KINDS.some((k) => marks[k])) MARK_KINDS.forEach((k) => setMark(k, true))
@@ -604,7 +606,10 @@ export default function WeatherStrip() {
         <button
           className={`wx-heat${heat ? ' on' : ''}${heatMenu ? ' held' : ''}`}
           {...heatHold.bind}
-          onClick={heatHold.tap(() => setHeat(!heat))}
+          onClick={heatHold.tap(() => {
+            setHeat(!heat)
+            toast(heat ? 'Heat map off' : `${TARGET_NAMES[target]} heat map on`)
+          })}
           aria-pressed={heat}
           aria-label="Heat map · hold for its colouring"
         >
@@ -639,12 +644,18 @@ export default function WeatherStrip() {
       </span>
       )}
       {!EXPLORE && (
-      <button className={`wx-heat wx-theme${outdoor ? ' on' : ''}`} onClick={() => setOutdoor(!outdoor)} aria-pressed={outdoor} aria-label="Outdoor · light chrome for sun">
+      <button className={`wx-heat wx-theme${outdoor ? ' on' : ''}`} onClick={() => {
+          setOutdoor(!outdoor)
+          toast(outdoor ? 'Outdoor look off' : 'Outdoor look on · bright for the sun')
+        }} aria-pressed={outdoor} aria-label="Outdoor · light chrome for sun">
         <IconSun size={ico} />
       </button>
       )}
       {!EXPLORE && (
-      <button className={`wx-heat wx-theme${hotHidden ? ' on' : ''}`} onClick={() => setHotHidden(!hotHidden)} aria-pressed={hotHidden} aria-label={hotHidden ? 'Show the map buttons' : 'Hide the map buttons'}>
+      <button className={`wx-heat wx-theme${hotHidden ? ' on' : ''}`} onClick={() => {
+          setHotHidden(!hotHidden)
+          toast(hotHidden ? 'Map buttons shown' : 'Map buttons hidden')
+        }} aria-pressed={hotHidden} aria-label={hotHidden ? 'Show the map buttons' : 'Hide the map buttons'}>
         {hotHidden ? <IconGridOff size={ico} /> : <IconGrid size={ico} />}
       </button>
       )}
@@ -685,7 +696,13 @@ export default function WeatherStrip() {
         <span className="wx-spacer wxstrip-empty">{emptyText}</span>
       )}
       {!EXPLORE && planTimeMs != null && (
-        <button className="wx-now" onClick={() => setPlanTime(null)}>
+        <button
+          className="wx-now"
+          onClick={() => {
+            setPlanTime(null)
+            toast('Back to now')
+          }}
+        >
           Now
         </button>
       )}
@@ -703,6 +720,7 @@ export default function WeatherStrip() {
 
   return (
     <div className="wxstrip glass">
+      <Toast />
       {stale && <span className="wxstrip-stale" />}
       {load.visible && (
         <span

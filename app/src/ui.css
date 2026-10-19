@@ -68,6 +68,45 @@
   animation: rise-in 0.25s ease;
 }
 
+/* what a strip button just did (ui/Toast.tsx): under the strip, over the
+   card beneath, in and out by itself */
+.toast {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  z-index: 3;
+  max-width: calc(100% - 16px);
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--c-border-strong);
+  background: var(--c-surface-heavy);
+  color: var(--c-text);
+  font-size: calc(13.5px * var(--ui-scale));
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: toast-life linear both;
+}
+@keyframes toast-life {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -4px);
+  }
+  8%,
+  85% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 0);
+  }
+}
+
 /* the hour row runs from now through the whole forecast, ten cells at a
    time — any hour, overnight included, is a swipe away. No scrollbar: the clipped cell at the edge is the hint. */
 .wxstrip-cells {
