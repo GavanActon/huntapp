@@ -256,3 +256,9 @@ on the hold (full under ~0.3, gone by 1, from the layering's dTheta) in place of
 (out[3] === 0.5 && out[4] === 0). Bar as ever; no builder named since ba's session ended (Gavan names one). Display
 (no hole on the axis, a "passes over" band, swungGrid on the filled tongue) is UI, not the card's. Evidence: Features'
 scratchpad split/ (exp1.json, an-*.json, shots). First rule item once the machines are up after the move.
+
+**PALM only (10-19 11:40, Gavan: "just run palms on this and xonix. No downloading, no uploading").** XEVO's SD tile bake
+stopped; the "Groundwind stations" and "Groundwind PALM loop" tasks disabled; sdst-0007 in held/; HOLD-UPLOADS on the share
+(4cadb9c: r2_sync.held() stops every machine upload). Queue: 310 on XEVO (host: xevo, from 11:40), 280 (rerun) and 290 on
+xonix when it is up. To undo: delete HOLD-UPLOADS, Enable-ScheduledTask both tasks, sdst-0007 back to todo/, restart the
+tile bake (command in the 10-19 memory note).
