@@ -88,6 +88,23 @@ function sourceLoaded(map: MlMap, source: string): Promise<void> {
   })
 }
 
+/** whether the map in use has a layer fading in or out (set per map below) */
+let fading: () => boolean = () => false
+
+/**
+ * Run cb once the layers in flight have settled (next frame when none are), at most maxMs on: for heavy
+ * work that would freeze a fade (Scout's heat painted in the frame the view switched; Gavan, 2026-10-19:
+ * "just the scout layer that feels harsh in the transition").
+ */
+export function afterFades(cb: () => void, maxMs = 900): void {
+  const t0 = performance.now()
+  const tick = () => {
+    if (!fading() || performance.now() - t0 > maxMs) cb()
+    else requestAnimationFrame(tick)
+  }
+  requestAnimationFrame(tick)
+}
+
 // once: a second listener (React's dev double start) would read the first one's zero as the layer's opacity
 let wired = false
 
@@ -135,6 +152,9 @@ export function initLayerArrive(): void {
     const arriving = new Set<string>()
     /** zeroed, the run up under way: their true values, should they leave first */
     const rising = new Map<string, [string, Val][]>()
+    // a run up's last frames: IN_MS after its rise is let go of
+    let risingUntil = 0
+    fading = () => leaving.size > 0 || rising.size > 0 || arriving.size > 0 || performance.now() < risingUntil
 
     const fadeIn = (ids: string[]) => {
       const ends: [string, string, Val][] = []
@@ -153,6 +173,7 @@ export function initLayerArrive(): void {
       const finished = () => {
         if (--open > 0) return
         for (const [id] of ends) rising.delete(id)
+        risingUntil = Math.max(risingUntil, performance.now() + IN_MS)
       }
       // the zero drawn first, then the run up to where it was
       requestAnimationFrame(() => {

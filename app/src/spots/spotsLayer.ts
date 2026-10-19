@@ -14,6 +14,7 @@ import { trackTime } from '../analytics'
 import { devlog } from '../devlog'
 import { initDigInMarker } from '../map/diginMarker'
 import { getMap, onEachMap, onFirstIdle, withMap } from '../map/mapController'
+import { afterFades } from '../map/layerArrive'
 import { useAppStore } from '../state/appStore'
 import { areaPlaces, homePlace, selectedPlace, usePlacesStore } from '../state/placesStore'
 import { useSpotsStore } from '../state/spotsStore'
@@ -279,15 +280,33 @@ function repaint() {
   if (lastPaint) paint(lastPaint.scores, lastPaint.water, lastPaint.near)
 }
 
+/** the heat's latest toggle: a later one drops an earlier one's paint */
+let showJob = 0
+
 /** The heat switched on or off: the pass's scores shown or hidden, the pins
- *  with them. It was a whole pass again, though the scores do not depend on it. */
+ *  with them. It was a whole pass again, though the scores do not depend on it.
+ *  Off, it fades out as it is drawn (cleared at once it vanished in one frame,
+ *  under the fade). On, it is painted, a stall of up to half a second on a
+ *  phone, only once the layers a view switch set going have settled, then
+ *  shown, so it fades in whole: painted in the switch's own frame it froze the
+ *  cross-fade and came in at once (Gavan, 2026-10-19: "just the scout layer
+ *  that feels harsh in the transition"). Toggled alone, it paints next frame. */
 function showHeat(on: boolean) {
   const m = getMap()
   if (!m || !m.getSource(HEAT_SRC)) return
-  const visible = on ? 'visible' : 'none'
-  for (const id of ['spots-heat', 'spots-pin', 'spots-pin-glow', 'spots-pin-score']) m.setLayoutProperty(id, 'visibility', visible)
-  const s = useSpotsStore.getState()
-  paint(on ? (s.result?.scores ?? null) : null, isFish(s.target), subject())
+  const job = ++showJob
+  const ids = ['spots-heat', 'spots-pin', 'spots-pin-glow', 'spots-pin-score']
+  if (!on) {
+    for (const id of ids) m.setLayoutProperty(id, 'visibility', 'none')
+    return
+  }
+  afterFades(() => {
+    const mm = getMap()
+    if (job !== showJob || !mm || !mm.getSource(HEAT_SRC) || !useSpotsStore.getState().heat) return
+    const s = useSpotsStore.getState()
+    paint(s.result?.scores ?? null, isFish(s.target), subject())
+    for (const id of ids) mm.setLayoutProperty(id, 'visibility', 'visible')
+  })
 }
 
 /** The wash line and the ramp over it for this paint: the fixed scale, or
