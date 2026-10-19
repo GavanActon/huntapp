@@ -21,6 +21,7 @@ import { initRoutes } from './routes/routeStore'
 import { initRouteLayer } from './routes/routeLayer'
 import { initScentLayer } from './weather/micro/scent'
 import { initCheckLayer } from './weather/micro/checkLayer'
+import { initLayerArrive } from './map/layerArrive'
 import { initPartyLayer } from './party/partyLayer'
 import { initMapUpdates } from './offline/updates'
 import { initAppUpdate, reloadApp, useAppUpdate } from './offline/appUpdate'
@@ -165,6 +166,8 @@ export default function App() {
     initTilePrefetch()
     initLogLayer()
     initCheckLayer()
+    // a layer that comes on blends in, and the strip's hairline runs while its tiles load
+    initLayerArrive()
     initPartyLayer()
     initMapUpdates()
     // the worker's install fetches the bundle again for its cache: after the
