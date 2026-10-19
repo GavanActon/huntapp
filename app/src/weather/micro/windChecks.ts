@@ -34,8 +34,9 @@ import { compass } from '../openMeteo'
  * the ground air come loose from the wind above (decoupled), the one
  * thing the layering model most needs checking. How steady it has been
  * (`steady`, Gavan, 2026-10-18: "need more clarity on consistency: always,
- * brief, one-off") says how long the check speaks for: always (the wind
- * has held, `held`, trusted twice as long), brief (a spell that may turn
+ * brief, one-off"; then "one word: always, sometimes, one-off") says how
+ * long the check speaks for: always (the wind has held, `held`, trusted
+ * twice as long), sometimes (`brief`: a spell that may turn
  * back, half as long) or a one-off (a puff unlike the rest: a third of
  * the say, half as long). Until then the one chip was "same as a while
  * ago", `held` alone.
@@ -181,12 +182,8 @@ export interface WindCheck {
 
 /** How steady the wind has been where the check was made, as the hunter says it. */
 export type Steady = 'always' | 'brief' | 'once'
-export const STEADY_WORDS: Record<Steady, string> = { always: 'Always', brief: 'Brief', once: 'One-off' }
-export const STEADY_CUE: Record<Steady, string> = {
-  always: 'the whole time',
-  brief: 'comes and goes',
-  once: 'just this puff',
-}
+/** One word each (Gavan, 2026-10-18: "one word, always, sometimes, one-off"); 'brief' keeps its name in the data. */
+export const STEADY_WORDS: Record<Steady, string> = { always: 'Always', brief: 'Sometimes', once: 'One-off' }
 
 /** What how steady it was does to a check: its say (w) and how long it speaks for (t), against an unsaid one. */
 export function steadyK(c: WindCheck): { w: number; t: number } {

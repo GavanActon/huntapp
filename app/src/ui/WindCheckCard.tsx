@@ -4,7 +4,7 @@ import { cachedPointForecast, compass, hourAt } from '../weather/openMeteo'
 import { windSampler } from '../weather/windGrid'
 import { groundWind, loadMicro, sitScoreFor } from '../weather/micro/model'
 import { nextPuff } from '../weather/micro/ambientFit'
-import { againstEarlier, angleDiff, checkFelt, checkPull, checkReachM, checkSpentAt, forecastVerdict, SEEN_CUE, SEEN_STRENGTH, steadiness, STEADY_CUE, STEADY_WORDS, towardWords, useWindChecks, verdict, type Seen, type Steady, type Strength, type WindCheck, STRENGTH_CUE } from '../weather/micro/windChecks'
+import { againstEarlier, angleDiff, checkFelt, checkPull, checkReachM, checkSpentAt, forecastVerdict, SEEN_CUE, SEEN_STRENGTH, steadiness, STEADY_WORDS, towardWords, useWindChecks, verdict, type Seen, type Steady, type Strength, type WindCheck, STRENGTH_CUE } from '../weather/micro/windChecks'
 import { clockShort } from '../time'
 import { useAppStore } from '../state/appStore'
 import { requestCompass, startCompass, stopCompass, useCompass } from '../tracking/compass'
@@ -211,7 +211,7 @@ export default function WindCheckCard() {
   const [seen, setSeen] = useState(!!first?.seen)
   /** optional: treetops moving while it is calm here (the air decoupled) */
   const [aloft, setAloft] = useState(!!first?.aloft)
-  /** optional: how steady the wind here has been (always / brief / one-off) */
+  /** optional: how steady the wind here has been (always / sometimes / one-off) */
   const [steady, setSteady] = useState<Steady | null>(first?.steady ?? (first?.held ? 'always' : null))
   /** the saved card's More */
   const [more, setMore] = useState(false)
@@ -597,7 +597,6 @@ export default function WindCheckCard() {
         {STEADIES.map((k) => (
           <button key={k} className={`chip-pick${steady === k ? ' chip-on' : ''}`} onClick={() => setSteady((v) => (v === k ? null : k))} aria-pressed={steady === k}>
             <b>{STEADY_WORDS[k]}</b>
-            <span>{STEADY_CUE[k]}</span>
           </button>
         ))}
       </div>
