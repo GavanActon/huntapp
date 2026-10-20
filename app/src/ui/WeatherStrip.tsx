@@ -19,7 +19,7 @@ import { activityBar } from '../spots/grades'
 import { FISH_TARGETS, HUNT_TARGETS, isFish, TARGET_NAMES, type Target } from '../spots/types'
 import { FISH_HERE, targetStanding } from '../spots/profile'
 import { agoLabel, clockShort, dayLabel, dayShort, floorHourMs, hourAmPm, hourMinShort, hourShort, isToday, startOfDayMs } from '../time'
-import { IconCheck, IconChevronDown, IconChevronUp, IconGrid, IconGridOff, IconHeat, IconMenu, IconPin, IconSun } from './icons'
+import { IconCheck, IconChevronDown, IconChevronLeft, IconChevronUp, IconGrid, IconGridOff, IconHeat, IconMenu, IconPin, IconSun } from './icons'
 import AppMenu from './AppMenu'
 import { useMapUpdates } from '../offline/updates'
 import { markNudgeSeen, useMapsNudge } from '../offline/mapsNudge'
@@ -470,6 +470,24 @@ export default function WeatherStrip() {
     if (left < row.scrollLeft || left + cell.offsetWidth > row.scrollLeft + row.clientWidth) row.scrollTo({ left, behavior: 'smooth' })
   }, [activeHourMs, cellHours.length, stripOpen])
 
+  // the hour row scrolled past now (a later day picked, or swiped along): the ‹ at its left end
+  // brings it back (Gavan, 2026-10-19: "on the left if not on today, give me a chevron to bring me to
+  // now, also remove the 'now' from the top right"); at the row's start the now cell is its own way back
+  const [pastNow, setPastNow] = useState(false)
+  useEffect(() => {
+    const row = cellsRef.current
+    if (!row) return
+    const read = () => setPastNow(row.scrollLeft > 12)
+    row.addEventListener('scroll', read, { passive: true })
+    read()
+    return () => row.removeEventListener('scroll', read)
+  }, [stripOpen, cellHours.length, f != null])
+  const backToNow = () => {
+    setPlanTime(null)
+    cellsRef.current?.scrollTo({ left: 0, behavior: 'smooth' })
+    toast('Back to now')
+  }
+
   // the evening drains under the hour row, one run per day in the row (and
   // the day before it, whose run carries into this morning); computed a
   // tick after the strip opens so the open itself is instant
@@ -695,17 +713,6 @@ export default function WeatherStrip() {
       ) : (
         <span className="wx-spacer wxstrip-empty">{emptyText}</span>
       )}
-      {!EXPLORE && planTimeMs != null && (
-        <button
-          className="wx-now"
-          onClick={() => {
-            setPlanTime(null)
-            toast('Back to now')
-          }}
-        >
-          Now
-        </button>
-      )}
       {/* open and fold in one place, beside the ⋯ (Gavan, 2026-10-19: "make the expand for the weather strip
           always be next to the ... and the collapse"); the fold was a handle along the open strip's foot */}
       {!EXPLORE && (
@@ -760,6 +767,12 @@ export default function WeatherStrip() {
             })}
           </div>
           )}
+          <div className="wxstrip-cellwrap">
+          {pastNow && (
+            <button className="wx-backnow" onClick={backToNow} aria-label="Back to now">
+              <IconChevronLeft size={20} />
+            </button>
+          )}
           <div className={`wxstrip-cells${cellDrains.length ? ' wx-drains' : ''}`} ref={cellsRef}>
             {cellHours.map((h) => {
               const ms = h.time.getTime()
@@ -781,6 +794,7 @@ export default function WeatherStrip() {
                 />
               )
             })}
+          </div>
           </div>
           {detail && subject && (
             <div className="wxdetail">

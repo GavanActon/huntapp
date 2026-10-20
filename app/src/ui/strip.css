@@ -170,17 +170,6 @@
   color: var(--c-text-dim);
 }
 
-/* Now, only while the planning time is not now */
-.wx-now {
-  flex: none;
-  padding: 3px 9px;
-  border-radius: var(--r-sm);
-  background: rgba(var(--c-accent-rgb), 0.18);
-  color: var(--c-accent);
-  font-size: calc(11px * var(--ui-scale));
-  font-weight: 700;
-}
-
 /* an hour with a hard stop for the quarry (fish limits): a small ! at the corner */
 .wxcell-warn {
   position: absolute;

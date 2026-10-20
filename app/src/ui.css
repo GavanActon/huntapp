@@ -121,6 +121,28 @@
   display: none;
 }
 
+/* the hour row and, scrolled past now, the ‹ over its left end that brings it back */
+.wxstrip-cellwrap {
+  position: relative;
+}
+.wx-backnow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  width: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--c-border-strong);
+  background: var(--c-surface-heavy);
+  color: var(--c-accent);
+  box-shadow: 6px 0 10px rgba(0, 0, 0, 0.35);
+  animation: rise-in 0.15s ease;
+}
+
 .wxstrip-days {
   display: flex;
   gap: 3px;

@@ -470,11 +470,11 @@ export const IconSatellite = (p: IconProps) => (
   </svg>
 )
 
-/** Settings. */
+/** Settings: a cog, eight teeth and the hole (the rays it had read as a second sun, Gavan, 2026-10-19: "make the settings button be a gear icon"). */
 export const IconGear = (p: IconProps) => (
-  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="3" />
-    <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" />
+  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round">
+    <path d="M18.88 9.87 L21.46 10.38 L21.46 13.62 L18.88 14.13 L18.37 15.36 L19.84 17.54 L17.54 19.84 L15.36 18.37 L14.13 18.88 L13.62 21.46 L10.38 21.46 L9.87 18.88 L8.64 18.37 L6.46 19.84 L4.16 17.54 L5.63 15.36 L5.12 14.13 L2.54 13.62 L2.54 10.38 L5.12 9.87 L5.63 8.64 L4.16 6.46 L6.46 4.16 L8.64 5.63 L9.87 5.12 L10.38 2.54 L13.62 2.54 L14.13 5.12 L15.36 5.63 L17.54 4.16 L19.84 6.46 L18.37 8.64 Z" />
+    <circle cx="12" cy="12" r="3.2" />
   </svg>
 )
 
