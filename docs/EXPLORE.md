@@ -258,11 +258,21 @@ Three states for any ground on the map:
    area opens from there once the app knows its id (compiled in today; from R2 at boot is the
    locations plan's step 1).
 
-Not built yet: saving a loaded spot for no signal (its SD tiles and the index into the file
-store, fetchTile reading the stored copy; the imagery waits on a choice: the province's WMS packed
-over the box, or Esri's, whose offline terms are the open licence question), the agent's HD path
-(agent.py claims SD only), and habitat for a loaded spot (national habitat tiles, or an SD bake
-queued on load), which the heat map needs.
+**Then the same day (Gavan: "load -> save, expand ... + might also be worth adding the HRDPS ... a colour
+difference ... so you know the quality at a glance"):**
+- Browse draws the forecast's wind over the view again, its streaks grey, finer and fainter
+  (windFlow.ts coarse: the cells where no ground model reached); the ground model's SD/HD wind keeps
+  its look. The strip says "Forecast wind only · Load this spot".
+- Every area's outline is a light line on a dark edge, so a loaded spot's range reads on the photo.
+- Expand: Locations' ⤢ puts a loaded spot's box back with its handles; Load takes its place. A spot can
+  be loaded beside another loaded one (only a baked area holds a load back).
+- Save: a loaded spot's bundle is the national SD tiles any view in it stitches, and their index
+  (areas/runtime.ts locationFiles, named sd-v1-…, fileUrl maps them to data/sd/v1/), so the menu's
+  "Maps not on this phone" saves it; windTiles reads the phone's copies first. Checked on hunt-dev
+  (f60e430): saved, offline reload, the tiles stitched from the phone in 0.24 s, the strip's hours kept.
+
+Not built yet: the imagery kept for no signal (Esri's offline terms, or the province's WMS packed over
+the box), the agent's HD path (agent.py claims SD only), and habitat for a loaded spot (the heat map).
 
 ## The view
 
