@@ -107,6 +107,7 @@ export default function App() {
   const setOnline = useAppStore((s) => s.setOnline)
   const leftHanded = useAppStore((s) => s.leftHanded)
   const sheetOpen = useAppStore((s) => s.sheets.length > 0)
+  const sheetFull = useAppStore((s) => s.sheetFull)
   const topCard = useAppStore((s) => s.topCard != null)
   const viewMenuOpen = useAppStore((s) => s.viewMenuOpen)
   // the tool with the map's taps and the bar (ui/tools.ts): the ruler, a path being drawn,
@@ -203,7 +204,8 @@ export default function App() {
   return (
     <div className={`app${leftHanded ? ' app-lefty' : ''}`}>
       <MapView />
-      <div className="toparea" ref={topRef}>
+      {/* hidden, not taken away, under a full-screen sheet: the strip keeps its state and --toph its height */}
+      <div className={`toparea${sheetFull ? ' toparea-hidden' : ''}`} ref={topRef} aria-hidden={sheetFull || undefined}>
         <TopBar />
         {/* sharpening the wind: the map and the rose, nothing else up top (Gavan, 2026-10-08) */}
         {!checking && <WeatherStrip />}

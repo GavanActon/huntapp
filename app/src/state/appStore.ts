@@ -284,6 +284,8 @@ export interface AppState {
   /** the view pill's menu up (the hot column hides under it); session only */
   viewMenuOpen: boolean
   setViewMenuOpen: (v: boolean) => void
+  /** a sheet up to the full screen (ui/BottomSheet.tsx FULL_SCREEN_PCT): the strip and the rest at the top hide; session only */
+  sheetFull: boolean
   /** both columns' buttons per mode, top to bottom, any number; persisted */
   hotButtons: Record<'hunt' | 'fish', HotSets>
   /** a mode's two columns at once: a button dragged across is never in both */
@@ -400,6 +402,7 @@ export const useAppStore = create<AppState>()(
       liveFolded: false,
       setLiveFolded: (liveFolded) => set({ liveFolded }),
       viewMenuOpen: false,
+      sheetFull: false,
       setViewMenuOpen: (viewMenuOpen) => set({ viewMenuOpen }),
       hotButtons: DEFAULT_HOT,
       setHotSets: (mode, sets) => set((st) => ({ hotButtons: { ...st.hotButtons, [mode]: cleanSets(sets, st.hotButtons[mode]) } })),

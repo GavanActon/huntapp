@@ -33,6 +33,19 @@
   pointer-events: none;
 }
 
+/* under a full-screen sheet (BottomSheet FULL_SCREEN_PCT): faded out, no taps */
+.toparea {
+  transition: opacity 0.15s ease;
+}
+.toparea.toparea-hidden {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, visibility 0s linear 0.15s;
+}
+.toparea.toparea-hidden > * {
+  pointer-events: none;
+}
+
 .toparea > * {
   pointer-events: auto;
 }

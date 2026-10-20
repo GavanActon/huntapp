@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { devlog } from '../devlog'
+import { useAppStore } from '../state/appStore'
 import { useTapOff } from './tapOff'
 
 /** The detents promise the map most of the screen, so the sheet sizes
@@ -10,6 +11,15 @@ const VH_CAP_PX = 800
 
 /** The full detent, and what the keyboard grows the sheet to. */
 const FULL_PCT = 88
+
+/** From this height up the sheet is the screen, and the strip and the cards
+ *  at the top hide while it is (Gavan, 2026-10-19: "as a rule, if you have a
+ *  full screen, make sure the weather strip etc is hidden"). At 80% the
+ *  sheet's top comes up to the folded strip's foot on an 844 px phone (640
+ *  of the 800 px it sizes against; the strip ends ~140 px down, the live
+ *  card under it): Map buttons (84), the layers (80) and anything pulled
+ *  full or grown for the keyboard. The 72% sheets leave the strip its room. */
+const FULL_SCREEN_PCT = 80
 
 /** A detent as CSS: pct of the viewport, but of no more than VH_CAP_PX of it. */
 function heightCss(pct: number) {
@@ -69,6 +79,17 @@ export default function BottomSheet({
   const beforeKeyboard = useRef<number | null>(null)
 
   useTapOff(sheetRef, true, onClose)
+
+  // the screen is the sheet's: the top area steps away while it is, and comes back as it goes
+  useEffect(() => {
+    useAppStore.setState({ sheetFull: heightPct >= FULL_SCREEN_PCT })
+  }, [heightPct])
+  useEffect(
+    () => () => {
+      useAppStore.setState({ sheetFull: false })
+    },
+    [],
+  )
 
   // the dev log: what opened at what height, for the sheet that opens full
   useEffect(() => {
