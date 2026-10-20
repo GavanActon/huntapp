@@ -12,8 +12,11 @@ import './settings.css'
 
 const LABELS = new Map(AREA_LIST.filter((a) => !a.virtual).flatMap(dataFiles).map((d) => [d.file, d.label]))
 /** A baked file's name for the list: the data file's label, else the theme with its area and extension off. */
+// a loaded location's saved SD tiles (areas/runtime.ts locationFiles): sd-v1-t-632-414.hab, sd-v1-index.json
+const sdLabel = (name: string) => (name === 'sd-v1-index.json' ? 'SD wind index' : name.startsWith('sd-v1-t-') ? `SD wind tile ${name.slice(8, -4)}` : null)
 const labelOf = (name: string, areaId: string) =>
   LABELS.get(name) ??
+  sdLabel(name) ??
   name
     .replace(`-${areaId}`, '')
     .replace(/\.(geojson|hab|pmtiles)$/, '')

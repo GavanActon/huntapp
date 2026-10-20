@@ -523,8 +523,11 @@ function sampleSwirl(g: SwirlGrid, x: number, y: number, phase: number, out: Flo
 const TONES = 3
 /** the wind's two qualities as drawn: the ground model's (SD, HD), the forecast's alone (HRDPS) */
 const QUALITIES = 2
-/** the forecast-alone streaks' alpha against the ground model's */
-const COARSE_ALPHA = 0.8
+/** the forecast-alone streaks against the ground model's: fainter and finer, so the coarse wind
+ *  reads as less at a glance whatever the look (grey alone was lost: the Standard look's
+ *  ground streaks are near white too, 5% cyan on a phone screenshot, 2026-10-20) */
+const COARSE_ALPHA = 0.55
+const COARSE_WIDTH = 0.55
 const TONE_LIGHT = 0
 const TONE_BRIGHT = 1
 const TONE_DARK = 2
@@ -1064,7 +1067,8 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
     // the same hue in three inks: light, brighter, and a dark one that
     // reads on pale ground; the Contrast look's one white
     const look = LOOKS[tune.windStyle] ?? LOOKS.standard
-    for (let q = 0; q < QUALITIES; q++)
+    for (let q = 0; q < QUALITIES; q++) {
+      ctx.lineWidth = q ? streakPx * COARSE_WIDTH : streakPx
       for (let tone = 0; tone < TONES; tone++) {
         const light = tone === TONE_DARK ? look.ink.dark : tone === TONE_BRIGHT ? look.ink.bright : look.ink.light
         // the forecast's wind alone (q 1): no hue, a little fainter, so it never reads as the ground model's
@@ -1076,6 +1080,7 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
           ctx.stroke(bands[(q * TONES + tone) * ALPHA_BANDS + b])
         }
       }
+    }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     raf = requestAnimationFrame(frame)
   }
