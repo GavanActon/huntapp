@@ -1,5 +1,5 @@
 /* The strip's own layout on top of ui.css's shared classes (.wxfold,
-   .wx-head, .wxbar, .wxdrain, .wxdetail, .wxfold-handle, .wx-menu,
+   .wx-head, .wxbar, .wxdrain, .wxdetail, .wx-menu,
    .menu-pop): the sky glyph span, the quarry chip and its menu, the best
    link, Now, the hour's ! mark and the detail's coloured words. Sizes as
    calc(Npx * var(--ui-scale)). */
@@ -160,7 +160,7 @@
   background: rgba(var(--c-ink-rgb), 0.16);
 }
 
-/* the chevron that opens the strip, folded */
+/* the chevron beside the ⋯ that opens the strip, and folds it open */
 .wx-open {
   flex: none;
   display: flex;

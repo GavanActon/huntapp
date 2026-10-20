@@ -2024,18 +2024,6 @@
   color: var(--c-text-dim);
 }
 
-/* the ⌃ that folds the strip: a slim row, a thumb's width to hit */
-.wxfold-handle {
-  align-self: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 22px;
-  margin: -4px 0 -3px;
-  padding: 0 30px;
-  color: var(--c-text-dim);
-}
-
 /* ---------- a sheet's own heading row, and the shared heading parts ---------- */
 
 /* Dig in and the layers carry their own: the title left, Done or ⋯ right */

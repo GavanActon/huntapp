@@ -706,9 +706,11 @@ export default function WeatherStrip() {
           Now
         </button>
       )}
-      {!EXPLORE && !stripOpen && (
-        <button className="wx-open" onClick={() => setStripOpen(true)} aria-label="Open the strip">
-          <IconChevronDown size={18} />
+      {/* open and fold in one place, beside the ⋯ (Gavan, 2026-10-19: "make the expand for the weather strip
+          always be next to the ... and the collapse"); the fold was a handle along the open strip's foot */}
+      {!EXPLORE && (
+        <button className="wx-open" onClick={() => setStripOpen(!stripOpen)} aria-expanded={stripOpen} aria-label={stripOpen ? 'Fold the strip' : 'Open the strip'}>
+          {stripOpen ? <IconChevronUp size={18} /> : <IconChevronDown size={18} />}
         </button>
       )}
       <button className={`wxfold-dots${newMaps || nudge.dot ? ' has-new' : ''}`} {...dots} aria-label="More">
@@ -814,11 +816,6 @@ export default function WeatherStrip() {
       )}
       {/* loading is the hairline alone, no words (Gavan, 2026-10-19: "keep the loading minimal, I just want a small line
           moving across the bottom of the weather strip loading each layer"); saving the maps is the ⋯ menu's dot */}
-      {stripOpen && (
-        <button className="wxfold-handle" onClick={() => setStripOpen(false)} aria-label="Fold the strip">
-          <IconChevronUp size={16} />
-        </button>
-      )}
     </div>
   )
 }

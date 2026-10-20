@@ -31,10 +31,10 @@ http429 > 20 or cellsOk false = invalid (compare.py says so). With the replay th
 clock (omcache.py, 'ageing'). With --live: space runs out, never alongside another headless session.
 
 SELECTORS found on 2026-10-17 (HEAD 0271e10 + 8 uncommitted files); they drift with the UI, fix them here:
-  strip ............ .wxstrip (.wx-head row: chip, icons, ⋯; .wxstrip-cells the hour cells .wxcell; .wxfold-handle folds)
+  strip ............ .wxstrip (.wx-head row: chip, icons, ⋯; .wxstrip-cells the hour cells .wxcell)
   quarry chip ...... button.wx-chip  (text 'Moose ▾')            heat toggle .... button[aria-label^="Heat map"] (aria-pressed)
   outdoor .......... button[aria-label^="Outdoor"]                 map buttons hide button[aria-label$="the map buttons"]
-  marks ............ button[aria-label*="your marks"] (pressed by default)          open strip button.wx-open
+  marks ............ button[aria-label*="your marks"] (pressed by default)          open/fold strip button.wx-open
   ⋯ menu ........... button.wxfold-dots (aria-label "More") -> .wx-menu (role=menu) rows .wx-menu-row:
                      Hunt log, Pins, Party, Locations, Weather by satellite, How we hunt here, Feedback (an <a>), Settings
   hot buttons ...... button[data-hot=ID] (aria-label = the name, aria-pressed = on):
