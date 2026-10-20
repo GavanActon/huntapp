@@ -269,3 +269,9 @@ archive: a `waterbody` source-layer in the places archive (build_vector_tiles.py
 same features and properties relief-lakes / Topo read; every area, listed in the area file like land and lots, synced to R2.
 Keep the GeoJSON one release for older builds. The app side (relief-lakes on the archive, GeoJSON fallback) is Features'
 (huntapp-79): tell it when the archives are on R2.
+
+**For home (PALM running again): Austin's Clearwater check, deep dive (Gavan 10-19).** 2026-10-19 09:49 MDT at
+52.27822,-115.25004 (Clearwater, WMU 326; HD without LiDAR: momentum wind on the MRDEM): felt from 234° drift, "Always";
+the map 277°, the forecast 279°: ~45° left of both, steady. Ask: the place (terrain, the cut and stand edges round the spot,
+drainage at a morning drift) or the model; a PALM box there under that forecast if the rules can't say. D1 checks row from
+install 516cf1d9a895f771.
