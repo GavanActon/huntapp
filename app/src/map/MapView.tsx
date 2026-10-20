@@ -11,7 +11,7 @@ import { fineDetail, markShown, useAppStore, type LayerOpacity, type LayerVisibi
 import { placeColour } from '../state/pinColours'
 import { usePlacesStore } from '../state/placesStore'
 import { geoUrls, holdOpening, onFirstIdle, setMap, withMap } from './mapController'
-import { baseTone, BOG_TUFT, bogTuftImage, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour, lidarShadeShown, openLanesOut, type ArchiveRange, reliefShadePaint, standIn, syncUnderlays } from './mapStyle'
+import { baseTone, BOG_TUFT, bogTuftImage, buildMapStyle, CONTOUR_INK, contourFilters, flushDeferredGeo, groundColour, lidarShadeShown, openLanesOut, type ArchiveRange, reliefShadePaint, standIn, syncUnderlays, zoomFaded } from './mapStyle'
 import { offlineComplete, registerAllDataFiles, registerDataFile, sourceModes } from './pmtilesRegistry'
 import { loadStreamLib, probeTerrainDepth, STREAM_PICTURES, STREAMED_KEYS, streamedContourTiles } from './streamPictures'
 // the contours' and lake depths' numbers in the phone's units
@@ -483,7 +483,7 @@ export function applyLayerState(map: maplibregl.Map, layers: LayerVisibility, op
     const on = l.id === 'hillshade-lidar' ? lidarShadeShown(layers, opacity, hd) : layers[meta.group]
     map.setLayoutProperty(l.id, 'visibility', on ? 'visible' : 'none')
     if (meta.opacityKey && l.type === 'raster') {
-      map.setPaintProperty(l.id, 'raster-opacity', opacity[meta.opacityKey])
+      map.setPaintProperty(l.id, 'raster-opacity', zoomFaded(l.id, opacity[meta.opacityKey]))
       const sat = saturation[meta.opacityKey]
       if (sat != null) map.setPaintProperty(l.id, 'raster-saturation', Math.max(-1, Math.min(1, sat)))
       else if (BASE_SATURATION[meta.opacityKey] != null || l.id === meta.opacityKey) map.setPaintProperty(l.id, 'raster-saturation', BASE_SATURATION[meta.opacityKey] ?? 0)

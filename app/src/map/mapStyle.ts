@@ -326,6 +326,22 @@ const RELIEF_RAMP = reliefRamp(RELIEF[1] > RELIEF[0] ? RELIEF : RELIEF_TUNED)
  *  over half a zoom early. 14–16 and 13.5 at Pickle Lake. */
 const CORE_MINZOOM = REGION_MAXZOOM + 1
 const CORE_HANDOFF = REGION_MAXZOOM + 0.5
+
+/** The LiDAR hand-off fades rather than switches (Gavan, 2026-10-20: "LiDAR levels - should fade in and
+ *  out as well", as the views cross-fade): over the half zoom from CORE_HANDOFF, where its first tiles
+ *  draw, to CORE_MINZOOM, the 1 m shade and contours come up from nothing and the region's contours
+ *  inside the core go down under them; past it the region's are filtered out there as before. The map
+ *  eases a zoom expression itself, so a pinch through it is a fade, not a frame that swaps. */
+const LIDAR_IN = new Set(['hillshade-lidar', 'contour-line', 'contour-index', 'contour-label'])
+const lidarIn = (v: number): ExpressionSpecification => ['interpolate', ['linear'], ['zoom'], CORE_HANDOFF, 0, CORE_MINZOOM, v]
+/** A layer's opacity as drawn: its value, faded in over the hand-off for the LiDAR layers (applyLayerState
+ *  writes the sliders' values through this). */
+export function zoomFaded(id: string, v: number): number | ExpressionSpecification {
+  return LIDAR_IN.has(id) ? lidarIn(v) : v
+}
+/** The region's contours inside the core fading out over the hand-off as the LiDAR's come in (their
+ *  `core` mark), the rest at full. */
+const coreOut = (v: number): ExpressionSpecification => ['interpolate', ['linear'], ['zoom'], CORE_HANDOFF, v, CORE_MINZOOM, ['case', ['==', ['get', 'core'], 1], 0, v]]
 /** The bush layers, the core's too, go further out: below the core's zooms
  *  their bake averages the 10 m cells into each pixel, from z10
  *  (build_vegstructure.py FAR_MINZOOM), so they still show zoomed out
@@ -670,7 +686,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
           source: 'hillshadeLidar',
           minzoom: CORE_HANDOFF,
           layout: vis(lidarShadeShown(o.layers, o.opacity, o.hd)),
-          paint: { 'raster-opacity': o.opacity.hillshade, 'raster-resampling': 'linear', 'raster-brightness-max': lidarShadeBrightness(o.layers) },
+          paint: { 'raster-opacity': zoomFaded('hillshade-lidar', o.opacity.hillshade), 'raster-resampling': 'linear', 'raster-brightness-max': lidarShadeBrightness(o.layers) },
         },
         'hillshade',
         'hillshade',
@@ -772,7 +788,8 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   if (has('contoursWide') || streamedLines) {
     sources.contoursWide = streamedLines ? streamedContours(o.contourInterval) : archive('contoursWide', { type: 'vector', minzoom: 8, maxzoom: 14 })
     const outsideLidar = (f: FilterSpecification): FilterSpecification =>
-      has('contours') ? (['step', ['zoom'], f, CORE_HANDOFF, ['all', f, ['==', ['get', 'core'], 0]]] as unknown as FilterSpecification) : f
+      has('contours') ? (['step', ['zoom'], f, CORE_MINZOOM, ['all', f, ['==', ['get', 'core'], 0]]] as unknown as FilterSpecification) : f
+    const wideOpacity = (v: number) => (has('contours') ? coreOut(v) : v)
     const index: FilterSpecification = streamedLines ? ['>=', ['get', 'level'], 1] : ['>=', ['get', 'step'], 50]
     const thin: FilterSpecification = streamedLines ? ['==', ['get', 'level'], 0] : ['<', ['get', 'step'], 50]
     const wide = { source: 'contoursWide', 'source-layer': 'contours' } as const
@@ -786,7 +803,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
           layout: vis(o.layers.contours),
           paint: {
             'line-color': ink.line,
-            'line-opacity': 0.8,
+            'line-opacity': wideOpacity(0.8),
             'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.4, 14, 0.7],
           },
         },
@@ -801,6 +818,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
           layout: vis(o.layers.contours),
           paint: {
             'line-color': ink.index,
+            'line-opacity': wideOpacity(1),
             'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.6, 12, 1, 14, 1.4],
           },
         },
@@ -822,7 +840,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
             'symbol-spacing': 300,
             'text-max-angle': streamedLines ? STREAMED_LABEL_MAX_ANGLE : 30,
           },
-          paint: { 'text-color': ink.text, 'text-halo-color': ink.halo, 'text-halo-width': 1.2 },
+          paint: { 'text-color': ink.text, 'text-halo-color': ink.halo, 'text-halo-width': 1.2, 'text-opacity': wideOpacity(1) },
         },
         'contours',
       ),
@@ -847,6 +865,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
           layout: vis(o.layers.contours),
           paint: {
             'line-color': ink.line,
+            'line-opacity': zoomFaded('contour-line', 1),
             'line-width': ['interpolate', ['linear'], ['zoom'], 14, 0.5, 16, 0.8],
           },
         },
@@ -861,6 +880,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
           layout: vis(o.layers.contours),
           paint: {
             'line-color': ink.index,
+            'line-opacity': zoomFaded('contour-index', 1),
             'line-width': ['interpolate', ['linear'], ['zoom'], 14, 1, 16, 1.6],
           },
         },
@@ -881,7 +901,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
             'symbol-spacing': 260,
             'text-max-angle': 30,
           },
-          paint: { 'text-color': ink.text, 'text-halo-color': ink.halo, 'text-halo-width': 1.2 },
+          paint: { 'text-color': ink.text, 'text-halo-color': ink.halo, 'text-halo-width': 1.2, 'text-opacity': zoomFaded('contour-label', 1) },
         },
         'contours',
       ),

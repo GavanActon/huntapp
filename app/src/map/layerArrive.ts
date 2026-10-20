@@ -123,8 +123,16 @@ export function initLayerArrive(): void {
       map.setPaintProperty(id, `${prop}-transition`, { duration: 0, delay: 0 })
       map.setPaintProperty(id, prop, v)
     }
-    /** an expression's value times k (k 1: the expression itself) */
-    const scaled = (e: unknown[], k: number): unknown[] => (k >= 0.999 ? e : ['*', e, k])
+    /** an expression's value times k (k 1: the expression itself). One on the zoom (the LiDAR hand-off,
+     *  mapStyle.ts zoomFaded) must stay a top-level interpolate or step: its outputs are scaled instead */
+    const scaled = (e: unknown[], k: number): unknown[] => {
+      if (k >= 0.999) return e
+      const times = (v: unknown) => (typeof v === 'number' ? v * k : ['*', v, k])
+      const onZoom = Array.isArray(e[e[0] === 'interpolate' ? 2 : 1]) && (e[e[0] === 'interpolate' ? 2 : 1] as unknown[])[0] === 'zoom'
+      if (e[0] === 'interpolate' && onZoom) return e.map((v, i) => (i >= 4 && i % 2 === 0 ? times(v) : v))
+      if (e[0] === 'step' && onZoom) return e.map((v, i) => (i >= 2 && i % 2 === 0 ? times(v) : v))
+      return ['*', e, k]
+    }
     /** Step an expression from k0 to k1 by hand, frame by frame, while live() holds; then done(). */
     const ramp = (id: string, prop: string, e: unknown[], k0: number, k1: number, ms: number, delay: number, live: () => boolean, done: () => void) => {
       // the clock starts at the first frame, not the call: a busy main thread (Scout's heat) would eat the run
