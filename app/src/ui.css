@@ -1659,6 +1659,29 @@
   white-space: nowrap;
 }
 
+/* the wind check's offer (ui/checkOffer.ts): "Check now" in the accent, and one soft ring out from
+   the circle as it comes, then calm; no loop, no badge (Gavan, 2026-10-20: "I don't want it to be
+   pushy, make it feel optional") */
+.hotbtn.offer .hotbtn-label {
+  color: var(--c-accent);
+}
+.hotbtn.offer-glow::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: offer-glow 1.6s ease-out 1;
+}
+@keyframes offer-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--c-accent-rgb), 0.55);
+  }
+  100% {
+    box-shadow: 0 0 0 16px rgba(var(--c-accent-rgb), 0);
+  }
+}
+
 /* ---------- the right column: the fixed tools ---------- */
 
 .toolcol {

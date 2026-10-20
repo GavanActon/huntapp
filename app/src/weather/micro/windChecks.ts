@@ -153,6 +153,8 @@ export interface WindCheck {
   strength: Strength
   /** puffs folded into this check (1 or absent: a single puff) */
   puffs?: number
+  /** when the latest of them was (absent: `ts`, a single puff); `ts` stays the first */
+  lastTs?: number
   /** each puff's direction, blowing FROM; null for a puff that hung (a lull) */
   dirs?: (number | null)[]
   /** optional: treetops moving while the air here is calm (true), or moving the same (false) */
@@ -254,6 +256,7 @@ function fold(prev: WindCheck, puff: Omit<WindCheck, 'id'>): WindCheck {
     swingDeg: moving.length && swing ? Math.min(180, swing) : undefined,
     strength: moving.length ? strongest : 'calm',
     puffs: (prev.puffs ?? 1) + 1,
+    lastTs: Math.max(prev.lastTs ?? prev.ts, puff.ts),
     dirs,
     ...(puff.aloft != null ? { aloft: puff.aloft } : {}),
     ...(puff.held != null ? { held: puff.held } : {}),

@@ -175,7 +175,9 @@ function callWords(m: { dirFrom: number; kmh: number }): string {
 const OUTCOME = VERDICT_WORD
 /** Puffs this far apart each sample a fresh gust: twice the head-height meander's time (PALM's stands
  *  wander 40-60° on a 1-2 min scale; the scent's meander is 150 s), so one puff barely knows the last. */
-const PUFF_GAP_MS = 5 * 60_000
+export const PUFF_GAP_MS = 5 * 60_000
+/** How long puffs at a spot still count together: half a check's pull is left at two hours (WIND-LEARNING.md). */
+export const SETTLE_WINDOW_MS = 2 * 3600_000
 /** A spot settles at puffsToSettle's count for the forecast's wind, held to at least 3 (the mean of three
  *  takes a 63° puff to ~36°, CHECK-INSTRUMENT.md) and at most 8 (the station tests: 96% within 45°, a
  *  far-off call put right in 83% of sits). */
@@ -185,13 +187,13 @@ const SETTLE_MAX = 8
  *  pull is left at two hours, WIND-LEARNING.md), this check's own folded puffs among them. */
 function puffsHere(c: WindCheck, checks: WindCheck[]): number {
   return checks
-    .filter((o) => !o.seen && !o.taken && (o.by ?? '') === (c.by ?? '') && o.ts <= c.ts && c.ts - o.ts <= 2 * 3600_000 && metresBetween(o.lon, o.lat, c.lon, c.lat) <= 150)
+    .filter((o) => !o.seen && !o.taken && (o.by ?? '') === (c.by ?? '') && o.ts <= c.ts && c.ts - o.ts <= SETTLE_WINDOW_MS && metresBetween(o.lon, o.lat, c.lon, c.lat) <= 150)
     .reduce((n, o) => n + (o.puffs ?? 1), 0)
 }
 /** The second line's sum: how many more puffs settle this spot (0: settled, or nothing asks for more).
  *  A big miss settles the map's error: puffsToSettle for the forecast's wind, 3 to 8. A wind said to come
  *  and go, the map otherwise right, only has its gusts to average: the instrument's three. */
-function puffsLeft(v: 'agree' | 'close' | 'miss' | null, c: WindCheck, checks: WindCheck[]): number {
+export function puffsLeft(v: 'agree' | 'close' | 'miss' | null, c: WindCheck, checks: WindCheck[]): number {
   const unsteady = c.steady === 'brief' || c.steady === 'once'
   if (v !== 'miss' && !unsteady) return 0
   const target = v === 'miss' ? Math.min(SETTLE_MAX, Math.max(SETTLE_MIN, puffsToSettle(c.forecast?.kmh ?? null))) : SETTLE_MIN

@@ -1,4 +1,4 @@
-import { useRef, type JSX } from 'react'
+import { useEffect, useRef, useState, type JSX } from 'react'
 import { inRegion } from '../config'
 import { toggleCone, useHunting } from '../hunting/hunting'
 import { getMap } from '../map/mapController'
@@ -14,6 +14,8 @@ import { useScent } from '../weather/micro/scent'
 import { HotDot, hotAbsent, hotMark, openGrade } from './grade'
 import { useHeardForm } from './HeardCard'
 import { useCheckForm } from './WindCheckCard'
+import { OFFER_WORDS, useCheckOffer } from './checkOffer'
+import { toast } from './Toast'
 import { IconBush, IconContour, IconDepth, IconDots, IconEar, IconLanes, IconPath, IconPin, IconPowder, IconRadar, IconRoute, IconRuler, IconScent, IconWind } from './icons'
 import { logWindHere } from './logWindHere'
 
@@ -34,6 +36,8 @@ export interface HotDef {
   Icon: (p: { size?: number }) => JSX.Element
   useActive: () => boolean
   onTap: () => void
+  /** an offer the button makes now (the wind check's "Check now"): its label in place of `short`, its key */
+  useOffer?: () => { id: string; due: number; label: string } | null
 }
 
 const off = () => false
@@ -143,6 +147,11 @@ export const HOT_DEFS: Record<HotId, HotDef> = {
       if (f.at != null) f.close()
       else logWindHere()
     },
+    // a spot still settling: "Check now" once the next puff is due (ui/checkOffer.ts)
+    useOffer: () => {
+      const o = useCheckOffer()
+      return o ? { id: o.id, due: o.due, label: 'Check now' } : null
+    },
   },
   pin: {
     id: 'pin',
@@ -190,6 +199,19 @@ export function HotButton({ id, onHold, onTap }: { id: HotId; onHold: () => void
   // an SD area too; it no longer opens the grade sheet's Get HD (Gavan, 2026-10-18, at Clearwater:
   // "When I tap range just don't bring me to get HD screen")
   const absent = hotAbsent(id)
+  // an offer (the wind check's "Check now"): its label, and one soft glow when it comes, never again for
+  // it; a toast with what it gives only when the app was open as it fell due, not as the phone comes back
+  // out. Not while the button is on (its form open)
+  const offered = d.useOffer?.() ?? null
+  const offer = on || absent ? null : offered
+  const [glow, setGlow] = useState(false)
+  const shown = useRef<string | null>(null)
+  useEffect(() => {
+    if (!offer || shown.current === offer.id || document.visibilityState !== 'visible') return
+    shown.current = offer.id
+    setGlow(true)
+    if (Date.now() - offer.due < 15_000) toast(OFFER_WORDS)
+  }, [offer])
   const timer = useRef(0)
   const held = useRef(false)
   const down = () => {
@@ -204,7 +226,10 @@ export function HotButton({ id, onHold, onTap }: { id: HotId; onHold: () => void
   const up = () => window.clearTimeout(timer.current)
   return (
     <button
-      className={`fab hotbtn${on ? ' active' : ''}${labels ? '' : ' no-label'}${hd === 'want' ? ' grade-want' : ''}${absent ? ' grade-off' : ''}`}
+      className={`fab hotbtn${on ? ' active' : ''}${labels ? '' : ' no-label'}${hd === 'want' ? ' grade-want' : ''}${absent ? ' grade-off' : ''}${offer ? ' offer' : ''}${glow ? ' offer-glow' : ''}`}
+      onAnimationEnd={(e) => {
+        if (e.animationName === 'offer-glow') setGlow(false)
+      }}
       data-hot={id}
       onPointerDown={down}
       onPointerUp={up}
@@ -219,11 +244,11 @@ export function HotButton({ id, onHold, onTap }: { id: HotId; onHold: () => void
       }}
       aria-pressed={on}
       aria-disabled={absent || undefined}
-      aria-label={absent ? `${d.name}: not here` : d.name}
+      aria-label={absent ? `${d.name}: not here` : offer ? `${d.name} · ${offer.label}: ${OFFER_WORDS.toLowerCase()}` : d.name}
     >
       <d.Icon />
       <HotDot id={id} />
-      {labels && <span className="hotbtn-label">{d.short}</span>}
+      {labels && <span className="hotbtn-label">{offer ? offer.label : d.short}</span>}
     </button>
   )
 }
