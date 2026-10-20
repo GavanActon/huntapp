@@ -8,6 +8,7 @@
 // which /areas/index.json and /areas/<id>/area.json are built from, so a
 // new area reaches phones with no app build.
 
+import { readyMail } from './mail.js'
 const ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const MAX_BODY = 1_000_000
 // where the app reads area files (its VITE_DATA_BASE): R2's data/ folder,
@@ -41,7 +42,7 @@ export async function bakeAuthorized(request, env) {
 }
 
 /** /api/bake/next (GET) and /api/bake/<id> (POST), for the agent only. */
-export async function bakeApi(request, env, url) {
+export async function bakeApi(request, env, url, ctx) {
   if (!(await bakeAuthorized(request, env))) return json({ error: 'key' }, 401)
   try {
     if (url.pathname === '/api/bake/next') {
@@ -51,7 +52,7 @@ export async function bakeApi(request, env, url) {
     const m = /^\/api\/bake\/(\d{1,9})$/.exec(url.pathname)
     if (!m) return json({ error: 'path' }, 404)
     if (request.method !== 'POST') return json({ error: 'post' }, 405)
-    return await report(request, env, Number(m[1]))
+    return await report(request, env, Number(m[1]), ctx)
   } catch (e) {
     console.error('api/bake', e)
     return json({ error: 'server', detail: String(e?.message ?? e).slice(0, 300) }, 500)
@@ -86,7 +87,7 @@ async function nextRequest(env, url) {
  *  done {area_id, area_json, files_json, size_bytes}. Refused (409, with the
  *  stage it is at) when the request is not where that stage can follow, or
  *  another agent holds it. */
-async function report(request, env, id) {
+async function report(request, env, id, ctx) {
   const text = await request.text()
   if (text.length > MAX_BODY) return json({ error: 'size' }, 413)
   let body
@@ -126,6 +127,9 @@ async function report(request, env, id) {
       ).bind(areaId, id, from, agent),
     ])
     if (!moved.meta?.changes) return refused(env, id)
+    // "your area is ready" to the one who asked (mail.js; the agent's task leaves the email out, so it is read here)
+    const to = await env.DB.prepare('SELECT email FROM requests WHERE id = ?').bind(id).first('email')
+    if (to) readyMail(ctx, env, { id, email: to, areaId })
     return json({ ok: true, id, stage, area_id: areaId }, 200)
   }
 

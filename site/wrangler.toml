@@ -29,6 +29,17 @@ database_id = "5801c0bf-cb98-4799-bc24-226bb96ec381"
 
 # usage stats from the app (stats.js): a phone sends a batch every 30 s at
 # most, so 30 a minute from one address is a loop or a flood, not a hunter
+# Email (site/mail.js, docs/REQUESTS.md "Email"). NOTIFY: Email Routing's free sending, verified
+# destination addresses only: Gavan's inbox, the OWNER_EMAIL secret (the repo is public).
+[[send_email]]
+name = "NOTIFY"
+
+# MAIL: Email Sending to any address (Workers Paid, groundwind.app onboarded in Email Service);
+# on once that is done:
+# [[send_email]]
+# name = "MAIL"
+# allowed_sender_addresses = ["noreply@groundwind.app"]
+
 [[ratelimits]]
 name = "EVENTS_LIMIT"
 namespace_id = "1001"

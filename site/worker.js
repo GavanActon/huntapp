@@ -15,6 +15,7 @@
 // /<key>.txt proves the key is ours (indexnow.js).
 
 import { areasApi, bakeApi } from './bake.js'
+import { requestMail } from './mail.js'
 import { checksExport, checksIngest } from './checks.js'
 import { INDEXNOW_KEY, indexNowKey, indexNowSweep } from './indexnow.js'
 import { partyApi } from './party.js'
@@ -41,16 +42,16 @@ const TILE_ROWS = 370
 const MAX_SIDE_KM = { sd: 20, hd: 15 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url)
     if (url.hostname === 'www.groundwind.app') {
       url.hostname = 'groundwind.app'
       return Response.redirect(url.toString(), 301)
     }
     if (url.pathname === '/app' || url.pathname.startsWith('/app/')) return Response.redirect(APP + url.search, 302)
-    if (url.pathname === '/api/request') return areaRequest(request, env)
+    if (url.pathname === '/api/request') return areaRequest(request, env, ctx)
     if (url.pathname === '/api/requests') return requestsList(request, env, url)
-    if (url.pathname.startsWith('/api/bake/')) return bakeApi(request, env, url)
+    if (url.pathname.startsWith('/api/bake/')) return bakeApi(request, env, url, ctx)
     if (url.pathname.startsWith('/areas/')) return areasApi(request, env, url, corsFor(request))
     if (url.pathname === '/api/sms') return smsWebhook(request, env)
     if (url.pathname === '/api/wx') return wxQuery(request)
@@ -114,7 +115,7 @@ function corsFor(request) {
   return ok ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : { Vary: 'Origin' }
 }
 
-async function areaRequest(request, env) {
+async function areaRequest(request, env, ctx) {
   const cors = corsFor(request)
   if (request.method === 'OPTIONS') {
     return new Response(null, {
@@ -129,7 +130,7 @@ async function areaRequest(request, env) {
     if (!success) return json({ error: 'busy' }, 429, cors)
   }
   try {
-    return request.method === 'GET' ? await requestStatus(request, env, cors) : await takeRequest(request, env, cors)
+    return request.method === 'GET' ? await requestStatus(request, env, cors) : await takeRequest(request, env, cors, ctx)
   } catch (e) {
     // Cloudflare's own 500 carries no CORS header, so the page sees only
     // "Failed to fetch" (a D1 column missing did that, 2026-10-09): answer here
@@ -138,7 +139,7 @@ async function areaRequest(request, env) {
   }
 }
 
-async function takeRequest(request, env, cors) {
+async function takeRequest(request, env, cors, ctx) {
   let body
   try {
     body = await request.json()
@@ -210,6 +211,8 @@ async function takeRequest(request, env, cors) {
         .bind(email, place, lat, lon, game, source, country, who, tile, kind)
         .first('id'),
   )
+  // the note to Gavan, and to the asker once Email Sending is on (mail.js): after the row is in, never before
+  if (id != null) requestMail(ctx, env, { id, kind, email, place, lat, lon, tile, source, country })
   return json({ ok: true, id }, 200, cors)
 }
 
