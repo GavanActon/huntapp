@@ -254,6 +254,12 @@ function useHold(onHold: () => void) {
   return { bind, tap }
 }
 
+const LIGHT_NAMES = { night: 'Night', red: 'Red light', day: 'Day' } as const
+const LIGHT_TOAST = { night: 'Night', red: 'Red light · keeps your night vision', day: 'Day · bright for the sun' } as const
+function LightIcon({ l, size }: { l: 'night' | 'day' | 'red'; size: number }) {
+  return l === 'day' ? <IconSun size={size} /> : l === 'red' ? <IconEye size={size} /> : <IconMoon size={size} />
+}
+
 export default function WeatherStrip() {
   // the wind and habitat grids coming in from the network: the hairline at the strip's foot
   const load = useLoadProgress()
@@ -288,21 +294,18 @@ export default function WeatherStrip() {
   const setOutdoor = useAppStore((s) => s.setOutdoor)
   const redLight = useAppStore((s) => s.redLight)
   const setRedLight = useAppStore((s) => s.setRedLight)
-  // the light button's three stops, in Gavan's order (2026-10-19): night, day, red
+  // the light button: a tap opens Night / Red / Day, a pick closes it (Gavan, 2026-10-20: "as a icon
+  // with drop down - you press, it shows the drop down, you select")
   const light: 'night' | 'day' | 'red' = outdoor ? 'day' : redLight ? 'red' : 'night'
-  const nextLight = () => {
-    if (light === 'night') {
-      setOutdoor(true)
-      setRedLight(false)
-      toast('Day · bright for the sun')
-    } else if (light === 'day') {
-      setOutdoor(false)
-      setRedLight(true)
-      toast('Red light · keeps your night vision')
-    } else {
-      setRedLight(false)
-      toast('Night')
-    }
+  const [lightMenu, setLightMenu] = useState(false)
+  const lightRef = useRef<HTMLSpanElement>(null)
+  useTapOff(lightRef, lightMenu, () => setLightMenu(false))
+  const pickLight = (l: 'night' | 'day' | 'red') => {
+    setLightMenu(false)
+    if (l === light) return
+    setOutdoor(l === 'day')
+    setRedLight(l === 'red')
+    toast(LIGHT_TOAST[l])
   }
   const selectedId = usePlacesStore((s) => s.selectedId)
   const hasFix = useGpsStore((s) => s.fix != null)
@@ -618,26 +621,6 @@ export default function WeatherStrip() {
     <div className={`wx-head${{ normal: '', large: ' wx-head-lg', xlarge: ' wx-head-xl' }[stripButtons]}`}>
       {/* Explore (docs/EXPLORE.md): no grids, no heat, no hours; the marks and the menu stay */}
       {!EXPLORE && (
-      <span className="wx-quarry" ref={quarryRef}>
-        <button className="wx-chip" onClick={() => setQuarryOpen((o) => !o)} aria-haspopup="menu" aria-expanded={quarryOpen}>
-          {TARGET_NAMES[target]} <span className="dim">▾</span>
-        </button>
-        {quarryOpen && (
-          <div className="menu-pop" role="menu" aria-label="What you are after">
-            {/* only what is here and may be hunted (spots/profile.ts): no deer in the BC mountains */}
-            {HUNT_TARGETS.filter((t) => targetStanding(t).show).map(quarryRow)}
-            {/* fishing where it is on offer (spots/profile.ts FISH_HERE): Ontario's lakes, surveys and seasons */}
-            {FISH_HERE && (
-              <>
-                <div className="wx-menu-rule" />
-                {FISH_TARGETS.map(quarryRow)}
-              </>
-            )}
-          </div>
-        )}
-      </span>
-      )}
-      {!EXPLORE && (
       <span className="wx-quarry" ref={heatRef}>
         <button
           className={`wx-heat${heat ? ' on' : ''}${heatMenu ? ' held' : ''}`}
@@ -679,10 +662,54 @@ export default function WeatherStrip() {
         )}
       </span>
       )}
+      {/* what you are after shows only with its heat map on (Gavan, 2026-10-20: room on the row) */}
+      {!EXPLORE && heat && (
+      <span className="wx-quarry" ref={quarryRef}>
+        <button className="wx-chip" onClick={() => setQuarryOpen((o) => !o)} aria-haspopup="menu" aria-expanded={quarryOpen}>
+          {TARGET_NAMES[target]} <span className="dim">▾</span>
+        </button>
+        {quarryOpen && (
+          <div className="menu-pop" role="menu" aria-label="What you are after">
+            {/* only what is here and may be hunted (spots/profile.ts): no deer in the BC mountains */}
+            {HUNT_TARGETS.filter((t) => targetStanding(t).show).map(quarryRow)}
+            {/* fishing where it is on offer (spots/profile.ts FISH_HERE): Ontario's lakes, surveys and seasons */}
+            {FISH_HERE && (
+              <>
+                <div className="wx-menu-rule" />
+                {FISH_TARGETS.map(quarryRow)}
+              </>
+            )}
+          </div>
+        )}
+      </span>
+      )}
       {!EXPLORE && (
-      <button className={`wx-heat wx-theme${light !== 'night' ? ' on' : ''}`} onClick={nextLight} aria-label={`Light: ${light === 'night' ? 'Night' : light === 'day' ? 'Day' : 'Red'} · tap for the next`}>
-        {light === 'day' ? <IconSun size={ico} /> : light === 'red' ? <IconEye size={ico} /> : <IconMoon size={ico} />}
-      </button>
+      <span className="wx-quarry" ref={lightRef}>
+        <button
+          className={`wx-heat wx-theme${light !== 'night' ? ' on' : ''}${lightMenu ? ' held' : ''}`}
+          onClick={() => setLightMenu((o) => !o)}
+          aria-haspopup="menu"
+          aria-expanded={lightMenu}
+          aria-label={`Light: ${LIGHT_NAMES[light]}`}
+        >
+          <LightIcon l={light} size={ico} />
+        </button>
+        {lightMenu && (
+          <div className="menu-pop wx-lightmenu" role="menu" aria-label="Light">
+            {(['night', 'red', 'day'] as const).map((l) => (
+              <button key={l} className="menu-row" role="menuitemradio" aria-checked={l === light} onClick={() => pickLight(l)}>
+                <LightIcon l={l} size={16} />
+                {LIGHT_NAMES[l]}
+                {l === light && (
+                  <span className="wx-menu-check">
+                    <IconCheck size={16} />
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+      </span>
       )}
       {!EXPLORE && (
       <button className={`wx-heat wx-theme${hotHidden ? ' on' : ''}`} onClick={() => {

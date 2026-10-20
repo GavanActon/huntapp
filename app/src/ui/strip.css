@@ -105,6 +105,11 @@
   min-width: 170px;
 }
 
+/* the light button's menu: Night, Red light, Day */
+.wx-quarry > .wx-lightmenu {
+  min-width: 160px;
+}
+
 /* the heat button's hold menu: how the heat is coloured */
 .wx-heatmenu {
   min-width: 250px;
