@@ -470,6 +470,21 @@ export const IconSatellite = (p: IconProps) => (
   </svg>
 )
 
+/** Night, the light button's dark stop: a crescent moon. */
+export const IconMoon = (p: IconProps) => (
+  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">
+    <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" />
+  </svg>
+)
+
+/** Red light, the light button's third stop: an eye, for the night vision it keeps. */
+export const IconEye = (p: IconProps) => (
+  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">
+    <path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12s-3.5 6.5-9.5 6.5S2.5 12 2.5 12z" />
+    <circle cx="12" cy="12" r="2.8" />
+  </svg>
+)
+
 /** Settings: a cog, eight teeth and the hole (the rays it had read as a second sun, Gavan, 2026-10-19: "make the settings button be a gear icon"). */
 export const IconGear = (p: IconProps) => (
   <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round">

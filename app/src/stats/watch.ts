@@ -64,7 +64,7 @@ function span(name: string) {
 }
 
 /** The plain settings: an event with the value each comes to rest on. */
-const SETTINGS = ['units', 'paceKmh', 'windFlowOpacity', 'windLevel', 'leaves', 'textSize', 'outdoor', 'leftHanded', 'buttonLabels', 'hotHidden', 'stripButtons', 'marksHidden', 'pastHunts', 'contourInterval', 'historicalYear', 'follow'] as const satisfies readonly (keyof AppState)[]
+const SETTINGS = ['units', 'paceKmh', 'windFlowOpacity', 'windLevel', 'leaves', 'textSize', 'outdoor', 'redLight', 'leftHanded', 'buttonLabels', 'hotHidden', 'stripButtons', 'marksHidden', 'pastHunts', 'contourInterval', 'historicalYear', 'follow'] as const satisfies readonly (keyof AppState)[]
 
 function setting(key: string, read: () => unknown) {
   settle(`set:${key}`, () => {

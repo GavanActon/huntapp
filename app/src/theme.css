@@ -79,6 +79,27 @@
   color-scheme: dark;
 }
 
+/* Red light (the strip's light button, its third stop; ui/theme.ts): the
+   screen turned grey, each pixel's brightness kept, then multiplied by pure
+   red, so only the red sub-pixels light. The eye's rods, what sees in the
+   dark, barely answer red: the CIE 1951 scotopic curve gives 0.0074 at
+   620 nm, under 1% of their peak at 507 nm, while the cones still read it
+   (photopic 0.38). So the screen can be read without spending the night
+   vision a hunter has built walking in before light. The map is under it
+   too; the bar over it is a fixed layer above everything, no taps. */
+:root[data-red] .app {
+  filter: grayscale(1);
+}
+:root[data-red] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  background: #ff0000;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
 /* Outdoor (Settings): for sun on the phone. Opaque surfaces, no glass,
    dark ink on birch, the same accents darkened to hold their contrast. */
 :root[data-theme='outdoor'] {

@@ -19,7 +19,7 @@ import { activityBar } from '../spots/grades'
 import { FISH_TARGETS, HUNT_TARGETS, isFish, TARGET_NAMES, type Target } from '../spots/types'
 import { FISH_HERE, targetStanding } from '../spots/profile'
 import { agoLabel, clockShort, dayLabel, dayShort, floorHourMs, hourAmPm, hourMinShort, hourShort, isToday, startOfDayMs } from '../time'
-import { IconCheck, IconChevronDown, IconChevronLeft, IconChevronUp, IconGrid, IconGridOff, IconHeat, IconMenu, IconPin, IconSun } from './icons'
+import { IconCheck, IconChevronDown, IconChevronLeft, IconChevronUp, IconGrid, IconGridOff, IconEye, IconHeat, IconMenu, IconMoon, IconPin, IconSun } from './icons'
 import AppMenu from './AppMenu'
 import { useMapUpdates } from '../offline/updates'
 import { markNudgeSeen, useMapsNudge } from '../offline/mapsNudge'
@@ -286,6 +286,24 @@ export default function WeatherStrip() {
     setMarksHidden(false)
   }
   const setOutdoor = useAppStore((s) => s.setOutdoor)
+  const redLight = useAppStore((s) => s.redLight)
+  const setRedLight = useAppStore((s) => s.setRedLight)
+  // the light button's three stops, in Gavan's order (2026-10-19): night, day, red
+  const light: 'night' | 'day' | 'red' = outdoor ? 'day' : redLight ? 'red' : 'night'
+  const nextLight = () => {
+    if (light === 'night') {
+      setOutdoor(true)
+      setRedLight(false)
+      toast('Day · bright for the sun')
+    } else if (light === 'day') {
+      setOutdoor(false)
+      setRedLight(true)
+      toast('Red light · keeps your night vision')
+    } else {
+      setRedLight(false)
+      toast('Night')
+    }
+  }
   const selectedId = usePlacesStore((s) => s.selectedId)
   const hasFix = useGpsStore((s) => s.fix != null)
   const target = useSpotsStore((s) => s.target)
@@ -662,11 +680,8 @@ export default function WeatherStrip() {
       </span>
       )}
       {!EXPLORE && (
-      <button className={`wx-heat wx-theme${outdoor ? ' on' : ''}`} onClick={() => {
-          setOutdoor(!outdoor)
-          toast(outdoor ? 'Outdoor look off' : 'Outdoor look on · bright for the sun')
-        }} aria-pressed={outdoor} aria-label="Outdoor · light chrome for sun">
-        <IconSun size={ico} />
+      <button className={`wx-heat wx-theme${light !== 'night' ? ' on' : ''}`} onClick={nextLight} aria-label={`Light: ${light === 'night' ? 'Night' : light === 'day' ? 'Day' : 'Red'} · tap for the next`}>
+        {light === 'day' ? <IconSun size={ico} /> : light === 'red' ? <IconEye size={ico} /> : <IconMoon size={ico} />}
       </button>
       )}
       {!EXPLORE && (

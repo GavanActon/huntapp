@@ -349,6 +349,10 @@ export interface AppState {
   /** Outdoor: opaque birch chrome and dark ink for sun on the phone; persisted */
   outdoor: boolean
   setOutdoor: (v: boolean) => void
+  /** Red light: everything in red alone, for the dark before dawn and after dusk, so the eyes keep
+   *  their night vision (ui/theme.ts); with the dark chrome, never Outdoor's; persisted */
+  redLight: boolean
+  setRedLight: (v: boolean) => void
   /** Dev mode: the Settings rows for the people building the app (the scent knobs,
    *  the terrain wind's HD/SD, sending these settings) shown; persisted */
   devMode: boolean
@@ -448,6 +452,8 @@ export const useAppStore = create<AppState>()(
       setTextSize: (textSize) => set({ textSize }),
       outdoor: false,
       setOutdoor: (outdoor) => set({ outdoor }),
+      redLight: false,
+      setRedLight: (redLight) => set({ redLight }),
       devMode: false,
       setDevMode: (devMode) => set({ devMode }),
       devGpsTap: false,
@@ -533,6 +539,7 @@ export const useAppStore = create<AppState>()(
         leaves: s.leaves,
         textSize: s.textSize,
         outdoor: s.outdoor,
+        redLight: s.redLight,
         devMode: s.devMode,
         devGpsTap: s.devGpsTap,
         stripOpen: s.stripOpen,

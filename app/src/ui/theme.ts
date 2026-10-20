@@ -1,15 +1,24 @@
 import { useAppStore } from '../state/appStore'
 
 /**
- * The chrome's theme: the dark forest set of tokens, or Outdoor (Settings)
- * for sun on the phone. One attribute on the root; theme.css holds both.
+ * The light, the strip's light button's three stops (Gavan, 2026-10-19:
+ * "light button actually is three options - (night, day, and red mode -
+ * which shifts everything into the red spectrum)"): Night, the dark forest
+ * set of tokens; Day, Outdoor's for sun on the phone; Red, the dark set
+ * with everything, the map too, turned to red alone (theme.css). One
+ * attribute each on the root.
  */
 function apply() {
   const root = document.documentElement
-  if (useAppStore.getState().outdoor) root.dataset.theme = 'outdoor'
+  const { outdoor, redLight } = useAppStore.getState()
+  const red = redLight && !outdoor
+  if (outdoor) root.dataset.theme = 'outdoor'
   else delete root.dataset.theme
+  if (red) root.dataset.red = ''
+  else delete root.dataset.red
   const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
-  if (meta) meta.content = getComputedStyle(root).getPropertyValue('--c-bg').trim() || meta.content
+  // the phone's own bar goes black under red: its green would be the one colour left on the screen
+  if (meta) meta.content = red ? '#000000' : getComputedStyle(root).getPropertyValue('--c-bg').trim() || meta.content
 }
 
 let inited = false
@@ -19,6 +28,6 @@ export function initTheme() {
   inited = true
   apply()
   useAppStore.subscribe((s, prev) => {
-    if (s.outdoor !== prev.outdoor) apply()
+    if (s.outdoor !== prev.outdoor || s.redLight !== prev.redLight) apply()
   })
 }
