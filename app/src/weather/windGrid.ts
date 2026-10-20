@@ -278,7 +278,14 @@ export function windSampler(ms: number): WindSample | null {
   const area = grid && grid.time.length ? latticeSampler(grid, ms) : null
   const vg = viewGrid
   const view = vg && vg.time.length ? latticeSampler(vg, ms) : null
-  if (!view || !vg) return area
+  if (!view || !vg) {
+    if (!area || !grid) return area
+    // past the area's box, nothing: the map browses there, pictures and no wind
+    // (explore/index.ts viewMoved); held at its edge, the streaks drew the box's
+    // wind over a province
+    const ab = gridBox(grid)
+    return (lon, lat, out) => lon >= ab.west && lon <= ab.east && lat >= ab.south && lat <= ab.north && area(lon, lat, out)
+  }
   const vb = gridBox(vg)
   const inView = (lon: number, lat: number) => lon >= vb.west && lon <= vb.east && lat >= vb.south && lat <= vb.north
   if (!area || !grid) return (lon, lat, out) => inView(lon, lat) && view(lon, lat, out)

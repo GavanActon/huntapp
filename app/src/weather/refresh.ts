@@ -99,8 +99,14 @@ export function forecastStale(f: PointForecast | null, now = Date.now()): boolea
  *  is in (the camp first). Another area's wait until it is switched to,
  *  rather than spend the camp's few minutes of signal; saving its maps
  *  brings its home's (fetchAreaWeather). */
+/** The places whose forecasts the sweep keeps: the open area's. A pin out on
+ *  no loaded ground gets none (Gavan, 2026-10-20: forecasts come with an
+ *  intentional load); each cost a forecast and its recent days every sweep. */
 function subjects(): { lon: number; lat: number; name: string }[] {
-  return areaPlaces().map((p) => ({ lon: p.lon, lat: p.lat, name: p.name }))
+  return usePlacesStore
+    .getState()
+    .places.filter((p) => placeArea(p)?.id === ACTIVE_AREA.id)
+    .map((p) => ({ lon: p.lon, lat: p.lat, name: p.name }))
 }
 
 /** The nearest saved place of the area the app is in with a forecast in

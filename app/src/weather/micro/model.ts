@@ -1,4 +1,4 @@
-import { microFile, microHdFile, sdWindOn } from '../../config'
+import { inRegion, microFile, microHdFile, sdWindOn } from '../../config'
 import { devlog } from '../../devlog'
 import { habitat, openBandFile, PREVIEW, type Band, type BandFile, type Habitat } from '../../spots/habitatGrid'
 import { useAppStore } from '../../state/appStore'
@@ -1404,7 +1404,9 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   if (ctx.regional && ctx.regional(lon, lat, _reg)) {
     U = _reg[0]
     dirFrom = _reg[1]
-  } else if (ctx.fallback) {
+  } else if (ctx.fallback && inRegion(lon, lat)) {
+    // the camp's forecast stands in over the area alone: past its box the map browses, no wind
+    // (explore/index.ts viewMoved); it drew camp's wind over a province (2026-10-20)
     U = ctx.fallback.kmh
     dirFrom = ctx.fallback.dir
   } else return null

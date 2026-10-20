@@ -28,6 +28,9 @@ import { useTapOff } from './tapOff'
 import { useLoadProgress } from '../offline/loadProgress'
 import './strip.css'
 import Toast, { toast } from './Toast'
+import { useAreaLook } from '../areas/lookSwitch'
+import { offerHere } from '../explore'
+import { getMap } from '../map/mapController'
 
 
 /**
@@ -266,6 +269,11 @@ export default function WeatherStrip() {
   const nudge = useMapsNudge()
   const stripOpen = useAppStore((s) => s.stripOpen)
   const EXPLORE = useAppStore((s) => s.exploreMode)
+  // over no loaded location the map browses (explore/index.ts): no forecast is asked for it, so the strip
+  // folds to one line offering the load (Gavan, 2026-10-20: "when outside of the region, the weather map folds up")
+  const looking = useAreaLook((s) => s.looking)
+  const browse = !EXPLORE && !looking
+  const noWx = EXPLORE || browse
   const setStripOpen = useAppStore((s) => s.setStripOpen)
   const planTimeMs = useAppStore((s) => s.planTimeMs)
   const setPlanTime = useAppStore((s) => s.setPlanTime)
@@ -620,7 +628,7 @@ export default function WeatherStrip() {
   const head = (
     <div className={`wx-head${{ normal: '', large: ' wx-head-lg', xlarge: ' wx-head-xl' }[stripButtons]}`}>
       {/* Explore (docs/EXPLORE.md): no grids, no heat, no hours; the marks and the menu stay */}
-      {!EXPLORE && (
+      {!noWx && (
       <span className="wx-quarry" ref={heatRef}>
         <button
           className={`wx-heat${heat ? ' on' : ''}${heatMenu ? ' held' : ''}`}
@@ -663,7 +671,7 @@ export default function WeatherStrip() {
       </span>
       )}
       {/* what you are after shows only with its heat map on (Gavan, 2026-10-20: room on the row) */}
-      {!EXPLORE && heat && (
+      {!noWx && heat && (
       <span className="wx-quarry" ref={quarryRef}>
         <button className="wx-chip" onClick={() => setQuarryOpen((o) => !o)} aria-haspopup="menu" aria-expanded={quarryOpen}>
           {TARGET_NAMES[target]} <span className="dim">▾</span>
@@ -750,6 +758,10 @@ export default function WeatherStrip() {
       </span>
       {EXPLORE ? (
         <span className="wx-spacer wxstrip-empty">Explore · anywhere in Canada</span>
+      ) : browse ? (
+        <button className="wx-spacer wxstrip-empty wx-load" onClick={() => { const m = getMap(); if (m) offerHere(m) }}>
+          No forecast here · <b>Load this spot</b>
+        </button>
       ) : f ? (
         <span className="wx-spacer" />
       ) : (
@@ -757,7 +769,7 @@ export default function WeatherStrip() {
       )}
       {/* open and fold in one place, beside the ⋯ (Gavan, 2026-10-19: "make the expand for the weather strip
           always be next to the ... and the collapse"); the fold was a handle along the open strip's foot */}
-      {!EXPLORE && (
+      {!noWx && (
         <button className="wx-open" onClick={() => setStripOpen(!stripOpen)} aria-expanded={stripOpen} aria-label={stripOpen ? 'Fold the strip' : 'Open the strip'}>
           {stripOpen ? <IconChevronUp size={18} /> : <IconChevronDown size={18} />}
         </button>
@@ -781,7 +793,7 @@ export default function WeatherStrip() {
         />
       )}
       {head}
-      {f && !EXPLORE && (
+      {f && !noWx && (
         <>
           {stripOpen && (
           <div className="wxstrip-days">

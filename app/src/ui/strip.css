@@ -226,3 +226,16 @@
 .wxdetail-more .linklike:disabled {
   opacity: 0.5;
 }
+
+/* browsing past every loaded location: the strip's one line is the offer to load the spot (WeatherStrip browse) */
+.wx-load {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+.wx-load b {
+  color: var(--c-accent);
+  font-weight: 600;
+}
