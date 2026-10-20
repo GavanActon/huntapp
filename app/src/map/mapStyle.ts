@@ -751,7 +751,11 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
       },
     }
     rasters.push(
-      { id: 'area-boxes-line', type: 'line', source: 'area-boxes', paint: { 'line-color': '#1f3b1f', 'line-width': ['case', ['get', 'active'], 2, 1.2], 'line-opacity': 0.75 } },
+      // the range at a glance (Gavan, 2026-10-20: "having a box around the loaded area helps let you know
+      // where the range [is]"): a light line on a dark edge, read on the photo and the topo alike; dark
+      // green alone was lost on the forest
+      { id: 'area-boxes-casing', type: 'line', source: 'area-boxes', paint: { 'line-color': '#0d1a0d', 'line-width': ['case', ['get', 'active'], 4.5, 3], 'line-opacity': 0.45 } },
+      { id: 'area-boxes-line', type: 'line', source: 'area-boxes', paint: { 'line-color': '#e3efdc', 'line-width': ['case', ['get', 'active'], 2, 1.2], 'line-opacity': ['case', ['get', 'active'], 0.9, 0.7] } },
       {
         id: 'area-boxes-label',
         type: 'symbol',

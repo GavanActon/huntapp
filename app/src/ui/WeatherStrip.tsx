@@ -270,8 +270,8 @@ export default function WeatherStrip() {
   const nudge = useMapsNudge()
   const stripOpen = useAppStore((s) => s.stripOpen)
   const EXPLORE = useAppStore((s) => s.exploreMode)
-  // over no loaded location the map browses (explore/index.ts): no forecast is asked for it, so the strip
-  // folds to one line offering the load (Gavan, 2026-10-20: "when outside of the region, the weather map folds up")
+  // over no loaded location the map browses (explore/index.ts): the forecast's wind alone, grey, and no hours
+  // for it, so the strip folds to one line offering the load (Gavan, 2026-10-20: "when outside of the region, the weather map folds up")
   const looking = useAreaLook((s) => s.looking)
   const browse = !EXPLORE && !looking
   const noWx = EXPLORE || browse
@@ -763,7 +763,7 @@ export default function WeatherStrip() {
         <span className="wx-spacer wxstrip-empty">Explore · anywhere in Canada</span>
       ) : browse ? (
         <button className="wx-spacer wxstrip-empty wx-load" onClick={() => { const m = getMap(); if (m) offerHere(m) }}>
-          No forecast here · <b>Load this spot</b>
+          Forecast wind only · <b>Load this spot</b>
         </button>
       ) : f ? (
         <span className="wx-spacer" />

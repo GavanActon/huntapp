@@ -24,6 +24,8 @@ export interface Selected {
   lat: number
   /** the HD area this box grows (ui/grade.tsx hdOffer): its id, name, and its own ground, km² */
   extend?: { areaId: string; name: string; baseKm2: number }
+  /** a loaded location this box moves or grows (Locations' Move or resize): loading it takes that one's place */
+  replaces?: { id: string; name: string }
 }
 
 export interface Requested {

@@ -97,6 +97,22 @@ export default function LocationsSheet(): JSX.Element {
               <button className="icon-btn" aria-label={`Go to ${a.name}`} onClick={() => go(a)}>
                 <IconLocate size={16} />
               </button>
+              {a.loaded && (
+                <button
+                  className="icon-btn"
+                  aria-label={`Move or resize ${a.name}`}
+                  onClick={() => {
+                    // the box with its handles on the map, the card's Load taking this one's place (explore/BoxCard.tsx)
+                    const box = parseBoxId(a.id)
+                    if (!box) return
+                    closeSheet()
+                    const [lon, lat] = centre(box)
+                    useExplore.getState().select({ box, lon, lat, replaces: { id: a.id, name: a.name } })
+                  }}
+                >
+                  ⤢
+                </button>
+              )}
               {a.loaded && !here && (
                 <button
                   className="icon-btn"

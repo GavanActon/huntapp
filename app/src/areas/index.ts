@@ -309,10 +309,15 @@ export function otherAreaAt(lon: number, lat: number, marginDeg = 0): AreaDef | 
   return a && a.id !== ACTIVE_AREA.id ? a : null
 }
 
+/** A saved file that is one of the national SD tiles or their index: sd-v1-t-632-414.hab, sd-v1-index.json. */
+export const SD_FILE = 'sd-v1-'
+
 /** A baked file's address on the server: the data base, the area's folder,
  *  the file. Pickle Lake's folder is the data base itself, so its URLs are
  *  the ones they always were. */
 export function fileUrl(name: string, areaId: string = ACTIVE_AREA.id): string {
+  // the national SD tiles a loaded location saves (areas/runtime.ts locationFiles) live beside every area
+  if (name.startsWith(SD_FILE)) return `${DATA_BASE}sd/v1/${name.slice(SD_FILE.length)}`
   return `${DATA_BASE}${areaById(areaId)?.base ?? ''}${name}`
 }
 

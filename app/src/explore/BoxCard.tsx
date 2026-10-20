@@ -109,8 +109,10 @@ export default function BoxCard() {
   const w = words(read, tiles.length)
   const b = bounds(box)
   const [clon, clat] = centre(box)
-  // the baked areas the box reaches into, each opened on the middle of the ground they share
-  const baked = AREA_LIST.filter((a) => !a.virtual && a.region.west < b.east && a.region.east > b.west && a.region.south < b.north && a.region.north > b.south)
+  // the areas the box reaches into, each opened on the middle of the ground they share (the location it moves, if any, left out)
+  const baked = AREA_LIST.filter((a) => !a.virtual && a.id !== sel.replaces?.id && a.region.west < b.east && a.region.east > b.west && a.region.south < b.north && a.region.north > b.south)
+  // a baked area under the box holds the load back (its own wind is better); loaded spots beside it do not
+  const bakedHere = baked.some((a) => !a.loaded)
   const req = requested[id]
   // an extension grows an HD area: HD unless the grid, once read, says the new ground has no LiDAR
   const hdOk = (w.hd || (!!sel.extend && read.length === 0)) && hdFits(box)
@@ -119,7 +121,7 @@ export default function BoxCard() {
   // no request and no wait (Gavan, 2026-10-20). Over ground already loaded or baked, Open it instead
   const load = () => {
     const j = w.provs.split(',')[0]?.trim() || provinceAt(clon, clat)
-    if (!loadLocation(box, name || `Spot ${tileAt(clon, clat).id.slice(2)}`, j)) setErr('Not loaded: the app stayed where it is.')
+    if (!loadLocation(box, name || sel!.replaces?.name || `Spot ${tileAt(clon, clat).id.slice(2)}`, j, sel!.replaces?.id)) setErr('Not loaded: the app stayed where it is.')
   }
 
   async function ask(kind: 'sd' | 'hd') {
@@ -254,12 +256,12 @@ export default function BoxCard() {
           </div>
         )}
       </div>
-      {!sel.extend && !baked.length && (
+      {!sel.extend && !bakedHere && (
         <div className="boxcard-ask">
           <input type="text" placeholder="Name it (optional)" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
           <div className="boxcard-btns">
             <button className="btn btn-primary" onClick={load}>
-              Load this spot · the forecast and SD wind
+              {sel.replaces ? `Load ${sel.replaces.name} here` : 'Load this spot · the forecast and SD wind'}
             </button>
           </div>
         </div>

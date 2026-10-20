@@ -356,6 +356,10 @@ interface FieldGrid {
   inkLum: Float32Array | null
   /** how hard the eddies turn in each cell, css px/s; 0 where the air runs straight */
   swirl: Float32Array | null
+  /** 1 where the wind drawn is the forecast's alone (HRDPS, no ground model): its streaks go grey,
+   *  so the quality reads at a glance (Gavan, 2026-10-20: "a colour difference for the wind ...
+   *  clear difference from SD wind so you know the quality at a glance"); null when none is */
+  coarse: Float32Array | null
 }
 
 // ---------------------------------------------------------------- swirl
@@ -517,6 +521,10 @@ function sampleSwirl(g: SwirlGrid, x: number, y: number, phase: number, out: Flo
  *  (a lake in the elevation colours), dark ink over a pale one (the grey
  *  LiDAR shade, the topo sheet, the relief's land). */
 const TONES = 3
+/** the wind's two qualities as drawn: the ground model's (SD, HD), the forecast's alone (HRDPS) */
+const QUALITIES = 2
+/** the forecast-alone streaks' alpha against the ground model's */
+const COARSE_ALPHA = 0.8
 const TONE_LIGHT = 0
 const TONE_BRIGHT = 1
 const TONE_DARK = 2
@@ -698,6 +706,8 @@ function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
   const ground = useAppStore.getState().windLevel === 'ground' && microGrid() ? groundSampler(atMs) : null
   const wind = windSampler(atMs)
   const out = new Float32Array(4)
+  const coarse = new Float32Array(cols * rows)
+  let anyCoarse = false
   // a map turned heading up turns the screen: a true bearing shows turned back by the map's
   const turn = (map.getBearing() * Math.PI) / 180
   const cb = Math.cos(turn)
@@ -706,7 +716,19 @@ function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const ll = map.unproject([c * FIELD_STEP, r * FIELD_STEP])
-        if (!ground(ll.lng, ll.lat, out)) continue
+        if (!ground(ll.lng, ll.lat, out)) {
+          // past the ground model's box: the forecast's wind where there is one (browsing), grey
+          if (wind && wind(ll.lng, ll.lat, out)) {
+            const rad = ((out[1] + 180) * Math.PI) / 180 - turn
+            const pxps = Math.min(220, Math.max(8, out[0] * 0.54 * 4.5 * speedMul))
+            vx[r * cols + c] = Math.sin(rad) * pxps
+            vy[r * cols + c] = -Math.cos(rad) * pxps
+            coarse[r * cols + c] = 1
+            anyCoarse = true
+            live = true
+          }
+          continue
+        }
         const kmh = Math.hypot(out[0], out[1]) * 3.6
         if (kmh < 0.05) continue
         const pxps = Math.min(220, Math.max(6, kmh * 0.54 * 4.5 * 2.2 * speedMul))
@@ -729,12 +751,14 @@ function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
         const pxps = Math.min(220, Math.max(8, out[0] * 0.54 * 4.5 * speedMul))
         vx[r * cols + c] = Math.sin(rad) * pxps
         vy[r * cols + c] = -Math.cos(rad) * pxps
+        coarse[r * cols + c] = 1
+        anyCoarse = true
         live = true
       }
     }
   }
   // the forecast field carries no spread, so no eddies at that level
-  return { step: FIELD_STEP, cols, rows, vx, vy, live, lum: null, inkLum: null, swirl: ground ? boxBlur(swirl, cols, rows, SWIRL_BLUR, null) : null }
+  return { step: FIELD_STEP, cols, rows, vx, vy, live, lum: null, inkLum: null, swirl: ground ? boxBlur(swirl, cols, rows, SWIRL_BLUR, null) : null, coarse: anyCoarse ? coarse : null }
 }
 
 function sampleField(f: FieldGrid, x: number, y: number, out: Float32Array): void {
@@ -847,7 +871,8 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
   const px = new Float32Array(N)
   const py = new Float32Array(N)
   const vel = new Float32Array(2)
-  const bands: Path2D[] = new Array(ALPHA_BANDS * TONES)
+  // by quality (the ground model's, the forecast's alone: QUALITIES), ink and speed
+  const bands: Path2D[] = new Array(ALPHA_BANDS * TONES * QUALITIES)
   const age = new Float32Array(N)
   const life = new Float32Array(N)
   const jitter = Float32Array.from({ length: N }, () => (Math.random() * 2 - 1) * INK_JITTER)
@@ -993,7 +1018,7 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
     ctx.setTransform(dpr * M.a, dpr * M.b, dpr * M.c, dpr * M.d, dpr * M.e, dpr * M.f)
 
     const level = opts.level() * Math.min(1, (now - born) / 900) * zoomFade(map.getZoom())
-    for (let b = 0; b < ALPHA_BANDS * TONES; b++) bands[b] = new Path2D()
+    for (let b = 0; b < ALPHA_BANDS * TONES * QUALITIES; b++) bands[b] = new Path2D()
     // until the map under the field has been read: dark ink on a pale base
     // (topo, the elevation colours, the shade alone), light over the rest
     const ly = useAppStore.getState().layers
@@ -1028,7 +1053,8 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
       const band = Math.min(ALPHA_BANDS - 1, ((spd / 130) * ALPHA_BANDS) | 0)
       let tone = fallback
       if (inks) tone = toneOf(cellLerp(field, inks, px[i] - fieldOff.x, py[i] - fieldOff.y) + jitter[i])
-      const path = bands[tone * ALPHA_BANDS + band]
+      const q = field.coarse && cellLerp(field, field.coarse, px[i] - fieldOff.x, py[i] - fieldOff.y) > 0.5 ? 1 : 0
+      const path = bands[(q * TONES + tone) * ALPHA_BANDS + band]
       path.moveTo(px[i], py[i])
       path.lineTo(nx, ny)
       px[i] = nx
@@ -1038,16 +1064,18 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
     // the same hue in three inks: light, brighter, and a dark one that
     // reads on pale ground; the Contrast look's one white
     const look = LOOKS[tune.windStyle] ?? LOOKS.standard
-    for (let tone = 0; tone < TONES; tone++) {
-      const light = tone === TONE_DARK ? look.ink.dark : tone === TONE_BRIGHT ? look.ink.bright : look.ink.light
-      const sat = look.white ? 0 : tone === TONE_DARK ? 90 : tone === TONE_BRIGHT ? Math.round(tune.windSat * 0.7) : tune.windSat
-      const boost = look.white ? 1 : tone === TONE_DARK ? 1.25 : tone === TONE_BRIGHT ? 1.1 : 1
-      for (let b = 0; b < ALPHA_BANDS; b++) {
-        const alpha = (look.floor + ((b + 0.5) / ALPHA_BANDS) * look.span) * level * boost
-        ctx.strokeStyle = `hsla(${tune.windHue}, ${sat}%, ${light}%, ${Math.min(1, alpha)})`
-        ctx.stroke(bands[tone * ALPHA_BANDS + b])
+    for (let q = 0; q < QUALITIES; q++)
+      for (let tone = 0; tone < TONES; tone++) {
+        const light = tone === TONE_DARK ? look.ink.dark : tone === TONE_BRIGHT ? look.ink.bright : look.ink.light
+        // the forecast's wind alone (q 1): no hue, a little fainter, so it never reads as the ground model's
+        const sat = q || look.white ? 0 : tone === TONE_DARK ? 90 : tone === TONE_BRIGHT ? Math.round(tune.windSat * 0.7) : tune.windSat
+        const boost = (look.white ? 1 : tone === TONE_DARK ? 1.25 : tone === TONE_BRIGHT ? 1.1 : 1) * (q ? COARSE_ALPHA : 1)
+        for (let b = 0; b < ALPHA_BANDS; b++) {
+          const alpha = (look.floor + ((b + 0.5) / ALPHA_BANDS) * look.span) * level * boost
+          ctx.strokeStyle = `hsla(${tune.windHue}, ${sat}%, ${light}%, ${Math.min(1, alpha)})`
+          ctx.stroke(bands[(q * TONES + tone) * ALPHA_BANDS + b])
+        }
       }
-    }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     raf = requestAnimationFrame(frame)
   }

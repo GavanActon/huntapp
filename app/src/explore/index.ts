@@ -28,12 +28,6 @@ export function setExplore(on: boolean): void {
   devlog('explore', on ? 'on' : 'off')
 }
 
-/** Past every loaded location the map browses: it streams pictures and asks
- *  for no forecast (Gavan, 2026-10-20: "high level streaming, then tied to an
- *  intentional load which brings in the hrdps wind etc."); the strip says so
- *  and offers the load. The old lattice over the view stays on dev builds
- *  behind ?browse=live, for comparison. */
-const LIVE_BROWSE = (import.meta.env.DEV || !!import.meta.env.VITE_DEV_SITE) && new URLSearchParams(location.search).get('browse') === 'live'
 
 /** Load this spot, the strip's offer while browsing: the box goes round the
  *  view and its card asks (explore/BoxCard.tsx), as a tap outside the areas
@@ -44,10 +38,13 @@ export function offerHere(m: MlMap): void {
 }
 
 /** The wind lattice follows the view: the area's own lattice while the
- *  whole view is inside its box (kept on the phone for camp); past it, only
- *  with ?browse=live (above), one over everything on screen, in memory only
- *  (weather/windGrid.ts setWindView). Corner to corner, so a map turned
- *  heading up is covered. */
+ *  whole view is inside its box (kept on the phone for camp); past it, one
+ *  over everything on screen, in memory only (weather/windGrid.ts
+ *  setWindView): browsing past the loaded locations draws the forecast's
+ *  wind alone, grey (weather/windFlow.ts coarse), the ground model's only
+ *  where a location is loaded (Gavan, 2026-10-20: "might also be worth
+ *  adding the HRDPS ... a colour difference"). Corner to corner, so a map
+ *  turned heading up is covered. */
 export function viewMoved(m: MlMap): void {
   const el = m.getContainer()
   const corners = [
@@ -63,7 +60,7 @@ export function viewMoved(m: MlMap): void {
     north: Math.max(...corners.map((c) => c.lat)),
   }
   const inside = view.west >= REGION.west && view.east <= REGION.east && view.south >= REGION.south && view.north <= REGION.north
-  setWindView(inside || !LIVE_BROWSE ? null : view)
+  setWindView(inside ? null : view)
 }
 
 /** A tap outside every baked box puts the box down round it (10 km a

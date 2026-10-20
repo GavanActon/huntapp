@@ -1,4 +1,5 @@
 import { bounds, centre, parseBoxId } from '../explore/box'
+import { LAT0, LON0, TILE_H, TILE_W } from '../explore/lattice'
 import { declinationAt } from './declination'
 import type { AreaDef } from './index'
 
@@ -123,6 +124,21 @@ export function locationArea(l: Location): AreaDef | null {
     bake: { wind: 'sd' },
     loaded: 'box',
   }
+}
+
+/** The files a loaded location saves for no signal: the national SD tiles any view in it
+ *  stitches (weather/micro/windTiles.ts takes the 2×2 block nearest the view's centre, so every
+ *  block a centre in the region can pick) and their index. Named sd-v1-… (areas/index.ts SD_FILE);
+ *  tiles not baked yet are skipped by the download, as a file the server lacks is. */
+export function locationFiles(a: AreaDef): string[] {
+  const r = a.region
+  const i0 = Math.round((r.west - LON0) / TILE_W) - 1
+  const i1 = Math.round((r.east - LON0) / TILE_W)
+  const j0 = Math.round((LAT0 - r.north) / TILE_H) - 1
+  const j1 = Math.round((LAT0 - r.south) / TILE_H)
+  const out: string[] = []
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) out.push(`sd-v1-t-${i}-${j}.hab`)
+  return [...out, 'sd-v1-index.json']
 }
 
 /** A location the address names that this phone has not kept: a shared

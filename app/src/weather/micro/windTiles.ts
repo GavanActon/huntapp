@@ -1,5 +1,6 @@
 import type { Map as MlMap } from 'maplibre-gl'
-import { ACTIVE_AREA, DATA_BASE } from '../../areas'
+import { ACTIVE_AREA, DATA_BASE, SD_FILE } from '../../areas'
+import { getStoredFile } from '../../offline/fileStore'
 import { REGION } from '../../config'
 import { devlog } from '../../devlog'
 import { STREAM_PICTURES } from '../../map/streamPictures'
@@ -54,9 +55,16 @@ interface Tile {
   data: Map<string, Band>
 }
 
+/** The index from the server, else the copy a saved location keeps (no signal: areas/runtime.ts locationFiles). */
 const fetchIndex = () =>
   fetch(`${BASE}index.json`)
     .then((r) => (r.ok ? (r.json() as Promise<Index>) : null))
+    .catch(() => null)
+    .then(async (idx) => {
+      if (idx) return idx
+      const kept = await getStoredFile(`${SD_FILE}index.json`)
+      return kept ? ((JSON.parse(await kept.text()) as Index) ?? null) : null
+    })
     .catch(() => null)
 
 let indexP: Promise<Index | null> | null = null
@@ -108,8 +116,9 @@ function fetchTile(id: string, bytes: number): Promise<ArrayBuffer | null> {
   const key = `${id}?b=${bytes}`
   let p = packed.get(key)
   if (!p) {
-    const fetched: Promise<ArrayBuffer | null> = fetch(`${BASE}${id}.hab?b=${bytes}`)
-      .then((r) => (r.ok ? r.arrayBuffer() : null))
+    // a saved location's copy first (no signal in the bush), else the server's
+    const fetched: Promise<ArrayBuffer | null> = getStoredFile(`${SD_FILE}${id}.hab`)
+      .then((kept) => (kept ? kept.arrayBuffer() : fetch(`${BASE}${id}.hab?b=${bytes}`).then((r) => (r.ok ? r.arrayBuffer() : null))))
       .catch(() => null)
     // a miss (a 5xx or a timeout from the edge) is not kept: the next block that needs the
     // tile asks again. Kept, one bad answer left the tile blank for the page's life, the

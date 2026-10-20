@@ -2,6 +2,7 @@
 // area's (areas/index.ts). A new hunting area = a new app/src/areas/<id>.json
 // plus a pipeline run (docs/AREAS.md).
 import { ACTIVE_AREA, AREA_LIST, DEFAULT_AREA, type AreaDef } from './areas'
+import { locationFiles } from './areas/runtime'
 import { manifestGet } from './offline/fileStore'
 import { hdInstalled } from './state/grade'
 import { terrainWind } from './state/terrainWind'
@@ -281,6 +282,8 @@ export interface BundleDef {
 /** An area's offline bundle: every file of it the app reads, by name. HD's
  *  own files only where HD is installed on this phone: Install fetches them. */
 function bundleOf(a: AreaDef): BundleDef {
+  // a loaded location (areas/runtime.ts): nothing baked of its own, the national SD tiles under it
+  if (a.loaded) return { id: a.id, name: a.name, description: a.bundle.description, files: locationFiles(a) }
   const notHd = areaGrade(a) === 'hd' && !hdInstalled(a.id) ? new Set(hdFiles(a).map((f) => f.file)) : null
   const b: BundleDef = {
     id: a.id,
