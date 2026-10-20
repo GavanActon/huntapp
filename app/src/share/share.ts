@@ -1,4 +1,4 @@
-import { track } from '../analytics'
+import { track, areaWord } from '../analytics'
 import { areaAt, type AreaDef } from '../areas'
 import { DROPPED_NAME } from '../map/placePopup'
 import { areaLink, areaMessage, spotLink, spotMessage, type LonLat } from './link'
@@ -14,7 +14,10 @@ import { areaLink, areaMessage, spotLink, spotMessage, type LonLat } from './lin
 /** Where the app's links point: the deployed site, never this page's own
  *  address (a share from the dev server would send a LAN address).
  *  VITE_SHARE_BASE for a build that wants its own. */
-export const SHARE_BASE: string = import.meta.env.VITE_SHARE_BASE ?? 'https://hunt.groundwind.app/'
+// the dev site's links open the dev site: live may not know what they name yet (a loaded spot, 2026-10-20)
+export const SHARE_BASE: string = import.meta.env.VITE_SHARE_BASE ?? (import.meta.env.VITE_DEV_SITE ? `${location.origin}/` : 'https://hunt.groundwind.app/')
+/** A loaded location's name and province for a link (areas/runtime.ts addressLocation), none for a baked area. */
+const locationWords = (a: AreaDef | null | undefined): Record<string, string> => (a?.loaded ? { name: a.name, j: a.jurisdiction } : {})
 
 export type ShareResult = 'shared' | 'copied' | 'cancelled' | 'failed'
 
@@ -46,7 +49,7 @@ export function shareSpot(s: LonLat & { name?: string | null }): Promise<ShareRe
   const name = s.name && s.name !== DROPPED_NAME ? s.name : null
   const area = areaAt(s.lon, s.lat)
   const msg = spotMessage({ lon: s.lon, lat: s.lat, name, areaName: area?.name })
-  return shareOrCopy({ ...msg, url: spotLink(SHARE_BASE, { lon: s.lon, lat: s.lat, area: area?.id, name }) }).then((r) => {
+  return shareOrCopy({ ...msg, url: spotLink(SHARE_BASE, { lon: s.lon, lat: s.lat, area: area?.id, name, words: locationWords(area) }) }).then((r) => {
     track('share', { what: 'spot', result: r, named: !!name })
     return r
   })
@@ -54,8 +57,8 @@ export function shareSpot(s: LonLat & { name?: string | null }): Promise<ShareRe
 
 /** Share an area: the link opens on the reader's own last view there, else its home. */
 export function shareArea(a: AreaDef): Promise<ShareResult> {
-  return shareOrCopy({ ...areaMessage(a.name), url: areaLink(SHARE_BASE, a.id) }).then((r) => {
-    track('share', { what: 'area', result: r, area: a.id })
+  return shareOrCopy({ ...areaMessage(a.name), url: areaLink(SHARE_BASE, a.id, locationWords(a)) }).then((r) => {
+    track('share', { what: 'area', result: r, area: areaWord(a) })
     return r
   })
 }

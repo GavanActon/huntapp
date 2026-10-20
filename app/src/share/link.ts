@@ -90,17 +90,18 @@ export function readLink(href: string): LinkParts {
 const f5 = (n: number) => n.toFixed(5)
 
 /** An area's link: it opens on the reader's own last view there, else the area's home. */
-export function areaLink(base: string, areaId: string): string {
+export function areaLink(base: string, areaId: string, words: Record<string, string> = {}): string {
   const u = new URL(base)
-  u.search = new URLSearchParams({ area: areaId }).toString()
+  // a loaded location's name and province ride along (areas/runtime.ts addressLocation makes it from them)
+  u.search = new URLSearchParams({ area: areaId, ...words }).toString()
   u.hash = ''
   return u.toString()
 }
 
 /** A spot's link: the area in the query, the point and its name in the fragment. */
-export function spotLink(base: string, s: LonLat & { area?: string | null; name?: string | null; z?: number }): string {
+export function spotLink(base: string, s: LonLat & { area?: string | null; name?: string | null; z?: number; words?: Record<string, string> }): string {
   const u = new URL(base)
-  u.search = s.area ? new URLSearchParams({ area: s.area }).toString() : ''
+  u.search = s.area ? new URLSearchParams({ area: s.area, ...(s.words ?? {}) }).toString() : ''
   const h = new URLSearchParams()
   h.set('at', `${f5(s.lat)},${f5(s.lon)}`)
   if (s.z != null) h.set('z', String(Math.round(s.z)))

@@ -200,8 +200,15 @@ export const AREAS: Readonly<Record<string, AreaDef>> = Object.fromEntries(defs.
  *  once, so a switch to one goes; in the list from the next start. */
 const loadedNow = new Map<string, AreaDef>()
 
+/** Locations removed since the app started: gone from the lookup and the boxes now (the list is the start's). */
+const removedNow = new Set<string>()
+export function forgetArea(id: string): void {
+  removedNow.add(id)
+  loadedNow.delete(id)
+}
+
 export function areaById(id: string | null | undefined): AreaDef | null {
-  if (id == null) return null
+  if (id == null || removedNow.has(id)) return null
   return Object.hasOwn(AREAS, id) ? AREAS[id] : (loadedNow.get(id) ?? null)
 }
 
@@ -296,6 +303,7 @@ export function areaAt(lon: number, lat: number, marginDeg = 0): AreaDef | null 
   for (const a of AREA_LIST) {
     // Explore's box is the country: it holds a point only while the app is in it
     if (a.virtual && a.id !== ACTIVE_AREA.id) continue
+    if (removedNow.has(a.id)) continue
     const r = a.region
     if (lon >= r.west - marginDeg && lon <= r.east + marginDeg && lat >= r.south - marginDeg && lat <= r.north + marginDeg) return a
   }

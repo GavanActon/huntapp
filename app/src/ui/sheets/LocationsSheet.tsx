@@ -7,9 +7,9 @@ import { boxAround } from '../../explore/box'
 import { useExplore } from '../../explore/store'
 import { parseBoxId, centre } from '../../explore/box'
 import { checkAsks, stageWords } from '../../explore/requests'
-import { areaById } from '../../areas'
+import { areaById, forgetArea } from '../../areas'
 import { getMap } from '../../map/mapController'
-import { useDownloads } from '../../offline/downloads'
+import { removeFiles, useDownloads } from '../../offline/downloads'
 import { bundleOf, keepsArea } from '../../offline/updates'
 import { shareArea } from '../../share/share'
 import { useAppStore } from '../../state/appStore'
@@ -119,7 +119,11 @@ export default function LocationsSheet(): JSX.Element {
                   aria-label={`Remove ${a.name}`}
                   onClick={() => {
                     if (!confirm(`Remove ${a.name} from your locations?`)) return
+                    // its saved maps go with it, but for the tiles a neighbouring spot still uses (removeFiles)
+                    const files = bundleOf(a.id)?.files ?? []
                     dropLocation(a.id)
+                    if (files.length) void removeFiles(files, a.id)
+                    forgetArea(a.id)
                     setDropped((d) => [...d, a.id])
                   }}
                 >

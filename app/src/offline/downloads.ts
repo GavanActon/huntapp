@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { ACTIVE_AREA, areaById, fileUrl } from '../areas'
+import { locationFiles, readLocations } from '../areas/runtime'
 import { useAppStore } from '../state/appStore'
 import { flushTrackSave } from '../tracking/trackStore'
 import { carryPlaced } from '../weather/micro/scent'
@@ -143,9 +144,23 @@ export async function downloadFiles(files: string[], replace = false, areaId: st
   }
 }
 
+/** The SD files (sd-v1-…) the other kept loaded spots list: not this area's alone to remove. */
+export function sharedSdFiles(areaId: string): Set<string> {
+  const out = new Set<string>()
+  for (const l of readLocations()) {
+    if (l.id === areaId) continue
+    const a = areaById(l.id)
+    if (a) for (const f of locationFiles(a)) out.add(f)
+  }
+  return out
+}
+
 /** Take these files of the area off the phone; the area the app is in goes back to the live services on the reload. */
 export async function removeFiles(files: string[], areaId: string = ACTIVE_AREA.id): Promise<void> {
-  for (const f of files) await deleteStoredFile(f)
+  // the national SD tiles and their index are shared by loaded spots side by side: one another kept
+  // spot still lists stays (removing one spot's maps took most of its neighbour's, 2026-10-20 review)
+  const shared = sharedSdFiles(areaId)
+  for (const f of files) if (!shared.has(f)) await deleteStoredFile(f)
   await removeSharp(areaId)
   useDownloads.setState({ storedAt: Date.now(), error: null, skipped: [], areaId })
   afterChange(areaId)

@@ -2178,12 +2178,15 @@ export function groundForScoring(ms: number, lon: number, lat: number, full = fa
  *  wind at all to start from. */
 export type GroundSampler = (lon: number, lat: number, out: Float32Array) => boolean
 export const SAMPLE_N = 16
-export function groundSampler(ms: number): GroundSampler | null {
+export function groundSampler(ms: number, offGrid = true): GroundSampler | null {
   const ctx = makeCtx(ms)
   if (!ctx.regional && !ctx.fallback) return null
   return (lon, lat, out) => {
     const ev = evaluate(ctx, lon, lat, false)
-    if (!ev) return false
+    // off the grid evaluate still answers, an open-ground guess: a cone running past the edge keeps
+    // going on it, but the map's streaks draw the forecast's own grey there (windFlow.ts coarse), not
+    // a guess dressed as the ground model's (offGrid false)
+    if (!ev || (!offGrid && !ev.inGrid)) return false
     out[0] = ev.e / 3.6
     out[1] = ev.n / 3.6
     out[2] = ev.sigma

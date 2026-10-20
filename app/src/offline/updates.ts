@@ -119,6 +119,9 @@ export function bundleOnServer(files: string[], areaId: string = ACTIVE_AREA.id)
  *  grid kept from a view (auto, spots/habitatGrid.ts) does not count: a
  *  phone that never asked to save the area is not told the rest is new. */
 export function keepsArea(b: BundleDef): boolean {
+  // a loaded spot's files are the national SD tiles its neighbours share, and one index: kept means
+  // every tile of its own there (a neighbour's save counts, the index alone does not)
+  if (areaById(b.id)?.loaded) return b.files.some((f) => f.endsWith('.hab') && manifestGet(f) != null) && offlineReady(b.id)
   return b.files.some((f) => {
     const i = manifestGet(f)
     return i != null && !i.auto

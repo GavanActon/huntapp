@@ -1,3 +1,4 @@
+import { useExplore } from '../explore/store'
 import type { Map as MlMap } from 'maplibre-gl'
 import { create } from 'zustand'
 import { devlog } from '../devlog'
@@ -96,6 +97,8 @@ onEachMap((m) => {
     // in the open area's own box (boxes can overlap) the view is where it should be
     const target = m.getZoom() >= MIN_ZOOM && !inBox(ACTIVE_AREA.region, c.lng, c.lat) ? otherAreaAt(c.lng, c.lat) : null
     const waiting = useAreaLook.getState().waiting
+    // a box being placed or moved (its card up): the reload would throw it away mid-edit
+    if (target && useExplore.getState().selected) return
     if (!target) {
       if (waiting) useAreaLook.setState({ waiting: null })
       return

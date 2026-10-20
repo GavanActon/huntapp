@@ -261,9 +261,12 @@ export default function BoxCard() {
           <input type="text" placeholder="Name it (optional)" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
           <div className="boxcard-btns">
             <button className="btn btn-primary" onClick={load}>
-              {sel.replaces ? `Load ${sel.replaces.name} here` : 'Load this spot · the forecast and SD wind'}
+              {/* just the word (Gavan, 2026-10-20: "don't say free - just load") */}
+              {sel.replaces ? `Load ${sel.replaces.name} here` : 'Load this spot'}
             </button>
           </div>
+          {/* a load that did not go says so here: the HD block below may not be drawn at all */}
+          {err && !(hdOk || w.hd) && <div className="boxcard-err">{err}</div>}
         </div>
       )}
       {/* HD is the ask now (SD loads above): the email only with an HD button or its size note */}

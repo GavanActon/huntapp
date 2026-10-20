@@ -1,3 +1,4 @@
+import { areaById } from '../areas'
 /**
  * What gets used, read off the stores (analytics.ts sends it): a sheet or
  * a card opened and how long it stayed, a layer or a setting changed, a
@@ -9,7 +10,7 @@
  * Sliders and drags settle first: one event for where they came to rest.
  */
 
-import { countMap, countTap, setUserNames, track, trackTime, type Props } from '../analytics'
+import { countMap, countTap, setUserNames, track, trackTime, type Props, areaWord } from '../analytics'
 import { useHunting } from '../hunting/hunting'
 import { useHuntLog } from '../log/huntLog'
 import { onEachMap, onFirstIdle } from '../map/mapController'
@@ -237,8 +238,10 @@ function watchPhone() {
     }
   })
   useDownloads.subscribe((s, p) => {
-    if (s.active && !p.active) track('download_start', { area: s.areaId, files: s.fileCount, mb: s.total / 1e6 })
-    if (!s.active && p.active) track('download', { area: p.areaId, files: p.fileCount, done: s.fileIdx, mb: s.total / 1e6, ok: !s.error, skipped: s.skipped.length })
+    // a loaded location's id is its box, a position: the stats get 'box' (analytics.ts areaWord)
+    const word = (id: string | null | undefined) => (id ? areaWord(areaById(id) ?? { id }) : id)
+    if (s.active && !p.active) track('download_start', { area: word(s.areaId), files: s.fileCount, mb: s.total / 1e6 })
+    if (!s.active && p.active) track('download', { area: word(p.areaId), files: p.fileCount, done: s.fileIdx, mb: s.total / 1e6, ok: !s.error, skipped: s.skipped.length })
   })
   useAppUpdate.subscribe((s, p) => {
     if (s.ready && !p.ready) track('update_ready', { latest: s.latest })

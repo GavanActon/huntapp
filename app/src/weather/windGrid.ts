@@ -296,7 +296,9 @@ export function windSampler(ms: number): WindSample | null {
   return (lon, lat, out) => {
     // how deep inside the area's box, 0 at its edge, 1 past the band
     const d = Math.min((lon - ab.west) / mx, (ab.east - lon) / mx, (lat - ab.south) / my, (ab.north - lat) / my)
-    if (d >= 1 || !inView(lon, lat)) return area(lon, lat, out)
+    if (d >= 1) return area(lon, lat, out)
+    // past both the area's box and the view's lattice: nothing, not the box's edge wind held over the country
+    if (!inView(lon, lat)) return d > 0 && area(lon, lat, out)
     if (d <= 0) return view(lon, lat, out)
     if (!area(lon, lat, out)) return view(lon, lat, out)
     if (!view(lon, lat, o2)) return true

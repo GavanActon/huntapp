@@ -1,6 +1,6 @@
 import type { Map as MlMap } from 'maplibre-gl'
 import { ACTIVE_AREA, DATA_BASE, SD_FILE } from '../../areas'
-import { getStoredFile } from '../../offline/fileStore'
+import { getStoredFile, putStoredFile } from '../../offline/fileStore'
 import { REGION } from '../../config'
 import { devlog } from '../../devlog'
 import { STREAM_PICTURES } from '../../map/streamPictures'
@@ -55,17 +55,27 @@ interface Tile {
   data: Map<string, Band>
 }
 
-/** The index from the server, else the copy a saved location keeps (no signal: areas/runtime.ts locationFiles). */
-const fetchIndex = () =>
+const netIndex = () =>
   fetch(`${BASE}index.json`)
     .then((r) => (r.ok ? (r.json() as Promise<Index>) : null))
     .catch(() => null)
-    .then(async (idx) => {
-      if (idx) return idx
-      const kept = await getStoredFile(`${SD_FILE}index.json`)
-      return kept ? ((JSON.parse(await kept.text()) as Index) ?? null) : null
-    })
+const keptIndex = () =>
+  getStoredFile(`${SD_FILE}index.json`)
+    .then(async (kept) => (kept ? ((JSON.parse(await kept.text()) as Index) ?? null) : null))
     .catch(() => null)
+
+/** The index a saved location keeps (areas/runtime.ts locationFiles) at once, the server's read
+ *  after it (refreshIndex, on the next minute's tick): on a weak signal a saved spot had no ground
+ *  wind while the index hung, every tile on the phone (the review, 2026-10-20). No copy kept: the
+ *  server's. */
+const fetchIndex = async (): Promise<Index | null> => {
+  const kept = await keptIndex()
+  if (kept) {
+    indexAt = 0
+    return kept
+  }
+  return netIndex()
+}
 
 let indexP: Promise<Index | null> | null = null
 let indexAt = 0
@@ -90,7 +100,7 @@ const REFRESH_MS = 10 * 60_000
 async function refreshIndex(map: MlMap): Promise<void> {
   indexAt = Date.now()
   const prev = await (indexP ?? Promise.resolve(null))
-  const idx = await fetchIndex()
+  const idx = await netIndex()
   if (!idx) return
   indexP = Promise.resolve(idx)
   const added = Object.keys(idx.tiles).filter((id) => !prev || !(id in prev.tiles))
@@ -107,18 +117,32 @@ async function refreshIndex(map: MlMap): Promise<void> {
   }
 }
 
-// the tiles' files as they came, a few dozen: unpacked again when a block needs them
+// the tiles' files as they came, unpacked again when a block needs them: a block's four and a
+// step's worth past them. Each is ~3 MB packed, 13 MB unpacked (92 bands); 24 kept with a block
+// being stitched put an iPhone near 200 MB (the review, 2026-10-20)
 const packed = new Map<string, Promise<ArrayBuffer | null>>()
-const KEEP = 24
+const KEEP = 8
 function fetchTile(id: string, bytes: number): Promise<ArrayBuffer | null> {
   // the size in the address: a tile sent again (its stand bands added, 2026-10-16) is a new file
   // to the edge's cache and to this one, the index (never cached) saying which
   const key = `${id}?b=${bytes}`
   let p = packed.get(key)
   if (!p) {
-    // a saved location's copy first (no signal in the bush), else the server's
-    const fetched: Promise<ArrayBuffer | null> = getStoredFile(`${SD_FILE}${id}.hab`)
-      .then((kept) => (kept ? kept.arrayBuffer() : fetch(`${BASE}${id}.hab?b=${bytes}`).then((r) => (r.ok ? r.arrayBuffer() : null))))
+    // a saved location's copy first (no signal in the bush), else the server's; a saved copy the
+    // index sizes differently (the tile baked again) is fetched again with signal and replaces it
+    const name = `${SD_FILE}${id}.hab`
+    const fetched: Promise<ArrayBuffer | null> = getStoredFile(name)
+      .then(async (kept) => {
+        if (kept && (kept.size === bytes || !navigator.onLine)) return kept.arrayBuffer()
+        const net = await fetch(`${BASE}${id}.hab?b=${bytes}`)
+          .then((r) => (r.ok ? r.arrayBuffer() : null))
+          .catch(() => null)
+        if (net && kept) {
+          void putStoredFile(name, new Blob([net]))
+          devlog('wind', `SD tile ${id} baked again: the saved copy replaced`)
+        }
+        return net ?? (kept ? kept.arrayBuffer() : null)
+      })
       .catch(() => null)
     // a miss (a 5xx or a timeout from the edge) is not kept: the next block that needs the
     // tile asks again. Kept, one bad answer left the tile blank for the page's life, the
@@ -324,7 +348,7 @@ export function initWindTiles(map: MlMap): void {
   // the dev site: the ground wind at a point (m/s east, north), for checks from outside
   if (import.meta.env.DEV || import.meta.env.VITE_DEV_SITE)
     (window as unknown as { __groundAt?: unknown }).__groundAt = (lon: number, lat: number) => {
-      const s = groundSampler(Date.now())
+      const s = groundSampler(Date.now(), false)
       const out = new Float32Array(12)
       return s && s(lon, lat, out) ? [out[0], out[1], out[2]] : null
     }

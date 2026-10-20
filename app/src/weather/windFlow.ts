@@ -168,7 +168,7 @@ let washJob = 0
 /** Paint the wash for the view as it is now, at the air of `atMs`: the
  *  ground model's head-height wind, or the forecast's, as the streaks are. */
 function paintWash(map: MlMap, atMs: number) {
-  const ground = useAppStore.getState().windLevel === 'ground' && microGrid() ? groundSampler(atMs) : null
+  const ground = useAppStore.getState().windLevel === 'ground' && microGrid() ? groundSampler(atMs, false) : null
   const wind = ground ? null : windSampler(atMs)
   if (!ground && !wind) return removeWash(map)
   const job = ++washJob
@@ -706,7 +706,7 @@ function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
   const speedMul = useAppStore.getState().flowTuning.windSpeed
   // at ground level: the head-height model (drainage, shelter, breezes),
   // slow air drawn a little faster so a creeping drainage still reads
-  const ground = useAppStore.getState().windLevel === 'ground' && microGrid() ? groundSampler(atMs) : null
+  const ground = useAppStore.getState().windLevel === 'ground' && microGrid() ? groundSampler(atMs, false) : null
   const wind = windSampler(atMs)
   const out = new Float32Array(4)
   const coarse = new Float32Array(cols * rows)
