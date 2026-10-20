@@ -82,27 +82,33 @@
 }
 
 /* what a strip button just did (ui/Toast.tsx): under the strip, over the
-   card beneath, in and out by itself */
+   card beneath, in and out by itself. Quiet, and in the strip's own glass
+   and outline (gold with it in HD, ui/grade.css) so it reads as the strip's */
 .toast {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 4px);
   left: 50%;
   z-index: 3;
   max-width: calc(100% - 16px);
-  padding: 7px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--c-border-strong);
-  background: var(--c-surface-heavy);
-  color: var(--c-text);
-  font-size: calc(13.5px * var(--ui-scale));
-  font-weight: 650;
+  padding: 4px 10px;
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+  border: 1px solid var(--c-border);
+  color: var(--c-text-dim);
+  font-size: calc(12px * var(--ui-scale));
+  font-weight: 550;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
   pointer-events: none;
   transform: translateX(-50%);
   animation: toast-life linear both;
+}
+:root[data-hdview] .toast {
+  border-color: var(--c-hd);
+  box-shadow: 0 0 0 1px var(--c-hd);
 }
 @keyframes toast-life {
   0% {
