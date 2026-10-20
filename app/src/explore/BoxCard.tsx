@@ -5,7 +5,7 @@ import { switchArea } from '../areas/switch'
 import { loadLocation } from '../areas/load'
 import { provinceAt } from '../areas/runtime'
 import { sdIndex } from '../weather/micro/windTiles'
-import { devlog } from '../devlog'
+import { devlog, installId } from '../devlog'
 import { withMap } from '../map/mapController'
 import { usePlacesStore } from '../state/placesStore'
 import { useHdOrders } from '../state/hdOrders'
@@ -151,10 +151,13 @@ export default function BoxCard() {
           tile: id,
           kind,
           source: 'app',
+          // the phone, so the queue can say how its asks are getting on (explore/requests.ts)
+          install: installId(),
         }),
       })
       if (!r.ok) throw new Error(`${r.status}`)
-      markRequested(id, { kind, at: Date.now() })
+      const back = (await r.json().catch(() => null)) as { id?: number } | null
+      markRequested(id, { kind, at: Date.now(), rid: typeof back?.id === 'number' ? back.id : undefined, stage: 'queued' })
       order()
       devlog('explore', `asked for ${id} · ${kind} · ${size.w.toFixed(1)}×${size.h.toFixed(1)} km`)
     } catch (e) {

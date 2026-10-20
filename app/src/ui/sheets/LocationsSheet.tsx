@@ -5,6 +5,9 @@ import { dropLocation } from '../../areas/runtime'
 import { setExplore } from '../../explore'
 import { boxAround } from '../../explore/box'
 import { useExplore } from '../../explore/store'
+import { parseBoxId, centre } from '../../explore/box'
+import { checkAsks, stageWords } from '../../explore/requests'
+import { areaById } from '../../areas'
 import { getMap } from '../../map/mapController'
 import { useDownloads } from '../../offline/downloads'
 import { bundleOf, keepsArea } from '../../offline/updates'
@@ -27,6 +30,10 @@ export default function LocationsSheet(): JSX.Element {
   // the 'maps saved' note follows downloads and removals
   useDownloads((s) => s.storedAt)
   const closeSheet = useAppStore((s) => s.closeSheet)
+  // this phone's asks for HD, and how the queue says each is getting on (explore/requests.ts)
+  const requested = useExplore((s) => s.requested)
+  const asks = Object.entries(requested).filter(([, r]) => r.kind === 'hd' && r.stage !== 'cancelled').sort((a, b) => b[1].at - a[1].at)
+  useEffect(() => checkAsks(), [])
   // what a row's Share says when the message went to the clipboard, or did not
   const [said, setSaid] = useState<{ id: string; text: string } | null>(null)
   // loaded locations removed this run: gone from the phone, gone from the list (the area list is the start's)
@@ -103,6 +110,29 @@ export default function LocationsSheet(): JSX.Element {
                   ×
                 </button>
               )}
+            </div>
+          )
+        })}
+        {asks.map(([id, r]) => {
+          const box = parseBoxId(id)
+          const ready = r.stage === 'done' && r.areaId ? areaById(r.areaId) : null
+          const at = box ? centre(box) : null
+          return (
+            <div key={id} className="place-row">
+              <button
+                className="row-text place-go"
+                onClick={() => {
+                  if (ready) return go(ready)
+                  closeSheet()
+                  if (at) getMap()?.easeTo({ center: at, zoom: 12 })
+                }}
+              >
+                <span className="row-title">HD · {ready?.name ?? (r.areaId || `asked ${new Date(r.at).toLocaleDateString()}`)}</span>
+                <span className="row-desc">
+                  {stageWords(r)}
+                  {r.stage === 'done' && !ready ? ' · it opens here once the app updates' : ''}
+                </span>
+              </button>
             </div>
           )
         })}

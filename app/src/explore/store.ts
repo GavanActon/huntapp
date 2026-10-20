@@ -29,6 +29,17 @@ export interface Selected {
 export interface Requested {
   kind: 'sd' | 'hd'
   at: number
+  /** the request's number in the queue (the Worker's answer), for its status (explore/requests.ts) */
+  rid?: number
+  /** where the bake is, as the queue last said: queued, claimed, baking, done, failed, cancelled */
+  stage?: string | null
+  /** the bake's step while baking (habitat, wind …) */
+  step?: string | null
+  /** the area it became, once done */
+  areaId?: string | null
+  error?: string | null
+  /** when the queue was last asked, ms */
+  checked?: number
 }
 
 interface ExploreState {
@@ -45,6 +56,8 @@ interface ExploreState {
   setBox: (box: Box) => void
   setCover: (cover: Record<string, CoverageProps>) => void
   markRequested: (id: string, r: Requested) => void
+  /** what the queue said of an ask (explore/requests.ts) */
+  setStatus: (id: string, s: Partial<Requested>) => void
   /** the ask taken back: the mark goes, whatever the queue says */
   unrequest: (id: string) => void
   setEmail: (email: string) => void
@@ -85,6 +98,12 @@ export const useExplore = create<ExploreState>()((set, get) => ({
   setCover: (cover) => set({ cover }),
   markRequested: (id, r) => {
     set({ requested: { ...get().requested, [id]: r } })
+    keep(get())
+  },
+  setStatus: (id, s) => {
+    const cur = get().requested[id]
+    if (!cur) return
+    set({ requested: { ...get().requested, [id]: { ...cur, ...s } } })
     keep(get())
   },
   unrequest: (id) => {

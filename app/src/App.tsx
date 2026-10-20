@@ -52,6 +52,7 @@ import { initAreaArrival } from './areas/arrive'
 import AreaLook from './ui/AreaLook'
 import { initStatsWatch } from './stats/watch'
 import BoxCard from './explore/BoxCard'
+import { startAskChecks } from './explore/requests'
 import WhereTo from './explore/WhereTo'
 import DevBadge from './ui/DevBadge'
 
@@ -158,6 +159,8 @@ export default function App() {
     initBushLabels()
     initWindFlow()
     initScentLayer()
+    // how this phone's asks for HD are getting on (the Locations sheet)
+    startAskChecks()
     initWeatherRefresh()
     initPositionLayer()
     initTrackRecording()
