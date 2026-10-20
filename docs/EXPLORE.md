@@ -232,6 +232,38 @@ Protomaps, the point clouds in the index, stub areas for requested cells.
 Merge needs the other sessions out of `areas/index.ts`, `mapStyle.ts`
 and `MapView.tsx`: the hunks are small.
 
+## Browse, then load (built 2026-10-20, Gavan: "high level streaming, then tied to an intentional load which brings in the hrdps wind etc.")
+
+Three states for any ground on the map:
+
+1. **Browse.** Past every loaded location the map streams pictures and asks for no forecast. The view's
+   wind lattice is gone (explore/index.ts viewMoved; ?browse=live on dev builds brings it back for
+   comparison), the streaks stop at the area's edge (windGrid.ts windSampler; the ground model's
+   camp-forecast fallback holds inside the area only, model.ts evaluate), the refresh sweep keeps
+   the open area's places alone (refresh.ts subjects), and the strip folds to one line, "No forecast
+   here · Load this spot" (WeatherStrip browse), which puts the box down with its card.
+2. **Loaded (SD).** The card's "Load this spot" makes the box a location on the phone
+   (areas/runtime.ts, areas/load.ts): an area made from the box id (`b-x0-y0-x1-y1`), its region
+   1.5 km past the box, its camp the middle under the name, the declination from a WMM table
+   (areas/declination.ts, pipeline/declination_table.py), the province's live imagery, nothing
+   baked. Kept under `huntapp-locations`, read before the active area is settled, opened by a
+   reload as any area is. Its forecast is HRDPS over the box; its ground wind the national SD
+   tiles, stitched in its box too (windTiles.ts LOCATION). No heat map yet (no habitat grid), no
+   routes (no walking grid). A link carries `&name=` and `&j=`, so a phone that never loaded it
+   makes it and keeps it. Locations lists loaded spots with a Remove. The stats get 'box', never
+   the id (a position to 30 m).
+3. **HD asked → ready.** The card's Get HD sends the ask (email, box, install), keeps the queue's
+   number, and the app asks GET /api/request?id= every few minutes while looked at
+   (explore/requests.ts): Locations shows "in the queue", "baking · <step>", "ready". A ready
+   area opens from there once the app knows its id (compiled in today; from R2 at boot is the
+   locations plan's step 1).
+
+Not built yet: saving a loaded spot for no signal (its SD tiles and the index into the file
+store, fetchTile reading the stored copy; the imagery waits on a choice: the province's WMS packed
+over the box, or Esri's, whose offline terms are the open licence question), the agent's HD path
+(agent.py claims SD only), and habitat for a loaded spot (national habitat tiles, or an SD bake
+queued on load), which the heat map needs.
+
 ## The view
 
 - **Entering Explore** unfences the map: the region follows the view, the
