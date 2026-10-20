@@ -4,6 +4,7 @@ import { AREA_LIST } from '../areas'
 import { switchArea } from '../areas/switch'
 import { loadLocation } from '../areas/load'
 import { provinceAt } from '../areas/runtime'
+import { placeName } from './placeName'
 import { sdIndex } from '../weather/micro/windTiles'
 import { devlog, installId } from '../devlog'
 import { withMap } from '../map/mapController'
@@ -73,7 +74,7 @@ export default function BoxCard() {
   const [busy, setBusy] = useState<'sd' | 'hd' | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [pinned, setPinned] = useState<string | null>(null)
-  const [name, setName] = useState('')
+  const [loading, setLoading] = useState(false)
   // how many of the box's tiles have their SD ground wind baked (R2's index); null till read
   const [sdHave, setSdHave] = useState<number | null>(null)
   const el = useRef<HTMLDivElement>(null)
@@ -111,17 +112,24 @@ export default function BoxCard() {
   const [clon, clat] = centre(box)
   // the areas the box reaches into, each opened on the middle of the ground they share (the location it moves, if any, left out)
   const baked = AREA_LIST.filter((a) => !a.virtual && a.id !== sel.replaces?.id && a.region.west < b.east && a.region.east > b.west && a.region.south < b.north && a.region.north > b.south)
-  // a baked area under the box holds the load back (its own wind is better); loaded spots beside it do not
-  const bakedHere = baked.some((a) => !a.loaded)
   const req = requested[id]
   // an extension grows an HD area: HD unless the grid, once read, says the new ground has no LiDAR
   const hdOk = (w.hd || (!!sel.extend && read.length === 0)) && hdFits(box)
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
   // Load this spot (areas/load.ts): the box a location now, the forecast and the SD tiles' wind over it,
   // no request and no wait (Gavan, 2026-10-20). Over ground already loaded or baked, Open it instead
-  const load = () => {
+  // named for what is there (explore/placeName.ts: the nearest lake, else place or river), renamed in
+  // Locations (Gavan, 2026-10-20: "once you've done that you can name it but ideally you're smart about
+  // the location and calling it by something appropriate to start"); a spot moved keeps its name
+  const load = async () => {
+    setLoading(true)
+    setErr(null)
     const j = w.provs.split(',')[0]?.trim() || provinceAt(clon, clat)
-    if (!loadLocation(box, name || sel!.replaces?.name || `Spot ${tileAt(clon, clat).id.slice(2)}`, j, sel!.replaces?.id)) setErr('Not loaded: the app stayed where it is.')
+    const named = sel!.replaces?.name ?? (await placeName(clon, clat)) ?? `Spot ${tileAt(clon, clat).id.slice(2)}`
+    if (!loadLocation(box, named, j, sel!.replaces?.id)) {
+      setErr('Not loaded: the app stayed where it is.')
+      setLoading(false)
+    }
   }
 
   async function ask(kind: 'sd' | 'hd') {
@@ -193,6 +201,51 @@ export default function BoxCard() {
     setPinned(id)
   }
 
+  // Loading a spot: the box, how to move it, Load, nothing else (Gavan, 2026-10-20: "when you activate a
+  // location, we need hide everything that's non essential to let the user select what they want to see.
+  // Order should be Load"). Over a baked area, Open it in Load's place: its own wind is better
+  if (!sel.extend && sel.purpose !== 'hd') {
+    const here = baked.filter((a) => !a.loaded)
+    return (
+      <div className="boxcard glass" role="dialog" aria-label="Load" ref={el}>
+        <div className="boxcard-head">
+          <div>
+            <strong className={cap ? 'boxcard-cap' : undefined}>
+              {kmIn(size.w).toFixed(1)} × {kmIn(size.h).toFixed(1)} {kmUnit()}
+            </strong>
+          </div>
+          <button className="icon-btn" aria-label="Close" onClick={() => select(null)}>
+            ×
+          </button>
+        </div>
+        <div className="dim boxcard-hint">Drag a corner to size it, the middle to move it.</div>
+        {here.length ? (
+          here.map((a) => (
+            <div key={a.id} className="boxcard-btns">
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  const lon = (Math.max(a.region.west, b.west) + Math.min(a.region.east, b.east)) / 2
+                  const lat = (Math.max(a.region.south, b.south) + Math.min(a.region.north, b.north)) / 2
+                  switchArea(a.id, { center: [lon, lat], zoom: 13 })
+                }}
+              >
+                Open {a.name}
+              </button>
+            </div>
+          ))
+        ) : (
+          <div className="boxcard-btns">
+            <button className="btn btn-primary" disabled={loading} onClick={() => void load()}>
+              {loading ? 'Loading…' : 'Load'}
+            </button>
+          </div>
+        )}
+        {err && <div className="boxcard-err">{err}</div>}
+      </div>
+    )
+  }
+
   return (
     <div className="boxcard glass" role="dialog" aria-label="This box" ref={el}>
       <div className="boxcard-head">
@@ -256,19 +309,6 @@ export default function BoxCard() {
           </div>
         )}
       </div>
-      {!sel.extend && !bakedHere && (
-        <div className="boxcard-ask">
-          <input type="text" placeholder="Name it (optional)" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
-          <div className="boxcard-btns">
-            <button className="btn btn-primary" onClick={load}>
-              {/* just the word (Gavan, 2026-10-20: "don't say free - just load") */}
-              {sel.replaces ? `Load ${sel.replaces.name} here` : 'Load this spot'}
-            </button>
-          </div>
-          {/* a load that did not go says so here: the HD block below may not be drawn at all */}
-          {err && !(hdOk || w.hd) && <div className="boxcard-err">{err}</div>}
-        </div>
-      )}
       {/* HD is the ask now (SD loads above): the email only with an HD button or its size note */}
       {!req && (hdOk || w.hd) && (
         <div className="boxcard-ask">

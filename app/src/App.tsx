@@ -53,6 +53,9 @@ import AreaLook from './ui/AreaLook'
 import { initStatsWatch } from './stats/watch'
 import BoxCard from './explore/BoxCard'
 import { startAskChecks } from './explore/requests'
+import { takeLoadedNow } from './areas/load'
+import { useExplore } from './explore/store'
+import { toast } from './ui/Toast'
 import WhereTo from './explore/WhereTo'
 import DevBadge from './ui/DevBadge'
 
@@ -118,6 +121,9 @@ export default function App() {
   const hearing = useHeardForm((s) => s.open)
   const checking = useCheckForm((s) => s.at != null)
   const EXPLORE = useAppStore((s) => s.exploreMode)
+  // a spot being placed to load (explore/BoxCard.tsx): the map and the box, the buttons away (Gavan, 2026-10-20:
+  // "hide everything that's non essential to let the user select what they want to see")
+  const placing = useExplore((s) => !!s.selected && !s.selected.extend && s.selected.purpose !== 'hd')
   const barRef = useRef<HTMLDivElement>(null)
   const topRef = useRef<HTMLDivElement>(null)
   // a tall form in the bar (a moose heard, a wind check, an entry) would
@@ -161,6 +167,9 @@ export default function App() {
     initScentLayer()
     // how this phone's asks for HD are getting on (the Locations sheet)
     startAskChecks()
+    // arrived by a Load: the name it was given and where to change it, a moment longer than a toast
+    const loaded = takeLoadedNow()
+    if (loaded) window.setTimeout(() => toast(`Loaded ${loaded} · rename it in Locations`, 5000), 1500)
     initWeatherRefresh()
     initPositionLayer()
     initTrackRecording()
@@ -212,12 +221,12 @@ export default function App() {
         <TopBar />
         {/* sharpening the wind: the map and the rose, nothing else up top (Gavan, 2026-10-08) */}
         {!checking && <WeatherStrip />}
-        {!EXPLORE && !checking && (topCard ? <TopCardHost /> : <LiveCard />)}
+        {!EXPLORE && !checking && !placing && (topCard ? <TopCardHost /> : <LiveCard />)}
         {/* Explore: Where to and the cell card sit up here under the strip, so the pill and My location keep the foot (Gavan, 2026-10-08) */}
         {EXPLORE && <WhereTo />}
         <BoxCard />
       </div>
-      {!sheetOpen && !formUp && (
+      {!sheetOpen && !formUp && !placing && (
         <div className="leftstack">
           {!viewMenuOpen && !EXPLORE && <HotColumn side="far" />}
           {tool !== 'measure' && tool !== 'path' && (
@@ -227,7 +236,7 @@ export default function App() {
           )}
         </div>
       )}
-      {!sheetOpen && !formUp && <ToolColumn />}
+      {!sheetOpen && !formUp && !placing && <ToolColumn />}
       <div className="bottombar" ref={barRef}>
         {/* the tool's card, else the form that is up: an entry, a moose heard, a wind check */}
         {tool === 'labels' && <BushLabelCard />}

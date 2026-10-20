@@ -348,7 +348,8 @@ function askedBox() {
 function openBox(sel: Selected) {
   useAppStore.getState().closeSheet()
   setExplore(true)
-  useExplore.getState().select(sel)
+  // the HD ask's card, details and all (a load's card is the box and Load alone)
+  useExplore.getState().select({ ...sel, purpose: 'hd' })
 }
 
 /** What the tap popup offers on the ground at a point, if anything: Extend

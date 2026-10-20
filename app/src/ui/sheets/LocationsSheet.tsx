@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type JSX } from 'react'
 import { ACTIVE_AREA, AREA_LIST, areaAt, type AreaDef } from '../../areas'
 import { switchArea } from '../../areas/switch'
-import { dropLocation } from '../../areas/runtime'
+import { dropLocation, keepLocation, readLocations } from '../../areas/runtime'
 import { setExplore } from '../../explore'
 import { boxAround } from '../../explore/box'
 import { useExplore } from '../../explore/store'
@@ -38,6 +38,21 @@ export default function LocationsSheet(): JSX.Element {
   const [said, setSaid] = useState<{ id: string; text: string } | null>(null)
   // loaded locations removed this run: gone from the phone, gone from the list (the area list is the start's)
   const [dropped, setDropped] = useState<string[]>([])
+  // loaded spots renamed this run (the area list is the start's)
+  const [names, setNames] = useState<Record<string, string>>({})
+  /** A loaded spot named again: kept so; the one the app is in reloads under it (its camp pin is named at start) */
+  const rename = (a: AreaDef) => {
+    const now = names[a.id] ?? a.name
+    const v = window.prompt('Name this spot', now)?.trim().slice(0, 60)
+    const l = readLocations().find((x) => x.id === a.id)
+    if (!v || v === now || !l) return
+    keepLocation({ ...l, name: v })
+    if (a.id === ACTIVE_AREA.id) {
+      const u = new URL(window.location.href)
+      u.searchParams.set('name', v)
+      window.location.replace(u.toString())
+    } else setNames((n) => ({ ...n, [a.id]: v }))
+  }
   const timer = useRef<number | undefined>(undefined)
   useEffect(() => () => window.clearTimeout(timer.current), [])
 
@@ -83,7 +98,7 @@ export default function LocationsSheet(): JSX.Element {
           return (
             <div key={a.id} className={`place-row${here ? ' place-current' : ''}`}>
               <button className="row-text place-go" onClick={() => go(a)}>
-                <span className="row-title">{a.name}</span>
+                <span className="row-title">{names[a.id] ?? a.name}</span>
                 <span className="row-desc">
                   {a.loaded ? 'Loaded · forecast and SD wind' : (a.presets[0]?.name ?? '')}
                   {here ? ' · here' : ''}
@@ -97,6 +112,11 @@ export default function LocationsSheet(): JSX.Element {
               <button className="icon-btn" aria-label={`Go to ${a.name}`} onClick={() => go(a)}>
                 <IconLocate size={16} />
               </button>
+              {a.loaded && (
+                <button className="icon-btn" aria-label={`Rename ${a.name}`} onClick={() => rename(a)}>
+                  ✎
+                </button>
+              )}
               {a.loaded && (
                 <button
                   className="icon-btn"

@@ -26,6 +26,9 @@ export interface Selected {
   extend?: { areaId: string; name: string; baseKm2: number }
   /** a loaded location this box moves or grows (Locations' Move or resize): loading it takes that one's place */
   replaces?: { id: string; name: string }
+  /** opened to ask for HD (the grade sheet's Get HD): the card's details and the ask; else it is the load card,
+   *  the box and Load and nothing else (explore/BoxCard.tsx) */
+  purpose?: 'hd'
 }
 
 export interface Requested {

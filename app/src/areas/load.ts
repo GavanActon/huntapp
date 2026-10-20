@@ -12,6 +12,20 @@ import { switchArea } from './switch'
  * in. `replaces` (a location moved or grown): the old one goes once the new
  * one is kept. False when the switch did not go (a download running, a "no" asked).
  */
+/** The spot just loaded, its name, for the line on arrival (App.tsx takeLoadedNow). */
+export const LOADED_NOW = 'huntapp-loaded-now'
+
+/** The name of the spot this start arrived at by a Load, once, else null. */
+export function takeLoadedNow(): string | null {
+  try {
+    const n = sessionStorage.getItem(LOADED_NOW)
+    sessionStorage.removeItem(LOADED_NOW)
+    return n
+  } catch {
+    return null
+  }
+}
+
 export function loadLocation(box: Box, name: string, jurisdiction: string, replaces?: string): boolean {
   const l = { id: boxId(box), name: name.trim().slice(0, 60) || 'Spot', jurisdiction, at: Date.now() }
   const a = addLoadedArea(l)
@@ -19,5 +33,11 @@ export function loadLocation(box: Box, name: string, jurisdiction: string, repla
   keepLocation(l)
   if (replaces && replaces !== l.id) dropLocation(replaces)
   devlog('area', `load ${l.id} · ${l.name} · ${jurisdiction}`)
+  // said on arrival (App.tsx): the name it was given, and where to change it
+  try {
+    sessionStorage.setItem(LOADED_NOW, l.name)
+  } catch {
+    /* no word on arrival, that is all */
+  }
   return switchArea(a.id, { center: a.home.center, zoom: a.home.zoom })
 }
