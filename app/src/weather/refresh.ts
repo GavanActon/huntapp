@@ -7,6 +7,7 @@ import { cachedPointForecast, fetchPointForecast, forecastPoint, nextHrdpsRunMs,
 import { ensureWeatherGrid, fetchAreaWindGrid } from './windGrid'
 import { ensureProfile, fetchAreaProfile } from './boundaryLayer'
 import { recentDailyMeans } from '../spots/conditions'
+import { toast } from '../ui/Toast'
 
 /**
  * When to fetch weather, decided once, here. Camp has signal in the
@@ -122,8 +123,10 @@ export function onWeatherRefreshed(cb: () => void): () => void {
 }
 
 /** New forecasts on the phone by another road (satellite hours pasted in,
- *  weather/satForecast.ts): everything that redraws after a sweep redraws. */
+ *  weather/satForecast.ts): everything that redraws after a sweep redraws,
+ *  and the strip says so. */
 export function announceWeather(): void {
+  toast('Weather updated by satellite')
   for (const cb of listeners) cb()
 }
 
@@ -146,6 +149,8 @@ export function refreshWeather(reason: string, force = false): Promise<void> {
     // behind seven places' serial calls (2026-10-07)
     const gridOut = ensureWeatherGrid()
     const profileOut = ensureProfile(force)
+    // the camp's copy before: a new one in its place is the weather updated (said under the strip)
+    const before = campForecast()?.fetchedAt ?? null
     for (const s of subjects()) {
       const cached = cachedPointForecast(s.lon, s.lat)
       if (!force && !forecastStale(cached, now)) continue
@@ -166,6 +171,8 @@ export function refreshWeather(reason: string, force = false): Promise<void> {
     if (fetched) setStatus({ lastOkAt: Date.now(), lastError: null })
     else if (tried) setStatus({ lastFailAt: Date.now(), lastError: error ?? 'no signal' })
     if (fetched) for (const cb of listeners) cb()
+    const after = campForecast()?.fetchedAt ?? null
+    if (before != null && after != null && after !== before) toast('Weather updated')
   })().finally(() => {
     sweeping = null
     setStatus({ busy: false })

@@ -34,6 +34,52 @@ function prettyNumber(n: string): string {
 
 let pasteTimer = 0
 
+/**
+ * How to get the reply out of Messages, drawn: hold it, tap Copy, come back
+ * and tap Paste (Gavan, 2026-10-19: "need more affordance when texting ...
+ * provide an image in the app showcasing exactly what to do"). Drawn in
+ * the sheet's own colours, not a screenshot, so it reads the same in the
+ * dark and outdoor looks. The reply itself has no room for the words: it
+ * is one 160-character text, and every character spent on them is a
+ * forecast hour or more not sent (docs/SAT-FORECAST.md).
+ */
+function HowToCopy(): JSX.Element {
+  return (
+    <div className="sat-how" role="img" aria-label="Press and hold the reply, tap Copy, then come back here and tap Paste">
+      <div className="sat-how-step">
+        <div className="sat-how-pic">
+          <div className="sat-bubble">NW 11g40, calm by 9p GW1.cy3pKme2UAnx…</div>
+          <span className="sat-press" />
+        </div>
+        <span>
+          <b>1</b> Hold the reply
+        </span>
+      </div>
+      <div className="sat-how-step">
+        <div className="sat-how-pic">
+          <div className="sat-menu">
+            <span>Reply</span>
+            <span className="on">Copy</span>
+            <span>More…</span>
+          </div>
+        </div>
+        <span>
+          <b>2</b> Tap Copy
+        </span>
+      </div>
+      <div className="sat-how-step">
+        <div className="sat-how-pic">
+          <div className="sat-pastebtn">Paste</div>
+          <span className="sat-press sat-press-btn" />
+        </div>
+        <span>
+          <b>3</b> Back here, Paste
+        </span>
+      </div>
+    </div>
+  )
+}
+
 export default function SatSheet(): JSX.Element {
   const units = useAppStore((s) => s.units)
   const online = useAppStore((s) => s.online)
@@ -228,6 +274,8 @@ export default function SatSheet(): JSX.Element {
 
           <div className="coords-label">2 · Paste the answer</div>
           {waiting && <div className="coords-help">An answer takes a few minutes; on an inReach, check for messages.</div>}
+          <HowToCopy />
+          <div className="coords-help">The whole message, in Messages on an iPhone, or the Garmin Messenger app for an inReach.</div>
           {canPaste && (
             <button className="btn-primary coords-paste" onClick={paste}>
               Paste

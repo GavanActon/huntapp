@@ -47,3 +47,105 @@
 .sat-bad {
   color: var(--c-warn);
 }
+
+/* how to copy the reply (SatSheet HowToCopy): three small pictures, hold,
+   Copy, Paste, in the sheet's colours */
+.sat-how {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 2px 0 2px;
+}
+.sat-how-step {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  font-size: calc(12.5px * var(--ui-scale));
+  color: var(--c-text);
+  line-height: 1.25;
+}
+.sat-how-step b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  margin-right: 3px;
+  border-radius: 50%;
+  background: var(--c-accent);
+  color: var(--c-on-accent);
+  font-size: 11px;
+}
+.sat-how-pic {
+  position: relative;
+  height: 78px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--c-border);
+  background: rgba(var(--c-ink-rgb), 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+/* an incoming text, grey, as Messages draws it */
+.sat-bubble {
+  max-width: 82%;
+  padding: 5px 8px;
+  border-radius: 12px 12px 12px 4px;
+  background: rgba(var(--c-ink-rgb), 0.16);
+  color: var(--c-text);
+  font-size: 9.5px;
+  line-height: 1.3;
+  word-break: break-all;
+}
+/* the finger: a ring that breathes where to press */
+.sat-press {
+  position: absolute;
+  left: 46%;
+  top: 46%;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  border-radius: 50%;
+  border: 2px solid var(--c-accent);
+  background: rgba(var(--c-accent-rgb), 0.3);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+.sat-press-btn {
+  left: 50%;
+  top: 50%;
+}
+/* the menu a held text opens */
+.sat-menu {
+  display: flex;
+  flex-direction: column;
+  min-width: 72%;
+  border-radius: 9px;
+  overflow: hidden;
+  border: 1px solid var(--c-border-strong);
+  background: var(--c-surface-heavy);
+  font-size: 10.5px;
+}
+.sat-menu span {
+  padding: 3px 8px;
+  border-top: 1px solid rgba(var(--c-ink-rgb), 0.1);
+  color: var(--c-text-dim);
+}
+.sat-menu span:first-child {
+  border-top: 0;
+}
+.sat-menu span.on {
+  background: var(--c-accent);
+  color: var(--c-on-accent);
+  font-weight: 700;
+}
+/* the sheet's own Paste button, small */
+.sat-pastebtn {
+  padding: 6px 18px;
+  border-radius: var(--r-md);
+  background: var(--c-accent);
+  color: var(--c-on-accent);
+  font-size: 12px;
+  font-weight: 700;
+}
