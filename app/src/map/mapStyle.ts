@@ -193,6 +193,13 @@ export function syncUnderlays(map: MlMap, layers: LayerVisibility, opacity: Laye
   // 0.9 (Terrain), and the far band under the baked photo at any strength (Sat, Hunt, Bush, Scout, Lake)
   const baked = !!(map.getLayer('satellite') || map.getLayer('satellite-sharp'))
   const photoOver = layers.satellite && baked && opacity.satellite >= 0.8
+  // past the box the photo is the map as well, as Google Maps has it (Gavan, 2026-10-20: "lets do the
+  // same"): under a photo at 0.8 or more (Bush, Scout, Lake; Sat and Hunt are whole) only a coarser
+  // photo, the far band, stretched past its z11 while the sharp one streams in, never another map. The
+  // base map and the Toporama sheet drew there under Bush and Scout, a topo sheet showing through and
+  // coming in first on a slow link ("old maps under sat"). Without the far band (not on the phone, no
+  // signal for it) they stay: a gap in the photo is then a map, not black
+  const photoPast = layers.satellite && opacity.satellite >= 0.8 && !!map.getLayer('satellite-far')
   const liveShade = layers.hillshade && !!map.getLayer('hillshade-live') && opacity.hillshade >= 0.85 && !(inside && ((imagery && liveShadeUnderImagery) || relief || wind))
   const show: Record<string, boolean> = {
     // with the whole imagery on, the photo is the map: the Toporama sheet only ever showed
@@ -205,8 +212,8 @@ export function syncUnderlays(map: MlMap, layers: LayerVisibility, opacity: Laye
     // sheet is the Topo view's
     // and the Canada map view's own map, in the box too, the base map under it then for nothing
     // (the sheet is opaque paper from z7, its minzoom)
-    toposheet: (!inside && !imagery) || layers.toposheet,
-    base: !(imagery || ((relief || wind || photoOver || liveShade) && inside) || (layers.toposheet && !!map.getLayer('toposheet') && map.getZoom() >= 7)),
+    toposheet: (!inside && !imagery && !photoPast) || layers.toposheet,
+    base: !(imagery || photoPast || ((relief || wind || photoOver || liveShade) && inside) || (layers.toposheet && !!map.getLayer('toposheet') && map.getZoom() >= 7)),
     'satellite-far': layers.satellite && !(inside && baked),
     'satellite-live': layers.satellite && !(imagery && inside),
     'hillshade-live': layers.hillshade && !(inside && ((imagery && liveShadeUnderImagery) || relief || wind)),
