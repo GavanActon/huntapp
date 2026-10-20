@@ -148,11 +148,12 @@ export default function LiveCard(): JSX.Element | null {
       </div>
     )
 
-  // ---- placing someone: the next map tap puts them there
+  // ---- placing someone: the next map tap puts them there (Gavan, 2026-10-19: "instead of 'tap where one
+  // sits' just say 'set location'")
   if (adding)
     return (
       <div className="livecard lc-party" ref={ref}>
-        <span className="lc-party-n">Tap where {people.length + 1} sits</span>
+        <span className="lc-party-n">Set location</span>
         <button className="lc-act lc-act-on" onClick={() => setAdding(false)}>
           cancel
         </button>
