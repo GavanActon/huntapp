@@ -19,6 +19,10 @@
  */
 
 import { ACTIVE_AREA } from './areas'
+
+/** The area as the stats name it: a loaded location's id is its box, a position
+ *  to 30 m, and the stats keep none (docs/ANALYTICS.md): it goes as 'box'. */
+const AREA_WORD = ACTIVE_AREA.loaded ? 'box' : ACTIVE_AREA.id
 import { installId } from './devlog'
 import { topSheet, useAppStore } from './state/appStore'
 
@@ -186,7 +190,7 @@ export function track(name: string, props?: Props): void {
 
 function push(name: string, props: Props | undefined, now: number) {
   meta.seq += 1
-  const ev: Ev = { s: meta.session, q: meta.seq, t: now, n: name, a: ACTIVE_AREA.id, b: __BUILD__.sha, o: navigator.onLine ? 1 : 0 }
+  const ev: Ev = { s: meta.session, q: meta.seq, t: now, n: name, a: AREA_WORD, b: __BUILD__.sha, o: navigator.onLine ? 1 : 0 }
   if (props) ev.p = clean(props)
   queue.push(ev)
   if (queue.length > MAX_QUEUE) queue.splice(0, queue.length - MAX_QUEUE)
@@ -430,9 +434,9 @@ function start() {
   // known: the app was on this phone before the stats were (its settings are there), so not a new user
   if (firstOpen) track('first_open', { ...source(), known: read('huntapp') != null || read('huntapp-install') != null })
   else if (meta.build && meta.build !== __BUILD__.sha) track('app_updated', { from: meta.build })
-  if (meta.area && meta.area !== ACTIVE_AREA.id) track('area_switch', { from: meta.area })
+  if (meta.area && meta.area !== AREA_WORD) track('area_switch', { from: meta.area })
   meta.build = __BUILD__.sha
-  meta.area = ACTIVE_AREA.id
+  meta.area = AREA_WORD
   const nav = navigator as Navigator & { deviceMemory?: number }
   track('launch', {
     ...platform(),

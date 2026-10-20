@@ -29,6 +29,7 @@ import { useLoadProgress } from '../offline/loadProgress'
 import './strip.css'
 import Toast, { toast } from './Toast'
 import { useAreaLook } from '../areas/lookSwitch'
+import { ACTIVE_AREA } from '../areas'
 import { offerHere } from '../explore'
 import { getMap } from '../map/mapController'
 
@@ -274,6 +275,8 @@ export default function WeatherStrip() {
   const looking = useAreaLook((s) => s.looking)
   const browse = !EXPLORE && !looking
   const noWx = EXPLORE || browse
+  // a loaded location (areas/runtime.ts) has no habitat grid yet: no heat map to turn on
+  const noHeat = noWx || ACTIVE_AREA.loaded === 'box'
   const setStripOpen = useAppStore((s) => s.setStripOpen)
   const planTimeMs = useAppStore((s) => s.planTimeMs)
   const setPlanTime = useAppStore((s) => s.setPlanTime)
@@ -628,7 +631,7 @@ export default function WeatherStrip() {
   const head = (
     <div className={`wx-head${{ normal: '', large: ' wx-head-lg', xlarge: ' wx-head-xl' }[stripButtons]}`}>
       {/* Explore (docs/EXPLORE.md): no grids, no heat, no hours; the marks and the menu stay */}
-      {!noWx && (
+      {!noHeat && (
       <span className="wx-quarry" ref={heatRef}>
         <button
           className={`wx-heat${heat ? ' on' : ''}${heatMenu ? ' held' : ''}`}
@@ -671,7 +674,7 @@ export default function WeatherStrip() {
       </span>
       )}
       {/* what you are after shows only with its heat map on (Gavan, 2026-10-20: room on the row) */}
-      {!noWx && heat && (
+      {!noHeat && heat && (
       <span className="wx-quarry" ref={quarryRef}>
         <button className="wx-chip" onClick={() => setQuarryOpen((o) => !o)} aria-haspopup="menu" aria-expanded={quarryOpen}>
           {TARGET_NAMES[target]} <span className="dim">▾</span>

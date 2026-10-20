@@ -26,7 +26,7 @@
  * fails to decode. The header lists every band with dtype, byte offset and
  * scale; nothing here is hard-coded to the bake's band order.
  */
-import { fileUrl } from '../areas'
+import { ACTIVE_AREA, fileUrl } from '../areas'
 import { REGION, habitatFile } from '../config'
 import { devlog } from '../devlog'
 import { downloadToStore, getStoredFile, manifestGet, manifestSet, putStoredFile } from '../offline/fileStore'
@@ -522,6 +522,8 @@ async function refreshAuto(file: string, tag: string): Promise<void> {
 export async function openBandFile(file: string, tag: string, opts: OpenOpts = {}): Promise<BandFile | null> {
   const priority = opts.priority ?? 'auto'
   const stored = await getStoredFile(file)
+  // a loaded location (areas/runtime.ts) has no band files on the server: asked, a 404, or the app's own page read as one
+  if (!stored && ACTIVE_AREA.loaded === 'box') return null
   let src: ByteSource
   let head: Bytes
   if (stored) {

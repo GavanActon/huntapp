@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type JSX } from 'react'
 import { ACTIVE_AREA, AREA_LIST, areaAt, type AreaDef } from '../../areas'
 import { switchArea } from '../../areas/switch'
+import { dropLocation } from '../../areas/runtime'
 import { setExplore } from '../../explore'
 import { boxAround } from '../../explore/box'
 import { useExplore } from '../../explore/store'
@@ -28,6 +29,8 @@ export default function LocationsSheet(): JSX.Element {
   const closeSheet = useAppStore((s) => s.closeSheet)
   // what a row's Share says when the message went to the clipboard, or did not
   const [said, setSaid] = useState<{ id: string; text: string } | null>(null)
+  // loaded locations removed this run: gone from the phone, gone from the list (the area list is the start's)
+  const [dropped, setDropped] = useState<string[]>([])
   const timer = useRef<number | undefined>(undefined)
   useEffect(() => () => window.clearTimeout(timer.current), [])
 
@@ -66,7 +69,7 @@ export default function LocationsSheet(): JSX.Element {
   return (
     <div className="pins">
       <div className="place-list">
-        {AREA_LIST.filter((a) => !a.virtual).map((a) => {
+        {AREA_LIST.filter((a) => !a.virtual && !dropped.includes(a.id)).map((a) => {
           const here = a.id === ACTIVE_AREA.id
           const b = bundleOf(a.id)
           const saved = b != null && keepsArea(b)
@@ -75,7 +78,7 @@ export default function LocationsSheet(): JSX.Element {
               <button className="row-text place-go" onClick={() => go(a)}>
                 <span className="row-title">{a.name}</span>
                 <span className="row-desc">
-                  {a.presets[0]?.name ?? ''}
+                  {a.loaded ? 'Loaded · forecast and SD wind' : (a.presets[0]?.name ?? '')}
                   {here ? ' · here' : ''}
                   {saved ? ' · maps saved' : ''}
                   {said?.id === a.id ? ` · ${said.text}` : ''}
@@ -87,13 +90,26 @@ export default function LocationsSheet(): JSX.Element {
               <button className="icon-btn" aria-label={`Go to ${a.name}`} onClick={() => go(a)}>
                 <IconLocate size={16} />
               </button>
+              {a.loaded && !here && (
+                <button
+                  className="icon-btn"
+                  aria-label={`Remove ${a.name}`}
+                  onClick={() => {
+                    if (!confirm(`Remove ${a.name} from your locations?`)) return
+                    dropLocation(a.id)
+                    setDropped((d) => [...d, a.id])
+                  }}
+                >
+                  ×
+                </button>
+              )}
             </div>
           )
         })}
         <div className="place-row">
           <button className="row-text place-go" onClick={add}>
             <span className="row-title">Add a location</span>
-            <span className="row-desc">a box where you want maps, then SD or HD</span>
+            <span className="row-desc">a box round the spot: load it for the forecast and wind, or ask for HD</span>
           </button>
         </div>
       </div>

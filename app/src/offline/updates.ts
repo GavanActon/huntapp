@@ -173,7 +173,8 @@ let boot: Promise<DataManifest | null> | null = null
 export function bootManifest(): Promise<DataManifest | null> {
   if (boot) return boot
   boot = (async () => {
-    if (!navigator.onLine) return null
+    // a loaded location (areas/runtime.ts) has nothing baked, so no file list to ask for
+    if (!navigator.onLine || ACTIVE_AREA.loaded) return null
     const j = await fetchJson<DataManifest>(fileUrl('manifest.json'), { timeoutMs: 4000, cache: 'default' })
     if (!j || typeof j.files !== 'object' || j.files == null) return null
     noteManifest(ACTIVE_AREA.id, j)

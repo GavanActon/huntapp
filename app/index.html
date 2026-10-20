@@ -63,6 +63,9 @@
           var saved = null
           try { saved = localStorage.getItem('huntapp-area') } catch (e) {}
           var id = spotIn || (known(asked) ? asked : known(saved) ? saved : known(q.get('start')) ? q.get('start') : null) || S.default
+          // a loaded location (areas/runtime.ts, b-…) is no baked area: nothing to preload, no manifest of its own
+          var boxy = function (v) { return v != null && /^b-\d+-\d+-\d+-\d+$/.test(v) }
+          if (!spotIn && (boxy(asked) || (!known(asked) && boxy(saved)))) id = null
           var area = known(id) ? AREAS[id] : null
           // The wind grid's base bands (the first grid's first range), asked for now, a second
           // or more before the app could ask, unless the phone keeps a copy; the app takes the

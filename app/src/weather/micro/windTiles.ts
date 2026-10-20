@@ -1,5 +1,5 @@
 import type { Map as MlMap } from 'maplibre-gl'
-import { DATA_BASE } from '../../areas'
+import { ACTIVE_AREA, DATA_BASE } from '../../areas'
 import { REGION } from '../../config'
 import { devlog } from '../../devlog'
 import { STREAM_PICTURES } from '../../map/streamPictures'
@@ -32,6 +32,8 @@ const BASE = `${DATA_BASE}sd/v1/`
  * Dev builds only: `?tiles=force`.
  */
 const FORCE_TILES = (import.meta.env.DEV || !!import.meta.env.VITE_DEV_SITE) && new URLSearchParams(location.search).get('tiles') === 'force'
+/** A loaded location (areas/runtime.ts) has no wind grid of its own: the tiles are its ground wind, in its box too. */
+const LOCATION = ACTIVE_AREA.loaded === 'box'
 
 export interface Lattice {
   lon0: number
@@ -69,6 +71,9 @@ const loadIndex = () => {
   }
   return indexP
 }
+
+/** The tiles baked so far (R2's index), read once: the box card says whether a spot's ground wind is in. */
+export const sdIndex = (): Promise<Index | null> => loadIndex()
 
 /** The index read again while the app is looked at: the bake goes on on
  *  both PCs, each sending its tiles up every 50, so the outline grows and
@@ -217,13 +222,32 @@ let block: { i0: number; j0: number } | null = null
 let busy = false
 let again = false
 
-async function moved(map: MlMap): Promise<void> {
+/** One pass at a time: a settle while one is under way runs once after it. Two at once both
+ *  passed the busy check while the index came, and fetched and stitched the same block twice. */
+let running: Promise<void> | null = null
+let rerun = false
+function moved(map: MlMap): Promise<void> {
+  if (running) {
+    rerun = true
+    return running
+  }
+  running = movedNow(map).finally(() => {
+    running = null
+    if (rerun) {
+      rerun = false
+      void moved(map)
+    }
+  })
+  return running
+}
+
+async function movedNow(map: MlMap): Promise<void> {
   if (busy) {
     again = true
     return
   }
   const c = map.getCenter()
-  const inArea = !FORCE_TILES && c.lng > REGION.west && c.lng < REGION.east && c.lat > REGION.south && c.lat < REGION.north
+  const inArea = !FORCE_TILES && !LOCATION && c.lng > REGION.west && c.lng < REGION.east && c.lat > REGION.south && c.lat < REGION.north
   if (inArea || map.getZoom() < 9) {
     if (block) {
       useAreaGrid()
@@ -295,7 +319,7 @@ export function initWindTiles(map: MlMap): void {
       const out = new Float32Array(12)
       return s && s(lon, lat, out) ? [out[0], out[1], out[2]] : null
     }
-  if (!STREAM_PICTURES && !FORCE_TILES) return
+  if (!STREAM_PICTURES && !FORCE_TILES && !LOCATION) return
   map.on('moveend', () => void moved(map))
   void moved(map)
   // where the tiles are, outlined (sdOutline.ts), and kept up as the bake goes on

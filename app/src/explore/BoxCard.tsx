@@ -1,7 +1,10 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { API } from '../analytics'
 import { AREA_LIST } from '../areas'
 import { switchArea } from '../areas/switch'
+import { loadLocation } from '../areas/load'
+import { provinceAt } from '../areas/runtime'
+import { sdIndex } from '../weather/micro/windTiles'
 import { devlog } from '../devlog'
 import { withMap } from '../map/mapController'
 import { usePlacesStore } from '../state/placesStore'
@@ -67,6 +70,9 @@ export default function BoxCard() {
   const [busy, setBusy] = useState<'sd' | 'hd' | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [pinned, setPinned] = useState<string | null>(null)
+  const [name, setName] = useState('')
+  // how many of the box's tiles have their SD ground wind baked (R2's index); null till read
+  const [sdHave, setSdHave] = useState<number | null>(null)
   const el = useRef<HTMLDivElement>(null)
   // a box put down or moved by a tap is shown whole under the card, now its height is known; a drag leaves the view be
   useLayoutEffect(() => {
@@ -76,6 +82,20 @@ export default function BoxCard() {
     // the tap is the key: a drag changes the box, not the tap
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sel?.lon, sel?.lat])
+  const selId = sel ? boxId(sel.box) : null
+  useEffect(() => {
+    if (!sel) return
+    let live = true
+    setSdHave(null)
+    void sdIndex().then((idx) => {
+      if (live && idx) setSdHave(tilesUnder(sel.box).filter((t) => t.id in idx.tiles).length)
+    })
+    return () => {
+      live = false
+    }
+    // the box, not the object: a drag makes a new one each move
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selId])
   if (!sel) return null
   const { box } = sel
   const id = boxId(box)
@@ -92,6 +112,12 @@ export default function BoxCard() {
   // an extension grows an HD area: HD unless the grid, once read, says the new ground has no LiDAR
   const hdOk = (w.hd || (!!sel.extend && read.length === 0)) && hdFits(box)
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  // Load this spot (areas/load.ts): the box a location now, the forecast and the SD tiles' wind over it,
+  // no request and no wait (Gavan, 2026-10-20). Over ground already loaded or baked, Open it instead
+  const load = () => {
+    const j = w.provs.split(',')[0]?.trim() || provinceAt(clon, clat)
+    if (!loadLocation(box, name || `Spot ${tileAt(clon, clat).id.slice(2)}`, j)) setErr('Not loaded: the app stayed where it is.')
+  }
 
   async function ask(kind: 'sd' | 'hd') {
     // the HD order the grade circle follows: an extension of an area, or HD over one
@@ -192,9 +218,12 @@ export default function BoxCard() {
             <div className="dim">weather at 2.5 km (HRDPS)</div>
           </>
         )}
+        {sdHave != null && (
+          <div className="dim">{sdHave === tiles.length ? 'ground wind: the SD tiles are in' : sdHave ? `ground wind: SD tiles under ${sdHave} of its ${tiles.length} cells, the forecast's wind elsewhere` : "ground wind: no SD tiles here yet, the forecast's wind"}</div>
+        )}
         {baked.map((a) => (
           <div key={a.id}>
-            Baked: <strong>{a.name}</strong> covers part of it.{' '}
+            {a.loaded ? 'Loaded' : 'Baked'}: <strong>{a.name}</strong> covers part of it.{' '}
             <button
               className="link"
               onClick={() => {
@@ -217,16 +246,23 @@ export default function BoxCard() {
           </div>
         )}
       </div>
-      {!req && (
+      {!sel.extend && !baked.length && (
+        <div className="boxcard-ask">
+          <input type="text" placeholder="Name it (optional)" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
+          <div className="boxcard-btns">
+            <button className="btn btn-primary" onClick={load}>
+              Load this spot · the forecast and SD wind
+            </button>
+          </div>
+        </div>
+      )}
+      {/* HD is the ask now (SD loads above): the email only with an HD button or its size note */}
+      {!req && (hdOk || w.hd) && (
         <div className="boxcard-ask">
           {/* a dev build's HD order is simulated: no email to send it to */}
           {!(GRADE_SWITCH && sel.extend) && <input type="email" inputMode="email" placeholder="Your email, for the pack" value={email} onChange={(e) => setEmail(e.target.value)} />}
           <div className="boxcard-btns">
-            {!sel.extend && (
-              <button className="btn" disabled={busy != null} onClick={() => ask('sd')}>
-                {busy === 'sd' ? 'Sending…' : `Get SD · free · about ${packMb(box, 'sd')} MB`}
-              </button>
-            )}
+            {/* SD needs no ask now: Load above makes it a location at once (the SD request path stays for the Worker) */}
             {hdOk && (
               <button className="btn" disabled={busy != null} onClick={() => ask('hd')}>
                 {busy === 'hd' ? 'Sending…' : `${sel.extend ? 'Extend HD' : 'Get HD'} · about ${packMb(box, 'hd')} MB`}

@@ -1,4 +1,5 @@
 import { badAreaField } from './check'
+import { addressLocation, locationArea, readLocations, type Location } from './runtime'
 import { arriveNow, linkDone } from './handoff'
 import { decideStart } from './start'
 
@@ -147,6 +148,8 @@ export interface AreaDef {
   profile?: AreaProfile
   /** Explore (explore/index.ts): a stand-in area the map is unfenced in, nothing baked, listed nowhere */
   virtual?: boolean
+  /** a location the hunter loaded, made on the phone from its box (areas/runtime.ts): nothing baked */
+  loaded?: 'box'
 }
 
 /** Pickle Lake: the area the app opens on with nothing saved, and the
@@ -164,20 +167,51 @@ export const DATA_BASE: string = import.meta.env.VITE_DATA_BASE ?? `${import.met
  *  right kind (areas/check.ts). One that is not (a bad bake) is left out:
  *  as the saved area it would stop the app on every start, with no way back
  *  to another. The build refuses one anyway (vite.config.ts). */
-const defs = (Object.values(import.meta.glob('./*.json', { eager: true, import: 'default' })) as AreaDef[]).filter((a) => {
+const compiled = (Object.values(import.meta.glob('./*.json', { eager: true, import: 'default' })) as AreaDef[]).filter((a) => {
   const bad = badAreaField(a)
   if (bad == null) return true
   console.warn(`area file ${String(a?.id)} left out: ${bad} is missing or not what the app reads`)
   return false
 })
+
+/** The locations the hunter loaded (areas/runtime.ts), made into areas, and
+ *  one a link names that this phone has not (kept from now on); after the
+ *  baked areas, so a link's spot in one of those opens there. */
+function locationAreas(): AreaDef[] {
+  let href = ''
+  try {
+    href = window.location.href
+  } catch {
+    /* no address */
+  }
+  const kept = readLocations()
+  const linked = addressLocation(href, (id) => compiled.some((a) => a.id === id) || kept.some((l) => l.id === id))
+  return [...kept, ...(linked ? [linked] : [])].map(locationArea).filter((a): a is AreaDef => a != null && badAreaField(a) == null)
+}
+
+const defs = [...compiled, ...locationAreas()]
   // the real areas first: a link's spot is looked for in them before Explore's country-wide box
   .sort((a, b) => Number(!!a.virtual) - Number(!!b.virtual))
 
 /** Every area the app knows, by id. */
 export const AREAS: Readonly<Record<string, AreaDef>> = Object.fromEntries(defs.map((a) => [a.id, a]))
 
+/** Locations loaded since the app started (loadLocation): known here at
+ *  once, so a switch to one goes; in the list from the next start. */
+const loadedNow = new Map<string, AreaDef>()
+
 export function areaById(id: string | null | undefined): AreaDef | null {
-  return id != null && Object.hasOwn(AREAS, id) ? AREAS[id] : null
+  if (id == null) return null
+  return Object.hasOwn(AREAS, id) ? AREAS[id] : (loadedNow.get(id) ?? null)
+}
+
+/** A location loaded now (areas/load.ts): an area from this moment, so the
+ *  switch to it finds it. Null for a box id that makes no area. */
+export function addLoadedArea(l: Location): AreaDef | null {
+  const a = locationArea(l)
+  if (!a || badAreaField(a) != null) return null
+  loadedNow.set(a.id, a)
+  return a
 }
 
 /** The map's last camera in an area, saved on every move: the view the app
@@ -302,7 +336,11 @@ export function setActiveArea(id: string): boolean {
 export function areaHref(id: string): string {
   const u = new URL(window.location.href)
   u.hash = ''
-  u.search = id === DEFAULT_AREA ? '' : new URLSearchParams({ area: id }).toString()
+  // a loaded location's name and province ride along: a link, a reload or Add to Home Screen (its own
+  // storage on an iPhone) makes it again from the address alone (areas/runtime.ts addressLocation)
+  const l = areaById(id)
+  const words: Record<string, string> = l?.loaded ? { name: l.name, j: l.jurisdiction } : {}
+  u.search = id === DEFAULT_AREA ? '' : new URLSearchParams({ area: id, ...words }).toString()
   return u.toString()
 }
 
