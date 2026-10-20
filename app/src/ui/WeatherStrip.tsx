@@ -19,7 +19,7 @@ import { activityBar } from '../spots/grades'
 import { FISH_TARGETS, HUNT_TARGETS, isFish, TARGET_NAMES, type Target } from '../spots/types'
 import { FISH_HERE, targetStanding } from '../spots/profile'
 import { agoLabel, clockShort, dayLabel, dayShort, floorHourMs, hourAmPm, hourMinShort, hourShort, isToday, startOfDayMs } from '../time'
-import { IconCheck, IconChevronDown, IconChevronUp, IconDots, IconGrid, IconGridOff, IconHeat, IconPin, IconSun } from './icons'
+import { IconCheck, IconChevronDown, IconChevronUp, IconGrid, IconGridOff, IconHeat, IconMenu, IconPin, IconSun } from './icons'
 import AppMenu from './AppMenu'
 import { useMapUpdates } from '../offline/updates'
 import { markNudgeSeen, useMapsNudge } from '../offline/mapsNudge'
@@ -714,7 +714,7 @@ export default function WeatherStrip() {
         </button>
       )}
       <button className={`wxfold-dots${newMaps || nudge.dot ? ' has-new' : ''}`} {...dots} aria-label="More">
-        <IconDots />
+        <IconMenu />
       </button>
       <AppMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
     </div>

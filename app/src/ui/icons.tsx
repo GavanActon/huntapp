@@ -392,6 +392,13 @@ export const IconDots = (p: IconProps) => (
   </svg>
 )
 
+/** The menu: three bars, the strip's way into everything else (Gavan, 2026-10-19: "make the ... a sandwich menu thing"). */
+export const IconMenu = (p: IconProps) => (
+  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16" />
+  </svg>
+)
+
 /** A wind check: the powder bottle, a puff drifting off its tip. */
 export const IconPowder = (p: IconProps) => (
   <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
