@@ -70,7 +70,7 @@ CACHE_MANIFEST = 'no-cache'
 
 # Gavan, 2026-10-19, the machines on the road: "pause any uploading on xevo and xonix for now.
 # Building is fine, uploading not." This file on XEVO's share holds every upload from the machines
-# (this script, wind_tiles.py's tiles, the ops page, the stations): what was built waits on disk and
+# (this script, wind_tiles.py's tiles, the stations; not the ops page, his window on them: 2026-10-20): what was built waits on disk and
 # the first upload after it is removed sends it. GitHub's dev run has no such file and uploads as ever.
 HOLD = [ROOT / 'pipeline' / 'raw' / 'windcfd' / 'HOLD-UPLOADS', Path(r'\\XEVO\windcfd2\HOLD-UPLOADS')]
 

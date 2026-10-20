@@ -417,9 +417,7 @@ def main() -> int:
             sys.path.insert(0, str(ROOT / "app" / "scripts"))
             import r2_sync  # noqa: E402
 
-            if r2_sync.held():
-                (OPS / "last.log").write_text(f"{time.strftime('%Y-%m-%d %H:%M:%S')} uploads held, written locally\n", encoding="utf-8")
-                return 0
+            # not held by HOLD-UPLOADS (Gavan, 2026-10-20: "standing rule, let's update the ops page"): a few KB a minute, his window on the machines
             r2_sync.client().put_object(Bucket=r2_sync.BUCKET, Key=f"ops/{token()}/index.html", Body=page.encode("utf-8"),
                                         ContentType="text/html; charset=utf-8", CacheControl="no-store")
         (OPS / "last.log").write_text(f"{time.strftime('%Y-%m-%d %H:%M:%S')} ok {len(page)} bytes -> {url}\n", encoding="utf-8")
