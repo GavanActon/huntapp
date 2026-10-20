@@ -14,6 +14,7 @@ import { fitBox } from './boxLayer'
 import { atCap, bounds, boxId, centre, HD_MAX_KM2, HD_MAX_SIDE_KM, hdFits, packMb, sizeKm, tilesUnder } from './box'
 import { tileAt } from './lattice'
 import { useExplore, type CoverageProps } from './store'
+import { useAppStore } from '../state/appStore'
 import './explore.css'
 import { dist, km2, kmIn, kmUnit } from '../lengths'
 
@@ -66,6 +67,8 @@ export default function BoxCard() {
   const markRequested = useExplore((s) => s.markRequested)
   const unrequest = useExplore((s) => s.unrequest)
   const select = useExplore((s) => s.select)
+  // the coverage grid is read off its map layer, drawn only while Explore is on
+  const exploring = useAppStore((s) => s.exploreMode)
   const addPlace = usePlacesStore((s) => s.add)
   const [busy, setBusy] = useState<'sd' | 'hd' | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -210,9 +213,11 @@ export default function BoxCard() {
       )}
       <div className="dim boxcard-hint">Drag a corner to size it, the middle to move it.</div>
       <div className="boxcard-lines">
-        <div>
-          <span className={`boxcard-grade ${w.hd ? 'hd' : 'sd'}`}>{read.length ? w.grade : 'Reading the grid…'}</span> {w.provs ? <span className="dim">· {w.provs}</span> : null}
-        </div>
+        {(read.length > 0 || exploring) && (
+          <div>
+            <span className={`boxcard-grade ${w.hd ? 'hd' : 'sd'}`}>{read.length ? w.grade : 'Reading the grid…'}</span> {w.provs ? <span className="dim">· {w.provs}</span> : null}
+          </div>
+        )}
         {read.length > 0 && (
           <>
             <div className="dim">{w.terrain}</div>
