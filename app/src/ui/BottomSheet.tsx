@@ -14,12 +14,14 @@ const FULL_PCT = 88
 
 /** From this height up the sheet is the screen, and the strip and the cards
  *  at the top hide while it is (Gavan, 2026-10-19: "as a rule, if you have a
- *  full screen, make sure the weather strip etc is hidden"). At 80% the
- *  sheet's top comes up to the folded strip's foot on an 844 px phone (640
- *  of the 800 px it sizes against; the strip ends ~140 px down, the live
- *  card under it): Map buttons (84), the layers (80) and anything pulled
- *  full or grown for the keyboard. The 72% sheets leave the strip its room. */
-const FULL_SCREEN_PCT = 80
+ *  full screen, make sure the weather strip etc is hidden"; then "settings
+ *  page - same"). At 72% the sheet's top is ~270 px down an 844 px phone
+ *  (576 of the 800 px it sizes against), the strip ends ~140 px down and
+ *  the live card under it: a sliver of map between, the strip floating over
+ *  a page. So the pages count: Settings, Scoring, the guide, Party (72), the
+ *  layers (80), Map buttons (84), and anything pulled full or grown for the
+ *  keyboard. Dig in, a pin, Views and the like (56 to 66) keep the strip. */
+const FULL_SCREEN_PCT = 72
 
 /** A detent as CSS: pct of the viewport, but of no more than VH_CAP_PX of it. */
 function heightCss(pct: number) {
