@@ -258,8 +258,10 @@ function useHold(onHold: () => void) {
   return { bind, tap }
 }
 
-const LIGHT_NAMES = { night: 'Night', red: 'Red light', day: 'Day' } as const
-const LIGHT_TOAST = { night: 'Night', red: 'Red light · keeps your night vision', day: 'Day · bright for the sun' } as const
+// Gavan, 2026-10-21: "Rename night to dark, order should be dark, bright, red light"
+const LIGHT_NAMES = { night: 'Dark', red: 'Red light', day: 'Bright' } as const
+const LIGHT_TOAST = { night: 'Dark', red: 'Red light · keeps your night vision', day: 'Bright · for the sun' } as const
+const LIGHT_ORDER = ['night', 'day', 'red'] as const
 function LightIcon({ l, size }: { l: 'night' | 'day' | 'red'; size: number }) {
   return l === 'day' ? <IconSun size={size} /> : l === 'red' ? <IconEye size={size} /> : <IconMoon size={size} />
 }
@@ -305,7 +307,7 @@ export default function WeatherStrip() {
   const setOutdoor = useAppStore((s) => s.setOutdoor)
   const redLight = useAppStore((s) => s.redLight)
   const setRedLight = useAppStore((s) => s.setRedLight)
-  // the light button: a tap opens Night / Red / Day, a pick closes it (Gavan, 2026-10-20: "as a icon
+  // the light button: a tap opens Dark / Bright / Red light, a pick closes it (Gavan, 2026-10-20: "as a icon
   // with drop down - you press, it shows the drop down, you select")
   const light: 'night' | 'day' | 'red' = outdoor ? 'day' : redLight ? 'red' : 'night'
   const [lightMenu, setLightMenu] = useState(false)
@@ -707,7 +709,7 @@ export default function WeatherStrip() {
         </button>
         {lightMenu && (
           <div className="menu-pop wx-lightmenu" role="menu" aria-label="Light">
-            {(['night', 'red', 'day'] as const).map((l) => (
+            {LIGHT_ORDER.map((l) => (
               <button key={l} className="menu-row" role="menuitemradio" aria-checked={l === light} onClick={() => pickLight(l)}>
                 <LightIcon l={l} size={16} />
                 {LIGHT_NAMES[l]}

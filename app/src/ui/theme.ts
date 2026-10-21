@@ -3,8 +3,9 @@ import { useAppStore } from '../state/appStore'
 /**
  * The light, the strip's light button's three stops (Gavan, 2026-10-19:
  * "light button actually is three options - (night, day, and red mode -
- * which shifts everything into the red spectrum)"): Night, the dark forest
- * set of tokens; Day, Outdoor's for sun on the phone; Red, the dark set
+ * which shifts everything into the red spectrum)"; named Dark, Bright and
+ * Red light 10-21): Dark, the dark forest set of tokens; Bright, Outdoor's
+ * for sun on the phone; Red light, the dark set
  * with everything, the map too, turned to red alone (theme.css). One
  * attribute each on the root.
  */
