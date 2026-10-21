@@ -440,6 +440,10 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
     id: 'base',
     type: 'raster',
     source: 'base',
+    // a loaded spot has nothing baked to set the quiet base under: with signal it is the Toporama sheet
+    // like the ground round it (the base inside its region drew a grey rectangle, 2026-10-21); the
+    // layer stays for syncUnderlays, never drawn nor fetched
+    ...(o.online && ACTIVE_AREA.loaded ? { minzoom: 24 } : {}),
     // quiet: the base is furniture, the data layers own the contrast
     paint: { 'raster-saturation': -0.7, 'raster-brightness-max': 0.45, 'raster-contrast': 0.1 },
   })
