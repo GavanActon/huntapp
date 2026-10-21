@@ -66,6 +66,8 @@ function savedOf(areaId: string): Saved | null {
 
 /** The area's sharp imagery, if it has any. */
 export function sharpOf(areaId: string): LiveRaster | null {
+  // a loaded spot streams Esri's photo but keeps none of it (areas/runtime.ts liveFor: the licence question)
+  if (areaById(areaId)?.loaded) return null
   const s = areaById(areaId)?.live.sharp
   return s ? SHARP[s] : null
 }

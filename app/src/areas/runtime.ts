@@ -60,12 +60,16 @@ export function dropLocation(id: string): void {
 }
 
 /** The live services that stand in for a province's baked layers
- *  (map/sources.ts): Ontario's LIO, Québec's imagery; elsewhere the far
- *  band's photo alone (Esri's, kept offline, waits on its licence: docs/OLD-ROADS.md). */
+ *  (map/sources.ts): Ontario's LIO, Québec's imagery; elsewhere Esri's
+ *  photo, streamed as for Blanchard River and Clearwater (none left the
+ *  photo views on the Topo look: "i click hunt, i only see our topo view",
+ *  2026-10-21). Streamed only: a spot's Save keeps no Esri tiles (offline
+ *  sharpImagery.ts sharpOf), their offline terms being the open licence
+ *  question (docs/OLD-ROADS.md). */
 function liveFor(j: string): AreaDef['live'] {
   if (j === 'ON') return { lio: true, satellite: 'lio' }
   if (j === 'QC') return { lio: false, satellite: 'qc' }
-  return { lio: false, satellite: null }
+  return { lio: false, satellite: null, sharp: 'esri' }
 }
 
 /** A guess at the province from a point, for a link that names none:
