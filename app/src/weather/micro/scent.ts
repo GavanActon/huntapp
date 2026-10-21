@@ -150,6 +150,9 @@ export interface PlumeTracks {
   /** first and last step each particle is alive */
   k0: Int16Array
   k1: Int16Array
+  /** each step's height of the puff's middle over the ground, m: its centre, or 0.8 σz once its spread
+   *  has carried it higher (the reflected Gaussian's mean); what 3D lifts it by (the particles) */
+  z?: Float32Array
 }
 
 const EXTENT_M = 700
@@ -883,7 +886,7 @@ export function simulatePlume(
   const sectors = new Float64Array(8)
   const STEPS = Math.ceil(TOTAL / DT) + 1
   const NP = REALISATIONS * PER_REAL
-  const tracks: PlumeTracks = { steps: STEPS, x: new Float32Array(NP * STEPS), y: new Float32Array(NP * STEPS), k0: new Int16Array(NP), k1: new Int16Array(NP) }
+  const tracks: PlumeTracks = { steps: STEPS, x: new Float32Array(NP * STEPS), y: new Float32Array(NP * STEPS), k0: new Int16Array(NP), k1: new Int16Array(NP), z: new Float32Array(NP * STEPS) }
   // what each step laid down at the noses, for the cone a minute at a
   // time, and the scent's age where it lands, weighted the same
   const laid = new Float32Array(NP * STEPS)
@@ -1117,6 +1120,7 @@ export function simulatePlume(
         if (k < STEPS) {
           tracks.x[base + k] = x
           tracks.y[base + k] = y
+          tracks.z![base + k] = Math.max(zc0 + zRel + liftZ, 0.8 * sig)
           tracks.k1[id] = k
         }
         // the nose-height weight: the table at the release height, or the
@@ -2376,7 +2380,9 @@ function draw(map: MlMap) {
     veil.stop()
     particles.start(map, f, runs)
   } else {
-    particles.stop()
+    // in 3D the scent's body in the air over the view's footprint on the ground: the particles, lifted
+    if (useAppStore.getState().view3d && map.getPitch() > 5) particles.start(map, f, runs, true)
+    else particles.stop()
     drawCloud(map, f, v === 'people')
     // a faint veil streams through the cloud the way the scent goes; each person's own edge reads better without it
     if (v === 'cloud') veil.start(map, f, runs)
@@ -2424,6 +2430,8 @@ const particles = (() => {
     /** one person: the outline's farthest point from them, and the reach to write there */
     tip: [number, number] | null
     label: string | null
+    /** played over another view in 3D, lifted to their heights: no edge or reach of their own (the view has them) */
+    inAir: boolean
   } | null = null
   let t0 = 0
   let sprites: HTMLCanvasElement[] | null = null
@@ -2485,6 +2493,16 @@ const particles = (() => {
     const src = project(0, 0)
     const top = project(0, 100)
     const pxPerM = Math.hypot(top.x - src.x, top.y - src.y) / 100
+    // tilted (3D): a puff z m up shows sin(pitch)·z px higher per metre across the view, the ground's
+    // own height scale with it, so the scent rises off the ground where the air carries it up (Gavan,
+    // 2026-10-21, the 3D plan's step 3: lifting up a warm slope, hugging the ground into the low ground at dusk)
+    const pitch = (m.getPitch() * Math.PI) / 180
+    let liftK = 0
+    if (pitch > 0.02) {
+      const across = ((m.getBearing() + 90) * Math.PI) / 180
+      const side = project(Math.sin(across) * 100, Math.cos(across) * 100)
+      liftK = Math.sin(pitch) * (m.getTerrain()?.exaggeration ?? 1) * (Math.hypot(side.x - src.x, side.y - src.y) / 100)
+    }
     // sim time now, looping; standing still draws the end of the sit
     const T = still() ? sitS - DT : (((now - t0) % LOOP_MS) / LOOP_MS) * sitS
     const kf = T / DT
@@ -2517,19 +2535,21 @@ const particles = (() => {
         const y = oy + tr.y[i] + (tr.y[j] - tr.y[i]) * f
         const v = Math.min(1, Math.log(g / TRACE) / -Math.log(TRACE))
         const q = project(x, y)
+        const zz = liftK && tr.z ? tr.z[i] + (tr.z[j] - tr.z[i]) * f : 0
+        const qy = q.y - zz * liftK
         // the puff's spread, m: a couple of metres at the body, widening with travel
         const sigma = 3 + 0.08 * (travel[i] + (travel[j] - travel[i]) * f)
         const half = Math.min(80, Math.max(2, sigma * pxPerM))
         // wide faint puffs overlap a lot, so a trace is kept thin or it would pile up to look strong
-        sx.globalAlpha = (0.04 + 0.26 * v ** 1.2) * fade
-        sx.drawImage(shade[Math.round(v * (SHADES - 1))], q.x / 2 - half, q.y / 2 - half, 2 * half, 2 * half)
+        sx.globalAlpha = (0.04 + 0.26 * v ** 1.2) * fade * (state.inAir ? 0.8 : 1)
+        sx.drawImage(shade[Math.round(v * (SHADES - 1))], q.x / 2 - half, qy / 2 - half, 2 * half, 2 * half)
       }
     sx.globalAlpha = 1
     ctx.globalAlpha = useScent.getState().strength
     ctx.drawImage(soft, 0, 0, w, h)
     ctx.globalAlpha = 1
     // where it stops being noticeable: the cone's own edge, not a ring
-    if (edge) {
+    if (edge && !state.inAir) {
       const trace = (o: Outline) => {
         ctx.beginPath()
         for (let n = 0; n < o.xy.length; n += 2) {
@@ -2577,7 +2597,7 @@ const particles = (() => {
   }
 
   return {
-    start(m: MlMap, fr: Frame, runs: (PlumeRun | null)[]) {
+    start(m: MlMap, fr: Frame, runs: (PlumeRun | null)[], inAir = false) {
       if (map !== m) {
         map?.off('move', redrawStill)
         map = m
@@ -2625,7 +2645,7 @@ const particles = (() => {
       // a person being dragged keeps the loop's clock, so the sit plays on
       if (!state) t0 = performance.now()
       const sitS = ((runs.find(Boolean)?.tracks.steps ?? Math.ceil(TOTAL_S / DT) + 1) - 1) * DT
-      state = { f: fr, sitS, srcs, outline, edge, tip, label: one ? reachLabel(one.plume) : null }
+      state = { f: fr, sitS, srcs, outline, edge, tip, label: one ? reachLabel(one.plume) : null, inAir }
       if (!raf) raf = requestAnimationFrame(frame)
     },
     stop() {
@@ -3104,6 +3124,12 @@ export function initScentLayer() {
     })
     useAppStore.subscribe((s, p) => {
       if (s.planTimeMs !== p.planTimeMs && useScent.getState().people.length) schedule()
+      // 3D on or off: the scent's body in the air comes or goes (once the tilt has landed: its moveend)
+      if (s.view3d !== p.view3d && useScent.getState().people.length) {
+        const m = getMap()
+        if (m) m.once('moveend', schedule)
+        schedule()
+      }
       if (s.units !== p.units && useScent.getState().distances && useScent.getState().people.length > 1) schedule()
     })
     document.addEventListener('visibilitychange', () => {

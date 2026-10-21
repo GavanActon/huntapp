@@ -23,6 +23,7 @@ import { initScentLayer } from './weather/micro/scent'
 import { initCheckLayer } from './weather/micro/checkLayer'
 import { initLayerArrive } from './map/layerArrive'
 import { initTerrain3d } from './map/terrain3d'
+import WindKey from './ui/WindKey'
 import { initPartyLayer } from './party/partyLayer'
 import { initMapUpdates } from './offline/updates'
 import { initAppUpdate, reloadApp, useAppUpdate } from './offline/appUpdate'
@@ -239,6 +240,8 @@ export default function App() {
         </div>
       )}
       {!sheetOpen && !formUp && !placing && <ToolColumn />}
+      {/* in 3D, which streaks are which height */}
+      {!sheetOpen && !formUp && <WindKey />}
       <div className="bottombar" ref={barRef}>
         {/* the tool's card, else the form that is up: an entry, a moose heard, a wind check */}
         {tool === 'labels' && <BushLabelCard />}

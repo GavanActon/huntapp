@@ -292,6 +292,9 @@ export interface AppState {
   /** how high the ground stands in 3D, ×1 to ×3; null: the area's (terrain3d.ts defaultTerrainScale); persisted */
   terrainScale: number | null
   setTerrainScale: (v: number | null) => void
+  /** in 3D, the wind's sheets above head height (weather/windFlow.ts SHEETS); persisted */
+  windSheets: { tops: boolean; aloft: boolean }
+  setWindSheet: (k: 'tops' | 'aloft', on: boolean) => void
   /** both columns' buttons per mode, top to bottom, any number; persisted */
   hotButtons: Record<'hunt' | 'fish', HotSets>
   /** a mode's two columns at once: a button dragged across is never in both */
@@ -413,6 +416,8 @@ export const useAppStore = create<AppState>()(
       setView3d: (view3d) => set({ view3d }),
       terrainScale: null,
       setTerrainScale: (terrainScale) => set({ terrainScale }),
+      windSheets: { tops: true, aloft: true },
+      setWindSheet: (k, on) => set((s) => ({ windSheets: { ...s.windSheets, [k]: on } })),
       setViewMenuOpen: (viewMenuOpen) => set({ viewMenuOpen }),
       hotButtons: DEFAULT_HOT,
       setHotSets: (mode, sets) => set((st) => ({ hotButtons: { ...st.hotButtons, [mode]: cleanSets(sets, st.hotButtons[mode]) } })),
@@ -567,6 +572,7 @@ export const useAppStore = create<AppState>()(
         redLight: s.redLight,
         view3d: s.view3d,
         terrainScale: s.terrainScale,
+        windSheets: s.windSheets,
         devMode: s.devMode,
         devGpsTap: s.devGpsTap,
         stripOpen: s.stripOpen,

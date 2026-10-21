@@ -32,6 +32,8 @@ export interface Profile {
   w10: number[]
   d10: number[]
   w80: number[]
+  /** 80 m direction, blowing FROM (absent in a profile saved before it was fetched, 2026-10-21) */
+  d80?: number[]
   /** shortwave radiation W/m² (preceding hour mean) */
   sw: number[]
   cloud: number[]
@@ -69,7 +71,7 @@ export interface Layering {
  *  and offline the saved profile is used however old it is. */
 const KEY = 'huntapp-profile:v1'
 const MAX_AGE_MS = 3 * 3600_000
-const VARS = ['temperature_2m', 'temperature_80m', 'wind_speed_10m', 'wind_direction_10m', 'wind_speed_80m', 'shortwave_radiation', 'cloud_cover']
+const VARS = ['temperature_2m', 'temperature_80m', 'wind_speed_10m', 'wind_direction_10m', 'wind_speed_80m', 'wind_direction_80m', 'shortwave_radiation', 'cloud_cover']
 
 let profile: Profile | null = null
 let inflight: Promise<Profile | null> | null = null
@@ -132,6 +134,7 @@ async function fetchFrame(home: { lon: number; lat: number }, timezone: string):
     w10: num('wind_speed_10m'),
     d10: num('wind_direction_10m'),
     w80: num('wind_speed_80m'),
+    d80: num('wind_direction_80m'),
     sw: num('shortwave_radiation'),
     cloud: num('cloud_cover'),
     ens: null,
@@ -146,6 +149,7 @@ async function fetchFrame(home: { lon: number; lat: number }, timezone: string):
       ['w10', 'wind_speed_10m'],
       ['d10', 'wind_direction_10m'],
       ['w80', 'wind_speed_80m'],
+      ['d80', 'wind_direction_80m'],
       ['sw', 'shortwave_radiation'],
       ['cloud', 'cloud_cover'],
     ]
@@ -349,6 +353,31 @@ export function patchProfile(rows: ProfileRow[]): void {
 export function onProfile(cb: () => void): () => void {
   listeners.add(cb)
   return () => listeners.delete(cb)
+}
+
+/**
+ * The wind at 80 m at a time, from the camp's profile: its speed, km/h, and
+ * the way it blows FROM, the two hours either side blended as a vector so a
+ * turn through north stays a turn. The 10 m way stands in where the 80 m's
+ * is not in (a profile saved before it was fetched, satellite hours). The 3D
+ * wind's top sheet (windFlow.ts): one wind over the view, as it is that high.
+ */
+export function aloftWind(ms: number): { kmh: number; dirFrom: number } | null {
+  const p = currentProfile()
+  if (!p || !p.time.length) return null
+  const kmh = lerpAt(p.time, p.w80, ms)
+  const dirs = p.d80 && p.d80.some(Number.isFinite) ? p.d80 : p.d10
+  const st = stampsMs(p.time)
+  const i = Math.max(0, Math.min(p.time.length - 1, lastStampAt(st, ms)))
+  const j = Math.min(p.time.length - 1, i + 1)
+  const f = j > i ? Math.min(1, Math.max(0, (ms - st[i]) / (st[j] - st[i]))) : 0
+  const a = dirs[i]
+  const b = Number.isFinite(dirs[j]) ? dirs[j] : a
+  if (!Number.isFinite(kmh) || !Number.isFinite(a)) return null
+  const r = Math.PI / 180
+  const e = (1 - f) * Math.sin(a * r) + f * Math.sin(b * r)
+  const n = (1 - f) * Math.cos(a * r) + f * Math.cos(b * r)
+  return { kmh, dirFrom: ((Math.atan2(e, n) / r) + 360) % 360 }
 }
 
 function lerpAt(time: string[], arr: number[], ms: number): number {

@@ -6,7 +6,7 @@ import { useAppStore, type WindStyle } from '../state/appStore'
 import { lodOf, meanLod, onQuality, qualityProfile, reportFrame } from './flowQuality'
 import { centrePoint, compose, FrameAnchor, IDENTITY, invert, isIdentity, same, type Affine } from './frameAffine'
 import { ensureWeatherGrid, onWeatherGrid, onWeatherTick, windGridInfo, windSampler } from './windGrid'
-import { currentProfile, ensureProfile, onProfile } from './boundaryLayer'
+import { aloftWind, currentProfile, ensureProfile, onProfile } from './boundaryLayer'
 import { groundSampler, loadMicro, microGrid, onMicro } from './micro/model'
 import { useWindChecks } from './micro/windChecks'
 
@@ -789,6 +789,88 @@ function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
   return { step: FIELD_STEP, cols, rows, vx, vy, live, lum: null, inkLum: null, swirl: ground ? boxBlur(swirl, cols, rows, SWIRL_BLUR, null) : null, coarse: anyCoarse ? coarse : null }
 }
 
+/**
+ * The wind above head height, in 3D (map/terrain3d.ts; Gavan, 2026-10-21,
+ * step 2 of the 3D plan, "do the wind and scent"): two more sheets of
+ * streaks over the head-height ones, each lifted to its height through the
+ * tilted view, so the turn and the speed-up with height show. Treetops: the
+ * forecast's 10 m field, about the boreal canopy's top, at 15 m. 80 m: the
+ * camp's 80 m wind over the whole view (boundaryLayer aloftWind), at 80 m.
+ * Each in its own ink, the head height keeping the map's; flat, there are
+ * none (the heights would lie on one another).
+ */
+export type WindSheet = 'tops' | 'aloft'
+export const SHEETS: Record<WindSheet, { z: number; rgb: string; share: number; name: string }> = {
+  // thinner and fainter than the head height's: they say how the wind turns and quickens above it, the
+  // head height stays the read (at full share they buried the map and the scent at z15)
+  tops: { z: 15, rgb: '255, 184, 77', share: 0.25, name: 'Treetops' },
+  aloft: { z: 80, rgb: '143, 211, 255', share: 0.2, name: '80 m' },
+}
+
+function buildSheetField(map: MlMap, w: number, h: number, atMs: number, sheet: WindSheet): FieldGrid {
+  const cols = Math.ceil(w / FIELD_STEP) + 1
+  const rows = Math.ceil(h / FIELD_STEP) + 1
+  const vx = new Float32Array(cols * rows)
+  const vy = new Float32Array(cols * rows)
+  const dead: FieldGrid = { step: FIELD_STEP, cols, rows, vx, vy, live: false, lum: null, inkLum: null, swirl: null, coarse: null }
+  const pitch = (map.getPitch() * Math.PI) / 180
+  if (pitch < 0.02) return dead
+  const tops = sheet === 'tops' ? windSampler(atMs) : null
+  const aloft = sheet === 'aloft' ? aloftWind(atMs) : null
+  if (!tops && !aloft) return dead
+  const speedMul = useAppStore.getState().flowTuning.windSpeed
+  const ex = map.getTerrain()?.exaggeration ?? 1
+  const z = SHEETS[sheet].z * ex
+  // across the screen on the ground is the view's bearing turned a quarter
+  const across = ((map.getBearing() + 90) * Math.PI) / 180
+  const ae = Math.sin(across)
+  const an = Math.cos(across)
+  const out = new Float32Array(4)
+  let live = false
+  const step = (ll: { lng: number; lat: number }, e: number, n: number) => map.project([ll.lng + e / (111_320 * Math.cos((ll.lat * Math.PI) / 180)), ll.lat + n / 110_574])
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const x = c * FIELD_STEP
+      const y = r * FIELD_STEP
+      // the ground under this pixel, and how many px a metre across makes there
+      const g = map.unproject([x, y])
+      const p0 = map.project(g)
+      const p1 = step(g, ae * 10, an * 10)
+      const s = Math.hypot(p1.x - p0.x, p1.y - p0.y) / 10
+      if (!Number.isFinite(s) || s <= 0) continue
+      // a point z up over the ground shows sin(pitch)·z·s px higher: the ground under this pixel's sheet point is that far down
+      const ll = map.unproject([x, y + z * s * Math.sin(pitch)])
+      let kmh: number
+      let dirFrom: number
+      if (tops) {
+        if (!tops(ll.lng, ll.lat, out)) continue
+        kmh = out[0]
+        dirFrom = out[1]
+      } else {
+        kmh = aloft!.kmh
+        dirFrom = aloft!.dirFrom
+      }
+      if (!(kmh > 0.05)) continue
+      const rad = ((dirFrom + 180) * Math.PI) / 180
+      const pxps = Math.min(220, Math.max(8, kmh * 0.54 * 4.5 * speedMul))
+      // its way on the screen: a few metres of it on the ground below, through the projection
+      const q0 = map.project(ll)
+      const REF_M = 8 / Math.max(s, 1e-3)
+      const q1 = step(ll, Math.sin(rad) * REF_M, Math.cos(rad) * REF_M)
+      const dx = q1.x - q0.x
+      const dy = q1.y - q0.y
+      if (!Number.isFinite(dx) || !Number.isFinite(dy)) continue
+      const k = pxps / 8
+      const len = Math.hypot(dx, dy) * k
+      const cap = len > 220 ? 220 / len : 1
+      vx[r * cols + c] = dx * k * cap
+      vy[r * cols + c] = dy * k * cap
+      live = true
+    }
+  }
+  return { ...dead, live }
+}
+
 function sampleField(f: FieldGrid, x: number, y: number, out: Float32Array): void {
   const fx = Math.min(f.cols - 1.001, Math.max(0, x / f.step))
   const fy = Math.min(f.rows - 1.001, Math.max(0, y / f.step))
@@ -804,6 +886,8 @@ function sampleField(f: FieldGrid, x: number, y: number, out: Float32Array): voi
 interface EngineOpts {
   level: () => number
   warm?: boolean
+  /** a sheet above head height (3D): its own field and ink, no wash, no reading of the map */
+  sheet?: WindSheet
 }
 
 interface Engine {
@@ -823,8 +907,10 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
   const w = container.clientWidth
   const h = container.clientHeight
   const atMs = () => useAppStore.getState().planTimeMs ?? Date.now()
+  const sheet = opts.sheet
+  const make = () => (sheet ? buildSheetField(map, w, h, atMs(), sheet) : buildField(map, w, h, atMs()))
 
-  let field = buildField(map, w, h, atMs())
+  let field = make()
   if (!field.live) return { stop: () => {}, rebase: () => {}, refield: () => false, dead: true }
   // A reading of the map under the field, inside a render (the GL canvas
   // can only be read then), into whichever field is current when it lands.
@@ -836,8 +922,8 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
   let bitmapBusy = false
   let stopped = false
   const readNow = () => {
-    // one white ink: nothing to read the map for
-    if (lookOf().white) return
+    // one white ink, or a sheet's own: nothing to read the map for
+    if (lookOf().white || sheet) return
     if (!bitmapRoad) return readLuminance(map, field)
     if (bitmapBusy) return
     bitmapBusy = true
@@ -861,7 +947,7 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
     map.triggerRepaint()
   }
   // the wash, drawn with every new field (a pan's slide keeps it: it sits in the map)
-  syncWash(map)
+  if (!sheet) syncWash(map)
   const fieldOff = { x: 0, y: 0 }
   const swirl = makeSwirl(w, h, performance.now())
   const eddy = new Float32Array(2)
@@ -895,7 +981,7 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
   setDpr(wantDpr())
   container.appendChild(canvas)
 
-  const N = Math.max(20, Math.round(useAppStore.getState().flowTuning.windDensity))
+  const N = Math.max(20, Math.round(useAppStore.getState().flowTuning.windDensity * (sheet ? SHEETS[sheet].share : 1)))
   const px = new Float32Array(N)
   const py = new Float32Array(N)
   const vel = new Float32Array(2)
@@ -970,13 +1056,13 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
       fieldOff.x += now.e
       fieldOff.y += now.f
     } else {
-      field = buildField(map, w, h, atMs())
+      field = make()
       fieldOff.x = 0
       fieldOff.y = 0
       viewGen++
       // a new view under the field: what it crosses has to be read again
-      if (field.live) readSoon()
-      syncWash(map)
+      if (field.live && !sheet) readSoon()
+      if (!sheet) syncWash(map)
     }
     lod = lodOf(map, h)
     sizeActive()
@@ -992,7 +1078,7 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
   // ensemble land a second or so apart, and each used to read it again.
   const refield = () => {
     if (!isIdentity(anchor.current(map))) rebase()
-    const f = buildField(map, w, h, atMs())
+    const f = make()
     if (!f.live) return false
     // a field slid under a small pan was read where it was: a cell out at most, read again
     const slid = fieldOff.x !== 0 || fieldOff.y !== 0
@@ -1002,7 +1088,7 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
     fieldOff.x = 0
     fieldOff.y = 0
     if (!f.lum || slid) armQuiet()
-    syncWash(map)
+    if (!sheet) syncWash(map)
     return true
   }
 
@@ -1092,7 +1178,16 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
     // the same hue in three inks: light, brighter, and a dark one that
     // reads on pale ground; the Contrast look's one white
     const look = LOOKS[tune.windStyle] ?? LOOKS.standard
-    for (let q = 0; q < QUALITIES; q++) {
+    // a sheet above head height: its own ink, every path in it, by speed alone
+    if (sheet) {
+      const rgb = SHEETS[sheet].rgb
+      ctx.lineWidth = streakPx * 0.8
+      for (let b = 0; b < ALPHA_BANDS; b++) {
+        ctx.strokeStyle = `rgba(${rgb}, ${Math.min(1, (0.16 + ((b + 0.5) / ALPHA_BANDS) * 0.4) * level)})`
+        for (let q = 0; q < QUALITIES; q++) for (let tone = 0; tone < TONES; tone++) ctx.stroke(bands[(q * TONES + tone) * ALPHA_BANDS + b])
+      }
+    }
+    for (let q = 0; q < QUALITIES && !sheet; q++) {
       ctx.lineWidth = q ? streakPx * COARSE_WIDTH : streakPx
       for (let tone = 0; tone < TONES; tone++) {
         const light = tone === TONE_DARK ? look.ink.dark : tone === TONE_BRIGHT ? look.ink.bright : look.ink.light
@@ -1185,6 +1280,29 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
 }
 
 let ambient: Engine | null = null
+/** the sheets above head height, running beside it in 3D */
+let sheetEngines: Engine[] = []
+
+function stopSheets() {
+  for (const e of sheetEngines) e.stop()
+  sheetEngines = []
+}
+
+/** The sheets the map wants now: in 3D, tilted, with the streaks on, each the 3D hold's switch allows. */
+function wantedSheets(map: MlMap): WindSheet[] {
+  const s = useAppStore.getState()
+  if (!s.view3d || !s.layers.windFlow || map.getPitch() < 5) return []
+  return (['tops', 'aloft'] as const).filter((k) => s.windSheets[k])
+}
+
+function syncSheets(map: MlMap) {
+  stopSheets()
+  if (!ambient || openedMap !== map) return
+  for (const sheet of wantedSheets(map)) {
+    const eng = startEngine(map, { sheet, warm: true, level: () => useAppStore.getState().windFlowOpacity })
+    if (!eng.dead) sheetEngines.push(eng)
+  }
+}
 
 function reducedMotion(): boolean {
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
@@ -1217,6 +1335,7 @@ function syncAmbient(map: MlMap) {
   const s = useAppStore.getState()
   const want = s.layers.windFlow && !reducedMotion() && document.visibilityState === 'visible'
   const wasLive = !!ambient
+  stopSheets()
   if (ambient) {
     ambient.stop()
     ambient = null
@@ -1231,6 +1350,7 @@ function syncAmbient(map: MlMap) {
     const eng = startEngine(map, { warm: wasLive, level: () => useAppStore.getState().windFlowOpacity })
     if (eng.dead) return // no grid yet: onWeatherGrid retries
     ambient = eng
+    syncSheets(map)
   })
 }
 
@@ -1256,7 +1376,10 @@ function refreshAmbient(map: MlMap) {
   const ground = useAppStore.getState().windLevel === 'ground'
   void airReady(ground).then(() => {
     if (ambient !== eng) return
-    if (!eng.refield()) syncAmbient(map)
+    if (!eng.refield()) return syncAmbient(map)
+    // the sheets' air changed with it: their fields again, or started if they could not be before
+    if (sheetEngines.length !== wantedSheets(map).length) syncSheets(map)
+    else for (const s of sheetEngines) s.refield()
   })
 }
 
@@ -1284,11 +1407,16 @@ export function initWindFlow() {
       OPEN_MS,
     )
     map.on('moveend', () => {
-      if (ambient) ambient.rebase()
-      else syncAmbient(map)
+      if (ambient) {
+        ambient.rebase()
+        // tilted into or out of view of the sheets (3D's ease, a two-finger tilt): start or stop them
+        if (sheetEngines.length !== wantedSheets(map).length) syncSheets(map)
+        else for (const s of sheetEngines) s.rebase()
+      } else syncAmbient(map)
     })
     map.on('resize', () => syncAmbient(map))
     map.once('remove', () => {
+      stopSheets()
       ambient?.stop()
       ambient = null
     })
@@ -1307,6 +1435,11 @@ export function initWindFlow() {
     useAppStore.subscribe((s, prev) => {
       // the switches and the particle count need a new engine
       if (s.layers.windFlow !== prev.layers.windFlow || s.flowTuning.windDensity !== prev.flowTuning.windDensity) cur()
+      // 3D on or off, a sheet switched, the ground's height: the sheets again (the head height's engine stays)
+      else if (s.view3d !== prev.view3d || s.windSheets !== prev.windSheets || s.terrainScale !== prev.terrainScale) {
+        const m = getMap()
+        if (m) syncSheets(m)
+      }
       // the air under it only needs resampling
       else if (s.planTimeMs !== prev.planTimeMs || s.flowTuning.windSpeed !== prev.flowTuning.windSpeed || s.flowTuning.windStyle !== prev.flowTuning.windStyle || s.windLevel !== prev.windLevel) fresh()
       // the Wind colours switched, or the ground they lie on (their place and strength)

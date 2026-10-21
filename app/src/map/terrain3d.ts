@@ -62,6 +62,28 @@ function apply(map: MlMap, on: boolean, tilt: boolean) {
   }
 }
 
+/**
+ * The camera stood on the ground it looks at. MapLibre places the camera by
+ * the view's middle and that middle's height, and between some zooms (15.6
+ * to 15.9 and 16.5 at Pickle Lake, its DEM's tiles to z16) its own lookup of
+ * that height comes back 0: with the ground stood up ×2 (680 m there) the
+ * camera, ~600 m up, was under it and the map went black. The height is read
+ * again zoom by zoom from the view's own (MapLibre's own climb gave 0 there
+ * too), after every move and as the DEM's tiles land, and put back when off.
+ */
+function keepOnGround(map: MlMap) {
+  if (!map.getTerrain()) return
+  const terrain = (map as unknown as { terrain?: { getElevationForLngLatZoom: (ll: unknown, z: number) => number } }).terrain
+  if (!terrain) return
+  // MapLibre's own climb (getElevationForLngLat) came back 0 there too: asked zoom by zoom from the
+  // view's own, at most the DEM's deepest, down to the first with the ground in it
+  const top = Math.min(Math.floor(map.getZoom()), (map.getSource(TERRAIN_SOURCE) as { maxzoom?: number } | undefined)?.maxzoom ?? 16)
+  const c = map.getCenter()
+  let e = 0
+  for (let z = top; z >= Math.max(0, top - 4) && !(e > 0); z--) e = terrain.getElevationForLngLatZoom(c, z)
+  if (Number.isFinite(e) && e > 0 && Math.abs(map.getCenterElevation() - e) > 1) map.setCenterElevation(e)
+}
+
 let wired = false
 
 export function initTerrain3d(): void {
@@ -72,6 +94,10 @@ export function initTerrain3d(): void {
     apply(map, useAppStore.getState().view3d, true)
     // a style put back (a reload of the area's layers) loses the terrain: put it back too
     map.on('style.load', () => apply(map, useAppStore.getState().view3d, false))
+    map.on('moveend', () => keepOnGround(map))
+    map.on('sourcedata', (e: { sourceId?: string; isSourceLoaded?: boolean }) => {
+      if (e.sourceId === TERRAIN_SOURCE && e.isSourceLoaded) keepOnGround(map)
+    })
   })
   useAppStore.subscribe((s, prev) => {
     if (s.view3d === prev.view3d && s.terrainScale === prev.terrainScale) return

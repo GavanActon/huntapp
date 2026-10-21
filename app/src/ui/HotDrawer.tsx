@@ -23,6 +23,7 @@ import { faster, paceText, slower } from './PaceNudge'
 import { useTapOff } from './tapOff'
 import { height } from '../lengths'
 import { defaultTerrainScale, fromMySit } from '../map/terrain3d'
+import { SHEETS } from '../weather/windFlow'
 
 /**
  * A hot button's drawer: a press and hold slides it out beside the button,
@@ -245,6 +246,8 @@ function ThreeDRows({ go }: RowsProps) {
   const scale = useAppStore((s) => s.terrainScale)
   const setScale = useAppStore((s) => s.setTerrainScale)
   const auto = defaultTerrainScale()
+  const sheets = useAppStore((s) => s.windSheets)
+  const setSheet = useAppStore((s) => s.setWindSheet)
   useEffect(() => {
     useAppStore.getState().setView3d(true)
   }, [])
@@ -261,6 +264,17 @@ function ThreeDRows({ go }: RowsProps) {
         ]}
         onPick={(v) => setScale(v === auto ? null : v)}
       />
+      <div className="hd-row">
+        <span>Wind above you</span>
+      </div>
+      <Act on={sheets.tops} onTap={() => setSheet('tops', !sheets.tops)}>
+        <i className="windkey-dot" style={{ background: `rgb(${SHEETS.tops.rgb})` }} />
+        {SHEETS.tops.name}
+      </Act>
+      <Act on={sheets.aloft} onTap={() => setSheet('aloft', !sheets.aloft)}>
+        <i className="windkey-dot" style={{ background: `rgb(${SHEETS.aloft.rgb})` }} />
+        {SHEETS.aloft.name}
+      </Act>
       <Act onTap={go(fromMySit)}>From my sit</Act>
     </>
   )
