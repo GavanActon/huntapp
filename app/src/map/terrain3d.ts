@@ -1,0 +1,135 @@
+import type { Map as MlMap } from 'maplibre-gl'
+import { RELIEF } from '../config'
+import { devlog } from '../devlog'
+import { useAppStore } from '../state/appStore'
+import { homePlace } from '../state/placesStore'
+import { useGpsStore } from '../tracking/gpsStore'
+import { campForecast } from '../weather/refresh'
+import { onEachMap } from './mapController'
+import { TERRAIN_SOURCE } from './mapStyle'
+
+/**
+ * The 3D button (Gavan, 2026-10-21, step 1 of the 3D plan: "ok go"): the
+ * map tilts to PITCH_3D and the ground stands up on the area's own heights
+ * (the baked DEM, a source of its own beside the shade's, so the two do not
+ * share tiles mid-draw), everything on the map draped over it. Off, the
+ * ground lies flat and the map comes back to looking straight down.
+ *
+ * How high the ground stands: the hunter's pick under the button's hold
+ * (×1 ×2 ×3), else the area's: ×2 where the whole area rises less than
+ * 300 m (Pickle Lake's 141 m reads flat at true height), ×1 where it rises
+ * more (Lac Bailey's 370 m, the mountains). The wind streaks follow the tilt
+ * in windFlow.ts; the scent's puffs are placed through the map already.
+ */
+
+export const PITCH_3D = 60
+/** True height past this rise from the area's lowest to its highest ground. */
+const TRUE_HEIGHT_FROM_M = 300
+
+export const defaultTerrainScale = (): number => (RELIEF[1] - RELIEF[0] < TRUE_HEIGHT_FROM_M ? 2 : 1)
+export const terrainScale = (): number => useAppStore.getState().terrainScale ?? defaultTerrainScale()
+
+/** Low sky, a haze at the horizon: the far tiles fade instead of piling up. */
+const SKY = {
+  'sky-color': '#24323a',
+  'horizon-color': '#56666b',
+  'fog-color': '#3e4c50',
+  'sky-horizon-blend': 0.6,
+  'horizon-fog-blend': 0.55,
+  'fog-ground-blend': 0.55,
+  'atmosphere-blend': 0.4,
+}
+
+function apply(map: MlMap, on: boolean, tilt: boolean) {
+  if (!map.isStyleLoaded()) return
+  const has = !!map.getSource(TERRAIN_SOURCE)
+  if (on) {
+    if (has) map.setTerrain({ source: TERRAIN_SOURCE, exaggeration: terrainScale() })
+    else devlog('3d', 'no heights here: tilted, ground flat')
+    try {
+      map.setSky(SKY)
+    } catch {
+      // an older style spec: no sky, the tilt still works
+    }
+    // From my sit looks along the ground: room to tilt past the button's 60
+    map.setMaxPitch(85)
+    if (tilt && map.getPitch() < 5) map.easeTo({ pitch: PITCH_3D, duration: 700 })
+  } else {
+    if (map.getTerrain()) map.setTerrain(null)
+    // flat again: looking straight down, north up as before (From my sit turned it), unless the map follows the phone's heading
+    if (tilt && (map.getPitch() > 0 || map.getBearing() !== 0)) map.easeTo({ pitch: 0, ...(useGpsStore.getState().headingUp ? {} : { bearing: 0 }), duration: 500 })
+    map.setMaxPitch(60)
+  }
+}
+
+let wired = false
+
+export function initTerrain3d(): void {
+  if (wired) return
+  wired = true
+  onEachMap((map) => {
+    // a phone that closed in 3D opens in it, tilted as it was left
+    apply(map, useAppStore.getState().view3d, true)
+    // a style put back (a reload of the area's layers) loses the terrain: put it back too
+    map.on('style.load', () => apply(map, useAppStore.getState().view3d, false))
+  })
+  useAppStore.subscribe((s, prev) => {
+    if (s.view3d === prev.view3d && s.terrainScale === prev.terrainScale) return
+    onEachMapNow((map) => apply(map, s.view3d, s.view3d !== prev.view3d))
+  })
+}
+
+/** The live map, if there is one, now (not later maps). */
+let current: MlMap | null = null
+onEachMap((m) => {
+  current = m
+})
+function onEachMapNow(fn: (m: MlMap) => void) {
+  if (current) fn(current)
+}
+
+/** From my sit's view: its middle this far downwind, this low a tilt, this close (a few hundred metres across). */
+const SIT_AHEAD_M = 250
+const SIT_PITCH = 75
+const SIT_ZOOM = 15.5
+
+/** Metres to degrees, near enough over a few hundred metres. */
+const metresToLngLat = (lon: number, lat: number, eastM: number, northM: number): [number, number] => [lon + eastM / (111_320 * Math.cos((lat * Math.PI) / 180)), lat + northM / 110_574]
+
+/**
+ * From my sit: the camera stood just above where you are (the fix, else the
+ * camp), looking the way the wind blows at the planning time, so the ground
+ * your scent travels over is ahead of you. 3D comes on with it.
+ */
+export function fromMySit(): void {
+  const map = current
+  if (!map) return
+  const fix = useGpsStore.getState().fix
+  const home = homePlace()
+  const at: [number, number] = fix ? [fix.lon, fix.lat] : [home.lon, home.lat]
+  // the wind's way at the planning hour (the camp's forecast), else north
+  const f = campForecast()
+  const when = useAppStore.getState().planTimeMs ?? Date.now()
+  let toward = 0
+  if (f) {
+    let best = 0
+    let bestD = Infinity
+    f.hourly.time.forEach((t, i) => {
+      const d = Math.abs(Date.parse(t) - when)
+      if (d < bestD) {
+        bestD = d
+        best = i
+      }
+    })
+    toward = ((f.hourly.windDir[best] ?? 180) + 180) % 360
+  }
+  const rad = (toward * Math.PI) / 180
+  // the view's middle a few hundred metres downwind, the map turned to face it and tilted low: the camera
+  // stands just behind the sit, the sit at the foot of the screen and the ground the scent crosses ahead.
+  // Placed by its middle, not by a camera height: a height read before the ground's tiles are in would put
+  // the camera under the hill
+  const ahead = metresToLngLat(at[0], at[1], Math.sin(rad) * SIT_AHEAD_M, Math.cos(rad) * SIT_AHEAD_M)
+  if (!useAppStore.getState().view3d) useAppStore.getState().setView3d(true)
+  map.easeTo({ center: ahead, bearing: toward, pitch: SIT_PITCH, zoom: SIT_ZOOM, duration: 1200 })
+  devlog('3d', `from my sit · looking toward ${Math.round(toward)}°`)
+}

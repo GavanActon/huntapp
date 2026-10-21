@@ -22,6 +22,7 @@ import { useCheckForm } from './WindCheckCard'
 import { faster, paceText, slower } from './PaceNudge'
 import { useTapOff } from './tapOff'
 import { height } from '../lengths'
+import { defaultTerrainScale, fromMySit } from '../map/terrain3d'
 
 /**
  * A hot button's drawer: a press and hold slides it out beside the button,
@@ -237,6 +238,32 @@ function ContourRows() {
     useAppStore.getState().setLayer('contours', true)
   }, [])
   return <Seg label="Lines every" value={m} options={intervals()} onPick={setInterval} />
+}
+
+/** 3D's knobs: how high the ground stands (the area's own by default), and From my sit. */
+function ThreeDRows({ go }: RowsProps) {
+  const scale = useAppStore((s) => s.terrainScale)
+  const setScale = useAppStore((s) => s.setTerrainScale)
+  const auto = defaultTerrainScale()
+  useEffect(() => {
+    useAppStore.getState().setView3d(true)
+  }, [])
+  return (
+    <>
+      <Seg
+        label="Ground height"
+        note={scale == null ? 'this area’s' : undefined}
+        value={scale ?? auto}
+        options={[
+          [1, '×1'],
+          [2, '×2'],
+          [3, '×3'],
+        ]}
+        onPick={(v) => setScale(v === auto ? null : v)}
+      />
+      <Act onTap={go(fromMySit)}>From my sit</Act>
+    </>
+  )
 }
 
 function HeardRows({ go }: RowsProps) {
@@ -459,6 +486,8 @@ function rows(id: HotId, go: RowsProps['go']): JSX.Element | null {
       return <LayerRows id={id} />
     case 'pin':
       return <PinRows go={go} />
+    case '3d':
+      return <ThreeDRows go={go} />
     default:
       return null
   }

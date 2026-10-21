@@ -325,6 +325,8 @@ const RELIEF_RAMP = reliefRamp(RELIEF[1] > RELIEF[0] ? RELIEF : RELIEF_TUNED)
  *  the region's bake and run to the core's own maxzoom; their layers take
  *  over half a zoom early. 14–16 and 13.5 at Pickle Lake. */
 const CORE_MINZOOM = REGION_MAXZOOM + 1
+/** The 3D ground's heights (map/terrain3d.ts): the DEM again, apart from the shade's source. */
+export const TERRAIN_SOURCE = 'terrain-dem'
 const CORE_HANDOFF = REGION_MAXZOOM + 0.5
 
 /** The LiDAR hand-off fades rather than switches (Gavan, 2026-10-20: "LiDAR levels - should fade in and
@@ -575,6 +577,9 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
     sources.dem = has('dem')
       ? archive('dem', { type: 'raster-dem', encoding: 'mapbox', tileSize: 256, attribution: `MRDEM © Natural Resources Canada, ${FINE_RELIEF.attribution}` })
       : streamedDem()
+    // the same heights again for the 3D ground (map/terrain3d.ts): a source of its own, as MapLibre wants
+    // one for terrain beside the shade's; nothing reads it until 3D is on
+    sources[TERRAIN_SOURCE] = { ...sources.dem } as SourceSpecification
     const lakes = o.geo.get('waterbody')
     if (lakes) sources.lakes = { type: 'geojson', data: geoData('lakes', lakes, 'relief'), attribution: ATTRIBUTION.lakes }
     // with signal the live MRDEM shade under the DEM's: the DEM stops at the

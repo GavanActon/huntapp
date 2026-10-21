@@ -75,7 +75,7 @@ export type TopCard = { kind: 'scent' } | { kind: 'outing'; id: string }
  *  location is not one of them: it is always at the foot of the near
  *  column. Nor is the heat map: it sits on the strip's head beside the
  *  quarry chip. */
-export type HotId = 'windcheck' | 'scent' | 'heard' | 'windflow' | 'routes' | 'measure' | 'path' | 'contours' | 'pin' | 'understory' | 'lanes' | 'bathy' | 'radar' | 'more'
+export type HotId = 'windcheck' | 'scent' | 'heard' | 'windflow' | 'routes' | 'measure' | 'path' | 'contours' | 'pin' | 'understory' | 'lanes' | 'bathy' | 'radar' | '3d' | 'more'
 /** The two columns: `near` is the thumb's side (right, or left for a left hand), `far` the other. */
 export type HotSide = 'near' | 'far'
 /** The two columns, and the buttons not wanted at all (`off`: neither on the map nor in More, 2026-10-19:
@@ -85,11 +85,11 @@ export type HotSets = Record<HotSide, HotId[]> & { off?: HotId[] }
 // place (2026-10-18: "Path instead of route"), Route waiting in Map buttons' tray
 // More, at the far column's foot, opens the tray's buttons on the map (2026-10-18: "Yea more")
 export const DEFAULT_HOT: Record<'hunt' | 'fish', HotSets> = {
-  hunt: { near: ['heard', 'scent', 'windcheck', 'windflow'], far: ['path', 'measure', 'lanes', 'contours', 'more'] },
-  fish: { near: ['pin', 'bathy', 'windflow'], far: ['path', 'measure', 'more'] },
+  hunt: { near: ['heard', 'scent', 'windcheck', 'windflow'], far: ['path', 'measure', 'lanes', 'contours', '3d', 'more'] },
+  fish: { near: ['pin', 'bathy', 'windflow'], far: ['path', 'measure', '3d', 'more'] },
 }
 // Low power was taken out 2026-10-03: a saved layout holding it drops it here (unknown ids)
-const HOT_IDS: readonly HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'path', 'contours', 'pin', 'understory', 'lanes', 'bathy', 'radar', 'more']
+const HOT_IDS: readonly HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'path', 'contours', 'pin', 'understory', 'lanes', 'bathy', 'radar', '3d', 'more']
 /** Buttons that were: a saved layout keeps its slot (Person became the contour lines, 2026-10-02; + Person lives on the live card and the map popup). */
 const HOT_RENAMED: Record<string, HotId> = { person: 'contours' }
 
@@ -286,6 +286,12 @@ export interface AppState {
   setViewMenuOpen: (v: boolean) => void
   /** a sheet up to the full screen (ui/BottomSheet.tsx FULL_SCREEN_PCT): the strip and the rest at the top hide; session only */
   sheetFull: boolean
+  /** 3D: the map tilted, the ground standing up on its heights (map/terrain3d.ts); persisted */
+  view3d: boolean
+  setView3d: (v: boolean) => void
+  /** how high the ground stands in 3D, ×1 to ×3; null: the area's (terrain3d.ts defaultTerrainScale); persisted */
+  terrainScale: number | null
+  setTerrainScale: (v: number | null) => void
   /** both columns' buttons per mode, top to bottom, any number; persisted */
   hotButtons: Record<'hunt' | 'fish', HotSets>
   /** a mode's two columns at once: a button dragged across is never in both */
@@ -403,6 +409,10 @@ export const useAppStore = create<AppState>()(
       setLiveFolded: (liveFolded) => set({ liveFolded }),
       viewMenuOpen: false,
       sheetFull: false,
+      view3d: false,
+      setView3d: (view3d) => set({ view3d }),
+      terrainScale: null,
+      setTerrainScale: (terrainScale) => set({ terrainScale }),
       setViewMenuOpen: (viewMenuOpen) => set({ viewMenuOpen }),
       hotButtons: DEFAULT_HOT,
       setHotSets: (mode, sets) => set((st) => ({ hotButtons: { ...st.hotButtons, [mode]: cleanSets(sets, st.hotButtons[mode]) } })),
@@ -490,7 +500,8 @@ export const useAppStore = create<AppState>()(
       // v7: the pins and tracks toggles became the marks: both off is all hidden
       // v8: low power is gone
       // v9: More joins a saved layout at the far column's foot
-      version: 9,
+      // v10: 3D joins it too, above More (Gavan, 2026-10-21: "ok go", a map button you can place)
+      version: 10,
       migrate: (persisted, from) => {
         const p = (persisted ?? {}) as Partial<AppState>
         if (from < 1) {
@@ -524,6 +535,17 @@ export const useAppStore = create<AppState>()(
             if (!placed.includes('more')) s.far = [...s.far, 'more']
           }
         }
+        if (from < 10 && p.hotButtons) {
+          const hot = p.hotButtons as Partial<Record<'hunt' | 'fish', Partial<Record<HotSide | 'off', unknown>>>>
+          for (const m of ['hunt', 'fish'] as const) {
+            const s = hot[m]
+            if (!s || !Array.isArray(s.far)) continue
+            const placed = [...(Array.isArray(s.near) ? s.near : []), ...s.far, ...(Array.isArray(s.off) ? s.off : [])]
+            if (placed.includes('3d')) continue
+            const at = s.far.indexOf('more')
+            s.far = at >= 0 ? [...s.far.slice(0, at), '3d', ...s.far.slice(at)] : [...s.far, '3d']
+          }
+        }
         return p as AppState
       },
       partialize: (s) => ({
@@ -543,6 +565,8 @@ export const useAppStore = create<AppState>()(
         textSize: s.textSize,
         outdoor: s.outdoor,
         redLight: s.redLight,
+        view3d: s.view3d,
+        terrainScale: s.terrainScale,
         devMode: s.devMode,
         devGpsTap: s.devGpsTap,
         stripOpen: s.stripOpen,

@@ -16,7 +16,7 @@ import { useHeardForm } from './HeardCard'
 import { useCheckForm } from './WindCheckCard'
 import { OFFER_WORDS, useCheckOffer } from './checkOffer'
 import { toast } from './Toast'
-import { IconBush, IconContour, IconDepth, IconDots, IconEar, IconLanes, IconPath, IconPin, IconPowder, IconRadar, IconRoute, IconRuler, IconScent, IconWind } from './icons'
+import { Icon3D, IconBush, IconContour, IconDepth, IconDots, IconEar, IconLanes, IconPath, IconPin, IconPowder, IconRadar, IconRoute, IconRuler, IconScent, IconWind } from './icons'
 import { logWindHere } from './logWindHere'
 
 /**
@@ -165,6 +165,18 @@ export const HOT_DEFS: Record<HotId, HotDef> = {
   lanes: layerDef('lanes', 'lanes', 'Shooting lanes', 'Lanes', IconLanes),
   bathy: layerDef('bathy', 'bathy', 'Lake depths', 'Depths', IconDepth),
   radar: layerDef('radar', 'weather', 'Radar', 'Radar', IconRadar),
+  // 3D: the map tilted and the ground stood up (map/terrain3d.ts); a hold for how high, and From my sit
+  '3d': {
+    id: '3d',
+    name: '3D',
+    short: '3D',
+    Icon: Icon3D,
+    useActive: () => useAppStore((s) => s.view3d),
+    onTap: () => {
+      const a = useAppStore.getState()
+      a.setView3d(!a.view3d)
+    },
+  },
   // the tray's buttons, from the map: a tap opens them in its drawer (HotSlot, HotDrawer's MoreRows)
   more: {
     id: 'more',
@@ -177,7 +189,7 @@ export const HOT_DEFS: Record<HotId, HotDef> = {
 }
 
 /** Every hot button, in the order the editor's Add chips list them. */
-export const HOT_ORDER: HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'path', 'contours', 'pin', 'understory', 'lanes', 'bathy', 'radar', 'more']
+export const HOT_ORDER: HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'path', 'contours', 'pin', 'understory', 'lanes', 'bathy', 'radar', '3d', 'more']
 
 /** The buttons in neither column nor set aside as not wanted: Map buttons' More tier, and what More opens. */
 export function trayOf(sets: { near: HotId[]; far: HotId[]; off?: HotId[] }): HotId[] {

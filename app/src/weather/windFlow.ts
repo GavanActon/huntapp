@@ -715,6 +715,33 @@ function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
   const turn = (map.getBearing() * Math.PI) / 180
   const cb = Math.cos(turn)
   const sb = Math.sin(turn)
+  // tilted (3D, map/terrain3d.ts): the screen's way and speed for a wind on the ground are where a few
+  // metres of it land through the map's own projection, over the hills too, so the streaks run up the
+  // slopes and shorten and slow toward the horizon. Flat, the bearing alone turns them (the cheaper sum)
+  const tilted = map.getPitch() > 0.5
+  const centre = map.getCenter()
+  // REF_PX of ground at the middle, flat: the same px/s as the flat map there
+  const REF_PX = 8
+  const refM = ((40_075_016.686 * Math.cos((centre.lat * Math.PI) / 180)) / (512 * 2 ** map.getZoom())) * REF_PX
+  /** The screen velocity at cell (c, r) of a wind toward unit (ue east, un north) at pxps; false where the
+   *  ground there does not land back on the screen (the sky past a tilted horizon). */
+  const toScreen = (ll: { lng: number; lat: number }, ue: number, un: number, pxps: number, c: number, r: number, i: number): boolean => {
+    if (!tilted) {
+      vx[i] = (ue * cb - un * sb) * pxps
+      vy[i] = -(ue * sb + un * cb) * pxps
+      return true
+    }
+    const p = map.project([ll.lng + (ue * refM) / (111_320 * Math.cos((ll.lat * Math.PI) / 180)), ll.lat + (un * refM) / 110_574])
+    const dx = p.x - c * FIELD_STEP
+    const dy = p.y - r * FIELD_STEP
+    if (!Number.isFinite(dx) || !Number.isFinite(dy)) return false
+    const k = pxps / REF_PX
+    const len = Math.hypot(dx, dy) * k
+    const cap = len > 220 ? 220 / len : 1
+    vx[i] = dx * k * cap
+    vy[i] = dy * k * cap
+    return true
+  }
   if (ground) {
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
@@ -722,13 +749,13 @@ function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
         if (!ground(ll.lng, ll.lat, out)) {
           // past the ground model's box: the forecast's wind where there is one (browsing), grey
           if (wind && wind(ll.lng, ll.lat, out)) {
-            const rad = ((out[1] + 180) * Math.PI) / 180 - turn
+            const rad = ((out[1] + 180) * Math.PI) / 180
             const pxps = Math.min(220, Math.max(8, out[0] * 0.54 * 4.5 * speedMul))
-            vx[r * cols + c] = Math.sin(rad) * pxps
-            vy[r * cols + c] = -Math.cos(rad) * pxps
-            coarse[r * cols + c] = 1
-            anyCoarse = true
-            live = true
+            if (toScreen(ll, Math.sin(rad), Math.cos(rad), pxps, c, r, r * cols + c)) {
+              coarse[r * cols + c] = 1
+              anyCoarse = true
+              live = true
+            }
           }
           continue
         }
@@ -737,8 +764,7 @@ function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
         const pxps = Math.min(220, Math.max(6, kmh * 0.54 * 4.5 * 2.2 * speedMul))
         const ue = out[0] / (kmh / 3.6)
         const un = out[1] / (kmh / 3.6)
-        vx[r * cols + c] = (ue * cb - un * sb) * pxps
-        vy[r * cols + c] = -(ue * sb + un * cb) * pxps
+        if (!toScreen(ll, ue, un, pxps, c, r, r * cols + c)) continue
         swirl[r * cols + c] = swirlAmp(out[3], pxps)
         live = true
       }
@@ -750,10 +776,9 @@ function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
         if (!wind(ll.lng, ll.lat, out)) continue
         // blows TOWARD dir+180; screen y grows downward, the map's bearing is up.
         // out[0] is km/h (the boat app's was knots): scaled to the same px/s
-        const rad = ((out[1] + 180) * Math.PI) / 180 - turn
+        const rad = ((out[1] + 180) * Math.PI) / 180
         const pxps = Math.min(220, Math.max(8, out[0] * 0.54 * 4.5 * speedMul))
-        vx[r * cols + c] = Math.sin(rad) * pxps
-        vy[r * cols + c] = -Math.cos(rad) * pxps
+        if (!toScreen(ll, Math.sin(rad), Math.cos(rad), pxps, c, r, r * cols + c)) continue
         coarse[r * cols + c] = 1
         anyCoarse = true
         live = true

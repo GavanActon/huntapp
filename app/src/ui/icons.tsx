@@ -470,6 +470,14 @@ export const IconSatellite = (p: IconProps) => (
   </svg>
 )
 
+/** 3D: the ground standing up, a ridge seen tilted over its own outline. */
+export const Icon3D = (p: IconProps) => (
+  <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 17.5 8.5 9l3.5 4.5L15 9.5l6 8z" />
+    <path d="M2.5 20.5h19" />
+  </svg>
+)
+
 /** Night, the light button's dark stop: a crescent moon. */
 export const IconMoon = (p: IconProps) => (
   <svg width={S20(p)} height={S20(p)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">
