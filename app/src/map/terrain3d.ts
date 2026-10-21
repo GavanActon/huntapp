@@ -1,4 +1,4 @@
-import type { Map as MlMap } from 'maplibre-gl'
+import { Marker, type Map as MlMap } from 'maplibre-gl'
 import { RELIEF } from '../config'
 import { devlog } from '../devlog'
 import { useAppStore } from '../state/appStore'
@@ -22,7 +22,9 @@ import { TERRAIN_SOURCE } from './mapStyle'
  * in windFlow.ts; the scent's puffs are placed through the map already.
  */
 
-export const PITCH_3D = 60
+/** The tilt: 50°, not the mockup's 60, the far ground's tiles a steady share less to draw on a phone
+ *  (measured 2026-10-21, a 3D pan at a phone's speed: 14-25 frames a second at 50 against 10-13 at 60) */
+export const PITCH_3D = 50
 /** True height past this rise from the area's lowest to its highest ground. */
 const TRUE_HEIGHT_FROM_M = 300
 
@@ -72,7 +74,8 @@ function apply(map: MlMap, on: boolean, tilt: boolean) {
  * too), after every move and as the DEM's tiles land, and put back when off.
  */
 function keepOnGround(map: MlMap) {
-  if (!map.getTerrain()) return
+  // never mid-move: setting the height stops the camera, and it cut 3D's own tilt short (47° of 50)
+  if (!map.getTerrain() || map.isMoving()) return
   const terrain = (map as unknown as { terrain?: { getElevationForLngLatZoom: (ll: unknown, z: number) => number } }).terrain
   if (!terrain) return
   // MapLibre's own climb (getElevationForLngLat) came back 0 there too: asked zoom by zoom from the
@@ -81,7 +84,33 @@ function keepOnGround(map: MlMap) {
   const c = map.getCenter()
   let e = 0
   for (let z = top; z >= Math.max(0, top - 4) && !(e > 0); z--) e = terrain.getElevationForLngLatZoom(c, z)
-  if (Number.isFinite(e) && e > 0 && Math.abs(map.getCenterElevation() - e) > 1) map.setCenterElevation(e)
+  // only when MapLibre has lost it (0, or far under): set at every metre's difference it moved the
+  // camera as each DEM tile landed, and the wind's streaks read each move as a pan
+  if (Number.isFinite(e) && e > 0 && map.getCenterElevation() < e * 0.5) map.setCenterElevation(e)
+}
+
+/**
+ * A marker on 3D ground asks MapLibre whether a hill hides it every 100 ms,
+ * by reading a pixel of the depth buffer back from the GPU (Marker
+ * _updateOpacity, depthAtPoint), a stall each: the scent's one person marker
+ * was a second of read-backs in a two-second 3D pan at a phone's speed
+ * (profiled 2026-10-21). Ours stand on the ground in view; on terrain they
+ * are drawn whole, no read. Flat, MapLibre's own runs as before.
+ */
+function markersSkipDepth() {
+  const proto = Marker.prototype as unknown as { _updateOpacity?: (this: MarkerInternals, force?: boolean) => void; __gwPatched?: boolean }
+  const orig = proto._updateOpacity
+  if (typeof orig !== 'function' || proto.__gwPatched) return
+  proto.__gwPatched = true
+  proto._updateOpacity = function (this: MarkerInternals, force?: boolean) {
+    if (!this._map?.terrain) return orig.call(this, force)
+    if (this._element.style.opacity !== '') this._element.style.opacity = ''
+    this._element.classList.remove('maplibregl-marker-covered')
+  }
+}
+interface MarkerInternals {
+  _map?: { terrain?: unknown }
+  _element: HTMLElement
 }
 
 let wired = false
@@ -89,6 +118,7 @@ let wired = false
 export function initTerrain3d(): void {
   if (wired) return
   wired = true
+  markersSkipDepth()
   onEachMap((map) => {
     // a phone that closed in 3D opens in it, tilted as it was left
     apply(map, useAppStore.getState().view3d, true)

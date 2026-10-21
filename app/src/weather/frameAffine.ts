@@ -95,6 +95,21 @@ export function isIdentity(m: Affine): boolean {
   return same(m, IDENTITY)
 }
 
+/** Near enough on a tilted map (3D): within half a pixel and a fifth of a percent. Its projection
+ *  wobbles by hundredths of a pixel as the ground's heights land and the camera's height is put
+ *  right, and `same` read each wobble as a move: the trails carried and the fields rebuilt every
+ *  few seconds with the map still (2026-10-21: three rebuilds in ten idle seconds). */
+export function near(m: Affine, n: Affine): boolean {
+  return (
+    Math.abs(m.a - n.a) < 2e-3 &&
+    Math.abs(m.b - n.b) < 2e-3 &&
+    Math.abs(m.c - n.c) < 2e-3 &&
+    Math.abs(m.d - n.d) < 2e-3 &&
+    Math.abs(m.e - n.e) < 0.5 &&
+    Math.abs(m.f - n.f) < 0.5
+  )
+}
+
 /** Where the camera centre sits on screen — the boat, while following. */
 export function centrePoint(map: MlMap): { x: number; y: number } {
   const p = map.project(map.getCenter())

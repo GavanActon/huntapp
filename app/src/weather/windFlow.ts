@@ -1,10 +1,11 @@
 import type { CanvasSource, Map as MlMap } from 'maplibre-gl'
 import { getMap, onEachMap, onFirstIdle, withMap } from '../map/mapController'
+import { groundPicker } from '../map/groundPick'
 import { windGround } from '../map/mapStyle'
 import { devlog } from '../devlog'
 import { useAppStore, type WindStyle } from '../state/appStore'
 import { lodOf, meanLod, onQuality, qualityProfile, reportFrame } from './flowQuality'
-import { centrePoint, compose, FrameAnchor, IDENTITY, invert, isIdentity, same, type Affine } from './frameAffine'
+import { centrePoint, compose, FrameAnchor, IDENTITY, invert, isIdentity, same, type Affine, near } from './frameAffine'
 import { ensureWeatherGrid, onWeatherGrid, onWeatherTick, windGridInfo, windSampler } from './windGrid'
 import { aloftWind, currentProfile, ensureProfile, onProfile } from './boundaryLayer'
 import { groundSampler, loadMicro, microGrid, onMicro } from './micro/model'
@@ -26,6 +27,8 @@ import { useWindChecks } from './micro/windChecks'
  */
 
 const FIELD_STEP = 28 // css px between wind samples
+/** The same on a tilted map (3D): buildField */
+const FIELD_STEP_3D = 42
 const ALPHA_BANDS = 12
 /**
  * The streaks' looks, picked under Look in the wind button's drawer.
@@ -697,8 +700,15 @@ const LUM_MIN_GAP_MS = 1000
 const QUIET_MS = 400
 
 function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
-  const cols = Math.ceil(w / FIELD_STEP) + 1
-  const rows = Math.ceil(h / FIELD_STEP) + 1
+  // tilted (3D), half again as far apart: the far half of a pitched view is squeezed anyway and the
+  // near half magnified, and each cell is the ground model's sum and a projection through the 3D
+  // ground: at 28 px the head height's field took ~110 ms at a pan's end, ~450 at a phone's speed
+  const STEP = map.getPitch() > 5 ? FIELD_STEP_3D : FIELD_STEP
+  // on 3D ground, the ground under every cell from one read of the GPU (map/groundPick.ts), not one each
+  const pick = groundPicker(map)
+  const under = (x: number, y: number) => (pick ? pick.at(x, y) : map.unproject([x, y]))
+  const cols = Math.ceil(w / STEP) + 1
+  const rows = Math.ceil(h / STEP) + 1
   const vx = new Float32Array(cols * rows)
   const vy = new Float32Array(cols * rows)
   const swirl = new Float32Array(cols * rows)
@@ -732,8 +742,8 @@ function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
       return true
     }
     const p = map.project([ll.lng + (ue * refM) / (111_320 * Math.cos((ll.lat * Math.PI) / 180)), ll.lat + (un * refM) / 110_574])
-    const dx = p.x - c * FIELD_STEP
-    const dy = p.y - r * FIELD_STEP
+    const dx = p.x - c * STEP
+    const dy = p.y - r * STEP
     if (!Number.isFinite(dx) || !Number.isFinite(dy)) return false
     const k = pxps / REF_PX
     const len = Math.hypot(dx, dy) * k
@@ -745,7 +755,8 @@ function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
   if (ground) {
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
-        const ll = map.unproject([c * FIELD_STEP, r * FIELD_STEP])
+        const ll = under(c * STEP, r * STEP)
+        if (!ll) continue
         if (!ground(ll.lng, ll.lat, out)) {
           // past the ground model's box: the forecast's wind where there is one (browsing), grey
           if (wind && wind(ll.lng, ll.lat, out)) {
@@ -772,7 +783,8 @@ function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
   } else if (wind) {
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
-        const ll = map.unproject([c * FIELD_STEP, r * FIELD_STEP])
+        const ll = under(c * STEP, r * STEP)
+        if (!ll) continue
         if (!wind(ll.lng, ll.lat, out)) continue
         // blows TOWARD dir+180; screen y grows downward, the map's bearing is up.
         // out[0] is km/h (the boat app's was knots): scaled to the same px/s
@@ -786,7 +798,7 @@ function buildField(map: MlMap, w: number, h: number, atMs: number): FieldGrid {
     }
   }
   // the forecast field carries no spread, so no eddies at that level
-  return { step: FIELD_STEP, cols, rows, vx, vy, live, lum: null, inkLum: null, swirl: ground ? boxBlur(swirl, cols, rows, SWIRL_BLUR, null) : null, coarse: anyCoarse ? coarse : null }
+  return { step: STEP, cols, rows, vx, vy, live, lum: null, inkLum: null, swirl: ground ? boxBlur(swirl, cols, rows, SWIRL_BLUR, null) : null, coarse: anyCoarse ? coarse : null }
 }
 
 /**
@@ -807,12 +819,22 @@ export const SHEETS: Record<WindSheet, { z: number; rgb: string; share: number; 
   aloft: { z: 80, rgb: '143, 211, 255', share: 0.2, name: '80 m' },
 }
 
+/** The sheets' grids, coarser than the head height's: the 80 m wind is one over the view and the 10 m
+ *  forecast's field is smooth, so the projection's own curve is all a cell has to follow. At the head
+ *  height's 28 px the three fields' rebuild at a 3D pan's end stalled a phone for seconds (2026-10-21) */
+const SHEET_STEP: Record<WindSheet, number> = { tops: FIELD_STEP * 2, aloft: FIELD_STEP * 3 }
+/** The sheets' rebuilds after a pan, this far apart and after the head height's. */
+const SHEET_STAGGER_MS = 120
+/** The air's news gathered this long before the streaks resample it. */
+const FRESH_MS = 250
+
 function buildSheetField(map: MlMap, w: number, h: number, atMs: number, sheet: WindSheet): FieldGrid {
-  const cols = Math.ceil(w / FIELD_STEP) + 1
-  const rows = Math.ceil(h / FIELD_STEP) + 1
+  const STEP = SHEET_STEP[sheet]
+  const cols = Math.ceil(w / STEP) + 1
+  const rows = Math.ceil(h / STEP) + 1
   const vx = new Float32Array(cols * rows)
   const vy = new Float32Array(cols * rows)
-  const dead: FieldGrid = { step: FIELD_STEP, cols, rows, vx, vy, live: false, lum: null, inkLum: null, swirl: null, coarse: null }
+  const dead: FieldGrid = { step: STEP, cols, rows, vx, vy, live: false, lum: null, inkLum: null, swirl: null, coarse: null }
   const pitch = (map.getPitch() * Math.PI) / 180
   if (pitch < 0.02) return dead
   const tops = sheet === 'tops' ? windSampler(atMs) : null
@@ -828,18 +850,22 @@ function buildSheetField(map: MlMap, w: number, h: number, atMs: number, sheet: 
   const out = new Float32Array(4)
   let live = false
   const step = (ll: { lng: number; lat: number }, e: number, n: number) => map.project([ll.lng + e / (111_320 * Math.cos((ll.lat * Math.PI) / 180)), ll.lat + n / 110_574])
+  const pick = groundPicker(map)
+  const under = (x: number, y: number) => (pick ? pick.at(x, y) : map.unproject([x, y]))
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      const x = c * FIELD_STEP
-      const y = r * FIELD_STEP
+      const x = c * STEP
+      const y = r * STEP
       // the ground under this pixel, and how many px a metre across makes there
-      const g = map.unproject([x, y])
+      const g = under(x, y)
+      if (!g) continue
       const p0 = map.project(g)
       const p1 = step(g, ae * 10, an * 10)
       const s = Math.hypot(p1.x - p0.x, p1.y - p0.y) / 10
       if (!Number.isFinite(s) || s <= 0) continue
       // a point z up over the ground shows sin(pitch)·z·s px higher: the ground under this pixel's sheet point is that far down
-      const ll = map.unproject([x, y + z * s * Math.sin(pitch)])
+      const ll = under(x, y + z * s * Math.sin(pitch))
+      if (!ll) continue
       let kmh: number
       let dirFrom: number
       if (tops) {
@@ -958,7 +984,8 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
   const ctx = canvas.getContext('2d')!
   const cctx = carrier.getContext('2d')!
   let dpr = 0
-  const wantDpr = () => Math.min(qualityProfile().trailDpr, window.devicePixelRatio || 1)
+  // a sheet's trails at one css px a pixel: fainter and thinner than the head height's, a quarter of the fill on a phone
+  const wantDpr = () => (sheet ? 1 : Math.min(qualityProfile().trailDpr, window.devicePixelRatio || 1))
   const setDpr = (d: number) => {
     // a resize clears a canvas: the trails go through the carrier
     const keep = dpr > 0
@@ -1036,8 +1063,48 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
     ctx.drawImage(carrier, 0, 0)
   }
 
+  /** Tilted and moving: the streaks off the screen till the camera stops. */
+  let hidden = false
+  function hideForMove() {
+    if (hidden) return
+    hidden = true
+    canvas.style.opacity = '0'
+  }
   const rebase = () => {
+    // back from a tilted move: a clean canvas, the particles strewn afresh over the new view
+    if (hidden) {
+      hidden = false
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      canvas.style.opacity = ''
+      anchor = new FrameAnchor(map, centrePoint(map))
+      M = Mprev = Minv = IDENTITY
+      movedAt = 0
+      movingSince = 0
+      field = make()
+      fieldOff.x = 0
+      fieldOff.y = 0
+      viewGen++
+      if (field.live && !sheet) readSoon()
+      if (!sheet) syncWash(map)
+      lod = lodOf(map, h)
+      sizeActive()
+      for (let i = 0; i < N; i++) {
+        spawn(i)
+        age[i] = Math.random() * life[i]
+      }
+      return
+    }
     const now = anchor.current(map)
+    // tilted and still where it was built, within half a pixel: the camera's height put right after a
+    // pan, a DEM tile landing. Each of those used to rebuild every field again, three a pan (2026-10-21)
+    if (map.getPitch() > 5 && near(now, IDENTITY)) {
+      anchor = new FrameAnchor(map, centrePoint(map))
+      M = Mprev = Minv = IDENTITY
+      movedAt = 0
+      movingSince = 0
+      return
+    }
     if (!same(now, Mprev)) carry(compose(now, invert(Mprev)))
     if (!isIdentity(now)) {
       for (let i = 0; i < N; i++) {
@@ -1098,20 +1165,30 @@ function startEngine(map: MlMap, opts: EngineOpts): Engine {
     const q = qualityProfile()
 
     M = anchor.current(map)
-    const moved = !same(M, Mprev)
+    // tilted (3D): the affine is only near-exact at the middle and the projection wobbles as the
+    // ground's heights land, so wobbles are not moves, and a real move hides the streaks instead of
+    // carrying their trails (the moveend rebuilds them). Carried, three canvases full-screen twice a
+    // frame took a 3D pan from 7.8 to 1.1 frames a second at a phone's speed (2026-10-21)
+    const tilted = map.getPitch() > 5
+    const moved = tilted ? !near(M, Mprev) : !same(M, Mprev)
     if (moved) {
-      carry(compose(M, invert(Mprev)))
+      if (tilted) hideForMove()
+      else carry(compose(M, invert(Mprev)))
       Mprev = M
       Minv = invert(M)
       movedAt = now
       movingSince ||= now
     }
-    if (!isIdentity(M)) {
+    if (!(tilted ? near(M, IDENTITY) : isIdentity(M))) {
       if ((!moved && now - movedAt > SETTLED_MS) || now - movingSince > LONG_MOVE_MS) rebase()
+    }
+    if (hidden) {
+      raf = requestAnimationFrame(frame)
+      return
     }
     // at most 60 frames a second (30 at the dial's wind30): a 120 Hz screen (an iPhone's
     // ProMotion) ran the whole frame twice as often, for trails half as long
-    if (!moved && now - drawnAt < (q.wind30 ? 28 : 12)) {
+    if (!moved && now - drawnAt < (q.wind30 || sheet ? 28 : 12)) {
       raf = requestAnimationFrame(frame)
       return
     }
@@ -1379,7 +1456,12 @@ function refreshAmbient(map: MlMap) {
     if (!eng.refield()) return syncAmbient(map)
     // the sheets' air changed with it: their fields again, or started if they could not be before
     if (sheetEngines.length !== wantedSheets(map).length) syncSheets(map)
-    else for (const s of sheetEngines) s.refield()
+    else
+      sheetEngines.forEach((s, k) =>
+        window.setTimeout(() => {
+          if (sheetEngines.includes(s)) s.refield()
+        }, SHEET_STAGGER_MS * (k + 1)),
+      )
   })
 }
 
@@ -1411,7 +1493,14 @@ export function initWindFlow() {
         ambient.rebase()
         // tilted into or out of view of the sheets (3D's ease, a two-finger tilt): start or stop them
         if (sheetEngines.length !== wantedSheets(map).length) syncSheets(map)
-        else for (const s of sheetEngines) s.rebase()
+        // a few frames apart, each its own task: built together with the head height's they held a
+        // phone's screen for most of a second at a pan's end
+        else
+          sheetEngines.forEach((s, k) =>
+            window.setTimeout(() => {
+              if (sheetEngines.includes(s)) s.rebase()
+            }, SHEET_STAGGER_MS * (k + 1)),
+          )
       } else syncAmbient(map)
     })
     map.on('resize', () => syncAmbient(map))
@@ -1427,10 +1516,17 @@ export function initWindFlow() {
       if (m) syncAmbient(m)
     }
     document.addEventListener('visibilitychange', cur)
+    // the air's news in a burst (the view's lattice, then the profile, then the ground model, landing
+    // a moment apart after a pan) is one resample: each was a rebuild of every field, three rounds of
+    // three in 3D for one pan (2026-10-21)
+    let freshTimer = 0
     const fresh = () => {
       washAir++
-      const m = getMap()
-      if (m) refreshAmbient(m)
+      window.clearTimeout(freshTimer)
+      freshTimer = window.setTimeout(() => {
+        const m = getMap()
+        if (m) refreshAmbient(m)
+      }, FRESH_MS)
     }
     useAppStore.subscribe((s, prev) => {
       // the switches and the particle count need a new engine

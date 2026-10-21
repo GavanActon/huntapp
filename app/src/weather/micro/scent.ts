@@ -2403,6 +2403,9 @@ function draw(map: MlMap) {
  * people, everyone's particles play together, warm where their scent adds
  * up, inside one edge for them all.
  */
+/** A tilted map being moved: the scent's overlays wait for it to stop. */
+const movingIn3d = (m: MlMap): boolean => m.getPitch() > 5 && m.isMoving()
+
 const particles = (() => {
   const LOOP_MS = 12_000
   const SHADES = 8
@@ -2436,6 +2439,49 @@ const particles = (() => {
   let t0 = 0
   let sprites: HTMLCanvasElement[] | null = null
   let soft: HTMLCanvasElement | null = null
+
+  /**
+   * Metres in the plume's frame to the screen, from a GRID×GRID net over the frame projected once
+   * per camera and read between its knots. Projected puff by puff, every frame, 720 projections a
+   * frame went through the 3D ground's height lookups and held a phone's 3D map to three frames a
+   * second with a cone up (2026-10-21). Flat, the net is exact; in 3D a knot is ~110 m apart, the
+   * ground between them near enough flat at a puff's scale.
+   */
+  const GRID = 13
+  let net: { key: string; fr: Frame; xs: Float32Array; ys: Float32Array } | null = null
+  const out = { x: 0, y: 0 }
+  function gridProject(m: MlMap, fr: Frame): (x: number, y: number) => { x: number; y: number } {
+    const c = m.getCenter()
+    const key = `${c.lng},${c.lat},${m.getZoom()},${m.getBearing()},${m.getPitch()},${m.getCenterElevation()},${m.getTerrain()?.exaggeration ?? 0}`
+    const x0 = fr.west
+    const y1 = fr.north
+    const sx = (fr.w * CELL_M) / (GRID - 1)
+    const sy = (fr.h * CELL_M) / (GRID - 1)
+    if (!net || net.key !== key || net.fr !== fr) {
+      const xs = new Float32Array(GRID * GRID)
+      const ys = new Float32Array(GRID * GRID)
+      for (let r = 0; r < GRID; r++)
+        for (let k = 0; k < GRID; k++) {
+          const p = m.project([fr.lon + (x0 + k * sx) / fr.kx, fr.lat + (y1 - r * sy) / fr.ky])
+          xs[r * GRID + k] = p.x
+          ys[r * GRID + k] = p.y
+        }
+      net = { key, fr, xs, ys }
+    }
+    const { xs, ys } = net
+    return (x, y) => {
+      const fx = Math.min(GRID - 1.001, Math.max(0, (x - x0) / sx))
+      const fy = Math.min(GRID - 1.001, Math.max(0, (y1 - y) / sy))
+      const k = Math.floor(fx)
+      const r = Math.floor(fy)
+      const tx = fx - k
+      const ty = fy - r
+      const i = r * GRID + k
+      out.x = (xs[i] * (1 - tx) + xs[i + 1] * tx) * (1 - ty) + (xs[i + GRID] * (1 - tx) + xs[i + GRID + 1] * tx) * ty
+      out.y = (ys[i] * (1 - tx) + ys[i + 1] * tx) * (1 - ty) + (ys[i + GRID] * (1 - tx) + ys[i + GRID + 1] * tx) * ty
+      return out
+    }
+  }
 
   /** A soft Gaussian puff per shade, pale amber at a trace to deep orange-red where strong. */
   function puffs(): HTMLCanvasElement[] {
@@ -2476,6 +2522,14 @@ const particles = (() => {
   function frame(now: number) {
     raf = 0
     if (!map || !state || !canvas) return
+    // a 3D map on the move: the puffs off till it stops (a net projected every frame of a pan halved
+    // a phone's frames, 2026-10-21); flat they ride the pan as before
+    if (movingIn3d(map)) {
+      canvas.style.opacity = '0'
+      raf = requestAnimationFrame(frame)
+      return
+    }
+    canvas.style.opacity = ''
     const c = canvas
     const d = window.devicePixelRatio || 1
     const w = c.clientWidth
@@ -2490,6 +2544,7 @@ const particles = (() => {
     const m = map
     const { f: fr, sitS, srcs, outline, edge, tip, label } = state
     const project = (x: number, y: number) => m.project([fr.lon + x / fr.kx, fr.lat + y / fr.ky])
+    const fast = gridProject(m, fr)
     const src = project(0, 0)
     const top = project(0, 100)
     const pxPerM = Math.hypot(top.x - src.x, top.y - src.y) / 100
@@ -2534,7 +2589,7 @@ const particles = (() => {
         const x = ox + tr.x[i] + (tr.x[j] - tr.x[i]) * f
         const y = oy + tr.y[i] + (tr.y[j] - tr.y[i]) * f
         const v = Math.min(1, Math.log(g / TRACE) / -Math.log(TRACE))
-        const q = project(x, y)
+        const q = fast(x, y)
         const zz = liftK && tr.z ? tr.z[i] + (tr.z[j] - tr.z[i]) * f : 0
         const qy = q.y - zz * liftK
         // the puff's spread, m: a couple of metres at the body, widening with travel
@@ -2759,6 +2814,13 @@ const veil = (() => {
   function draw(now: number) {
     raf = 0
     if (!map || !canvas) return
+    // a 3D map on the move: the veil off till it stops, as the particles
+    if (movingIn3d(map)) {
+      canvas.style.opacity = '0'
+      raf = requestAnimationFrame(draw)
+      return
+    }
+    canvas.style.opacity = ''
     const c = canvas
     const d = window.devicePixelRatio || 1
     const w = c.clientWidth
