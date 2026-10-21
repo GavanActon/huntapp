@@ -1,4 +1,5 @@
-import { inRegion, microFile, microHdFile, sdWindOn } from '../../config'
+import { ACTIVE_AREA } from '../../areas'
+import { CORE, inRegion, microFile, microHdFile, sdWindOn } from '../../config'
 import { devlog } from '../../devlog'
 import { habitat, openBandFile, PREVIEW, type Band, type BandFile, type Habitat } from '../../spots/habitatGrid'
 import { useAppStore } from '../../state/appStore'
@@ -1397,6 +1398,9 @@ function slotLine(axis: number): string {
   return `${compass(a)}–${compass(a + 180)}`
 }
 
+/** A loaded location (areas/runtime.ts): its ground wind is the national tiles', its box alone. */
+const SPOT = ACTIVE_AREA.loaded === 'box'
+
 function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edges = true): Eval | null {
   // regional 10 m wind
   let U: number
@@ -1468,7 +1472,10 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   const [Ue, Un] = vec(U, dirFrom + 180)
 
   const g = grid
-  const i = g ? g.index(lon, lat) : -1
+  // a loaded spot's ground wind is its box's (the tiles reach past it: their 2×2 block, ~20 km, drew a
+  // rectangle off the box, 2026-10-21): past the box, off the grid, so the map draws the forecast's grey
+  const inSpot = !SPOT || (lon >= CORE.west && lon <= CORE.east && lat >= CORE.south && lat <= CORE.north)
+  const i = g && inSpot ? g.index(lon, lat) : -1
   if (!g || i < 0) {
     // off the grid: an open-ground profile, nothing local
     const f = 0.7 * (1 - 0.6 * lay.stable)

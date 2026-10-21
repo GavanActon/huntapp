@@ -1,7 +1,7 @@
 import type { Map as MlMap } from 'maplibre-gl'
 import { ACTIVE_AREA, DATA_BASE, SD_FILE } from '../../areas'
 import { getStoredFile, putStoredFile } from '../../offline/fileStore'
-import { REGION } from '../../config'
+import { CORE, REGION } from '../../config'
 import { devlog } from '../../devlog'
 import { STREAM_PICTURES } from '../../map/streamPictures'
 import { trackTask } from '../../offline/loadProgress'
@@ -292,9 +292,13 @@ async function movedNow(map: MlMap): Promise<void> {
   const idx = await loadIndex()
   if (!idx) return
   const L = idx.lattice
-  // the view's centre in tiles, fractional
-  const fx = (c.lng - L.lon0) / (L.cols * L.dLon)
-  const fy = (L.lat0 - c.lat) / (L.rows * L.dLat)
+  const tw = L.cols * L.dLon
+  const th = L.rows * L.dLat
+  // a loaded spot's block is fixed on its box: the two tiles from its west edge, the two from its north,
+  // which hold a box of a tile or less whatever the view (it hopped with the view, and a block picked by the
+  // centre could leave the box's edge out); elsewhere the 2×2 nearest the view's centre
+  const fx = LOCATION ? Math.floor((CORE.west - L.lon0) / tw) + 1 : (c.lng - L.lon0) / tw
+  const fy = LOCATION ? Math.floor((L.lat0 - CORE.north) / th) + 1 : (L.lat0 - c.lat) / th
   if (block && fx >= block.i0 + 0.5 && fx <= block.i0 + 1.5 && fy >= block.j0 + 0.5 && fy <= block.j0 + 1.5) return
   const i0 = Math.round(fx) - 1
   const j0 = Math.round(fy) - 1

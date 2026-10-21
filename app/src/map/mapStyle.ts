@@ -746,7 +746,11 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
         features: boxes.map((a) => ({
           type: 'Feature',
           properties: { id: a.id, name: a.name, active: a.id === ACTIVE_AREA.id },
-          geometry: { type: 'Polygon', coordinates: [[[a.region.west, a.region.south], [a.region.east, a.region.south], [a.region.east, a.region.north], [a.region.west, a.region.north], [a.region.west, a.region.south]]] },
+          // a loaded spot drawn as its box, the ground its SD wind covers (its region is the box and a margin)
+          geometry: (() => {
+            const r = a.loaded ? a.core : a.region
+            return { type: 'Polygon' as const, coordinates: [[[r.west, r.south], [r.east, r.south], [r.east, r.north], [r.west, r.north], [r.west, r.south]]] }
+          })(),
         })),
       },
     }
