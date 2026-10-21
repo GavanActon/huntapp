@@ -75,6 +75,8 @@ export default function BoxCard() {
   const [err, setErr] = useState<string | null>(null)
   const [pinned, setPinned] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  // the name the spot would get, asked as the box goes down or moves (placeName), ready when Load is tapped
+  const guess = useRef<{ id: string; name: Promise<string | null> } | null>(null)
   // how many of the box's tiles have their SD ground wind baked (R2's index); null till read
   const [sdHave, setSdHave] = useState<number | null>(null)
   const el = useRef<HTMLDivElement>(null)
@@ -98,6 +100,17 @@ export default function BoxCard() {
       live = false
     }
     // the box, not the object: a drag makes a new one each move
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selId])
+  useEffect(() => {
+    if (!sel || sel.extend || sel.purpose === 'hd' || sel.replaces) return
+    const [lon, lat] = centre(sel.box)
+    const id = boxId(sel.box)
+    // a drag settles before it is asked: one question for where the box ends up
+    const t = window.setTimeout(() => {
+      guess.current = { id, name: placeName(lon, lat) }
+    }, 400)
+    return () => window.clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selId])
   if (!sel) return null
@@ -125,7 +138,8 @@ export default function BoxCard() {
     setLoading(true)
     setErr(null)
     const j = w.provs.split(',')[0]?.trim() || provinceAt(clon, clat)
-    const named = sel!.replaces?.name ?? (await placeName(clon, clat)) ?? `Spot ${tileAt(clon, clat).id.slice(2)}`
+    const asked = guess.current?.id === id ? guess.current.name : placeName(clon, clat)
+    const named = sel!.replaces?.name ?? (await asked) ?? `Spot ${tileAt(clon, clat).id.slice(2)}`
     if (!loadLocation(box, named, j, sel!.replaces?.id)) {
       setErr('Not loaded: the app stayed where it is.')
       setLoading(false)

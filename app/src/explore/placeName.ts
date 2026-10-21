@@ -12,8 +12,9 @@
 const NAMES = 'https://geogratis.gc.ca/services/geoname/en/geonames.json'
 /** how far round the middle a name may be, km */
 const RADIUS_KM = 8
-/** a load waits this long for a name, no longer */
-const WAIT_MS = 2500
+/** how long the service is given: asked when the box goes down (explore/BoxCard.tsx), so a Load
+ *  rarely waits on it; a busy page (the tiles coming in) took past 2.5 s on hunt-dev */
+const WAIT_MS = 6000
 /** the kinds of feature a spot is named after, best first (CGNDB concise codes) */
 const KINDS = ['LAKE', 'BAY', 'RIV', 'UNP', 'VILG', 'TOWN', 'CITY', 'HILL', 'MTN', 'ISL', 'MRSH']
 
