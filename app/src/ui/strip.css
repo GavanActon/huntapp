@@ -165,14 +165,29 @@
   background: rgba(var(--c-ink-rgb), 0.16);
 }
 
-/* the chevron beside the ⋯ that opens the strip, and folds it open */
-.wx-open {
-  flex: none;
-  display: flex;
-  align-items: center;
-  height: 32px;
-  padding: 0 4px;
-  color: var(--c-text-dim);
+/* the chevron that opens and folds the strip, and the menu beside it: the left buttons' tiles, the same
+   size at each Top row size (Gavan, 2026-10-21: "drawer icon in weather strip, make it match the
+   button sizes on the left. Same with V"); the menu keeps its push to the row's end */
+.wx-head .wx-heat.wx-open,
+.wx-head .wx-heat.wxfold-dots {
+  min-width: 0;
+  padding: 0;
+  width: 28px;
+  height: 26px;
+}
+.wx-head-lg .wx-heat.wx-open,
+.wx-head-lg .wx-heat.wxfold-dots {
+  width: 38px;
+  height: 34px;
+}
+.wx-head-xl .wx-heat.wx-open,
+.wx-head-xl .wx-heat.wxfold-dots {
+  width: 48px;
+  min-width: 34px;
+  height: 44px;
+}
+.wx-head .wx-heat.wxfold-dots {
+  color: var(--c-text);
 }
 
 /* an hour with a hard stop for the quarry (fish limits): a small ! at the corner */

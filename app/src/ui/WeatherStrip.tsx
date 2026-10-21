@@ -775,12 +775,12 @@ export default function WeatherStrip() {
       {/* open and fold in one place, beside the ⋯ (Gavan, 2026-10-19: "make the expand for the weather strip
           always be next to the ... and the collapse"); the fold was a handle along the open strip's foot */}
       {!noWx && (
-        <button className="wx-open" onClick={() => setStripOpen(!stripOpen)} aria-expanded={stripOpen} aria-label={stripOpen ? 'Fold the strip' : 'Open the strip'}>
-          {stripOpen ? <IconChevronUp size={18} /> : <IconChevronDown size={18} />}
+        <button className="wx-heat wx-open" onClick={() => setStripOpen(!stripOpen)} aria-expanded={stripOpen} aria-label={stripOpen ? 'Fold the strip' : 'Open the strip'}>
+          {stripOpen ? <IconChevronUp size={ico} /> : <IconChevronDown size={ico} />}
         </button>
       )}
-      <button className={`wxfold-dots${newMaps || nudge.dot ? ' has-new' : ''}`} {...dots} aria-label="More">
-        <IconMenu />
+      <button className={`wx-heat wxfold-dots${newMaps || nudge.dot ? ' has-new' : ''}`} {...dots} aria-label="More">
+        <IconMenu size={ico} />
       </button>
       <AppMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
     </div>
