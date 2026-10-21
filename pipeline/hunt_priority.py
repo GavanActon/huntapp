@@ -17,6 +17,17 @@ The queue alternates the provinces rank by rank (Ontario's first, then
 Quebec's first, ...), each unit's tiles in a row, a tile already queued
 skipped, so a night's bake leaves both provinces' best ground done. One
 tile id a line, with the unit after a tab.
+
+Past Ontario and Quebec (docs/SD-RANKS.md; Gavan, 2026-10-15: "based on hunting
+harvest numbers and where hunters will be this fall"):
+
+    py -3.14 pipeline/hunt_priority.py --ranks pipeline/raw/windtiles/ranks-next.json --out pipeline/raw/windtiles/queue-next.txt --next
+
+ranks-next.json carries "order" (the provinces best first), each province's
+units best first, and "outlines": where each one's unit polygons come from
+(an ArcGIS layer, a WFS or a GeoJSON file, with the code field). The queue
+goes province by province in that order, each province's units by rank. Each
+unit's outline is fetched once and cached in pipeline/raw/windtiles/outlines/.
 """
 
 from __future__ import annotations
@@ -116,6 +127,69 @@ def quebec() -> dict[str, shapely.Geometry]:
     return out
 
 
+OUTLINES = HERE / "raw" / "windtiles" / "outlines"  # one GeoJSON a unit, fetched once
+
+
+def fetch_json(url: str, q: dict, tries: int = 3) -> dict:
+    for attempt in range(tries):
+        try:
+            req = urllib.request.Request(f"{url}?{urllib.parse.urlencode(q)}", headers={"User-Agent": "groundwind-hunt-priority"})
+            with urllib.request.urlopen(req, timeout=300) as r:
+                return json.loads(r.read())
+        except Exception as e:  # noqa: BLE001
+            print(f"  {url.split('/')[2]}: {e} (try {attempt + 1})", file=sys.stderr)
+    raise SystemExit(f"{url} would not answer")
+
+
+def unit_outline(prov: str, spec: dict, unit: str) -> shapely.Geometry | None:
+    """One unit's outline from the province's service (ranks-next.json "outlines"), cached;
+    None when the service has no feature by that code."""
+    cache = OUTLINES / prov / f"{unit.replace('/', '_')}.geojson"
+    if not cache.exists():
+        field, kind = spec.get("field"), spec.get("kind")
+        if not field:
+            return None
+        if kind == "arcgis":
+            fc = fetch_json(spec["url"].rstrip("/") + "/query", {"where": f"{field}='{unit}'", "outFields": field, "outSR": "4326", "f": "geojson"})
+        elif kind == "wfs":
+            fc = fetch_json(spec["url"], {"service": "WFS", "version": "2.0.0", "request": "GetFeature", "typeNames": spec["typename"],
+                                          "outputFormat": "json", "srsName": "EPSG:4326", "CQL_FILTER": f"{field}='{unit}'"})
+        elif kind == "geojson":
+            whole = OUTLINES / prov / "_all.geojson"
+            if not whole.exists():
+                whole.parent.mkdir(parents=True, exist_ok=True)
+                whole.write_bytes(urllib.request.urlopen(urllib.request.Request(spec["url"], headers={"User-Agent": "groundwind-hunt-priority"}), timeout=600).read())
+            def code(v) -> str:  # '101.0' (Nova Scotia) reads as 101
+                v = str(v if v is not None else "").strip()
+                return v[:-2] if v.endswith(".0") else v
+            fc = {"type": "FeatureCollection", "features": [f for f in json.loads(whole.read_text(encoding="utf-8"))["features"] if code(f["properties"].get(field)) == unit]}
+        else:
+            return None
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_text(json.dumps(fc), encoding="utf-8")
+    feats = json.loads(cache.read_text(encoding="utf-8")).get("features") or []
+    if not feats:
+        return None
+    return shapely.union_all([shapely.make_valid(shapely.geometry.shape(f["geometry"])) for f in feats if f.get("geometry")])
+
+
+def next_order(ranks: dict) -> list[tuple[str, str, shapely.Geometry]]:
+    """The provinces past Ontario and Quebec in the ranks file's order, each one's units by rank."""
+    out = []
+    for prov in ranks.get("order", {}).get("CA", []):
+        spec, units = ranks.get("outlines", {}).get(prov), ranks.get(prov)
+        if not spec or not units:
+            print(f"  {prov}: no ranks or no outline source yet: skipped", file=sys.stderr)
+            continue
+        for unit, _why in units:
+            g = unit_outline(prov, spec, str(unit).strip())
+            if g is None:
+                print(f"  {prov} {unit}: no outline by that code", file=sys.stderr)
+                continue
+            out.append((prov, str(unit).strip(), g))
+    return out
+
+
 def tiles_over(g: shapely.Geometry) -> list[str]:
     w, s, e, n = g.bounds
     i0, i1 = math.floor((w - LON0) / (TC * D_LON)), math.floor((e - LON0) / (TC * D_LON))
@@ -156,10 +230,21 @@ def main() -> int:
     ap.add_argument("--ranks", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--list-units", action="store_true", help="print the unit names each province's outlines carry, and stop")
+    ap.add_argument("--next", action="store_true", help="the provinces past Ontario and Quebec (ranks-next.json), province by province")
     a = ap.parse_args()
     global RANKS
     RANKS = Path(a.ranks)
     ranks = json.loads(Path(a.ranks).read_text(encoding="utf-8"))
+    if a.next:
+        seen_n: set[str] = set()
+        lines_n = []
+        for prov, unit, g in next_order(ranks):
+            new = [t for t in tiles_over(g) if t not in seen_n]
+            seen_n.update(new)
+            lines_n += [f"{t}\t{prov} {unit}" for t in new]
+            print(f"{prov} {unit:8s} {len(new):4d} tiles · {len(lines_n)} queued")
+        Path(a.out).write_text("\n".join(lines_n) + "\n", encoding="utf-8")
+        return 0
     units = {"ON": ontario(), "QC": quebec() if ranks.get("QC") or a.list_units else {}}
     if a.list_units:
         for prov, u in units.items():
