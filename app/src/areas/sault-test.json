@@ -73,7 +73,7 @@
       "understory",
       "lanes",
       "historical",
-      "places"
+      "places", "lakes"
     ],
     "geo": [
       "wmu",
@@ -119,7 +119,7 @@
     ]
   },
   "coverage": {
-    "checked": "2026-10-18",
+    "checked": "2026-10-21",
     "pmtiles": {
       "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
       "topo": {
@@ -192,7 +192,8 @@
         "bytes": 71021,
         "source": "LIO: WMUs, Crown land camps, Crown land, parks, burns and roads",
         "licence": "OGL-Ontario"
-      }
+      },
+      "lakes": { "file": "lakes-sault-test.pmtiles", "bytes": 28588 }
     },
     "geo": {
       "wmu": { "file": "wmu-sault-test.geojson", "bytes": 354214, "source": "Wildlife Management Units, LIO", "licence": "OGL-Ontario" },

@@ -116,7 +116,7 @@
       "bathy",
       "historical",
       "bathySheets",
-      "places"
+      "places", "lakes"
     ],
     "geo": [
       "wmu",
@@ -165,7 +165,7 @@
     ]
   },
   "coverage": {
-    "checked": "2026-10-18",
+    "checked": "2026-10-21",
     "pmtiles": {
       "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
       "topo": {
@@ -249,7 +249,8 @@
         "bytes": 85262,
         "source": "LIO: WMUs, Crown land camps, Crown land, parks, burns and roads",
         "licence": "OGL-Ontario"
-      }
+      },
+      "lakes": { "file": "lakes-pickle-lake.pmtiles", "bytes": 119178 }
     },
     "geo": {
       "wmu": { "file": "wmu-pickle-lake.geojson", "bytes": 281075, "source": "Wildlife Management Units, LIO", "licence": "OGL-Ontario" },

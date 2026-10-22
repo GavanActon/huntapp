@@ -13,6 +13,10 @@ map's load back by seconds on the phone, 2026-10-01).
                             Ontario; land and lots from build_property.py),
                             less any theme the province's licence keeps out
                             (WITHHELD)
+  lakes-<region>.pmtiles    layer `waterbody` from waterbody-<region>.geojson,
+                            the lake outlines the Topo view and the elevation
+                            colours draw (Gavan via Features, 2026-10-19: Topo
+                            waited on Pickle's 2.26 MB file whatever the zoom)
 
 The app's style (mapStyle.ts) already prefers these archives when they
 exist (DATA_FILES keys `forest` and `places`, one source-layer per theme)
@@ -54,6 +58,8 @@ ARCHIVES: dict[str, list[str]] = {
     "forest": ["forest"],
     # crown stays for the packs already out; land and lots are build_property.py's
     "places": ["wmu", "camps", "crown", "land", "lots", "parks", "fire", "roads"],
+    # its own small archive, so the views that draw lakes alone read lake tiles alone
+    "lakes": ["waterbody"],
 }
 # by the province whose adapters made the themes
 ATTRIBUTION = {
@@ -111,6 +117,8 @@ SEAM_M = 3  # closes the slivers between neighbouring stands when they are run t
 def attribution(name: str) -> str:
     # an area whose stands are not the province's (ca_forest.py's inferred ones) names its own
     own = options(BAKE, "forest").get("attribution") if name == "forest" else None
+    if name == "lakes":
+        own = AREA.get("attribution", {}).get("lakes")
     return own or ATTRIBUTION.get(JURISDICTION, {}).get(name) or AREA.get("attribution", {}).get("vectors", "")
 
 

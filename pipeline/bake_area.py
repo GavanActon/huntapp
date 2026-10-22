@@ -512,6 +512,7 @@ PMTILES = {
     "historical": ("historical", "historical"),
     "bathySheets": ("bathysheets", "lake-sheets"),
     "places": ("places", "vector-tiles"),
+    "lakes": ("lakes", "vector-tiles"),
 }
 GEO = {
     "wmu": "vectors",

@@ -73,7 +73,7 @@
       "understory",
       "lanes",
       "historical",
-      "places"
+      "places", "lakes"
     ],
     "geo": [
       "wmu",
@@ -123,7 +123,7 @@
     ]
   },
   "coverage": {
-    "checked": "2026-10-18",
+    "checked": "2026-10-21",
     "pmtiles": {
       "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
       "topo": {
@@ -201,7 +201,8 @@
         "bytes": 101537,
         "source": "LIO: WMUs, Crown land camps, Crown land, parks, burns and roads",
         "licence": "OGL-Ontario"
-      }
+      },
+      "lakes": { "file": "lakes-whitefish-lake.pmtiles", "bytes": 82085 }
     },
     "geo": {
       "wmu": { "file": "wmu-whitefish-lake.geojson", "bytes": 443027, "source": "Wildlife Management Units, LIO", "licence": "OGL-Ontario" },

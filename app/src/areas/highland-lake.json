@@ -78,7 +78,7 @@
       "understory",
       "lanes",
       "historical",
-      "places"
+      "places", "lakes"
     ],
     "geo": [
       "wmu",
@@ -117,7 +117,7 @@
     ]
   },
   "coverage": {
-    "checked": "2026-10-18",
+    "checked": "2026-10-21",
     "pmtiles": {
       "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
       "topo": {
@@ -196,7 +196,8 @@
         "bytes": 97837,
         "source": "GeoYukon: game management subzones, First Nation settlement land, burns and roads",
         "licence": "OGL-Yukon"
-      }
+      },
+      "lakes": { "file": "lakes-highland-lake.pmtiles", "bytes": 39069 }
     },
     "geo": {
       "wmu": {

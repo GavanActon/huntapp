@@ -36,7 +36,7 @@
       "understory",
       "lanes",
       "historical",
-      "places"
+      "places", "lakes"
     ],
     "geo": ["wmu", "crown", "parks", "fire", "roads"],
     "baseGeo": ["waterbody"],
@@ -57,7 +57,7 @@
     ]
   },
   "coverage": {
-    "checked": "2026-10-09",
+    "checked": "2026-10-21",
     "pmtiles": {
       "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
       "topo": {
@@ -140,7 +140,8 @@
         "bytes": 45951,
         "source": "BC Geographic Warehouse: wildlife management units, parks, private parcels and reserves, fire perimeters, roads and trails",
         "licence": "OGL-BC"
-      }
+      },
+      "lakes": { "file": "lakes-blanchard-river.pmtiles", "bytes": 67075 }
     },
     "geo": {
       "wmu": {
@@ -156,6 +157,8 @@
         "source": "ParcelMap BC parcels with a private, mixed, federal or municipal owner, and Indian reserves, Province of British Columbia",
         "licence": "OGL-BC"
       },
+      "land": { "missing": "not in this area's maps" },
+      "lots": { "missing": "not in this area's maps" },
       "parks": {
         "file": "parks-blanchard-river.geojson",
         "bytes": 5662,
@@ -207,6 +210,13 @@
         "source": "derived: HRDEM LiDAR, point-cloud bush or the forest-map estimate, water, wetlands and roads",
         "licence": "derived from the layers above",
         "vintage": "generated 2026-10-09"
+      },
+      "micro-sd": {
+        "file": "micro-sd-blanchard-river.hab",
+        "bytes": 9582039,
+        "source": "derived: the habitat grid and the MRDEM, with the surrogate net's terrain wind in WindNinja's place (build_windsd.py)",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-11"
       }
     }
   },

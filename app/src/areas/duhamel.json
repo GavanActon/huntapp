@@ -72,7 +72,7 @@
       "understory",
       "lanes",
       "historical",
-      "places"
+      "places", "lakes"
     ],
     "geo": [
       "parks",
@@ -134,7 +134,7 @@
     }
   },
   "coverage": {
-    "checked": "2026-10-18",
+    "checked": "2026-10-21",
     "pmtiles": {
       "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
       "topo": {
@@ -208,7 +208,8 @@
         "bytes": 283059,
         "source": "TRQ territories, the carte écoforestière's burns and AQréseau roads, MRNF",
         "licence": "CC BY 4.0"
-      }
+      },
+      "lakes": { "file": "lakes-duhamel.pmtiles", "bytes": 175079 }
     },
     "geo": {
       "wmu": { "missing": "not in the maps: the hunting zones' only source (SmartFaune) states no licence, so the area file names the zone instead" },
