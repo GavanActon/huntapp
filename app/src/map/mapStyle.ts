@@ -580,8 +580,14 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
     // the same heights again for the 3D ground (map/terrain3d.ts): a source of its own, as MapLibre wants
     // one for terrain beside the shade's; nothing reads it until 3D is on
     sources[TERRAIN_SOURCE] = { ...sources.dem } as SourceSpecification
+    // the lakes from their vector archive where it is baked and reachable (one layer, waterbody: 0.12 MB at
+    // Pickle Lake against the GeoJSON's 2.26, which held the Topo view's load on weak signal, docs/VIEWS.md);
+    // else the GeoJSON, a phone that saved it before the archive was baked among them. The archive is the
+    // region's: past its edge the Toporama sheet's own lakes show, as everything else of the area stops there
     const lakes = o.geo.get('waterbody')
-    if (lakes) sources.lakes = { type: 'geojson', data: geoData('lakes', lakes, 'relief'), attribution: ATTRIBUTION.lakes }
+    const lakesTiled = has('lakes')
+    if (lakesTiled) sources.lakes = archive('lakes', { type: 'vector', attribution: ATTRIBUTION.lakes })
+    else if (lakes) sources.lakes = { type: 'geojson', data: geoData('lakes', lakes, 'relief'), attribution: ATTRIBUTION.lakes }
     // with signal the live MRDEM shade under the DEM's: the DEM stops at the
     // box, the service shows through beyond it, the same switch and strength.
     // Under the baked imagery too, where there is one: over the imagery it is
@@ -630,13 +636,14 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
         'hillshade',
       ),
     )
-    if (lakes)
+    if (lakesTiled || lakes)
       rasters.push(
         tag(
           {
             id: 'relief-lakes',
             type: 'fill',
             source: 'lakes',
+            ...(lakesTiled ? { 'source-layer': 'waterbody' } : {}),
             layout: vis(o.layers.relief),
             paint: { 'fill-color': '#3f6f8f', 'fill-outline-color': '#5d8fae', 'fill-opacity': 0.95 },
           },

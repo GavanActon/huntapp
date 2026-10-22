@@ -98,6 +98,8 @@ const PMTILES: (Omit<DataFileDef, 'file'> & { stem: string })[] = [
   { key: 'historical', stem: 'historical', kind: 'raster', label: 'Historical topo' },
   { key: 'bathySheets', stem: 'bathysheets', kind: 'raster', label: 'Lake survey sheets (1978–79)' },
   { key: 'places', stem: 'places', kind: 'vector', label: 'Camps, WMUs, roads' },
+  // the lake outlines tiled (build_vector_tiles.py, 2026-10-21): Topo's lakes, 0.12 MB at Pickle Lake against the GeoJSON's 2.26
+  { key: 'lakes', stem: 'lakes', kind: 'vector', label: 'Lake outlines' },
 ]
 
 /** The places archive's themes, in the order its label names them, and the
@@ -292,7 +294,10 @@ function bundleOf(a: AreaDef): BundleDef {
     files: [
       ...dataFiles(a).map((d) => d.file),
       ...geoThemes(a).map((t) => `${t}-${a.id}.geojson`),
-      ...baseGeo(a).map((t) => `${t}-${a.id}.geojson`),
+      // the lake outlines' GeoJSON only where they are not tiled: an area with its lakes archive saves that instead
+      ...baseGeo(a)
+        .filter((t) => !(t === 'waterbody' && a.files.pmtiles.includes('lakes')))
+        .map((t) => `${t}-${a.id}.geojson`),
       ...GRIDS.filter((g) => a.files.grids.includes(g)).map((g) => `${g}-${a.id}.hab`),
     ],
   }
