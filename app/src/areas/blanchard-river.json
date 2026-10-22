@@ -38,7 +38,7 @@
       "historical",
       "places", "lakes"
     ],
-    "geo": ["wmu", "crown", "parks", "fire", "roads"],
+    "geo": ["wmu", "crown", "land", "lots", "parks", "fire", "roads"],
     "baseGeo": ["waterbody"],
     "grids": ["habitat", "micro", "micro-sd", "going"]
   },
@@ -57,7 +57,7 @@
     ]
   },
   "coverage": {
-    "checked": "2026-10-21",
+    "checked": "2026-10-22",
     "pmtiles": {
       "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
       "topo": {
@@ -137,7 +137,7 @@
       "bathySheets": { "missing": "Ontario only: MNR lake survey sheets" },
       "places": {
         "file": "places-blanchard-river.pmtiles",
-        "bytes": 45951,
+        "bytes": 63648,
         "source": "BC Geographic Warehouse: wildlife management units, parks, private parcels and reserves, fire perimeters, roads and trails",
         "licence": "OGL-BC"
       },
@@ -157,8 +157,18 @@
         "source": "ParcelMap BC parcels with a private, mixed, federal or municipal owner, and Indian reserves, Province of British Columbia",
         "licence": "OGL-BC"
       },
-      "land": { "missing": "not in this area's maps" },
-      "lots": { "missing": "not in this area's maps" },
+      "land": {
+        "file": "land-blanchard-river.geojson",
+        "bytes": 6474,
+        "source": "Parks, ecological reserves, protected areas, conservancies and wildlife management areas (TANTALIS), Province of British Columbia; Crown tenures: leases and site licences (TANTALIS; no holders), Province of British Columbia; First Nation Settlement Lands, GeoYukon; Orders in Council under the Wildlife Act (wildlife sanctuaries), GeoYukon; Parks and Protected Areas 250k, GeoYukon; Land Dispositions: leases and agreements for sale (no holders), GeoYukon",
+        "licence": "OGL-BC; OGL-Yukon; OGL-Canada"
+      },
+      "lots": {
+        "file": "lots-blanchard-river.geojson",
+        "bytes": 4969,
+        "source": "ParcelMap BC parcel fabric, public view (owner type only, no names), LTSA via DataBC; Land Parcels Polygon - Surveyed, GeoYukon",
+        "licence": "OGL-BC; OGL-Yukon; OGL-Canada"
+      },
       "parks": {
         "file": "parks-blanchard-river.geojson",
         "bytes": 5662,
