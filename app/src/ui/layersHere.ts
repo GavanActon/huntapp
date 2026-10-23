@@ -1,58 +1,55 @@
 /**
- * What this spot has, layer by layer, and what HD would make of each
- * (Gavan, 2026-10-23: "more concerned about what layers we have, and what
- * they can upgrade to"). One table for every grade, read off the area's
- * own files and bake (what is here, for certain) and, for the HD column,
- * off the coverage index where its tiles under the area have been read
- * (1 m LiDAR flown or not, which inventory's stands, whose water and
- * roads): the grade says what the data gives (docs/SD-HD-PLAN.md "The
- * shape"; Clearwater showed HD without LiDAR is its own grade). Without
- * the index read, the HD column says what HD adds where the data is there,
- * and the sheet says to open the box to read it.
+ * The layers at this spot, by what data there is for each (Gavan,
+ * 2026-10-23: "we really need to be based on what layers are available").
+ * Every row is read off the ground's own data: the area's files and bake
+ * for what is here now; the coverage index under its box (explore/
+ * coverageRead.ts: 1 m LiDAR flown or not and when, which inventory's
+ * stands, whose water and roads, the province) and the SD wind tiles' index
+ * for what the data here allows. So a row says one of four things: it is
+ * here; HD gives it, from data that exists here; the ground-wind ask or a
+ * bake gives it; or the data does not exist here, and nothing will bring
+ * it (no LiDAR flown, no inventory published). Clearwater, Pickle Lake and
+ * a loaded spot each read as what they are.
  */
 import { ACTIVE_AREA, type AreaDef } from '../areas'
-import { areaGrade, bushMeasured, FINE_RELIEF, windSolved } from '../config'
+import { bushMeasured, FINE_RELIEF, windSolved } from '../config'
 import { boxOfBounds, parseBoxId, tilesUnder } from '../explore/box'
-import { COVERAGE_SOURCE } from '../explore/coverage'
-import { useExplore, type CoverageProps } from '../explore/store'
-import { getMap } from '../map/mapController'
+import { coverageUnder } from '../explore/coverageRead'
+import type { CoverageProps } from '../explore/store'
+import { sdIndex } from '../weather/micro/windTiles'
+
+export type RowState = 'have' | 'hd' | 'ask' | 'none'
 
 export interface LayerRow {
   id: string
   /** the layer, as the hunter knows it */
   layer: string
-  /** what is here now */
+  /** what is here now, and from what */
   now: string
-  /** what HD gives here; empty for an HD area's row that is what it is */
-  hd: string
-  /** now is nothing here, and HD (or the SD ask) would bring it */
-  want?: boolean
-  /** HD changes nothing for this layer */
-  same?: boolean
+  /** what the data here allows: HD's version, the ask's, or why nothing will bring it */
+  next: string
+  state: RowState
 }
 
-/** What the coverage index says under the area: read off the grid's loaded
- *  tiles, else what Explore read for them last (a Load or an HD ask here). */
-export function coverageUnder(a: AreaDef = ACTIVE_AREA): CoverageProps[] {
-  const box = parseBoxId(a.id) ?? boxOfBounds(a.core.west, a.core.south, a.core.east, a.core.north)
-  const ids = tilesUnder(box).map((t) => t.id)
-  const want = new Set(ids)
-  const got: Record<string, CoverageProps> = {}
-  const kept = useExplore.getState().cover
-  for (const id of ids) if (kept[id]) got[id] = kept[id]
-  const m = getMap()
-  if (m && m.getSource(COVERAGE_SOURCE)) {
-    try {
-      for (const f of m.querySourceFeatures(COVERAGE_SOURCE, { sourceLayer: 'tiles' })) {
-        const id = String(f.id ?? f.properties?.id)
-        if (want.has(id) && !got[id]) got[id] = f.properties as CoverageProps
-      }
-    } catch {
-      /* the grid is not up: what Explore kept */
-    }
-  }
-  return ids.map((id) => got[id]).filter((p): p is CoverageProps => p != null)
+/** What the data under the box says. Fields are null where the index could not be read. */
+export interface GroundData {
+  prov: string | null
+  /** 1 m LiDAR under every tile, some, none; null unread */
+  lidar: 'all' | 'some' | 'none' | null
+  flown: string
+  /** the inventory's name (FRI 2012, écoforestière, VRI), '' for SCANFI only, null unread */
+  stands: string | null
+  /** the province's water and roads source, '' for national only, null unread */
+  water: string | null
+  /** SD wind tiles baked under the box, of how many; null unread */
+  sdHave: number | null
+  sdTiles: number
 }
+
+/** The provinces whose lots and private land the bake draws (pipeline/build_property.py). */
+const LOTS_PROVS = new Set(['ON', 'BC', 'YT', 'AB'])
+/** Lake depth: Ontario's LIO bathymetry is the one wired. */
+const BATHY_PROVS = new Set(['ON'])
 
 const uniq = (xs: string[]) => [...new Set(xs)]
 const years = (ys: number[]) => {
@@ -61,127 +58,117 @@ const years = (ys: number[]) => {
   return lo === hi ? `${lo}` : `${lo}–${hi}`
 }
 
-/** The words the coverage index gives the HD column: LiDAR, stands, water. Null where nothing was read. */
-function ground(ps: CoverageProps[]) {
-  if (!ps.length) return null
+function groundOf(ps: CoverageProps[] | null, sdHave: number | null, sdTiles: number): GroundData {
+  if (!ps || !ps.length) return { prov: null, lidar: null, flown: '', stands: null, water: null, sdHave, sdTiles }
   const lidar = ps.filter((p) => (p.lidar ?? 0) > 0)
-  const flown = lidar.length ? years(lidar.map((p) => p.lidar!)) : ''
   const stands = uniq(ps.map((p) => p.stands ?? 'SCANFI').filter((s) => s !== 'SCANFI'))
   const water = uniq(ps.map((p) => p.water ?? '').filter((w) => w && !w.startsWith('national')))
   return {
-    /** every tile, some, or none */
+    prov: uniq(ps.map((p) => p.prov ?? '').filter(Boolean)).join(', ') || null,
     lidar: lidar.length === ps.length ? 'all' : lidar.length ? 'some' : 'none',
-    flown,
+    flown: lidar.length ? years(lidar.map((p) => p.lidar!)) : '',
     stands: stands.join(' and '),
     water: water.join(' and '),
+    sdHave,
+    sdTiles,
   }
 }
 
-/** SD's bake, or what the loaded spot streams, against HD's: the rows. */
-export function layersHere(a: AreaDef = ACTIVE_AREA, sdHave: number | null = null, sdTiles = 0, hdMb: number | null = null): LayerRow[] {
+/** The ground's data under an area: the coverage index and the SD tiles' index, read together. */
+export async function groundData(a: AreaDef = ACTIVE_AREA): Promise<GroundData> {
+  const box = parseBoxId(a.id) ?? boxOfBounds(a.core.west, a.core.south, a.core.east, a.core.north)
+  const tiles = tilesUnder(box)
+  const [cov, idx] = await Promise.all([coverageUnder(box), a.loaded === 'box' ? sdIndex() : Promise.resolve(null)])
+  const sdHave = idx ? tiles.filter((t) => t.id in idx.tiles).length : null
+  return groundOf(cov, sdHave, tiles.length)
+}
+
+/** The rows for an area, given its ground's data. */
+export function layerRows(a: AreaDef, g: GroundData): LayerRow[] {
   const has = (k: string) => a.files.pmtiles.includes(k)
   const geo = (k: string) => a.files.geo.includes(k)
   const grid = (k: string) => a.files.grids.includes(k)
   const point = (k: string) => /LiDAR|point cloud/i.test(a.coverage?.pmtiles[k]?.source ?? '')
-  const hd = areaGrade(a) === 'hd'
   const spot = a.loaded === 'box'
-  const g = ground(coverageUnder(a))
+  const prov = g.prov ?? a.jurisdiction ?? ''
+  // the LiDAR layers: here, HD's where the index says it was flown, nothing where it says none, HD's "where flown" unread
+  const lidar = g.lidar
+  const flown = g.flown ? `, flown ${g.flown}` : ''
+  const part = lidar === 'some' ? ' under part of the box' : ''
+  const noLidar = 'no 1 m LiDAR has been flown here'
+  const r = (id: string, layer: string, now: string, next: string, state: RowState): LayerRow => ({ id, layer, now, next, state })
   const rows: LayerRow[] = []
 
-  rows.push({ id: 'forecast', layer: 'Forecast', now: 'HRDPS at 2.5 km, hour by hour', hd: '', same: true })
+  rows.push(r('forecast', 'Forecast', 'HRDPS at 2.5 km, hour by hour', '', 'have'))
 
-  // the ground wind: the trained model on the national ground (SD), or WindNinja's solve (HD)
-  const solved = windSolved(a)
-  rows.push({
-    id: 'wind',
-    layer: 'Ground wind',
-    now: solved
-      ? 'WindNinja solved over this ground, at head height'
-      : spot
-        ? sdHave == null
-          ? 'the trained model on the national 30 m terrain and forest'
-          : sdHave === 0
-            ? 'none yet: the forecast wind alone'
-            : sdHave < sdTiles
-              ? `the trained model under ${sdHave} of ${sdTiles} cells; the forecast's wind elsewhere`
-              : 'the trained model on the national 30 m terrain and forest'
-        : 'the trained model on 30 m terrain and this ground’s stands',
-    hd: solved ? '' : 'the full solve over this ground: the lee behind rises, the bend round hills',
-    want: spot && sdHave === 0,
-    same: solved,
-  })
-  rows.push({ id: 'scent', layer: 'Scent cone', now: 'drawn on the ground wind from where you sit', hd: '', same: true })
+  if (windSolved(a)) rows.push(r('wind', 'Ground wind', 'WindNinja solved over this ground, at head height', '', 'have'))
+  else if (spot && g.sdHave === 0) rows.push(r('wind', 'Ground wind', 'the forecast wind alone: no SD tiles baked here yet', 'ask for it: the trained model on the 30 m terrain and forest, baked for this box', 'ask'))
+  else
+    rows.push(
+      r(
+        'wind',
+        'Ground wind',
+        spot && g.sdHave != null && g.sdHave < g.sdTiles ? `the trained model under ${g.sdHave} of ${g.sdTiles} cells (SD tiles); the forecast's wind elsewhere` : 'the trained model on the 30 m terrain and forest (MRDEM, SCANFI)',
+        'HD: WindNinja solves the full flow over this ground, the lee behind rises and the bend round hills',
+        'hd',
+      ),
+    )
+  rows.push(r('scent', 'Scent cone', 'drawn on the ground wind from where you sit', '', 'have'))
 
-  // relief, contours, stands, bush, lanes: LiDAR's layers, where it was flown
-  const noLidar = g && g.lidar === 'none'
-  rows.push({
-    id: 'shade',
-    layer: 'Terrain shade',
-    now: has('hillshadeLidar') ? `${FINE_RELIEF.name} shade: old roads and trails under the trees` : '30 m national relief',
-    hd: has('hillshadeLidar') ? '' : noLidar ? 'no 1 m LiDAR flown here: the 30 m relief stays' : `1 m LiDAR shade${g?.flown ? `, flown ${g.flown}` : ', where it has been flown'}: old roads and trails show through the canopy`,
-    same: has('hillshadeLidar'),
-  })
-  rows.push({
-    id: 'contours',
-    layer: 'Contours',
-    now: has('contours') ? 'every metre, from LiDAR' : has('contoursWide') ? '10 m, from the 30 m terrain' : spot ? 'none in a loaded spot' : '10 m, from the 30 m terrain',
-    hd: has('contours') ? '' : noLidar ? '10 m: no LiDAR to draw finer' : 'every metre, from the LiDAR: the draws cold air drains and the benches',
-    same: has('contours'),
-    want: spot,
-  })
-  rows.push({
-    id: 'stands',
-    layer: 'Trees and stands',
-    now: has('forest') ? 'the inventory’s stands' : 'the national 30 m model (SCANFI)',
-    hd: has('forest') ? '' : g?.stands ? `${g.stands} inventory stands: age, species and cuts` : g ? 'SCANFI here too: no inventory published' : 'the province’s inventory stands where it publishes one',
-    same: has('forest'),
-  })
-  rows.push({
-    id: 'bush',
-    layer: 'Bush',
-    now: bushMeasured(a) ? (point('understory') ? 'measured at eye level from the point cloud' : 'mapped by a model trained on this ground') : has('understory') ? 'the national bush model, an estimate at 30 m' : 'none in a loaded spot',
-    hd: bushMeasured(a) ? '' : noLidar ? 'the national model stays: no point cloud here' : 'measured at eye level from the LiDAR point cloud',
-    same: bushMeasured(a),
-    want: !has('understory'),
-  })
-  rows.push({
-    id: 'lanes',
-    layer: 'Shooting lanes',
-    now: has('lanes') ? (point('lanes') ? 'measured from the point cloud' : 'stand scale, from the bush model') : 'none',
-    hd: has('lanes') && point('lanes') ? '' : noLidar ? 'stand scale from the bush model: no point cloud here' : 'where you can see and shoot, measured from the point cloud',
-    same: has('lanes') && point('lanes'),
-    want: !has('lanes'),
-  })
-  rows.push({
-    id: 'heat',
-    layer: 'Heat map and spots',
-    now: grid('habitat') ? (has('forest') ? 'scored on this ground’s stands, water and relief' : 'scored on the national stands and relief') : 'none in a loaded spot',
-    hd: grid('habitat') && hd ? '' : 'scored on the inventory stands and the 1 m water and relief',
-    same: grid('habitat') && hd,
-    want: !grid('habitat'),
-  })
-  rows.push({
-    id: 'water',
-    layer: 'Water and roads',
-    now: geo('roads') || has('lakes') ? 'the province’s, baked in' : 'the streamed map’s',
-    hd: geo('roads') || has('lakes') ? '' : g?.water ? `${g.water}, baked in for no signal` : 'the province’s where wired, baked in for no signal',
-    same: geo('roads') || has('lakes'),
-  })
-  rows.push({
-    id: 'lots',
-    layer: 'Property lines',
-    now: geo('lots') || geo('land') ? 'private land and lots marked' : 'none',
-    hd: geo('lots') || geo('land') ? '' : 'private land and lots, where the province publishes them',
-    same: geo('lots') || geo('land'),
-    want: !(geo('lots') || geo('land')),
-  })
-  rows.push({ id: 'imagery', layer: 'Imagery', now: 'Esri, streamed with signal', hd: '', same: true })
-  rows.push({
-    id: 'offline',
-    layer: 'No signal',
-    now: spot ? 'Save keeps the forecast and the SD wind tiles' : hd ? 'the area pack: every layer on the phone' : 'the area pack on the phone',
-    hd: hd ? '' : `the HD pack on the phone${hdMb ? `, about ${hdMb} MB` : ''}`,
-    same: hd,
-  })
+  if (has('hillshadeLidar')) rows.push(r('shade', 'Terrain shade', `${FINE_RELIEF.name} shade: old roads and trails under the trees`, '', 'have'))
+  else if (lidar === 'none') rows.push(r('shade', 'Terrain shade', '30 m national relief (MRDEM)', `${noLidar}: the 30 m relief is the finest there is`, 'none'))
+  else rows.push(r('shade', 'Terrain shade', '30 m national relief (MRDEM)', `HD: 1 m LiDAR shade${flown}${part || (lidar ? '' : ', where it has been flown')}; old roads and trails show through the canopy`, 'hd'))
+
+  if (has('contours')) rows.push(r('contours', 'Contours', 'every metre, from LiDAR', '', 'have'))
+  else {
+    const now = has('contoursWide') ? '10 m, from the 30 m terrain' : spot ? 'none in a loaded spot' : '10 m, from the 30 m terrain'
+    if (lidar === 'none') rows.push(r('contours', 'Contours', now, spot ? `a bake brings 10 m contours; ${noLidar}` : `${noLidar}: 10 m is the finest`, spot ? 'ask' : 'none'))
+    else rows.push(r('contours', 'Contours', now, `HD: every metre from the LiDAR${part}, the draws cold air drains and the benches`, 'hd'))
+  }
+
+  if (has('forest')) rows.push(r('stands', 'Trees and stands', "the inventory's stands: age, species, cuts", '', 'have'))
+  else if (g.stands) rows.push(r('stands', 'Trees and stands', 'the national 30 m model (SCANFI)', `HD: ${g.stands} inventory stands, with age, species and cuts`, 'hd'))
+  else if (g.stands === '') rows.push(r('stands', 'Trees and stands', 'the national 30 m model (SCANFI)', `${prov || 'the province'} publishes no inventory here: SCANFI is what there is`, 'none'))
+  else rows.push(r('stands', 'Trees and stands', 'the national 30 m model (SCANFI)', "HD: the province's inventory stands, where it publishes one", 'hd'))
+
+  if (bushMeasured(a)) rows.push(r('bush', 'Bush', point('understory') ? 'measured at eye level from the point cloud' : 'mapped by a model trained on this ground', '', 'have'))
+  else {
+    const now = has('understory') ? 'the national bush model, an estimate at 30 m' : 'none in a loaded spot'
+    if (lidar === 'none') rows.push(r('bush', 'Bush', now, has('understory') ? `${noLidar}: the model is what there is` : 'a bake brings the national model; no point cloud here to measure from', has('understory') ? 'none' : 'ask'))
+    else rows.push(r('bush', 'Bush', now, `HD: bush thickness measured at eye level from the LiDAR point cloud${part}`, 'hd'))
+  }
+
+  if (has('lanes') && point('lanes')) rows.push(r('lanes', 'Shooting lanes', 'measured from the point cloud', '', 'have'))
+  else {
+    const now = has('lanes') ? 'stand scale, from the bush model' : 'none'
+    if (lidar === 'none') rows.push(r('lanes', 'Shooting lanes', now, has('lanes') ? `${noLidar}: stand scale is what there is` : 'a bake brings stand scale from the bush model; no point cloud here for single lanes', has('lanes') ? 'none' : 'ask'))
+    else rows.push(r('lanes', 'Shooting lanes', now, `HD: where you can see and shoot, measured from the point cloud${part}`, 'hd'))
+  }
+
+  if (grid('habitat')) rows.push(r('heat', 'Heat map and spots', has('forest') ? "scored on this ground's stands, water and relief" : 'scored on the national stands and relief', '', 'have'))
+  else rows.push(r('heat', 'Heat map and spots', 'none in a loaded spot', 'a bake scores the ground: the stands, the water, the relief', 'ask'))
+
+  if (geo('roads') || has('lakes')) rows.push(r('water', 'Water and roads', "the province's, baked in for no signal", '', 'have'))
+  else if (g.water) rows.push(r('water', 'Water and roads', "the streamed map's", `a bake brings ${g.water}, in for no signal`, 'ask'))
+  else if (g.water === '') rows.push(r('water', 'Water and roads', "the streamed map's", `${prov || 'this province'} is not wired for water and roads yet: the national map's`, 'none'))
+  else rows.push(r('water', 'Water and roads', "the streamed map's", "a bake brings the province's, in for no signal", 'ask'))
+
+  if (geo('lots') || geo('land')) rows.push(r('lots', 'Property lines', 'private land and lots marked', '', 'have'))
+  else if (LOTS_PROVS.has(prov)) rows.push(r('lots', 'Property lines', 'none', `a bake brings ${prov}'s lots and private land`, 'ask'))
+  else rows.push(r('lots', 'Property lines', 'none', `${prov || 'this province'} publishes no lot lines the app can draw; reserves and parks only`, 'none'))
+
+  if (has('bathy') || geo('depth')) rows.push(r('depth', 'Lake depth', 'LIO soundings, baked in', '', 'have'))
+  else if (BATHY_PROVS.has(prov)) rows.push(r('depth', 'Lake depth', 'none', 'a bake brings LIO soundings where Ontario has them', 'ask'))
+
+  rows.push(r('imagery', 'Imagery', 'Esri, streamed with signal', '', 'have'))
+
+  if (spot) rows.push(r('offline', 'No signal', 'Save keeps the forecast and the SD wind tiles', 'a bake keeps every layer on the phone as a pack', 'ask'))
+  else rows.push(r('offline', 'No signal', 'the area pack: every layer on the phone', '', 'have'))
   return rows
+}
+
+/** The rows for an area, its ground's data read first. */
+export async function layersHere(a: AreaDef = ACTIVE_AREA): Promise<{ rows: LayerRow[]; ground: GroundData }> {
+  const ground = await groundData(a)
+  return { rows: layerRows(a, ground), ground }
 }
