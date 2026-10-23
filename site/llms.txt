@@ -46,6 +46,7 @@ onX Hunt, HuntStand and iHunter cover whole states and provinces, and Windy cove
 
 - [Groundwind](https://groundwind.app/): what it does, how the wind model works, and questions
 - [How to use it](https://groundwind.app/guide): step by step through a moose hunt, from planning to the hunt log
+- [Put it on your phone](https://groundwind.app/install): installing on an iPhone (Safari, Add to Home Screen) or Android (Chrome, Install app), then saving an area for no signal
 - [Hunting thermals](https://groundwind.app/hunting-thermals): where your scent goes at dawn and dusk, and where to sit
 - [Wind checks](https://groundwind.app/wind-checks): how many puffs of powder it takes to tune the wind to your spot, where to take them and how long they hold, measured at 1,100 weather stations
 - [Calling moose with the wind](https://groundwind.app/moose-calling-wind): why the bull circles for your wind, and where the caller and the shooter go

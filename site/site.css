@@ -938,3 +938,87 @@ footer .links a:hover { color: var(--ink); text-decoration: underline; }
 .hero-also a { color: var(--ink); text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
 .hero-also a:hover { text-decoration-color: currentColor; }
 @media (min-width: 860px) { .also-grid.notes-grid { grid-template-columns: repeat(4, 1fr); gap: 32px; } }
+
+/* ---- /install: the steps to put it on a phone, drawn (install.html); the thing to tap lit in gold, a ring pulsing on it */
+.inst { display: grid; gap: 28px; padding-block: 8px 64px; }
+.inst-tabs { display: flex; gap: 8px; }
+.inst-tabs[hidden] { display: none; }
+.inst-tabs [role=tab] {
+  font: 600 1rem/1 var(--f-body);
+  color: var(--dim);
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 11px 20px;
+  cursor: pointer;
+}
+.inst-tabs [role=tab][aria-selected=true] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.inst-h { font-size: 1.6rem; margin-bottom: 12px; }
+.inst.tabbed .inst-h { display: none; }
+.inst-panel + .inst-panel { margin-top: 36px; }
+.inst.tabbed .inst-panel + .inst-panel { margin-top: 0; }
+.inst-steps { list-style: none; padding: 0; margin: 0; display: grid; counter-reset: st; }
+.inst-steps li {
+  counter-increment: st;
+  display: grid;
+  grid-template-columns: minmax(96px, 120px) 1fr;
+  gap: 18px;
+  align-items: center;
+  padding-block: 16px;
+  border-top: 1px solid var(--line);
+}
+.inst-steps figure { margin: 0; }
+.inst-steps p { display: grid; gap: 8px; color: var(--dim); font-size: 1.02rem; }
+.inst-steps p > span::before {
+  content: counter(st);
+  display: block;
+  font: 500 0.82rem/1 var(--f-mono);
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.inst-steps p > span { color: var(--ink); }
+.inst-steps small { font-size: 0.9rem; color: var(--faint); }
+.inst-steps a { color: var(--ink); }
+.inst-steps .nw { white-space: nowrap; }
+.inst-go { margin: 0; }
+@media (min-width: 860px) {
+  .inst-steps { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px; }
+  .inst-steps li { grid-template-columns: 1fr; align-items: start; align-content: start; border-top: 0; padding-block: 0; }
+  .inst-steps figure { max-width: 190px; }
+}
+.shot { display: block; width: 100%; height: auto; overflow: visible; }
+.sh-bezel { fill: var(--bezel); stroke: var(--line-strong); stroke-width: 1; }
+.sh-screen { fill: #15281f; }
+.sh-map path { fill: none; stroke: rgba(226, 214, 180, 0.12); stroke-width: 1.2; }
+.sh-ui { fill: rgba(241, 233, 214, 0.13); }
+.sh-bar { fill: rgba(241, 233, 214, 0.17); }
+.sh-sheet { fill: #233830; stroke: rgba(226, 214, 180, 0.14); stroke-width: 1; }
+.sh-dim { fill: rgba(0, 0, 0, 0.45); }
+.sh-hi { fill: var(--accent); }
+.sh-hi-soft { fill: var(--accent-dim); stroke: var(--accent); stroke-width: 1.2; }
+.sh-on { fill: var(--good); }
+.sh-knob { fill: #fff; }
+.sh-dot { fill: var(--on-accent); }
+.sh-dotf { fill: var(--faint); }
+.sh-glyph { fill: none; stroke: var(--faint); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.sh-glyph-hi { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.shot text { font-family: var(--f-body); font-size: 8px; font-weight: 600; }
+.sh-t { fill: var(--ink); }
+.sh-tf { fill: var(--faint); font-weight: 500; }
+.sh-ta { fill: var(--on-accent); }
+.sh-tap {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sh-tap 1.8s var(--ease) infinite;
+}
+@keyframes sh-tap {
+  0% { opacity: 0.95; transform: scale(0.55); }
+  70% { opacity: 0; transform: scale(1.35); }
+  100% { opacity: 0; transform: scale(1.35); }
+}
+@media (prefers-reduced-motion: reduce) { .sh-tap { animation: none; opacity: 0.8; } }
+.inst-next { scroll-margin-top: 12px; }
+.inst-next .note a { color: var(--ink); }
