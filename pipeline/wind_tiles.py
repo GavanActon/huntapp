@@ -262,11 +262,17 @@ def upload() -> tuple[int, int]:
         return 0, 0
     s3 = r2_sync.client()
     prefix = f"data/sd/{VERSION}/"
-    have, sizes = {}, {}
+    have, sizes, when = {}, {}, {}
     for page in s3.get_paginator("list_objects_v2").paginate(Bucket=r2_sync.BUCKET, Prefix=prefix):
         for o in page.get("Contents", []):
             have[o["Key"]] = o["ETag"].strip('"')
             sizes[o["Key"]] = o["Size"]
+            when[o["Key"]] = o["LastModified"].timestamp()
+    # a tile R2 holds from the other machine stays: both baked ~3,000 of the same tiles while apart
+    # (2026-10-19 to 22) and each upload put its own bytes back over the other's, 1,565 at once on
+    # 2026-10-23. Only a tile baked here after R2's copy replaces it (a deliberate re-bake).
+    def theirs(key: str, mtime: float) -> bool:
+        return key in when and when[key] >= mtime
     sent = skipped = 0
     # what was compared before (name: size, mtime, md5), so a tile unchanged since and still the
     # same on R2 isn't read and hashed again: every upload read every tile, 180 GB in a day by
@@ -280,12 +286,12 @@ def upload() -> tuple[int, int]:
         key = prefix + p.name
         st = p.stat()
         rec = seen.get(p.name)
-        if rec and rec[0] == st.st_size and rec[1] == st.st_mtime_ns and have.get(key) == rec[2]:
+        if rec and rec[0] == st.st_size and rec[1] == st.st_mtime_ns and (have.get(key) == rec[2] or theirs(key, st.st_mtime)):
             skipped += 1
             continue
         body = p.read_bytes()
         md5 = hashlib.md5(body).hexdigest()
-        if have.get(key) != md5:
+        if have.get(key) != md5 and not theirs(key, st.st_mtime):
             s3.put_object(Bucket=r2_sync.BUCKET, Key=key, Body=body, ContentType="application/octet-stream", CacheControl="public, max-age=86400")
             sent += 1
         else:
