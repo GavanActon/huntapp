@@ -103,7 +103,9 @@ def fetch_mrdem(name: str, bounds: tuple[float, float, float, float], factor: in
     if not cache.exists():
         t = time.time()
         print(f"fetching {name}: MRDEM at {30 * factor} m over {[round(v, 3) for v in bounds]} (slow)")
-        with rasterio.Env(**GDAL_ENV), rasterio.open(f"/vsicurl/{MRDEM}") as src:
+        import stage
+
+        with rasterio.Env(**GDAL_ENV), rasterio.open(stage.source(MRDEM, bounds)) as src:  # a local copy when one holds the box (stage.py)
             b = transform_bounds("EPSG:4326", src.crs, *bounds)
             w = window_from_bounds(*b, transform=src.transform).round_offsets().round_lengths()
             H, W = int(w.height) // factor, int(w.width) // factor

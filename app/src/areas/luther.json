@@ -1,0 +1,47 @@
+{
+  "id": "luther",
+  "name": "Luther",
+  "jurisdiction": "MI",
+  "centre": [-85.70444, 43.96765],
+  "home": { "center": [-85.70444, 43.96765], "zoom": 13 },
+  "region": { "west": -85.823, "south": 43.898, "east": -85.586, "north": 44.038 },
+  "core": { "west": -85.757, "south": 43.932, "east": -85.652, "north": 44.004, "maxzoom": 16 },
+  "regionMaxzoom": 13,
+  "declination": -5.9,
+  "timezone": "America/Detroit",
+  "zone": { "label": "DMU", "name": "" },
+  "relief": null,
+  "base": "areas/luther/",
+  "surveyedLakes": [],
+  "live": { "lio": false, "satellite": null, "sharp": "esri" },
+  "attribution": {
+    "vectors": "USGS National Hydrography Dataset, US Census TIGER, Michigan DNR",
+    "lakes": "National Hydrography Dataset, USGS",
+    "bush": ""
+  },
+  "presets": [{ "name": "Requested spot", "lon": -85.70444, "lat": 43.96765, "kind": "stand", "note": "Area requested 2026-10-23" }],
+  "bundle": {
+    "description": "Topo, imagery, LiDAR relief and contours, forest stands, water, roads, and the habitat, wind and going grids around Luther; full detail within 4 km of the spot."
+  },
+  "files": {
+    "pmtiles": ["hillshadeLidar", "dem", "contours", "contoursWide", "forest", "understory", "lanes", "places"],
+    "geo": ["wmu", "parks", "roads", "land", "lots"],
+    "baseGeo": ["waterbody"],
+    "grids": ["habitat", "micro", "micro-sd", "going"]
+  },
+  "bake": {
+    "outDir": "app/public/data/areas/luther",
+    "hrdem": [],
+    "lidar": "us3dep",
+    "us3dep": { "stage": "cadillac", "project": null, "vintage": null },
+    "vectors": "us",
+    "forest": {
+      "adapter": "ca.scanfi",
+      "vintage": "LANDFIRE 2024, NLCD 2023 (staged as the national stand layers)",
+      "attribution": "Forest inferred from LANDFIRE and NLCD, USGS and USFS"
+    },
+    "imagery": null,
+    "pointcloud": "us.3dep",
+    "nts": []
+  }
+}

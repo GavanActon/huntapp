@@ -82,6 +82,7 @@ ADAPTERS: dict[str, dict[str, tuple[str, list[str]]]] = {
         "qc": ("3.13", ["qc_vectors.py", "--area", "{id}"]),  # pyogrio: the TRQ territories are a file geodatabase
         "yt": ("3.14", ["yt_vectors.py", "--area", "{id}"]),
         "bc": ("3.14", ["bc_vectors.py", "--area", "{id}"]),  # the BC Geographic Warehouse's open WFS
+        "us": ("3.14", ["us_vectors.py", "--area", "{id}"]),  # USGS NHD, NWI, TIGER, PAD-US, the state's open data (us_vectors.py)
     },
     "forest": {
         "on.fri": ("3.13", ["build_forest.py"]),  # pyogrio: the FRI is a file geodatabase
@@ -94,6 +95,7 @@ ADAPTERS: dict[str, dict[str, tuple[str, list[str]]]] = {
         # the index read needs pyogrio once; it is cached after
         "on.fri_leafon": ("3.13", ["fetch_pointcloud.py", "--radius-km", "{radiusKm}", "--max-gb", "{maxGb}"]),
         "qc.mrnf_laz": ("3.14", ["qc_pointcloud.py", "--area", "{id}"]),
+        "us.3dep": ("3.14", ["us_pointcloud.py", "--area", "{id}"]),  # USGS 3DEP LAZ tiles downloaded beforehand (us_terrain.py's stage)
     },
 }
 POINTCLOUD_DEFAULTS = {"radiusKm": 2, "maxGb": 15}
@@ -211,7 +213,7 @@ def plan(a: dict) -> list[Step]:
         # sources and NRCan's, for every province: one script, the federal layers are shared
         Step("property", "3.14", [["build_property.py", "--area", a["id"]]]),
         adapter_step("forest", "forest", a),
-        Step("topo", "3.14", [["build_tiles.py", *topo]]),
+        Step("topo", "3.14", [["build_tiles.py", *topo]], skip="no Toporama or MRDEM WMS in the US: the map streams Esri's topo" if a["jurisdiction"] in US_STATES else None),
         Step(
             "satellite",
             "3.14",
@@ -493,6 +495,7 @@ PROPERTY_SOURCES = {
     "QC": ({"source": "Territoires récréatifs du Québec (TRQ) read for hunting, MRNF; NRCan reserves", "licence": f"{CC_BY}; {OGL_CA}"}, None),
 }
 PGC = "ArcticDEM: free, cite PGC (NSF OPP awards)"
+US_PD = "public domain (US Government work)"
 # The app's layer keys (the "files" of an area file) and, for each, the
 # file's name before "-<id>" and the step that makes it (to say why a layer
 # is missing).
@@ -533,6 +536,16 @@ NEVER_BAKED = {
     ("pmtiles", "basemap"): "not baked: the map draws the live NRCan base map",
     ("pmtiles", "bathy"): "not baked: lake depths are drawn from GeoJSON (depth)",
 }
+# The US states an area can be in: their terrain and point cloud come from USGS 3DEP through
+# us_terrain.py (the stage) and us_pointcloud.py, the vectors from us_vectors.py; the national
+# rasters the Canadian steps read (MRDEM, land cover, SCANFI) are staged from US sources under
+# the same names (stage.py), so every later step runs unchanged. First: Michigan (2026-10-23).
+US_STATES = {"MI"}
+PROPERTY_SOURCES["MI"] = (
+    {"source": "everything outside PAD-US fee lands and Michigan DNR managed lands drawn as likely private (Michigan has no open parcel layer)", "licence": "public domain (USGS); Michigan open data"},
+    None,  # no open statewide parcels: the counties' and Regrid's are paid
+)
+
 NOT_IN = {  # layers a province has no source for, or none open
     "QC": {
         ("geo", "wmu"): "not in the maps: the hunting zones' only source (SmartFaune) states no licence, so the area file names the zone instead",
@@ -585,15 +598,19 @@ def known_sources(a: dict, lidar: list[str], pc_years: str | None) -> dict[tuple
     lidar_v = (years[0] + (f", gaps {', '.join(years[1:])}" if len(years) > 1 else "")) if years else None
     if bake.get("lidar") == "arcticdem":
         lidar_txt, lidar_v = "ArcticDEM 2 m mosaic v4.1 (a satellite-stereo surface model, voids filled from the MRDEM), Polar Geospatial Center", "2 m, 2007-2022 imagery"
+    us = bake.get("lidar") == "us3dep"
+    if us:
+        p = (bake.get("us3dep") or {}).get("project") or "USGS 3DEP"
+        lidar_txt, lidar_v = f"USGS 3DEP 1 m DEM, {p}", (bake.get("us3dep") or {}).get("vintage")
     forest_v = options(bake, "forest").get("vintage")
     forest_v = str(forest_v) if forest_v is not None else None
     out = {
         ("pmtiles", "topo"): {"source": "Toporama hypsography (contours and spot heights), NRCan WMS", "licence": OGL_CA},
         ("pmtiles", "hillshade"): {"source": "MRDEM 30 m hillshade, NRCan WMS", "licence": OGL_CA},
-        ("pmtiles", "hillshadeLidar"): {"source": lidar_txt if bake.get("lidar") == "arcticdem" else f"HRDEM 1 m LiDAR DTM, NRCan: {lidar_txt}", "licence": PGC if bake.get("lidar") == "arcticdem" else OGL_CA, "vintage": lidar_v},
-        ("pmtiles", "dem"): {"source": f"MRDEM 30 m, NRCan, with {lidar_txt} over the core" if bake.get("lidar") == "arcticdem" else f"MRDEM 30 m, with HRDEM 1 m LiDAR over the core ({lidar_txt}), NRCan", "licence": OGL_CA, "vintage": lidar_v},
-        ("pmtiles", "contours"): {"source": lidar_txt if bake.get("lidar") == "arcticdem" else f"HRDEM 1 m LiDAR DTM, NRCan: {lidar_txt}", "licence": PGC if bake.get("lidar") == "arcticdem" else OGL_CA, "vintage": lidar_v},
-        ("pmtiles", "contoursWide"): {"source": "MRDEM 30 m DTM, NRCan", "licence": OGL_CA},
+        ("pmtiles", "hillshadeLidar"): {"source": lidar_txt if bake.get("lidar") in ("arcticdem", "us3dep") else f"HRDEM 1 m LiDAR DTM, NRCan: {lidar_txt}", "licence": PGC if bake.get("lidar") == "arcticdem" else US_PD if us else OGL_CA, "vintage": lidar_v},
+        ("pmtiles", "dem"): {"source": f"USGS 3DEP 1 arc-second, with {lidar_txt} over the core" if us else f"MRDEM 30 m, NRCan, with {lidar_txt} over the core" if bake.get("lidar") == "arcticdem" else f"MRDEM 30 m, with HRDEM 1 m LiDAR over the core ({lidar_txt}), NRCan", "licence": US_PD if us else OGL_CA, "vintage": lidar_v},
+        ("pmtiles", "contours"): {"source": lidar_txt if bake.get("lidar") in ("arcticdem", "us3dep") else f"HRDEM 1 m LiDAR DTM, NRCan: {lidar_txt}", "licence": PGC if bake.get("lidar") == "arcticdem" else US_PD if us else OGL_CA, "vintage": lidar_v},
+        ("pmtiles", "contoursWide"): {"source": "USGS 3DEP 1 arc-second DEM" if us else "MRDEM 30 m DTM, NRCan", "licence": US_PD if us else OGL_CA},
         ("pmtiles", "historical"): {"source": "CanMatrix2 1:50 000 NTS scans, NRCan: " + ", ".join(bake.get("nts") or []), "licence": OGL_CA},
         ("grids", "habitat"): {
             "source": "derived: MRDEM, NRCan 2020 land cover, forest stands, water, wetlands, roads and burns"
@@ -851,7 +868,9 @@ def new_area(args) -> str:
     core = {**box_around(lon, lat, cw, ch), "maxzoom": pickle["core"]["maxzoom"]}
     no_lidar = False
     hrdem: list[str] = []
-    if args.sd:  # SD: the national 30 m relief, and the surrogate's wind in WindNinja's place
+    if j in US_STATES:  # the terrain comes from USGS 3DEP, staged by us_terrain.py; nothing to search here
+        print(f"{j}: a US state; the 1 m DEM and the point cloud come from USGS 3DEP (us_terrain.py, us_pointcloud.py)")
+    elif args.sd:  # SD: the national 30 m relief, and the surrogate's wind in WindNinja's place
         print("SD: no 1 m LiDAR, point cloud or WindNinja; the MRDEM's relief and the surrogate's terrain wind")
         no_lidar = True
     else:
@@ -900,6 +919,13 @@ def new_area(args) -> str:
             "baseGeo": ["waterbody"],
             "grids": ["habitat", "micro", "going"],
         }
+    if j in US_STATES:  # the US adapters' layers: no Toporama, no NTS scans, no provincial imagery (Esri's sharp streams)
+        files = {
+            "pmtiles": ["hillshadeLidar", "dem", "contours", "contoursWide", "forest", "understory", "lanes", "places"],
+            "geo": ["wmu", "parks", "roads"],
+            "baseGeo": ["waterbody"],
+            "grids": ["habitat", "micro", "micro-sd", "going"],
+        }
     if no_lidar:  # the MRDEM's relief alone: its hillshade and its contours; the bush stays, the
         # national model's (pipeline/bush/render.py), modelled not measured (Clearwater, 2026-10-17)
         files["pmtiles"] = [k for k in files["pmtiles"] if k not in ("hillshadeLidar", "contours", "lanes")]
@@ -943,7 +969,15 @@ def new_area(args) -> str:
             "pointcloud": {"adapter": "qc.mrnf_laz", "bbox": box_around(lon, lat, 6, 6)},
         },
     }
-    zone_label = {"ON": "WMU", "QC": "Zone", "YT": "GMS", "BC": "MU", "AB": "WMU"}.get(j, "Zone")
+    if j in US_STATES:
+        bake_by[j] = {
+            "vectors": "us",
+            # the stands: LANDFIRE and NLCD staged as SCANFI's layers (us_stage.py), read by ca_forest.py unchanged
+            "forest": {"adapter": "ca.scanfi", "vintage": "LANDFIRE 2024, NLCD 2023 (staged as the national stand layers)", "attribution": "Forest inferred from LANDFIRE and NLCD, USGS and USFS"},
+            "imagery": None,
+            "pointcloud": "us.3dep",
+        }
+    zone_label = {"ON": "WMU", "QC": "Zone", "YT": "GMS", "BC": "MU", "AB": "WMU", "MI": "DMU"}.get(j, "Zone")
     a = {
         "id": area_id,
         "name": args.name,
@@ -954,7 +988,7 @@ def new_area(args) -> str:
         "core": core,
         "regionMaxzoom": pickle["regionMaxzoom"],
         "declination": declination(lat, lon),
-        "timezone": {"YT": "America/Whitehorse", "BC": "America/Vancouver", "AB": "America/Edmonton"}.get(j) or ("America/Winnipeg" if j == "ON" and lon < -90 else "America/Toronto"),
+        "timezone": {"YT": "America/Whitehorse", "BC": "America/Vancouver", "AB": "America/Edmonton", "MI": "America/Detroit"}.get(j) or ("America/Winnipeg" if j == "ON" and lon < -90 else "America/Toronto"),
         "zone": {"label": zone_label, "name": ""},  # a string, or areas/check.ts leaves the whole area out of the app (Clearwater, 2026-10-17); fill it by hand
         "relief": None,  # the bake fills it in from the core's elevations
         "base": f"areas/{area_id}/",
@@ -967,6 +1001,7 @@ def new_area(args) -> str:
         or {
             "YT": {"vectors": "© Government of Yukon", "lakes": "CanVec © Natural Resources Canada", "bush": ""},
             "BC": {"vectors": "© Province of British Columbia", "lakes": "Freshwater Atlas © Province of British Columbia", "bush": ""},
+            "MI": {"vectors": "USGS National Hydrography Dataset, US Census TIGER, Michigan DNR", "lakes": "National Hydrography Dataset, USGS", "bush": ""},
         }.get(j)
         or {"vectors": "", "lakes": "", "bush": ""},
         "presets": [{"name": "Requested spot", "lon": lon, "lat": lat, "kind": "stand", "note": f"Area requested {date.today().isoformat()}"}],
@@ -980,10 +1015,10 @@ def new_area(args) -> str:
         "bake": {
             "outDir": f"app/public/data/areas/{area_id}",
             "hrdem": hrdem,
-            **({"lidar": "arcticdem", "arcticdem": arctic} if arctic else {"lidar": "none"} if no_lidar else {}),
+            **({"lidar": "us3dep", "us3dep": {"stage": args.stage or area_id, "project": None, "vintage": None}} if j in US_STATES else {"lidar": "arcticdem", "arcticdem": arctic} if arctic else {"lidar": "none"} if no_lidar else {}),
             **bake_by.get(j, {"vectors": None, "forest": None, "imagery": None, "pointcloud": None}),
             **({"pointcloud": None, "wind": "sd"} if args.sd else {}),
-            "nts": nts_50k_sheets(region["west"], region["south"], region["east"], region["north"]),
+            "nts": [] if j in US_STATES else nts_50k_sheets(region["west"], region["south"], region["east"], region["north"]),
         },
     }
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -1015,6 +1050,7 @@ def main() -> int:
     ap.add_argument("--force", action="store_true", help="--new: replace an existing file")
     ap.add_argument("--bake", action="store_true", help="--new: bake the area straight after")
     ap.add_argument("--sd", action="store_true", help="--new: an SD area (no LiDAR, point cloud or WindNinja; the surrogate's wind)")
+    ap.add_argument("--stage", help="--new, a US state: the pipeline/raw/us3dep/<stage> folder its 3DEP tiles were downloaded to (default: the area's id)")
     args = ap.parse_args()
 
     if args.new:

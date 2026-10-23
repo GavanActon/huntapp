@@ -54,6 +54,40 @@ export interface ZoneRegs {
 
 export const REGS: ZoneRegs[] = [
   {
+    // Michigan, Lake County (the first US area, Luther, 2026-10-23): a deer unit; moose, elk, grizzly,
+    // caribou, sheep, goat and wolf are not there (elk and wolf are the north's). Michigan's seasons are
+    // statewide by zone (Lake County is Zone 3, the southern Lower Peninsula's rules); the late antlerless
+    // dates differ by unit, so the digest decides. Legal hours there: half an hour before sunrise to half
+    // an hour after sunset.
+    jurisdiction: 'MI',
+    zones: ['043'],
+    edition: 'Michigan Hunting Digest 2026 (Michigan DNR), DMU 043 Lake County',
+    checked: '2026-10-23',
+    url: 'https://www.michigan.gov/dnr/managing-resources/laws/hunting-digest',
+    quarry: {
+      deer: {
+        status: 'hunted',
+        seasons: [
+          { from: '10-01', to: '11-14', what: 'archery' },
+          { from: '11-15', to: '11-30', what: 'regular firearm' },
+          { from: '12-01', to: '01-01', what: 'late archery' },
+          { from: '12-04', to: '12-06', what: 'Lower Peninsula muzzleloader' },
+        ],
+        note: 'Antler point restrictions and the late antlerless firearm dates are by unit: check the digest.',
+      },
+      blackBear: { status: 'draw', note: 'Bear is by licence draw in the Lower Peninsula bear management units; Lake County sits in the Baldwin unit.' },
+      grouse: { status: 'hunted', seasons: [{ from: '09-15', to: '11-14', what: 'ruffed grouse' }, { from: '12-01', to: '01-01', what: 'ruffed grouse' }] },
+      moose: { status: 'absent' },
+      grizzly: { status: 'absent' },
+      ptarmigan: { status: 'absent' },
+      caribou: { status: 'absent' },
+      sheep: { status: 'absent' },
+      goat: { status: 'absent' },
+      wolf: { status: 'absent', note: "Michigan's wolves are the Upper Peninsula's, and there is no season." },
+    },
+    notes: ['Legal hours: half an hour before sunrise to half an hour after sunset.', 'Michigan is mostly private land: the map draws likely private ground; public land (state forest, national forest) is the open ground.'],
+  },
+  {
     jurisdiction: 'BC',
     zones: ['6-28'],
     edition: 'BC Hunting & Trapping Regulations Synopsis 2026–2028, Region 6',

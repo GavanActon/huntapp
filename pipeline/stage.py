@@ -72,7 +72,9 @@ _index: list[dict] | None = None
 def _load_index() -> list[dict]:
     global _index
     if _index is None:
-        _index = []
+        # built whole, then published: ca_forest.py reads its layers on eight threads, and a thread that saw
+        # the list half-built found no copy for its layer and read the national URL instead (Luther, 2026-10-23)
+        out = []
         for p in sorted(STAGE.glob("*/index.json")):
             try:
                 ix = json.loads(p.read_text(encoding="utf-8"))
@@ -81,7 +83,8 @@ def _load_index() -> list[dict]:
             for layer, e in ix.get("layers", {}).items():
                 tif = p.parent / f"{layer}.tif"
                 if (p.parent / f"{layer}.tif.done").exists():
-                    _index.append({"url": e["url"], "path": str(tif), "box": ix["box"], "stage": p.parent.name})
+                    out.append({"url": e["url"], "path": str(tif), "box": ix["box"], "stage": p.parent.name})
+        _index = out
     return _index
 
 
