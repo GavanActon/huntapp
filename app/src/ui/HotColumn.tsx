@@ -1,7 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState, type JSX, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type JSX, type RefObject } from 'react'
 import { useAppStore, type HotId, type HotSide } from '../state/appStore'
 import { useViews } from '../state/viewsStore'
 import HotSlot from './HotSlot'
+import { shownHot } from './hotButtons'
 
 /** One column of your buttons: the mode's set for that side from Map
  *  buttons, any number, top to bottom. One too tall for the room between
@@ -10,7 +11,8 @@ import HotSlot from './HotSlot'
  *  hold on one opens its drawer; one drawer at a time. */
 export default function HotColumn({ side }: { side: HotSide }): JSX.Element | null {
   const mode = useViews((s) => s.mode)
-  const ids = useAppStore((s) => s.hotButtons[mode][side])
+  const placed = useAppStore((s) => s.hotButtons[mode][side])
+  const ids = useMemo(() => shownHot(placed), [placed])
   const labels = useAppStore((s) => s.buttonLabels)
   const hidden = useAppStore((s) => s.hotHidden)
   const [open, setOpen] = useState<HotId | null>(null)

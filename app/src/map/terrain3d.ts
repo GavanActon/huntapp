@@ -1,7 +1,7 @@
 import { Marker, type Map as MlMap } from 'maplibre-gl'
 import { RELIEF } from '../config'
 import { devlog } from '../devlog'
-import { useAppStore } from '../state/appStore'
+import { HIDDEN_HOT, useAppStore } from '../state/appStore'
 import { homePlace } from '../state/placesStore'
 import { useGpsStore } from '../tracking/gpsStore'
 import { campForecast } from '../weather/refresh'
@@ -119,6 +119,8 @@ export function initTerrain3d(): void {
   if (wired) return
   wired = true
   markersSkipDepth()
+  // no way back out with the button hidden (ui/hotButtons.tsx HIDDEN_HOT): a phone left tilted opens flat
+  if (HIDDEN_HOT.has('3d') && useAppStore.getState().view3d) useAppStore.getState().setView3d(false)
   onEachMap((map) => {
     // a phone that closed in 3D opens in it, tilted as it was left
     apply(map, useAppStore.getState().view3d, true)

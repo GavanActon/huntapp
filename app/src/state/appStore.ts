@@ -76,6 +76,10 @@ export type TopCard = { kind: 'scent' } | { kind: 'outing'; id: string }
  *  column. Nor is the heat map: it sits on the strip's head beside the
  *  quarry chip. */
 export type HotId = 'windcheck' | 'scent' | 'heard' | 'windflow' | 'routes' | 'measure' | 'path' | 'contours' | 'pin' | 'understory' | 'lanes' | 'bathy' | 'radar' | '3d' | 'more'
+/** Buttons kept out of sight for now: on no column, in no tray, not in Map buttons (ui/hotButtons.tsx
+ *  shownHot). A saved layout keeps their slots, so taking one out of here puts it back where it was.
+ *  3D: Gavan, 2026-10-22, "hide the 3d button for now" (map/terrain3d.ts opens a phone left tilted flat). */
+export const HIDDEN_HOT: ReadonlySet<HotId> = new Set<HotId>(['3d'])
 /** The two columns: `near` is the thumb's side (right, or left for a left hand), `far` the other. */
 export type HotSide = 'near' | 'far'
 /** The two columns, and the buttons not wanted at all (`off`: neither on the map nor in More, 2026-10-19:

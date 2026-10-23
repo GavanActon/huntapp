@@ -7,7 +7,7 @@ import { useMeasureStore } from '../measure/measureStore'
 import { startPath } from '../paths/pathLayer'
 import { usePaths } from '../paths/pathStore'
 import { closeRoutes, openRoutes, useRoutes } from '../routes/routeStore'
-import { useAppStore, type HotId, type LayerVisibility } from '../state/appStore'
+import { HIDDEN_HOT, useAppStore, type HotId, type LayerVisibility } from '../state/appStore'
 import { usePlacesStore } from '../state/placesStore'
 import { useGpsStore } from '../tracking/gpsStore'
 import { useScent } from '../weather/micro/scent'
@@ -191,9 +191,14 @@ export const HOT_DEFS: Record<HotId, HotDef> = {
 /** Every hot button, in the order the editor's Add chips list them. */
 export const HOT_ORDER: HotId[] = ['windcheck', 'scent', 'heard', 'windflow', 'routes', 'measure', 'path', 'contours', 'pin', 'understory', 'lanes', 'bathy', 'radar', '3d', 'more']
 
+export { HIDDEN_HOT }
+
+/** The ids that show, in their order (HIDDEN_HOT, state/appStore.ts, left out). */
+export const shownHot = (ids: readonly HotId[]): HotId[] => ids.filter((id) => !HIDDEN_HOT.has(id))
+
 /** The buttons in neither column nor set aside as not wanted: Map buttons' More tier, and what More opens. */
 export function trayOf(sets: { near: HotId[]; far: HotId[]; off?: HotId[] }): HotId[] {
-  return HOT_ORDER.filter((id) => !sets.near.includes(id) && !sets.far.includes(id) && !(sets.off ?? []).includes(id))
+  return shownHot(HOT_ORDER).filter((id) => !sets.near.includes(id) && !sets.far.includes(id) && !(sets.off ?? []).includes(id))
 }
 
 const HOLD_MS = 450

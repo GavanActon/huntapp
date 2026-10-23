@@ -4,7 +4,7 @@ import { useAppStore, type HotId, type HotSets, type HotSide } from '../../state
 import { useViews } from '../../state/viewsStore'
 import { FISH_HERE } from '../../spots/profile'
 import { haptic } from '../haptics'
-import { HOT_DEFS, trayOf } from '../hotButtons'
+import { HIDDEN_HOT, HOT_DEFS, shownHot, trayOf } from '../hotButtons'
 import { IconLocate, IconSwap } from '../icons'
 import './settings.css'
 
@@ -79,9 +79,11 @@ export default function ButtonsSheet(): JSX.Element {
 
   // the thumb's column is the right one, or the left for a left hand
   const sideOf = (c: Col): HotSide => ((c === 'right') !== leftHanded ? 'near' : 'far')
-  const lists: Record<Col, HotId[]> = { left: sets[sideOf('left')], right: sets[sideOf('right')] }
+  const lists: Record<Col, HotId[]> = { left: shownHot(sets[sideOf('left')]), right: shownHot(sets[sideOf('right')]) }
   const tray = trayOf(sets)
-  const off = sets.off ?? []
+  const off = shownHot(sets.off ?? [])
+  // a hidden button (hotButtons.tsx HIDDEN_HOT) keeps its saved place: back at the foot of its column
+  const kept = (ids: readonly HotId[] | undefined) => (ids ?? []).filter((id) => HIDDEN_HOT.has(id))
   // the tray is what More opens on the map; with More off the map, nothing does
   const moreOn = !tray.includes('more')
 
@@ -91,7 +93,11 @@ export default function ButtonsSheet(): JSX.Element {
     if (d.over === 'left' || d.over === 'right') next[d.over].splice(d.at, 0, d.id)
     else if (d.over === 'off') next.off.push(d.id)
     if (next.left.join() === lists.left.join() && next.right.join() === lists.right.join() && next.off.join() === off.join()) return
-    setHotSets(mode, { [sideOf('left')]: next.left, [sideOf('right')]: next.right, off: next.off } as HotSets)
+    setHotSets(mode, {
+      [sideOf('left')]: [...next.left, ...kept(sets[sideOf('left')])],
+      [sideOf('right')]: [...next.right, ...kept(sets[sideOf('right')])],
+      off: [...next.off, ...kept(sets.off)],
+    } as HotSets)
     haptic()
   }
   const dropRef = useRef(drop)
