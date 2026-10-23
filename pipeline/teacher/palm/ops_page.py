@@ -6,8 +6,10 @@ freeze lifts it moves behind the /stats key (his call: "when the live freeze is 
     py -3.14 pipeline/teacher/palm/ops_page.py            # write it and upload it once; prints the link
     py -3.14 pipeline/teacher/palm/ops_page.py --local    # write pipeline/raw/ops/index.html only
 
-It reads only what's already on XEVO's disk: the job queue and the slots' status files on the share
-(docs/SCENT-TESTSET.md, the service section), the SD bake's log, xonix's batch logs, the PALM runs landed.
+It reads what's on XEVO's disk (the job queue and the slots' status files on the share, docs/SCENT-TESTSET.md
+the service section; the SD bake's log; the WindNinja kits; the PALM runs landed) and, since 2026-10-23, the
+SD tiles' queue in R2 (pipeline/r2_queue.py), where every machine's tiles show whatever network it is on
+(Gavan: "can all the data here be pulled into the ops site so I can track how things are going?").
 No keys and no file paths go on the page.
 """
 
@@ -19,6 +21,7 @@ import html
 import json
 import re
 import secrets
+import shutil
 import subprocess
 import sys
 import time
@@ -37,6 +40,13 @@ OPS = PIPE / "raw" / "ops"
 TILES = PIPE / "raw" / "windtiles"
 SDX = PIPE / "raw" / "windcfd" / "sdtiles" / "xonix"
 REPORTS = PIPE / "raw" / "teacher" / "palm" / "loop" / "reports"
+KITS = PIPE / "raw" / "windcfd"
+HOLD = KITS / "HOLD-UPLOADS"
+# the SD tiles' queues in R2, each with its line on the page: the main one in hunting order, and XEVO's
+# own while NRCan's file server is down (2026-10-23: the tiles its staged copies cover, r2_queue.py)
+SD_QUEUES = {"sd-v1": "Main queue, hunting order", "sd-v1-staged": "XEVO's tiles from its own copies of the forest maps"}
+# the queue names a machine by its Windows name: xonix's is XONIC
+ALIAS = {"xonic": "xonix"}
 STALE_MIN = 5  # a slot's status older than this: the runner or the machine is down (they write every minute)
 SLOT_NAMES = {
     "xonix-1": "PALM (22 cores)",
@@ -201,6 +211,108 @@ def r2_count() -> int | None:
         return None
 
 
+def sd_queue(name: str) -> dict | None:
+    """One of the SD tiles' queues in R2: done, held by which machine, each machine's pace. Read at most
+    every 2 min; which machine finished a tile is read once per tile (its done marker) and kept in ops/."""
+    cache, hosts_p = OPS / f"sdq-{name}.json", OPS / f"sdq-hosts-{name}.json"
+    try:
+        c = json.loads(cache.read_text())
+        if time.time() - c["t"] < 110:
+            return c
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        sys.path.insert(0, str(PIPE))
+        import r2_queue  # noqa: E402
+
+        q = r2_queue.Queue(name, host="ops")
+        q.refresh(force=True)
+        order = set(q.order())
+        done = q._list("done/")
+        try:
+            who = json.loads(hosts_p.read_text())
+        except Exception:  # noqa: BLE001
+            who = {}
+        for item, (_, ts) in done.items():
+            if item not in who:
+                try:
+                    h = json.loads(q._get("done/" + item)).get("host", "?")
+                    who[item] = [ALIAS.get(h, h), ts]
+                except Exception:  # noqa: BLE001
+                    who[item] = ["?", ts]
+        hosts_p.write_text(json.dumps(who))
+        now = time.time()
+        held: dict[str, int] = {}
+        live = [k for k, v in q._claims.items() if k not in done and v[1] + q.lease > now]
+        for k in live:
+            try:
+                h = json.loads(q._get("claims/" + k)).get("host", "?")
+            except Exception:  # noqa: BLE001
+                continue
+            h = ALIAS.get(h, h)
+            held[h] = held.get(h, 0) + 1
+        hour: dict[str, int] = {}
+        for item, (h, ts) in who.items():
+            if item in done and now - ts < 3600:
+                hour[h] = hour.get(h, 0) + 1
+        last3 = sum(1 for item, (h, ts) in who.items() if item in done and now - ts < 3 * 3600)
+        first = min((ts for _, ts in done.values()), default=now)
+        span = min(3 * 3600, max(now - first, 1))
+        n_done = len(order & set(done))
+        c = dict(t=now, total=len(order), done=n_done, held=held, hour=hour, left=max(0, len(order) - n_done - len(live)),
+                 per_hour=last3 * 3600 / span if done and span >= 1800 and last3 >= 10 else 0,  # a pace once there is half an hour of it
+                 lapsed=sum(1 for k, v in q._claims.items() if k not in done and v[1] + q.lease <= now),
+                 paused=q._paused, lease=q.lease)
+        cache.write_text(json.dumps(c))
+        return c
+    except Exception as e:  # noqa: BLE001  (R2 out of reach: the page says so)
+        return dict(error=f"{type(e).__name__}: {str(e)[:120]}")
+
+
+def disk_free() -> float | None:
+    try:
+        return shutil.disk_usage(str(PIPE.anchor)).free / 2**30
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def kits() -> list[dict]:
+    """WindNinja kits for the HD areas worked on lately: directions solved of the kit's 16."""
+    out = []
+    if not KITS.exists():
+        return out
+    for d in KITS.iterdir():
+        meta = d / "meta.json"
+        if not d.is_dir() or d.name.startswith("seed-") or not meta.exists():
+            continue
+        dirs = [t for t in d.iterdir() if t.is_dir() and t.name.startswith("t")]
+        solved = [t for t in dirs if any(t.glob("*_u.asc"))]
+        claimed = [t for t in dirs if not any(t.glob("*_u.asc")) and any(t.glob("claim*.txt"))]
+        failed = [t for t in dirs if any(t.glob("failed-*.txt")) and not any(t.glob("*_u.asc"))]
+        times = [f.stat().st_mtime for t in solved for f in t.glob("*_u.asc")]
+        last = max(times + [meta.stat().st_mtime])
+        if time.time() - last > 7 * 86400:
+            continue
+        try:
+            n = len(json.loads(meta.read_text()).get("directions", [])) or 16
+        except Exception:  # noqa: BLE001
+            n = 16
+        out.append(dict(area=d.name, solved=len(solved), of=n, running=len(claimed), failed=len(failed), last=last))
+    out.sort(key=lambda k: -k["last"])
+    return out
+
+
+def holds() -> list[str]:
+    """What is held on purpose, for the banner."""
+    out = []
+    if HOLD.exists():
+        why = HOLD.read_text(encoding="utf-8", errors="replace").strip().splitlines()
+        out.append("Uploads held on XEVO" + (f": {why[0][:140]}" if why else ""))
+    if (TILES / "PAUSE").exists():
+        out.append("XEVO's SD bake paused (PAUSE beside its queue)")
+    return out
+
+
 # ---- the queue and what landed
 def queue() -> dict:
     todo = []
@@ -238,9 +350,22 @@ def gather() -> dict:
             s["batch"] = batch_progress(s["job"].removesuffix(".job"))
     total = sum(1 for ln in (TILES / "queue.txt").read_text(encoding="utf-8").splitlines() if ln.strip()) if (TILES / "queue.txt").exists() else None
     mem = xevo_mem()
-    return dict(t=time.time(), slots=sl, queue=q, landed=landed(), loop=loop_report(),
-                xevo=dict(cpu=xevo_cpu(), mem=mem, bake=xevo_bake(), windninja=count_procs("WindNinja_cli.exe")),
-                sd=dict(total=total, r2=r2_count(), xonix=next((s.get("batch") for s in sl if s.get("batch")), None)))
+    return dict(t=time.time(), slots=sl, queue=q, landed=landed(), loop=loop_report(), holds=holds(), kits=kits(),
+                xevo=dict(cpu=xevo_cpu(), mem=mem, disk=disk_free(), bake=xevo_bake(), windninja=count_procs("WindNinja_cli.exe")),
+                sd=dict(total=total, r2=r2_count(), queues={n: sd_queue(n) for n in SD_QUEUES}, xonix=next((s.get("batch") for s in sl if s.get("batch")), None)))
+
+
+def merged(queues: dict) -> dict:
+    """Every queue's in-hand and last-hour counts by machine, added up, for the machines' cards."""
+    out = dict(held={}, hour={}, paused=False)
+    for q in queues.values():
+        if not q or "error" in q:
+            continue
+        for k in ("held", "hour"):
+            for h, n in q.get(k, {}).items():
+                out[k][h] = out[k].get(h, 0) + n
+        out["paused"] = out["paused"] or q.get("paused", False)
+    return out
 
 
 # ---- the page
@@ -323,6 +448,10 @@ def render(g: dict) -> str:
     obj = objectives()
     if obj:
         out.append(f"<div class=card style='margin-bottom:14px'>{obj}</div>")
+    sq = merged(g["sd"]["queues"])
+    banner = list(g["holds"]) + [f"SD tile queue {n} paused in R2 (r2_queue.py resume {n})" for n, q in g["sd"]["queues"].items() if q and q.get("paused")]
+    if banner:
+        out.append("<div class='card warn'>" + "<br>".join(e(b) for b in banner) + "</div>")
 
     # machines
     out.append("<h2>Machines</h2>")
@@ -336,6 +465,8 @@ def render(g: dict) -> str:
                 bits.append(f"CPU {x['cpu']:.0f}%")
             if x["mem"]:
                 bits.append(f"{x['mem'][0]:.0f} of {x['mem'][1]:.0f} GB free")
+            if x.get("disk") is not None:
+                bits.append(f"<span class='{'bad' if x['disk'] < 15 else ''}'>disk {x['disk']:.0f} GB free</span>")
             right = " · ".join(bits + [right])
         else:
             ld = next((s["load"] for s in sl if s["load"]), "")
@@ -346,24 +477,60 @@ def render(g: dict) -> str:
         if qt:
             out.append(f"<div class='sub warn'>quiet windows: {e('; '.join(qt))}</div>")
         out += [slot_row(s) for s in sl]
+        if host == "xonix":
+            # xonix's tiles show through the R2 queue whatever network it is on
+            hh = sq.get("held", {}).get("xonix", 0)
+            hr = sq.get("hour", {}).get("xonix", 0)
+            st = "busy" if hh or hr else "idle"
+            out.append(f"<div class='row'><span class='dot {st}'></span><div class='what'><div class='t'>SD wind tiles (R2 queue): "
+                       f"{'baking' if st == 'busy' else 'none in hand'}</div><div class='d'>{hh} in hand · {hr} done in the last hour</div></div></div>")
         if host == "xevo":
             b = x["bake"]
             st = {"running": "busy", "paused": "paused", "finished": "idle"}.get(b["state"], "idle")
-            d = (f"{b['tiles']} tiles this run" + (f", {b['rate']:.0f} s each" if b["rate"] else "") + (f" · last {e(b['last'])}" if b["last"] else "")
+            xh = sq["held"].get("xevo", 0)
+            xr = sq["hour"].get("xevo", 0)
+            d = (f"{b['tiles']} tiles this run" + (f", {b['rate']:.0f} s each" if b["rate"] else "") + (f" · {xh} in hand" if xh else "")
+                 + (f" · {xr} done in the last hour" if xr is not None else "") + (f" · last {e(b['last'])}" if b["last"] else "")
                  + (f" · log {ago_s(b['written'])}" if b.get("written") else ""))
-            out.append(f"<div class='row'><span class='dot {st}'></span><div class='what'><div class='t'>GPU: SD wind tiles from the front: {e(b['state'])}</div><div class='d'>{d}</div></div></div>")
+            out.append(f"<div class='row'><span class='dot {st}'></span><div class='what'><div class='t'>SD wind tiles (R2 queue): {e(b['state'])}</div><div class='d'>{d}</div></div></div>")
             if x["windninja"] and x["windninja"] > 0:
                 out.append(f"<div class='row'><span class='dot busy'></span><div class='what'><div class='t'>WindNinja: {x['windninja']} running</div><div class='d'>HD wind bake, outside the queue</div></div></div>")
         out.append("</div>")
 
+    # HD area bakes: the WindNinja kits worked on in the last week
+    if g["kits"]:
+        out.append("<h2>HD area bakes</h2><div class=card><ul>")
+        for k in g["kits"]:
+            name = k["area"].replace("-", " ").title()
+            state = ("all directions solved" if k["solved"] >= k["of"] else f"{k['running']} solving now" if k["running"] else "waiting for a runner")
+            extra = f" · <span class=bad>{k['failed']} failed</span>" if k["failed"] else ""
+            out.append(f"<li><span class=n>{e(name)}: WindNinja {k['solved']} of {k['of']} directions · {state}{extra}</span><span class=a>{ago_s(k['last'])}</span></li>")
+        out.append("</ul></div>")
+
     # SD tiles
     sd = g["sd"]
-    if sd["total"]:
-        on = sd["r2"]
-        pct = 100 * on / sd["total"] if on is not None else 0
-        out.append("<h2>SD wind tiles, national</h2><div class=card>")
-        out.append(f"<div class=t><b>{on if on is not None else '?'}</b> of {sd['total']:,} on R2 ({pct:.1f}%)</div><div class=bar><i style='width:{pct:.1f}%'></i></div>")
-        out.append("<div class=sub>XEVO bakes from the front of the hunting-order queue, xonix from the end; each skips what the other has sent.</div></div>")
+    out.append("<h2>SD wind tiles, national</h2><div class=card>")
+    if sd["r2"] is not None:
+        out.append(f"<div class=t><b>{sd['r2']:,}</b> tiles on R2, every machine's</div>")
+    for name, label in SD_QUEUES.items():
+        q1 = g["sd"]["queues"].get(name)
+        if not q1:
+            continue
+        if "error" in q1:
+            out.append(f"<div class='sub warn' style='margin-top:8px'>{e(label)}: not read ({e(q1['error'])})</div>")
+            continue
+        pct = 100 * q1["done"] / (q1["total"] or 1)
+        held = ", ".join(f"{h} {n}" for h, n in sorted(q1["held"].items())) or "none"
+        hour = ", ".join(f"{h} {n}" for h, n in sorted(q1["hour"].items())) or "none yet"
+        eta = (f" · about {q1['left'] / q1['per_hour']:.0f} h to go at {q1['per_hour']:.0f} an hour" if q1.get("per_hour") else "")
+        out.append(f"<div class=t style='margin-top:10px'>{e(label)}: <b>{q1['done']:,}</b> of {q1['total']:,} baked ({pct:.1f}%), {q1['left']:,} to go{eta}</div>"
+                   f"<div class=bar><i style='width:{pct:.1f}%'></i></div>"
+                   f"<div class=sub>In hand: {e(held)} · done in the last hour: {e(hour)}"
+                   + (f" · <span class=warn>{q1['lapsed']} claims lapsed (a machine stopped mid-tile, or a tile kept failing; they go out again)</span>" if q1["lapsed"] else "")
+                   + "</div>")
+    out.append("<div class=sub style='margin-top:8px'>Every machine takes the next tile nobody holds from a queue in R2, whatever network it is on. "
+               "While NRCan's file server is down only the tiles XEVO has its own copies for can bake; the main queue picks up by itself when it is back.</div>")
+    out.append("</div>")
 
     # queue
     out.append(f"<h2>Up next ({len(q['todo'])})</h2><div class=card>")
