@@ -407,16 +407,29 @@ RETRIES, RETRY_WAIT = 3, 600  # queue_bake: tries a tile gets, seconds between t
 REMOTE_EVERY = 600  # queue_bake: seconds between reads of R2's index
 
 
-def queue_bake(path: Path, jobs: int, upload_every: int) -> None:
+def queue_bake(path: Path | None, jobs: int, upload_every: int, r2_queue: str | None = None) -> None:
     """Tiles from a queue file (hunt_priority.py: one id a line, best first), read again
     before every tile, so the order can be changed while it runs; resumable (a tile done
     is skipped), the tiles sent to R2 every `upload_every`, and once more at the end.
 
+    Or from the queue kept in R2 (`r2_queue`, pipeline/r2_queue.py; Gavan, 2026-10-23: "why not
+    just queue everything in r2?"): every machine takes the next tile nobody holds, so none is
+    baked twice, on any network. A tile baked here is marked done in the queue at once; one that
+    fails keeps its claim through its retries here, and after the last its claim lapses, so a
+    machine tries it again an hour on.
+
     A file named PAUSE beside the queue pauses it (Gavan, 2026-10-14: "I might want to
     pause it at some point"): each job finishes its tile and waits, the tiles done so far
-    go to R2, and taking the file away carries on."""
+    go to R2, and taking the file away carries on. The R2 queue's own PAUSE (r2_queue.py
+    pause) holds every machine on it the same way."""
     import threading
 
+    rq = None
+    if r2_queue:
+        import r2_queue as r2q
+
+        rq = r2q.Queue(r2_queue)
+        print(f"R2 queue {r2_queue} as {rq.host}: {len(rq.order())} tiles in its order, a claim holds {rq.lease} s", flush=True)
     lock = threading.Lock()
     taken: set[str] = set()
     done_n = [0]
@@ -444,7 +457,24 @@ def queue_bake(path: Path, jobs: int, upload_every: int) -> None:
                         remote.update(got)
                     except Exception as e:  # noqa: BLE001  the last list holds until the next read
                         print(f"  R2 index not read: {e}", flush=True)
-                for line in path.read_text(encoding="utf-8").splitlines():
+                if rq is not None:
+                    # this machine's failed tiles first once their wait is over (still claimed by it),
+                    # then the next tile nobody holds
+                    for tid, at in list(retry_at.items()):
+                        if at <= now and tid not in taken:
+                            del retry_at[tid]
+                            taken.add(tid)
+                            return tid
+                    try:
+                        tid = rq.next(lambda t: t in taken or t in remote or t in retry_at or (OUT / f"{t}.json").exists())
+                    except Exception as e:  # noqa: BLE001  (R2 out of reach: wait and ask again)
+                        print(f"  R2 queue not read: {e}", flush=True)
+                        tid, waiting = None, True
+                    if tid:
+                        taken.add(tid)
+                        return tid
+                    waiting = waiting or bool(retry_at) or rq._paused
+                for line in (path.read_text(encoding="utf-8").splitlines() if path else []):
                     tid = line.split("\t")[0].strip()
                     if not tid or tid in taken or tid in remote or (OUT / f"{tid}.json").exists():
                         continue
@@ -457,7 +487,7 @@ def queue_bake(path: Path, jobs: int, upload_every: int) -> None:
                 return None
             time.sleep(30)  # only failed tiles left, waiting for their next try
 
-    pause = path.parent / "PAUSE"
+    pause = (path.parent if path else BASE) / "PAUSE"
     sent_at_pause = [False]
 
     def wait_if_paused() -> None:
@@ -485,6 +515,11 @@ def queue_bake(path: Path, jobs: int, upload_every: int) -> None:
                 info = bake_one(*lattice.parse_id(tid), False)
             except Exception as e:  # noqa: BLE001  one tile's trouble never stops the night
                 info = {"tile": tid, "error": f"{type(e).__name__}: {e}"}
+            if rq is not None and "error" not in info:
+                try:
+                    rq.done(tid)
+                except Exception as e:  # noqa: BLE001  (its claim lapses; R2's index skips it once sent)
+                    print(f"  {tid}: not marked done in the R2 queue: {e}", flush=True)
             with lock:
                 if "error" in info and not (OUT / f"{tid}.json").exists():
                     tries[tid] = tries.get(tid, 0) + 1
@@ -527,6 +562,7 @@ def main() -> int:
     ap.add_argument("--keep", action="store_true", help="keep each tile's working folder (with its margin) for the seams check")
     ap.add_argument("--queue", help="bake the tiles of this file in order (hunt_priority.py), read again before each tile")
     ap.add_argument("--upload-every", type=int, default=50)
+    ap.add_argument("--r2-queue", help="bake: take tiles from this queue in R2 (pipeline/r2_queue.py), shared by every machine")
     ap.add_argument("--size", type=int, default=50, help="batches: tiles a batch file")
     ap.add_argument("--out-dir", help="batches: where the batch files go")
     ap.add_argument("--reverse", action="store_true", help="batches: from the queue's end (a second machine)")
@@ -572,8 +608,8 @@ def main() -> int:
             rs = [r for r in rows if r["band"] == band]
             print(f"{band:9s} {len(rs)} seams · edge drift median {np.median([r['medAbs'] for r in rs]):.4f} · p95 {np.median([r['p95Abs'] for r in rs]):.4f} · spread {np.median([r['spread'] for r in rs]):.4f}")
         return 0
-    if a.cmd == "bake" and a.queue:
-        queue_bake(Path(a.queue), a.jobs, a.upload_every)
+    if a.cmd == "bake" and (a.queue or a.r2_queue):
+        queue_bake(Path(a.queue) if a.queue else None, a.jobs, a.upload_every, a.r2_queue)
         return 0
     t0 = time.time()
     n = len(cells)

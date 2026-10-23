@@ -380,6 +380,7 @@ numbers. Same with Quebec."
 - **More maps staged (2026-10-15):** qc-north (Québec 19, 29, 28, 18:
   2,674 tiles) and on-farnorth (Ontario 1C, 2: 795 tiles), so only 82
   scattered tiles still read over the network.
+- **One queue in R2 (2026-10-23; Gavan: "why not just queue everything in r2?"):** hand-cut lists baked ~3,000 tiles twice while XEVO and xonix were apart. `pipeline/r2_queue.py` keeps the order and the claims in R2 (queue/sd-v1/): a machine claims the next tile with a write R2 refuses if another got there first (If-None-Match), a lapsed claim (1 h) is taken over with If-Match, and a finished tile is marked done and never handed out again. `wind_tiles.py bake --r2-queue sd-v1 --jobs N` on any machine, any network; `r2_queue.py status sd-v1`, `pause` and `resume` from anywhere; `r2_queue.py order sd-v1 <lists, best first> --skip-present "data/sd/v1/{id}.hab"` re-ranks it. Built for the HD bakes too (WindNinja directions, PALM runs: a longer lease and renew()).
 - **More than one machine (2026-10-15):** the bake moves to xonix as GPU jobs
   in the shared job system (docs/SCENT-TESTSET.md, the service section).
   - `wind_tiles.py batches --queue Q --size 50 --out-dir D` cuts the queue
