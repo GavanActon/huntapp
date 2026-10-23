@@ -6,7 +6,7 @@
 // parser before parsePlace gave).
 import { decideStart, linkMark, type StartIn } from '../src/areas/start.ts'
 import { isLink, parseCoords, parsePlace, placeWords, type PlaceForm } from '../src/map/coords.ts'
-import { areaLink, areaMessage, coordWords, mapsLink, readLink, spotLink, spotMessage } from '../src/share/link.ts'
+import { areaLink, areaMessage, coordWords, mapsLink, readLink, spotLink, spotMessage, askLink } from '../src/share/link.ts'
 
 const APP = 'https://gavanacton.github.io/huntapp/'
 const B = { lat: 49.40955, lon: -69.55349 } // Lac Bailey's shared spot
@@ -42,6 +42,10 @@ check(near(hand.at, B) && hand.z === 16 && hand.pin === 'Hand made', 'a spot wri
 const wild = readLink(APP + '?area=../../x#at=91,0&pin=x')
 check(!wild.area && !wild.at && !wild.pin, 'a bad id and a point off the globe are left out', wild)
 check(readLink(APP + '#at=49.40955,-69.55349&z=3').z === undefined, 'a zoom out of range is left out')
+const ask = askLink(APP, NOWHERE, 'sd')
+check(ask === APP + '#at=49.60000,-70.20000&ask=sd' && readLink(ask).ask === 'sd' && near(readLink(ask).at, NOWHERE), `the site's ask link ${ask}`, readLink(ask))
+check(readLink(askLink(APP, NOWHERE, 'hd')).ask === 'hd', 'an HD ask reads back')
+check(readLink(APP + '#at=49.60000,-70.20000&ask=x').ask === undefined && readLink(APP + '#ask=sd').ask === undefined, 'an ask that is not sd or hd, or has no point, is left out')
 check(JSON.stringify(readLink('not a link')) === '{}', 'not a link: nothing')
 const m = spotMessage({ ...B, name: "Mat's stand", areaName: 'Lac Bailey' })
 check(m.title === "Mat's stand" && m.text === "Mat's stand · Lac Bailey\n49.40955, -69.55349\nhttps://maps.google.com/?q=49.40955,-69.55349\n", 'the spot message', m)

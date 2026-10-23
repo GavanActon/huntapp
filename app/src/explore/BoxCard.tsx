@@ -248,12 +248,38 @@ export default function BoxCard() {
               </button>
             </div>
           ))
-        ) : (
-          <div className="boxcard-btns">
-            <button className="btn btn-primary" disabled={loading} onClick={() => void load()}>
-              {loading ? 'Loading…' : 'Load'}
-            </button>
+        ) : sdHave === 0 && !req ? (
+          // no SD tiles under it yet (the rest of Canada, the US): the ask bakes the ground wind here
+          // (Gavan, 2026-10-23: "those areas need a request flow"); the forecast alone can still load
+          <div className="boxcard-ask">
+            <div className="dim">No ground wind here yet. Ask, and it is baked on this ground's terrain and forest; the email comes when it is in.</div>
+            <input type="email" inputMode="email" placeholder="Your email, for when it is ready" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <div className="boxcard-btns">
+              <button className="btn btn-primary" disabled={busy != null} onClick={() => void ask('sd')}>
+                {busy === 'sd' ? 'Sending…' : 'Ask for the ground wind'}
+              </button>
+              <button className="btn quiet" disabled={loading} onClick={() => void load()}>
+                {loading ? 'Loading…' : 'Load the forecast only'}
+              </button>
+            </div>
           </div>
+        ) : (
+          <>
+            {sdHave != null && sdHave < tiles.length && !req && <div className="dim">SD tiles under {sdHave} of its {tiles.length} cells; the forecast's wind elsewhere</div>}
+            {req && (
+              <div className="boxcard-req">
+                Requested · {req.kind.toUpperCase()} · {new Date(req.at).toLocaleDateString()} · the email comes when it is ready{' '}
+                <button className="link" onClick={cancel}>
+                  Cancel
+                </button>
+              </div>
+            )}
+            <div className="boxcard-btns">
+              <button className="btn btn-primary" disabled={loading} onClick={() => void load()}>
+                {loading ? 'Loading…' : req ? 'Load the forecast only' : 'Load'}
+              </button>
+            </div>
+          </>
         )}
         {err && <div className="boxcard-err">{err}</div>}
       </div>

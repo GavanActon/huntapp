@@ -44,8 +44,9 @@ export interface StartOut {
   save: boolean
   /** the address to put in place (history.replaceState), or null to leave it as it is */
   href: string | null
-  /** the spot to open on and show, once; inArea false for a point in no area */
-  arrival: (LonLat & { name?: string; z: number; inArea: boolean }) | null
+  /** the spot to open on and show, once; inArea false for a point in no area; ask: the box
+   *  goes round it there (share/link.ts) */
+  arrival: (LonLat & { name?: string; z: number; inArea: boolean; ask?: 'sd' | 'hd' }) | null
   /** the arrival's link, to remember as shown in this tab (sessionStorage)
    *  once it has been (areas/arrive.ts) */
   mark: string | null
@@ -99,7 +100,7 @@ export function decideStart(i: StartIn): StartOut {
     const sig = linkMark(link.at, link.pin)
     const again = sig === i.done || (!i.sessionOk && !fresh)
     if (!again) {
-      arrival = { ...link.at, name: link.pin, z: link.z ?? SPOT_ZOOM, inArea: pointArea != null }
+      arrival = { ...link.at, name: link.pin, z: link.z ?? SPOT_ZOOM, inArea: pointArea != null, ask: link.ask }
       mark = sig
     }
   }

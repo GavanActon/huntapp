@@ -4,6 +4,8 @@
  *   an area:             <base>?area=lac-bailey
  *   a spot:              <base>?area=lac-bailey#at=49.40955,-69.55349&pin=Mat%27s+stand
  *   a point in no area:  <base>#at=49.60000,-70.20000
+ *   a spot to load:      <base>#at=49.60000,-70.20000&ask=sd   (the site's "Where do you hunt?")
+ *   a spot to ask HD on: <base>#at=49.60000,-70.20000&ask=hd
  *
  * The area rides in the query, where index.html's head script reads it
  * before any of the app loads (an iPhone's manifest is picked there). The
@@ -29,6 +31,9 @@ export interface LinkParts {
   pin?: string
   /** an iPhone install's seed (its manifest's start_url): its area, only while nothing is saved */
   start?: string
+  /** with at: the box goes round the point on arrival, its load card up (sd) or its HD ask (hd), as
+   *  Locations' Add a location does (areas/arrive.ts askHere). The site's door into the app. */
+  ask?: 'sd' | 'hd'
 }
 
 /** An area's id, as the area files have them. */
@@ -83,6 +88,8 @@ export function readLink(href: string): LinkParts {
     if (Number.isFinite(z) && z >= 7 && z <= 18) out.z = z
     const pin = cleanName(pick('pin'))
     if (pin) out.pin = pin
+    const ask = pick('ask')
+    if (ask === 'sd' || ask === 'hd') out.ask = ask
   }
   return out
 }
@@ -110,6 +117,14 @@ export function spotLink(base: string, s: LonLat & { area?: string | null; name?
   // URLSearchParams writes a comma as %2C: put it back, it reads better and
   // every link finder in a message keeps it as part of the link
   u.hash = h.toString().replace(/%2C/g, ',')
+  return u.toString()
+}
+
+/** The site's link into the app: the point in the fragment with what to do there (readLink ask). */
+export function askLink(base: string, p: LonLat, ask: 'sd' | 'hd'): string {
+  const u = new URL(base)
+  u.search = ''
+  u.hash = `at=${f5(p.lat)},${f5(p.lon)}&ask=${ask}`
   return u.toString()
 }
 

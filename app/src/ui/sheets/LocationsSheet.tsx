@@ -133,6 +133,25 @@ export default function LocationsSheet(): JSX.Element {
                   ⤢
                 </button>
               )}
+              {a.loaded && (
+                <button
+                  className="icon-btn"
+                  aria-label={`Get HD for ${a.name}`}
+                  title="Get HD"
+                  onClick={() => {
+                    // the clear path from a loaded spot to HD (Gavan, 2026-10-23): its box with the HD ask up; Explore on,
+                    // so the card reads the coverage grid (what HD there is) as the grade sheet's Get HD does
+                    const box = parseBoxId(a.id)
+                    if (!box) return
+                    closeSheet()
+                    setExplore(true)
+                    const [lon, lat] = centre(box)
+                    useExplore.getState().select({ box, lon, lat, purpose: 'hd' })
+                  }}
+                >
+                  HD
+                </button>
+              )}
               {a.loaded && !here && (
                 <button
                   className="icon-btn"

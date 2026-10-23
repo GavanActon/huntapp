@@ -673,7 +673,7 @@ function render(d) {
 
 // the homepage's sections, as a reader knows them (index.html)
 const SECTIONS = {
-  '/': { hero: "Hero · Don't get winded", nose: 'He lives by his nose', scent: "The wind at your face isn't the forecast", science: 'We built the wind for your ground', bush: 'Know the bush', learn: 'Each puff calibrates', plan: 'Plan the sit', nobars: 'No signal', coda: 'We need your help', beta: 'Try it · Request your spot', faq: 'Questions', notes: 'Field notes' },
+  '/': { hero: "Hero · Don't get winded", nose: 'He lives by his nose', scent: "The wind at your face isn't the forecast", science: 'We built the wind for your ground', bush: 'Know the bush', learn: 'Each puff calibrates', plan: 'Plan the sit', nobars: 'No signal', coda: 'We need your help', beta: 'Try it · Where do you hunt?', faq: 'Questions', notes: 'Field notes' },
 }
 const secName = (page, id) => SECTIONS[page]?.[id] ?? id ?? '–'
 let sitePage = '/'
@@ -802,17 +802,17 @@ function renderSite(d) {
     name, value: v ?? 0, max: i < 2 ? t.sessions : Math.max(1, app.new_phones ?? 0), text: `${fmt(v ?? 0)} ${unit}`,
     tip: [[unit, fmt(v ?? 0), true], ...(i === 1 ? [['Of visits', pct(v, t.sessions)]] : i > 2 ? [['Of new phones', pct(v, app.new_phones)]] : [])],
   })))
-  const c11 = card('Request your spot', 'Loads that had the form on screen, the box they began in, and how sending went. Never the email or the place.')
+  const c11 = card('Where do you hunt?', 'Loads that had the form on screen, the box they began in, and how it went: found opens the app on the spot (from 2026-10-23 nothing is sent; sent is the old form). Never the place.')
   const formSeen = d.sections.find((r) => r.page === '/' && r.sec === 'beta')?.seen ?? 0
   const started = d.form.filter((r) => r.name === 'form_start')
   const results = d.form.filter((r) => r.name === 'request')
   const startedN = started.reduce((a, r) => a + r.n, 0)
-  const sentN = results.filter((r) => r.result === 'sent').reduce((a, r) => a + r.n, 0)
+  const sentN = results.filter((r) => r.result === 'sent' || r.result === 'found').reduce((a, r) => a + r.n, 0)
   const top = Math.max(1, formSeen, startedN)
   barList(c11, [
     { name: 'Saw the form', value: formSeen, max: top, text: fmt(formSeen), tip: [['Loads', fmt(formSeen), true]] },
     { name: 'Began it', value: startedN, max: top, text: fmt(startedN), tip: started.length ? started.map((r) => [`First box: ${r.field}`, fmt(r.n)]) : [['Began', '0']] },
-    { name: 'Sent', value: sentN, max: top, text: fmt(sentN), tip: [['Sent', fmt(sentN), true]] },
+    { name: 'Found the spot', value: sentN, max: top, text: fmt(sentN), tip: [['Found, or sent before 10-23', fmt(sentN), true]] },
   ])
   const how = {}
   const games = {}
@@ -820,9 +820,10 @@ function renderSite(d) {
     const o = (how[r.result] ??= { result: r.result, n: 0 })
     o.n += r.n
     if (r.result === 'sent') for (const g of (r.game ?? '').split(',').filter(Boolean)) games[g] = (games[g] ?? 0) + r.n
+    if (r.result === 'found' && r.ask) games[`ask ${r.ask}`] = (games[`ask ${r.ask}`] ?? 0) + r.n
   }
   if (results.length) table(c11, [{ k: 'result', t: 'How sending went' }, { k: 'n', t: 'Times', n: 1 }], Object.values(how), { sort: 'n' })
-  if (Object.keys(games).length) table(c11, [{ k: 'g', t: 'Game ticked' }, { k: 'n', t: 'Requests', n: 1 }], Object.entries(games).map(([g, n]) => ({ g, n })), { sort: 'n' })
+  if (Object.keys(games).length) table(c11, [{ k: 'g', t: 'Game ticked · SD or HD asked' }, { k: 'n', t: 'Requests', n: 1 }], Object.entries(games).map(([g, n]) => ({ g, n })), { sort: 'n' })
   g5.append(c10, c11)
   out.append(g5)
 

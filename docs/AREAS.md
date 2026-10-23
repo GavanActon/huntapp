@@ -146,6 +146,13 @@ stand to Gavan, or Lac Bailey to Mat's buddy.
   before the app loads. The point and its name ride in the fragment, which
   GitHub, link previews and server logs never see.
 - A point in no area: `https://hunt.groundwind.app/#at=49.60000,-70.20000`.
+- A spot to load, or to ask HD on:
+  `https://hunt.groundwind.app/#at=49.60000,-70.20000&ask=sd` (or `ask=hd`).
+  The box goes round the point on arrival with its load card up, or its HD
+  ask, as Locations' Add a location does (`areas/arrive.ts askHere`). This is
+  the site's door: groundwind.app's "Where do you hunt?" makes these. Over
+  ground baked already the spot is shown as any link's is; an HD ask over a
+  loaded location is the HD card.
 - `at` is lat,lon to 5 decimals (about 1 m). `pin` is the name, at most 40
   characters, left out when there is none or the pin is still called Pin.
   `z` is read but never written. Reading is lenient: a bad id or a point

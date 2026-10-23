@@ -17,7 +17,7 @@ export type SwitchThen =
   | { kind: 'look' }
   /** the maps sheet, for the area the view was over (ui/WeatherStrip.tsx's save line) */
   | { kind: 'offline' }
-  | { kind: 'spot'; lon: number; lat: number; name?: string; link?: string }
+  | { kind: 'spot'; lon: number; lat: number; name?: string; link?: string; ask?: 'sd' | 'hd' }
   /** pins: its sheet open on it once there (map/placePopup.ts Open) */
   | { kind: 'select'; id: string; pins?: boolean }
   | { kind: 'outing'; id: string }

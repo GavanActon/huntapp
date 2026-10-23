@@ -286,7 +286,7 @@ function resolveActive(): AreaDef {
     // does not take it away. One in no area waits in Go to coordinates. The
     // link is noted as shown once it is (areas/arrive.ts)
     if (s.inArea) saveView({ center: [s.lon, s.lat], zoom: s.z, bearing: 0 }, a.id)
-    arriveNow({ kind: 'spot', lon: s.lon, lat: s.lat, name: s.name, link: start.mark ?? undefined }, s.inArea || moved)
+    arriveNow({ kind: 'spot', lon: s.lon, lat: s.lat, name: s.name, link: start.mark ?? undefined, ask: s.ask }, s.inArea || moved)
   } else if (moved) arriveNow({ kind: 'look' }, true)
   return a
 }

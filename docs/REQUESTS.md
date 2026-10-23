@@ -35,6 +35,18 @@ number of runners, and adds accounts and email. The SD bake itself is
    the pictures, reads the grids from R2, and lists the area under the
    account's areas.
 
+**The doors (2026-10-23).** The site's form no longer sends a request: "Where do you
+hunt?" turns coordinates or a place name (NRCan's geographical names, the service
+the app's Where to searches) into a link into the app, `#at=lat,lon&ask=sd|hd`
+(`app/src/share/link.ts askLink`; a QR code on a computer). The app lands with
+the box round the point (`areas/arrive.ts askHere`): Load where the SD tiles
+are; where none are baked yet (the rest of Canada, the US) the load card asks
+for the ground wind, an SD request with the box and an email, which the runners
+bake (`agent.py`, kinds=sd); `ask=hd` opens the HD card. From a loaded SD spot
+the path to HD is the HD button on its Locations row, the grade sheet's Get HD,
+or Get HD here from a tap on the ground. So every request now has a box and a
+kind; the stage-NULL rows (#15, #16) were the last of the text form's.
+
 **Watching them come in:** groundwind.app/requests (site/requests.html), behind
 the stats key. It lists every request newest first, with a map of the boxes,
 counts by stage, a "new since you last looked" banner and a desktop notice

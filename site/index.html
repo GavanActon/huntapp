@@ -110,7 +110,7 @@
     <p class="hero-proof">Built on a physical wind model and published research for every layer.</p>
     <div class="ctas">
       <a class="btn btn-go" href="/app">Open the beta</a>
-      <a class="btn btn-quiet" href="#request">Request your spot</a>
+      <a class="btn btn-quiet" href="#request">Find your spot</a>
     </div>
     <p class="hero-also">Already carry onX or Windy? <a href="/compare">See what to keep them for.</a></p>
     <div class="qr">
@@ -427,31 +427,30 @@
   </div>
 
   <form class="req" id="request" novalidate>
-    <h2>Claim your hunting spot.</h2>
-    <p>Because the ground wind needs high-res LiDAR and specific forest inventory data, it doesn't work everywhere automatically. Tell us where you hunt. We will hand-build a 10 × 10&nbsp;km block around it and email you when it's live on the map.</p>
+    <h2>Where do you hunt?</h2>
+    <p>Name the spot and open it in the app. The ground wind loads there in a tap across most of Ontario and Québec, and more of Canada every week. Where you want the 1&nbsp;m detail, ask for HD and we build it on that ground's LiDAR and forest.</p>
     <div class="field">
-      <label for="req-email">Email</label>
-      <input id="req-email" name="email" type="email" autocomplete="email" required>
+      <label for="req-where">Your spot</label>
+      <input id="req-where" name="where" type="text" placeholder="49.2, -84.8 or a lake name" autocomplete="off" enterkeyhint="go" required>
+      <p class="hint">Paste coordinates from Google Maps or your GPS, or name the lake, river or town.</p>
     </div>
-    <div class="field">
-      <label for="req-where">Where you hunt</label>
-      <input id="req-where" name="where" type="text" placeholder="49.2, -84.8 or a lake name" required>
-      <p class="hint">Paste coordinates from Google Maps or your GPS, or name the spot.</p>
+    <div class="req-go">
+      <button class="btn btn-go" type="submit" name="ask" value="sd">Open it in the app</button>
+      <button class="btn btn-quiet" type="submit" name="ask" value="hd">Ask for HD there</button>
     </div>
-    <fieldset>
-      <legend>What you hunt</legend>
-      <div class="chips">
-        <label class="chip"><input type="checkbox" name="game" value="moose" id="req-moose" checked><span>Moose</span></label>
-        <label class="chip"><input type="checkbox" name="game" value="elk" id="req-elk"><span>Elk</span></label>
-        <label class="chip"><input type="checkbox" name="game" value="deer" id="req-deer"><span>Deer</span></label>
-        <label class="chip"><input type="checkbox" name="game" value="bear" id="req-bear"><span>Bear</span></label>
-        <label class="chip"><input type="checkbox" name="game" value="grouse" id="req-grouse"><span>Grouse</span></label>
-      </div>
-    </fieldset>
-    <div class="hp" aria-hidden="true"><label for="req-website">Website</label><input id="req-website" name="website" type="text" tabindex="-1" autocomplete="off"></div>
-    <button class="btn btn-go" type="submit">Send request</button>
     <p class="form-msg" id="req-msg" role="status" aria-live="polite"></p>
-    <p class="hint">We'll only use your email to tell you about your area.</p>
+    <div class="req-found" id="req-found" hidden>
+      <p class="req-place"><b id="req-name"></b> <span id="req-coords"></span></p>
+      <p class="req-others" id="req-others" hidden></p>
+      <div class="req-phone" id="req-phone" hidden>
+        <div class="req-qr" id="req-qr" aria-label="QR code for your spot in the app"></div>
+        <div>
+          <p>Point your phone's camera at the code. The app opens on your spot with the box round it: Load for the forecast and the wind at head height, or Ask for HD.</p>
+          <p class="req-link"><a id="req-open" href="/app">Or open it on this computer</a> · <button type="button" class="link-btn" id="req-copy">Copy the link</button></p>
+        </div>
+      </div>
+    </div>
+    <p class="hint">No account and nothing to send. An HD ask takes your email in the app, so we can tell you when it's built.</p>
   </form>
 </section>
 
@@ -478,11 +477,11 @@
     </details>
     <details>
       <summary>Where does it work?</summary>
-      <p>Where we've built it, on purpose. Each area is a 10 × 10 km block built around someone's spot: Pickle Lake near White River, Lac Bailey in Québec and Highland Lake in the Yukon so far. <a href="#request">Request yours</a> anywhere. Ontario and Québec spots are ready within 48 hours, and elsewhere takes longer while we bring in that ground's LiDAR, forest and forecast data.</p>
+      <p>Across most of Ontario and Québec, and more of Canada every week: <a href="#request">name your spot</a> and load it in the app for the forecast and the wind at head height over the national terrain and forest. HD areas, built on 1&nbsp;m LiDAR and the forest inventory, are made to order around your spot: ask for one from the box in the app.</p>
     </details>
     <details>
       <summary>Why not everywhere?</summary>
-      <p>Because the wind at your head depends on your ridge, your stands and your shoreline, and getting it right takes 1&nbsp;m LiDAR, the forest inventory and a wind solve over that exact ground. High quality means being deliberate, so you request a spot and we build it.</p>
+      <p>The wind at your head depends on your ridge, your stands and your shoreline. The loadable ground wind is solved on the national 30&nbsp;m terrain and forest, which is good for the slope and the shelter. The 1&nbsp;m detail of a cut edge or a slot in the trees takes LiDAR, the forest inventory and a wind solve over that exact ground, so HD is built on purpose, around your spot, when you ask.</p>
     </details>
     <details>
       <summary>How is it different from onX, HuntWise or Windy?</summary>
@@ -550,38 +549,154 @@
 <script src="/visit.js"></script>
 <script src="site.js"></script>
 <script>
-// area requests go to the site's worker (worker.js, schema.sql)
-const REQUEST_URL = '/api/request'
+// "Where do you hunt?": the spot becomes a link into the app (app/src/share/link.ts askLink:
+// #at=lat,lon&ask=sd|hd), where the box goes round it with its load card or its HD ask up.
+// Coordinates are read here; a name is looked up in NRCan's geographical names, the service
+// the app's Where to searches. On a phone the link opens; on a computer it is a QR code.
+const APP = 'https://hunt.groundwind.app/'
+const NAMES = 'https://geogratis.gc.ca/services/geoname/en/geonames.json'
+const QR_JS = 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js'
+const PROVINCE = { 10: 'NL', 11: 'PE', 12: 'NS', 13: 'NB', 24: 'QC', 35: 'ON', 46: 'MB', 47: 'SK', 48: 'AB', 59: 'BC', 60: 'YT', 61: 'NT', 62: 'NU' }
+// the kinds of feature a spot is named after, best first (CGNDB concise codes; the app names loaded spots the same way)
+const KINDS = ['LAKE', 'BAY', 'RIV', 'UNP', 'VILG', 'TOWN', 'CITY', 'HILL', 'MTN', 'ISL', 'MRSH']
+const HOME = ['ON', 'QC', 'BC', 'AB', 'YT']
 
 ;(() => {
   const form = document.getElementById('request')
   const msg = document.getElementById('req-msg')
-  // how it went, for the site's stats (visit.js): never the email or the place
-  const told = (result, game) => window.gwTrack?.('request', { result, game: game?.join(',') })
+  const found = document.getElementById('req-found')
+  const others = document.getElementById('req-others')
+  const phone = document.getElementById('req-phone')
+  // how it went, for the site's stats (visit.js): never the place
+  const told = (result, ask) => window.gwTrack?.('request', { result, ask })
+  const f5 = (n) => n.toFixed(5)
+  const askLink = (p, ask) => `${APP}#at=${f5(p.lat)},${f5(p.lon)}&ask=${ask}`
+  const inCanada = (lat, lon) => lat > 41 && lat < 84 && lon > -142 && lon < -52
+  // a phone opens the link itself; a computer shows the code for one
+  const onPhone = () => matchMedia('(pointer: coarse)').matches && Math.min(innerWidth, innerHeight) < 900
+
+  const readCoords = (text) => {
+    // "49.2, -84.8", "49.2 -84.8", "N 49.40955° W 69.55349°" (as a Garmin writes it)
+    const m = /^\s*N?\s*(\d{1,2}(?:\.\d+)?)°?\s*[,\s]\s*W?\s*(-?\d{1,3}(?:\.\d+)?)°?\s*$/i.exec(text)
+    if (!m) return null
+    const lat = Number(m[1])
+    let lon = Number(m[2])
+    if (/W/i.test(text) && lon > 0) lon = -lon
+    return inCanada(lat, lon) ? { lat, lon } : null
+  }
+
+  const kindOf = (it) => (typeof it.concise === 'string' ? it.concise : it.concise?.code) ?? ''
+  const provOf = (it) => PROVINCE[Number(typeof it.province === 'string' ? it.province : it.province?.code)] ?? ''
+  const placeOf = (it) => ({ lat: it.latitude, lon: it.longitude, name: it.name, prov: provOf(it), where: it.location || '' })
+
+  /** NRCan's names for what was typed: an exact name first, then the best kinds, then the service's own order. */
+  const lookUp = async (q) => {
+    const ctl = new AbortController()
+    const timer = setTimeout(() => ctl.abort(), 8000)
+    try {
+      const r = await fetch(`${NAMES}?${new URLSearchParams({ q, num: '12' })}`, { signal: ctl.signal })
+      if (!r.ok) return []
+      const j = await r.json()
+      const items = (Array.isArray(j) ? j : j.items ?? []).filter((it) => it.name && Number.isFinite(it.latitude) && Number.isFinite(it.longitude))
+      const rank = (it) => {
+        const k = KINDS.indexOf(kindOf(it))
+        return k < 0 ? KINDS.length : k
+      }
+      const exact = (it) => (it.name.toLowerCase() === q.toLowerCase() ? 0 : 1)
+      // among the same name and kind, where the ground wind is: Ontario and Québec, then the provinces with areas
+      const home = (it) => {
+        const k = HOME.indexOf(provOf(it))
+        return k < 0 ? HOME.length : k
+      }
+      return items
+        .map((it, i) => ({ it, i }))
+        .sort((a, b) => exact(a.it) - exact(b.it) || rank(a.it) - rank(b.it) || home(a.it) - home(b.it) || a.i - b.i)
+        .map(({ it }) => placeOf(it))
+    } catch {
+      return []
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
+  let qrLib = null
+  const loadQr = () =>
+    qrLib ||
+    (qrLib = new Promise((ok, no) => {
+      const el = document.createElement('script')
+      el.src = QR_JS
+      el.onload = () => ok(window.qrcode)
+      el.onerror = () => no(new Error('qr'))
+      document.head.appendChild(el)
+    }))
+
+  /** The spot found: shown, and the app opened on it (a phone) or its code drawn (a computer). */
+  const go = async (p, ask, rest) => {
+    const link = askLink(p, ask)
+    document.getElementById('req-name').textContent = p.name ? `${p.name}${p.prov ? `, ${p.prov}` : ''}` : 'Your spot'
+    document.getElementById('req-coords').textContent = `${f5(p.lat)}, ${f5(p.lon)}`
+    if (rest?.length) {
+      others.replaceChildren(
+        'Not it? ',
+        ...rest.slice(0, 4).flatMap((o, i) => {
+          const b = document.createElement('button')
+          b.type = 'button'
+          b.className = 'link-btn'
+          b.textContent = `${o.name}${o.prov ? `, ${o.prov}` : ''}${o.where ? ` (${o.where})` : ''}`
+          b.addEventListener('click', () => go(o, ask, rest.filter((x) => x !== o).concat([p])))
+          return i ? [' · ', b] : [b]
+        }),
+      )
+      others.hidden = false
+    } else others.hidden = true
+    found.hidden = false
+    msg.textContent = ''
+    told('found', ask)
+    if (onPhone()) {
+      phone.hidden = true
+      location.href = link
+      return
+    }
+    const open = document.getElementById('req-open')
+    open.href = link
+    document.getElementById('req-copy').onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(link)
+        msg.textContent = 'Copied. Send it to your phone, or open it there.'
+      } catch {
+        msg.textContent = link
+      }
+    }
+    phone.hidden = false
+    try {
+      const qrcode = await loadQr()
+      const q = qrcode(0, 'M')
+      q.addData(link)
+      q.make()
+      document.getElementById('req-qr').innerHTML = q.createSvgTag({ cellSize: 3, margin: 2, scalable: true })
+    } catch {
+      document.getElementById('req-qr').textContent = ''
+    }
+  }
+
+  let asked = 'sd'
+  for (const b of form.querySelectorAll('button[name="ask"]')) b.addEventListener('click', () => (asked = b.value))
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
-    const email = form.email.value.trim()
+    const ask = asked
     const where = form.where.value.trim()
-    if (!email || !form.email.checkValidity()) return (msg.textContent = 'Add an email we can reach you at.'), form.email.focus(), told('no_email')
-    if (!where) return (msg.textContent = 'Add where you hunt: coordinates or a place name.'), form.where.focus(), told('no_where')
-    const game = [...form.querySelectorAll('input[name="game"]:checked')].map((i) => i.value)
-    if (!REQUEST_URL) return (msg.textContent = "Requests aren't switched on yet. Nothing was sent.")
-    msg.textContent = 'Sending…'
-    try {
-      const r = await fetch(REQUEST_URL, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email, where, game, website: form.website.value }),
-      })
-      if (r.status === 429) return (msg.textContent = 'Lots of requests from here just now. Try again in an hour.'), told('busy', game)
-      if (!r.ok) throw new Error(String(r.status))
-      form.reset()
-      msg.textContent = "Got it. We'll build it and email you when it's ready, within 48 hours."
-      told('sent', game)
-    } catch {
-      msg.textContent = "That didn't go through. Check your connection and try again."
-      told('failed', game)
+    if (!where) return (msg.textContent = 'Add where you hunt: coordinates or a place name.'), form.where.focus(), told('no_where', ask)
+    found.hidden = true
+    const c = readCoords(where)
+    if (c) return go(c, ask)
+    if (/^-?\d/.test(where)) return (msg.textContent = 'Those coordinates are not in Canada. Latitude first, then a negative longitude: 49.2, -84.8.'), told('bad_coords', ask)
+    msg.textContent = 'Looking it up…'
+    const places = await lookUp(where)
+    if (!places.length) {
+      msg.textContent = navigator.onLine ? 'Nothing by that name in Canada’s place names. Try the lake’s full name, the nearest town, or coordinates.' : 'No connection. Try again with signal, or paste coordinates.'
+      return told('not_found', ask)
     }
+    go(places[0], ask, places.slice(1))
   })
 })()
 </script>

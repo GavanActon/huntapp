@@ -76,7 +76,7 @@ export async function siteStatsQuery(request, env) {
               COUNT(DISTINCT CASE WHEN name = 'view' AND ${P('new')} = 1 THEN visitor END) AS new_visitors,
               COUNT(DISTINCT CASE WHEN ${TO_APP} THEN session END) AS app_sessions,
               COUNT(DISTINCT CASE WHEN ${TO_APP} THEN visitor END) AS app_visitors,
-              SUM(name = 'request' AND ${P('result')} = 'sent') AS requests, COUNT(*) AS events
+              SUM(name = 'request' AND ${P('result')} IN ('sent', 'found')) AS requests, COUNT(*) AS events
        FROM site_events WHERE ${W}`),
     q(`SELECT ${bucket} AS day, COUNT(DISTINCT visitor) AS visitors, COUNT(DISTINCT session) AS sessions, COUNT(DISTINCT view) AS views,
               COUNT(DISTINCT CASE WHEN name = 'view' AND ${P('new')} = 1 THEN visitor END) AS new_visitors,
@@ -89,7 +89,7 @@ export async function siteStatsQuery(request, env) {
     // where sessions came from: the first page of each, and what came of it
     q(`WITH l AS (SELECT session, MIN(ts) AS t FROM site_events WHERE ${W} AND name = 'view' GROUP BY session),
             a AS (SELECT DISTINCT session FROM site_events WHERE ${W} AND ${TO_APP}),
-            r AS (SELECT DISTINCT session FROM site_events WHERE ${W} AND name = 'request' AND ${P('result')} = 'sent')
+            r AS (SELECT DISTINCT session FROM site_events WHERE ${W} AND name = 'request' AND ${P('result')} IN ('sent', 'found'))
        SELECT CASE WHEN json_extract(e.props, '$.again') = 1 THEN '(a tab come back to)'
                    ELSE COALESCE(json_extract(e.props, '$.utm_source'), json_extract(e.props, '$.ref'), '(direct)') END AS src,
               json_extract(e.props, '$.utm_campaign') AS campaign, e.page AS landing,
@@ -130,8 +130,8 @@ export async function siteStatsQuery(request, env) {
               SUM(name = 'loop_tap' AND ${P('act')} = 'play') AS played,
               COUNT(DISTINCT CASE WHEN name = 'loop_wait' THEN view END) AS waits
        FROM site_events WHERE ${W} AND name IN ('loop_play', 'watch', 'loop_tap', 'loop_wait') GROUP BY page, loop ORDER BY plays DESC`),
-    q(`SELECT name, ${P('result')} AS result, ${P('field')} AS field, ${P('game')} AS game, COUNT(*) AS n, COUNT(DISTINCT visitor) AS visitors
-       FROM site_events WHERE ${W} AND name IN ('form_start', 'request') GROUP BY name, result, field, game`),
+    q(`SELECT name, ${P('result')} AS result, ${P('field')} AS field, ${P('game')} AS game, ${P('ask')} AS ask, COUNT(*) AS n, COUNT(DISTINCT visitor) AS visitors
+       FROM site_events WHERE ${W} AND name IN ('form_start', 'request') GROUP BY name, result, field, game, ask`),
     // the app's side (events, stats.js): phones whose first open (or any launch) came from a visit in the window
     q(`WITH sv AS (SELECT DISTINCT visitor FROM site_events WHERE ${W}),
             fi AS (SELECT DISTINCT install FROM events WHERE ts >= ?1 AND name = 'first_open' AND json_extract(props, '$.site') IN (SELECT visitor FROM sv)),

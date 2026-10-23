@@ -280,7 +280,7 @@ Every row has `visitor`, `session`, `view`, `seq`, `ts`, `page` (the path:
 | `loop_tap` | a tap on a loop | `loop`, `act` (pause, play) |
 | `loop_wait` | a loop on screen behind its play button | `loop`, `sec`, `reduced` (Low Power Mode or reduced motion) |
 | `form_start` | the request form's first box used | `field` |
-| `request` | a send tried | `result` (sent, no_email, no_where, busy, failed), `game` |
+| `request` | "Where do you hunt?" tried (from 2026-10-23 the spot becomes a link into the app, nothing is sent) | `result` (found, no_where, bad_coords, not_found; before: sent, no_email, busy, failed), `ask` (sd, hd; before: `game`) |
 | `vitals` | the first time the page is put away | `lcp`, `fcp`, `ttfb`, `dom`, `load` (ms from the page's start), `cls` (the worst burst), `inp` (the slowest tap answered, ms). Safari reports only some |
 | `error` / `asset_error` | a script error (five per page load) / a loop or photo that didn't load | `msg`, `at` / `what`, `name` |
 
