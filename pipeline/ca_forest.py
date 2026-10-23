@@ -257,8 +257,14 @@ def main() -> int:
     path.write_text(json.dumps(fc, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print(f"wrote {path.name} ({path.stat().st_size / 1e6:.2f} MB, {len(feats)} stands)")
     source = "inferred from SCANFI v2 (species, closure, height, age, 30 m) and CanLaD v1.1 (cuts and burns), Canadian Forest Service"
+    licence, vintage = "OGL-Canada; CanLaD CC BY 4.0", f"SCANFI {SCANFI_YEAR}; CanLaD 1985-2025"
+    # a US area stages its own rasters under SCANFI's names (us_stage.py): the area file says what they are
+    opt = area.options(area.BAKE, "forest")
+    if opt.get("attribution") and "SCANFI" not in str(opt.get("attribution")):
+        source = f"inferred from {opt['vintage']}" if opt.get("vintage") else str(opt["attribution"])
+        licence, vintage = "public domain (US Government work)", str(opt.get("vintage") or "")
     for f in (f"forest-{area.ID}.geojson", f"forest-{area.ID}.pmtiles"):
-        area.note_source(f, source=source, licence="OGL-Canada; CanLaD CC BY 4.0", vintage=f"SCANFI {SCANFI_YEAR}; CanLaD 1985-2025")
+        area.note_source(f, source=source, licence=licence, vintage=vintage or None)
     tally: dict[str, int] = {}
     for f in feats:
         tally[f["properties"]["group"]] = tally.get(f["properties"]["group"], 0) + 1

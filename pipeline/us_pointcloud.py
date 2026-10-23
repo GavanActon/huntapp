@@ -131,12 +131,19 @@ def row(laz: Path, meta: dict | None) -> dict | None:
             bounds = [round(h.mins[0]), round(h.mins[1]), round(h.maxs[0]), round(h.maxs[1])]
             n = h.point_count
         crs_s = target
+    # build_vegstructure lays every tile on one 10 m grid: the footprint goes out to the next 10 m line
+    # (a point is never lost, none is taken in), as qc_pointcloud.py does for Quebec's part tiles
+    bounds = [bounds[0] // 10 * 10, bounds[1] // 10 * 10, -(-bounds[2] // 10) * 10, -(-bounds[3] // 10) * 10]
     area_m2 = max(1.0, (bounds[2] - bounds[0]) * (bounds[3] - bounds[1]))
     density = n / area_m2
-    m = re.search(r"(20\d\d|19\d\d)", (meta or {}).get("title", "") + " " + laz.name)
+    # the flight year is in the project's or the work unit's name (MI_16CountiesFEMA2015, MI_Lake_2016: flown April 2016);
+    # TNM's publicationDate is when the tiles were (re)published, years later, so it is not the day
+    url = (meta or {}).get("downloadURL") or ""
+    unit = re.search(r"/Projects/[^/]+/([^/]+)/LAZ/", url)
+    m = re.search(r"(20\d\d|19\d\d)", (unit.group(1) if unit else "") + " " + (meta or {}).get("title", "") + " " + laz.name)
     year = int(m.group(1)) if m else None
-    pub = (meta or {}).get("publicationDate") or ""
-    project = (meta or {}).get("title", laz.stem).replace("USGS Lidar Point Cloud ", "").rsplit(" ", 1)[0]
+    pub = ""
+    project = (meta or {}).get("title", laz.stem).replace("USGS Lidar Point Cloud ", "").rsplit(" ", 1)[0] + (f" ({unit.group(1)})" if unit else "")
     return {
         "name": laz.stem,
         "file": f"{area.ID}/laz/{laz.name}",
@@ -164,6 +171,11 @@ def main() -> int:
     lazs = sorted((RAW / "lpc").glob("*.laz"))
     if not lazs:
         raise SystemExit(f"no LAZ tiles in {RAW / 'lpc'}: download them first")
+    # the tile server (rockyweb.usgs.gov) answers a refused tile with a 270-byte HTML page and status 200
+    # (Luther, 2026-10-23): such a file is not a tile, and the download has to be made again
+    html = [p for p in lazs if p.read_bytes()[:4] != b"LASF"]
+    if html:
+        raise SystemExit(f"not LAZ (the server's error page saved as a tile; delete and fetch again): {', '.join(p.name for p in html)}")
     meta = tnm()
     LAZ_DIR.mkdir(parents=True, exist_ok=True)
     rows = []

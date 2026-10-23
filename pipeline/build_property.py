@@ -676,8 +676,8 @@ def main() -> int:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     plan = parts()
     print(f"{REGION['name']} ({ID}, {J}): " + ", ".join(f"{j} {b[1]:.3f}-{b[3]:.3f}° N" for j, b in plan))
-    if j in ("MI",):  # a US state: us_vectors.py writes land-<id> and lots-<id> from PAD-US and the state's parcels
-        print(f"  {j} is a US state: the land and lots come from us_vectors.py; NRCan's federal layers do not reach here")
+    if area.JURISDICTION in ("MI",):  # a US state: us_vectors.py writes land-<id> from PAD-US and the state's lands
+        print(f"  {area.JURISDICTION} is a US state: the land comes from us_vectors.py; NRCan's federal layers do not reach here")
         return 0
     print("== federal")
     federal((W, S, E, N))

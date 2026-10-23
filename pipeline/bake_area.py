@@ -973,7 +973,7 @@ def new_area(args) -> str:
         bake_by[j] = {
             "vectors": "us",
             # the stands: LANDFIRE and NLCD staged as SCANFI's layers (us_stage.py), read by ca_forest.py unchanged
-            "forest": {"adapter": "ca.scanfi", "vintage": "LANDFIRE 2024, NLCD 2023 (staged as the national stand layers)", "attribution": "Forest inferred from LANDFIRE and NLCD, USGS and USFS"},
+            "forest": {"adapter": "ca.scanfi", "vintage": "LANDFIRE 2024, NLCD 2021 (staged as the national stand layers)", "attribution": "Forest inferred from LANDFIRE and NLCD, USGS and USFS"},
             "imagery": None,
             "pointcloud": "us.3dep",
         }

@@ -9,8 +9,8 @@
   "regionMaxzoom": 13,
   "declination": -5.9,
   "timezone": "America/Detroit",
-  "zone": { "label": "DMU", "name": "" },
-  "relief": null,
+  "zone": { "label": "DMU", "name": "043" },
+  "relief": [266, 382],
   "base": "areas/luther/",
   "surveyedLakes": [],
   "live": { "lio": false, "satellite": null, "sharp": "esri" },
@@ -33,15 +33,145 @@
     "outDir": "app/public/data/areas/luther",
     "hrdem": [],
     "lidar": "us3dep",
-    "us3dep": { "stage": "cadillac", "project": null, "vintage": null },
+    "us3dep": { "stage": "cadillac", "project": "MI Lake 2016 (MI_16CountiesFEMA2015_C16)", "vintage": "flown April 2016, leaf-off" },
     "vectors": "us",
     "forest": {
       "adapter": "ca.scanfi",
-      "vintage": "LANDFIRE 2024, NLCD 2023 (staged as the national stand layers)",
+      "vintage": "LANDFIRE 2024, NLCD 2021 (staged as the national stand layers)",
       "attribution": "Forest inferred from LANDFIRE and NLCD, USGS and USFS"
     },
     "imagery": null,
     "pointcloud": "us.3dep",
     "nts": []
+  },
+  "profile": {
+    "checked": "2026-10-23",
+    "treeline": null,
+    "ecoregion": { "cec1": "5", "cec2": "5.2", "cec3": "5.2.1", "name": "Northern Lakes and Forests", "family": "Mixed Wood Shield" },
+    "north": false,
+    "stands": { "shrubHeight": false, "leadSpecies": false }
+  },
+  "coverage": {
+    "checked": "2026-10-23",
+    "pmtiles": {
+      "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
+      "topo": { "missing": "not in this area's maps" },
+      "satellite": { "missing": "not in this area's maps" },
+      "hillshade": { "missing": "not baked: the map shades the relief from the DEM" },
+      "hillshadeLidar": {
+        "file": "hillshade-lidar-luther.pmtiles",
+        "bytes": 27887568,
+        "source": "USGS 3DEP 1 m DEM, MI Lake 2016 (MI_16CountiesFEMA2015_C16)",
+        "licence": "public domain (US Government work)",
+        "vintage": "flown April 2016, leaf-off",
+        "note": "LiDAR over 100% of the core"
+      },
+      "dem": {
+        "file": "dem-luther.pmtiles",
+        "bytes": 6558330,
+        "source": "USGS 3DEP 1 arc-second, with USGS 3DEP 1 m DEM, MI Lake 2016 (MI_16CountiesFEMA2015_C16) over the core",
+        "licence": "public domain (US Government work)",
+        "vintage": "flown April 2016, leaf-off"
+      },
+      "contours": {
+        "file": "contours-luther.pmtiles",
+        "bytes": 2680391,
+        "source": "USGS 3DEP 1 m DEM, MI Lake 2016 (MI_16CountiesFEMA2015_C16)",
+        "licence": "public domain (US Government work)",
+        "vintage": "flown April 2016, leaf-off"
+      },
+      "contoursWide": {
+        "file": "contours-wide-luther.pmtiles",
+        "bytes": 419045,
+        "source": "USGS 3DEP 1 arc-second DEM",
+        "licence": "public domain (US Government work)"
+      },
+      "forest": {
+        "file": "forest-luther.pmtiles",
+        "bytes": 842542,
+        "source": "inferred from LANDFIRE 2024, NLCD 2021 (staged as the national stand layers)",
+        "licence": "public domain (US Government work)",
+        "vintage": "LANDFIRE 2024, NLCD 2021 (staged as the national stand layers)"
+      },
+      "understory": {
+        "file": "understory-luther.pmtiles",
+        "bytes": 275098,
+        "source": "USGS 3DEP lidar point cloud, MI_16CountiesFEMA2015_C16, flown April 2016 (leaf-off); heights above the tiles' own ground returns",
+        "licence": "public domain (US Government work)",
+        "vintage": "flown April 2016 (leaf-off)"
+      },
+      "lanes": {
+        "file": "lanes-luther.pmtiles",
+        "bytes": 53287,
+        "source": "USGS 3DEP lidar point cloud, MI_16CountiesFEMA2015_C16, flown April 2016 (leaf-off); heights above the tiles' own ground returns",
+        "licence": "public domain (US Government work)",
+        "vintage": "flown April 2016 (leaf-off)"
+      },
+      "bathy": { "missing": "not baked: lake depths are drawn from GeoJSON (depth)" },
+      "historical": { "missing": "not in this area's maps" },
+      "bathySheets": { "missing": "not in this area's maps" },
+      "places": { "file": "places-luther.pmtiles", "bytes": 313616 },
+      "lakes": { "missing": "not in this area's maps" }
+    },
+    "geo": {
+      "wmu": {
+        "file": "wmu-luther.geojson",
+        "bytes": 5626,
+        "source": "Deer Management Units, Michigan DNR",
+        "licence": "Michigan open data (as is, no warranty)"
+      },
+      "camps": { "missing": "not in this area's maps" },
+      "crown": { "missing": "not in this area's maps" },
+      "land": {
+        "file": "land-luther.geojson",
+        "bytes": 58379,
+        "source": "likely private: everything outside PAD-US fee lands and Michigan DNR managed lands; closed: PAD-US lands with no public access",
+        "licence": "public domain (US Government work); Michigan open data (as is, no warranty)"
+      },
+      "lots": { "missing": "not baked yet" },
+      "parks": {
+        "file": "parks-luther.geojson",
+        "bytes": 2136401,
+        "source": "PAD-US fee lands, USGS; DNR managed lands, Michigan DNR",
+        "licence": "public domain (US Government work); Michigan open data (as is, no warranty)"
+      },
+      "bathy": { "missing": "not in this area's maps" },
+      "fire": { "missing": "not in this area's maps" },
+      "roads": {
+        "file": "roads-luther.geojson",
+        "bytes": 479572,
+        "source": "USGS National Hydrography Dataset; Michigan Framework All Roads v17a (Michigan Tech), Michigan DNR roads",
+        "licence": "Michigan open data (as is, no warranty)"
+      },
+      "forest": { "missing": "not in the maps as GeoJSON: the map reads the stands from the forest tiles, and the GeoJSON stays the bake's input" },
+      "depth": { "missing": "not in this area's maps" }
+    },
+    "baseGeo": {
+      "waterbody": {
+        "file": "waterbody-luther.geojson",
+        "bytes": 91382,
+        "source": "NHDPlus High Resolution waterbodies and river areas, USGS",
+        "licence": "public domain (US Government work)"
+      }
+    },
+    "grids": {
+      "habitat": {
+        "file": "habitat-luther.hab",
+        "bytes": 1992892,
+        "source": "derived: MRDEM, NRCan 2020 land cover, forest stands, water, wetlands, roads and burns",
+        "licence": "derived from the layers above",
+        "note": "stand height and closure from the LiDAR point cloud over 33% of the core",
+        "vintage": "generated 2026-10-23"
+      },
+      "micro": { "missing": "not baked yet" },
+      "going": {
+        "file": "going-luther.hab",
+        "bytes": 1291222,
+        "source": "derived: HRDEM LiDAR, point-cloud bush or the forest-map estimate, water, wetlands and roads",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-23"
+      },
+      "micro-sd": { "missing": "not baked yet" }
+    }
   }
 }
