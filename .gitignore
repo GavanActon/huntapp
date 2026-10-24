@@ -58,3 +58,7 @@ pipeline/teacher/palm/*/viz/
 app/public/data/areas/luther/wetland-luther.geojson
 app/public/data/areas/luther/watercourse-luther.geojson
 app/public/data/areas/luther/forest-luther.geojson
+
+app/public/data/areas/emerald-lake/wetland-emerald-lake.geojson
+app/public/data/areas/emerald-lake/watercourse-emerald-lake.geojson
+app/public/data/areas/emerald-lake/forest-emerald-lake.geojson

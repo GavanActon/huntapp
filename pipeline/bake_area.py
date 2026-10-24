@@ -1002,7 +1002,9 @@ def new_area(args) -> str:
         "regionMaxzoom": pickle["regionMaxzoom"],
         "declination": declination(lat, lon),
         "timezone": {"YT": "America/Whitehorse", "BC": "America/Vancouver", "AB": "America/Edmonton", "MI": "America/Detroit"}.get(j) or (us_timezone(lon) if j in US_STATES else "America/Winnipeg" if j == "ON" and lon < -90 else "America/Toronto"),
-        "zone": {"label": zone_label, "name": ""},  # a string, or areas/check.ts leaves the whole area out of the app (Clearwater, 2026-10-17); fill it by hand
+        # a string, or areas/check.ts leaves the whole area out of the app (Clearwater, 2026-10-17): filled by hand, except where
+        # the bake's unit layer names it (US states with a unit service): null, which the coverage step fills (unknowns)
+        "zone": {"label": zone_label, "name": None if j in STATE_UNITS else ""},
         "relief": None,  # the bake fills it in from the core's elevations
         "base": f"areas/{area_id}/",
         "surveyedLakes": [],
