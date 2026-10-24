@@ -297,6 +297,12 @@ export const ACTIVE_AREA: AreaDef = resolveActive()
 /** Every area, the active one first. */
 export const AREA_LIST: readonly AreaDef[] = [ACTIVE_AREA, ...defs.filter((a) => a.id !== ACTIVE_AREA.id)]
 
+/** AREA_LIST without the locations removed this run: for a list drawn again
+ *  after a removal (a sheet reopened, the boxes redrawn), so one stays gone. */
+export function areasNow(): AreaDef[] {
+  return AREA_LIST.filter((a) => !removedNow.has(a.id))
+}
+
 /** The area whose region holds the point (with an optional margin), the
  *  active one first; null when it is in none. */
 export function areaAt(lon: number, lat: number, marginDeg = 0): AreaDef | null {

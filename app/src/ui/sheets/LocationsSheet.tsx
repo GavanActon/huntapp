@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type JSX } from 'react'
-import { ACTIVE_AREA, AREA_LIST, areaAt, type AreaDef } from '../../areas'
+import type { GeoJSONSource } from 'maplibre-gl'
+import { ACTIVE_AREA, areaAt, areasNow, type AreaDef } from '../../areas'
 import { switchArea } from '../../areas/switch'
 import { dropLocation, keepLocation, readLocations } from '../../areas/runtime'
 import { setExplore } from '../../explore'
@@ -9,6 +10,7 @@ import { parseBoxId, centre } from '../../explore/box'
 import { checkAsks, stageWords } from '../../explore/requests'
 import { areaById, forgetArea } from '../../areas'
 import { getMap } from '../../map/mapController'
+import { areaBoxes } from '../../map/mapStyle'
 import { removeFiles, useDownloads } from '../../offline/downloads'
 import { bundleOf, keepsArea } from '../../offline/updates'
 import { shareArea } from '../../share/share'
@@ -36,8 +38,9 @@ export default function LocationsSheet(): JSX.Element {
   useEffect(() => checkAsks(), [])
   // what a row's Share says when the message went to the clipboard, or did not
   const [said, setSaid] = useState<{ id: string; text: string } | null>(null)
-  // loaded locations removed this run: gone from the phone, gone from the list (the area list is the start's)
-  const [dropped, setDropped] = useState<string[]>([])
+  // a removal draws the list again; areasNow leaves out every location removed this run, so a
+  // removed one stays gone when the sheet is closed and opened again (Gavan, 2026-10-24: "they all came back")
+  const [, setRemoved] = useState(0)
   // loaded spots renamed this run (the area list is the start's)
   const [names, setNames] = useState<Record<string, string>>({})
   /** A loaded spot named again: kept so; the one the app is in reloads under it (its camp pin is named at start) */
@@ -91,7 +94,7 @@ export default function LocationsSheet(): JSX.Element {
   return (
     <div className="pins">
       <div className="place-list">
-        {AREA_LIST.filter((a) => !a.virtual && !dropped.includes(a.id)).map((a) => {
+        {areasNow().filter((a) => !a.virtual).map((a) => {
           const here = a.id === ACTIVE_AREA.id
           const b = bundleOf(a.id)
           const saved = b != null && keepsArea(b)
@@ -163,7 +166,10 @@ export default function LocationsSheet(): JSX.Element {
                     dropLocation(a.id)
                     if (files.length) void removeFiles(files, a.id)
                     forgetArea(a.id)
-                    setDropped((d) => [...d, a.id])
+                    // its box off the map now, not at the next redraw
+                    const src = getMap()?.getSource('area-boxes') as GeoJSONSource | undefined
+                    src?.setData(areaBoxes())
+                    setRemoved((n) => n + 1)
                   }}
                 >
                   ×

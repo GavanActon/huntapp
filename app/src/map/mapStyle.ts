@@ -1,6 +1,6 @@
 import type { FeatureCollection } from 'geojson'
 import type { ExpressionSpecification, FilterSpecification, GeoJSONSource, LayerSpecification, Map as MlMap, SourceSpecification, StyleSpecification } from 'maplibre-gl'
-import { ACTIVE_AREA, AREA_LIST } from '../areas'
+import { ACTIVE_AREA, areasNow } from '../areas'
 import { ATTRIBUTION, CONTOUR_FINE_FROM, CORE, DATA_FILES, FINE_RELIEF, LIVE, REGION, REGION_MAXZOOM, RELIEF, ZONE } from '../config'
 import { FAR_ATTRIBUTION, FAR_HANDOFF, FAR_KEY, FAR_MAXZOOM, LIVE_RASTER, LIVE_VECTOR, SHARP_IMAGERY } from '../sources'
 import type { ContourInterval, LayerOpacity, LayerVisibility } from '../state/appStore'
@@ -79,6 +79,25 @@ export function bogTuftImage(): ImageData {
 }
 
 const EMPTY_FC: FeatureCollection = { type: 'FeatureCollection', features: [] }
+
+/** Every area's box for the map's 'area-boxes' source, less the locations
+ *  removed this run (areasNow): the style's, and the sheet's after a removal. */
+export function areaBoxes(): FeatureCollection {
+  return {
+    type: 'FeatureCollection',
+    features: areasNow()
+      .filter((a) => !a.virtual)
+      .map((a) => ({
+        type: 'Feature',
+        properties: { id: a.id, name: a.name, active: a.id === ACTIVE_AREA.id },
+        // a loaded spot drawn as its box, the ground its SD wind covers (its region is the box and a margin)
+        geometry: (() => {
+          const r = a.loaded ? a.core : a.region
+          return { type: 'Polygon' as const, coordinates: [[[r.west, r.south], [r.east, r.south], [r.east, r.north], [r.west, r.north], [r.west, r.south]]] }
+        })(),
+      })),
+  }
+}
 
 /** GeoJSON sources whose layers are all switched off when the style is
  *  built start empty, with the real file noted here: MapLibre fetches and
@@ -754,22 +773,7 @@ export function buildMapStyle(o: StyleOpts): StyleSpecification {
   }
   // every baked box drawn, the area's own strongest, named zoomed out
   if (o.online) {
-    const boxes = AREA_LIST.filter((a) => !a.virtual)
-    sources['area-boxes'] = {
-      type: 'geojson',
-      data: {
-        type: 'FeatureCollection',
-        features: boxes.map((a) => ({
-          type: 'Feature',
-          properties: { id: a.id, name: a.name, active: a.id === ACTIVE_AREA.id },
-          // a loaded spot drawn as its box, the ground its SD wind covers (its region is the box and a margin)
-          geometry: (() => {
-            const r = a.loaded ? a.core : a.region
-            return { type: 'Polygon' as const, coordinates: [[[r.west, r.south], [r.east, r.south], [r.east, r.north], [r.west, r.north], [r.west, r.south]]] }
-          })(),
-        })),
-      },
-    }
+    sources['area-boxes'] = { type: 'geojson', data: areaBoxes() }
     rasters.push(
       // the range at a glance (Gavan, 2026-10-20: "having a box around the loaded area helps let you know
       // where the range [is]"): a light line on a dark edge, read on the photo and the topo alike; dark

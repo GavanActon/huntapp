@@ -1,5 +1,5 @@
 import { useMemo, useState, type JSX, type KeyboardEvent } from 'react'
-import { ACTIVE_AREA, AREA_LIST, areaAt, areaById, type AreaDef } from '../../areas'
+import { ACTIVE_AREA, areaAt, areaById, areasNow, type AreaDef } from '../../areas'
 import { switchArea } from '../../areas/switch'
 import { isLink, parsePlace, placeWords, type Place } from '../../map/coords'
 import { addRecent, canGoTo, goToSpot, recentPlaces } from '../../map/goto'
@@ -232,7 +232,7 @@ export default function CoordsSheet({ text: given }: { text?: string }): JSX.Ele
       {note && <div className="coords-help">{note}</div>}
       {/* every area's home, this one first (Gavan, 2026-10-04) */}
       <div className="coords-list">
-        {AREA_LIST.filter((a) => !a.virtual).map((a) => (
+        {areasNow().filter((a) => !a.virtual).map((a) => (
           <button key={a.id} className="coords-row" onClick={() => goHome(a)}>
             <span>{a.name}</span>
             <span className="dim">{a.presets[0]?.name}</span>
