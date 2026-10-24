@@ -234,7 +234,7 @@ class Api:
         raise AssertionError("unreachable")
 
     def next(self) -> dict | None:
-        status, answer = self.call("GET", f"/api/bake/next?agent={self.agent}&kinds=sd", tries=3)
+        status, answer = self.call("GET", f"/api/bake/next?agent={self.agent}&kinds=sd,hd", tries=3)
         if status != 200:
             raise RuntimeError(f"/api/bake/next answered {status}: {answer}")
         return answer.get("request")
@@ -695,6 +695,68 @@ def ship(rid: int, area_id: str, api: Api, progress: bool = True, at: float | No
 # ---- one request ----------------------------------------------------------------------
 
 
+# ---- HD on top of SD ------------------------------------------------------------------------
+# An HD ask is its own request (the app's HD card on a loaded SD spot; huntapp-58, 2026-10-24).
+# The agent finds the SD pack of its own whose core holds the box and bakes the HD layers and
+# the wind into it in place (pipeline/hd_upgrade.py), then reports done on the same pack id:
+# the Worker's done upserts the areas row, so the pack turns HD with no new stage.
+
+# how far through the whole the upgrade is as each step starts (WindNinja is most of the hours)
+HD_PROGRESS = {"hd upgrade": 0.02, "fetch": 0.05, "terrain": 0.1, "hillshade": 0.15, "dem": 0.2, "contours": 0.3, "pointcloud": 0.32,
+               "vegstructure": 0.35, "habitat": 0.45, "profile": 0.5, "bush": 0.52, "going": 0.55, "vector-tiles": 0.58, "wind": 0.6,
+               "collect": 0.9, "wind-sd": 0.92, "micro": 0.94, "micro-sd": 0.96, "coverage": 0.98}
+
+
+def covering_pack(box: dict | None, lat: float, lon: float) -> str | None:
+    """The agent's own SD pack whose core holds the ask (the whole box when there is one, else
+    the point): the smallest such; None when there is none (SD never loaded here, or a compiled area)."""
+    best: tuple[float, str] | None = None
+    for p in AREAS.glob("*.json"):
+        try:
+            a = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        core = a.get("core") or {}
+        if not all(k in core for k in ("west", "south", "east", "north")):
+            continue
+        inside = (
+            core["west"] <= box["west"] and core["east"] >= box["east"] and core["south"] <= box["south"] and core["north"] >= box["north"]
+            if box
+            else core["west"] <= lon <= core["east"] and core["south"] <= lat <= core["north"]
+        )
+        if not inside:
+            continue
+        area_km2 = (core["east"] - core["west"]) * (core["north"] - core["south"])
+        if best is None or area_km2 < best[0]:
+            best = (area_km2, p.stem)
+    return best[1] if best else None
+
+
+def upgrade(job: dict, api: Api, logf) -> dict[str, str]:
+    """hd_upgrade.py on the pack: each step posted as it starts, the results as the bake says them."""
+    results: dict[str, str] = {}
+    started = time.time()
+
+    def on_line(line: str) -> None:
+        if m := re.match(r"^-- ([a-z0-9-]+) \(py [\d.]+\)$", line):
+            api.post(job["rid"], "baking", must=False, step=m.group(1), area_id=job["id"], progress=HD_PROGRESS.get(m.group(1)))
+        elif m := re.match(r"^-- ([a-z0-9-]+): (ok|failed: .*|skipped.*|cannot run, .*?)(?: \((\d+) s\))?$", line):
+            results[m.group(1)] = m.group(2)
+            if m.group(2) != "ok" or m.group(3):
+                log(f"#{job['rid']} {m.group(1)}: {m.group(2)[:120]}" + (f" ({m.group(3)} s)" if m.group(3) else ""))
+        elif m := re.match(r"^\$ .*\\(us_fetch|us_terrain|wind_finish)\.py", line):
+            which = {"us_fetch": "fetch", "us_terrain": "terrain", "wind_finish": "wind"}[m.group(1)]
+            api.post(job["rid"], "baking", must=False, step=which, area_id=job["id"], progress=HD_PROGRESS.get(which))
+        elif re.match(r"^  \d\d:\d\d · \d+/\d+ directions done", line):
+            api.post(job["rid"], "baking", must=False, step="wind", area_id=job["id"], progress=None)
+
+    rc = run([sys.executable, str(HERE / "hd_upgrade.py"), "--area", job["id"]], py_env(scratch=True) | {"HUNTAPP_OUT": str(OUT / job["id"])}, logf, on_line)
+    log(f"#{job['rid']} hd upgrade exited {rc} after {time.time() - started:.0f} s")
+    if rc:
+        results["hd-upgrade"] = f"failed: hd_upgrade.py exited {rc}"
+    return results
+
+
 def handle(req: dict, api: Api) -> str:
     """Bake one claimed request through to done, review or failed. Never
     raises: whatever goes wrong is the request's failure, not the loop's."""
@@ -706,6 +768,25 @@ def handle(req: dict, api: Api) -> str:
         log(f"#{rid} {'taken up again' if req.get('resumed') else 'claimed'}: {job['name']!r} as {job['id']}, {job['jurisdiction']}, "
             f"{job['lat']:.5f}, {job['lon']:.5f}" + (f", box {km_size(job['box'])[0]:.1f} x {km_size(job['box'])[1]:.1f} km" if job["box"] else "")
             + (f" (dry run: {dry_run()})" if dry_run() else ""))
+        if req.get("kind") == "hd" and not dry_run():
+            pack = covering_pack(job["box"], job["lat"], job["lon"])
+            if not pack:
+                raise ValueError("no SD pack of ours covers this box: the spot has to be loaded (SD) before HD, or it is a compiled area's ground (HD by hand)")
+            job["id"] = pack
+            log(f"#{rid} HD on top of {pack}")
+            api.post(rid, "baking", step="hd upgrade", area_id=pack, progress=HD_PROGRESS["hd upgrade"])
+            with (LOGS / f"{rid}.log").open("a", encoding="utf-8") as logf:
+                logf.write(f"== {datetime.now():%Y-%m-%d %H:%M} request {rid}: HD on {pack}: {json.dumps(job)}\n")
+                results = upgrade(job, api, logf)
+            api.post(rid, "baking", must=False, step="checklist", area_id=pack)
+            flagged = gate(job, results)
+            if flagged:
+                api.post(rid, "review", area_id=pack, error="\n".join(flagged))
+                log(f"#{rid} parked at review after {time.time() - t:.0f} s: " + "; ".join(flagged))
+                return "review"
+            ship(rid, pack, api)
+            log(f"#{rid} HD done in {time.time() - t:.0f} s")
+            return "done"
         api.post(rid, "baking", step="area file", area_id=job["id"], progress=0.0)
         if dry_run():
             results = fake_bake(job, api)
