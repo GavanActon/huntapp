@@ -14,8 +14,9 @@
 // (wrangler.toml). Once an hour the pages that changed go to IndexNow, and
 // /<key>.txt proves the key is ours (indexnow.js).
 
+import { accountApi, randomToken, sessionOf } from './account.js'
 import { areasApi, bakeApi } from './bake.js'
-import { readyMail, requestMail } from './mail.js'
+import { readyMail, requestLink, requestMail } from './mail.js'
 import { checksExport, checksIngest } from './checks.js'
 import { INDEXNOW_KEY, indexNowKey, indexNowSweep } from './indexnow.js'
 import { partyApi } from './party.js'
@@ -51,6 +52,19 @@ export default {
     }
     if (url.pathname === '/app' || url.pathname.startsWith('/app/')) return Response.redirect(APP + url.search, 302)
     if (url.pathname === '/api/request') return areaRequest(request, env, ctx)
+    // accounts (account.js): the code by email, the session, the account's locations
+    if (url.pathname.startsWith('/api/auth/') || url.pathname === '/api/me' || url.pathname.startsWith('/api/me/')) {
+      return accountApi(request, env, url, corsFor(request), ctx, await hashOf(request.headers.get('CF-Connecting-IP') ?? ''))
+    }
+    // a request's status page (status.html, asked for as /status: the assets answer the .html name with a
+    // redirect, which would take the token out of the address), by its token: what the emails link to
+    if (/^\/l\/[A-Za-z0-9_-]{10,40}$/.test(url.pathname)) {
+      const res = await env.ASSETS.fetch(new Request(new URL('/status', url), request))
+      const r = withHeaders(res, url.pathname)
+      r.headers.set('Cache-Control', 'no-store')
+      r.headers.set('X-Robots-Tag', 'noindex')
+      return r
+    }
     if (url.pathname === '/api/requests') return requestsList(request, env, url)
     if (url.pathname === '/api/requests/act') return requestsAct(request, env, url)
     if (url.pathname.startsWith('/api/bake/')) return bakeApi(request, env, url, ctx)
@@ -122,7 +136,7 @@ async function areaRequest(request, env, ctx) {
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
-      headers: { ...cors, 'Access-Control-Allow-Methods': 'GET, POST', 'Access-Control-Allow-Headers': 'content-type', 'Access-Control-Max-Age': '86400' },
+      headers: { ...cors, 'Access-Control-Allow-Methods': 'GET, POST', 'Access-Control-Allow-Headers': 'content-type, authorization', 'Access-Control-Max-Age': '86400' },
     })
   }
   if (request.method !== 'POST' && request.method !== 'GET') return json({ error: 'post' }, 405, cors)
@@ -172,9 +186,11 @@ async function takeRequest(request, env, cors, ctx) {
     return json({ ok: true, cancelled: r.meta?.changes ?? 0 }, 200, cors)
   }
 
-  const email = String(body?.email ?? '').trim().slice(0, 200)
-  const place = String(body?.where ?? '').trim().slice(0, 500)
   const kind = body?.kind === 'hd' ? 'hd' : 'sd'
+  // a signed-in phone (account.js): the account asks, and HD is told at its address
+  const session = await sessionOf(request, env)
+  const email = String(body?.email ?? '').trim().slice(0, 200) || (kind === 'hd' && session ? session.email : '')
+  const place = String(body?.where ?? '').trim().slice(0, 500)
   const install = INSTALL.test(String(body?.install ?? '')) ? String(body.install) : null
   // an email is how HD is told it is ready; an SD build is followed by the phone that sent it, so
   // its email is optional (docs/REQUESTS.md: Gavan, 2026-10-24). Neither: nobody could hear of it
@@ -220,24 +236,38 @@ async function takeRequest(request, env, cors, ctx) {
   if (recent >= 5) return json({ error: 'busy' }, 429, cors)
 
   const country = request.cf?.country ?? null
+  // the status page's key (status.html, /l/<token>): the request's number is easy to guess, this is not
+  const token = randomToken(16)
+  const cols = 'email, place, lat, lon, game, source, country, who, tile, kind, box, install, name, stage, area_id, done_at, updated_at'
+  const vals = "?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, CASE WHEN ?15 IS NOT NULL THEN datetime('now') END, datetime('now')"
+  const binds = [email, place, lat, lon, game, source, country, who, tile, kind, box && JSON.stringify(box), install, name, stage, served]
+  let kept = true
   const id = await beforeMigration(
+    // the accounts' columns (migrations/2026-10-24-accounts.sql)
     () =>
-      env.DB.prepare(
-        `INSERT INTO requests (email, place, lat, lon, game, source, country, who, tile, kind, box, install, name, stage, area_id, done_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, CASE WHEN ?15 IS NOT NULL THEN datetime('now') END, datetime('now')) RETURNING id`,
-      )
-        .bind(email, place, lat, lon, game, source, country, who, tile, kind, box && JSON.stringify(box), install, name, stage, served)
+      env.DB.prepare(`INSERT INTO requests (${cols}, token, account) VALUES (${vals}, ?16, ?17) RETURNING id`)
+        .bind(...binds, token, session?.account ?? null)
         .first('id'),
     () =>
-      env.DB.prepare('INSERT INTO requests (email, place, lat, lon, game, source, country, who, tile, kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id')
-        .bind(email, place, lat, lon, game, source, country, who, tile, kind)
-        .first('id'),
+      beforeMigration(
+        () => {
+          kept = false
+          return env.DB.prepare(`INSERT INTO requests (${cols}) VALUES (${vals}) RETURNING id`)
+            .bind(...binds)
+            .first('id')
+        },
+        () =>
+          env.DB.prepare('INSERT INTO requests (email, place, lat, lon, game, source, country, who, tile, kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id')
+            .bind(email, place, lat, lon, game, source, country, who, tile, kind)
+            .first('id'),
+      ),
   )
+  const t = kept ? token : null
   // the note to Gavan, and to the asker when they gave an address (mail.js): after the row is in, never before;
   // one served by a pack at once is ready now, and says so
-  if (id != null) requestMail(ctx, env, { id, kind, email, place, lat, lon, tile, source, country, served })
-  if (id != null && served && email) readyMail(ctx, env, { id, email, areaId: served, tile, lat, lon })
-  return json({ ok: true, id, ...(served ? { stage: 'done', area_id: served } : {}) }, 200, cors)
+  if (id != null) requestMail(ctx, env, { id, kind, email, place, lat, lon, tile, source, country, served, token: t })
+  if (id != null && served && email) readyMail(ctx, env, { id, email, areaId: served, tile, lat, lon, token: t })
+  return json({ ok: true, id, ...(t ? { token: t } : {}), ...(served ? { stage: 'done', area_id: served } : {}) }, 200, cors)
 }
 
 /** A pack already baked (D1 `areas`, done) whose core holds the whole box, of the grade asked for
@@ -293,7 +323,11 @@ async function beforeMigration(now, before) {
  *  minutes (null when none has: never a clock made up; left out before the
  *  `runners` table exists). */
 async function requestStatus(request, env, cors) {
-  const id = Number(new URL(request.url).searchParams.get('id'))
+  const q = new URL(request.url).searchParams
+  // by its token (the status page, status.html): the ground and the name too, and the app's link; by its number, never
+  const token = q.get('t')
+  if (token != null) return tokenStatus(env, cors, token)
+  const id = Number(q.get('id'))
   if (!Number.isInteger(id) || id <= 0) return json({ error: 'id' }, 400, cors)
   const cols = "id, IFNULL(kind, 'sd') AS kind, stage, step, area_id, error, IFNULL(updated_at, at) AS updated"
   // `progress` came with the packs (migrations/2026-10-24-packs.sql): a database without it answers without
@@ -301,6 +335,31 @@ async function requestStatus(request, env, cors) {
     () => env.DB.prepare(`SELECT ${cols}, progress FROM requests WHERE id = ?`).bind(id).first(),
     () => env.DB.prepare(`SELECT ${cols} FROM requests WHERE id = ?`).bind(id).first(),
   )
+  return statusOf(env, cors, row)
+}
+
+/** GET /api/request?t=: the status page's answer, everything the phone's is and the request's
+ *  ground (its box, its name), when it was asked, and where it opens in the app. Never the email. */
+async function tokenStatus(env, cors, token) {
+  if (!/^[A-Za-z0-9_-]{10,40}$/.test(token)) return json({ error: 't' }, 400, cors)
+  const row = await env.DB.prepare(
+    "SELECT id, IFNULL(kind, 'sd') AS kind, stage, step, area_id, error, IFNULL(updated_at, at) AS updated, progress, box, tile, lat, lon, name, at FROM requests WHERE token = ?",
+  )
+    .bind(token)
+    .first()
+    .catch(() => null)
+  if (!row) return json({ error: 'no such request' }, 404, cors)
+  let box = null
+  try {
+    box = row.box ? JSON.parse(row.box) : null
+  } catch {
+    /* none */
+  }
+  const { box: _b, tile, lat, lon, ...rest } = row
+  return statusOf(env, cors, { ...rest, asked: row.at, box: box ?? (tile ? boxOfTile(tile) : null), link: requestLink({ tile, lat, lon, areaId: row.area_id }) })
+}
+
+async function statusOf(env, cors, row) {
   if (!row) return json({ error: 'no such request' }, 404, cors)
   const out = { ...row, error: shortError(row.error) }
   if (row.stage === 'queued' || row.stage === 'claimed' || row.stage === 'baking') Object.assign(out, await howLong(env, row))

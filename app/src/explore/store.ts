@@ -59,6 +59,8 @@ export interface Requested {
   progress?: number | null
   /** why a build is held on the phone (the queue turned it away for now), for the devlog */
   held?: string | null
+  /** its status page's key (groundwind.app/l/<token>), as the queue handed it back */
+  token?: string
 }
 
 interface ExploreState {

@@ -34,12 +34,15 @@ CREATE TABLE IF NOT EXISTS requests (
   done_at TEXT,
   updated_at TEXT,       -- the stage's last change
   agent TEXT,            -- the machine baking it (XEVO)
-  progress REAL          -- 0 to 1: how far the bake is, by its steps' measured times (2026-10-24)
+  progress REAL,         -- 0 to 1: how far the bake is, by its steps' measured times (2026-10-24)
+  token TEXT,            -- the status page's key (status.html at /l/<token>; 2026-10-24)
+  account INTEGER        -- the account that asked, when signed in (account.js)
 );
 -- a table made before 2026-10-08 needs the two columns added:
 --   ALTER TABLE requests ADD COLUMN tile TEXT; ALTER TABLE requests ADD COLUMN kind TEXT;
 -- and one made before 2026-10-11 the bake loop's: migrations/2026-10-11-requests-bake.sql,
--- before 2026-10-24 the packs': migrations/2026-10-24-packs.sql
+-- before 2026-10-24 the packs': migrations/2026-10-24-packs.sql, and the accounts':
+-- migrations/2026-10-24-accounts.sql
 CREATE INDEX IF NOT EXISTS requests_who_at ON requests (who, at);
 
 -- The packs baked on request (pipeline/agent.py posts each one when it is
@@ -166,3 +169,42 @@ CREATE TABLE IF NOT EXISTS indexnow (
   hash TEXT NOT NULL,         -- 24 hex of the page's SHA-256 when it was sent
   sent INTEGER NOT NULL       -- ms
 );
+
+-- Accounts (account.js; docs/REQUESTS.md, Accounts): an email and a 6-digit
+-- code, the session a long random token; only hashes of codes and tokens.
+CREATE TABLE IF NOT EXISTS accounts (
+  id INTEGER PRIMARY KEY,
+  email TEXT NOT NULL UNIQUE,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS sessions (
+  token_hash TEXT PRIMARY KEY,
+  account INTEGER NOT NULL,
+  install TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  last_seen TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS codes (
+  id INTEGER PRIMARY KEY,
+  email TEXT NOT NULL,
+  hash TEXT NOT NULL,
+  who TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  tries INTEGER NOT NULL DEFAULT 0,
+  used INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS codes_email_at ON codes (email, created_at);
+CREATE TABLE IF NOT EXISTS locations (
+  account INTEGER NOT NULL,
+  id TEXT NOT NULL,
+  name TEXT,
+  j TEXT,
+  pack TEXT,
+  at INTEGER,
+  edited INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  removed_at TEXT,
+  removed_ms INTEGER,
+  PRIMARY KEY (account, id)
+);
+CREATE INDEX IF NOT EXISTS requests_token ON requests (token);

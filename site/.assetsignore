@@ -11,3 +11,5 @@ indexnow.js
 sitestats.js
 bake.js
 migrations
+mail.js
+account.js

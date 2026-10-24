@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Your spot · Groundwind</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0a100b">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Sofia+Sans+Extra+Condensed:wght@800&family=Sofia+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>
+/* A request's status page (worker.js serves it at /l/<token>; docs/REQUESTS.md, Status): what the
+   emails link to, on any phone or computer. Absolute paths: the address is /l/<token>. */
+.st { max-width: 36em; padding-block: 8px 48px; }
+.st h1 { font-size: clamp(2.4rem, 8vw, 3.6rem); }
+.st-state { margin-top: 18px; font-size: 1.25rem; color: var(--ink); }
+.st-state.snag { color: var(--scent); }
+.st-bar { margin-top: 14px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.st-bar > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.6s var(--ease); }
+.st-sub { margin-top: 10px; color: var(--faint); font-size: 0.95rem; }
+.st-map { margin-top: 26px; height: 260px; border-radius: 10px; border: 1px solid var(--line); overflow: hidden; background: var(--raised); }
+.st-open { margin-top: 26px; display: grid; gap: 14px; justify-items: start; }
+.st-qr { display: none; align-items: center; gap: 14px; color: var(--dim); font-size: 0.95rem; }
+.st-qr canvas, .st-qr img { width: 96px; height: 96px; background: #fff; padding: 6px; border-radius: 6px; }
+.st-hd { margin-top: 16px; color: var(--dim); }
+.maplibregl-ctrl-attrib { font-size: 10px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="top">
+  <a class="mark" href="/" aria-label="Groundwind home">
+    <img src="/img/app-icon.png" width="192" height="192" alt="">
+    <b>Groundwind</b>
+  </a>
+</header>
+
+<main class="st" aria-live="polite">
+  <p class="eyebrow" id="kind">Your spot</p>
+  <h1 id="name">Your spot</h1>
+  <p class="st-state" id="state">Reading how it is getting on…</p>
+  <div class="st-bar" id="bar" hidden><i></i></div>
+  <p class="st-sub" id="sub"></p>
+  <p class="st-hd" id="hd" hidden>HD adds the 1 m terrain where it has been flown, the bush and shooting lanes measured from the point cloud, and the full wind solve over this ground.</p>
+  <div class="st-map" id="map" hidden></div>
+  <div class="st-open" id="open" hidden>
+    <a class="btn btn-go" id="go" href="https://hunt.groundwind.app/">Open it in the app</a>
+    <div class="st-qr" id="qr"><span id="qrimg"></span><span>On a computer? Point your phone's camera here to open it there.</span></div>
+  </div>
+</main>
+
+<footer>
+  <p class="links"><a href="/">Groundwind</a><a href="/guide">How to use it</a><a href="mailto:hello@groundwind.app">hello@groundwind.app</a><span>© 2026 Groundwind</span></p>
+</footer>
+
+</div>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+// The request by its token (worker.js tokenStatus): its stage as the bake agent reported it, how far,
+// how long, its box and name, and where it opens in the app. Asked again every 30 s while on screen,
+// until the request is settled. Words as the app's Locations rows say them (explore/requests.ts).
+const token = location.pathname.split('/').pop()
+const $ = (id) => document.getElementById(id)
+const SETTLED = new Set(['done', 'failed', 'cancelled'])
+const ORDINAL = ['Next', '2nd', '3rd']
+let map = null
+let shownLink = null
+
+function about(m) {
+  if (m < 2) return 'a minute or two'
+  if (m < 60) return `about ${m < 10 ? Math.round(m) : Math.round(m / 5) * 5} min`
+  return `about ${Math.round(m / 30) / 2} h`
+}
+
+function words(r) {
+  const time = r.minutes != null ? ` · ${about(r.minutes)}` : ''
+  switch (r.stage) {
+    case 'queued': {
+      const place = r.ahead == null ? 'In line' : `${ORDINAL[r.ahead] ?? `${r.ahead + 1}th`} in line`
+      return `${place}${time}${r.minutes === null && r.ahead != null ? ' · our machines are off for now' : ''}`
+    }
+    case 'claimed': return `Starting${time}`
+    case 'baking': return `Building${r.progress != null ? ` · ${Math.round(r.progress * 100)}%` : ''}${time}`
+    case 'review': return 'Built, being checked before it goes out'
+    case 'done': return 'Built. It is ready.'
+    case 'failed': return 'We hit a snag on this one; we are on it.'
+    case 'cancelled': return 'Cancelled.'
+    default: return 'In line'
+  }
+}
+
+function drawMap(box) {
+  if (!box || map) return
+  $('map').hidden = false
+  const ring = [[box.west, box.north], [box.east, box.north], [box.east, box.south], [box.west, box.south], [box.west, box.north]]
+  map = new maplibregl.Map({
+    container: 'map',
+    style: {
+      version: 8,
+      sources: {
+        osm: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 17, attribution: '© OpenStreetMap contributors' },
+        box: { type: 'geojson', data: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] }, properties: {} } },
+      },
+      layers: [
+        { id: 'osm', type: 'raster', source: 'osm', paint: { 'raster-saturation': -0.4, 'raster-brightness-max': 0.85 } },
+        { id: 'box-fill', type: 'fill', source: 'box', paint: { 'fill-color': '#d2a85c', 'fill-opacity': 0.12 } },
+        { id: 'box-line', type: 'line', source: 'box', paint: { 'line-color': '#d2a85c', 'line-width': 2.5 } },
+      ],
+    },
+    bounds: [[box.west, box.south], [box.east, box.north]],
+    fitBoundsOptions: { padding: 40 },
+    interactive: true,
+    attributionControl: { compact: true },
+  })
+}
+
+async function showQr(link) {
+  // a phone opens it from the button; a computer gets the code to point a phone at
+  if (matchMedia('(pointer: coarse)').matches || shownLink === link) return
+  shownLink = link
+  try {
+    await new Promise((ok, no) => {
+      if (window.qrcode) return ok()
+      const s = document.createElement('script')
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js'
+      s.onload = ok
+      s.onerror = no
+      document.head.appendChild(s)
+    })
+    const q = window.qrcode(0, 'M')
+    q.addData(link)
+    q.make()
+    $('qrimg').innerHTML = q.createImgTag(4, 0)
+    $('qr').style.display = 'flex'
+  } catch {
+    /* the button alone */
+  }
+}
+
+let timer = 0
+async function look() {
+  window.clearTimeout(timer)
+  let r
+  try {
+    const res = await fetch(`/api/request?t=${encodeURIComponent(token)}`, { cache: 'no-store' })
+    if (res.status === 404) {
+      $('state').textContent = 'No such request: the link may be cut short.'
+      return
+    }
+    // busy or down for a moment: what is shown stays, asked again soon
+    if (!res.ok) {
+      timer = window.setTimeout(look, 30_000)
+      return
+    }
+    r = await res.json()
+  } catch {
+    $('state').textContent = 'No signal: trying again in a moment.'
+    timer = window.setTimeout(look, 30_000)
+    return
+  }
+  const hd = r.kind === 'hd'
+  $('kind').textContent = hd ? 'Your HD build' : 'Your spot'
+  $('name').textContent = r.name || (hd ? 'HD for your spot' : 'Your spot')
+  document.title = `${r.name || 'Your spot'} · Groundwind`
+  $('state').textContent = words(r)
+  $('state').classList.toggle('snag', r.stage === 'failed')
+  const building = r.stage === 'baking' && r.progress != null
+  $('bar').hidden = !building
+  if (building) $('bar').firstElementChild.style.width = `${Math.max(4, r.progress * 100)}%`
+  $('sub').textContent = r.asked ? `Asked ${new Date(`${r.asked.replace(' ', 'T')}Z`).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}` : ''
+  $('hd').hidden = !hd || r.stage === 'done'
+  drawMap(r.box)
+  if (r.link) {
+    $('go').href = r.link
+    $('open').hidden = false
+    $('go').textContent = r.stage === 'done' ? 'Open it in the app' : 'Open the spot in the app'
+    showQr(r.link)
+  }
+  if (!SETTLED.has(r.stage)) timer = window.setTimeout(look, 30_000)
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') look()
+})
+look()
+</script>
+</body>
+</html>

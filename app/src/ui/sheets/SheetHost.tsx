@@ -18,6 +18,7 @@ const OfflineSheet = lazy(() => import('./OfflineSheet'))
 const LayersSheet = lazy(() => import('./LayersSheet'))
 const CoordsSheet = lazy(() => import('./CoordsSheet'))
 const LocationsSheet = lazy(() => import('./LocationsSheet'))
+const AccountSheet = lazy(() => import('./AccountSheet'))
 const SatSheet = lazy(() => import('./SatSheet'))
 const PartySheet = lazy(() => import('./PartySheet'))
 const GradeSheet = lazy(() => import('./GradeSheet'))
@@ -40,6 +41,7 @@ const TITLES: Record<SheetKind, string> = {
   layers: '',
   coords: 'Go to coordinates',
   locations: 'Locations',
+  account: 'Your account',
   sat: 'Weather by satellite',
   party: 'Party',
   grade: '',
@@ -81,6 +83,8 @@ function panel(s: Sheet): ReactNode {
       return <CoordsSheet key={s.text ?? ''} text={s.text} />
     case 'locations':
       return <LocationsSheet />
+    case 'account':
+      return <AccountSheet />
     case 'sat':
       return <SatSheet />
     case 'party':

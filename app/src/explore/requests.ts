@@ -1,4 +1,5 @@
 import { API } from '../analytics'
+import { authHeaders } from '../account/session'
 import { ACTIVE_AREA } from '../areas'
 import { packArea, readLocations, setLocationPack } from '../areas/runtime'
 import { devlog, installId } from '../devlog'
@@ -156,7 +157,8 @@ async function send(id: string, r: Requested): Promise<void> {
   try {
     res = await fetch(`${API}/api/request`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      // signed in, the account asks (site/account.js): the build is its location's on every phone
+      headers: { 'content-type': 'application/json', ...authHeaders() },
       body: JSON.stringify({
         ...(r.email ? { email: r.email } : {}),
         where: `${r.name ?? 'Spot'} · ${id} · ${size.w.toFixed(1)} × ${size.h.toFixed(1)} km`,
@@ -174,9 +176,9 @@ async function send(id: string, r: Requested): Promise<void> {
     // no signal after all: sent at the next look
     return
   }
-  const back = (await res.json().catch(() => null)) as ({ id?: number; error?: string } & Status) | null
+  const back = (await res.json().catch(() => null)) as ({ id?: number; error?: string; token?: string } & Status) | null
   if (res.ok && typeof back?.id === 'number') {
-    useExplore.getState().patchBuild(id, { rid: back.id, held: null, ...statusOf(back) })
+    useExplore.getState().patchBuild(id, { rid: back.id, held: null, ...statusOf(back), ...(typeof back.token === 'string' ? { token: back.token } : {}) })
     devlog('explore', `build sent · ${id} · #${back.id}${back.stage === 'done' ? ` · served by ${back.area_id}` : ''}`)
     if (back.stage === 'done' && back.area_id) await packDone(id, back.area_id)
     return

@@ -150,8 +150,17 @@ async function report(request, env, id, ctx) {
     ])
     if (!moved.meta?.changes) return refused(env, id)
     // "it's ready" to the one who asked, if they gave an address (mail.js; the agent's task leaves the email out, so it is read here)
-    const who = await env.DB.prepare('SELECT email, tile, lat, lon FROM requests WHERE id = ?').bind(id).first()
-    if (who?.email) readyMail(ctx, env, { id, email: who.email, areaId, tile: who.tile, lat: who.lat, lon: who.lon })
+    const who =
+      (await env.DB.prepare('SELECT email, tile, lat, lon, token, account FROM requests WHERE id = ?').bind(id).first().catch(() => null)) ??
+      (await env.DB.prepare('SELECT email, tile, lat, lon FROM requests WHERE id = ?').bind(id).first())
+    // a signed-in asker's location gets its pack in the account (account.js), so every phone they sign in on opens it built
+    if (who?.account && who.tile) {
+      await env.DB.prepare("UPDATE locations SET pack = ?1, updated_at = datetime('now') WHERE account = ?2 AND id = ?3 AND removed_at IS NULL")
+        .bind(areaId, who.account, who.tile)
+        .run()
+        .catch(() => {})
+    }
+    if (who?.email) readyMail(ctx, env, { id, email: who.email, areaId, tile: who.tile, lat: who.lat, lon: who.lon, token: who.token ?? null })
     return json({ ok: true, id, stage, area_id: areaId }, 200)
   }
 

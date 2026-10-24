@@ -303,7 +303,7 @@ table_info` after.
 | --- | --- | --- | --- |
 | 1 | Locations own packs: the phone keeps a pack's area file; Load starts the build (one per phone, email optional for SD); in line, time, how far; upgrade in place; reuse; the list to the demos; unguessable pack ids; the demo split | built 2026-10-24 | the Worker deploy and D1 columns; MAIL on with it |
 | 2 | The SD build cut to the data | built 2026-10-24 | the Worker deploy for the runners fix |
-| 3 | Accounts: the code, sessions, `/api/me/locations`, the status page | 3–4 days | the Worker deploy, D1 tables |
+| 3 | Accounts: the code, sessions, `/api/me/locations`, the status page | built 2026-10-24 | the Worker deploy, D1 tables |
 | 4 | HD through the agent: WindNinja on the R2 queue, Install HD | about a week | none |
 | later | Payments, unlocks, HD across a party; Google and Apple with the store build | | |
 
@@ -416,3 +416,71 @@ is not kept, so only the first asker is written to.
 bakes, so with only `/api/bake/next` noting it a phone in line read "our
 machines are off for now" through a whole bake. `bake.js report` now
 notes it too, with each step: in the next Worker deploy.
+
+## Step 3, as built (2026-10-24)
+
+Gavan's "3". Tested against a local Worker and database, and in the app
+with two phones; the Worker parts wait for Gavan's deploy and the
+migration.
+
+**The Worker** (site/account.js, worker.js, bake.js, mail.js):
+
+- `POST /api/auth/start {email}`: a 6-digit code by email (from
+  hello@), good for 15 minutes and 5 tries; at most 5 an hour for one
+  address and 10 for one sender. The same answer whether the address has
+  an account or not.
+- `POST /api/auth/verify {email, code, install}`: the account, made the
+  first time, and a session: a random token the phone keeps; D1 keeps a
+  SHA-256 of it, and of each code. A session in use is pushed on daily
+  and lapses after 400 days unused. `POST /api/auth/out` ends it.
+- `GET /api/me`, `GET|POST /api/me/locations {locations, removed}`: the
+  phone's list merged into the account's and the list back. A location
+  the phone has is added; the later rename wins (`edited`); the account's
+  pack stays; one removed on any phone is gone from all, unless a phone
+  loads it again after the removal (`at` past `removed_ms`).
+- `POST /api/request` with a session: the account asks (`requests.account`);
+  HD takes the account's email. Every request gets a token for its status
+  page, sent back to the phone. A done bake gives the account's location
+  its pack, so every phone signed in opens it built.
+- `/l/<token>` (status.html): the request's name, its place in line or how
+  far, the box on a map (OpenStreetMap), Open in the app, and a QR code on
+  a computer; asked again every 30 s until settled. `GET /api/request?t=`
+  is its answer, with the box, the name and the app's link; by its number
+  a request still says neither. The asker's emails link there.
+- `account.js` and `mail.js` are kept off the public site (.assetsignore).
+- `migrations/2026-10-24-accounts.sql`: accounts, sessions, codes,
+  locations, and `requests.token`, `requests.account`. Before it runs the
+  account routes answer 503 and requests go in as before.
+
+**The phone** (app/src/account/, ui/sheets/AccountSheet.tsx):
+
+- Settings, Your account (and the last row of Locations): the email, Send
+  me a code, the code, Sign in; signed in, whose and Sign out.
+- Signed in, the phone's locations and the account's are merged at the
+  start, after signing in, and after a rename or a removal here; ones
+  from other phones are offered with "N locations from your other phones
+  · Show" (the area list is the start's, so Show reloads).
+- The HD card: signed out, the sign-in first; signed in, Get HD, told at
+  the account's email. (hunt-dev and the dev server simulate HD orders,
+  as before, so the sign-in shows there only through Settings.)
+- Builds and HD asks carry the session; each keeps its status token.
+
+**Tested:** 30 Worker checks (codes, a wrong code and its tries left, a
+used code, the hash kept, two phones merging, the later rename, a
+removal reaching the other phone, a location loaded again coming back,
+the account and token on an ask, HD at the account's email, the status by
+token and not by number, the page at /l/<token>, the modules not served,
+a done bake giving the account's location its pack, sign-out, the hourly
+cap); the 27 request checks again; in the app, phone 1 signs in by the
+emailed code, phone 2 signs in fresh and is offered "1 location from your
+other phones", Show brings it into Locations; the status page on a phone
+and a computer. Found and fixed on the way: the assets answer
+`/status.html` with a redirect to `/status`, which took the token out of
+the address, so the Worker asks for `/status`.
+
+**To go live** (Gavan, from `site/`):
+
+1. `npx wrangler d1 execute groundwind --remote --file migrations/2026-10-24-accounts.sql`
+2. `npx wrangler deploy`
+3. Promote the app to `live` when hunt-dev reads right: signing in on
+   live is what HD needs.

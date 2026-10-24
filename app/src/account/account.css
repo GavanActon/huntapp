@@ -1,0 +1,45 @@
+/* Sign in (account/SignIn.tsx) and the Account sheet (ui/sheets/AccountSheet.tsx) */
+.signin {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.signin input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--c-ink-rgb), 0.25);
+  background: rgba(10, 20, 12, 0.5);
+  color: inherit;
+  font-size: 16px; /* 16 px: an iPhone zooms the page into a smaller field */
+}
+.signin input.signin-code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 22px;
+  letter-spacing: 0.3em;
+  text-align: center;
+}
+.signin-note,
+.signin-again {
+  font-size: calc(13px * var(--ui-scale));
+}
+.signin-err {
+  font-size: calc(13px * var(--ui-scale));
+  color: var(--c-warn);
+}
+
+.account {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 8px;
+}
+.account p {
+  margin: 0;
+  font-size: calc(14px * var(--ui-scale));
+  line-height: 1.45;
+}
+.account .account-who {
+  font-weight: 650;
+}

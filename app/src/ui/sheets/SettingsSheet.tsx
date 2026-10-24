@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type JSX } from 'react'
+import { useSession } from '../../account/session'
 import { ACTIVE_AREA } from '../../areas'
 import { hasSdWind, SD_PREVIEW } from '../../config'
 import { setStatsOn, statsId, statsOn } from '../../analytics'
@@ -320,6 +321,8 @@ function SendSettingsRow({ online }: { online: boolean }): JSX.Element {
 export default function SettingsSheet(): JSX.Element {
   const units = useAppStore((s) => s.units)
   const setUnits = useAppStore((s) => s.setUnits)
+  // signed in or not (account/session.ts): the row says whose, or Sign in
+  const account = useSession((s) => s.email)
   const textSize = useAppStore((s) => s.textSize)
   const stripButtons = useAppStore((s) => s.stripButtons)
   const setStripButtons = useAppStore((s) => s.setStripButtons)
@@ -380,6 +383,13 @@ export default function SettingsSheet(): JSX.Element {
         </div>
       )}
       <WeatherRow online={online} />
+      <button className="st-row st-two" onClick={() => pushSheet({ kind: 'account' })}>
+        <span>
+          Your account
+          <small>{account ?? 'your locations on every phone, and HD'}</small>
+        </span>
+        <span className="dim">{account ? '›' : 'Sign in ›'}</span>
+      </button>
 
       <div className="st-sec">Map</div>
       <button className="st-row" onClick={() => pushSheet({ kind: 'buttons' })}>

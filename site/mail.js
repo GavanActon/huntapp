@@ -26,6 +26,10 @@ export function mail(ctx, binding, msg) {
 
 const KIND = { sd: 'SD', hd: 'HD' }
 
+/** A request's status page (status.html, served at /l/<token> by worker.js): what the emails link to,
+ *  read on any phone or computer, with Open in the app. */
+export const statusLink = (token) => `https://groundwind.app/l/${token}`
+
 /** Where a request opens in the app: the location its box makes, on the pack baked for it once
  *  there is one (app/src/areas/runtime.ts addressLocation reads area and p), else its point. */
 export function requestLink(r) {
@@ -55,13 +59,14 @@ export function requestMail(ctx, env, r) {
   })
   // the asker only when they gave an address, and not for one ready already (readyMail says that)
   if (!r.email || r.served) return
+  const follow = r.token ? `\n\nSee how it's getting on: ${statusLink(r.token)}` : ''
   mail(ctx, env.MAIL, {
     to: r.email,
     subject: kind === 'HD' ? 'We have your Groundwind HD request' : "We're building your Groundwind spot",
     text:
       kind === 'HD'
-        ? `Your HD request (#${r.id}) is in the queue. We'll write again when it's ready.\n\nGroundwind`
-        : `We're building your spot (#${r.id}): its heat map, routes and its own ground wind. We'll write again when it's ready.\n\nGroundwind`,
+        ? `Your HD request (#${r.id}) is in the queue. We'll write again when it's ready.${follow}\n\nGroundwind`
+        : `We're building your spot (#${r.id}): its heat map, routes and its own ground wind. We'll write again when it's ready.${follow}\n\nGroundwind`,
   })
 }
 
@@ -70,6 +75,6 @@ export function readyMail(ctx, env, r) {
   mail(ctx, env.MAIL, {
     to: r.email,
     subject: 'Your Groundwind spot is ready',
-    text: `Your spot is built (#${r.id}). Open it here:\n${requestLink(r)}\n\nGroundwind`,
+    text: `Your spot is built (#${r.id}). Open it here:\n${r.token ? statusLink(r.token) : requestLink(r)}\n\nGroundwind`,
   })
 }

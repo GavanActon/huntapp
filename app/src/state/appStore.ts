@@ -25,6 +25,8 @@ export type Sheet =
    *  there, a point a link sent in no area) */
   | { kind: 'coords'; text?: string }
   | { kind: 'locations' }
+  /** signed in or not: the email and its code, or whose it is and Sign out (ui/sheets/AccountSheet.tsx) */
+  | { kind: 'account' }
   /** weather by satellite text: the request, then the paste */
   | { kind: 'sat' }
   | { kind: 'party' }
@@ -55,6 +57,8 @@ export const SHEET_HALF_PCT: Record<SheetKind, number> = {
   // the Paste button, the box, the areas and the first of Recent, the map still in view
   coords: 46,
   locations: 34,
+  // the words, the email or the code, the button
+  account: 46,
   // the request, its two buttons and the paste box
   sat: 62,
   // the invite's QR code and the members under it

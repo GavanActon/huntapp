@@ -35,6 +35,8 @@ export interface Location {
   jurisdiction: string
   /** loaded at, ms */
   at: number
+  /** renamed at, ms: a signed-in phone's latest name wins across devices (account/sync.ts) */
+  edited?: number
   /** the pack baked for it, once the queue said which (explore/requests.ts), or a link named */
   pack?: string
   /** that pack's area file as the Worker served it (/areas/<pack>/area.json), kept, so the
@@ -76,8 +78,20 @@ export function keepLocation(l: Location): void {
   writeLocations([...readLocations().filter((o) => o.id !== l.id), l])
 }
 
-export function dropLocation(id: string): void {
+/** Locations removed on this phone the account has not heard of yet (account/sync.ts sends them). */
+export const REMOVED_KEY = 'huntapp-removed-locations'
+
+/** A location off the phone; `told` false when the account itself said it is gone (nothing to tell it back). */
+export function dropLocation(id: string, told = true): void {
   writeLocations(readLocations().filter((o) => o.id !== id))
+  if (!told) return
+  try {
+    const was = JSON.parse(localStorage.getItem(REMOVED_KEY) ?? '[]') as unknown
+    const list = Array.isArray(was) ? was.filter((x): x is string => typeof x === 'string' && x !== id) : []
+    localStorage.setItem(REMOVED_KEY, JSON.stringify([...list, id].slice(-200)))
+  } catch {
+    /* private mode: no account to tell either */
+  }
 }
 
 /** The pack baked for a kept location, and its area file once fetched (explore/requests.ts): kept

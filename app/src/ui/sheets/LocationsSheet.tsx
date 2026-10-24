@@ -15,6 +15,8 @@ import { removeFiles, useDownloads } from '../../offline/downloads'
 import { bundleOf, keepsArea } from '../../offline/updates'
 import { shareArea } from '../../share/share'
 import { useAppStore } from '../../state/appStore'
+import { syncLocations } from '../../account/sync'
+import { useSession } from '../../account/session'
 import { IconLocate, IconShare } from '../icons'
 import './log.css'
 
@@ -37,6 +39,9 @@ export default function LocationsSheet(): JSX.Element {
   const asks = Object.entries(requested).filter(([, r]) => r.kind === 'hd' && r.stage !== 'cancelled').sort((a, b) => b[1].at - a[1].at)
   // each loaded location's SD build (explore/requests.ts), shown in its row
   const builds = useExplore((s) => s.builds)
+  // signed in, the list is the account's on every phone (account/sync.ts)
+  const account = useSession((s) => s.email)
+  const pushSheet = useAppStore((s) => s.pushSheet)
   useEffect(() => checkAsks(), [])
   // what a row's Share says when the message went to the clipboard, or did not
   const [said, setSaid] = useState<{ id: string; text: string } | null>(null)
@@ -51,7 +56,8 @@ export default function LocationsSheet(): JSX.Element {
     const v = window.prompt('Name this spot', now)?.trim().slice(0, 60)
     const l = readLocations().find((x) => x.id === a.id)
     if (!v || v === now || !l) return
-    keepLocation({ ...l, name: v })
+    keepLocation({ ...l, name: v, edited: Date.now() })
+    void syncLocations()
     if (a.id === ACTIVE_AREA.id) {
       const u = new URL(window.location.href)
       u.searchParams.set('name', v)
@@ -194,6 +200,8 @@ export default function LocationsSheet(): JSX.Element {
                       dropLocation(a.id)
                       // its build too: one not sent goes, one in the queue is cancelled there
                       dropBuild(a.id)
+                      // and off the account's list, so every phone signed in loses it too
+                      void syncLocations()
                     } else dropKept(a.id)
                     if (files.length) void removeFiles(files, a.id)
                     forgetArea(a.id)
@@ -236,6 +244,12 @@ export default function LocationsSheet(): JSX.Element {
           <button className="row-text place-go" onClick={add}>
             <span className="row-title">Add a location</span>
             <span className="row-desc">a box round the spot: load it for the forecast and wind, or ask for HD</span>
+          </button>
+        </div>
+        <div className="place-row">
+          <button className="row-text place-go" onClick={() => pushSheet({ kind: 'account' })}>
+            <span className="row-title">{account ? 'On every phone' : 'Sign in'}</span>
+            <span className="row-desc">{account ? `signed in as ${account}: these follow you` : 'keep these locations on every phone you use'}</span>
           </button>
         </div>
       </div>

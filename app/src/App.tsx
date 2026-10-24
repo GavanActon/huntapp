@@ -55,6 +55,7 @@ import AreaLook from './ui/AreaLook'
 import { initStatsWatch } from './stats/watch'
 import BoxCard from './explore/BoxCard'
 import { startAskChecks } from './explore/requests'
+import { startAccountSync } from './account/sync'
 import { takeLoadedNow } from './areas/load'
 import { useExplore } from './explore/store'
 import { toast } from './ui/Toast'
@@ -169,6 +170,8 @@ export default function App() {
     initScentLayer()
     // how this phone's asks for HD are getting on (the Locations sheet)
     startAskChecks()
+    // signed in: this phone's locations and the account's merged (account/sync.ts)
+    startAccountSync()
     // arrived by a Load: the name it was given and where to change it, a moment longer than a toast
     const loaded = takeLoadedNow()
     if (loaded) window.setTimeout(() => toast(`Loaded ${loaded} · rename it in Locations`, 5000), 1500)

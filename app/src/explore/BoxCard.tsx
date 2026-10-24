@@ -1,4 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { authHeaders, useSession } from '../account/session'
+import SignIn from '../account/SignIn'
 import { API } from '../analytics'
 import { AREA_LIST } from '../areas'
 import { switchArea } from '../areas/switch'
@@ -68,6 +70,8 @@ export default function BoxCard() {
   const markRequested = useExplore((s) => s.markRequested)
   const unrequest = useExplore((s) => s.unrequest)
   const select = useExplore((s) => s.select)
+  // HD needs an account (docs/REQUESTS.md): it is told at the account's email, and follows it to every phone
+  const account = useSession((s) => s.email)
   // the coverage grid is read off its map layer, drawn only while Explore is on
   const exploring = useAppStore((s) => s.exploreMode)
   const addPlace = usePlacesStore((s) => s.add)
@@ -161,7 +165,13 @@ export default function BoxCard() {
       devlog('explore', `simulated HD order ${id}${sel!.extend ? ` · extends ${sel!.extend.areaId}` : ''}`)
       return
     }
-    if (!emailOk) {
+    // HD is the account's: its email from the session; an SD ask still takes the address typed
+    const to = kind === 'hd' ? useSession.getState().email : email
+    if (kind === 'hd' && !to) {
+      setErr('Sign in first: HD is told at your email.')
+      return
+    }
+    if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
       setErr('An email address: the pack is sent there when it is ready.')
       return
     }
@@ -170,10 +180,10 @@ export default function BoxCard() {
     try {
       const r = await fetch(`${API}/api/request`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', ...authHeaders() },
         // the box rides in `tile` (b-<x0>-<y0>-<x1>-<y1>, habitat-cell indices: explore/box.ts) and in words in `where`
         body: JSON.stringify({
-          email,
+          email: to,
           where: `${sel!.extend ? `extend ${sel!.extend.areaId} · ` : ''}${id} · ${b.south.toFixed(5)}, ${b.west.toFixed(5)} to ${b.north.toFixed(5)}, ${b.east.toFixed(5)} · ${size.w.toFixed(1)} × ${size.h.toFixed(1)} km`,
           lat: clat,
           lon: clon,
@@ -185,8 +195,8 @@ export default function BoxCard() {
         }),
       })
       if (!r.ok) throw new Error(`${r.status}`)
-      const back = (await r.json().catch(() => null)) as { id?: number } | null
-      markRequested(id, { kind, at: Date.now(), rid: typeof back?.id === 'number' ? back.id : undefined, stage: 'queued' })
+      const back = (await r.json().catch(() => null)) as { id?: number; token?: string } | null
+      markRequested(id, { kind, at: Date.now(), rid: typeof back?.id === 'number' ? back.id : undefined, stage: 'queued', ...(typeof back?.token === 'string' ? { token: back.token } : {}) })
       order()
       devlog('explore', `asked for ${id} · ${kind} · ${size.w.toFixed(1)}×${size.h.toFixed(1)} km`)
     } catch (e) {
@@ -352,16 +362,24 @@ export default function BoxCard() {
       {/* HD is the ask now (SD loads above): the email only with an HD button or its size note */}
       {!req && (hdOk || w.hd) && (
         <div className="boxcard-ask">
-          {/* a dev build's HD order is simulated: no email to send it to */}
-          {!(GRADE_SWITCH && sel.extend) && <input type="email" inputMode="email" placeholder="Your email, for the pack" value={email} onChange={(e) => setEmail(e.target.value)} />}
-          <div className="boxcard-btns">
-            {/* SD needs no ask now: Load above makes it a location at once (the SD request path stays for the Worker) */}
-            {hdOk && (
-              <button className="btn" disabled={busy != null} onClick={() => ask('hd')}>
-                {busy === 'hd' ? 'Sending…' : `${sel.extend ? 'Extend HD' : 'Get HD'} · about ${packMb(box, 'hd')} MB`}
-              </button>
-            )}
-          </div>
+          {/* HD is the account's (a dev build's order is simulated: nothing to sign in for). Signed out, the sign-in first;
+              signed in, Get HD, told at the account's email */}
+          {hdOk && !account && !GRADE_SWITCH ? (
+            <>
+              <div className="dim boxcard-note">HD is yours on every phone you sign in on: sign in with your email first. No password: we email you a code.</div>
+              <SignIn />
+            </>
+          ) : (
+            <div className="boxcard-btns">
+              {/* SD needs no ask now: Load above makes it a location at once (the SD request path stays for the Worker) */}
+              {hdOk && (
+                <button className="btn" disabled={busy != null} onClick={() => ask('hd')}>
+                  {busy === 'hd' ? 'Sending…' : `${sel.extend ? 'Extend HD' : 'Get HD'} · about ${packMb(box, 'hd')} MB`}
+                </button>
+              )}
+            </div>
+          )}
+          {hdOk && account && <div className="dim boxcard-note">We email {account} when it is ready.</div>}
           {w.hd && !hdOk && (
             <div className="dim boxcard-note">
               HD up to {km2(HD_MAX_KM2)} and {dist(HD_MAX_SIDE_KM * 1000)} a side: a smaller box for HD
