@@ -245,7 +245,9 @@ def plan(a: dict) -> list[Step]:
             "bush",
             "3.14",
             [["bush/render.py"]],
-            skip="the point cloud's own bush layer (vegstructure)" if bake.get("pointcloud") else ("bake.habitatBush is estimate" if bake.get("habitatBush") == "estimate" else None),
+            # bake.habitatBush "model": the national bush model's layer even where a point cloud was flown (a leaf-off cloud
+            # measures no shrub layer: Luther, 2026-10-23), drawn after vegstructure so it takes the understory file's place
+            skip=None if bake.get("habitatBush") == "model" else "the point cloud's own bush layer (vegstructure)" if bake.get("pointcloud") else ("bake.habitatBush is estimate" if bake.get("habitatBush") == "estimate" else None),
             needs=("habitat",),
         ),
         Step(
