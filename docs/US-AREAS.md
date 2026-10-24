@@ -51,6 +51,23 @@ Product Service clip: EVT;EVH;EVC;CC;CH;FDist) with `LF23_EVT_240.csv`, and
 (`vectors us`, `forest ca.scanfi`, `pointcloud us.3dep`), `bake.lidar us3dep`,
 the timezone (America/Detroit), the zone label (DMU) and no NTS sheets.
 
+## What the leaf-off cloud taught (2026-10-24)
+
+The MI Lake 2016 cloud was flown in April with the leaves off. Its canopy
+height and ground are good, but the shrub band carries almost no returns
+(understory ratio median 0.02 against 0.44 at Whitefish Lake), so the
+measured bush came out open everywhere and the lanes made from it drew
+nothing. Luther therefore sets `bake.habitatBush: "model"`: the bush step
+renders the national bush model's understory and lanes (`bush/render.py
+--lanes`, stand scale at 30 m) in the cloud's place, as Clearwater has them,
+and the layers table says so. A leaf-off understory measure would need its
+own calibration against plots. Expect the same for most US 3DEP projects,
+which are flown leaf-off for the terrain.
+
+Also learned: a new area's baked folder must be committed before its first
+push. The dev build runs the R2 sync from the commit, and with no data folder
+it writes an empty manifest over R2's, which the app reads as nothing built.
+
 ## What is still Canadian, and what it costs
 
 - The stands' attribution and vintage words come from the area file
