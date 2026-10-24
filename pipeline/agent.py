@@ -15,7 +15,10 @@ the kit for jobs, so nothing has to reach in to this PC. For each one:
 1. An SD area file round the point, or round the box drawn in Explore
    (bake_area.py --new --sd; the core is the box, the region 5 km more each
    way), kept out of the app's list in pipeline/raw/requests/areas/. Its id
-   is the name's slug and the request's number (white-river-r42). The
+   is the pack's (docs/REQUESTS.md, The model): sd- and ten characters no
+   one can guess without the bake key (pack_id), the same on every machine
+   and every try; requests begun before 2026-10-24 keep their slug-and-number
+   ids (white-river-r42). The
    province comes from the point: Natural Earth's polygons where
    coverage.py has cached them, else rough boxes. ON, QC, YT and BC bake
    with their adapters, anywhere else the national layers only. In Ontario
@@ -42,7 +45,8 @@ the kit for jobs, so nothing has to reach in to this PC. For each one:
    (VITE_DATA_BASE https://data.groundwind.app/data/ and the area's base
    areas/<id>/). Files a rebake no longer makes are removed, and the
    request is done with the area file and the manifest, which the Worker
-   lists in /areas/index.json.
+   hands to a phone that has the pack's id (/areas/<id>/area.json): the
+   location it was asked for opens on it, with no app build.
 
 Any exception marks the request failed with the traceback's tail, and the
 loop goes on. One agent per PC (a lock file); a request it was baking when
@@ -63,7 +67,9 @@ output is pipeline/raw/requests/logs/<request>.log.
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
+import hmac
 import json
 import math
 import mimetypes
@@ -116,6 +122,15 @@ LET_PASS: tuple[tuple[str, str, str], ...] = (
     ("Data", "Terrain", "30 m national model (MRDEM) only"),
     # no point cloud: the bush layer is the satellite bush model's, and there are no lanes
     ("Data", "Bush and lanes", "bush from the satellite bush model"),
+    # outside Ontario and Quebec no province flies imagery: Esri's sharp streams over the box (live.sharp)
+    ("Data", "Imagery", "not in this area's maps"),
+    # every area starts on Ontario's leaf dates until its own are set: a note for the editor, not a flaw in the bake
+    ("Wind", "Leaf calendar", "Ontario's default dates"),
+    # the moose rules were written for boreal Ontario: true of every area outside it, said once in the file
+    ("Model", "Moose model", "rules written for boreal Ontario"),
+    # a US area's terrain is 3DEP's 30 m, not the MRDEM's, and its stands LANDFIRE's (us_stage.py)
+    ("Data", "Terrain", "30 m national"),
+    ("Data", "Forest stands", "inferred from the national maps"),
 )
 
 
@@ -332,6 +347,42 @@ SCANFI = {"adapter": "ca.scanfi", "vintage": "SCANFI 2025; CanLaD 1985-2025", "a
 COORDS = re.compile(r"-?\d{1,3}\.\d+\s*[,\s]\s*-?\d{1,3}\.\d+")
 
 
+def pack_id(rid: int, kind: str = "sd") -> str:
+    """A request's pack id (docs/REQUESTS.md, Access: the id is the only way
+    to a pack): its kind and ten characters of an HMAC of its number under
+    the bake key, so no one can guess it from the request numbers, and every
+    machine and every try of it lands in the same folder."""
+    key = (setting("BAKE_KEY") or "").strip().encode()
+    d = hmac.new(key, f"pack:{rid}".encode(), hashlib.sha256).digest()
+    return f"{kind}-{base64.b32encode(d).decode().lower().rstrip('=')[:10]}"
+
+
+# How long each step of an SD bake took on request #10 (Algoma, ON, a 9.9 x 10 km box, 2026-10-24:
+# pipeline/raw/requests/logs/10.log, 4,543 s in all; #13 in Alberta agrees, its dem 1,935 s of the
+# first 2,050): the weights of the progress a phone is shown (docs/REQUESTS.md, Status). A step not
+# here counts STEP_DEFAULT_S. The area file and the US staging come before, the checklist and the
+# upload after.
+STEP_S = {
+    "area file": 30, "rasters": 1, "vectors": 35, "property": 13, "forest": 17, "topo": 1308, "satellite": 223,
+    "historical": 38, "hillshade": 2, "dem": 2299, "contours-wide": 65, "habitat": 299, "profile": 2, "bush": 101,
+    "depth-bands": 7, "wind-sd": 27, "micro": 35, "going": 4, "vector-tiles": 67, "checklist": 10, "upload": 35,
+}
+STEP_DEFAULT_S = 30
+
+
+def plan_of(steps: list[str]) -> list[str]:
+    """Every step a request goes through, in order, for its progress."""
+    return ["area file", *steps, "checklist", "upload"]
+
+
+def progress_at(plan: list[str] | None, step: str) -> float | None:
+    """How far a request is as `step` starts: the weights of the steps before it over all of them."""
+    if not plan or step not in plan:
+        return None
+    w = [STEP_S.get(s, STEP_DEFAULT_S) for s in plan]
+    return round(sum(w[: plan.index(step)]) / sum(w), 3)
+
+
 def what(req: dict) -> dict:
     """The area a request asks for: its name and id, the point, the box
     (None: Pickle Lake's sizes round the point) and the province."""
@@ -348,10 +399,20 @@ def what(req: dict) -> dict:
     if not name and place and not COORDS.search(place) and not re.match(r"^[bt]-\d", place):
         name = place[:60]
     stem = slug(name)[:32].strip("-") if name else ""
+    # a request taken up again keeps the id it was baking under (the Worker hands it back), and one
+    # begun before pack ids its slug-and-number one (its folder and area file are there)
+    legacy = f"{stem or 'area'}-r{rid}"
+    kind = "hd" if req.get("kind") == "hd" else "sd"
+    if req.get("resumed") and req.get("area_id"):
+        area_id = str(req["area_id"])
+    elif (AREAS / f"{legacy}.json").exists():
+        area_id = legacy
+    else:
+        area_id = pack_id(rid, kind)
     return {
         "rid": rid,
         "name": name or f"Area near {lat:.3f}, {lon:.3f}",
-        "id": f"{stem or 'area'}-r{rid}",
+        "id": area_id,
         "lat": round(float(lat), 6),
         "lon": round(float(lon), 6),
         "box": box,
@@ -455,6 +516,7 @@ def bake(job: dict, api: Api, logf, start: str | None = None) -> dict[str, str]:
     hour. Past the steps (checklist, upload) nothing is baked again."""
     out = OUT / job["id"]
     steps = sd_steps(job, logf)
+    job["plan"] = plan_of(steps)
     if start in ("checklist", "upload") and out.is_dir():
         log(f"#{job['rid']} taken up after the bake ({start}): nothing to bake again")
         return {}
@@ -469,7 +531,7 @@ def bake(job: dict, api: Api, logf, start: str | None = None) -> dict[str, str]:
 
     def on_line(line: str) -> None:
         if m := re.match(r"^-- ([a-z0-9-]+) \(py [\d.]+\)$", line):
-            api.post(job["rid"], "baking", must=False, step=m.group(1), area_id=job["id"])
+            api.post(job["rid"], "baking", must=False, step=m.group(1), area_id=job["id"], progress=progress_at(job["plan"], m.group(1)))
         elif m := re.match(r"^-- ([a-z0-9-]+): (ok|failed: .*|skipped.*|cannot run, .*?)(?: \((\d+) s\))?$", line):
             results[m.group(1)] = m.group(2)
             if m.group(2) != "ok" or m.group(3):
@@ -595,8 +657,9 @@ def pack_files(area_id: str) -> list[Path]:
     return [out / n for n in names]
 
 
-def ship(rid: int, area_id: str, api: Api, progress: bool = True) -> None:
-    """The pack and its manifest into R2, then done with the area file."""
+def ship(rid: int, area_id: str, api: Api, progress: bool = True, at: float | None = None) -> None:
+    """The pack and its manifest into R2, then done with the area file. `at`:
+    how far the request is as the upload starts, for the phone."""
     files = pack_files(area_id)
     manifest = {"files": {p.name: {"size": p.stat().st_size, "hash": sha16(p), **archive_range(p)} for p in files}}
     # the Worker hashes these very bytes for the index, as the app's build hashes its manifests
@@ -604,7 +667,7 @@ def ship(rid: int, area_id: str, api: Api, progress: bool = True) -> None:
     size = sum(p.stat().st_size for p in files)
     prefix = f"{r2_prefix()}areas/{area_id}/"
     if progress:  # not from review (--approve): that stage stays until done
-        api.post(rid, "baking", must=False, step="upload", area_id=area_id)
+        api.post(rid, "baking", must=False, step="upload", area_id=area_id, progress=at)
     s3 = r2_client()
     t = time.time()
     for p in files:
@@ -641,7 +704,7 @@ def handle(req: dict, api: Api) -> str:
         log(f"#{rid} {'taken up again' if req.get('resumed') else 'claimed'}: {job['name']!r} as {job['id']}, {job['jurisdiction']}, "
             f"{job['lat']:.5f}, {job['lon']:.5f}" + (f", box {km_size(job['box'])[0]:.1f} x {km_size(job['box'])[1]:.1f} km" if job["box"] else "")
             + (f" (dry run: {dry_run()})" if dry_run() else ""))
-        api.post(rid, "baking", step="area file", area_id=job["id"])
+        api.post(rid, "baking", step="area file", area_id=job["id"], progress=0.0)
         if dry_run():
             results = fake_bake(job, api)
             flagged = ["Dry run / review: a warning on purpose, to see the review path"] if dry_run() == "review" else []
@@ -654,13 +717,13 @@ def handle(req: dict, api: Api) -> str:
                     start = None
                     new_area(job, logf)
                 results = bake(job, api, logf, start)
-            api.post(rid, "baking", must=False, step="checklist", area_id=job["id"])
+            api.post(rid, "baking", must=False, step="checklist", area_id=job["id"], progress=progress_at(job.get("plan"), "checklist"))
             flagged = gate(job, results)
         if flagged:
             api.post(rid, "review", area_id=job["id"], error="\n".join(flagged))
             log(f"#{rid} parked at review after {time.time() - t:.0f} s: " + "; ".join(flagged))
             return "review"
-        ship(rid, job["id"], api)
+        ship(rid, job["id"], api, at=progress_at(job.get("plan"), "upload"))
         log(f"#{rid} done in {time.time() - t:.0f} s")
         return "done"
     except Exception:  # noqa: BLE001  (the loop outlives any one request)
