@@ -106,6 +106,29 @@ export function targetStanding(t: HuntTarget): { show: boolean; word: string | n
   return { show: true, word: st.includes('draw') ? 'permit only' : st.includes('restraint') ? 'asked not to' : null }
 }
 
+/** The order a place's quarry is offered in when none is picked: the big
+ *  game first, whose noses the wind is about, moose (the app's own) before
+ *  deer; grouse last. */
+const FIRST_PICK: HuntTarget[] = ['moose', 'deer', 'bear', 'grouse']
+
+/** What the heat map opens on here when nothing saved is (a fresh phone, or
+ *  a quarry saved in an area that lacks it: moose in Luther). Of the targets
+ *  the quarry menu shows, the plainly hunted before the permit-only and the
+ *  asked-not-to, and of those the first open today (FIRST_PICK's order):
+ *  deer in Luther in October, moose at Pickle Lake. Where no zone is in the
+ *  table every target shows, so moose, as before. */
+export function defaultTarget(timeMs: number = Date.now()): HuntTarget {
+  const shown = FIRST_PICK.filter((t) => targetStanding(t).show)
+  const plain = shown.filter((t) =>
+    TARGET_MEMBERS[t].some((q) => {
+      const s = presence(q)
+      return s === 'hunted' || s == null
+    }),
+  )
+  const pool = plain.length ? plain : shown
+  return pool.find((t) => !scoredMembers(t, timeMs).closed) ?? pool[0] ?? FIRST_PICK[0]
+}
+
 /** The season and legal lines a verdict carries for a target, and the
  *  zone's own: warnings when nothing it stands for is open, notes for
  *  what is legal today and for what managers ask. Empty where the zone has

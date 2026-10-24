@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { DEFAULT_LAYERS, DEFAULT_OPACITY, useAppStore, type LayerOpacity, type LayerVisibility, type MapDetail, type WindStyle } from './appStore'
 import { useSpotsStore } from './spotsStore'
-import { FISH_HERE } from '../spots/profile'
+import { FISH_HERE, defaultTarget, targetStanding } from '../spots/profile'
 import { isFish, type Target } from '../spots/types'
 
 /**
@@ -152,7 +152,7 @@ export const useViews = create<ViewsState>()(
       mode: 'hunt',
       saved: [],
       // a fresh phone starts in the Sat view (appStore DEFAULT_LAYERS), lake trout for the fishing side: Gavan's
-      lastTarget: { hunt: 'moose', fish: 'laketrout' },
+      lastTarget: { hunt: defaultTarget(), fish: 'laketrout' },
       lastViewId: 'hunt-photo',
       pinned: { hunt: [...DEFAULT_PINNED.hunt], fish: [...DEFAULT_PINNED.fish] },
       lookBefore: null,
@@ -164,7 +164,10 @@ export const useViews = create<ViewsState>()(
         const sp = useSpotsStore.getState()
         const lastTarget = { ...s.lastTarget, [s.mode]: sp.target }
         set({ mode, lastTarget })
-        if (isFish(sp.target) !== (mode === 'fish')) sp.setTarget(lastTarget[mode])
+        // back to hunting on a quarry kept from another area that this one lacks: what this one has
+        const back = lastTarget[mode]
+        const here = mode === 'hunt' && !isFish(back) && !targetStanding(back).show ? defaultTarget() : back
+        if (isFish(sp.target) !== (mode === 'fish')) sp.setTarget(here)
         // the mode's first pinned view, so the map follows the day's purpose
         const { top, rest } = splitViews(mode)
         const first = top[0] ?? rest[0]

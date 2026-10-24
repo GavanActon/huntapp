@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { isFish, type Target } from '../spots/types'
-import { FISH_HERE, targetStanding } from '../spots/profile'
+import { FISH_HERE, defaultTarget, targetStanding } from '../spots/profile'
 import type { ScoreResult } from '../spots/scoring'
 import type { Conditions } from '../spots/conditions'
 import type { DayPlan, HourActivity } from '../spots/dayPlan'
@@ -50,7 +50,8 @@ interface SpotsState {
 export const useSpotsStore = create<SpotsState>()(
   persist(
     (set) => ({
-      target: 'moose',
+      // what this place has (spots/profile.ts defaultTarget): moose where there are moose, deer in Luther
+      target: defaultTarget(),
       setTarget: (target) => set({ target }),
       // a fresh phone's are Gavan's (2026-10-03): the heat off (the Bow view has none),
       // and roads and landings not counted
@@ -78,8 +79,10 @@ export const useSpotsStore = create<SpotsState>()(
       partialize: (s) => ({ target: s.target, heat: s.heat, heatScale: s.heatScale, heatStrength: s.heatStrength, weights: s.weights }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<SpotsState>
-        // a quarry saved elsewhere that is not here (deer in the Yukon mountains, a fish outside Ontario) comes back as moose
-        const target = p.target && (isFish(p.target) ? !FISH_HERE : !targetStanding(p.target).show) ? 'moose' : p.target
+        // a quarry saved elsewhere that is not here (deer in the Yukon mountains, moose in Luther, a fish
+        // outside Ontario) comes back as what this place has (Gavan, 2026-10-24: "default to heatmap is
+        // moose even if the location doesn't support it")
+        const target = p.target && (isFish(p.target) ? !FISH_HERE : !targetStanding(p.target).show) ? defaultTarget() : p.target
         return { ...current, ...p, target: target ?? current.target, weights: { ...START_WEIGHTS, ...(p.weights ?? {}) } }
       },
     },
