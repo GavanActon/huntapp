@@ -91,7 +91,12 @@ function ensureSources(m: MlMap) {
   // line and label; the pins ride on top, under the places.
   const heatBefore = (['hillshade-lidar', 'topo', 'historical', 'pins-halo'] as const).find((id) => m.getLayer(id))
   const before = m.getLayer('pins-halo') ? 'pins-halo' : undefined
-  m.addLayer({ id: 'spots-heat', type: 'raster', source: HEAT_SRC, paint: { 'raster-opacity': 0.8, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } }, heatBefore)
+  // made as the heat switch has them: made visible, they were drawn till the first pass ended and hid
+  // them, and the cross-fade (map/layerArrive.ts) ran that hide over a third of a second, the pass's
+  // numbered pins landing in it (Gavan, 2026-10-24: "Loading HD I also see the pins for the heatmap show up
+  // for a fraction of a second"; the heat the same, 10-21)
+  const visibility = useSpotsStore.getState().heat ? 'visible' : 'none'
+  m.addLayer({ id: 'spots-heat', type: 'raster', source: HEAT_SRC, layout: { visibility }, paint: { 'raster-opacity': 0.8, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } }, heatBefore)
   m.addSource(PINS_SRC, { type: 'geojson', data: empty() })
   if (!m.hasImage('spot-pin')) m.addImage('spot-pin', pinImage(), { pixelRatio: 2 })
   m.addLayer(
@@ -99,6 +104,7 @@ function ensureSources(m: MlMap) {
       id: 'spots-pin-glow',
       type: 'circle',
       source: PINS_SRC,
+      layout: { visibility },
       paint: { 'circle-radius': ['case', ['==', ['get', 'n'], 1], 16, 12], 'circle-color': 'rgba(255,196,0,0.18)', 'circle-blur': 0.6 },
     },
     before,
@@ -109,6 +115,7 @@ function ensureSources(m: MlMap) {
       type: 'symbol',
       source: PINS_SRC,
       layout: {
+        visibility,
         'icon-image': 'spot-pin',
         'icon-size': ['case', ['==', ['get', 'n'], 1], 1.15, 0.95],
         'icon-anchor': 'bottom',
@@ -135,6 +142,7 @@ function ensureSources(m: MlMap) {
       source: PINS_SRC,
       minzoom: 12,
       layout: {
+        visibility,
         'text-field': ['to-string', ['get', 'score']],
         'text-font': ['Noto Sans Medium'],
         'text-size': 10.5,
