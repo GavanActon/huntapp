@@ -171,7 +171,7 @@ def main() -> int:
     for k, v in NLCD_TO_NALCMS.items():
         lc[lc_in == k] = v
     write("landcover", lc, tr, "uint8", 0)
-    ix["layers"]["landcover"] = {"url": urls["landcover"], "source": f"NLCD land cover ({Path(nlcd[-1]).name}), recoded to the NALCMS legend"}
+    ix["layers"]["landcover"] = {"url": urls["landcover"], "box": list(box), "source": f"NLCD land cover ({Path(nlcd[-1]).name}), recoded to the NALCMS legend"}
     print(f"  landcover: {int((lc > 0).sum())} px classed of {h * w}")
 
     # ---- the stands from LANDFIRE
@@ -248,7 +248,7 @@ def main() -> int:
         a = a.copy()
         a[nd] = ND
         write(name, a, tr, "int16", ND)
-        ix["layers"][name] = {"url": urls[name], "source": f"LANDFIRE LF{LF_YEAR} EVT/EVH/EVC/CC/CH/FDist, read as SCANFI's {name}"}
+        ix["layers"][name] = {"url": urls[name], "box": list(box), "source": f"LANDFIRE LF{LF_YEAR} EVT/EVH/EVC/CC/CH/FDist, read as SCANFI's {name}"}
     ix_path.write_text(json.dumps(ix, indent=1), encoding="utf-8")
     by = {g: int((nfi == v).sum()) for g, v in (("open", 2), ("shrub", 4), ("hardwood", 5), ("conifer", 6), ("mixed", 7), ("water", 8))}
     print(f"  stands: {by}; cut {int((dist_type == 2).sum())} px, burn {int((dist_type == 1).sum())} px; in {time.time() - t0:.0f} s -> {STAGE}")

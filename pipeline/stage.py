@@ -83,7 +83,9 @@ def _load_index() -> list[dict]:
             for layer, e in ix.get("layers", {}).items():
                 tif = p.parent / f"{layer}.tif"
                 if (p.parent / f"{layer}.tif.done").exists():
-                    out.append({"url": e["url"], "path": str(tif), "box": ix["box"], "stage": p.parent.name})
+                    # a layer's own box when it has one (a US stage's land cover and stands cover less than its wide DEM;
+                    # #21's read matched another area's stage of the same size and fell outside its data, 2026-10-24)
+                    out.append({"url": e["url"], "path": str(tif), "box": e.get("box") or ix["box"], "stage": p.parent.name})
         _index = out
     return _index
 

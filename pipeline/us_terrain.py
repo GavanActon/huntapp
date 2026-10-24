@@ -100,7 +100,7 @@ def wide(force: bool) -> None:
     ix_path = STAGE / "index.json"
     ix = json.loads(ix_path.read_text(encoding="utf-8")) if ix_path.exists() else {"box": list(box), "layers": {}}
     ix["box"] = list(box)
-    ix["layers"]["mrdem"] = {"url": MRDEM, "source": "USGS 3DEP 1 arc-second DEM, warped to the MRDEM's grid (EPSG:3979, 30 m)", "tiles": [p.name for p in tifs("ned1")]}
+    ix["layers"]["mrdem"] = {"url": MRDEM, "box": list(box), "source": "USGS 3DEP 1 arc-second DEM, warped to the MRDEM's grid (EPSG:3979, 30 m)", "tiles": [p.name for p in tifs("ned1")]}
     ix_path.write_text(json.dumps(ix, indent=1), encoding="utf-8")
     print(f"  stage index: {ix_path} (mrdem -> {MRDEM.rsplit('/', 1)[-1]})")
 
