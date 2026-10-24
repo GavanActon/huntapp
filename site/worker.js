@@ -340,7 +340,17 @@ async function howLong(env, row) {
     return out
   }
   const typical = ms[Math.floor(ms.length / 2)]
-  const left = row.stage === 'queued' ? typical * ((out.ahead ?? 0) / machines + 1) : typical * (1 - Math.max(0, Math.min(1, Number(row.progress) || 0)))
+  const done = (v) => Math.max(0, Math.min(1, Number(v) || 0))
+  let left = typical * (1 - done(row.progress))
+  if (row.stage === 'queued') {
+    // the ones ahead in line, and what is left of the bakes the machines are on now, shared among them, then its own
+    const busy = await beforeMigration(
+      () => env.DB.prepare("SELECT progress FROM requests WHERE stage IN ('claimed', 'baking') AND IFNULL(kind, 'sd') = ?").bind(row.kind).all(),
+      () => env.DB.prepare("SELECT NULL AS progress FROM requests WHERE stage IN ('claimed', 'baking') AND IFNULL(kind, 'sd') = ?").bind(row.kind).all(),
+    )
+    const onNow = (busy.results ?? []).reduce((sum, r) => sum + typical * (1 - done(r.progress)), 0)
+    left = (onNow + typical * (out.ahead ?? 0)) / machines + typical
+  }
   out.minutes = Math.max(1, Math.round(left))
   return out
 }
