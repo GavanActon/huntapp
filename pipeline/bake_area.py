@@ -99,6 +99,11 @@ ADAPTERS: dict[str, dict[str, tuple[str, list[str]]]] = {
     },
 }
 POINTCLOUD_DEFAULTS = {"radiusKm": 2, "maxGb": 15}
+# An SD area on the 30 m MRDEM (bake.wind "sd", bake.lidar "none"): its elevation tiles stop here.
+# z12 is about 26 m a pixel at 47° N, the data's own 30 m, and the map stretches the last zoom's
+# tiles on in; the z13-z16 tiles held nothing more and were 96% of the dem step (867 of #10's 896
+# tiles, 2,299 s, 2026-10-24). Mapterhorn serves the same 30 m Copernicus to z12 (streamPictures.ts).
+SD_DEM_MAXZOOM = 12
 SURROGATE_RUNS = HERE / "raw" / "surrogate" / "runs"
 MNR_SHEETS = "Lake survey sheets © Ontario Ministry of Natural Resources"
 
@@ -166,7 +171,8 @@ def plan(a: dict) -> list[Step]:
     bathy = HERE / "raw" / "bathy"
     # the 30 m MRDEM hillshade only where the area's maps use it: one with a
     # DEM shades its relief from that (mapStyle.ts), and the WMS is slow
-    topo = ["topo", *(["hillshade-mrdem"] if "hillshade" in (a.get("files") or {}).get("pmtiles", []) else [])]
+    listed = set((a.get("files") or {}).get("pmtiles", []))
+    topo = [*(["topo"] if "topo" in listed else []), *(["hillshade-mrdem"] if "hillshade" in listed else [])]
 
     def sheets_fitted() -> str | None:
         unfit = [s for s in sheets if not (bathy / f"{s}_geo.tif").exists()]
@@ -213,7 +219,15 @@ def plan(a: dict) -> list[Step]:
         # sources and NRCan's, for every province: one script, the federal layers are shared
         Step("property", "3.14", [["build_property.py", "--area", a["id"]]]),
         adapter_step("forest", "forest", a),
-        Step("topo", "3.14", [["build_tiles.py", *topo]], skip="no Toporama or MRDEM WMS in the US: the map streams Esri's topo" if a["jurisdiction"] in US_STATES else None),
+        Step(
+            "topo",
+            "3.14",
+            [["build_tiles.py", *topo]],
+            # an SD area lists neither (docs/REQUESTS.md step 2): the map streams the topo sheet with signal, its
+            # lakes, roads and contours are the vector layers for no signal, and the DEM draws the shade
+            skip="no Toporama or MRDEM WMS in the US: the map streams Esri's topo" if a["jurisdiction"] in US_STATES
+            else None if topo else "not in this area's maps (files.pmtiles has no topo or hillshade): the map streams the topo sheet",
+        ),
         Step(
             "satellite",
             "3.14",
@@ -222,9 +236,15 @@ def plan(a: dict) -> list[Step]:
             [["s2_imagery.py"] if str(bake.get("imagery") or "").startswith("ca.s2") else ["build_tiles.py", "satellite"]],
             skip=None if bake.get("imagery") else "no imagery source for this area (bake.imagery)",
         ),
-        Step("historical", "3.14", [["build_historical.py"]], skip=None if bake.get("nts") else "no NTS sheets listed (bake.nts)"),
+        Step(
+            "historical",
+            "3.14",
+            [["build_historical.py"]],
+            skip="not in this area's maps (files.pmtiles has no historical)" if "historical" not in listed else None if bake.get("nts") else "no NTS sheets listed (bake.nts)",
+        ),
         Step("hillshade", "3.14", [["build_hillshade.py"]], needs=("vectors",)),
-        Step("dem", "3.14", [["build_dem.py"]]),
+        # an SD area's 30 m heights to the zoom they hold (SD_DEM_MAXZOOM); the wide window the wind reads is cached either way
+        Step("dem", "3.14", [["build_dem.py", *(["--maxzoom", str(SD_DEM_MAXZOOM)] if sd_area and no_lidar else [])]]),
         Step("contours", "3.14", [["build_contours.py"]], skip="no 1 m LiDAR here: the MRDEM's contours stand in" if no_lidar else None),
         Step("contours-wide", "3.14", [["build_contours_wide.py"]], needs=("dem",)),
         adapter_step("pointcloud", "pointcloud", a),
@@ -587,6 +607,8 @@ NOT_IN = {  # layers a province has no source for, or none open
 # maps, whatever the bake has left on disk, where there is more to say.
 LEFT_OUT = {
     ("pmtiles", "hillshade"): "not baked: the map shades the relief from the DEM",
+    ("pmtiles", "topo"): "not baked: the map streams the topo sheet with signal; the lakes, roads and contours are in the vector layers for no signal",
+    ("pmtiles", "historical"): "not baked: the old NTS sheets are left out of this area's pack",
     ("geo", "forest"): "not in the maps as GeoJSON: the map reads the stands from the forest tiles, and the GeoJSON stays the bake's input",
 }
 
@@ -947,7 +969,10 @@ def new_area(args) -> str:
     if "places" not in files["pmtiles"]:
         files["pmtiles"] = files["pmtiles"] + ["places"]
     if args.sd:  # the bush model's understory stands in for the point cloud's; one wind grid
-        files["pmtiles"] = [k for k in files["pmtiles"] if k != "contoursWide"] + ["understory", "contoursWide"]
+        # the pictures the map streams stay out of the pack (docs/REQUESTS.md step 2, Gavan 2026-10-24: 85% of an
+        # SD bake was them): the topo sheet and its MRDEM shade (the DEM draws the shade). The photo and the heights
+        # stay, for no signal, and the old NTS sheets (38 s of #10's bake; the Old map view's old roads and camps)
+        files["pmtiles"] = [k for k in files["pmtiles"] if k not in ("contoursWide", "topo", "hillshade")] + ["understory", "contoursWide"]
         files["grids"] = [g for g in files.get("grids", []) if g != "micro-sd"]
         # the stands as GeoJSON stay the bake's input: the map draws them from
         # the forest tiles (mapStyle.ts reads the archive first), and in Ontario
@@ -1022,7 +1047,7 @@ def new_area(args) -> str:
         "presets": [{"name": "Requested spot", "lon": lon, "lat": lat, "kind": "stand", "note": f"Area requested {date.today().isoformat()}"}],
         "bundle": {
             "description": (
-                f"Topo, imagery, {'30 m' if args.sd else 'LiDAR'} relief and contours, forest stands, water, roads, and the habitat, "
+                f"{'Imagery' if args.sd else 'Topo, imagery'}, {'30 m' if args.sd else 'LiDAR'} relief and contours, forest stands, water, roads, and the habitat, "
                 f"{'surrogate ' if args.sd else ''}wind and going grids around {args.name}; full detail within {min(cw, ch) / 2:.0f} km of the spot."
             )
         },

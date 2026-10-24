@@ -115,6 +115,16 @@ async function report(request, env, id, ctx) {
   if (areaId !== null && !ID.test(areaId)) return json({ error: 'area_id' }, 400)
   const p = Number(body.progress)
   const progress = body.progress == null || !Number.isFinite(p) ? null : Math.max(0, Math.min(1, p))
+  // a machine baking is in, though it asks for no work until it is done (an hour on one bake): its
+  // reports count as calling in, so a phone in line still hears its minutes (worker.js requestStatus)
+  if (agent && stage !== 'queued') {
+    await env.DB.prepare(
+      "INSERT INTO runners (name, kinds, last_seen) VALUES (?1, 'sd', datetime('now')) ON CONFLICT(name) DO UPDATE SET last_seen = excluded.last_seen",
+    )
+      .bind(agent)
+      .run()
+      .catch(() => {})
+  }
   const from = JSON.stringify(FROM[stage])
   // an agent may only move what it holds; a requeue (by hand) may move anything
   const mine = stage === 'claimed' || stage === 'queued' ? '1' : '(agent IS NULL OR agent = ?4)'

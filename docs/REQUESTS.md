@@ -107,15 +107,34 @@ The direction is up the table: per-location builds become national tiles
 far band did. The states and the journeys don't change while that
 happens; things arrive sooner.
 
-## The SD build, cut to the data
+## The SD build, cut to the data (step 2, built 2026-10-24)
 
-The agent's SD bake drops the steps a loaded box already lives without,
-because the app streams them (topo, satellite, historical, dem and its
-hillshade; SD-FAST.md), and keeps vectors, property, forest, habitat,
-profile, bush, depth-bands, wind-sd, micro, going, vector-tiles and
-coverage: about 9 minutes on #10's log, the bush model's ~2 the first to
-go national. Short enough to watch in the app, which is why SD needs no
-email.
+Request #10's SD bake took 76 minutes, 85% of it map pictures: the topo
+sheet and an MRDEM hillshade from NRCan's WMS (1,308 s) and the
+elevation tiles to z16 (2,299 s). What an SD pack keeps is what a hunter
+needs with no signal; what the map streams, or draws from something else,
+stays out (pipeline/bake_area.py):
+
+| Picture | SD pack | Why |
+| --- | --- | --- |
+| Topo sheet and its MRDEM hillshade | out | the map streams the sheet with signal; the lakes, roads and contours are the vector layers for no signal; the DEM draws the shade |
+| Elevation | to z12 (`SD_DEM_MAXZOOM`) | 30 m data holds nothing past z12 (26 m a pixel at 47° N): the z13-z16 tiles were 96% of the step, and the map stretches z12 on in |
+| Photo | kept | the real ground with no signal |
+| Old NTS sheets | kept | 38 s; the Old map view's old roads and camps |
+
+`--new --sd` lists neither the topo nor the hillshade, and the plan skips
+a picture step an area's files do not list, so a built-in area bakes as
+before (Pickle Lake, Luther, Clearwater checked). The agent's progress
+leaves skipped steps out of its weights (`plan_of`).
+
+**Measured, #10's box again** (2026-10-24, on XEVO beside #18's bake and
+the SD tiles, below-normal priority): 430 s, the checklist clean, the
+pack 64 MB. The elevation step 73 s, 29 tiles, 1.7 MB (was 2,299 s, 896
+tiles, 12.4 MB). The photo's tiles and the habitat's satellite reads were
+partly cached from #10's own bake, so a cold one is about 12-13 minutes.
+In the app, side by side with #10's pack on the same ground (Sat, Topo,
+Shade at z13 and z15.5): the same picture; the z16 elevation was the same
+30 m cells.
 
 ## The journeys
 
@@ -283,7 +302,7 @@ table_info` after.
 | | Piece | Effort | Gavan's part |
 | --- | --- | --- | --- |
 | 1 | Locations own packs: the phone keeps a pack's area file; Load starts the build (one per phone, email optional for SD); in line, time, how far; upgrade in place; reuse; the list to the demos; unguessable pack ids; the demo split | built 2026-10-24 | the Worker deploy and D1 columns; MAIL on with it |
-| 2 | The SD build cut to the data | 1–2 days | none |
+| 2 | The SD build cut to the data | built 2026-10-24 | the Worker deploy for the runners fix |
 | 3 | Accounts: the code, sessions, `/api/me/locations`, the status page | 3–4 days | the Worker deploy, D1 tables |
 | 4 | HD through the agent: WindNinja on the R2 queue, Install HD | about a week | none |
 | later | Payments, unlocks, HD across a party; Google and Apple with the store build | | |
@@ -390,5 +409,10 @@ keeps it. `tsc -b` clean.
 5. Promote the app to `live` when hunt-dev reads right.
 
 **Not done in step 1:** the site status page (`/l/<token>`, step 3); the
-SD build cut (step 2, so builds still take an hour or so); a joined
-ask's email is not kept, so only the first asker is written to.
+SD build cut (step 2, built the same day: above); a joined ask's email
+is not kept, so only the first asker is written to.
+
+**After the deploy (2026-10-24):** a machine asks for no work while it
+bakes, so with only `/api/bake/next` noting it a phone in line read "our
+machines are off for now" through a whole bake. `bake.js report` now
+notes it too, with each step: in the next Worker deploy.

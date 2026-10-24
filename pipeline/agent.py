@@ -358,21 +358,21 @@ def pack_id(rid: int, kind: str = "sd") -> str:
 
 
 # How long each step of an SD bake took on request #10 (Algoma, ON, a 9.9 x 10 km box, 2026-10-24:
-# pipeline/raw/requests/logs/10.log, 4,543 s in all; #13 in Alberta agrees, its dem 1,935 s of the
-# first 2,050): the weights of the progress a phone is shown (docs/REQUESTS.md, Status). A step not
-# here counts STEP_DEFAULT_S. The area file and the US staging come before, the checklist and the
-# upload after.
+# pipeline/raw/requests/logs/10.log, 4,543 s in all; #13 in Alberta agrees), the dem as step 2 bakes it
+# (to z12: 73 s for #10's box again, the same day): the weights of the progress a phone is shown
+# (docs/REQUESTS.md, Status). A step the plan skips weighs nothing (plan_of); one not here counts
+# STEP_DEFAULT_S. The area file and the US staging come before, the checklist and the upload after.
 STEP_S = {
     "area file": 30, "rasters": 1, "vectors": 35, "property": 13, "forest": 17, "topo": 1308, "satellite": 223,
-    "historical": 38, "hillshade": 2, "dem": 2299, "contours-wide": 65, "habitat": 299, "profile": 2, "bush": 101,
+    "historical": 38, "hillshade": 2, "dem": 73, "contours-wide": 65, "habitat": 299, "profile": 2, "bush": 101,
     "depth-bands": 7, "wind-sd": 27, "micro": 35, "going": 4, "vector-tiles": 67, "checklist": 10, "upload": 35,
 }
 STEP_DEFAULT_S = 30
 
 
-def plan_of(steps: list[str]) -> list[str]:
-    """Every step a request goes through, in order, for its progress."""
-    return ["area file", *steps, "checklist", "upload"]
+def plan_of(steps: list[str], skipped: list[str] | tuple[str, ...] = ()) -> list[str]:
+    """Every step a request goes through, in order, for its progress; the ones the plan skips weigh nothing."""
+    return ["area file", *[s for s in steps if s not in skipped], "checklist", "upload"]
 
 
 def progress_at(plan: list[str] | None, step: str) -> float | None:
@@ -503,6 +503,8 @@ def sd_steps(job: dict, logf) -> list[str]:
     names = [m.group(1) for line in lines[1:] if (m := re.match(r"^[ -] ([a-z0-9-]+)\s", line))]
     if "wind-sd" not in names or "coverage" not in names:
         raise RuntimeError(f"the plan has no wind-sd or coverage step: {names}")
+    # the steps the plan skips for this area (no source, not in its maps): no weight in its progress
+    job["skipped"] = [m.group(1) for line in lines[1:] if (m := re.match(r"^[ -] ([a-z0-9-]+)\s+skipped:", line))]
     return [n for n in names if n not in SD_LEAVE_OUT]
 
 
@@ -516,7 +518,7 @@ def bake(job: dict, api: Api, logf, start: str | None = None) -> dict[str, str]:
     hour. Past the steps (checklist, upload) nothing is baked again."""
     out = OUT / job["id"]
     steps = sd_steps(job, logf)
-    job["plan"] = plan_of(steps)
+    job["plan"] = plan_of(steps, job.get("skipped", ()))
     if start in ("checklist", "upload") and out.is_dir():
         log(f"#{job['rid']} taken up after the bake ({start}): nothing to bake again")
         return {}
