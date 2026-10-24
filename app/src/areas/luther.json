@@ -163,7 +163,13 @@
         "note": "stand height and closure from the LiDAR point cloud over 33% of the core",
         "vintage": "generated 2026-10-23"
       },
-      "micro": { "missing": "not baked yet" },
+      "micro": {
+        "file": "micro-luther.hab",
+        "bytes": 5619529,
+        "source": "derived: the habitat grid and the MRDEM",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-23"
+      },
       "going": {
         "file": "going-luther.hab",
         "bytes": 1291222,
@@ -171,7 +177,13 @@
         "licence": "derived from the layers above",
         "vintage": "generated 2026-10-23"
       },
-      "micro-sd": { "missing": "not baked yet" }
+      "micro-sd": {
+        "file": "micro-sd-luther.hab",
+        "bytes": 4492075,
+        "source": "derived: the habitat grid and the MRDEM, with the surrogate net's terrain wind in WindNinja's place (build_windsd.py)",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-23"
+      }
     }
   }
 }
