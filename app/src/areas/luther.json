@@ -53,7 +53,7 @@
     "stands": { "shrubHeight": false, "leadSpecies": false }
   },
   "coverage": {
-    "checked": "2026-10-23",
+    "checked": "2026-10-24",
     "pmtiles": {
       "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
       "topo": { "missing": "not in this area's maps" },
@@ -103,10 +103,10 @@
       },
       "lanes": {
         "file": "lanes-luther.pmtiles",
-        "bytes": 53287,
-        "source": "USGS 3DEP lidar point cloud, MI_16CountiesFEMA2015_C16, flown April 2016 (leaf-off); heights above the tiles' own ground returns",
-        "licence": "public domain (US Government work)",
-        "vintage": "flown April 2016 (leaf-off)"
+        "bytes": 6525972,
+        "source": "The shooting lanes at stand scale from the national bush model at 30 m (docs/BUSH-MODEL.md): open and light ground clear, thicker bush shaded darker, faded where the model is unsure. A 30 m cell shows where the bush is open or thick, not a single lane. Modelled, not measured",
+        "licence": "Copernicus Sentinel data; JAXA ALOS PALSAR mosaic (free, attribution); OGL-Canada; CanLaD CC BY 4.0",
+        "vintage": "imagery 2023-2025, model trained 2026-10-08"
       },
       "bathy": { "missing": "not baked: lake depths are drawn from GeoJSON (depth)" },
       "historical": { "missing": "not in this area's maps" },
