@@ -65,6 +65,9 @@ export interface Layering {
   ensDirSd: number | null
   /** where the numbers came from */
   source: 'hrdps' | 'blend' | 'estimate'
+  /** K the 2 m air has warmed since the coldest hour of the last 12: the morning's clock (the dawn
+   *  release, micro/model.ts dawnRelease); absent without a profile */
+  warmed?: number
 }
 
 /** Saved per area (areas.readAreaItem): one area's air is not another's,
@@ -425,6 +428,10 @@ export function layeringAt(ms: number, fallback: { cloud: number; w10: number; t
       const stable = dTheta > 0 ? clamp((ri - 0.1) / 0.9, 0, 1) * clamp(dTheta / 0.8, 0, 1) : 0
       const convective = dTheta < -0.2 ? clamp((-dTheta - 0.2) / 1.5, 0, 1) * clamp(sw / 400, 0, 1) : 0
       const hourIdx = lastStampAt(st, ms)
+      // the morning's clock: the 2 m air's rise since the night's coldest hour (the last 12; the
+      // profile keeps yesterday's hours, past_days 1)
+      let tMin = t2
+      for (let k = Math.max(0, hourIdx - 12); k <= Math.min(hourIdx, p.t2.length - 1); k++) if (Number.isFinite(p.t2[k]) && p.t2[k] < tMin) tMin = p.t2[k]
       const h0 = Math.max(0, hourIdx)
       const h1 = Math.min(p.time.length - 1, h0 + 1)
       const t0 = st[h0]
@@ -448,6 +455,7 @@ export function layeringAt(ms: number, fallback: { cloud: number; w10: number; t
         cloud: Number.isFinite(cloud) ? cloud : 50,
         ensDirSd,
         source: (hourIdx >= 0 && hourIdx < p.hrdpsHours) || (p.sat && hourIdx >= p.sat.i0 && hourIdx <= p.sat.i1) ? 'hrdps' : 'blend',
+        warmed: t2 - tMin,
       }
     }
   }

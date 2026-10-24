@@ -592,6 +592,44 @@ stable floor is not learnable from these runs' geometry and clock at this size.
 6. The strip's dusk at 2 m if (3) above says stable runs need it.
 7. The neutral surrogate-set runs (held/150-180) only if a terrain net is wanted again.
 
+## The dawn release (2026-10-24, huntapp-c5; built, scored, not on yet)
+
+Gavan, 2026-10-24: "seat is yours to bake and advance the wind model". The app had no morning clock: the
+night's floor (drainage, the pool, the wind cut on stable low ground) held until the forecast's 80 m − 2 m
+inversion was gone, ~2.4 K of warming at the slot and ~3 K on the bog under the dawn series' forcing, where
+PALM let go at ~1.5 K (am270t's throat) and ~0.8 K (310's open bog).
+
+**Built (model.ts `dawnRelease`, boundaryLayer.ts `warmed`):** `warmed` is the 2 m air's rise since the
+coldest hour of the last 12 (HRDPS's profile keeps yesterday). In the morning (the sun above −2°, east of
+south) the floor's stability is scaled by a sharp logistic in `warmed`, centred at 0.75 K on open ground and
+1.5 K in a hollow (by lowness), width 0.15 K: the drainage, the pool and the stable lid go with it; the
+forecast's overmixing cut and the shade's width keep the night's stability while its inversion holds (PALM's
+floor stayed 0.5-1 km/h after it turned). Tunables `dawn` (0 off), `dawnOpen`, `dawnPool`, `dawnW` in
+THERMAL_DEFAULT. Shipped off (`dawn: 0`): the app is as before.
+
+**Scored:**
+- **app/scripts/series_compare.py (new):** each of a series run's 19 windows on its own, the app held at that
+  minute after sunrise with the air forced to the run's state then (80 m wind, the warming, the inversion
+  eroded by it, no shortwave: PALM's surface heats evenly and cannot judge upslope); breeze cells (any
+  variant's lake or land breeze) left out as "judged", PALM having no water/land contrast. Within 45° of
+  PALM, judged, mean of the windows: bog dawn175tl 46 → 54% (follow-the-forcing 65%), slot am270t 29 → 38%
+  (42%). Floor speed in the release hour (60-150 min): bog 0.92 → 0.87 (PALM 0.83), slot 1.74 → 1.01 (0.80).
+  The thresholds as read from PALM's points, not fitted: 0.5/1.0 K scored 2-3 points better, 1.0/2.0 worse.
+  Lifting the overmixing cut too took the slot to 38% at 1.22 km/h; keeping the pool's cut, 32%.
+- **The scent card (v2, both grids):** identical to base with it on (2026-10-24 01:14, 59c8ba3 + dawn.diff):
+  its runs are held at a dusk or midday clock, where the release cannot act.
+- **The checks card:** direction unchanged (Pickle 43.4% within 45°, median 70°; Searchmont 60%, 40°).
+  Honest coverage within 1 sd, Pickle 60.4 → 58.5% (32 → 31 of 53): one check, 27 Sep 08:25 felt from 270
+  where the app calls ~165 either way (104-106° off), slips past the shade's edge (1° inside before) as the
+  released floor moves a little faster; Searchmont 80% unchanged.
+
+**Ruling:** not on yet. It wins PALM's dawns and holds every check's direction, but the bar's checks side
+asks honest coverage within 60-80% and the release leaves Pickle one check under. The real lesson is in
+those checks: Pickle's mornings were felt from 45, 225, 270 and 315 within an hour (mostly a drift) under a
+S forecast, and the app misses most of them by 100° or more with or without the release. The morning shade
+is too narrow already. **Next:** calibrate the morning transition's spread on the morning checks (all
+areas), then turn the release on with it and score both together.
+
 ## Order
 
 1. Gavan approves the points and the winds.

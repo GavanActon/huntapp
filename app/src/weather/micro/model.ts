@@ -1181,7 +1181,8 @@ function towerShare(g: Habitat, i: number, leaves: number): number | null {
 // floor's own sheltered wind instead (tried 2026-10-18) the slope under trees drained again
 // ref 3 at 12 km/h, by e every 2, since 2026-10-18 (scent card v4: misses held, SD one fewer; palm_compare
 // Gavan's Lac Bailey spot 53 -> 60%, its dusk series 25 -> 47; the checks in band)
-const THERMAL_DEFAULT = { mix0: 12, mixScale: 2, trees: 0.7, ref: 3, mixS0: 12, mixSScale: 2, sl0: 3, sl1: 8, waterAna: 0, inv0: 0, inv1: 0 }
+// dawn, dawnOpen, dawnPool, dawnW: the morning release (dawnRelease below); dawn 0 is the model before it
+const THERMAL_DEFAULT = { mix0: 12, mixScale: 2, trees: 0.7, ref: 3, mixS0: 12, mixSScale: 2, sl0: 3, sl1: 8, waterAna: 0, inv0: 0, inv1: 0, dawn: 0, dawnOpen: 0.75, dawnPool: 1.5, dawnW: 0.15 }
 let thermalTune = { ...THERMAL_DEFAULT }
 export function setThermalTune(t: Partial<typeof THERMAL_DEFAULT> | null): void {
   thermalTune = { ...THERMAL_DEFAULT, ...t }
@@ -1401,6 +1402,24 @@ function slotLine(axis: number): string {
 /** A loaded location (areas/runtime.ts): its ground wind is the national tiles', its box alone. */
 const SPOT = ACTIVE_AREA.loaded === 'box'
 
+/**
+ * The morning's release of the night's floor, 1 (held) to 0 (gone), by how far the 2 m air has warmed
+ * since the night's coldest hour (boundaryLayer.ts `warmed`). PALM's two dawns under the night's
+ * inversion warming 1 K/h (docs/SCENT-TESTSET.md, 2026-10-18 and 20): on the open bog (310) the floor
+ * lets go of the night's drift and joins the wind above within ~20° once ~0.8 K has warmed (50 min);
+ * in the slot's throat (am270t) a reversed pool holds ~1.5 K (80-90 min), then lets go at once. Both
+ * release on the ground's warming, well before the forecast's 80 m − 2 m inversion is gone, which is
+ * all the floor followed before (it kept the pool to ~2.4 K at the slot, ~3 K on the bog). So the
+ * release sits at dawnOpen K on open ground and dawnPool K in a hollow (by lowness), sharp (dawnW).
+ * Morning only (the sun up or nearly, still east of south): the evening's floor is the drainage fade's.
+ */
+function dawnRelease(ctx: Ctx, lay: Layering, lowness: number): number {
+  const w = lay.warmed
+  if (!thermalTune.dawn || w == null || !Number.isFinite(w) || ctx.sunElev < -2 || ctx.sunAz >= 180) return 1
+  const at = thermalTune.dawnOpen + (thermalTune.dawnPool - thermalTune.dawnOpen) * lowness
+  return 1 / (1 + Math.exp((w - at) / Math.max(0.02, thermalTune.dawnW)))
+}
+
 function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edges = true): Eval | null {
   // regional 10 m wind
   let U: number
@@ -1484,8 +1503,18 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
     return { e: Ue * f, n: Un * f, sigma: sigma0, regime: sp < 0.8 ? 'calm' : 'wind', swirl: false, gusty: ctx.gf >= 1.8 && U >= 8, parts: [{ key: 'terrain', kmh: sp, toward: (dirFrom + 180) % 360 }], reasons, local10: U, U, dirFrom, forecastU, inGrid: false, slot: false, woods: false, bias: null, fitW, fitWL, e10: Ue, n10: Un, cell: -1, th: 0, cf: f, kat: 0, tumbleMix: 0, eddy: 0, spread: { place: sigma0, model: 45, forecast: forcedAir ? 0 : spreadTune.forecast } }
   }
 
+  // low ground under an inversion: the cold layer stays put under the wind
+  const pool = b(K_POOL, i)
+  const lowness = Math.max(clamp(pool / 1.5, 0, 1), clamp(-b(K_REL, i) / 6, 0, 1))
+  // the morning lets the night's floor go by the ground's warming, sooner on open ground than in a hollow
+  const rel = dawnRelease(ctx, lay, lowness)
+
   // ---- terrain and roughness: the two lids, blended by stability ----
-  const s = lay.stable
+  // the released floor's way is the wind's (s); the forecast's overmixing and the shade's width keep the
+  // night's stability while its inversion holds (sNight): PALM's floor kept 0.5-1 km/h through both
+  // dawns after it turned to follow the wind above
+  const s = lay.stable * rel
+  const sNight = lay.stable
   let e10: number
   let n10: number
   if (hasMom && fullIn && !ctx.lidsOnly && momentumAt(i, U, dirFrom)) {
@@ -1503,13 +1532,14 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   const spread = hasTurb && fullIn ? turbAt(i, dirFrom) : null
   const tumble = spread != null ? Math.max(0, spread - momRef) * (1 - s) * clamp((U - 3) / 6, 0, 1) : 0
   const local10 = Math.hypot(e10, n10)
-  // low ground under an inversion: the cold layer stays put under the wind
-  const pool = b(K_POOL, i)
-  const lowness = Math.max(clamp(pool / 1.5, 0, 1), clamp(-b(K_REL, i) / 6, 0, 1))
   // NWP models mix stable nights too much, so their 10 m wind runs high
   // then (Sandu et al. 2013); and low ground under an inversion keeps its
   // cold layer while the wind slides over
-  const dec = (1 - 0.3 * s) * (1 - 0.7 * s * lowness)
+  // through the morning's release the forecast's overmixing stays the night's (sNight: its 80 m inversion
+  // holds) and the low ground's cold layer goes with the release (s). PALM's two dawns: the floor's speed
+  // 0.87 against PALM's 0.83 km/h on the bog, 1.0 against 0.8 in the slot (lifting both ran 1.1-1.2; neither, the
+  // slot's direction gained 3 points where this gains 9); docs/SCENT-TESTSET.md, 2026-10-24
+  const dec = (1 - 0.3 * sNight) * (1 - 0.7 * s * lowness)
   e10 *= dec
   n10 *= dec
   const mech10 = Math.hypot(e10, n10)
@@ -1732,7 +1762,7 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   // ---- cold-air drainage ----
   let kat = 0
   let katTo = 0
-  const cool = Math.pow(1 - lay.cloud / 100, 1.5) * (ctx.sunElev < 0 ? 1 : ctx.sunElev < 10 ? (10 - ctx.sunElev) / 10 : 0)
+  const cool = Math.pow(1 - lay.cloud / 100, 1.5) * (ctx.sunElev < 0 ? 1 : ctx.sunElev < 10 ? (10 - ctx.sunElev) / 10 : 0) * rel
   const kWind = thermalTune.ref === 3 ? (Number.isFinite(lay.w80) ? lay.w80 : U) : thermalTune.ref ? U : mech10
   const onSlope = clamp((b(K_THSLOPE, i) - thermalTune.sl0) / Math.max(0.1, thermalTune.sl1 - thermalTune.sl0), 0, 1) * (1 - lowness)
   const mixKat =
@@ -1949,7 +1979,10 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
 
   // ---- spread ----
   const swirlDeg = (swirl ? ctx.tune.swirlSpread : 0) + (slotSwirl ? 25 : 0)
-  let sigma = 12 + tumble + ctx.tune.calmSpread * Math.exp(-Ug / 0.6) + 20 * s * Math.exp(-Ug / 1.0) + 15 * lay.convective + (inTrees ? ctx.tune.treesSpread : 0) + swirlDeg
+  // the spread keeps the night's stability through the morning's release (dawnRelease): the release
+  // is a best guess at when the floor lets go (about ±30 min), so the shade covers both states until
+  // the forecast itself mixes
+  let sigma = 12 + tumble + ctx.tune.calmSpread * Math.exp(-Ug / 0.6) + 20 * sNight * Math.exp(-Ug / 1.0) + 15 * lay.convective + (inTrees ? ctx.tune.treesSpread : 0) + swirlDeg
   // the part of it that stirs the air up and down as well: the lee's tumble
   // (already neutral air with a wind behind it) and a swirl's, once the local
   // wind has some push and the air is not settled (a still night's swirl is
@@ -1966,9 +1999,9 @@ function evaluate(ctx: Ctx, lon: number, lat: number, withReasons: boolean, edge
   // forecast's doubt and the checks; the model's for this kind of spot; the
   // forecast's (none with the air forced to a known truth), both pulled in by
   // checks nearby unless they disagree
-  const capK = spreadTune.off ? 0 : (1 - s) * clamp((local10 - spreadTune.u0) / (spreadTune.u1 - spreadTune.u0), 0, 1)
+  const capK = spreadTune.off ? 0 : (1 - sNight) * clamp((local10 - spreadTune.u0) / (spreadTune.u1 - spreadTune.u0), 0, 1)
   const sigPlace = clamp(Math.max(Math.min(sigma, 110 - (110 - spreadTune.cap) * capK), swingFloor), 8, 110)
-  const sigModel = modelErr(rise, regime, s, lay.convective)
+  const sigModel = modelErr(rise, regime, sNight, lay.convective)
   const sigFcst = forcedAir ? 0 : Math.hypot(spreadTune.forecast, lay.ensDirSd != null ? 0.7 * lay.ensDirSd : 0) * (0.3 + 0.7 * fracMech)
   const pull = 1 + spreadTune.checkPull * wsum
   const spreadOf = { place: sigPlace, model: Math.max(sigModel / pull, checkFloor), forecast: sigFcst / pull }
