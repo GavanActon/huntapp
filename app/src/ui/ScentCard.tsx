@@ -1,32 +1,23 @@
 import { useEffect, useRef, useState, type JSX } from 'react'
 import { useAppStore } from '../state/appStore'
-import { clockShort } from '../time'
-import { groundWind } from '../weather/micro/model'
-import { clearPlaced, coneSizeWord, drawnView, GROUND_H, groupSummary, personColour, reachLabel, reliefReason, SCENT_HEIGHTS, sitterName, sittersLine, useScent, type ScentView } from '../weather/micro/scent'
-import { checkSpentAt, strongestCheck, useWindChecks } from '../weather/micro/windChecks'
-import { compass } from '../weather/openMeteo'
+import { clearPlaced, coneSizeWord, drawnView, GROUND_H, groupSummary, personColour, SCENT_HEIGHTS, sitterName, useScent, type ScentView } from '../weather/micro/scent'
 import { useLookTick } from './useLookTick'
 import { useTapOff } from './tapOff'
 import './live.css'
-import { dist, height as heightWords } from '../lengths'
+import { height as heightWords } from '../lengths'
 import { fmtCoord } from '../map/MapView'
 
 /**
  * "Your scent": the live card's Scent › opened, a top card in its slot with
- * the map (and both columns) still there. What the cone rests on, in
- * three lines: the wind at head height against the forecast, the wind
- * check pulling it while one does, and how wide and how far it goes; on a
- * still night off a drop, a fourth for why the cone skips the low ground
- * (a reason, so here and not on the live card's brief line). The legend
- * for the shading, the checks' share of the cone and the part that rose
- * over the canopy went on 2026-10-24 (Gavan: "a ton of text that's not at
- * all useful"): numbers that change nothing you'd do. Then
- * the knobs: where you sit (the ground, or a stand), the cone's size from
- * smaller (only what is strong counts) to bigger (scent counts sooner, the
- * wind wanders more), how it is drawn, and with a party placed, whose line it
- * is, Remove and Clear (+ Person is the live card's, and the map popup's
- * Scent). ‹ Back returns the live card; so does a tap off the card, on the
- * map (the app-wide rule, tapOff).
+ * the map (and both columns) still there. Knobs only, in Gavan's order
+ * (2026-10-24: "KIS here"): whose sit with a party placed, where you sit
+ * (the ground, or a stand), how it is drawn, the cone's size from smaller
+ * (only what is strong counts) to bigger (scent counts sooner, the wind
+ * wanders more), its strength, and the spot's coordinates; a party's drift
+ * warning above them when there is one. The wind, spread, reach and reasons
+ * that used to head the card live on the live card's brief line and the
+ * cone itself. ‹ Back returns the live card; so does a tap off the card, on
+ * the map (the app-wide rule, tapOff).
  */
 
 // By person alone too, and Particles last (Gavan, 2026-10-19: "per person scent is really quite clear,
@@ -40,15 +31,11 @@ const VIEWS: { v: ScentView; name: string }[] = [
 export default function ScentCard(): JSX.Element | null {
   useLookTick()
   const people = useScent((s) => s.people)
-  const plumes = useScent((s) => s.plumes)
   const group = useScent((s) => s.group)
   const pick = useScent((s) => s.pick)
   const view = useScent((s) => s.view)
   const risk = useScent((s) => s.risk)
   const strength = useScent((s) => s.strength)
-  const checks = useWindChecks((s) => s.checks)
-  const planTimeMs = useAppStore((s) => s.planTimeMs)
-  const units = useAppStore((s) => s.units)
   const setTopCard = useAppStore((s) => s.setTopCard)
   const n = people.length
   const ref = useRef<HTMLDivElement>(null)
@@ -63,18 +50,11 @@ export default function ScentCard(): JSX.Element | null {
   const many = n > 1
   const k = Math.min(Math.max(0, pick), n - 1)
   const at = people[k]
-  const plume = plumes[k] ?? null
-  const planMs = planTimeMs ?? Date.now()
-  const g = groundWind(at.lon, at.lat, planMs)
-  const check = strongestCheck(checks, at.lon, at.lat, planMs)
   const height = at.height
   const shown = drawnView(view, n)
-  const party = many && group ? { head: sittersLine(group, n), drift: groupSummary(group, people).drift } : null
+  const party = many && group ? { drift: groupSummary(group, people).drift } : null
   const placed = people.some((p) => !p.live)
   const who = (i: number) => (people[i]?.live ? 'You' : sitterName(people[i], i))
-  const kmh = (v: number) => (units === 'imperial' ? Math.round(v * 0.621371) : Math.round(v))
-  const slowed = g && g.kmh < g.regionalKmh * 0.8 ? ', slowed by the bush' : ''
-  const offDrop = plume && reliefReason(plume)
 
   return (
     <div className="topcard" ref={ref}>
@@ -85,33 +65,6 @@ export default function ScentCard(): JSX.Element | null {
         <span className="topcard-title">Your scent</span>
       </div>
       <div className="topcard-body">
-        {g && (
-          <div className="scent-line">
-            <span className="dim">Wind at head height</span> {g.kmh < 0.5 ? 'calm' : `${compass(g.dirFrom)} ${kmh(g.kmh)}`}{' '}
-            <span className="dim">
-              · forecast {kmh(g.forecastKmh)}
-              {slowed}
-            </span>
-          </div>
-        )}
-        {check && (
-          <div className="scent-line">
-            <span className="dim">Wind sharpened {clockShort(check.check.ts)}</span> pulls it {Math.round(check.pull * 100)}% toward what you {check.check.seen ? 'saw' : 'felt'}{' '}
-            <span className="dim">· fades by ~{clockShort(checkSpentAt(check.check))}</span>
-          </div>
-        )}
-        {(g || plume) && (
-          <div className="scent-line">
-            {g && (
-              <>
-                <span className="dim">Spread</span> ±{Math.round(g.sigmaDeg)}°
-              </>
-            )}
-            {g && plume && <span className="dim"> · </span>}
-            {plume && (plume.height > GROUND_H && plume.landing >= 30 ? `noticeable from ${dist(plume.landing)} out to ${reachLabel(plume)}` : `noticeable to ${reachLabel(plume)}`)}
-          </div>
-        )}
-        {offDrop && <div className="scent-line dim">{offDrop}</div>}
         {many && (
           <div className="sc-people">
             <div className="seg" role="radiogroup" aria-label="Whose sit">
@@ -135,12 +88,7 @@ export default function ScentCard(): JSX.Element | null {
             )}
           </div>
         )}
-        {party && (
-          <>
-            <div className="scent-line">{party.head}</div>
-            {party.drift && <div className="scent-line lc-amber">{party.drift}</div>}
-          </>
-        )}
+        {party?.drift && <div className="scent-line lc-amber">{party.drift}</div>}
         {at.party ? (
           // a party member's height is theirs, set on their phone
           <div className="scent-line">
