@@ -158,10 +158,15 @@ export default function ScentCard(): JSX.Element | null {
           </div>
         </div>
         )}
-        {/* where this one sits, to the metre; a tap copies it (Gavan, 2026-10-19: "Advanced on scent give me location") */}
         <div className="sc-sec">
-          <span className="sc-sec-name">Location</span>
-          <CopyCoord lon={at.lon} lat={at.lat} />
+          <span className="sc-sec-name">Draw it as</span>
+          <div className="seg" role="radiogroup" aria-label="How it is drawn">
+            {VIEWS.map((o) => (
+              <button key={o.v} className={shown === o.v ? 'seg-on' : ''} role="radio" aria-checked={shown === o.v} onClick={() => setView(o.v)}>
+                {o.name}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="sc-sec">
           <span className="sc-sec-name">
@@ -184,20 +189,15 @@ export default function ScentCard(): JSX.Element | null {
           </div>
         </div>
         <div className="sc-sec">
-          <span className="sc-sec-name">Draw it as</span>
-          <div className="seg" role="radiogroup" aria-label="How it is drawn">
-            {VIEWS.map((o) => (
-              <button key={o.v} className={shown === o.v ? 'seg-on' : ''} role="radio" aria-checked={shown === o.v} onClick={() => setView(o.v)}>
-                {o.name}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="sc-sec">
           <span className="sc-sec-name">
             Strength <span className="numeral">· {Math.round(strength * 100)}%</span>
           </span>
           <input className="sc-slider" type="range" min={10} max={100} step={5} value={Math.round(strength * 100)} onChange={(e) => setStrength(Number(e.target.value) / 100)} aria-label="Strength" />
+        </div>
+        {/* where this one sits, to the metre; a tap copies it (Gavan, 2026-10-19: "Advanced on scent give me location") */}
+        <div className="sc-sec">
+          <span className="sc-sec-name">Location</span>
+          <CopyCoord lon={at.lon} lat={at.lat} />
         </div>
         {placed && (
           <div className="sc-btns">
