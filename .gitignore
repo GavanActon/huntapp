@@ -53,3 +53,8 @@ app/public/data/areas/highland-lake/wetland-highland-lake.geojson
 # PALM run inputs and outputs (gigabytes; the share holds the runs, fields/ holds the reads)
 pipeline/teacher/palm/*/JOBS/
 pipeline/teacher/palm/*/viz/
+
+# Luther (MI): the bake's inputs the app never reads (not in luther.json's files lists)
+app/public/data/areas/luther/wetland-luther.geojson
+app/public/data/areas/luther/watercourse-luther.geojson
+app/public/data/areas/luther/forest-luther.geojson
