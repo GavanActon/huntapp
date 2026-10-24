@@ -166,30 +166,34 @@ def nhd_layer(layer: str, columns: list[str]):
     zips = sorted(NHD_DIR.glob("NHDPLUS_H_*_GPKG.zip"))
     if not zips:
         raise SystemExit(f"no NHDPlus HR GeoPackage in {NHD_DIR}: download the basin's zip from prd-tnm first")
+    # every basin the region touches (TNM lists one GeoPackage per HU4; a box on a divide has two)
+    for z in zips:
+        with zipfile.ZipFile(z) as zf:
+            for n in zf.namelist():
+                if n.lower().endswith(".gpkg") and not (NHD_DIR / Path(n).name).exists():
+                    zf.extract(n, NHD_DIR)
+                    if Path(n).name != n:
+                        (NHD_DIR / n).replace(NHD_DIR / Path(n).name)
     gpkgs = sorted(NHD_DIR.glob("*.gpkg"))
-    if not gpkgs:
-        with zipfile.ZipFile(zips[-1]) as z:
-            names = [n for n in z.namelist() if n.lower().endswith(".gpkg")]
-            z.extract(names[0], NHD_DIR)
-        gpkgs = sorted(NHD_DIR.glob("**/*.gpkg"))
-    path = str(gpkgs[-1])
-    info = pyogrio.read_info(path, layer=layer)
-    have = {f.lower(): f for f in info["fields"]}
-    cols = [have[c.lower()] for c in columns if c.lower() in have]
-    meta, _, wkb, fields = pyogrio.raw.read(path, layer=layer, columns=cols, bbox=(W, S, E, N))
-    names = list(meta["fields"])
     out = []
-    for i, g in enumerate(wkb):
-        if g is None:
-            continue
-        geom = shapely.from_wkb(g)
-        if geom.is_empty:
-            continue
-        if not geom.is_valid:
-            geom = shapely.make_valid(geom)
-        props = {c: (fields[names.index(have[c.lower()])][i] if c.lower() in have else None) for c in columns}
-        out.append((geom, props))
-    print(f"  {layer}: {len(out)} features in the region")
+    for path in gpkgs:
+        info = pyogrio.read_info(str(path), layer=layer)
+        have = {f.lower(): f for f in info["fields"]}
+        cols = [have[c.lower()] for c in columns if c.lower() in have]
+        meta, _, wkb, fields = pyogrio.raw.read(str(path), layer=layer, columns=cols, bbox=(W, S, E, N))
+        names = list(meta["fields"])
+        n0 = len(out)
+        for i, g in enumerate(wkb):
+            if g is None:
+                continue
+            geom = shapely.from_wkb(g)
+            if geom.is_empty:
+                continue
+            if not geom.is_valid:
+                geom = shapely.make_valid(geom)
+            props = {c: (fields[names.index(have[c.lower()])][i] if c.lower() in have else None) for c in columns}
+            out.append((geom, props))
+        print(f"  {layer}: {len(out) - n0} features in the region from {path.name}")
     return out
 
 
