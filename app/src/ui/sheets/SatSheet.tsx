@@ -1,6 +1,7 @@
 import { useEffect, useState, type JSX } from 'react'
 import { SAT_NUMBER } from '../../config'
 import { track } from '../../analytics'
+import { devlog } from '../../devlog'
 import { useAppStore } from '../../state/appStore'
 import { agoLabel, clockShort } from '../../time'
 import { refreshWeather, campForecast, hrdpsRunLabel } from '../../weather/refresh'
@@ -129,7 +130,13 @@ export default function SatSheet(): JSX.Element {
     setResult(r)
     // a paste is one change, typing is many: the box as it came to rest
     window.clearTimeout(pasteTimer)
-    if (r) pasteTimer = window.setTimeout(() => track('sat_paste', r.ok ? { ok: true, hours: r.hours, changed: !!r.change, via } : { ok: false, why: r.why.split(/[.:]/)[0], via }), 1500)
+    if (r)
+      pasteTimer = window.setTimeout(() => {
+        track('sat_paste', r.ok ? { ok: true, hours: r.hours, changed: !!r.change, via } : { ok: false, why: r.why.split(/[.:]/)[0], via })
+        // the dev log too, the failures with what the sheet said: a paste that did not take left nothing to read
+        // there (2026-10-24, Valerie Lake: "I passed but it didn't work"); the reply's own length, not its text
+        devlog('wx', r.ok ? `satellite paste · ${via} · ${r.hours} h` : `satellite paste failed · ${via} · ${t.trim().length} chars · ${r.why}`)
+      }, 1500)
   }
 
   const paste = () => {
@@ -144,6 +151,7 @@ export default function SatSheet(): JSX.Element {
       (t) => take(t, 'button'),
       () => {
         track('sat', { step: 'clip_fail' })
+        devlog('wx', 'satellite paste · the clipboard could not be read')
         setNote('Could not read the clipboard. Paste into the box.')
       },
     )
