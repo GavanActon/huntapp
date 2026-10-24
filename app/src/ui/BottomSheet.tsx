@@ -20,8 +20,13 @@ const FULL_PCT = 88
  *  the live card under it: a sliver of map between, the strip floating over
  *  a page. So the pages count: Settings, Scoring, the guide, Party (72), the
  *  layers (80), Map buttons (84), and anything pulled full or grown for the
- *  keyboard. Dig in, a pin, Views and the like (56 to 66) keep the strip. */
+ *  keyboard. Dig in, a pin and the like (56 to 66) keep the strip. Views
+ *  hides it at any height (HIDES_TOP): the sheet is about the map, and the
+ *  strip over it was in the way (Gavan, 2026-10-23: "when the views tab is
+ *  open, hide the weather strip"). */
 const FULL_SCREEN_PCT = 72
+/** Sheets that take the top area whatever their height. */
+const HIDES_TOP = new Set(['views'])
 
 /** A detent as CSS: pct of the viewport, but of no more than VH_CAP_PX of it. */
 function heightCss(pct: number) {
@@ -84,8 +89,8 @@ export default function BottomSheet({
 
   // the screen is the sheet's: the top area steps away while it is, and comes back as it goes
   useEffect(() => {
-    useAppStore.setState({ sheetFull: heightPct >= FULL_SCREEN_PCT })
-  }, [heightPct])
+    useAppStore.setState({ sheetFull: heightPct >= FULL_SCREEN_PCT || HIDES_TOP.has(snapKey) })
+  }, [heightPct, snapKey])
   useEffect(
     () => () => {
       useAppStore.setState({ sheetFull: false })
