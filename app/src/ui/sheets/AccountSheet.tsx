@@ -19,7 +19,7 @@ export default function AccountSheet(): JSX.Element {
         <p>
           Signed in as <span className="account-who">{email}</span>.
         </p>
-        <p className="dim">Your locations follow you: sign in with this email on another phone, or in the Home Screen app, and they are there.</p>
+        <p className="dim">Your spots are on every phone you sign in on with this email, the Home Screen app too. Signing in keeps your spots, never where you are.</p>
         <button className="btn-secondary" onClick={() => void signOut()}>
           Sign out
         </button>
@@ -28,12 +28,13 @@ export default function AccountSheet(): JSX.Element {
   }
   return (
     <div className="account">
-      <p>Sign in to keep your locations on every phone you use, and to ask for HD. No password: we email you a code.</p>
+      <p>Sign in to have your spots on every phone you use, and to ask for HD. No password: we email you a code.</p>
+      <p className="dim">Signing in keeps your spots, never where you are.</p>
       <SignIn
         onDone={(added) => {
           closeSheet()
           // the area list is the start's: the locations from other phones come in with a reload
-          if (added) toast(`${added} ${added === 1 ? 'location' : 'locations'} from your other phones`, 10_000, { label: 'Show', run: () => window.location.reload() })
+          if (added) toast(`${added} ${added === 1 ? 'spot' : 'spots'} from your other phones`, 10_000, { label: 'Show', run: () => window.location.reload() })
           else toast('Signed in', 2500)
         }}
       />

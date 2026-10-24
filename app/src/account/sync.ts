@@ -107,6 +107,6 @@ export function startAccountSync(): void {
   void syncLocations().then((r) => {
     if (!r) return
     void fetchPacks()
-    if (r.added) toast(`${r.added} ${r.added === 1 ? 'location' : 'locations'} from your other phones`, 10_000, { label: 'Show', run: () => window.location.reload() })
+    if (r.added) toast(`${r.added} ${r.added === 1 ? 'spot' : 'spots'} from your other phones`, 10_000, { label: 'Show', run: () => window.location.reload() })
   })
 }

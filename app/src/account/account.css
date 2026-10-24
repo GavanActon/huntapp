@@ -14,6 +14,18 @@
   color: inherit;
   font-size: 16px; /* 16 px: an iPhone zooms the page into a smaller field */
 }
+.signin-coderow {
+  display: flex;
+  gap: 8px;
+}
+.signin-coderow .signin-code {
+  flex: 1;
+  min-width: 0;
+}
+.signin-coderow .signin-paste {
+  flex: none;
+  padding-inline: 16px;
+}
 .signin input.signin-code {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 22px;

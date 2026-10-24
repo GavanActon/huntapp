@@ -386,7 +386,7 @@ export default function SettingsSheet(): JSX.Element {
       <button className="st-row st-two" onClick={() => pushSheet({ kind: 'account' })}>
         <span>
           Your account
-          <small>{account ?? 'your locations on every phone, and HD'}</small>
+          <small>{account ?? 'your spots on every phone, and HD'}</small>
         </span>
         <span className="dim">{account ? '›' : 'Sign in ›'}</span>
       </button>

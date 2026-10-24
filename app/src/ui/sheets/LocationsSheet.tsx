@@ -248,8 +248,8 @@ export default function LocationsSheet(): JSX.Element {
         </div>
         <div className="place-row">
           <button className="row-text place-go" onClick={() => pushSheet({ kind: 'account' })}>
-            <span className="row-title">{account ? 'On every phone' : 'Sign in'}</span>
-            <span className="row-desc">{account ? `signed in as ${account}: these follow you` : 'keep these locations on every phone you use'}</span>
+            <span className="row-title">{account ? 'Your account' : 'Sign in'}</span>
+            <span className="row-desc">{account ? `signed in as ${account}` : 'have these spots on every phone you use'}</span>
           </button>
         </div>
       </div>

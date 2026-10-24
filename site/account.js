@@ -124,7 +124,8 @@ async function start(request, env, cors, ctx, who) {
   mail(ctx, env.MAIL, {
     to: email,
     subject: `Your Groundwind code: ${code}`,
-    text: `Your Groundwind code is ${code}.\n\nType it into the app within ${CODE_MIN} minutes. If you didn't ask for it, ignore this email: nothing happens without the code.\n\nGroundwind`,
+    // the code on a line of its own: what is copied from the email, the easiest thing to press and hold
+    text: `Your Groundwind code:\n\n${code}\n\nCopy it into the app within ${CODE_MIN} minutes. If you didn't ask for it, ignore this email: nothing happens without the code.\n\nGroundwind`,
   })
   // the same answer for an address with an account or none: no list of who has one
   return json({ ok: true, minutes: CODE_MIN }, 200, cors)

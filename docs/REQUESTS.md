@@ -458,8 +458,21 @@ migration.
   me a code, the code, Sign in; signed in, whose and Sign out.
 - Signed in, the phone's locations and the account's are merged at the
   start, after signing in, and after a rename or a removal here; ones
-  from other phones are offered with "N locations from your other phones
+  from other phones are offered with "N spots from your other phones
   · Show" (the area list is the start's, so Show reloads).
+- The words say spots, never that locations "follow you" (Gavan,
+  2026-10-24: "that sounds like it's stalking you which is not the
+  idea"), and the sheet says it plainly: "Signing in keeps your spots,
+  never where you are." True: the account holds the boxes loaded, not
+  the phone's position.
+- The code is copied from the email more than typed (Gavan, 2026-10-24:
+  "had to scroll up because it wanted me to type in the code - I'd
+  copied it from my email"): the box takes the email's whole text and
+  finds the code in it (`codeIn`; it had held 7 characters, so a pasted
+  sentence came out as letters), a Paste button fills it with no
+  keyboard, six digits sign in by themselves, the box is focused and in
+  view when it appears and again on coming back from the mail app, and
+  the email puts the code on a line of its own.
 - The HD card: signed out, the sign-in first; signed in, Get HD, told at
   the account's email. (hunt-dev and the dev server simulate HD orders,
   as before, so the sign-in shows there only through Settings.)
