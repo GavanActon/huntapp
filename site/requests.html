@@ -74,6 +74,7 @@ input[type="password"] { font: inherit; color: var(--ink); background: var(--sur
 .btn-main { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 .btn-main:hover { background: var(--ink-2); }
 .btn-small { padding: 3px 9px; font-size: 0.8rem; }
+.btn-warn { border-color: #b4553a; color: #e0906f; }
 
 #keybox { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; padding: 16px; margin-bottom: 14px; max-width: 520px; }
 #keybox p { margin: 0 0 10px; color: var(--ink-2); }
@@ -465,7 +466,31 @@ function details(r) {
   }
   if (c) links.push(h('button', { class: 'btn btn-small', onclick: (e) => copy(e.target, `${c[1].toFixed(5)}, ${c[0].toFixed(5)}`) }, 'Copy point'))
   links.push(h('button', { class: 'btn btn-small', onclick: (e) => copy(e.target, JSON.stringify(r, null, 2)) }, 'Copy row'))
-  return h('div', { class: 'more' }, dl, r.error ? h('pre', null, r.error) : null, h('div', { class: 'row' }, links))
+  // the queue's levers (Gavan, 2026-10-24: "can I cancel entries? Want to prioritize bakes that aren't from me"):
+  // Cancel takes a request out of the agent's way, Requeue puts one back, Mark done names the area that serves it
+  const st = stageOf(r)
+  const acts = []
+  if (['queued', 'new', 'review', 'baking', 'claimed'].includes(st)) acts.push(h('button', { class: 'btn btn-small btn-warn', onclick: (e) => act(e.target, r.id, 'cancel') }, 'Cancel'))
+  if (['cancelled', 'failed', 'review'].includes(st)) acts.push(h('button', { class: 'btn btn-small', onclick: (e) => act(e.target, r.id, 'requeue') }, 'Requeue'))
+  if (st !== 'done') acts.push(h('button', { class: 'btn btn-small', onclick: (e) => { const id = prompt('The area that serves this request (its id, e.g. luther):', r.area_id || ''); if (id) act(e.target, r.id, 'done', id.trim()) } }, 'Mark done'))
+  return h('div', { class: 'more' }, dl, r.error ? h('pre', null, r.error) : null, h('div', { class: 'row' }, links), acts.length ? h('div', { class: 'row' }, acts) : null)
+}
+
+/** One of the queue's levers, through the Worker (POST /api/requests/act, behind the stats key), then the list again. */
+async function act(btn, id, action, areaId) {
+  const key = localStorage.getItem(KEY) || ''
+  const was = btn.textContent
+  btn.textContent = '…'
+  btn.disabled = true
+  try {
+    const r = await fetch('/api/requests/act', { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'content-type': 'application/json' }, body: JSON.stringify({ id, action, area_id: areaId }) })
+    if (!r.ok) throw new Error(String(r.status))
+    await load()
+  } catch (e) {
+    btn.textContent = `Failed (${e.message})`
+    btn.disabled = false
+    setTimeout(() => (btn.textContent = was), 2000)
+  }
 }
 
 async function copy(btn, text) {

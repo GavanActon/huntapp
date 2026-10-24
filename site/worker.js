@@ -51,6 +51,7 @@ export default {
     if (url.pathname === '/app' || url.pathname.startsWith('/app/')) return Response.redirect(APP + url.search, 302)
     if (url.pathname === '/api/request') return areaRequest(request, env, ctx)
     if (url.pathname === '/api/requests') return requestsList(request, env, url)
+    if (url.pathname === '/api/requests/act') return requestsAct(request, env, url)
     if (url.pathname.startsWith('/api/bake/')) return bakeApi(request, env, url, ctx)
     if (url.pathname.startsWith('/areas/')) return areasApi(request, env, url, corsFor(request))
     if (url.pathname === '/api/sms') return smsWebhook(request, env)
@@ -266,6 +267,31 @@ async function requestsList(request, env, url) {
     return { ...r, box: box ?? (r.tile ? boxOfTile(r.tile) : null) }
   })
   return json({ now: new Date().toISOString(), requests }, 200, { 'Cache-Control': 'no-store' })
+}
+
+/** POST /api/requests/act {id, action, area_id?}: the requests page's levers, behind STATS_KEY
+ *  (Gavan, 2026-10-24: "can I cancel entries? Want to prioritize bakes that aren't from me").
+ *  cancel: out of the agent's way (a bake under way is cancelled too: the agent's next post finds
+ *  it so and stops); requeue: back in the queue, to bake again; done: served by the area named
+ *  (one baked by hand, or one that already covers the box). */
+async function requestsAct(request, env, url) {
+  if (request.method !== 'POST') return json({ error: 'post' }, 405)
+  if (!authorized(request, env, url)) return json({ error: 'key' }, 401)
+  const body = await request.json().catch(() => null)
+  const id = Number(body?.id)
+  const action = String(body?.action || '')
+  if (!Number.isInteger(id) || id <= 0) return json({ error: 'id' }, 400)
+  let r
+  if (action === 'cancel') {
+    r = await env.DB.prepare("UPDATE requests SET status = 'cancelled', stage = 'cancelled', step = NULL, updated_at = datetime('now') WHERE id = ? AND stage IS NOT 'done'").bind(id).run()
+  } else if (action === 'requeue') {
+    r = await env.DB.prepare("UPDATE requests SET status = 'new', stage = 'queued', step = NULL, error = NULL, agent = NULL, claimed_at = NULL, updated_at = datetime('now') WHERE id = ?").bind(id).run()
+  } else if (action === 'done') {
+    const area = String(body?.area_id || '').trim()
+    if (!/^[a-z0-9-]{1,40}$/.test(area)) return json({ error: 'area_id' }, 400)
+    r = await env.DB.prepare("UPDATE requests SET status = 'new', stage = 'done', step = NULL, error = NULL, area_id = ?, done_at = datetime('now'), updated_at = datetime('now') WHERE id = ?").bind(area, id).run()
+  } else return json({ error: 'action' }, 400)
+  return json({ ok: true, changed: r?.meta?.changes ?? 0 }, 200, { 'Cache-Control': 'no-store' })
 }
 
 /** A failure's last line, with the PC's paths taken out: the full traceback
