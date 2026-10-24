@@ -1,0 +1,212 @@
+{
+  "id": "area-r13",
+  "name": "Cow Lake",
+  "jurisdiction": "AB",
+  "centre": [
+    -114.9684,
+    52.255961
+  ],
+  "home": {
+    "center": [
+      -114.9684,
+      52.255961
+    ],
+    "zoom": 13
+  },
+  "region": {
+    "west": -115.108,
+    "south": 52.186,
+    "east": -114.829,
+    "north": 52.326
+  },
+  "core": {
+    "west": -115.03,
+    "south": 52.22,
+    "east": -114.907,
+    "north": 52.292,
+    "maxzoom": 16
+  },
+  "regionMaxzoom": 13,
+  "declination": 13.9,
+  "timezone": "America/Edmonton",
+  "zone": {
+    "label": "WMU",
+    "name": ""
+  },
+  "relief": [
+    974,
+    1105
+  ],
+  "base": "areas/area-r13/",
+  "surveyedLakes": [],
+  "live": {
+    "lio": false,
+    "satellite": null,
+    "sharp": "esri"
+  },
+  "attribution": {
+    "vectors": "",
+    "lakes": "",
+    "bush": ""
+  },
+  "presets": [
+    {
+      "name": "Cow Lake",
+      "lon": -114.9684,
+      "lat": 52.255961,
+      "kind": "stand",
+      "note": "Area requested 2026-10-24"
+    }
+  ],
+  "bundle": {
+    "description": "Topo, imagery, 30 m relief and contours, forest stands, water, roads, and the habitat, surrogate wind and going grids around Cow Lake; full detail within 4 km of the spot."
+  },
+  "files": {
+    "pmtiles": [
+      "topo",
+      "hillshade",
+      "dem",
+      "historical",
+      "places",
+      "understory",
+      "contoursWide"
+    ],
+    "geo": [
+      "land",
+      "lots"
+    ],
+    "baseGeo": [],
+    "grids": [
+      "habitat",
+      "micro",
+      "going"
+    ]
+  },
+  "bake": {
+    "outDir": "app/public/data/areas/area-r13",
+    "hrdem": [],
+    "lidar": "none",
+    "vectors": null,
+    "forest": null,
+    "imagery": null,
+    "pointcloud": null,
+    "wind": "sd",
+    "nts": [
+      "083B02",
+      "083B03",
+      "083B06",
+      "083B07"
+    ]
+  },
+  "request": {
+    "id": 13,
+    "baked": "2026-10-24",
+    "by": "pipeline/agent.py"
+  },
+  "profile": {
+    "checked": "2026-10-24",
+    "treeline": null,
+    "ecoregion": {
+      "cec1": "5",
+      "cec2": "5.4",
+      "cec3": "5.4.2",
+      "name": "Clear Hills and Western Alberta Uplands",
+      "family": "Boreal Plains"
+    },
+    "north": false,
+    "stands": {
+      "shrubHeight": false,
+      "leadSpecies": false
+    }
+  },
+  "coverage": {
+    "checked": "2026-10-24",
+    "pmtiles": {
+      "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
+      "topo": {
+        "file": "topo-area-r13.pmtiles",
+        "bytes": 1548414,
+        "source": "Toporama hypsography (contours and spot heights), NRCan WMS",
+        "licence": "OGL-Canada"
+      },
+      "satellite": { "missing": "not in this area's maps" },
+      "hillshade": { "file": "hillshade-area-r13.pmtiles", "bytes": 10784107, "source": "MRDEM 30 m hillshade, NRCan WMS", "licence": "OGL-Canada" },
+      "hillshadeLidar": { "missing": "not in this area's maps" },
+      "dem": {
+        "file": "dem-area-r13.pmtiles",
+        "bytes": 7367711,
+        "source": "MRDEM 30 m, with HRDEM 1 m LiDAR over the core (mrdem-30), NRCan",
+        "licence": "OGL-Canada"
+      },
+      "contours": { "missing": "not in this area's maps" },
+      "contoursWide": { "file": "contours-wide-area-r13.pmtiles", "bytes": 371509, "source": "MRDEM 30 m DTM, NRCan", "licence": "OGL-Canada" },
+      "forest": { "missing": "not in this area's maps" },
+      "understory": {
+        "file": "understory-area-r13.pmtiles",
+        "bytes": 8959355,
+        "source": "Bush model (docs/BUSH-MODEL.md): the eye-level understory predicted at 30 m from Sentinel-2 seasons, PALSAR, SCANFI, CanLaD and the MRDEM, trained on 435 plots of Ontario leaf-on LiDAR; faded where the model is unsure. Modelled, not measured",
+        "licence": "Copernicus Sentinel data; JAXA ALOS PALSAR mosaic (free, attribution); OGL-Canada; CanLaD CC BY 4.0",
+        "vintage": "imagery 2023-2025, model trained 2026-10-08"
+      },
+      "lanes": { "missing": "not in this area's maps" },
+      "bathy": { "missing": "not baked: lake depths are drawn from GeoJSON (depth)" },
+      "historical": {
+        "file": "historical-area-r13.pmtiles",
+        "bytes": 8722655,
+        "source": "CanMatrix2 1:50 000 NTS scans, NRCan: 083B02, 083B03, 083B06, 083B07",
+        "licence": "OGL-Canada"
+      },
+      "bathySheets": { "missing": "not in this area's maps" },
+      "places": { "file": "places-area-r13.pmtiles", "bytes": 177790 },
+      "lakes": { "missing": "not in this area's maps" }
+    },
+    "geo": {
+      "wmu": { "missing": "not in this area's maps" },
+      "camps": { "missing": "not in this area's maps" },
+      "crown": { "missing": "not in this area's maps" },
+      "land": {
+        "file": "land-area-r13.geojson",
+        "bytes": 131938,
+        "source": "Aboriginal Lands of Canada and National Parks legislative boundaries, NRCan Surveyor General (CLSS); Parks and Protected Areas of Alberta; White Area quarter sections no public layer covers (ATS v4.1 and Green/White Area), Government of Alberta",
+        "licence": "OGL-Canada; OGL-Alberta"
+      },
+      "lots": {
+        "file": "lots-area-r13.geojson",
+        "bytes": 115631,
+        "source": "Alberta Township System v4.1 quarter sections, Government of Alberta",
+        "licence": "OGL-Alberta"
+      },
+      "parks": { "missing": "not in this area's maps" },
+      "bathy": { "missing": "not in this area's maps" },
+      "fire": { "missing": "not in this area's maps" },
+      "roads": { "missing": "not in this area's maps" },
+      "forest": { "missing": "not in the maps as GeoJSON: the map reads the stands from the forest tiles, and the GeoJSON stays the bake's input" },
+      "depth": { "missing": "not in this area's maps" }
+    },
+    "baseGeo": { "waterbody": { "missing": "not in this area's maps" } },
+    "grids": {
+      "habitat": {
+        "file": "habitat-area-r13.hab",
+        "bytes": 1953575,
+        "source": "derived: MRDEM, NRCan 2020 land cover, forest stands, water, wetlands, roads and burns",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-24"
+      },
+      "micro": {
+        "file": "micro-area-r13.hab",
+        "bytes": 5031183,
+        "source": "derived: the habitat grid and the MRDEM, with the surrogate net's terrain wind (build_windsd.py; no WindNinja run in an SD area)",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-24"
+      },
+      "going": {
+        "file": "going-area-r13.hab",
+        "bytes": 1235394,
+        "source": "derived: HRDEM LiDAR, point-cloud bush or the forest-map estimate, water, wetlands and roads",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-24"
+      },
+      "micro-sd": { "missing": "not in this area's maps" }
+    }
+  }
+}

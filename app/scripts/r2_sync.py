@@ -228,6 +228,11 @@ def manifests(dist: Path, sent: dict[str, tuple[int, str]]) -> tuple[list[tuple[
                 continue
             if name not in files:
                 problems.append(f'{rest}: not in the build\'s manifest (rebuild)')
+        # an area with no data on this disk (a request's pack, baked by the agent and compiled in as a
+        # fallback; or a clone without the folder) builds an empty manifest: R2's real one stays
+        if not files and not any((DATA / base).glob('*')) if base else False:
+            print(f'  {base}manifest.json: no data here, R2 keeps its own')
+            continue
         body = json.dumps(m, separators=(',', ':'), ensure_ascii=False) if dropped else mp.read_text(encoding='utf8')
         if dropped:
             print(f'  {base or "data/"}manifest.json: left out {len(dropped)} ignored file(s): {", ".join(dropped)}')

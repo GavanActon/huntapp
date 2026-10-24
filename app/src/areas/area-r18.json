@@ -1,0 +1,235 @@
+{
+  "id": "area-r18",
+  "name": "Barryton",
+  "jurisdiction": "MI",
+  "centre": [
+    -85.153,
+    43.771005
+  ],
+  "home": {
+    "center": [
+      -85.153,
+      43.771005
+    ],
+    "zoom": 13
+  },
+  "region": {
+    "west": -85.278,
+    "south": 43.68,
+    "east": -85.028,
+    "north": 43.862
+  },
+  "core": {
+    "west": -85.2152,
+    "south": 43.72605,
+    "east": -85.0908,
+    "north": 43.81596,
+    "maxzoom": 16
+  },
+  "regionMaxzoom": 13,
+  "declination": -6.2,
+  "timezone": "America/Detroit",
+  "zone": {
+    "label": "DMU",
+    "name": "486"
+  },
+  "relief": [
+    289,
+    362
+  ],
+  "base": "areas/area-r18/",
+  "surveyedLakes": [],
+  "live": {
+    "lio": false,
+    "satellite": null,
+    "sharp": "esri"
+  },
+  "attribution": {
+    "vectors": "USGS National Hydrography Dataset, US Census TIGER, Michigan DNR",
+    "lakes": "National Hydrography Dataset, USGS",
+    "bush": ""
+  },
+  "presets": [
+    {
+      "name": "Barryton",
+      "lon": -85.153,
+      "lat": 43.771005,
+      "kind": "stand",
+      "note": "Area requested 2026-10-24"
+    }
+  ],
+  "bundle": {
+    "description": "Topo, imagery, 30 m relief and contours, forest stands, water, roads, and the habitat, surrogate wind and going grids around Barryton; full detail within 5 km of the spot."
+  },
+  "files": {
+    "pmtiles": [
+      "dem",
+      "forest",
+      "understory",
+      "places",
+      "understory",
+      "contoursWide"
+    ],
+    "geo": [
+      "wmu",
+      "parks",
+      "roads",
+      "land"
+    ],
+    "baseGeo": [
+      "waterbody"
+    ],
+    "grids": [
+      "habitat",
+      "micro",
+      "going"
+    ]
+  },
+  "bake": {
+    "outDir": "app/public/data/areas/area-r18",
+    "hrdem": [],
+    "lidar": "none",
+    "us3dep": {
+      "stage": "area-r18",
+      "project": null,
+      "vintage": null
+    },
+    "vectors": "us",
+    "forest": {
+      "adapter": "ca.scanfi",
+      "vintage": "LANDFIRE 2024, NLCD 2021 (staged as the national stand layers)",
+      "attribution": "Forest inferred from LANDFIRE and NLCD, USGS and USFS"
+    },
+    "imagery": null,
+    "pointcloud": null,
+    "habitatBush": "model",
+    "wind": "sd",
+    "nts": []
+  },
+  "request": {
+    "id": 18,
+    "baked": "2026-10-24",
+    "by": "pipeline/agent.py"
+  },
+  "profile": {
+    "checked": "2026-10-24",
+    "treeline": null,
+    "ecoregion": {
+      "cec1": "5",
+      "cec2": "5.2",
+      "cec3": "5.2.1",
+      "name": "Northern Lakes and Forests",
+      "family": "Mixed Wood Shield"
+    },
+    "north": false,
+    "stands": {
+      "shrubHeight": false,
+      "leadSpecies": false
+    }
+  },
+  "coverage": {
+    "checked": "2026-10-24",
+    "pmtiles": {
+      "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
+      "topo": {
+        "missing": "not baked: the map streams the topo sheet with signal; the lakes, roads and contours are in the vector layers for no signal"
+      },
+      "satellite": { "missing": "not in this area's maps" },
+      "hillshade": { "missing": "not baked: the map shades the relief from the DEM" },
+      "hillshadeLidar": { "missing": "not in this area's maps" },
+      "dem": {
+        "file": "dem-area-r18.pmtiles",
+        "bytes": 8108209,
+        "source": "MRDEM 30 m, with HRDEM 1 m LiDAR over the core (mrdem-30), NRCan",
+        "licence": "OGL-Canada"
+      },
+      "contours": { "missing": "not in this area's maps" },
+      "contoursWide": { "file": "contours-wide-area-r18.pmtiles", "bytes": 339698, "source": "MRDEM 30 m DTM, NRCan", "licence": "OGL-Canada" },
+      "forest": {
+        "file": "forest-area-r18.pmtiles",
+        "bytes": 1180136,
+        "source": "inferred from LANDFIRE 2024, NLCD 2021 (staged as the national stand layers)",
+        "licence": "public domain (US Government work)",
+        "vintage": "LANDFIRE 2024, NLCD 2021 (staged as the national stand layers)"
+      },
+      "understory": {
+        "file": "understory-area-r18.pmtiles",
+        "bytes": 14736584,
+        "source": "Bush model (docs/BUSH-MODEL.md): the eye-level understory predicted at 30 m from Sentinel-2 seasons, PALSAR, SCANFI, CanLaD and the MRDEM, trained on 435 plots of Ontario leaf-on LiDAR; faded where the model is unsure. Modelled, not measured",
+        "licence": "Copernicus Sentinel data; JAXA ALOS PALSAR mosaic (free, attribution); OGL-Canada; CanLaD CC BY 4.0",
+        "vintage": "imagery 2023-2025, model trained 2026-10-08"
+      },
+      "lanes": { "missing": "not in this area's maps" },
+      "bathy": { "missing": "not baked: lake depths are drawn from GeoJSON (depth)" },
+      "historical": { "missing": "not baked: the old NTS sheets are left out of this area's pack" },
+      "bathySheets": { "missing": "not in this area's maps" },
+      "places": { "file": "places-area-r18.pmtiles", "bytes": 274247 },
+      "lakes": { "missing": "not in this area's maps" }
+    },
+    "geo": {
+      "wmu": {
+        "file": "wmu-area-r18.geojson",
+        "bytes": 896831,
+        "source": "Deer Management Units, Michigan DNR",
+        "licence": "Michigan open data (as is, no warranty)"
+      },
+      "camps": { "missing": "not in this area's maps" },
+      "crown": { "missing": "not in this area's maps" },
+      "land": {
+        "file": "land-area-r18.geojson",
+        "bytes": 30230,
+        "source": "likely private: everything outside PAD-US fee lands and Michigan DNR managed lands; closed: PAD-US lands with no public access",
+        "licence": "public domain (US Government work); Michigan open data (as is, no warranty)"
+      },
+      "lots": { "missing": "not in this area's maps" },
+      "parks": {
+        "file": "parks-area-r18.geojson",
+        "bytes": 138106,
+        "source": "PAD-US fee lands, USGS; DNR managed lands, Michigan DNR",
+        "licence": "public domain (US Government work); Michigan open data (as is, no warranty)"
+      },
+      "bathy": { "missing": "not in this area's maps" },
+      "fire": { "missing": "not in this area's maps" },
+      "roads": {
+        "file": "roads-area-r18.geojson",
+        "bytes": 478315,
+        "source": "USGS National Hydrography Dataset; Michigan Framework All Roads v17a (Michigan Tech), Michigan DNR roads",
+        "licence": "Michigan open data (as is, no warranty)"
+      },
+      "forest": { "missing": "not in the maps as GeoJSON: the map reads the stands from the forest tiles, and the GeoJSON stays the bake's input" },
+      "depth": { "missing": "not in this area's maps" }
+    },
+    "baseGeo": {
+      "waterbody": {
+        "file": "waterbody-area-r18.geojson",
+        "bytes": 74,
+        "source": "NHDPlus High Resolution waterbodies and river areas, USGS",
+        "licence": "public domain (US Government work)"
+      }
+    },
+    "grids": {
+      "habitat": {
+        "file": "habitat-area-r18.hab",
+        "bytes": 2573981,
+        "source": "derived: MRDEM, NRCan 2020 land cover, forest stands, water, wetlands, roads and burns",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-24"
+      },
+      "micro": {
+        "file": "micro-area-r18.hab",
+        "bytes": 5893610,
+        "source": "derived: the habitat grid and the MRDEM, with the surrogate net's terrain wind (build_windsd.py; no WindNinja run in an SD area)",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-24"
+      },
+      "going": {
+        "file": "going-area-r18.hab",
+        "bytes": 1680175,
+        "source": "derived: HRDEM LiDAR, point-cloud bush or the forest-map estimate, water, wetlands and roads",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-24"
+      },
+      "micro-sd": { "missing": "not in this area's maps" }
+    }
+  }
+}

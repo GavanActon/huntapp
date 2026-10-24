@@ -1,0 +1,263 @@
+{
+  "id": "area-r10",
+  "name": "Garden Lake",
+  "jurisdiction": "ON",
+  "centre": [
+    -83.7432,
+    46.790685
+  ],
+  "home": {
+    "center": [
+      -83.7432,
+      46.790685
+    ],
+    "zoom": 13
+  },
+  "region": {
+    "west": -83.875,
+    "south": 46.7,
+    "east": -83.611,
+    "north": 46.881
+  },
+  "core": {
+    "west": -83.8088,
+    "south": 46.74573,
+    "east": -83.6776,
+    "north": 46.83564,
+    "maxzoom": 16
+  },
+  "regionMaxzoom": 13,
+  "declination": -7.8,
+  "timezone": "America/Toronto",
+  "zone": {
+    "label": "WMU",
+    "name": "36"
+  },
+  "relief": [
+    317,
+    527
+  ],
+  "base": "areas/area-r10/",
+  "surveyedLakes": [],
+  "live": {
+    "lio": true,
+    "satellite": "lio"
+  },
+  "attribution": {
+    "vectors": "© Ontario MNRF",
+    "lakes": "© Ontario MNRF",
+    "bush": "FRI LiDAR © Ontario MNR"
+  },
+  "presets": [
+    {
+      "name": "Garden Lake",
+      "lon": -83.7432,
+      "lat": 46.790685,
+      "kind": "stand",
+      "note": "Area requested 2026-10-24"
+    }
+  ],
+  "bundle": {
+    "description": "Topo, imagery, 30 m relief and contours, forest stands, water, roads, and the habitat, surrogate wind and going grids around Garden Lake; full detail within 5 km of the spot."
+  },
+  "files": {
+    "pmtiles": [
+      "topo",
+      "satellite",
+      "hillshade",
+      "dem",
+      "forest",
+      "understory",
+      "historical",
+      "places",
+      "lakes",
+      "understory",
+      "contoursWide"
+    ],
+    "geo": [
+      "wmu",
+      "camps",
+      "crown",
+      "parks",
+      "bathy",
+      "fire",
+      "roads",
+      "depth",
+      "land",
+      "lots"
+    ],
+    "baseGeo": [
+      "waterbody"
+    ],
+    "grids": [
+      "habitat",
+      "micro",
+      "going"
+    ]
+  },
+  "bake": {
+    "outDir": "app/public/data/areas/area-r10",
+    "hrdem": [],
+    "lidar": "none",
+    "vectors": "on.lio",
+    "forest": {
+      "adapter": "on.fri",
+      "gdb": [
+        "raw/fri/pp_FRI_FIMv2_AlgomaForest_2013_2D.gdb"
+      ],
+      "crs": null,
+      "vintage": "2013 (Algoma Forest)"
+    },
+    "imagery": "on.oiwms",
+    "pointcloud": null,
+    "wind": "sd",
+    "nts": [
+      "041J12",
+      "041J13"
+    ]
+  },
+  "request": {
+    "id": 10,
+    "baked": "2026-10-24",
+    "by": "pipeline/agent.py"
+  },
+  "profile": {
+    "checked": "2026-10-24",
+    "treeline": null,
+    "ecoregion": {
+      "cec1": "5",
+      "cec2": "5.2",
+      "cec3": "5.2.3",
+      "name": "Algonquin/Southern Laurentians",
+      "family": "Mixed Wood Shield"
+    },
+    "north": false,
+    "stands": {
+      "shrubHeight": false,
+      "leadSpecies": true
+    }
+  },
+  "coverage": {
+    "checked": "2026-10-24",
+    "pmtiles": {
+      "basemap": { "missing": "not baked: the map draws the live NRCan base map" },
+      "topo": {
+        "file": "topo-area-r10.pmtiles",
+        "bytes": 11900358,
+        "source": "Toporama hypsography (contours and spot heights), NRCan WMS",
+        "licence": "OGL-Canada"
+      },
+      "satellite": {
+        "file": "satellite-area-r10.pmtiles",
+        "bytes": 18754043,
+        "source": "Ontario Imagery, LIO web map service",
+        "licence": "OGL-Ontario"
+      },
+      "hillshade": { "file": "hillshade-area-r10.pmtiles", "bytes": 12935758, "source": "MRDEM 30 m hillshade, NRCan WMS", "licence": "OGL-Canada" },
+      "hillshadeLidar": { "missing": "not in this area's maps" },
+      "dem": {
+        "file": "dem-area-r10.pmtiles",
+        "bytes": 12373377,
+        "source": "MRDEM 30 m, with HRDEM 1 m LiDAR over the core (mrdem-30), NRCan",
+        "licence": "OGL-Canada"
+      },
+      "contours": { "missing": "not in this area's maps" },
+      "contoursWide": { "file": "contours-wide-area-r10.pmtiles", "bytes": 1258770, "source": "MRDEM 30 m DTM, NRCan", "licence": "OGL-Canada" },
+      "forest": {
+        "file": "forest-area-r10.pmtiles",
+        "bytes": 2064108,
+        "source": "Forest Resources Inventory (FRI FIMv2) stands, OMNRF",
+        "licence": "OGL-Ontario",
+        "vintage": "2013 (Algoma Forest)"
+      },
+      "understory": {
+        "file": "understory-area-r10.pmtiles",
+        "bytes": 16920762,
+        "source": "Bush model (docs/BUSH-MODEL.md): the eye-level understory predicted at 30 m from Sentinel-2 seasons, PALSAR, SCANFI, CanLaD and the MRDEM, trained on 435 plots of Ontario leaf-on LiDAR; faded where the model is unsure. Modelled, not measured",
+        "licence": "Copernicus Sentinel data; JAXA ALOS PALSAR mosaic (free, attribution); OGL-Canada; CanLaD CC BY 4.0",
+        "vintage": "imagery 2023-2025, model trained 2026-10-08"
+      },
+      "lanes": { "missing": "not in this area's maps" },
+      "bathy": { "missing": "not baked: lake depths are drawn from GeoJSON (depth)" },
+      "historical": {
+        "file": "historical-area-r10.pmtiles",
+        "bytes": 24084905,
+        "source": "CanMatrix2 1:50 000 NTS scans, NRCan: 041J12, 041J13",
+        "licence": "OGL-Canada"
+      },
+      "bathySheets": { "missing": "not in this area's maps" },
+      "places": {
+        "file": "places-area-r10.pmtiles",
+        "bytes": 145596,
+        "source": "LIO: WMUs, Crown land camps, Crown land, parks, burns and roads",
+        "licence": "OGL-Ontario"
+      },
+      "lakes": { "file": "lakes-area-r10.pmtiles", "bytes": 131628 }
+    },
+    "geo": {
+      "wmu": { "file": "wmu-area-r10.geojson", "bytes": 719555, "source": "Wildlife Management Units, LIO", "licence": "OGL-Ontario" },
+      "camps": {
+        "file": "camps-area-r10.geojson",
+        "bytes": 4702,
+        "source": "Crown land dispositions: camps, cottages and lodges, LIO",
+        "licence": "OGL-Ontario"
+      },
+      "crown": { "file": "crown-area-r10.geojson", "bytes": 166944, "source": "Crown land, LIO", "licence": "OGL-Ontario" },
+      "land": {
+        "file": "land-area-r10.geojson",
+        "bytes": 58563,
+        "source": "Patent Land External (Crown vs patent, by title holder type), LIO; Conservation Reserve Regulated, LIO; Crown Land, MNR Non-Freehold Dispositions (leases, licences of occupation, land use permits; no holders), LIO",
+        "licence": "OGL-Ontario"
+      },
+      "lots": {
+        "file": "lots-area-r10.geojson",
+        "bytes": 1163,
+        "source": "Lot Fabric Improved (original Crown survey lots, within 100 m), LIO",
+        "licence": "OGL-Ontario"
+      },
+      "parks": { "file": "parks-area-r10.geojson", "bytes": 77, "source": "Provincial parks, LIO", "licence": "OGL-Ontario" },
+      "bathy": { "file": "bathy-area-r10.geojson", "bytes": 4278026, "source": "Lake bathymetry lines, LIO", "licence": "OGL-Ontario" },
+      "fire": { "file": "fire-area-r10.geojson", "bytes": 73, "source": "Fire disturbance areas, LIO", "licence": "OGL-Ontario" },
+      "roads": { "file": "roads-area-r10.geojson", "bytes": 373805, "source": "MNRF roads, LIO", "licence": "OGL-Ontario" },
+      "forest": { "missing": "not in the maps as GeoJSON: the map reads the stands from the forest tiles, and the GeoJSON stays the bake's input" },
+      "depth": {
+        "file": "depth-area-r10.geojson",
+        "bytes": 460638,
+        "source": "depth bands: the MNR survey sheets where a lake was surveyed, else a shore-distance model",
+        "licence": "OGL-Ontario"
+      }
+    },
+    "baseGeo": {
+      "waterbody": {
+        "file": "waterbody-area-r10.geojson",
+        "bytes": 2062795,
+        "source": "Ontario Hydro Network waterbodies, LIO",
+        "licence": "OGL-Ontario"
+      }
+    },
+    "grids": {
+      "habitat": {
+        "file": "habitat-area-r10.hab",
+        "bytes": 3784978,
+        "source": "derived: MRDEM, NRCan 2020 land cover, forest stands, water, wetlands, roads and burns",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-24"
+      },
+      "micro": {
+        "file": "micro-area-r10.hab",
+        "bytes": 9165558,
+        "source": "derived: the habitat grid and the MRDEM, with the surrogate net's terrain wind (build_windsd.py; no WindNinja run in an SD area)",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-24"
+      },
+      "going": {
+        "file": "going-area-r10.hab",
+        "bytes": 2234972,
+        "source": "derived: HRDEM LiDAR, point-cloud bush or the forest-map estimate, water, wetlands and roads",
+        "licence": "derived from the layers above",
+        "vintage": "generated 2026-10-24"
+      },
+      "micro-sd": { "missing": "not in this area's maps" }
+    }
+  }
+}
