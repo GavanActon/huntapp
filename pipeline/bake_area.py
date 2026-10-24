@@ -543,7 +543,9 @@ NEVER_BAKED = {
 # us_terrain.py (the stage) and us_pointcloud.py, the vectors from us_vectors.py; the national
 # rasters the Canadian steps read (MRDEM, land cover, SCANFI) are staged from US sources under
 # the same names (stage.py), so every later step runs unchanged. First: Michigan (2026-10-23).
-US_STATES = {"MI"}
+US_STATES = set("AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC".split())
+# the states us_vectors.py has a hunting-unit service for (the wmu file; elsewhere the zone is named by hand)
+STATE_UNITS = {"MI"}
 PROPERTY_SOURCES["MI"] = (
     {"source": "everything outside PAD-US fee lands and Michigan DNR managed lands drawn as likely private (Michigan has no open parcel layer)", "licence": "public domain (USGS); Michigan open data"},
     None,  # no open statewide parcels: the counties' and Regrid's are paid
@@ -852,6 +854,11 @@ def declination(lat: float, lon: float) -> float | None:
         return None
 
 
+def us_timezone(lon: float) -> str:
+    """A US zone by longitude, near enough for the forecast's hours (the state lines wander)."""
+    return "America/New_York" if lon > -87.5 else "America/Chicago" if lon > -104 else "America/Denver" if lon > -115 else "America/Los_Angeles"
+
+
 def new_area(args) -> str:
     import area  # its helpers; which area is active does not matter here
     from georef_sheet import nts_50k_sheets
@@ -872,7 +879,8 @@ def new_area(args) -> str:
     no_lidar = False
     hrdem: list[str] = []
     if j in US_STATES:  # the terrain comes from USGS 3DEP, staged by us_terrain.py; nothing to search here
-        print(f"{j}: a US state; the 1 m DEM and the point cloud come from USGS 3DEP (us_terrain.py, us_pointcloud.py)")
+        print(f"{j}: a US state; the 1 m DEM and the point cloud come from USGS 3DEP (us_terrain.py, us_pointcloud.py)" if not args.sd else f"{j}: a US state, SD: the 30 m 3DEP ground and the surrogate's wind (us_terrain.py wide)")
+        no_lidar = args.sd
     elif args.sd:  # SD: the national 30 m relief, and the surrogate's wind in WindNinja's place
         print("SD: no 1 m LiDAR, point cloud or WindNinja; the MRDEM's relief and the surrogate's terrain wind")
         no_lidar = True
@@ -925,7 +933,7 @@ def new_area(args) -> str:
     if j in US_STATES:  # the US adapters' layers: no Toporama, no NTS scans, no provincial imagery (Esri's sharp streams)
         files = {
             "pmtiles": ["hillshadeLidar", "dem", "contours", "contoursWide", "forest", "understory", "lanes", "places"],
-            "geo": ["wmu", "parks", "roads"],
+            "geo": [*(["wmu"] if j in STATE_UNITS else []), "parks", "roads", "land"],
             "baseGeo": ["waterbody"],
             "grids": ["habitat", "micro", "micro-sd", "going"],
         }
@@ -978,9 +986,11 @@ def new_area(args) -> str:
             # the stands: LANDFIRE and NLCD staged as SCANFI's layers (us_stage.py), read by ca_forest.py unchanged
             "forest": {"adapter": "ca.scanfi", "vintage": "LANDFIRE 2024, NLCD 2021 (staged as the national stand layers)", "attribution": "Forest inferred from LANDFIRE and NLCD, USGS and USFS"},
             "imagery": None,
-            "pointcloud": "us.3dep",
+            "pointcloud": None if args.sd else "us.3dep",
+            # the bush and lanes from the national model: a 3DEP cloud is flown leaf-off, so its shrub band is empty (Luther)
+            "habitatBush": "model",
         }
-    zone_label = {"ON": "WMU", "QC": "Zone", "YT": "GMS", "BC": "MU", "AB": "WMU", "MI": "DMU"}.get(j, "Zone")
+    zone_label = {"ON": "WMU", "QC": "Zone", "YT": "GMS", "BC": "MU", "AB": "WMU", "MI": "DMU"}.get(j, "Unit" if j in US_STATES else "Zone")
     a = {
         "id": area_id,
         "name": args.name,
@@ -991,7 +1001,7 @@ def new_area(args) -> str:
         "core": core,
         "regionMaxzoom": pickle["regionMaxzoom"],
         "declination": declination(lat, lon),
-        "timezone": {"YT": "America/Whitehorse", "BC": "America/Vancouver", "AB": "America/Edmonton", "MI": "America/Detroit"}.get(j) or ("America/Winnipeg" if j == "ON" and lon < -90 else "America/Toronto"),
+        "timezone": {"YT": "America/Whitehorse", "BC": "America/Vancouver", "AB": "America/Edmonton", "MI": "America/Detroit"}.get(j) or (us_timezone(lon) if j in US_STATES else "America/Winnipeg" if j == "ON" and lon < -90 else "America/Toronto"),
         "zone": {"label": zone_label, "name": ""},  # a string, or areas/check.ts leaves the whole area out of the app (Clearwater, 2026-10-17); fill it by hand
         "relief": None,  # the bake fills it in from the core's elevations
         "base": f"areas/{area_id}/",
@@ -1018,7 +1028,7 @@ def new_area(args) -> str:
         "bake": {
             "outDir": f"app/public/data/areas/{area_id}",
             "hrdem": hrdem,
-            **({"lidar": "us3dep", "us3dep": {"stage": args.stage or area_id, "project": None, "vintage": None}} if j in US_STATES else {"lidar": "arcticdem", "arcticdem": arctic} if arctic else {"lidar": "none"} if no_lidar else {}),
+            **({"lidar": "none" if args.sd else "us3dep", "us3dep": {"stage": args.stage or area_id, "project": None, "vintage": None}} if j in US_STATES else {"lidar": "arcticdem", "arcticdem": arctic} if arctic else {"lidar": "none"} if no_lidar else {}),
             **bake_by.get(j, {"vectors": None, "forest": None, "imagery": None, "pointcloud": None}),
             **({"pointcloud": None, "wind": "sd"} if args.sd else {}),
             "nts": [] if j in US_STATES else nts_50k_sheets(region["west"], region["south"], region["east"], region["north"]),

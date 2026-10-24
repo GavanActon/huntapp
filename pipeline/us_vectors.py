@@ -64,9 +64,13 @@ SERVICES = {
         "roads_attr": "USGS National Hydrography Dataset; Michigan Framework All Roads v17a (Michigan Tech), Michigan DNR roads",
     },
 }
+# a state with no services of its own gets the national fallbacks: TIGER's roads (every public road, by MTFCC
+# class), PAD-US public land, and no hunting unit (name the zone in the area file by hand)
+TIGER_ROADS = "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Transportation/MapServer/8"
+NATIONAL = {"roads": None, "dnr_roads": None, "dmu": None, "dnr_lands": None, "roads_attr": "US Census TIGER/Line roads"}
+SVC = SERVICES.get(J, NATIONAL)
 if J not in SERVICES:
-    raise SystemExit(f"{REGION['name']} is in {J}: us_vectors.py has services for {', '.join(SERVICES)} only")
-SVC = SERVICES[J]
+    print(f"  {J}: no state services yet (us_vectors.py SERVICES): TIGER roads, PAD-US land, no hunting unit")
 REGION_BOX = shapely.box(W, S, E, N)
 
 
@@ -270,17 +274,37 @@ def road_kind_mi(p: dict) -> tuple[str, str | None]:
     return "road", None
 
 
+# TIGER MTFCC: S1100 primary, S1200 secondary, S1400 local, S1500 vehicular trail (4WD), S1630 ramp, S1740 private, S1780 parking
+def road_kind_tiger(p: dict) -> tuple[str, str | None]:
+    m = str(p.get("MTFCC") or "")
+    if m == "S1100":
+        return "highway", "Paved"
+    if m in ("S1200", "S1630"):
+        return "paved", "Paved"
+    if m in ("S1500",):
+        return "trail", None
+    return "road", None
+
+
 def roads() -> None:
     out = []
     kinds: Counter = Counter()
     seen = []
+    if not SVC.get("roads"):
+        for g, p in shapes(tiled("tiger-roads", TIGER_ROADS, "OBJECTID,FULLNAME,MTFCC", n=2, page=1000)):
+            kind, surface = road_kind_tiger(p)
+            kinds[kind] += 1
+            out.append(feature(g, {"ROAD_NAME": name_of(p.get("FULLNAME")), "KIND": kind, "SURFACE_TYPE": surface}))
+        print(f"  by kind: {dict(kinds)}")
+        write("roads", out, "Roads (TIGER)", SVC["roads_attr"])
+        return
     for g, p in shapes(tiled("roads", SVC["roads"], "fid,name,fetype,fcc,nfc,legalsyste", n=2, page=1000)):
         kind, surface = road_kind_mi(p)
         kinds[kind] += 1
         out.append(feature(g, {"ROAD_NAME": name_of(" ".join(str(p.get(k) or "") for k in ("name", "fetype")).strip()), "KIND": kind, "SURFACE_TYPE": surface}))
         seen.append(g)
     tree = shapely.STRtree(seen) if seen else None
-    for g, p in shapes(arcgis("dnr-roads", SVC["dnr_roads"], "OBJECTID,RoadPrimary,RoadType,SurfaceType,ORVStatus,RoadORVUse", page=1000)):
+    for g, p in shapes(arcgis("dnr-roads", SVC["dnr_roads"], "OBJECTID,RoadPrimary,RoadType,SurfaceType,ORVStatus,RoadORVUse", page=1000)) if SVC.get("dnr_roads") else []:
         rt = str(p.get("RoadType") or "")
         st = str(p.get("SurfaceType") or "")
         kind = "trail" if "Access Route" in rt or "Admin" in rt else "paved" if "Paved" in st or "Asphalt" in st else "road"
@@ -300,6 +324,9 @@ def roads() -> None:
 
 def wmu() -> None:
     out = []
+    if not SVC.get("dmu"):
+        print("  no hunting-unit service for this state: no wmu file (set zone.name in the area file)")
+        return
     for g, p in shapes(arcgis("dmu", SVC["dmu"], "OBJECTID,DeerManagementUnit,MangementUnitName,Year")):
         num = str(p.get("DeerManagementUnit") or p.get("DMU") or "").strip()
         nm = str(p.get("MangementUnitName") or p.get("DMU_Name") or "").strip()
@@ -314,7 +341,7 @@ def public() -> list[tuple[shapely.Geometry, dict]]:
     out = []
     for g, p in shapes(arcgis("padus", PADUS, "Unit_Nm,Des_Tp,Mang_Name,Mang_Type,Own_Type,Pub_Access,GAP_Sts", page=1000)):
         out.append((g, {"name": p.get("Unit_Nm"), "kind": p.get("Des_Tp"), "manager": p.get("Mang_Name"), "access": p.get("Pub_Access"), "src": "PAD-US"}))
-    for g, p in shapes(tiled("dnr-lands", SVC["dnr_lands"], "ObjectID,ParcelType,LandStatus,ProjectName,DivisionDepartment", n=2, page=1000)):
+    for g, p in shapes(tiled("dnr-lands", SVC["dnr_lands"], "ObjectID,ParcelType,LandStatus,ProjectName,DivisionDepartment", n=2, page=1000)) if SVC.get("dnr_lands") else []:
         out.append((g, {"name": p.get("ProjectName"), "kind": p.get("ParcelType") or "DNR managed land", "manager": p.get("DivisionDepartment"), "access": None, "src": "Michigan DNR LOTS"}))
     return out
 

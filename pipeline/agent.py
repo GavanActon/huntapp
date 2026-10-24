@@ -119,6 +119,16 @@ LET_PASS: tuple[tuple[str, str, str], ...] = (
 )
 
 
+# the US states, by their two letters (bake_area.py US_STATES): their areas stage US rasters first (new_area)
+def is_us(code: str) -> bool:
+    try:
+        from bake_area import US_STATES
+
+        return code in US_STATES
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def let_pass(c) -> bool:
     return any(c.group == g and c.label == lab and c.detail.startswith(d) for g, lab, d in LET_PASS)
 # the provinces with adapters (bake_area.py ADAPTERS); elsewhere the national layers
@@ -252,7 +262,7 @@ def jurisdiction(lat: float, lon: float) -> str:
             pt = shapely.Point(lon, lat)
             for f in json.loads(ne.read_text(encoding="utf-8"))["features"]:
                 p = f.get("properties") or {}
-                if p.get("adm0_a3") == "CAN" and f.get("geometry") and shapely.geometry.shape(f["geometry"]).covers(pt):
+                if p.get("adm0_a3") in ("CAN", "USA") and f.get("geometry") and shapely.geometry.shape(f["geometry"]).covers(pt):
                     return str(p.get("postal") or (p.get("iso_3166_2") or "CA-CA")[3:])
         except Exception as e:  # noqa: BLE001  (a bad cache: the boxes still answer)
             log(f"provinces from {ne.name} failed ({e}); using the rough boxes")
@@ -376,6 +386,9 @@ def new_area(job: dict, logf) -> Path:
         w, h = km_size(box)
         core_km = max(w, h) / 2
         argv += ["--core-km", f"{core_km:.3f}", "--region-km", f"{core_km + REGION_MARGIN_KM:.3f}"]
+    us = is_us(job["jurisdiction"])
+    if us:
+        argv += ["--stage", job["id"]]
     rc = run(argv, py_env(scratch=False), logf)
     if rc or not path.exists():
         raise RuntimeError(f"bake_area.py --new exited {rc}: see {LOGS.relative_to(ROOT).as_posix()}/{job['rid']}.log")
@@ -397,6 +410,14 @@ def new_area(job: dict, logf) -> Path:
         logf.write(f"-- stands: {stands['vintage'] if stands else 'SCANFI (no FRI package for this forest unit on this PC)'}\n")
     a["request"] = {"id": job["rid"], "baked": date.today().isoformat(), "by": "pipeline/agent.py"}
     path.write_text(json.dumps(a, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
+    if us:
+        # a US area's national rasters are staged from US sources under the Canadian names (docs/US-AREAS.md):
+        # the downloads, the 30 m stage, the land cover and stands; then the ordinary SD steps run unchanged
+        for script, more in (("us_fetch.py", ["--sd"]), ("us_terrain.py", ["--only", "wide"]), ("us_stage.py", [])):
+            logf.write(f"-- {script}\n")
+            rc = run([sys.executable, str(HERE / script), "--area", job["id"], *more], py_env(scratch=True), logf)
+            if rc:
+                raise RuntimeError(f"{script} exited {rc}: see {LOGS.relative_to(ROOT).as_posix()}/{job['rid']}.log")
     return path
 
 
