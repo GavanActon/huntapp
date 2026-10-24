@@ -255,6 +255,18 @@ def jurisdiction(lat: float, lon: float) -> str:
     Natural Earth's 50 m polygons where coverage.py has cached them, else
     the rough boxes. 'CA' where neither knows (offshore, the far north)."""
     ne = CATALOGUES / "ne-admin1.json"
+    if not ne.exists():
+        # another machine (xonix) without coverage.py's cache: the same Natural Earth file, fetched once (~3 MB);
+        # without it Michigan would read as ON from the rough boxes
+        try:
+            import urllib.request
+
+            CATALOGUES.mkdir(parents=True, exist_ok=True)
+            with urllib.request.urlopen("https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_1_states_provinces.geojson", timeout=120) as r:
+                ne.write_bytes(r.read())
+            log(f"fetched the provinces and states ({ne.name})")
+        except Exception as e:  # noqa: BLE001
+            log(f"no provinces file and none fetched ({str(e)[:80]}); using the rough boxes")
     if ne.exists():
         try:
             import shapely
