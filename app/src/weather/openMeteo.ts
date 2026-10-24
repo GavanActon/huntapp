@@ -1,4 +1,5 @@
 import { ACTIVE_AREA, areaAt } from '../areas'
+import { devlog } from '../devlog'
 
 /**
  * The forecast at a point: wind, gusts, temperature, sky, rain chance,
@@ -109,13 +110,60 @@ function cacheKey(lon: number, lat: number) {
  *  spread a little so the burst's retries do not land together. */
 const RETRY_429_MS = [1_000, 3_000]
 
-/** A fetch with a timeout on each try, asked again on a 429. */
+/** Open-Meteo's free limits are per phone and count each location in a request as a call (600 a
+ *  minute, 5,000 an hour, 10,000 a day). Once a 429 says one of them is spent, every call after it
+ *  is spent too until it resets, and asking again only keeps the phone over it: the view's lattice,
+ *  25 points a pan, ran Gavan's phone out on 2026-10-23 and the forecast, the air profile and the
+ *  wind grids all failed after it. So a 429 that names a limit holds every Open-Meteo call till the
+ *  reset (a minute; the next hour; 00:00 UTC), answered at once with the 429, no request. */
+let omHeldUntil = 0
+let omHeldWhy = ''
+const isOpenMeteo = (url: string) => /^https:\/\/[a-z-]+\.open-meteo\.com\//.test(url)
+
+/** When Open-Meteo is held (ms) and the limit it named, or null. */
+export function openMeteoHeld(): { until: number; why: string } | null {
+  return Date.now() < omHeldUntil ? { until: omHeldUntil, why: omHeldWhy } : null
+}
+
+/** The moment the named limit resets, or 0 for a 429 that names none (a burst: asked again). */
+function limitReset(body: string): number {
+  const now = Date.now()
+  if (/minute/i.test(body)) return now + 65_000
+  if (/hour/i.test(body)) {
+    const d = new Date(now)
+    d.setUTCMinutes(60, 30, 0)
+    return d.getTime()
+  }
+  if (/day|daily/i.test(body)) {
+    const d = new Date(now)
+    d.setUTCHours(24, 1, 0, 0)
+    return d.getTime()
+  }
+  return 0
+}
+
+/** A fetch with a timeout on each try, asked again on a burst's 429; an Open-Meteo limit holds. */
 export async function fetchTimeout(url: string, ms = FETCH_TIMEOUT_MS): Promise<Response> {
+  const om = isOpenMeteo(url)
+  if (om && Date.now() < omHeldUntil) return new Response(JSON.stringify({ error: true, reason: `held: ${omHeldWhy}` }), { status: 429 })
   for (let k = 0; ; k++) {
     const ctl = new AbortController()
     const t = setTimeout(() => ctl.abort(), ms)
     const resp = await fetch(url, { signal: ctl.signal }).finally(() => clearTimeout(t))
-    if (resp.status !== 429 || k >= RETRY_429_MS.length) return resp
+    if (resp.status !== 429) return resp
+    if (om) {
+      const body = await resp.clone().text().catch(() => '')
+      const until = limitReset(body)
+      if (until) {
+        if (until > omHeldUntil) {
+          omHeldUntil = until
+          omHeldWhy = (body.match(/"reason"\s*:\s*"([^"]+)"/)?.[1] ?? body).slice(0, 80)
+          devlog('wx', `open-meteo held till ${new Date(until).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · ${omHeldWhy}`)
+        }
+        return resp
+      }
+    }
+    if (k >= RETRY_429_MS.length) return resp
     await new Promise((r) => setTimeout(r, RETRY_429_MS[k] * (0.75 + 0.5 * Math.random())))
   }
 }

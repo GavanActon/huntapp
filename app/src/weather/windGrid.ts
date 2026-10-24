@@ -3,7 +3,7 @@ import { REGION, TIMEZONE } from '../config'
 import { trackTime } from '../analytics'
 import { devlog } from '../devlog'
 import { trackTask } from '../offline/loadProgress'
-import { fetchTimeout, lastStampAt, localStamp, stampsMs } from './openMeteo'
+import { fetchTimeout, lastStampAt, localStamp, openMeteoHeld, stampsMs } from './openMeteo'
 
 /**
  * The wind field over the region: a small lattice of Open-Meteo points
@@ -69,29 +69,45 @@ let viewWanted: AreaBox | null = null
 let viewSeq = 0
 let viewTimer: number | null = null
 /** a pan settling and moving on in under this fetches nothing for the first */
-const VIEW_WAIT_MS = 350
-/** the lattice reaches this far past the view each way, as a share of it, so a short pan stays inside */
+const VIEW_WAIT_MS = 800
+/** the lattice reaches this far past the view each way, as a share of it (serves' coarseness bound) */
 const VIEW_PAD = 0.35
-/** its smallest half-height, degrees of latitude: 11 km, as the one round the view's centre was */
-const VIEW_MIN_HALF = 0.1
+/** the ladder's smallest step, degrees of latitude: a lattice 4 steps tall, 22 km, as before */
+const VIEW_STEP0 = 0.05
+/** at most this many view lattices in 10 minutes, and in an hour: each is 25 or 49 of Open-Meteo's calls
+ *  (a location a call), and a minute's panning spent the phone's whole minute on 2026-10-23 */
+const VIEW_PER_10MIN = 4
+const VIEW_PER_HOUR = 12
+const viewAsked: number[] = []
 
 const latSpan = (b: AreaBox) => b.north - b.south
 const holds = (b: AreaBox, v: AreaBox) => v.west >= b.west && v.east <= b.east && v.south >= b.south && v.north <= b.north
 const gridBox = (g: WindGrid): AreaBox => ({ west: g.lon0, south: g.lat0, east: g.lon0 + g.dLon * (g.cols - 1), north: g.lat0 + g.dLat * (g.rows - 1) })
 /** A lattice serves a view it holds, fresh, and not so much bigger that its points are coarse there. */
-const serves = (g: WindGrid, v: AreaBox) => Date.now() - g.fetchedAt < MAX_AGE_MS && holds(gridBox(g), v) && latSpan(gridBox(g)) <= Math.max(2 * VIEW_MIN_HALF, 4 * latSpan(v)) * (1 + 2 * VIEW_PAD)
+const serves = (g: WindGrid, v: AreaBox) => Date.now() - g.fetchedAt < MAX_AGE_MS && holds(gridBox(g), v) && latSpan(gridBox(g)) <= Math.max(4 * VIEW_STEP0, 4 * latSpan(v)) * (1 + 2 * VIEW_PAD)
 
-/** The box a view's lattice covers: the view and a margin, never smaller than 22 km tall. */
+/**
+ * The box a view's lattice covers, on a fixed ladder so nearby views share one (2026-10-24: a box
+ * round each view's own centre was a new lattice for every pan that left the last). The step H
+ * doubles from VIEW_STEP0 until it holds the view's half-height (and its half-width, a step being
+ * 1.5 H / cos(lat) wide); the centre snaps to a multiple of H, and the box reaches 2 H each way, so
+ * the view fits with half a step to spare and the box is at most 4x the view: a pan inside it, or
+ * back to it, costs nothing.
+ */
 function boxFor(v: AreaBox): AreaBox {
   const cy = (v.south + v.north) / 2
   const cx = (v.west + v.east) / 2
-  const half = Math.max(VIEW_MIN_HALF, (latSpan(v) / 2) * (1 + 2 * VIEW_PAD))
-  const halfLon = Math.max(VIEW_MIN_HALF * 1.5 / Math.max(0.2, Math.cos((cy * Math.PI) / 180)), ((v.east - v.west) / 2) * (1 + 2 * VIEW_PAD))
-  return { west: cx - halfLon, east: cx + halfLon, south: Math.max(-85, cy - half), north: Math.min(85, cy + half) }
+  const cosY = Math.max(0.2, Math.cos((cy * Math.PI) / 180))
+  let h = VIEW_STEP0
+  while (h < 40 && (latSpan(v) / 2 > h || (v.east - v.west) / 2 > (1.5 * h) / cosY)) h *= 2
+  const hl = (1.5 * h) / cosY
+  const sy = Math.round(cy / h) * h
+  const sx = Math.round(cx / hl) * hl
+  return { west: sx - 2 * hl, east: sx + 2 * hl, south: Math.max(-85, sy - 2 * h), north: Math.min(85, sy + 2 * h) }
 }
 
-/** Points each way for a box: 5 near, 7 for a district, 9 for a province. */
-const pointsFor = (b: AreaBox) => (latSpan(b) >= 3 ? 9 : latSpan(b) >= 0.6 ? 7 : 5)
+/** Points each way for a box: 5 near, 7 for a district or more (9 for a province was 81 calls a pan). */
+const pointsFor = (b: AreaBox) => (latSpan(b) >= 0.6 ? 7 : 5)
 
 /**
  * The view as it settled (explore/index.ts viewMoved): null while it is
@@ -115,6 +131,16 @@ export function setWindView(view: AreaBox | null): void {
   }
   viewTimer = window.setTimeout(() => {
     viewTimer = null
+    // within the caps, and never while Open-Meteo is holding the phone: the last lattice stays, and past
+    // it the map browses on the forecast's grey wind
+    const now = Date.now()
+    while (viewAsked.length && now - viewAsked[0] > 3600_000) viewAsked.shift()
+    const in10 = viewAsked.filter((t) => now - t < 600_000).length
+    if (openMeteoHeld() || in10 >= VIEW_PER_10MIN || viewAsked.length >= VIEW_PER_HOUR) {
+      devlog('wind', `view lattice skipped · ${openMeteoHeld() ? 'open-meteo held' : `${in10} in 10 min, ${viewAsked.length} this hour`}`)
+      return
+    }
+    viewAsked.push(now)
     void fetchView(view)
   }, VIEW_WAIT_MS)
 }
