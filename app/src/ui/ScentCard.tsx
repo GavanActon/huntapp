@@ -15,10 +15,12 @@ import { fmtCoord } from '../map/MapView'
  * "Your scent": the live card's Scent › opened, a top card in its slot with
  * the map (and both columns) still there. What the cone rests on, in
  * three lines: the wind at head height against the forecast, the wind
- * check pulling it while one does, and how wide and how far it goes, with
- * a dim line under it for what the shading means (how often); on a
+ * check pulling it while one does, and how wide and how far it goes; on a
  * still night off a drop, a fourth for why the cone skips the low ground
- * (a reason, so here and not on the live card's brief line). Then
+ * (a reason, so here and not on the live card's brief line). The legend
+ * for the shading, the checks' share of the cone and the part that rose
+ * over the canopy went on 2026-10-24 (Gavan: "a ton of text that's not at
+ * all useful"): numbers that change nothing you'd do. Then
  * the knobs: where you sit (the ground, or a stand), the cone's size from
  * smaller (only what is strong counts) to bigger (scent counts sooner, the
  * wind wanders more), how it is drawn, and with a party placed, whose line it
@@ -109,17 +111,7 @@ export default function ScentCard(): JSX.Element | null {
             {plume && (plume.height > GROUND_H && plume.landing >= 30 ? `noticeable from ${dist(plume.landing)} out to ${reachLabel(plume)}` : `noticeable to ${reachLabel(plume)}`)}
           </div>
         )}
-        {plume && <div className="scent-line dim">Shaded by how often a nose there catches it: darkest most minutes, palest now and then</div>}
         {offDrop && <div className="scent-line dim">{offDrop}</div>}
-        {plume?.checks && (
-          <div className="scent-line dim">
-            Your {plume.checks.n} check{plume.checks.n === 1 ? '' : 's'} here drive {Math.round(plume.checks.share * 100)}% of this cone: {plume.checks.puffs} puff{plume.checks.puffs === 1 ? '' : 's'}
-            {plume.checks.lulls >= 0.05 ? `, ${Math.round(plume.checks.lulls * 100)}% of them hung` : ''} · the drift, its wander and its lulls are theirs
-          </div>
-        )}
-        {plume && plume.over >= 0.15 && (
-          <div className="scent-line dim">About {Math.round(plume.over * 100)}% of it rose up over the canopy, out of reach of noses on the ground</div>
-        )}
         {many && (
           <div className="sc-people">
             <div className="seg" role="radiogroup" aria-label="Whose sit">
