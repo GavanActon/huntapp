@@ -57,8 +57,9 @@ export function requestMail(ctx, env, r) {
       .filter(Boolean)
       .join('\n'),
   })
-  // the asker only when they gave an address, and not for one ready already (readyMail says that)
-  if (!r.email || r.served) return
+  // the asker only when they gave an address, and not for one ready already (readyMail says that); an SD
+  // build is watched in the app as it goes, so its one email is the ready one, minutes later
+  if (!r.email || r.served || kind !== 'HD') return
   const follow = r.token ? `\n\nSee how it's getting on: ${statusLink(r.token)}` : ''
   mail(ctx, env.MAIL, {
     to: r.email,

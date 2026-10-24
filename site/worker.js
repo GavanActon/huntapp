@@ -187,9 +187,10 @@ async function takeRequest(request, env, cors, ctx) {
   }
 
   const kind = body?.kind === 'hd' ? 'hd' : 'sd'
-  // a signed-in phone (account.js): the account asks, and HD is told at its address
+  // a signed-in phone (account.js): the account asks, and is told at its address when the build is
+  // ready (an SD build waits on the phone for the sign-in: Gavan, 2026-10-24)
   const session = await sessionOf(request, env)
-  const email = String(body?.email ?? '').trim().slice(0, 200) || (kind === 'hd' && session ? session.email : '')
+  const email = String(body?.email ?? '').trim().slice(0, 200) || (session ? session.email : '')
   const place = String(body?.where ?? '').trim().slice(0, 500)
   const install = INSTALL.test(String(body?.install ?? '')) ? String(body.install) : null
   // an email is how HD is told it is ready; an SD build is followed by the phone that sent it, so

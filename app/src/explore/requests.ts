@@ -1,5 +1,5 @@
 import { API } from '../analytics'
-import { authHeaders } from '../account/session'
+import { authHeaders, signedIn } from '../account/session'
 import { ACTIVE_AREA } from '../areas'
 import { packArea, readLocations, setLocationPack } from '../areas/runtime'
 import { devlog, installId } from '../devlog'
@@ -17,9 +17,10 @@ import { useExplore, type Requested } from './store'
  * with signal, until the ask is done with. The Locations sheet shows it.
  *
  * And each loaded location's SD build (docs/REQUESTS.md: Load starts it,
- * one at a time per phone, an email only if the hunter gives one): kept on
- * the phone as 'waiting' until no other build of this phone's is in the
- * queue and there is signal, then sent; its place in line, the minutes to
+ * one at a time per phone): kept on the phone as 'waiting' until the
+ * hunter is signed in (the build is the account's, so it is theirs on
+ * every phone: Gavan, 2026-10-24), no other build of this phone's is in
+ * the queue and there is signal, then sent; its place in line, the minutes to
  * go and how far the bake is come back with each look. Done, the pack's
  * area file is fetched and kept with the location (areas/runtime.ts), which
  * opens on it from then on: no app build, no release.
@@ -131,7 +132,8 @@ export function queueBuild(id: string, name: string, j: string, email?: string, 
 let sending = false
 /** The oldest build waiting goes to the queue, when there is signal and none of this phone's is in it. */
 async function sendNext(): Promise<void> {
-  if (sending || !navigator.onLine) return
+  // a build is the account's (Gavan, 2026-10-24: the build waits for sign-in): kept on the phone till then
+  if (sending || !navigator.onLine || !signedIn()) return
   const builds = Object.entries(useExplore.getState().builds)
   if (builds.some(([, r]) => r.rid != null && BUSY.has(r.stage ?? ''))) return
   const next = builds.filter(([, r]) => r.stage === 'waiting').sort((a, b) => a[1].at - b[1].at)[0]
@@ -274,6 +276,7 @@ export function buildWords(r: Requested, others: Requested[] = []): string {
   const time = r.minutes != null ? ` · ${aboutMinutes(r.minutes)}` : ''
   switch (r.stage) {
     case 'waiting': {
+      if (!signedIn()) return 'sign in to build its heat map, routes and pack'
       if (!navigator.onLine) return 'build waits for signal'
       const ahead = others.find((o) => o.rid != null && BUSY.has(o.stage ?? ''))
       return ahead ? `build goes after ${ahead.name ?? 'your other spot'}` : 'build about to go'

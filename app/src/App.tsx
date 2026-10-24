@@ -56,6 +56,7 @@ import { initStatsWatch } from './stats/watch'
 import BoxCard from './explore/BoxCard'
 import { startAskChecks } from './explore/requests'
 import { startAccountSync } from './account/sync'
+import { signedIn } from './account/session'
 import { takeLoadedNow } from './areas/load'
 import { useExplore } from './explore/store'
 import { toast } from './ui/Toast'
@@ -174,7 +175,13 @@ export default function App() {
     startAccountSync()
     // arrived by a Load: the name it was given and where to change it, a moment longer than a toast
     const loaded = takeLoadedNow()
-    if (loaded) window.setTimeout(() => toast(`Loaded ${loaded} · rename it in Locations`, 5000), 1500)
+    // signed out, its build waits for the sign-in (explore/requests.ts): said with the way to it
+    if (loaded) {
+      window.setTimeout(() => {
+        if (signedIn()) toast(`Loaded ${loaded} · rename it in Locations`, 5000)
+        else toast(`Loaded ${loaded} · sign in to build it`, 10_000, { label: 'Sign in', run: () => useAppStore.getState().openSheet({ kind: 'account' }) })
+      }, 1500)
+    }
     initWeatherRefresh()
     initPositionLayer()
     initTrackRecording()

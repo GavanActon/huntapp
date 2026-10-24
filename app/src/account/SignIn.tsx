@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type JSX } from 'react'
+import { checkAsks } from '../explore/requests'
 import { useExplore } from '../explore/store'
 import { sendCode, verifyCode } from './session'
 import { syncLocations } from './sync'
@@ -59,6 +60,8 @@ export default function SignIn({ onDone, cta = 'Send me a code' }: { onDone?: (a
       return setErr(e)
     }
     const r = await syncLocations()
+    // the builds kept on the phone for the sign-in go now (explore/requests.ts)
+    checkAsks()
     setBusy(false)
     onDone?.(r?.added ?? 0)
   }

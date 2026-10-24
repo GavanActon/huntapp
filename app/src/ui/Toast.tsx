@@ -48,7 +48,7 @@ export default function Toast(): JSX.Element | null {
   if (!text) return null
   return (
     <div key={n} className={`toast${act ? ' toast-act' : ''}`} role="status" aria-live="polite" style={{ animationDuration: `${ms}ms` }}>
-      {text}
+      {act ? <span className="toast-text">{text}</span> : text}
       {act && (
         <button
           className="toast-btn"

@@ -19,7 +19,8 @@ doesn't become populated for everyone."
 | --- | --- |
 | Does Load start the build | Yes, by itself; one build at a time per phone |
 | Sign-in | An email and a 6-digit code, no password. Google and Apple wait for the app-store build |
-| An email for a build | Optional for SD, required for HD |
+| An email for a build | Optional for SD, required for HD; **superseded the same day**: an SD build waits for sign-in (below) |
+| How an SD build is theirs (later 2026-10-24) | Load stays instant and anonymous; the build waits on the phone until they sign in, so every built spot is on their account, on every phone (Gavan: "they made a request, how do they access it? It should be part of their locations") |
 | The areas everyone sees | Pickle Lake, Lac Bailey, Clearwater, Blanchard River, Luther: one per kind of country ("Need different biomes") |
 | The asker's emails | On: Workers Paid ($5 a month) and Email Sending |
 | A pack that already covers a new ask | It serves the ask at once, and nobody is told whose build it was |
@@ -477,6 +478,19 @@ migration.
   the account's email. (hunt-dev and the dev server simulate HD orders,
   as before, so the sign-in shows there only through Settings.)
 - Builds and HD asks carry the session; each keeps its status token.
+- **The build waits for sign-in** (Gavan's pick, later 2026-10-24: "they
+  made a request, how do they access it? It should be part of their
+  locations"): Load stays instant and anonymous (the forecast and the
+  national tiles' wind), and the build (heat map, routes, the pack; the
+  ground wind where no tiles are) stays on the phone, its row saying
+  "sign in to build its heat map, routes and pack" and the arrival toast
+  "Loaded <name> · sign in to build it" with Sign in, until the hunter
+  signs in; then it goes. So a built spot is always on an account: the
+  Safari and Home Screen split, a new phone and cleared storage no longer
+  lose it. The Worker keeps the account's email on a signed-in SD ask, and
+  an SD build sends one email, the ready one (no "we're building it": the
+  app shows it as it goes). The app gates it; the Worker still takes an SD
+  ask with an install alone, for phones on an older build.
 
 **Tested:** 30 Worker checks (codes, a wrong code and its tries left, a
 used code, the hash kept, two phones merging, the later rename, a

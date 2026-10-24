@@ -114,6 +114,12 @@
   gap: 8px;
   padding-right: 4px;
 }
+/* the words give way, the button never does */
+.toast-act .toast-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .toast-btn {
   flex: none;
   min-height: 28px;

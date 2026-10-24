@@ -66,7 +66,6 @@ export default function BoxCard() {
   const cover = useExplore((s) => s.cover)
   const requested = useExplore((s) => s.requested)
   const email = useExplore((s) => s.email)
-  const setEmail = useExplore((s) => s.setEmail)
   const markRequested = useExplore((s) => s.markRequested)
   const unrequest = useExplore((s) => s.unrequest)
   const select = useExplore((s) => s.select)
@@ -132,7 +131,6 @@ export default function BoxCard() {
   const req = requested[id]
   // an extension grows an HD area: HD unless the grid, once read, says the new ground has no LiDAR
   const hdOk = (w.hd || (!!sel.extend && read.length === 0)) && hdFits(box)
-  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
   // Load this spot (areas/load.ts): the box a location now, the forecast and the SD tiles' wind over it,
   // no request and no wait (Gavan, 2026-10-20). Over ground already loaded or baked, Open it instead
   // named for what is there (explore/placeName.ts: the nearest lake, else place or river), renamed in
@@ -144,9 +142,8 @@ export default function BoxCard() {
     const j = w.provs.split(',')[0]?.trim() || provinceAt(clon, clat)
     const asked = guess.current?.id === id ? guess.current.name : placeName(clon, clat)
     const named = sel!.replaces?.name ?? (await asked) ?? `Spot ${tileAt(clon, clat).id.slice(2)}`
-    // an email only where the build is the ground wind itself and may take a while (no SD tiles here): it is told when ready
-    const tell = sdHave === 0 && emailOk ? email : undefined
-    if (!loadLocation(box, named, j, sel!.replaces?.id, tell)) {
+    // the build is told at the account's email once signed in (explore/requests.ts): nothing to type here
+    if (!loadLocation(box, named, j, sel!.replaces?.id)) {
       setErr('Not loaded: the app stayed where it is.')
       setLoading(false)
     }
@@ -262,11 +259,12 @@ export default function BoxCard() {
             </div>
           ))
         ) : sdHave === 0 && !req ? (
-          // no SD tiles under it yet (the rest of Canada, the US): Load builds the ground wind with the rest
-          // (docs/REQUESTS.md: the build starts with the Load, the email only if given); the forecast's wind till then
+          // no SD tiles under it yet (the rest of Canada, the US): Load builds the ground wind with the rest, once
+          // signed in (docs/REQUESTS.md: the build is the account's); the forecast's wind till then
           <div className="boxcard-ask">
-            <div className="dim">No ground wind here yet: Load, and it is built for this box with the rest. The forecast's wind until then.</div>
-            <input type="email" inputMode="email" placeholder="Email me when it's ready (optional)" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <div className="dim">
+              No ground wind here yet: Load, {account ? '' : 'sign in, '}and it is built for this box with the rest. The forecast's wind until then.
+            </div>
             <div className="boxcard-btns">
               <button className="btn btn-primary" disabled={loading} onClick={() => void load()}>
                 {loading ? 'Loading…' : 'Load'}
