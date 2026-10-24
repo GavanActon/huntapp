@@ -1,5 +1,5 @@
 import { track, areaWord } from '../analytics'
-import { areaAt, type AreaDef } from '../areas'
+import { areaAt, locationWords, type AreaDef } from '../areas'
 import { DROPPED_NAME } from '../map/placePopup'
 import { areaLink, areaMessage, spotLink, spotMessage, type LonLat } from './link'
 
@@ -16,8 +16,6 @@ import { areaLink, areaMessage, spotLink, spotMessage, type LonLat } from './lin
  *  VITE_SHARE_BASE for a build that wants its own. */
 // the dev site's links open the dev site: live may not know what they name yet (a loaded spot, 2026-10-20)
 export const SHARE_BASE: string = import.meta.env.VITE_SHARE_BASE ?? (import.meta.env.VITE_DEV_SITE ? `${location.origin}/` : 'https://hunt.groundwind.app/')
-/** A loaded location's name and province for a link (areas/runtime.ts addressLocation), none for a baked area. */
-const locationWords = (a: AreaDef | null | undefined): Record<string, string> => (a?.loaded ? { name: a.name, j: a.jurisdiction } : {})
 
 export type ShareResult = 'shared' | 'copied' | 'cancelled' | 'failed'
 

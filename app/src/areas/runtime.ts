@@ -1,5 +1,7 @@
 import { bounds, centre, parseBoxId } from '../explore/box'
 import { LAT0, LON0, TILE_H, TILE_W } from '../explore/lattice'
+import { manifestGet } from '../offline/fileStore'
+import { badAreaField } from './check'
 import { declinationAt } from './declination'
 import type { AreaDef } from './index'
 
@@ -18,6 +20,11 @@ import type { AreaDef } from './index'
  * ?area=b-…, a reload away. A link to one names it too (&name=, &j=), so a
  * phone that never loaded it makes it from the link and keeps it. No
  * imports beyond the box's pure helpers: this runs before the app does.
+ *
+ * Once the queue has baked a pack for it (docs/REQUESTS.md, The model), the
+ * location keeps the pack's id and area file, and opens on the pack: the
+ * pack's files under the location's own id and name, so its pins, notes,
+ * checks and views stay with it. Nothing is built into the app for it.
  */
 
 export interface Location {
@@ -28,6 +35,11 @@ export interface Location {
   jurisdiction: string
   /** loaded at, ms */
   at: number
+  /** the pack baked for it, once the queue said which (explore/requests.ts), or a link named */
+  pack?: string
+  /** that pack's area file as the Worker served it (/areas/<pack>/area.json), kept, so the
+   *  location opens on it with no signal and nothing fetched at start */
+  def?: Record<string, unknown>
 }
 
 export const LOCATIONS_KEY = 'huntapp-locations'
@@ -36,7 +48,16 @@ export function readLocations(): Location[] {
   try {
     const raw = localStorage.getItem(LOCATIONS_KEY)
     const list = raw ? (JSON.parse(raw) as Location[]) : []
-    return Array.isArray(list) ? list.filter((l) => l && typeof l.id === 'string' && parseBoxId(l.id) != null) : []
+    if (!Array.isArray(list)) return []
+    return list
+      .filter((l) => l && typeof l.id === 'string' && parseBoxId(l.id) != null)
+      .map((l) => {
+        // a pack id that is not one, or an area file that is not an object, is left off: the box stands
+        const pack = typeof l.pack === 'string' && PACK_ID.test(l.pack) ? l.pack : undefined
+        const def = pack && l.def && typeof l.def === 'object' && !Array.isArray(l.def) ? l.def : undefined
+        const { pack: _p, def: _d, ...rest } = l
+        return { ...rest, ...(pack ? { pack } : {}), ...(def ? { def } : {}) }
+      })
   } catch {
     return []
   }
@@ -57,6 +78,18 @@ export function keepLocation(l: Location): void {
 
 export function dropLocation(id: string): void {
   writeLocations(readLocations().filter((o) => o.id !== id))
+}
+
+/** The pack baked for a kept location, and its area file once fetched (explore/requests.ts): kept
+ *  with it, read at the next start. False when the phone no longer keeps the location. */
+export function setLocationPack(id: string, pack: string, def?: Record<string, unknown>): boolean {
+  if (!PACK_ID.test(pack)) return false
+  const list = readLocations()
+  const l = list.find((o) => o.id === id)
+  if (!l) return false
+  const keepDef = def ?? (l.pack === pack ? l.def : undefined)
+  writeLocations(list.map((o) => (o.id === id ? { ...o, pack, ...(keepDef ? { def: keepDef } : { def: undefined }) } : o)))
+  return true
 }
 
 /** The live services that stand in for a province's baked layers
@@ -86,10 +119,59 @@ export function provinceAt(lon: number, lat: number): string {
   return lat > 46.6 && lon < -64.5 ? 'NB' : 'NS'
 }
 
+/** A pack's id as the queue makes them (sd-…, hd-…) or an older area's: lower case, dashes. */
+const PACK_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+
+/** The location as an area: on its pack when it has one the app can read and should open on now
+ *  (packFirst), else its box with nothing baked. Null for an id that is not a box. */
+export function locationArea(l: Location, online: boolean = typeof navigator === 'undefined' || navigator.onLine): AreaDef | null {
+  const box = boxArea(l)
+  if (!box || !l.def || !l.pack) return box
+  const pack = packArea(l, l.def)
+  return pack && packFirst(pack, box, online) ? pack : box
+}
+
+/** The pack's area file under the location's id and name: the pack's region, grids and files
+ *  (named for the pack: stem), the location's camp at the box's middle. Null when the file is not
+ *  one the app can read (a bake that left a field out). */
+export function packArea(l: Location, def: Record<string, unknown>): AreaDef | null {
+  const d = def as unknown as AreaDef
+  if (typeof d.id !== 'string' || !PACK_ID.test(d.id)) return null
+  const box = parseBoxId(l.id)
+  if (!box) return null
+  const [cx, cy] = centre(box)
+  const zone = (d.zone ?? {}) as Partial<AreaDef['zone']>
+  const presets = Array.isArray(d.presets) ? d.presets : []
+  const a: AreaDef = {
+    ...d,
+    id: l.id,
+    name: l.name,
+    stem: d.stem ?? d.id,
+    loaded: 'pack',
+    // a US state's unit is filled by the bake's coverage step; one not filled reads as no name
+    zone: { label: zone.label ?? '', name: zone.name ?? '' },
+    // the camp is the location's: its name and box (the grade sheet's HD ask reads the note, ui/grade.tsx askedBox)
+    presets: [{ name: l.name, lon: cx, lat: cy, kind: 'camp', note: l.id }, ...presets.slice(1)],
+    bundle: { description: (d.bundle?.description ?? '').split(d.name).join(l.name) || `${l.name}: the pack baked for it` },
+  }
+  return badAreaField(a) == null ? a : null
+}
+
+/** Open on the pack, or stay on the box for now: with signal the pack (whatever is not on the
+ *  phone streams); with none, the pack only when its wind grid is on the phone or nothing of the
+ *  box's is, so a phone that saved the box for the bush never opens on a pack it cannot draw
+ *  (the new pack takes over once it is whole on the phone: docs/REQUESTS.md). */
+export function packFirst(pack: AreaDef, box: AreaDef, online: boolean): boolean {
+  if (online) return true
+  const stem = pack.stem ?? pack.id
+  if (pack.files.grids.some((g) => g.startsWith('micro') && manifestGet(`${g}-${stem}.hab`) != null)) return true
+  return !locationFiles(box).some((f) => f.endsWith('.hab') && manifestGet(f) != null)
+}
+
 /** The box made an area: its region a little past the box (1.5 km), its core
  *  the box, its camp the middle under the location's name. Null for an id
  *  that is not a box. */
-export function locationArea(l: Location): AreaDef | null {
+export function boxArea(l: Location): AreaDef | null {
   const box = parseBoxId(l.id)
   if (!box) return null
   const b = bounds(box)
@@ -146,8 +228,10 @@ export function locationFiles(a: AreaDef): string[] {
 }
 
 /** A location the address names that this phone has not kept: a shared
- *  link (?area=b-…&name=…&j=…). Made and kept, so the phone has it from
- *  then on, as if loaded here. */
+ *  link (?area=b-…&name=…&j=…&p=…). Made and kept, so the phone has it from
+ *  then on, as if loaded here. `p` is the pack baked for it: its area file is
+ *  fetched once the app runs (explore/requests.ts fetchPacks), and a kept
+ *  location with no pack yet takes the link's. Run before readLocations. */
 export function addressLocation(href: string, known: (id: string) => boolean): Location | null {
   let u: URL
   try {
@@ -157,9 +241,23 @@ export function addressLocation(href: string, known: (id: string) => boolean): L
   }
   const id = u.searchParams.get('area')
   const box = id ? parseBoxId(id) : null
-  if (!id || !box || known(id)) return null
+  if (!id || !box) return null
+  const p = u.searchParams.get('p')
+  const pack = p && PACK_ID.test(p) ? p : undefined
+  const mine = readLocations().find((o) => o.id === id)
+  if (mine) {
+    if (pack && !mine.pack) setLocationPack(id, pack)
+    return null
+  }
+  if (known(id)) return null
   const [cx, cy] = centre(box)
-  const l: Location = { id, name: u.searchParams.get('name')?.slice(0, 60) || 'Spot', jurisdiction: u.searchParams.get('j')?.slice(0, 3).toUpperCase() || provinceAt(cx, cy), at: Date.now() }
+  const l: Location = {
+    id,
+    name: u.searchParams.get('name')?.slice(0, 60) || 'Spot',
+    jurisdiction: u.searchParams.get('j')?.slice(0, 3).toUpperCase() || provinceAt(cx, cy),
+    at: Date.now(),
+    ...(pack ? { pack } : {}),
+  }
   keepLocation(l)
   return l
 }

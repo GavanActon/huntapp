@@ -1,7 +1,7 @@
 // Central place for region + data-file configuration, all of it the active
 // area's (areas/index.ts). A new hunting area = a new app/src/areas/<id>.json
 // plus a pipeline run (docs/AREAS.md).
-import { ACTIVE_AREA, AREA_LIST, DEFAULT_AREA, type AreaDef } from './areas'
+import { ACTIVE_AREA, AREA_LIST, DEFAULT_AREA, stemOf, type AreaDef } from './areas'
 import { locationFiles } from './areas/runtime'
 import { manifestGet } from './offline/fileStore'
 import { hdInstalled } from './state/grade'
@@ -31,7 +31,8 @@ export const HOME = {
  *  (Gavan, 2026-09-25: only the immediate area around Pickle Lake matters).
  *  Baked to REGION_MAXZOOM; the CORE inside it to full detail. */
 export const REGION = {
-  id: AREA.id,
+  // the name its files go by (areas/index.ts stemOf): a location on a pack is the pack's
+  id: stemOf(AREA),
   name: AREA.name,
   west: AREA.region.west,
   south: AREA.region.south,
@@ -131,7 +132,7 @@ function labelIn(d: (typeof PMTILES)[number], a: AreaDef): string {
 /** An area's PMTiles files, each with its style key and label (DATA_FILES
  *  is the active area's; the Offline sheet labels every area's). */
 export function dataFiles(a: AreaDef): DataFileDef[] {
-  return PMTILES.filter((d) => a.files.pmtiles.includes(d.key)).map((d) => ({ key: d.key, file: `${d.stem}-${a.id}.pmtiles`, kind: d.kind, label: labelIn(d, a) }))
+  return PMTILES.filter((d) => a.files.pmtiles.includes(d.key)).map((d) => ({ key: d.key, file: `${d.stem}-${stemOf(a)}.pmtiles`, kind: d.kind, label: labelIn(d, a) }))
 }
 
 /** The GeoJSON themes and band grids in words, for the Offline sheet's What's
@@ -217,8 +218,8 @@ export const SD_OFFLINE =
   hasSdWind() &&
   typeof navigator !== 'undefined' &&
   !navigator.onLine &&
-  !manifestGet(`micro-${AREA.id}.hab`) &&
-  !!manifestGet(`micro-sd-${AREA.id}.hab`)
+  !manifestGet(`micro-${stemOf(AREA)}.hab`) &&
+  !!manifestGet(`micro-sd-${stemOf(AREA)}.hab`)
 
 /** An HD area drawn as SD this run (state/grade.ts): the dev builds' Remove,
  *  or no signal and the HD wind not on the phone (SD_OFFLINE). The map is
@@ -240,7 +241,7 @@ export const SD_HIDDEN: readonly string[] = SD_PREVIEW ? hdOnlyKeys() : []
 export function hdFiles(a: AreaDef = AREA): { key: string; file: string }[] {
   const keys = hdOnlyKeys(a)
   const pm = dataFiles(a).filter((d) => keys.includes(d.key)).map((d) => ({ key: d.key, file: d.file }))
-  return [...pm, ...(windSolved(a) && hasSdWind(a) ? [{ key: 'micro', file: `micro-${a.id}.hab` }] : [])]
+  return [...pm, ...(windSolved(a) && hasSdWind(a) ? [{ key: 'micro', file: `micro-${stemOf(a)}.hab` }] : [])]
 }
 
 /** The SD terrain wind is the one in use: chosen on this phone (Settings,
@@ -284,8 +285,8 @@ export interface BundleDef {
 /** An area's offline bundle: every file of it the app reads, by name. HD's
  *  own files only where HD is installed on this phone: Install fetches them. */
 function bundleOf(a: AreaDef): BundleDef {
-  // a loaded location (areas/runtime.ts): nothing baked of its own, the national SD tiles under it
-  if (a.loaded) return { id: a.id, name: a.name, description: a.bundle.description, files: locationFiles(a) }
+  // a loaded location (areas/runtime.ts) with no pack yet: nothing baked of its own, the national SD tiles under it
+  if (a.loaded === 'box') return { id: a.id, name: a.name, description: a.bundle.description, files: locationFiles(a) }
   const notHd = areaGrade(a) === 'hd' && !hdInstalled(a.id) ? new Set(hdFiles(a).map((f) => f.file)) : null
   const b: BundleDef = {
     id: a.id,
@@ -293,12 +294,12 @@ function bundleOf(a: AreaDef): BundleDef {
     description: a.bundle.description,
     files: [
       ...dataFiles(a).map((d) => d.file),
-      ...geoThemes(a).map((t) => `${t}-${a.id}.geojson`),
+      ...geoThemes(a).map((t) => `${t}-${stemOf(a)}.geojson`),
       // the lake outlines' GeoJSON only where they are not tiled: an area with its lakes archive saves that instead
       ...baseGeo(a)
         .filter((t) => !(t === 'waterbody' && a.files.pmtiles.includes('lakes')))
-        .map((t) => `${t}-${a.id}.geojson`),
-      ...GRIDS.filter((g) => a.files.grids.includes(g)).map((g) => `${g}-${a.id}.hab`),
+        .map((t) => `${t}-${stemOf(a)}.geojson`),
+      ...GRIDS.filter((g) => a.files.grids.includes(g)).map((g) => `${g}-${stemOf(a)}.hab`),
     ],
   }
   if (notHd) b.files = b.files.filter((f) => !notHd.has(f))

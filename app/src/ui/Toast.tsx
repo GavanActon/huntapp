@@ -16,19 +16,26 @@ import { create } from 'zustand'
 /** Long enough to read a few words at a glance, short enough to be gone before the next tap. */
 const SHOW_MS = 2000
 
+/** A toast's one thing to do (a spot built: Open it): a button at its end, the toast taking taps. */
+export interface ToastAct {
+  label: string
+  run: () => void
+}
+
 interface ToastState {
   text: string | null
   /** bumped per toast, so the same words twice still start afresh */
   n: number
   ms: number
+  act: ToastAct | null
 }
 
-const useToast = create<ToastState>(() => ({ text: null, n: 0, ms: SHOW_MS }))
+const useToast = create<ToastState>(() => ({ text: null, n: 0, ms: SHOW_MS, act: null }))
 let timer = 0
 
-/** `ms`: longer for a line with something to do in it (a spot loaded: where to rename it). */
-export function toast(text: string, ms = SHOW_MS): void {
-  useToast.setState((s) => ({ text, n: s.n + 1, ms }))
+/** `ms`: longer for a line with something to do in it (a spot loaded: where to rename it); `act`, a button for it. */
+export function toast(text: string, ms = SHOW_MS, act: ToastAct | null = null): void {
+  useToast.setState((s) => ({ text, n: s.n + 1, ms, act }))
   window.clearTimeout(timer)
   timer = window.setTimeout(() => useToast.setState({ text: null }), ms)
 }
@@ -37,10 +44,22 @@ export default function Toast(): JSX.Element | null {
   const text = useToast((s) => s.text)
   const n = useToast((s) => s.n)
   const ms = useToast((s) => s.ms)
+  const act = useToast((s) => s.act)
   if (!text) return null
   return (
-    <div key={n} className="toast" role="status" aria-live="polite" style={{ animationDuration: `${ms}ms` }}>
+    <div key={n} className={`toast${act ? ' toast-act' : ''}`} role="status" aria-live="polite" style={{ animationDuration: `${ms}ms` }}>
       {text}
+      {act && (
+        <button
+          className="toast-btn"
+          onClick={() => {
+            useToast.setState({ text: null })
+            act.run()
+          }}
+        >
+          {act.label}
+        </button>
+      )}
     </div>
   )
 }

@@ -37,6 +37,12 @@ function data(): FeatureCollection {
     const b = parseBoxId(id)
     if (b) features.push(ring(b, 'asked'))
   }
+  // a location's build still to land: dashed as an ask is, gone once built
+  for (const [id, r] of Object.entries(st.builds)) {
+    if (r.stage === 'done' || r.stage === 'cancelled' || st.requested[id]) continue
+    const b = parseBoxId(id)
+    if (b) features.push(ring(b, 'asked'))
+  }
   if (st.selected) features.push(ring(st.selected.box, 'pick'))
   return { type: 'FeatureCollection', features }
 }
@@ -190,7 +196,7 @@ export function initBoxLayer(): void {
   useExplore.subscribe((s, prev) => {
     const m = getMap()
     if (!m || !m.getSource(SRC)) return
-    if (s.selected !== prev.selected || s.requested !== prev.requested) render(m)
+    if (s.selected !== prev.selected || s.requested !== prev.requested || s.builds !== prev.builds) render(m)
     if (s.selected?.box !== prev.selected?.box) {
       // a new box starts its reading over; one only moved keeps the tiles still under it
       if (!s.selected) useExplore.getState().setCover({})

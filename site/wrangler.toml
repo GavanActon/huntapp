@@ -34,11 +34,11 @@ database_id = "5801c0bf-cb98-4799-bc24-226bb96ec381"
 [[send_email]]
 name = "NOTIFY"
 
-# MAIL: Email Sending to any address (Workers Paid, groundwind.app onboarded in Email Service);
-# on once that is done:
-# [[send_email]]
-# name = "MAIL"
-# allowed_sender_addresses = ["noreply@groundwind.app"]
+# MAIL: Email Sending to any address (Workers Paid, groundwind.app onboarded in Email Service,
+# 2026-10-24), from hello@ (Gavan: the site's contact address, so a reply reaches him)
+[[send_email]]
+name = "MAIL"
+allowed_sender_addresses = ["hello@groundwind.app"]
 
 [[ratelimits]]
 name = "EVENTS_LIMIT"

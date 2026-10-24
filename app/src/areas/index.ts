@@ -148,9 +148,22 @@ export interface AreaDef {
   profile?: AreaProfile
   /** Explore (explore/index.ts): a stand-in area the map is unfenced in, nothing baked, listed nowhere */
   virtual?: boolean
-  /** a location the hunter loaded, made on the phone from its box (areas/runtime.ts): nothing baked */
-  loaded?: 'box'
+  /** a location the hunter loaded (areas/runtime.ts): 'box', made on the phone from its box with
+   *  nothing baked (the national SD tiles its wind); 'pack', the same location on the pack baked for
+   *  it, the pack's area file under the location's id and name (docs/REQUESTS.md, The model) */
+  loaded?: 'box' | 'pack'
+  /** the name the area's files go by, <layer>-<stem>.<ext>, where it is not the id: a location on a
+   *  pack is the location's id, its files the pack's */
+  stem?: string
 }
+
+/** The name an area's baked files go by: <layer>-<stem>.<ext>. */
+export const stemOf = (a: Pick<AreaDef, 'id' | 'stem'>): string => a.stem ?? a.id
+
+/** The areas built into the app that every phone lists: one of each kind of country, the shop
+ *  window (Gavan, 2026-10-24: "Need different biomes"). Every other built-in area is link-only:
+ *  in the list of a phone that has been in it, or that opens its link (docs/REQUESTS.md). */
+export const DEMO_AREAS: ReadonlySet<string> = new Set(['pickle-lake', 'lac-bailey', 'clearwater', 'blanchard-river', 'luther'])
 
 /** Pickle Lake: the area the app opens on with nothing saved, and the
  *  owner of everything saved before there were areas (the bare storage
@@ -160,6 +173,10 @@ export const DEFAULT_AREA = 'pickle-lake'
 /** The phone's choice of area. */
 const AREA_KEY = 'huntapp-area'
 
+// above the area list and ACTIVE_AREA: keptBuiltIn reads the saved views, and resolveActive saves a
+// link's view while this module is still loading
+const VIEW_KEY = 'huntapp.lastView'
+
 /** Where the baked data lives (same-origin by default). */
 export const DATA_BASE: string = import.meta.env.VITE_DATA_BASE ?? `${import.meta.env.BASE_URL}data/`
 
@@ -167,12 +184,67 @@ export const DATA_BASE: string = import.meta.env.VITE_DATA_BASE ?? `${import.met
  *  right kind (areas/check.ts). One that is not (a bad bake) is left out:
  *  as the saved area it would stop the app on every start, with no way back
  *  to another. The build refuses one anyway (vite.config.ts). */
-const compiled = (Object.values(import.meta.glob('./*.json', { eager: true, import: 'default' })) as AreaDef[]).filter((a) => {
+const builtIn = (Object.values(import.meta.glob('./*.json', { eager: true, import: 'default' })) as AreaDef[]).filter((a) => {
   const bad = badAreaField(a)
   if (bad == null) return true
   console.warn(`area file ${String(a?.id)} left out: ${bad} is missing or not what the app reads`)
   return false
 })
+
+/** The link-only built-in areas this phone keeps (DEMO_AREAS): kept once it has been in one. */
+const KEPT_KEY = 'huntapp-kept-areas'
+
+/** The link-only built-in areas this phone has: the ones kept before, the one saved as its area,
+ *  any it has a view saved in (it has been there: saveView writes one on every move), and the one
+ *  the address names (a link, a reload, an iPhone install's seed). Kept from now on. */
+function keptBuiltIn(): Set<string> {
+  const linkOnly = new Set(builtIn.filter((a) => !DEMO_AREAS.has(a.id) && !a.virtual).map((a) => a.id))
+  const kept = new Set<string>()
+  try {
+    const was = JSON.parse(localStorage.getItem(KEPT_KEY) ?? '[]') as unknown
+    if (Array.isArray(was)) for (const id of was) if (typeof id === 'string') kept.add(id)
+    const saved = localStorage.getItem(AREA_KEY)
+    if (saved) kept.add(saved)
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (k?.startsWith(`${VIEW_KEY}:`)) kept.add(k.slice(VIEW_KEY.length + 1))
+    }
+  } catch {
+    /* private mode: the address alone */
+  }
+  try {
+    const u = new URL(window.location.href)
+    for (const id of [u.searchParams.get('area'), u.searchParams.get('start')]) if (id) kept.add(id)
+  } catch {
+    /* no address */
+  }
+  const out = new Set([...kept].filter((id) => linkOnly.has(id)))
+  try {
+    localStorage.setItem(KEPT_KEY, JSON.stringify([...out]))
+  } catch {
+    /* kept for this run */
+  }
+  return out
+}
+
+/** A link-only built-in area off this phone's list (Locations' Remove): its mark and its saved
+ *  view go, so it is not kept again at the next start. */
+export function dropKept(id: string): void {
+  try {
+    const was = JSON.parse(localStorage.getItem(KEPT_KEY) ?? '[]') as unknown
+    localStorage.setItem(KEPT_KEY, JSON.stringify(Array.isArray(was) ? was.filter((x) => x !== id) : []))
+    localStorage.removeItem(areaKey(VIEW_KEY, id))
+    if (localStorage.getItem(AREA_KEY) === id) localStorage.removeItem(AREA_KEY)
+  } catch {
+    /* private mode */
+  }
+}
+
+/** A built-in area every phone lists (DEMO_AREAS), not one kept by this phone alone. */
+export const isDemo = (a: Pick<AreaDef, 'id'>): boolean => DEMO_AREAS.has(a.id)
+
+const kept = keptBuiltIn()
+const compiled = builtIn.filter((a) => DEMO_AREAS.has(a.id) || a.virtual || kept.has(a.id))
 
 /** The locations the hunter loaded (areas/runtime.ts), made into areas, and
  *  one a link names that this phone has not (kept from now on); after the
@@ -184,9 +256,14 @@ function locationAreas(): AreaDef[] {
   } catch {
     /* no address */
   }
-  const kept = readLocations()
-  const linked = addressLocation(href, (id) => compiled.some((a) => a.id === id) || kept.some((l) => l.id === id))
-  return [...kept, ...(linked ? [linked] : [])].map(locationArea).filter((a): a is AreaDef => a != null && badAreaField(a) == null)
+  // the link first: it may make a location, or give a kept one its pack (areas/runtime.ts)
+  const linked = addressLocation(href, (id) => compiled.some((a) => a.id === id))
+  const list = readLocations()
+  // with nowhere to keep it (private mode) the link's location is this run's alone
+  if (linked && !list.some((l) => l.id === linked.id)) list.push(linked)
+  return list
+    .map((l) => locationArea(l))
+    .filter((a): a is AreaDef => a != null && badAreaField(a) == null)
 }
 
 const defs = [...compiled, ...locationAreas()]
@@ -233,8 +310,6 @@ export interface SavedView {
   v?: number
 }
 
-// above ACTIVE_AREA: resolveActive saves a link's view while this module is still loading
-const VIEW_KEY = 'huntapp.lastView'
 /** Views saved since following stopped chasing a fix outside the area (config.ts followCenter). */
 const VIEW_V = 2
 
@@ -357,10 +432,17 @@ export function areaHref(id: string): string {
   u.hash = ''
   // a loaded location's name and province ride along: a link, a reload or Add to Home Screen (its own
   // storage on an iPhone) makes it again from the address alone (areas/runtime.ts addressLocation)
-  const l = areaById(id)
-  const words: Record<string, string> = l?.loaded ? { name: l.name, j: l.jurisdiction } : {}
-  u.search = id === DEFAULT_AREA ? '' : new URLSearchParams({ area: id, ...words }).toString()
+  u.search = id === DEFAULT_AREA ? '' : new URLSearchParams({ area: id, ...locationWords(areaById(id)) }).toString()
   return u.toString()
+}
+
+/** What an address or a link carries for a loaded location besides its id: its name, its
+ *  province and the pack baked for it (p), so the phone that opens it makes it again, on the pack;
+ *  nothing for a built-in area. */
+export function locationWords(a: AreaDef | null | undefined): Record<string, string> {
+  if (!a?.loaded) return {}
+  const pack = a.loaded === 'pack' ? a.stem : readLocations().find((l) => l.id === a.id)?.pack
+  return { name: a.name, j: a.jurisdiction, ...(pack ? { p: pack } : {}) }
 }
 
 /** A saved key that only means something in one area: the bare key with

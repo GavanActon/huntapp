@@ -33,30 +33,41 @@ CREATE TABLE IF NOT EXISTS requests (
   claimed_at TEXT,
   done_at TEXT,
   updated_at TEXT,       -- the stage's last change
-  agent TEXT             -- the machine baking it (XEVO)
+  agent TEXT,            -- the machine baking it (XEVO)
+  progress REAL          -- 0 to 1: how far the bake is, by its steps' measured times (2026-10-24)
 );
 -- a table made before 2026-10-08 needs the two columns added:
 --   ALTER TABLE requests ADD COLUMN tile TEXT; ALTER TABLE requests ADD COLUMN kind TEXT;
--- and one made before 2026-10-11 the bake loop's: migrations/2026-10-11-requests-bake.sql
+-- and one made before 2026-10-11 the bake loop's: migrations/2026-10-11-requests-bake.sql,
+-- before 2026-10-24 the packs': migrations/2026-10-24-packs.sql
 CREATE INDEX IF NOT EXISTS requests_who_at ON requests (who, at);
 
--- The areas baked on request (pipeline/agent.py posts each one when it is
--- in R2): /areas/index.json lists the done ones and /areas/<id>/area.json
--- hands over the file, so a new area needs no app build. The files
--- themselves are in R2 under areas/<id>/ (data.groundwind.app).
+-- The packs baked on request (pipeline/agent.py posts each one when it is
+-- in R2): /areas/<id>/area.json hands over the file to a phone that has the
+-- id (docs/REQUESTS.md: a location keeps it, so a new pack needs no app
+-- build); /areas/index.json lists none. The files themselves are in R2
+-- under areas/<id>/ (data.groundwind.app).
 CREATE TABLE IF NOT EXISTS areas (
   id TEXT PRIMARY KEY,         -- the area's id: its files are <layer>-<id>.<ext> under areas/<id>/ in R2
   name TEXT NOT NULL,
   lat REAL,                    -- the area's centre
   lon REAL,
   kind TEXT,                   -- sd or hd
-  stage TEXT NOT NULL,         -- done: in /areas/index.json; anything else (withdrawn) keeps it out
+  stage TEXT NOT NULL,         -- done: served by /areas/<id>/area.json and to new asks it covers; anything else (withdrawn) keeps it out
   area_json TEXT NOT NULL,     -- the area file as the bake wrote it (app/src/areas/<id>.json's form)
   files_json TEXT NOT NULL,    -- areas/<id>/manifest.json in R2, byte for byte: {files: {name: {size, hash, z?, bounds?}}}
   size_bytes INTEGER,          -- the pack: what a phone saves for it
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   request_id INTEGER           -- requests.id it was baked for
+);
+
+-- The bake machines: when each last asked for work (bake.js nextRequest), so
+-- a phone is told minutes to go only while one is in (worker.js requestStatus).
+CREATE TABLE IF NOT EXISTS runners (
+  name TEXT PRIMARY KEY,
+  kinds TEXT,
+  last_seen TEXT NOT NULL
 );
 
 -- The app's usage stats (app/src/analytics.ts → /api/events, stats.js;

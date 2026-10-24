@@ -121,7 +121,7 @@ export function bundleOnServer(files: string[], areaId: string = ACTIVE_AREA.id)
 export function keepsArea(b: BundleDef): boolean {
   // a loaded spot's files are the national SD tiles its neighbours share, and one index: kept means
   // every tile of its own there (a neighbour's save counts, the index alone does not)
-  if (areaById(b.id)?.loaded) return b.files.some((f) => f.endsWith('.hab') && manifestGet(f) != null) && offlineReady(b.id)
+  if (areaById(b.id)?.loaded === 'box') return b.files.some((f) => f.endsWith('.hab') && manifestGet(f) != null) && offlineReady(b.id)
   return b.files.some((f) => {
     const i = manifestGet(f)
     return i != null && !i.auto
@@ -176,8 +176,8 @@ let boot: Promise<DataManifest | null> | null = null
 export function bootManifest(): Promise<DataManifest | null> {
   if (boot) return boot
   boot = (async () => {
-    // a loaded location (areas/runtime.ts) has nothing baked, so no file list to ask for
-    if (!navigator.onLine || ACTIVE_AREA.loaded) return null
+    // a loaded location (areas/runtime.ts) with no pack yet has nothing baked, so no file list to ask for
+    if (!navigator.onLine || ACTIVE_AREA.loaded === 'box') return null
     const j = await fetchJson<DataManifest>(fileUrl('manifest.json'), { timeoutMs: 4000, cache: 'default' })
     if (!j || typeof j.files !== 'object' || j.files == null) return null
     noteManifest(ACTIVE_AREA.id, j)

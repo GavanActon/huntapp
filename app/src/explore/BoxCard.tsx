@@ -140,7 +140,9 @@ export default function BoxCard() {
     const j = w.provs.split(',')[0]?.trim() || provinceAt(clon, clat)
     const asked = guess.current?.id === id ? guess.current.name : placeName(clon, clat)
     const named = sel!.replaces?.name ?? (await asked) ?? `Spot ${tileAt(clon, clat).id.slice(2)}`
-    if (!loadLocation(box, named, j, sel!.replaces?.id)) {
+    // an email only where the build is the ground wind itself and may take a while (no SD tiles here): it is told when ready
+    const tell = sdHave === 0 && emailOk ? email : undefined
+    if (!loadLocation(box, named, j, sel!.replaces?.id, tell)) {
       setErr('Not loaded: the app stayed where it is.')
       setLoading(false)
     }
@@ -219,7 +221,8 @@ export default function BoxCard() {
   // location, we need hide everything that's non essential to let the user select what they want to see.
   // Order should be Load"). Over a baked area, Open it in Load's place: its own wind is better
   if (!sel.extend && sel.purpose !== 'hd') {
-    const here = baked.filter((a) => !a.loaded)
+    // a location on its pack is baked ground too: open it
+    const here = baked.filter((a) => a.loaded !== 'box')
     return (
       <div className="boxcard glass" role="dialog" aria-label="Load" ref={el}>
         <div className="boxcard-head">
@@ -249,17 +252,14 @@ export default function BoxCard() {
             </div>
           ))
         ) : sdHave === 0 && !req ? (
-          // no SD tiles under it yet (the rest of Canada, the US): the ask bakes the ground wind here
-          // (Gavan, 2026-10-23: "those areas need a request flow"); the forecast alone can still load
+          // no SD tiles under it yet (the rest of Canada, the US): Load builds the ground wind with the rest
+          // (docs/REQUESTS.md: the build starts with the Load, the email only if given); the forecast's wind till then
           <div className="boxcard-ask">
-            <div className="dim">No ground wind here yet. Ask, and it is baked on this ground's terrain and forest; the email comes when it is in.</div>
-            <input type="email" inputMode="email" placeholder="Your email, for when it is ready" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <div className="dim">No ground wind here yet: Load, and it is built for this box with the rest. The forecast's wind until then.</div>
+            <input type="email" inputMode="email" placeholder="Email me when it's ready (optional)" value={email} onChange={(e) => setEmail(e.target.value)} />
             <div className="boxcard-btns">
-              <button className="btn btn-primary" disabled={busy != null} onClick={() => void ask('sd')}>
-                {busy === 'sd' ? 'Sending…' : 'Ask for the ground wind'}
-              </button>
-              <button className="btn quiet" disabled={loading} onClick={() => void load()}>
-                {loading ? 'Loading…' : 'Load the forecast only'}
+              <button className="btn btn-primary" disabled={loading} onClick={() => void load()}>
+                {loading ? 'Loading…' : 'Load'}
               </button>
             </div>
           </div>

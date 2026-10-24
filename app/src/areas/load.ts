@@ -1,5 +1,6 @@
 import { devlog } from '../devlog'
 import { boxId, type Box } from '../explore/box'
+import { dropBuild, queueBuild } from '../explore/requests'
 import { addLoadedArea } from './index'
 import { dropLocation, keepLocation } from './runtime'
 import { switchArea } from './switch'
@@ -9,8 +10,11 @@ import { switchArea } from './switch'
  * the hrdps wind etc."): the box becomes a location kept on the phone
  * (areas/runtime.ts) and the app goes there, as to any area: a reload into
  * ?area=b-…, where the forecast over the box and the SD tiles' wind come
- * in. `replaces` (a location moved or grown): the old one goes once the new
- * one is kept. False when the switch did not go (a download running, a "no" asked).
+ * in. Its SD build starts with it (docs/REQUESTS.md): kept now, sent from
+ * the next start (explore/requests.ts), the email with it only if given.
+ * `replaces` (a location moved or grown): the old one goes once the new
+ * one is kept, its build with it. False when the switch did not go (a
+ * download running, a "no" asked).
  */
 /** The spot just loaded, its name, for the line on arrival (App.tsx takeLoadedNow). */
 export const LOADED_NOW = 'huntapp-loaded-now'
@@ -26,12 +30,16 @@ export function takeLoadedNow(): string | null {
   }
 }
 
-export function loadLocation(box: Box, name: string, jurisdiction: string, replaces?: string): boolean {
+export function loadLocation(box: Box, name: string, jurisdiction: string, replaces?: string, email?: string): boolean {
   const l = { id: boxId(box), name: name.trim().slice(0, 60) || 'Spot', jurisdiction, at: Date.now() }
   const a = addLoadedArea(l)
   if (!a) return false
   keepLocation(l)
-  if (replaces && replaces !== l.id) dropLocation(replaces)
+  queueBuild(l.id, l.name, jurisdiction, email, false)
+  if (replaces && replaces !== l.id) {
+    dropLocation(replaces)
+    dropBuild(replaces)
+  }
   devlog('area', `load ${l.id} · ${l.name} · ${jurisdiction}`)
   // said on arrival (App.tsx): the name it was given, and where to change it
   try {

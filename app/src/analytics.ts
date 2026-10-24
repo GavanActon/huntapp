@@ -23,7 +23,7 @@ import { ACTIVE_AREA } from './areas'
 /** The area as the stats name it: a loaded location's id is its box, a position
  *  to 30 m, and the stats keep none (docs/ANALYTICS.md): it goes as 'box'. */
 /** Any area as the stats name it (a share, a download): a loaded location as 'box'. */
-export const areaWord = (a: { id: string; loaded?: 'box' }) => (a.loaded ? 'box' : a.id)
+export const areaWord = (a: { id: string; loaded?: 'box' | 'pack' }) => (a.loaded ? 'box' : a.id)
 const AREA_WORD = areaWord(ACTIVE_AREA)
 import { installId } from './devlog'
 import { topSheet, useAppStore } from './state/appStore'

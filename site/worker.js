@@ -15,7 +15,7 @@
 // /<key>.txt proves the key is ours (indexnow.js).
 
 import { areasApi, bakeApi } from './bake.js'
-import { requestMail } from './mail.js'
+import { readyMail, requestMail } from './mail.js'
 import { checksExport, checksIngest } from './checks.js'
 import { INDEXNOW_KEY, indexNowKey, indexNowSweep } from './indexnow.js'
 import { partyApi } from './party.js'
@@ -33,6 +33,7 @@ const ORIGINS = ['https://groundwind.app', 'https://hunt.groundwind.app', 'https
 const DEV_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d{2,5})?$/
 const GAME = new Set(['moose', 'elk', 'deer', 'bear', 'grouse'])
 const INSTALL = /^[a-f0-9]{16}$/
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 // the SD lattice (pipeline/tiles.py, app/src/explore/lattice.ts): habitat cells and tiles
 const D_LON = 0.0004
 const D_LAT = 0.00027
@@ -149,34 +150,40 @@ async function takeRequest(request, env, cors, ctx) {
   }
   // a bot fills every field, the hidden one too: thank it and keep nothing
   if (body?.website) return json({ ok: true }, 200, cors)
-  // Explore: an ask taken back (docs/EXPLORE.md): the phone's own email and
-  // box (or cell), only an ask still waiting; one being baked just is not sent
+  // Explore: an ask taken back (docs/EXPLORE.md), or a location's build (a location removed or
+  // moved: app/src/explore/requests.ts dropBuild): by the email it went with or the phone that
+  // sent it, and its box (or cell), only while still waiting; one being baked just is not sent
   if (body?.cancel) {
     const email = String(body.email ?? '').trim().slice(0, 200)
     const tile = askedGround(body.tile)
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !tile) return json({ error: 'cancel' }, 400, cors)
+    const install = INSTALL.test(String(body.install ?? '')) ? String(body.install) : null
+    const byEmail = EMAIL.test(email) ? email : null
+    if ((!byEmail && !install) || !tile) return json({ error: 'cancel' }, 400, cors)
     const r = await beforeMigration(
       () =>
         env.DB.prepare(
-          "UPDATE requests SET status = 'cancelled', stage = 'cancelled', updated_at = datetime('now') WHERE email = ? AND tile = ? AND status = 'new' AND (stage IS NULL OR stage = 'queued')",
+          `UPDATE requests SET status = 'cancelled', stage = 'cancelled', updated_at = datetime('now')
+           WHERE tile = ?1 AND ((?2 IS NOT NULL AND email = ?2) OR (?3 IS NOT NULL AND install = ?3)) AND status = 'new' AND (stage IS NULL OR stage = 'queued')`,
         )
-          .bind(email, tile)
+          .bind(tile, byEmail, install)
           .run(),
-      () => env.DB.prepare("UPDATE requests SET status = 'cancelled' WHERE email = ? AND tile = ? AND status = 'new'").bind(email, tile).run(),
+      () => env.DB.prepare("UPDATE requests SET status = 'cancelled' WHERE email = ? AND tile = ? AND status = 'new'").bind(byEmail ?? '', tile).run(),
     )
     return json({ ok: true, cancelled: r.meta?.changes ?? 0 }, 200, cors)
   }
 
   const email = String(body?.email ?? '').trim().slice(0, 200)
   const place = String(body?.where ?? '').trim().slice(0, 500)
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: 'email' }, 400, cors)
+  const kind = body?.kind === 'hd' ? 'hd' : 'sd'
+  const install = INSTALL.test(String(body?.install ?? '')) ? String(body.install) : null
+  // an email is how HD is told it is ready; an SD build is followed by the phone that sent it, so
+  // its email is optional (docs/REQUESTS.md: Gavan, 2026-10-24). Neither: nobody could hear of it
+  if (email ? !EMAIL.test(email) : kind === 'hd' || !install) return json({ error: 'email' }, 400, cors)
   if (!place) return json({ error: 'where' }, 400, cors)
   const game = (Array.isArray(body.game) ? body.game : []).map(String).filter((g) => GAME.has(g)).join(',')
   const source = body.source === 'app' ? 'app' : 'site'
   // Explore: the box drawn (or, before boxes, the cell) asked for, and SD or HD (docs/EXPLORE.md)
   const tile = askedGround(body.tile)
-  // SD unless HD is asked for: the site's form has no choice, and SD is the free one
-  const kind = body.kind === 'hd' ? 'hd' : 'sd'
   // the ground to bake: a box sent as {west, south, east, north}, else the one Explore's tile names
   let box = null
   if (body.box != null) {
@@ -187,11 +194,25 @@ async function takeRequest(request, env, cors, ctx) {
   }
   let [lat, lon] = pointOf(body, place)
   if (lat === null && box) [lat, lon] = inCanada((box.south + box.north) / 2, (box.west + box.east) / 2)
-  const install = INSTALL.test(String(body.install ?? '')) ? String(body.install) : null
   const name = String(body.name ?? '').trim().slice(0, 80) || null
+  // a pack already baked that holds the whole box serves it at once, and nobody is told whose
+  // build it was (docs/REQUESTS.md, Reuse; Gavan, 2026-10-24)
+  const served = box && lat !== null ? await coveringPack(env, box, kind) : null
   // with a point the agent can bake it; without one (a place name typed on
   // the site) it waits for a person, as every request did before the loop
-  const stage = lat === null ? null : 'queued'
+  const stage = lat === null ? null : served ? 'done' : 'queued'
+
+  // a build of the same box already under way (a friend's phone opening a shared location before its
+  // pack is done): this ask follows that one, one build for both (docs/REQUESTS.md, Reuse)
+  if (!served && tile && stage === 'queued') {
+    const open = await env.DB.prepare(
+      "SELECT id, stage FROM requests WHERE tile = ? AND IFNULL(kind, 'sd') = ? AND stage IN ('queued', 'claimed', 'baking') ORDER BY id LIMIT 1",
+    )
+      .bind(tile, kind)
+      .first()
+      .catch(() => null)
+    if (open) return json({ ok: true, id: open.id, stage: open.stage, joined: true }, 200, cors)
+  }
 
   // a hash of the sender's address, kept only to slow a flood
   const who = await hashOf(request.headers.get('CF-Connecting-IP') ?? '')
@@ -202,19 +223,49 @@ async function takeRequest(request, env, cors, ctx) {
   const id = await beforeMigration(
     () =>
       env.DB.prepare(
-        `INSERT INTO requests (email, place, lat, lon, game, source, country, who, tile, kind, box, install, name, stage, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now')) RETURNING id`,
+        `INSERT INTO requests (email, place, lat, lon, game, source, country, who, tile, kind, box, install, name, stage, area_id, done_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, CASE WHEN ?15 IS NOT NULL THEN datetime('now') END, datetime('now')) RETURNING id`,
       )
-        .bind(email, place, lat, lon, game, source, country, who, tile, kind, box && JSON.stringify(box), install, name, stage)
+        .bind(email, place, lat, lon, game, source, country, who, tile, kind, box && JSON.stringify(box), install, name, stage, served)
         .first('id'),
     () =>
       env.DB.prepare('INSERT INTO requests (email, place, lat, lon, game, source, country, who, tile, kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id')
         .bind(email, place, lat, lon, game, source, country, who, tile, kind)
         .first('id'),
   )
-  // the note to Gavan, and to the asker once Email Sending is on (mail.js): after the row is in, never before
-  if (id != null) requestMail(ctx, env, { id, kind, email, place, lat, lon, tile, source, country })
-  return json({ ok: true, id }, 200, cors)
+  // the note to Gavan, and to the asker when they gave an address (mail.js): after the row is in, never before;
+  // one served by a pack at once is ready now, and says so
+  if (id != null) requestMail(ctx, env, { id, kind, email, place, lat, lon, tile, source, country, served })
+  if (id != null && served && email) readyMail(ctx, env, { id, email, areaId: served, tile, lat, lon })
+  return json({ ok: true, id, ...(served ? { stage: 'done', area_id: served } : {}) }, 200, cors)
+}
+
+/** A pack already baked (D1 `areas`, done) whose core holds the whole box, of the grade asked for
+ *  or better (an HD pack serves an SD ask): the same grade first, then the smallest. Null for none,
+ *  or with no `areas` table yet. */
+async function coveringPack(env, box, kind) {
+  let rows
+  try {
+    rows = (await env.DB.prepare("SELECT id, kind, area_json FROM areas WHERE stage = 'done'").all()).results ?? []
+  } catch {
+    return null
+  }
+  const EPS = 1e-5
+  const fits = []
+  for (const r of rows) {
+    if (kind === 'hd' && r.kind !== 'hd') continue
+    try {
+      const c = JSON.parse(r.area_json)?.core
+      if (!c) continue
+      if (c.west <= box.west + EPS && c.east >= box.east - EPS && c.south <= box.south + EPS && c.north >= box.north - EPS) {
+        fits.push({ id: r.id, same: (r.kind ?? 'sd') === kind, size: (c.east - c.west) * (c.north - c.south) })
+      }
+    } catch {
+      /* a row that is not JSON serves nobody */
+    }
+  }
+  fits.sort((a, b) => Number(b.same) - Number(a.same) || a.size - b.size)
+  return fits[0]?.id ?? null
 }
 
 /** A Worker deployed before migrations/2026-10-11-requests-bake.sql has run
@@ -234,13 +285,64 @@ async function beforeMigration(now, before) {
 /** GET /api/request?id=: how a request is getting on, for the phone that
  *  sent it: its stage, the bake step under way, the area it became and,
  *  when it failed or waits for review, the reason's last line. Never the
- *  email, the place or the point: an id is a small number anyone can try. */
+ *  email, the place or the point: an id is a small number anyone can try.
+ *  And how long (docs/REQUESTS.md, Status): `ahead`, the queued requests of
+ *  its kind before it; `progress`, 0 to 1, as the agent reports it;
+ *  `minutes` to go, from the median of the last builds of its kind, but
+ *  only while a machine that bakes that kind has called in within 10
+ *  minutes (null when none has: never a clock made up; left out before the
+ *  `runners` table exists). */
 async function requestStatus(request, env, cors) {
   const id = Number(new URL(request.url).searchParams.get('id'))
   if (!Number.isInteger(id) || id <= 0) return json({ error: 'id' }, 400, cors)
-  const row = await env.DB.prepare('SELECT id, kind, stage, step, area_id, error, IFNULL(updated_at, at) AS updated FROM requests WHERE id = ?').bind(id).first()
+  const cols = "id, IFNULL(kind, 'sd') AS kind, stage, step, area_id, error, IFNULL(updated_at, at) AS updated"
+  // `progress` came with the packs (migrations/2026-10-24-packs.sql): a database without it answers without
+  const row = await beforeMigration(
+    () => env.DB.prepare(`SELECT ${cols}, progress FROM requests WHERE id = ?`).bind(id).first(),
+    () => env.DB.prepare(`SELECT ${cols} FROM requests WHERE id = ?`).bind(id).first(),
+  )
   if (!row) return json({ error: 'no such request' }, 404, cors)
-  return json({ ...row, error: shortError(row.error) }, 200, { ...cors, 'Cache-Control': 'no-store' })
+  const out = { ...row, error: shortError(row.error) }
+  if (row.stage === 'queued' || row.stage === 'claimed' || row.stage === 'baking') Object.assign(out, await howLong(env, row))
+  if (out.progress != null) out.progress = Math.max(0, Math.min(1, Number(out.progress) || 0))
+  return json(out, 200, { ...cors, 'Cache-Control': 'no-store' })
+}
+
+/** A build's place in line and its minutes to go (requestStatus). */
+async function howLong(env, row) {
+  const out = {}
+  if (row.stage === 'queued') {
+    out.ahead = await env.DB.prepare("SELECT COUNT(*) AS n FROM requests WHERE stage = 'queued' AND IFNULL(kind, 'sd') = ? AND id < ?").bind(row.kind, row.id).first('n')
+  }
+  let machines
+  try {
+    machines = await env.DB.prepare("SELECT COUNT(*) AS n FROM runners WHERE last_seen > datetime('now', '-10 minutes') AND (',' || kinds || ',') LIKE ?")
+      .bind(`%,${row.kind},%`)
+      .first('n')
+  } catch {
+    return out // no runners table yet: nothing to say about time
+  }
+  if (!machines) {
+    out.minutes = null
+    return out
+  }
+  // the bakes the agents did themselves (claimed, then done), not ones served by a pack or marked by hand
+  const { results } = await env.DB.prepare(
+    `SELECT (julianday(done_at) - julianday(claimed_at)) * 1440 AS m FROM requests
+     WHERE stage = 'done' AND IFNULL(kind, 'sd') = ? AND claimed_at IS NOT NULL AND done_at IS NOT NULL AND agent IS NOT NULL
+     ORDER BY id DESC LIMIT 15`,
+  )
+    .bind(row.kind)
+    .all()
+  const ms = (results ?? []).map((r) => Number(r.m)).filter((m) => m > 0.5 && m < 48 * 60).sort((a, b) => a - b)
+  if (!ms.length) {
+    out.minutes = null
+    return out
+  }
+  const typical = ms[Math.floor(ms.length / 2)]
+  const left = row.stage === 'queued' ? typical * ((out.ahead ?? 0) / machines + 1) : typical * (1 - Math.max(0, Math.min(1, Number(row.progress) || 0)))
+  out.minutes = Math.max(1, Math.round(left))
+  return out
 }
 
 /** GET /api/requests: every request, newest first, for Gavan's viewer

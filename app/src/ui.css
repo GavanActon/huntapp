@@ -106,6 +106,25 @@
   transform: translateX(-50%);
   animation: toast-life linear both;
 }
+/* a toast with something to do (ui/Toast.tsx act): it takes taps, its button the thing */
+.toast.toast-act {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 4px;
+}
+.toast-btn {
+  flex: none;
+  min-height: 28px;
+  padding: 2px 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--c-text);
+  font: inherit;
+  font-weight: 650;
+}
 :root[data-hdview] .toast {
   border-color: var(--c-hd);
   box-shadow: 0 0 0 1px var(--c-hd);

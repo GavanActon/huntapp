@@ -28,8 +28,8 @@ const FROM = {
   queued: ['claimed', 'baking', 'review', 'failed', 'done'],
 }
 // the columns the agent is handed: what to bake, never who asked
-// (step: where a bake handed back stopped, so the agent can go on from there)
-const TASK = 'id, at, place, name, lat, lon, IFNULL(kind, \'sd\') AS kind, box, tile, game, source, stage, step, agent'
+// (step and area_id: where a bake handed back stopped and the pack it was baking, so the agent goes on there)
+const TASK = "id, at, place, name, lat, lon, IFNULL(kind, 'sd') AS kind, box, tile, game, source, stage, step, agent, area_id"
 
 /** The shared secret, compared in constant time: a hash of each side, so
  *  the lengths match whatever was sent. No BAKE_KEY set: nobody gets in. */
@@ -67,6 +67,14 @@ async function nextRequest(env, url) {
   const agent = agentName(url.searchParams.get('agent'))
   const kinds = (url.searchParams.get('kinds') ?? 'sd').split(',').filter((k) => k === 'sd' || k === 'hd')
   if (!agent || !kinds.length) return json({ error: 'agent' }, 400)
+  // the machine called in: a phone's "about 20 min" is said only while one has, lately (worker.js
+  // requestStatus). No `runners` table yet (migrations/2026-10-24-packs.sql): nothing kept, nothing said
+  await env.DB.prepare(
+    "INSERT INTO runners (name, kinds, last_seen) VALUES (?1, ?2, datetime('now')) ON CONFLICT(name) DO UPDATE SET kinds = excluded.kinds, last_seen = excluded.last_seen",
+  )
+    .bind(agent, kinds.join(','))
+    .run()
+    .catch(() => {})
   const own = await env.DB.prepare(`SELECT ${TASK} FROM requests WHERE stage IN ('claimed', 'baking') AND agent = ? ORDER BY id LIMIT 1`).bind(agent).first()
   if (own) {
     await env.DB.prepare("UPDATE requests SET updated_at = datetime('now') WHERE id = ?").bind(own.id).run()
@@ -83,10 +91,12 @@ async function nextRequest(env, url) {
   return json({ request: got ?? null }, 200)
 }
 
-/** A stage from the agent: {stage, agent, step?, error?, area_id?}, and for
- *  done {area_id, area_json, files_json, size_bytes}. Refused (409, with the
- *  stage it is at) when the request is not where that stage can follow, or
- *  another agent holds it. */
+/** A stage from the agent: {stage, agent, step?, progress?, error?, area_id?},
+ *  and for done {area_id, area_json, files_json, size_bytes}. Refused (409,
+ *  with the stage it is at) when the request is not where that stage can
+ *  follow, or another agent holds it. `progress` (0 to 1, the agent's steps
+ *  weighted by their measured times) is kept where the database has the
+ *  column (migrations/2026-10-24-packs.sql). */
 async function report(request, env, id, ctx) {
   const text = await request.text()
   if (text.length > MAX_BODY) return json({ error: 'size' }, 413)
@@ -103,6 +113,8 @@ async function report(request, env, id, ctx) {
   const error = body.error == null ? null : String(body.error).slice(-4000)
   const areaId = body.area_id == null ? null : String(body.area_id)
   if (areaId !== null && !ID.test(areaId)) return json({ error: 'area_id' }, 400)
+  const p = Number(body.progress)
+  const progress = body.progress == null || !Number.isFinite(p) ? null : Math.max(0, Math.min(1, p))
   const from = JSON.stringify(FROM[stage])
   // an agent may only move what it holds; a requeue (by hand) may move anything
   const mine = stage === 'claimed' || stage === 'queued' ? '1' : '(agent IS NULL OR agent = ?4)'
@@ -127,20 +139,26 @@ async function report(request, env, id, ctx) {
       ).bind(areaId, id, from, agent),
     ])
     if (!moved.meta?.changes) return refused(env, id)
-    // "your area is ready" to the one who asked (mail.js; the agent's task leaves the email out, so it is read here)
-    const to = await env.DB.prepare('SELECT email FROM requests WHERE id = ?').bind(id).first('email')
-    if (to) readyMail(ctx, env, { id, email: to, areaId })
+    // "it's ready" to the one who asked, if they gave an address (mail.js; the agent's task leaves the email out, so it is read here)
+    const who = await env.DB.prepare('SELECT email, tile, lat, lon FROM requests WHERE id = ?').bind(id).first()
+    if (who?.email) readyMail(ctx, env, { id, email: who.email, areaId, tile: who.tile, lat: who.lat, lon: who.lon })
     return json({ ok: true, id, stage, area_id: areaId }, 200)
   }
 
-  const r = await env.DB.prepare(
+  const sql = (withProgress) =>
     `UPDATE requests SET stage = ?1, step = ?5, error = ?6, area_id = IFNULL(?7, area_id), updated_at = datetime('now'),
+       ${withProgress ? "progress = CASE WHEN ?1 = 'claimed' THEN 0 ELSE IFNULL(?8, progress) END," : ''}
        agent = CASE WHEN ?1 = 'claimed' THEN ?4 ELSE agent END,
        claimed_at = CASE WHEN ?1 = 'claimed' THEN datetime('now') ELSE claimed_at END
-     WHERE id = ?2 AND stage IN (SELECT value FROM json_each(?3)) AND ${mine}`,
-  )
-    .bind(stage, id, from, agent, step, error, areaId)
-    .run()
+     WHERE id = ?2 AND stage IN (SELECT value FROM json_each(?3)) AND ${mine}`
+  let r
+  try {
+    r = await env.DB.prepare(sql(true)).bind(stage, id, from, agent, step, error, areaId, progress).run()
+  } catch (e) {
+    // a database from before the packs (no progress column): the stage goes in without it
+    if (!/no such column/i.test(String(e?.message ?? e))) throw e
+    r = await env.DB.prepare(sql(false)).bind(stage, id, from, agent, step, error, areaId).run()
+  }
   if (!r.meta?.changes) return refused(env, id)
   return json({ ok: true, id, stage }, 200)
 }
@@ -179,12 +197,14 @@ function agentName(v) {
 
 // ---- the area list, for the app ---------------------------------------------
 
-/** /areas/index.json and /areas/<id>/area.json: the areas baked on request,
- *  from D1. The index has the form the app's build writes for the areas it
- *  ships (vite.config.ts dataManifest: id, name, region, centre, base,
- *  manifest, hash, bytes, files), plus `data`, the host the files are on,
- *  and each area's kind and last bake. Short cache: a new area shows up
- *  within a minute. `cors` is the Worker's, for the app's origins. */
+/** /areas/<id>/area.json: a pack's area file, by its id (docs/REQUESTS.md,
+ *  Access: the id is the only way to a pack, and only its links carry it).
+ *  /areas/index.json names none of them: it once listed every request's
+ *  area with its centre, to anyone (Gavan, 2026-10-24: "a location
+ *  requested doesn't become populated for everyone"), and the demo areas
+ *  are built into the app. Its form stays the app build's (vite.config.ts
+ *  dataManifest), with `data`, the host the files are on. Short cache.
+ *  `cors` is the Worker's, for the app's origins. */
 export async function areasApi(request, env, url, cors) {
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: { ...cors, 'Access-Control-Allow-Methods': 'GET, HEAD', 'Access-Control-Max-Age': '86400' } })
@@ -203,30 +223,7 @@ export async function areasApi(request, env, url, cors) {
 }
 
 async function areaIndex(env, headers) {
-  const { results } = await env.DB.prepare("SELECT id, name, kind, area_json, files_json, size_bytes, updated_at FROM areas WHERE stage = 'done' ORDER BY created_at, id").all()
-  const areas = []
-  for (const row of results ?? []) {
-    try {
-      const a = JSON.parse(row.area_json)
-      const files = JSON.parse(row.files_json).files ?? {}
-      areas.push({
-        id: row.id,
-        name: row.name,
-        kind: row.kind,
-        region: a.region,
-        centre: a.centre,
-        base: a.base,
-        manifest: `${a.base}manifest.json`,
-        hash: await sha16(row.files_json),
-        bytes: row.size_bytes,
-        files: Object.keys(files),
-        updated: row.updated_at,
-      })
-    } catch (e) {
-      console.error('areas/index.json', row.id, e) // one bad row never takes the list down
-    }
-  }
-  return json({ data: DATA_BASE, areas }, 200, headers)
+  return json({ data: DATA_BASE, areas: [] }, 200, headers)
 }
 
 async function areaFile(env, id, headers) {
@@ -234,12 +231,6 @@ async function areaFile(env, id, headers) {
   const row = await env.DB.prepare("SELECT area_json FROM areas WHERE id = ? AND stage = 'done'").bind(id).first()
   if (!row) return json({ error: 'no such area' }, 404, headers)
   return new Response(row.area_json, { status: 200, headers: { ...headers, 'content-type': 'application/json' } })
-}
-
-/** The hash the app's build gives a manifest: SHA-1, the first 16 hex. */
-async function sha16(s) {
-  const d = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(s))
-  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16)
 }
 
 function json(data, status, headers = {}) {

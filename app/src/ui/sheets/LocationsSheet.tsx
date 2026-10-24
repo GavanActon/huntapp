@@ -7,8 +7,8 @@ import { setExplore } from '../../explore'
 import { boxAround } from '../../explore/box'
 import { useExplore } from '../../explore/store'
 import { parseBoxId, centre } from '../../explore/box'
-import { checkAsks, stageWords } from '../../explore/requests'
-import { areaById, forgetArea } from '../../areas'
+import { buildWords, checkAsks, dropBuild, stageWords } from '../../explore/requests'
+import { areaById, dropKept, forgetArea, isDemo } from '../../areas'
 import { getMap } from '../../map/mapController'
 import { areaBoxes } from '../../map/mapStyle'
 import { removeFiles, useDownloads } from '../../offline/downloads'
@@ -35,6 +35,8 @@ export default function LocationsSheet(): JSX.Element {
   // this phone's asks for HD, and how the queue says each is getting on (explore/requests.ts)
   const requested = useExplore((s) => s.requested)
   const asks = Object.entries(requested).filter(([, r]) => r.kind === 'hd' && r.stage !== 'cancelled').sort((a, b) => b[1].at - a[1].at)
+  // each loaded location's SD build (explore/requests.ts), shown in its row
+  const builds = useExplore((s) => s.builds)
   useEffect(() => checkAsks(), [])
   // what a row's Share says when the message went to the clipboard, or did not
   const [said, setSaid] = useState<{ id: string; text: string } | null>(null)
@@ -98,16 +100,41 @@ export default function LocationsSheet(): JSX.Element {
           const here = a.id === ACTIVE_AREA.id
           const b = bundleOf(a.id)
           const saved = b != null && keepsArea(b)
+          const build = builds[a.id]
+          // a build still to land, in words; a location on its pack says it is built
+          const building = a.loaded === 'box' && build && build.stage !== 'done' && build.stage !== 'cancelled' ? build : null
+          const desc =
+            a.loaded === 'pack'
+              ? 'Built · SD'
+              : building
+                ? buildWords(
+                    building,
+                    Object.entries(builds)
+                      .filter(([id]) => id !== a.id)
+                      .map(([, r]) => r),
+                  )
+                : a.loaded && build?.stage === 'done'
+                  ? 'Built · opens on it next start'
+                  : a.loaded
+                    ? 'Loaded · forecast and SD wind'
+                    : (a.presets[0]?.name ?? '')
+          // a built-in area this phone keeps alone (not a demo every phone lists) can go off the list
+          const ownBuiltIn = !a.loaded && !isDemo(a)
           return (
             <div key={a.id} className={`place-row${here ? ' place-current' : ''}`}>
               <button className="row-text place-go" onClick={() => go(a)}>
                 <span className="row-title">{names[a.id] ?? a.name}</span>
                 <span className="row-desc">
-                  {a.loaded ? 'Loaded · forecast and SD wind' : (a.presets[0]?.name ?? '')}
+                  {desc}
                   {here ? ' · here' : ''}
                   {saved ? ' · maps saved' : ''}
                   {said?.id === a.id ? ` · ${said.text}` : ''}
                 </span>
+                {building?.stage === 'baking' && building.progress != null && (
+                  <span className="dl-bar place-build-bar">
+                    <span className="dl-bar-fill" style={{ width: `${Math.max(4, building.progress * 100)}%` }} />
+                  </span>
+                )}
               </button>
               <button className="icon-btn" aria-label={`Share ${a.name}`} onClick={() => share(a)}>
                 <IconShare size={16} />
@@ -155,7 +182,7 @@ export default function LocationsSheet(): JSX.Element {
                   HD
                 </button>
               )}
-              {a.loaded && !here && (
+              {(a.loaded || ownBuiltIn) && !here && (
                 <button
                   className="icon-btn"
                   aria-label={`Remove ${a.name}`}
@@ -163,7 +190,11 @@ export default function LocationsSheet(): JSX.Element {
                     if (!confirm(`Remove ${a.name} from your locations?`)) return
                     // its saved maps go with it, but for the tiles a neighbouring spot still uses (removeFiles)
                     const files = bundleOf(a.id)?.files ?? []
-                    dropLocation(a.id)
+                    if (a.loaded) {
+                      dropLocation(a.id)
+                      // its build too: one not sent goes, one in the queue is cancelled there
+                      dropBuild(a.id)
+                    } else dropKept(a.id)
                     if (files.length) void removeFiles(files, a.id)
                     forgetArea(a.id)
                     // its box off the map now, not at the next redraw

@@ -160,7 +160,11 @@ export async function removeFiles(files: string[], areaId: string = ACTIVE_AREA.
   // the national SD tiles and their index are shared by loaded spots side by side: one another kept
   // spot still lists stays (removing one spot's maps took most of its neighbour's, 2026-10-20 review)
   const shared = sharedSdFiles(areaId)
-  for (const f of files) if (!shared.has(f)) await deleteStoredFile(f)
+  // a pack's files (<layer>-<pack>.<ext>) another kept location still opens on stay too
+  const packs = readLocations()
+    .filter((l) => l.id !== areaId && l.pack)
+    .map((l) => `-${l.pack}.`)
+  for (const f of files) if (!shared.has(f) && !packs.some((p) => f.includes(p))) await deleteStoredFile(f)
   await removeSharp(areaId)
   useDownloads.setState({ storedAt: Date.now(), error: null, skipped: [], areaId })
   afterChange(areaId)
